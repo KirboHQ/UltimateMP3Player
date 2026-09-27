@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <AssemblyName>UltimateMP3Player</AssemblyName>
+    <RootNamespace>UltimateMP3Player</RootNamespace>
+    <Version>2.0.0</Version>
+    <Product>Ultimate MP3 Player</Product>
+    <Description>Offline music player that downloads songs and playlists from almost any site</Description>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SatelliteResourceLanguages>it</SatelliteResourceLanguages>
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+
+    <!-- GitHub repository that publishes the releases ("owner/repo"): enables the in-app updates. -->
+    <GitHubRepo>KirboHQ/UltimateMP3Player</GitHubRepo>
+    <!-- Discord application id (discord.com/developers/applications): enables the Rich Presence. -->
+    <DiscordAppId>1553571296665804911</DiscordAppId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="GitHubRepo" Value="$(GitHubRepo)" />
+    <AssemblyMetadata Include="DiscordAppId" Value="$(DiscordAppId)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="app.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio.Core" Version="2.2.1" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UltimateMP3Player.Core\UltimateMP3Player.Core.csproj" />
+  </ItemGroup>
+
+</Project>

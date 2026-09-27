@@ -1,0 +1,85 @@
+<UserControl x:Class="UltimateMP3Player.Views.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player">
+    <Grid>
+        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="28,12,20,28">
+                <TextBlock Text="{Binding Greeting}" FontSize="30" FontWeight="Bold" Margin="0,4,0,22"/>
+
+                <!-- first run -->
+                <Border Style="{StaticResource Card}" Padding="28" Margin="0,0,8,24" Visibility="{Binding IsEmpty, Converter={StaticResource BoolVis}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Image Source="{StaticResource LogoImage}" Width="96" Height="96" VerticalAlignment="Top"/>
+                        <StackPanel Grid.Column="1" Margin="24,0,0,0">
+                            <TextBlock Text="{local:T 'La tua musica, offline e senza pubblicità'}" FontSize="22" FontWeight="Bold"/>
+                            <TextBlock Style="{StaticResource Hint}" FontSize="14" LineHeight="21" Margin="0,8,0,16"
+                                       Text="{local:T 'Incolla nella barra in alto il link di un brano o di una playlist (YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram e quasi ogni altro sito): viene scaricato e salvato qui. Puoi anche aggiungere la musica che hai già sul computer, o trascinare i file nella finestra.'}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Style="{StaticResource PrimaryButton}" Padding="18,10"
+                                        Command="{Binding DataContext.PasteLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE77F;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T 'Incolla un link'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource GhostButton}" Padding="18,10" Margin="10,0,0,0"
+                                        Command="{Binding DataContext.ImportCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE8E5;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T 'Aggiungi file dal computer'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <StackPanel Visibility="{Binding HasRecent, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{local:T 'Ascoltati di recente'}" Style="{StaticResource SectionTitle}"/>
+                    <ItemsControl ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource WrapPanelTemplate}"
+                                  Margin="0,0,0,18"/>
+                </StackPanel>
+
+                <TextBlock Text="{local:T 'Le tue playlist'}" Style="{StaticResource SectionTitle}"/>
+                <WrapPanel Margin="0,0,0,18">
+                    <ItemsControl ItemsSource="{Binding Playlists}" ItemTemplate="{StaticResource PlaylistCard}" ItemsPanel="{StaticResource WrapPanelTemplate}"/>
+                    <Border x:Name="NewCard" Width="176" Height="218" CornerRadius="12" Margin="0,0,12,12" Cursor="Hand"
+                            BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1.5">
+                        <Border.InputBindings>
+                            <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.NewPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        </Border.InputBindings>
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="26" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                            <TextBlock Text="{local:T 'Nuova playlist'}" Margin="0,10,0,0" Foreground="{StaticResource SubTextBrush}" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+                </WrapPanel>
+
+                <StackPanel Visibility="{Binding HasRecentlyAdded, Converter={StaticResource BoolVis}}">
+                    <DockPanel LastChildFill="False" Margin="0,0,8,0">
+                        <TextBlock Text="{local:T 'Aggiunti di recente'}" Style="{StaticResource SectionTitle}"/>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="{local:T 'Mostra tutti'}" VerticalAlignment="Center"
+                                Command="{Binding DataContext.GoLibraryCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource TrackRowTemplate}" Margin="0,0,8,0"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

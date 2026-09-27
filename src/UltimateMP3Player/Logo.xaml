@@ -1,0 +1,78 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- App logo, 256x256, symmetric. tools\make-images.ps1 renders the icon and installer images from it. -->
+    <DrawingGroup x:Key="LogoDrawing">
+        <GeometryDrawing>
+            <GeometryDrawing.Brush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#6D4DFF" Offset="0"/>
+                    <GradientStop Color="#A54CF5" Offset="0.5"/>
+                    <GradientStop Color="#FF4FA3" Offset="1"/>
+                </LinearGradientBrush>
+            </GeometryDrawing.Brush>
+            <GeometryDrawing.Geometry>
+                <RectangleGeometry Rect="0,0,256,256" RadiusX="62" RadiusY="62"/>
+            </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+        <GeometryDrawing>
+            <GeometryDrawing.Brush>
+                <RadialGradientBrush Center="0.3,0.12" GradientOrigin="0.3,0.12" RadiusX="0.75" RadiusY="0.6">
+                    <GradientStop Color="#40FFFFFF" Offset="0"/>
+                    <GradientStop Color="#00FFFFFF" Offset="1"/>
+                </RadialGradientBrush>
+            </GeometryDrawing.Brush>
+            <GeometryDrawing.Geometry>
+                <RectangleGeometry Rect="0,0,256,256" RadiusX="62" RadiusY="62"/>
+            </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+
+        <DrawingGroup>
+        <DrawingGroup.Transform>
+            <TranslateTransform Y="-11"/>
+        </DrawingGroup.Transform>
+        <!-- soft shadow under the white shapes -->
+        <DrawingGroup Opacity="0.22">
+            <DrawingGroup.Transform>
+                <TranslateTransform Y="5"/>
+            </DrawingGroup.Transform>
+            <GeometryDrawing Geometry="M 58,150 A 70,70 0 0 1 198,150">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="#2A0B4A" Thickness="17" StartLineCap="Round" EndLineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+            <GeometryDrawing Brush="#2A0B4A">
+                <GeometryDrawing.Geometry>
+                    <GeometryGroup>
+                        <RectangleGeometry Rect="40,134,42,72" RadiusX="19" RadiusY="19"/>
+                        <RectangleGeometry Rect="174,134,42,72" RadiusX="19" RadiusY="19"/>
+                        <RectangleGeometry Rect="98,154,15,32" RadiusX="7.5" RadiusY="7.5"/>
+                        <RectangleGeometry Rect="120.5,138,15,64" RadiusX="7.5" RadiusY="7.5"/>
+                        <RectangleGeometry Rect="143,154,15,32" RadiusX="7.5" RadiusY="7.5"/>
+                    </GeometryGroup>
+                </GeometryDrawing.Geometry>
+            </GeometryDrawing>
+        </DrawingGroup>
+
+        <!-- headphones and equalizer -->
+        <GeometryDrawing Geometry="M 58,150 A 70,70 0 0 1 198,150">
+            <GeometryDrawing.Pen>
+                <Pen Brush="White" Thickness="17" StartLineCap="Round" EndLineCap="Round"/>
+            </GeometryDrawing.Pen>
+        </GeometryDrawing>
+        <GeometryDrawing Brush="White">
+            <GeometryDrawing.Geometry>
+                <GeometryGroup>
+                    <RectangleGeometry Rect="40,134,42,72" RadiusX="19" RadiusY="19"/>
+                    <RectangleGeometry Rect="174,134,42,72" RadiusX="19" RadiusY="19"/>
+                    <RectangleGeometry Rect="98,154,15,32" RadiusX="7.5" RadiusY="7.5"/>
+                    <RectangleGeometry Rect="120.5,138,15,64" RadiusX="7.5" RadiusY="7.5"/>
+                    <RectangleGeometry Rect="143,154,15,32" RadiusX="7.5" RadiusY="7.5"/>
+                </GeometryGroup>
+            </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+        </DrawingGroup>
+    </DrawingGroup>
+
+    <DrawingImage x:Key="LogoImage" Drawing="{StaticResource LogoDrawing}"/>
+</ResourceDictionary>

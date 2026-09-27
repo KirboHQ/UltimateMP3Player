@@ -1,0 +1,344 @@
+<UserControl x:Class="UltimateMP3Player.Views.DownloadsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels">
+    <UserControl.Resources>
+        <!-- ============================================================ analyzed link -->
+        <DataTemplate DataType="{x:Type vm:LinkViewModel}">
+            <Border Style="{StaticResource Card}" Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid Width="132" Height="132" VerticalAlignment="Top">
+                            <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}">
+                                <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" FontSize="36" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                            </Border>
+                            <Border CornerRadius="10" Visibility="{Binding Thumb, Converter={StaticResource NotNullVis}}">
+                                <Border.Background>
+                                    <ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/>
+                                </Border.Background>
+                            </Border>
+                        </Grid>
+                        <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
+                            <Border HorizontalAlignment="Left" CornerRadius="6" Padding="9,3" Background="{StaticResource Surface2Brush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding SiteBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SiteName}" FontSize="12" FontWeight="SemiBold" Margin="7,0,0,0" Foreground="{StaticResource SubTextBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="Bold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                       MaxHeight="62" Margin="0,10,0,6"/>
+                            <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                            <Button Style="{StaticResource LinkButton}" Margin="0,10,0,0" HorizontalAlignment="Left"
+                                    Visibility="{Binding PartOfPlaylist, Converter={StaticResource BoolVis}}"
+                                    Command="{Binding DataContext.WholePlaylistCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8FD;" Style="{StaticResource Glyph}" FontSize="13"/>
+                                    <TextBlock Text="{local:T 'Questo brano fa parte di una playlist: scarica tutta la playlist'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <ItemsControl ItemsSource="{Binding Notes}" Margin="0,8,0,0" Visibility="{Binding HasNotes, Converter={StaticResource BoolVis}}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="12.5" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- options -->
+                    <WrapPanel Grid.Row="1" Margin="0,20,0,0" VerticalAlignment="Bottom">
+                        <StackPanel Width="280" Margin="0,0,14,0">
+                            <TextBlock Text="{local:T 'Salva nella playlist'}" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox ItemsSource="{Binding PlaylistChoices}" SelectedItem="{Binding Playlist}"/>
+                        </StackPanel>
+                        <StackPanel Width="280" Margin="0,0,14,0" Visibility="{Binding ShowNewName, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{local:T 'Nome della nuova playlist'}" Style="{StaticResource FieldLabel}"/>
+                            <TextBox Style="{StaticResource BoxTextBox}" Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" Tag="{local:T 'Nome della playlist'}"/>
+                        </StackPanel>
+                        <CheckBox Margin="0,24,24,0" VerticalAlignment="Center" IsChecked="{Binding WithVideo}"
+                                  Visibility="{Binding HasVideo, Converter={StaticResource BoolVis}}"
+                                  ToolTip="{local:T 'Salva anche il video (MP4) oltre all\'audio: lo vedrai nella schermata del brano'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE714;" Style="{StaticResource Glyph}" Foreground="{StaticResource SubTextBrush}"/>
+                                <TextBlock Text="{local:T 'Scarica anche il video'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <Button Style="{StaticResource PrimaryButton}" Padding="22,10" Margin="0,24,0,0" VerticalAlignment="Center" Command="{Binding DownloadCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}"/>
+                                <TextBlock Text="{Binding DownloadLabel}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+
+                    <!-- entries of a playlist / album -->
+                    <Grid Grid.Row="2" Margin="0,18,0,0" Visibility="{Binding IsCollection, Converter={StaticResource BoolVis}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*" MinHeight="90"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel LastChildFill="False">
+                            <Button Style="{StaticResource GhostButton}" Command="{Binding ToggleAllCommand}" Padding="12,6">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8B3;" Style="{StaticResource Glyph}" FontSize="13"/>
+                                    <TextBlock Text="{Binding ToggleAllLabel}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <TextBlock Text="{Binding SelectionText}" Margin="14,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}" FontSize="13"/>
+                        </DockPanel>
+                        <Border Grid.Row="1" Margin="0,10,0,0" CornerRadius="10" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" Padding="6">
+                            <ListBox Style="{StaticResource PlainList}" ItemsSource="{Binding Items}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:LinkItemViewModel}">
+                                        <Border x:Name="Row" CornerRadius="8" Padding="10,6" Background="Transparent">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="36"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Number}" Foreground="{StaticResource MutedBrush}" FontSize="12"
+                                                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                <Grid Grid.Column="2" Width="40" Height="40">
+                                                    <Border CornerRadius="5" Background="{StaticResource PlaceholderGradient}"/>
+                                                    <Border CornerRadius="5" Visibility="{Binding Thumb, Converter={StaticResource NotNullVis}}">
+                                                        <Border.Background>
+                                                            <ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/>
+                                                        </Border.Background>
+                                                    </Border>
+                                                </Grid>
+                                                <StackPanel Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
+                                                    <TextBlock Text="{Binding Meta}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"
+                                                               Margin="0,2,0,0" Visibility="{Binding Meta, Converter={StaticResource NotNullVis}}"/>
+                                                </StackPanel>
+                                                <Border Grid.Column="4" CornerRadius="6" Padding="8,3" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
+                                                        Visibility="{Binding InLibrary, Converter={StaticResource BoolVis}}"
+                                                        ToolTip="{local:T 'Non verrà riscaricato: viene solo aggiunto alla playlist scelta'}">
+                                                    <TextBlock Text="{local:T 'Già nella libreria'}" FontSize="11.5" Foreground="{StaticResource SuccessBrush}"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Row" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="False">
+                                                <Setter TargetName="Row" Property="Opacity" Value="0.5"/>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <!-- ============================================================ queue entry -->
+        <DataTemplate x:Key="JobTemplate" DataType="{x:Type vm:DownloadJobViewModel}">
+            <Border x:Name="Row" CornerRadius="10" Padding="10,8" Margin="0,0,0,4" Background="Transparent"
+                    MouseRightButtonUp="Job_RightClick" MouseLeftButtonDown="Job_MouseDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid Width="44" Height="44">
+                        <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
+                            <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                        </Border>
+                        <Border CornerRadius="6" Visibility="{Binding Thumb, Converter={StaticResource NotNullVis}}">
+                            <Border.Background>
+                                <ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+                    <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" FontSize="13.5"/>
+                        <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,1,0,0"/>
+                        <ProgressBar Margin="0,6,0,2" Value="{Binding Percent, Mode=OneWay}" IsIndeterminate="{Binding Indeterminate}"
+                                     Visibility="{Binding IsRunning, Converter={StaticResource BoolVis}}"/>
+                        <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding Details}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource IconButton}" Content="&#xE768;" Command="{Binding PlayCommand}" ToolTip="{local:T 'Riproduci (in «Tutti i brani»)'}"
+                                Visibility="{Binding CanPlay, Converter={StaticResource BoolVis}}"/>
+                        <Button Style="{StaticResource GhostButton}" Padding="10,5" Margin="0,0,6,0" FontSize="12.5" Command="{Binding RetryYouTubeCommand}"
+                                Visibility="{Binding CanRetryYouTube, Converter={StaticResource BoolVis}}" AutomationProperties.Name="{local:T 'Riprova con YouTube'}"
+                                ToolTip="{local:T 'Cerca lo stesso brano (titolo, artista e durata) su YouTube Music e scarica quello'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE72C;" Style="{StaticResource Glyph}" FontSize="12"/>
+                                <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource IconButton}" Content="&#xE72C;" Command="{Binding RetryCommand}" ToolTip="{local:T 'Riprova dallo stesso sito'}"
+                                Visibility="{Binding CanRetry, Converter={StaticResource BoolVis}}" AutomationProperties.Name="{local:T Riprova}"/>
+                        <Button Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding CancelCommand}" ToolTip="{local:T Annulla}"
+                                Visibility="{Binding IsActive, Converter={StaticResource BoolVis}}"/>
+                        <Button Style="{StaticResource IconButton}" Content="&#xE74D;" Command="{Binding RemoveCommand}" ToolTip="{local:T 'Togli dall\'elenco'}"
+                                Visibility="{Binding IsFinished, Converter={StaticResource BoolVis}}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Row" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                </Trigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Margin="28,6,20,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition x:Name="AnalysisRow" Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition x:Name="QueueListRow" Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="{local:T 'Scarica musica'}" FontSize="30" FontWeight="Bold" Margin="0,0,0,16"/>
+
+        <!-- intro / analyzing / error / result -->
+        <Grid Grid.Row="1" Margin="0,0,8,20">
+            <Border Style="{StaticResource Card}" Padding="22" Visibility="{Binding ShowIntro, Converter={StaticResource BoolVis}}">
+                <StackPanel>
+                    <TextBlock Text="{local:T 'Incolla un link nella barra in alto'}" FontSize="17" FontWeight="SemiBold"/>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,14" FontSize="13.5" LineHeight="20"
+                               Text="{local:T 'Brani, album e playlist intere: scegli in quale playlist salvarli e, se c\'è, anche il video. I brani che hai già non vengono riscaricati. Funziona anche trascinando un link nella finestra.'}"/>
+                    <ItemsControl ItemsSource="{Binding FeaturedSites}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="12" Padding="10,4" Margin="0,0,6,6" Background="{StaticResource Surface2Brush}">
+                                    <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{local:T '…e centinaia di altri siti.'}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="2,2,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Padding="22" Visibility="{Binding IsAnalyzing, Converter={StaticResource BoolVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Style="{StaticResource Spinner}" Width="34" Height="34"/>
+                    <TextBlock Text="{Binding AnalyzingText}" FontSize="15" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                    <Button Style="{StaticResource GhostButton}" Content="{local:T Annulla}" Margin="20,0,0,0" Command="{Binding CancelCommand}"/>
+                </StackPanel>
+            </Border>
+
+            <Border CornerRadius="14" Padding="20" Background="{StaticResource ErrorSoftBrush}"
+                    Visibility="{Binding Error, Converter={StaticResource NotNullVis}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="&#xEA39;" Style="{StaticResource Glyph}" FontSize="22" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Top"/>
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                        <TextBlock Text="{Binding Error}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ErrorHint}" Style="{StaticResource Hint}" Margin="0,6,0,0"
+                                   Visibility="{Binding ErrorHint, Converter={StaticResource NotNullVis}}"/>
+                        <Button Style="{StaticResource GhostButton}" Content="{local:T 'Apri le impostazioni'}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                                Command="{Binding OpenSettingsCommand}" Visibility="{Binding SuggestCookies, Converter={StaticResource BoolVis}}"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding DismissCommand}" VerticalAlignment="Top"/>
+                </Grid>
+            </Border>
+
+            <ContentControl Content="{Binding Link}" Focusable="False"/>
+
+            <Border CornerRadius="12" Padding="16,12" Background="#1A3A2E" Visibility="{Binding Feedback, Converter={StaticResource NotNullVis}}"
+                    VerticalAlignment="Top">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE73E;" Style="{StaticResource Glyph}" Foreground="{StaticResource SuccessBrush}"/>
+                    <TextBlock Text="{Binding Feedback}" Margin="10,0,0,0" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- queue header: title, summary, then the actions in a wrapping toolbar -->
+        <StackPanel Grid.Row="2" Margin="0,0,8,6" Visibility="{Binding Queue.HasJobs, Converter={StaticResource BoolVis}}">
+            <DockPanel LastChildFill="False" Margin="0,0,0,10">
+                <TextBlock Text="{local:T Download}" Style="{StaticResource SectionTitle}" Margin="0"/>
+                <TextBlock Text="{Binding Queue.Summary}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="14,4,0,0"/>
+            </DockPanel>
+            <Border CornerRadius="10" Padding="14,8,8,8" Margin="0,0,0,10" Background="{StaticResource WarningSoftBrush}"
+                    Visibility="{Binding Queue.IsPaused, Converter={StaticResource BoolVis}}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Padding="10,4" FontSize="12.5" Content="{local:T 'Riprendi ora'}"
+                            Command="{Binding Queue.ResumeNowCommand}"/>
+                    <TextBlock Text="&#xE916;" Style="{StaticResource Glyph}" Foreground="{StaticResource WarningBrush}"/>
+                    <TextBlock Text="{Binding Queue.PauseText}" Margin="10,0,0,0" Foreground="{StaticResource WarningBrush}" FontSize="13" TextWrapping="Wrap"
+                               VerticalAlignment="Center"/>
+                </DockPanel>
+            </Border>
+            <WrapPanel>
+                <Button Style="{StaticResource ToolbarButton}" Command="{Binding Queue.RetryFailedCommand}"
+                        Visibility="{Binding Queue.HasFailed, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Riprova i non riusciti dallo stesso sito'}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE72C;" Style="{StaticResource Glyph}" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Riprova non riusciti'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolbarButton}" Command="{Binding Queue.RetryFailedOnYouTubeCommand}"
+                        Visibility="{Binding Queue.HasFailedForYouTube, Converter={StaticResource BoolVis}}"
+                        ToolTip="{local:T 'Per ogni brano non scaricato cerca lo stesso brano su YouTube Music'}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE721;" Style="{StaticResource Glyph}" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolbarButton}" Command="{Binding Queue.DiscardFailedCommand}"
+                        Visibility="{Binding Queue.HasFailed, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Togli dall\'elenco i download non riusciti o annullati'}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE74D;" Style="{StaticResource Glyph}" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Scarta errori'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolbarButton}" Command="{Binding Queue.ClearFinishedCommand}"
+                        Visibility="{Binding Queue.HasDone, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Togli dall\'elenco i download completati'}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE73E;" Style="{StaticResource Glyph}" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Pulisci completati'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Style="{StaticResource ToolbarButton}" Command="{Binding Queue.CancelAllCommand}"
+                        Visibility="{Binding Queue.HasActive, Converter={StaticResource BoolVis}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE711;" Style="{StaticResource Glyph}" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Annulla tutti'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+            </WrapPanel>
+        </StackPanel>
+
+        <ListBox x:Name="JobList" Grid.Row="3" Style="{StaticResource PlainList}" ItemsSource="{Binding Queue.Jobs}" ItemTemplate="{StaticResource JobTemplate}"/>
+    </Grid>
+</UserControl>

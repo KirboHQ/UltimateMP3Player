@@ -1,0 +1,17 @@
+# build output
+bin/
+obj/
+app/
+dist/
+installer/staging/
+installer/Output/
+
+# external programs (downloaded, too big for git: see README)
+engines/*
+!engines/README.md
+
+# editors
+.vs/
+.vscode/
+*.user
+*.suo
