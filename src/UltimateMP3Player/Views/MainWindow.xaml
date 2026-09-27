@@ -95,6 +95,46 @@
                         </Grid>
                     </Button>
 
+                    <!-- tags: each one opens the page of its songs; songs can be dropped on them -->
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                        <DockPanel Margin="8,6,0,4">
+                            <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
+                                    Command="{Binding NewTagCommand}" ToolTip="{local:T 'Nuovo tag'}" AutomationProperties.Name="{local:T 'Nuovo tag'}"/>
+                            <TextBlock Text="{local:T TAG}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <TextBlock Text="{local:T 'Etichette colorate per raggruppare brani e playlist a modo tuo.'}" Style="{StaticResource Hint}"
+                                   FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" Visibility="{Binding HasTags, Converter={StaticResource InvBoolVis}}"/>
+                        <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto" Focusable="False">
+                            <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:TagViewModel}">
+                                        <Border x:Name="Item" CornerRadius="8" Padding="10,7" Background="Transparent" Cursor="Hand" AllowDrop="True"
+                                                Drop="Tag_Drop" DragOver="Playlist_DragOver" DragLeave="Playlist_DragLeave" MouseRightButtonUp="Tag_RightClick"
+                                                ToolTip="{Binding CountText}" local:Marquee.Host="True">
+                                            <Border.InputBindings>
+                                                <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenTagCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                              CommandParameter="{Binding}"/>
+                                            </Border.InputBindings>
+                                            <DockPanel>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                                <TextBlock x:Name="Name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" local:Marquee.IsEnabled="True"/>
+                                            </DockPanel>
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Item" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                                            </Trigger>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter TargetName="Item" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+
                     <DockPanel DockPanel.Dock="Top" Margin="8,22,0,8">
                         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
                                 Command="{Binding NewPlaylistCommand}" ToolTip="{local:T 'Nuova playlist'}"/>
@@ -107,7 +147,7 @@
                             <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
                                 <Border x:Name="Item" CornerRadius="8" Padding="6" Background="Transparent" Cursor="Hand" AllowDrop="True"
                                         Drop="Playlist_Drop" DragOver="Playlist_DragOver" DragLeave="Playlist_DragLeave"
-                                        MouseRightButtonUp="Playlist_RightClick">
+                                        MouseRightButtonUp="Playlist_RightClick" local:Marquee.Host="True">
                                     <Border.InputBindings>
                                         <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                       CommandParameter="{Binding}"/>
@@ -120,7 +160,7 @@
                                         </Grid.ColumnDefinitions>
                                         <ContentPresenter Width="42" Height="42" Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock x:Name="Name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
+                                            <TextBlock x:Name="Name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
                                             <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                         <TextBlock Grid.Column="2" Text="&#xE995;" Style="{StaticResource Glyph}" Foreground="{DynamicResource AccentTextBrush}"
@@ -189,7 +229,7 @@
                         </Grid>
                     </Border>
 
-                    <Button Grid.Column="2" Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="14,10"
+                    <Button Grid.Column="2" Style="{StaticResource GhostButton}" Margin="10,0,0,0" Height="44" Padding="18,0"
                             Command="{Binding PasteLinkCommand}" ToolTip="{local:T 'Incolla un link dagli appunti e scaricalo'}"
                             AutomationProperties.Name="{local:T 'Incolla link'}">
                         <StackPanel Orientation="Horizontal">
@@ -244,7 +284,7 @@
 
                 <!-- now playing -->
                 <Grid VerticalAlignment="Center" Visibility="{Binding HasTrack, Converter={StaticResource BoolVis}}"
-                      MouseRightButtonUp="Current_RightClick" Background="Transparent">
+                      MouseRightButtonUp="Current_RightClick" Background="Transparent" local:Marquee.Host="True">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -256,8 +296,8 @@
                         <ContentPresenter Width="58" Height="58" Content="{Binding Current}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                     </Button>
                     <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Current.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Current.Title}"/>
-                        <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                        <TextBlock Text="{Binding Current.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                        <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" local:Marquee.IsEnabled="True"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal">
                         <Button x:Name="HeartButton" AutomationProperties.Name="{local:T Preferiti}" Style="{StaticResource ControlButton}" Command="{Binding FavoriteCommand}"

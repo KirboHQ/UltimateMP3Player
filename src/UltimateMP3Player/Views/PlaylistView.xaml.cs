@@ -35,6 +35,16 @@ public partial class PlaylistView : UserControl
         Menus.Open(Menus.ForPlaylist(Vm.Vm), (UIElement)sender, true);
     }
 
+    private void TagFilter_Click(object sender, RoutedEventArgs e)
+    {
+        if (Vm != null && App.Host.Session is { } main) Menus.Open(Menus.TagFilterMenu(Vm.TagFilter, main), (UIElement)sender, true);
+    }
+
+    private void PlaylistTags_Click(object sender, RoutedEventArgs e)
+    {
+        if (Vm != null) Menus.Open(Menus.PlaylistTagMenu(Vm.Vm), (UIElement)sender, true);
+    }
+
     private void List_DragOver(object sender, DragEventArgs e)
     {
         bool ok = e.Data.GetDataPresent(typeof(TrackRow));

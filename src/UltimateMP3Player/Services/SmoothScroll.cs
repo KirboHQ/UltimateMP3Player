@@ -5,7 +5,8 @@ using System.Windows.Media;
 
 namespace UltimateMP3Player.Services;
 
-// Firefox-like wheel scrolling: glides to the target instead of jumping.
+// Firefox-like wheel scrolling: glides to the target instead of jumping. Every notch moves the
+// target further from where the list really is, so scrolling again mid-glide never pulls it back.
 public static class SmoothScroll
 {
     public static bool Enabled { get; set; } = true;
@@ -14,8 +15,9 @@ public static class SmoothScroll
 
     private sealed class State
     {
-        public double Current;
+        // Where the glide is heading, and the offset last given to the list.
         public double Target;
+        public double Set;
     }
 
     private static readonly Dictionary<ScrollViewer, State> Active = new();
@@ -32,9 +34,10 @@ public static class SmoothScroll
         e.Handled = true;
         if (!Active.TryGetValue(sv, out var st))
         {
-            st = new State { Current = sv.VerticalOffset, Target = sv.VerticalOffset };
+            st = new State { Target = sv.VerticalOffset, Set = sv.VerticalOffset };
             Active[sv] = st;
         }
+        else Follow(sv, st);
         double step = 100 * Math.Max(1, SystemParameters.WheelScrollLines) / 3.0;
         st.Target = Math.Clamp(st.Target - e.Delta / 120.0 * step, 0, sv.ScrollableHeight);
         if (!_hooked)
@@ -43,6 +46,16 @@ public static class SmoothScroll
             _last = TimeSpan.Zero;
             CompositionTarget.Rendering += OnFrame;
         }
+    }
+
+    // Someone else moved the list (scroll bar, keys, a list re-measuring its rows):
+    // keep the distance still to go from where it is now.
+    private static void Follow(ScrollViewer sv, State st)
+    {
+        double moved = sv.VerticalOffset - st.Set;
+        if (Math.Abs(moved) < 1) return;
+        st.Target += moved;
+        st.Set = sv.VerticalOffset;
     }
 
     // Innermost scroll area under the mouse that can still move that way.
@@ -68,11 +81,19 @@ public static class SmoothScroll
         double k = 1 - Math.Exp(-dt / TimeConstant);
         foreach (var (sv, st) in Active.ToList())
         {
-            st.Target = Math.Clamp(st.Target, 0, sv.ScrollableHeight);
-            st.Current += (st.Target - st.Current) * k;
-            bool done = Math.Abs(st.Target - st.Current) < 0.5 || !sv.IsLoaded;
-            if (done) st.Current = st.Target;
-            sv.ScrollToVerticalOffset(st.Current);
+            if (!sv.IsLoaded)
+            {
+                Active.Remove(sv);
+                continue;
+            }
+            Follow(sv, st);
+            // Clamped only here: a list that briefly shrinks doesn't shorten the glide for good.
+            double goal = Math.Clamp(st.Target, 0, sv.ScrollableHeight);
+            double at = sv.VerticalOffset;
+            bool done = Math.Abs(goal - at) < 0.5;
+            double next = done ? goal : at + (goal - at) * k;
+            sv.ScrollToVerticalOffset(next);
+            st.Set = next;
             if (done) Active.Remove(sv);
         }
         if (Active.Count == 0)

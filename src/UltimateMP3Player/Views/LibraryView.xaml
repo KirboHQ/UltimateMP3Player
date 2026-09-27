@@ -16,14 +16,45 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Border Width="148" Height="148" CornerRadius="10" Background="{DynamicResource AccentGradient}">
+            <Border Width="148" Height="148" CornerRadius="10">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource AccentGradient}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsTagPage}" Value="True">
+                                <Setter Property="Background" Value="{Binding Tag.Brush}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <TextBlock Text="{Binding Glyph}" Style="{StaticResource Glyph}" FontSize="56" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
             </Border>
             <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
                 <TextBlock Text="{Binding Kicker}" Style="{StaticResource SmallCaps}" Foreground="{StaticResource SubTextBrush}"/>
-                <TextBlock Text="{Binding Title}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6"/>
+                <TextBlock Text="{Binding Title}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{Binding CountText}" Foreground="{StaticResource SubTextBrush}"/>
                 <TextBlock Text="{Binding Hint}" Style="{StaticResource Hint}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                <!-- tag page: the playlists with this tag -->
+                <ItemsControl ItemsSource="{Binding TaggedPlaylists}" Margin="0,10,0,0" Visibility="{Binding HasTaggedPlaylists, Converter={StaticResource BoolVis}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{StaticResource GhostButton}" Padding="4,4,14,4" Margin="0,0,8,6" ToolTip="{local:T 'Apri la playlist'}"
+                                    Command="{Binding DataContext.OpenPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True">
+                                        <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" Margin="9,0,0,0" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
         </Grid>
 
@@ -35,7 +66,7 @@
             <Button Style="{StaticResource GhostButton}" Margin="14,0,0,0" Padding="16,9"
                     Command="{Binding DataContext.ImportCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                     ToolTip="{local:T 'Aggiungi alla libreria brani che hai già sul computer'}"
-                    Visibility="{Binding Unsorted, Converter={StaticResource InvBoolVis}}">
+                    Visibility="{Binding CanImport, Converter={StaticResource BoolVis}}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE8E5;" Style="{StaticResource Glyph}"/>
                     <TextBlock Text="{local:T 'Aggiungi file'}" Margin="8,0,0,0"/>
@@ -48,8 +79,16 @@
                     <TextBlock Text="{local:T 'Seleziona tutti'}" Margin="8,0,0,0"/>
                 </StackPanel>
             </Button>
+            <Button Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Command="{Binding DataContext.EditTagCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                    CommandParameter="{Binding Tag}" Visibility="{Binding IsTagPage, Converter={StaticResource BoolVis}}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE70F;" Style="{StaticResource Glyph}"/>
+                    <TextBlock Text="{local:T 'Modifica tag'}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
             <ComboBox DockPanel.Dock="Right" Width="180" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
                       ToolTip="{local:T 'Ordina per'}"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource TagFilterButton}" Margin="0,0,10,0" Click="TagFilter_Click"/>
             <TextBox DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="210" Margin="0,0,10,0" VerticalAlignment="Center"
                      Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" Tag="{local:T 'Cerca nei brani'}" KeyDown="Filter_KeyDown"
                      AutomationProperties.Name="{local:T 'Cerca nei brani'}"/>

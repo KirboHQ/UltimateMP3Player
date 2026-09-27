@@ -114,6 +114,49 @@ public sealed class CardGrid : Panel
     }
 }
 
+// A row whose first child (a title) gets the room the others leave, the others right after it:
+// "A long title… [badge]" instead of a title that pushes the badge out and never shows "…".
+public sealed class InlinePanel : Panel
+{
+    private double Others()
+    {
+        double w = 0;
+        for (int i = 1; i < InternalChildren.Count; i++) w += InternalChildren[i].DesiredSize.Width;
+        return w;
+    }
+
+    protected override Size MeasureOverride(Size available)
+    {
+        if (InternalChildren.Count == 0) return new Size();
+        double height = 0;
+        for (int i = 1; i < InternalChildren.Count; i++)
+        {
+            InternalChildren[i].Measure(new Size(double.PositiveInfinity, available.Height));
+            height = Math.Max(height, InternalChildren[i].DesiredSize.Height);
+        }
+        double others = Others();
+        var first = InternalChildren[0];
+        first.Measure(new Size(Math.Max(0, available.Width - others), available.Height));
+        return new Size(first.DesiredSize.Width + others, Math.Max(height, first.DesiredSize.Height));
+    }
+
+    protected override Size ArrangeOverride(Size final)
+    {
+        if (InternalChildren.Count == 0) return final;
+        double others = Others();
+        var first = InternalChildren[0];
+        double x = Math.Min(first.DesiredSize.Width, Math.Max(0, final.Width - others));
+        first.Arrange(new Rect(0, 0, x, final.Height));
+        for (int i = 1; i < InternalChildren.Count; i++)
+        {
+            var c = InternalChildren[i];
+            c.Arrange(new Rect(x, 0, c.DesiredSize.Width, final.Height));
+            x += c.DesiredSize.Width;
+        }
+        return final;
+    }
+}
+
 // As tall as it is wide: card covers that grow with the grid.
 public sealed class SquareBox : Decorator
 {

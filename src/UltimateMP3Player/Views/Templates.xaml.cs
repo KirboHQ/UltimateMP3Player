@@ -103,8 +103,174 @@ public static class Menus
         if (owner?.Playlist is { } pl && !pl.IsFavorites)
             menu.Items.Add(Item(L.F("Rimuovi da «{0}»", Short(pl.Name)), "", () => main.RemoveFromPlaylist(t, pl)));
         menu.Items.Add(FavoriteItem(t));
+        menu.Items.Add(TagSubmenu(new[] { t }));
         menu.Items.Add(new Separator());
         AddEditItems(menu, t);
+        return menu;
+    }
+
+    // ------------------------------------------------------------------ tags
+
+    private const string Check = "", Some = "", TagGlyph = "";
+
+    // Tick = every song has it, dash = only some. Stays open to tick several.
+    private static IEnumerable<object> TagItems(IReadOnlyList<TrackViewModel> tracks)
+    {
+        var main = tracks[0].Main;
+        foreach (var tag in main.Tags)
+        {
+            var tg = tag;
+            var item = TagItem(tg, StateOf(tracks, tg));
+            item.StaysOpenOnClick = true;
+            item.Click += (_, _) =>
+            {
+                bool on = StateOf(tracks, tg) != Check;
+                main.SetTag(tracks, tg, on);
+                Ui.SetGlyph(item, on ? Check : null);
+            };
+            yield return item;
+        }
+        if (main.Tags.Count > 0) yield return new Separator();
+        yield return Item(L.T("Nuovo tag…"), "", () => main.NewTag(tracks));
+    }
+
+    private static string? StateOf(IReadOnlyList<TrackViewModel> tracks, TagViewModel tag)
+    {
+        int n = tracks.Count(t => t.TagIds.Contains(tag.Id));
+        return n == 0 ? null : n == tracks.Count ? Check : Some;
+    }
+
+    // Coloured dot and name.
+    private static MenuItem TagItem(TagViewModel tag, string? glyph)
+    {
+        var header = new StackPanel { Orientation = Orientation.Horizontal };
+        header.Children.Add(new System.Windows.Shapes.Ellipse { Width = 9, Height = 9, Fill = tag.Brush, VerticalAlignment = VerticalAlignment.Center });
+        header.Children.Add(new TextBlock { Text = Short(tag.Name), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        var m = new MenuItem { Header = header };
+        Ui.SetGlyph(m, glyph);
+        return m;
+    }
+
+    public static MenuItem TagSubmenu(IReadOnlyList<TrackViewModel> tracks)
+    {
+        var sub = new MenuItem { Header = L.T("Tag") };
+        Ui.SetGlyph(sub, TagGlyph);
+        foreach (var i in TagItems(tracks)) sub.Items.Add(i);
+        return sub;
+    }
+
+    public static ContextMenu TagMenu(IReadOnlyList<TrackViewModel> tracks)
+    {
+        var menu = new ContextMenu();
+        foreach (var i in TagItems(tracks)) menu.Items.Add(i);
+        return menu;
+    }
+
+    // The tags of a playlist itself.
+    private static IEnumerable<object> PlaylistTagItems(PlaylistViewModel p)
+    {
+        var main = App.Host.Session!;
+        foreach (var tag in main.Tags)
+        {
+            var tg = tag;
+            var item = TagItem(tg, p.P.Tags.Contains(tg.Id) ? Check : null);
+            item.StaysOpenOnClick = true;
+            item.Click += (_, _) =>
+            {
+                bool on = !p.P.Tags.Contains(tg.Id);
+                main.SetPlaylistTag(p, tg, on);
+                Ui.SetGlyph(item, on ? Check : null);
+            };
+            yield return item;
+        }
+        if (main.Tags.Count > 0) yield return new Separator();
+        yield return Item(L.T("Nuovo tag…"), "", () => main.NewTag(playlist: p));
+    }
+
+    private static MenuItem PlaylistTagSubmenu(PlaylistViewModel p)
+    {
+        var sub = new MenuItem { Header = L.T("Tag") };
+        Ui.SetGlyph(sub, TagGlyph);
+        foreach (var i in PlaylistTagItems(p)) sub.Items.Add(i);
+        return sub;
+    }
+
+    // Playlist header: its tags, and the way to put them on its songs.
+    public static ContextMenu PlaylistTagMenu(PlaylistViewModel p)
+    {
+        var menu = new ContextMenu();
+        foreach (var i in PlaylistTagItems(p)) menu.Items.Add(i);
+        menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "", () => App.Host.Session!.TagPlaylistSongs(p), p.Count > 0));
+        return menu;
+    }
+
+    // Tick the tags to use (e.g. for the songs of a download); a new tag is ticked right away.
+    public static ContextMenu TagPicker(ISet<string> chosen, MainViewModel main, Action changed)
+    {
+        var menu = new ContextMenu();
+        foreach (var tag in main.Tags)
+        {
+            var tg = tag;
+            var item = TagItem(tg, chosen.Contains(tg.Id) ? Check : null);
+            item.StaysOpenOnClick = true;
+            item.Click += (_, _) =>
+            {
+                if (!chosen.Remove(tg.Id)) chosen.Add(tg.Id);
+                Ui.SetGlyph(item, chosen.Contains(tg.Id) ? Check : null);
+                changed();
+            };
+            menu.Items.Add(item);
+        }
+        if (main.Tags.Count > 0) menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Nuovo tag…"), "", () =>
+        {
+            if (main.NewTag() is { } t)
+            {
+                chosen.Add(t.Id);
+                changed();
+            }
+        }));
+        return menu;
+    }
+
+    // Filter a list by tags: all of the chosen ones, or at least one.
+    public static ContextMenu TagFilterMenu(TagFilter filter, MainViewModel main)
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(L.T("Mostra i brani con:"), "", () => { }, false));
+        var all = Item(L.T("tutti i tag scelti"), filter.MatchAll ? Check : "", () => { });
+        var any = Item(L.T("almeno uno dei tag scelti"), filter.MatchAll ? "" : Check, () => { });
+        all.StaysOpenOnClick = any.StaysOpenOnClick = true;
+        all.Click += (_, _) => { filter.MatchAll = true; Ui.SetGlyph(all, Check); Ui.SetGlyph(any, null); };
+        any.Click += (_, _) => { filter.MatchAll = false; Ui.SetGlyph(any, Check); Ui.SetGlyph(all, null); };
+        menu.Items.Add(all);
+        menu.Items.Add(any);
+        menu.Items.Add(new Separator());
+        foreach (var tag in main.Tags)
+        {
+            var tg = tag;
+            var item = TagItem(tg, filter.Contains(tg.Id) ? Check : null);
+            item.StaysOpenOnClick = true;
+            item.Click += (_, _) =>
+            {
+                filter.Toggle(tg.Id);
+                Ui.SetGlyph(item, filter.Contains(tg.Id) ? Check : null);
+            };
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Togli il filtro"), "", filter.Clear, filter.IsActive));
+        return menu;
+    }
+
+    public static ContextMenu ForTag(TagViewModel t)
+    {
+        var main = App.Host.Session!;
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(L.T("Apri"), "", () => main.OpenTag(t)));
+        menu.Items.Add(Item(L.T("Modifica…"), "", () => main.EditTag(t)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Elimina tag…"), "", () => main.DeleteTag(t)));
         return menu;
     }
 
@@ -141,6 +307,7 @@ public static class Menus
         if (owner.Playlist is { } pl)
             menu.Items.Add(Item(L.F("Togli da «{0}»", Short(PlaylistViewModel.DisplayName(pl))), "", () => main.RemoveFromPlaylist(tracks, pl)));
         menu.Items.Add(Item(L.T("Aggiungi ai Preferiti"), "", () => main.AddToFavorites(tracks)));
+        menu.Items.Add(TagSubmenu(tracks));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(L.F("Elimina {0} brani…", tracks.Count), "", () => main.DeleteTracks(tracks)));
         return menu;
@@ -179,6 +346,7 @@ public static class Menus
         menu.Items.Add(new Separator());
         menu.Items.Add(AddToPlaylist(t));
         menu.Items.Add(FavoriteItem(t));
+        menu.Items.Add(TagSubmenu(new[] { t }));
         menu.Items.Add(new Separator());
         AddEditItems(menu, t);
         return menu;
@@ -216,6 +384,9 @@ public static class Menus
         var menu = new ContextMenu();
         menu.Items.Add(Item(L.T("Riproduci"), "", () => main.PlayPlaylistCommand.Execute(p)));
         menu.Items.Add(Item(L.T("Apri"), "", () => main.OpenPlaylist(p)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(PlaylistTagSubmenu(p));
+        menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "\uE8B3", () => main.TagPlaylistSongs(p), p.Count > 0));
         if (!p.IsFavorites)
         {
             menu.Items.Add(new Separator());

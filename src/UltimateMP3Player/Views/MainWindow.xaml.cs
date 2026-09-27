@@ -199,6 +199,22 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    // A song dropped on a sidebar tag gets that tag.
+    private void Tag_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is Border b) b.BorderThickness = new Thickness(0);
+        if (e.Data.GetData(typeof(TrackRow)) is not TrackRow row || (sender as FrameworkElement)?.DataContext is not TagViewModel t) return;
+        row.Track.Main.SetTag(new[] { row.Track }, t, true);
+        e.Handled = true;
+    }
+
+    private void Tag_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not TagViewModel t) return;
+        Menus.Open(Menus.ForTag(t), (UIElement)sender, false);
+        e.Handled = true;
+    }
+
     private static string? LinkFrom(IDataObject data)
     {
         foreach (var fmt in new[] { "UniformResourceLocatorW", DataFormats.UnicodeText, DataFormats.Text })

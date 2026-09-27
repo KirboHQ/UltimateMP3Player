@@ -26,6 +26,46 @@ public static class Dialogs
     private static string[]? Show(string title, string? message, (string Label, string Value)[] fields, string ok, bool danger)
     {
         var res = Application.Current.Resources;
+        var stack = new StackPanel();
+        if (message != null)
+            stack.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)res["SubTextBrush"], LineHeight = 20 });
+
+        var boxes = new List<TextBox>();
+        foreach (var (label, value) in fields)
+        {
+            stack.Children.Add(new TextBlock { Text = label, Style = (Style)res["FieldLabel"], Margin = new Thickness(2, 10, 0, 6) });
+            var box = new TextBox { Text = value, Style = (Style)res["BoxTextBox"] };
+            boxes.Add(box);
+            stack.Children.Add(box);
+        }
+
+        string[]? result = null;
+        var okButton = Button(ok, danger ? "DangerButton" : "PrimaryButton", isDefault: true);
+        var win = Frame(title, stack, 400, Button(L.T("Annulla"), "GhostButton", isCancel: true), okButton);
+        okButton.Click += (_, _) =>
+        {
+            result = boxes.Select(b => b.Text).ToArray();
+            win.DialogResult = true;
+        };
+        win.Loaded += (_, _) =>
+        {
+            if (boxes.Count > 0)
+            {
+                boxes[0].Focus();
+                boxes[0].SelectAll();
+            }
+            else okButton.Focus();
+        };
+        return win.ShowDialog() == true ? result : null;
+    }
+
+    public static Button Button(string text, string style, bool isDefault = false, bool isCancel = false)
+        => new() { Content = text, Style = (Style)Application.Current.Resources[style], IsDefault = isDefault, IsCancel = isCancel, MinWidth = 96 };
+
+    // The dark card every dialog uses: title, body, buttons on the right. Cancel buttons close it by themselves.
+    public static Window Frame(string title, UIElement body, double width, params Button[] buttons)
+    {
+        var res = Application.Current.Resources;
         var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive) ?? App.Host?.Window;
         var win = new Window
         {
@@ -44,32 +84,16 @@ public static class Dialogs
             UseLayoutRounding = true,
         };
 
-        var stack = new StackPanel { Width = 400 };
-        stack.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 10) });
-        if (message != null)
-            stack.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)res["SubTextBrush"], LineHeight = 20 });
-
-        var boxes = new List<TextBox>();
-        foreach (var (label, value) in fields)
+        var stack = new StackPanel { Width = width };
+        stack.Children.Add(new TextBlock { Text = title, FontSize = 18, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 10), TextTrimming = TextTrimming.CharacterEllipsis });
+        stack.Children.Add(body);
+        var row = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 22, 0, 0) };
+        for (int i = 0; i < buttons.Length; i++)
         {
-            stack.Children.Add(new TextBlock { Text = label, Style = (Style)res["FieldLabel"], Margin = new Thickness(2, 10, 0, 6) });
-            var box = new TextBox { Text = value, Style = (Style)res["BoxTextBox"] };
-            boxes.Add(box);
-            stack.Children.Add(box);
+            if (i > 0) buttons[i].Margin = new Thickness(10, 0, 0, 0);
+            row.Children.Add(buttons[i]);
         }
-
-        string[]? result = null;
-        var okButton = new Button { Content = ok, Style = (Style)res[danger ? "DangerButton" : "PrimaryButton"], IsDefault = true, MinWidth = 96, Margin = new Thickness(10, 0, 0, 0) };
-        var cancel = new Button { Content = L.T("Annulla"), Style = (Style)res["GhostButton"], IsCancel = true, MinWidth = 96 };
-        okButton.Click += (_, _) =>
-        {
-            result = boxes.Select(b => b.Text).ToArray();
-            win.DialogResult = true;
-        };
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 22, 0, 0) };
-        buttons.Children.Add(cancel);
-        buttons.Children.Add(okButton);
-        stack.Children.Add(buttons);
+        stack.Children.Add(row);
 
         var card = new Border
         {
@@ -82,17 +106,20 @@ public static class Dialogs
             Child = stack,
             Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 6, Opacity = 0.55, Color = Colors.Black },
         };
-        card.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) try { win.DragMove(); } catch { } };
-        win.Content = card;
-        win.Loaded += (_, _) =>
+        // Dragging the card moves the dialog, but not from something clickable (its release would be lost).
+        card.MouseLeftButtonDown += (_, e) =>
         {
-            if (boxes.Count > 0)
-            {
-                boxes[0].Focus();
-                boxes[0].SelectAll();
-            }
-            else okButton.Focus();
+            if (e.ButtonState != MouseButtonState.Pressed || IsClickable(e.OriginalSource as DependencyObject, card)) return;
+            try { win.DragMove(); } catch { }
         };
-        return win.ShowDialog() == true ? result : null;
+        win.Content = card;
+        return win;
+    }
+
+    private static bool IsClickable(DependencyObject? d, DependencyObject card)
+    {
+        for (; d != null && d != card; d = Ui.Parent(d))
+            if (d is Control || d is FrameworkElement { Cursor: not null } fe && fe.Cursor == Cursors.Hand) return true;
+        return false;
     }
 }

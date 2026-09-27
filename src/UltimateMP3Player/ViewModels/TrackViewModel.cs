@@ -56,13 +56,27 @@ public sealed class TrackViewModel : Observable
         if (img != null) OnChanged(prop);
     }
 
-    public void UpdateSearchText() => SearchText = Text.Normalize($"{T.Title} {T.Artist} {T.Album}");
+    // This profile's tags on the song, in the order of the tag list.
+    private IReadOnlyList<string>? _tagIds;
+    public IReadOnlyList<string> TagIds => _tagIds ??= Main.Profile.TagsOf(Id);
+    public List<TagViewModel> Tags => Main.Tags.Where(t => TagIds.Contains(t.Id)).ToList();
+    public string TagsText => string.Join(", ", Tags.Select(t => t.Name));
+    public bool HasTags => TagIds.Count > 0;
+
+    public void UpdateSearchText() => SearchText = Text.Normalize($"{T.Title} {T.Artist} {T.Album} {TagsText}");
 
     public void Refresh()
     {
         UpdateSearchText();
         OnChanged(nameof(Title), nameof(Artist), nameof(Album), nameof(AlbumText), nameof(DurationText), nameof(HasVideo), nameof(Wave),
             nameof(Cover48), nameof(Cover160), nameof(Cover300));
+    }
+
+    public void RefreshTags()
+    {
+        _tagIds = null;
+        UpdateSearchText();
+        OnChanged(nameof(Tags), nameof(TagsText), nameof(HasTags));
     }
 
     public void RefreshFavorite() => OnChanged(nameof(IsFavorite));
@@ -159,8 +173,13 @@ public sealed class PlaylistViewModel : Observable
     private bool _isPlayingFrom;
     public bool IsPlayingFrom { get => _isPlayingFrom; set => Set(ref _isPlayingFrom, value); }
 
+    // Tags of the playlist itself (not of its songs).
+    public List<TagViewModel> Tags => _main.Tags.Where(t => P.Tags.Contains(t.Id)).ToList();
+    public bool HasTags => Tags.Count > 0;
+
     public void Refresh() => OnChanged(nameof(Name), nameof(Count), nameof(CountText), nameof(Subtitle), nameof(TotalText),
-        nameof(HasCustomCover), nameof(CustomCover), nameof(CoverTracks), nameof(ShowMosaic), nameof(FirstCover), nameof(ShowPlaceholder));
+        nameof(HasCustomCover), nameof(CustomCover), nameof(CoverTracks), nameof(ShowMosaic), nameof(FirstCover), nameof(ShowPlaceholder),
+        nameof(Tags), nameof(HasTags));
 
     public override string ToString() => Name;
 }

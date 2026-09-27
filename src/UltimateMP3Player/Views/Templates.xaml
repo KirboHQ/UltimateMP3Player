@@ -120,18 +120,64 @@
         <Setter Property="FontSize" Value="14"/>
     </Style>
 
+    <!-- A tag like a Discord role: coloured dot and name; a click opens its page. -->
+    <DataTemplate x:Key="TagChip" DataType="{x:Type vm:TagViewModel}">
+        <Border CornerRadius="10" Padding="7,2,9,2" Margin="0,0,5,0" Background="{StaticResource Surface3Brush}" Cursor="Hand"
+                ToolTip="{local:T 'Apri il tag'}">
+            <Border.InputBindings>
+                <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenTagCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                              CommandParameter="{Binding}"/>
+            </Border.InputBindings>
+            <StackPanel Orientation="Horizontal">
+                <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Name}" FontSize="11.5" Margin="5,0,0,1" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- A song with a tick box (tags on a playlist's songs). -->
+    <DataTemplate x:Key="SongChoiceTemplate" DataType="{x:Type vm:SongChoice}">
+        <Border x:Name="Row" CornerRadius="8" Padding="8,5" Background="Transparent">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                <ContentPresenter Grid.Column="1" Width="36" Height="36" Margin="12,0,0,0" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
+                    <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                </StackPanel>
+                <TextBlock Grid.Column="3" Text="{Binding Track.TagsText}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" MaxWidth="160"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+        <DataTemplate.Triggers>
+            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                <Setter TargetName="Row" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            </Trigger>
+            <DataTrigger Binding="{Binding IsSelected}" Value="False">
+                <Setter TargetName="Row" Property="Opacity" Value="0.5"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
     <DataTemplate x:Key="TrackRowTemplate" DataType="{x:Type vm:TrackRow}">
         <Border x:Name="Row" CornerRadius="8" Padding="8,5" Background="Transparent" Margin="0,0,0,1"
                 MouseRightButtonUp="Row_RightClick" PreviewMouseLeftButtonDown="Row_MouseDown" MouseMove="Row_MouseMove"
-                ToolTipService.InitialShowDelay="900">
+                ToolTipService.InitialShowDelay="900" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftDoubleClick" Command="{Binding PlayCommand}"/>
             </Border.InputBindings>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="40"/>
-                    <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2.6*"/>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
                     <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="64"/>
                     <ColumnDefinition Width="36"/>
@@ -153,27 +199,41 @@
                     </Grid.ColumnDefinitions>
                     <ContentPresenter Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                     <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="Title" Text="{Binding Track.Title}" FontSize="14" TextTrimming="CharacterEllipsis" MaxWidth="600"/>
+                        <views:InlinePanel>
+                            <TextBlock x:Name="Title" Text="{Binding Track.Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
                             <Border Margin="8,0,0,0" CornerRadius="4" Padding="5,0" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
                                     Visibility="{Binding Track.HasVideo, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Ha anche il video'}">
                                 <TextBlock Text="&#xE714;" Style="{StaticResource Glyph}" FontSize="10" Foreground="{StaticResource SubTextBrush}" Margin="0,2"/>
                             </Border>
-                        </StackPanel>
-                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                        </views:InlinePanel>
+                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                                   local:Marquee.IsEnabled="True"/>
                     </StackPanel>
                 </Grid>
 
                 <TextBlock Grid.Column="2" Text="{Binding Track.AlbumText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
-                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,12,0" local:Marquee.IsEnabled="True"/>
 
-                <Button x:Name="Heart" Grid.Column="3" Style="{StaticResource RowIconButton}" Content="&#xEB51;" Command="{Binding FavoriteCommand}"
+                <!-- the chips get all the room they want inside the canvas, which clips them (soft right edge); they scroll on hover -->
+                <Canvas Grid.Column="3" Height="22" Margin="0,0,10,0" ClipToBounds="True" VerticalAlignment="Center" Background="Transparent"
+                        ToolTip="{Binding Track.TagsText}" ToolTipService.IsEnabled="{Binding Track.HasTags}" local:Ui.FadeRight="22">
+                    <ItemsControl ItemsSource="{Binding Track.Tags}" ItemTemplate="{StaticResource TagChip}" Focusable="False" Canvas.Top="1"
+                                  local:Marquee.IsEnabled="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Canvas>
+
+                <Button x:Name="Heart" Grid.Column="4" Style="{StaticResource RowIconButton}" Content="&#xEB51;" Command="{Binding FavoriteCommand}"
                         Visibility="Hidden" ToolTip="{local:T 'Aggiungi ai Preferiti'}"/>
 
-                <TextBlock Grid.Column="4" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <TextBlock Grid.Column="5" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
-                <Button x:Name="More" Grid.Column="5" Style="{StaticResource RowIconButton}" Content="&#xE712;" Click="More_Click"
+                <Button x:Name="More" Grid.Column="6" Style="{StaticResource RowIconButton}" Content="&#xE712;" Click="More_Click"
                         Visibility="Hidden" ToolTip="{local:T 'Altre opzioni'}" AutomationProperties.Name="{local:T 'Altre opzioni'}"/>
             </Grid>
         </Border>
@@ -212,8 +272,9 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="40"/>
-                    <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="2.6*"/>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
                     <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="64"/>
                     <ColumnDefinition Width="36"/>
@@ -221,7 +282,8 @@
                 <TextBlock Text="#" Style="{StaticResource SmallCaps}" HorizontalAlignment="Center"/>
                 <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Style="{StaticResource SmallCaps}" Margin="4,0,0,0"/>
                 <TextBlock Grid.Column="2" Text="ALBUM" Style="{StaticResource SmallCaps}"/>
-                <TextBlock Grid.Column="4" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource MutedBrush}"
+                <TextBlock Grid.Column="3" Text="{local:T TAG}" Style="{StaticResource SmallCaps}"/>
+                <TextBlock Grid.Column="5" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource MutedBrush}"
                            HorizontalAlignment="Right" Margin="0,0,12,0"/>
             </Grid>
         </Border>
@@ -231,7 +293,7 @@
 
     <DataTemplate x:Key="TrackCard" DataType="{x:Type vm:TrackViewModel}">
         <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{StaticResource SurfaceBrush}"
-                Cursor="Hand" MouseRightButtonUp="Card_RightClick">
+                Cursor="Hand" MouseRightButtonUp="Card_RightClick" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                               CommandParameter="{Binding}"/>
@@ -246,8 +308,8 @@
                         </Border>
                     </Grid>
                 </views:SquareBox>
-                <TextBlock x:Name="Title" Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="Title" Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
             </StackPanel>
         </Border>
         <DataTemplate.Triggers>
@@ -267,7 +329,7 @@
 
     <DataTemplate x:Key="PlaylistCard" DataType="{x:Type vm:PlaylistViewModel}">
         <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{StaticResource SurfaceBrush}"
-                Cursor="Hand" MouseRightButtonUp="Playlist_RightClick">
+                Cursor="Hand" MouseRightButtonUp="Playlist_RightClick" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                               CommandParameter="{Binding}"/>
@@ -282,8 +344,8 @@
                                 CommandParameter="{Binding}" ToolTip="{local:T Riproduci}"/>
                     </Grid>
                 </views:SquareBox>
-                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
             </StackPanel>
         </Border>
         <DataTemplate.Triggers>
@@ -293,6 +355,33 @@
             </Trigger>
         </DataTemplate.Triggers>
     </DataTemplate>
+
+    <!-- "Tag" filter pill above a song list (only once there are tags); highlighted while it filters. -->
+    <Style x:Key="TagFilterButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="ToolTip" Value="{local:T 'Filtra per tag'}"/>
+        <Setter Property="AutomationProperties.Name" Value="{local:T 'Filtra per tag'}"/>
+        <Setter Property="Visibility" Value="{Binding DataContext.HasTags, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolVis}}"/>
+        <Setter Property="Content" Value="{Binding TagFilter}"/>
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <DataTemplate DataType="{x:Type vm:TagFilter}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE71C;" Style="{StaticResource Glyph}" FontSize="13"/>
+                        <TextBlock Text="{Binding Label}" Margin="8,0,0,0"/>
+                    </StackPanel>
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding TagFilter.IsActive}" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
 
     <ItemsPanelTemplate x:Key="CardGridTemplate">
         <views:CardGrid/>

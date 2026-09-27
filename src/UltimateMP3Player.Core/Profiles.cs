@@ -38,8 +38,24 @@ public sealed class Playlist
     public int CoverVersion { get; set; }
     public string? SourceUrl { get; set; }
     public DateTime Created { get; set; } = DateTime.Now;
+    // Ids of the profile's tags put on the playlist itself.
+    public List<string> Tags { get; set; } = new();
 
     public bool IsFavorites => Id == FavoritesId;
+}
+
+// A label of the profile, with its colour (like a Discord role).
+public sealed class Tag
+{
+    public string Id { get; set; } = Ids.New();
+    public string Name { get; set; } = "";
+    public string Color { get; set; } = "#7C5CFF";
+
+    public static readonly string[] Palette =
+    {
+        "#E5484D", "#FF7A1A", "#F5B400", "#1DB954", "#12B5A5", "#1E9BFF", "#3E63DD", "#7C5CFF",
+        "#B45CFF", "#FF4FA3", "#E54666", "#A18072", "#8B93A7", "#5EEAD4", "#A3E635", "#FDE047",
+    };
 }
 
 public sealed class HistoryEntry
@@ -109,6 +125,9 @@ public sealed class ProfileData
     public string LibrarySort { get; set; } = "added";
     // Theme id ("ultimate", "pink"...) or "profile".
     public string Theme { get; set; } = "ultimate";
+    public List<Tag> Tags { get; set; } = new();
+    // Song id → ids of its tags.
+    public Dictionary<string, List<string>> TrackTags { get; set; } = new();
 }
 
 // One profile's playlists, history and preferences.
@@ -122,6 +141,10 @@ public sealed class Profile
 
     public event Action<Playlist>? PlaylistChanged;
     public event Action? PlaylistsChanged;
+    // Tags created, edited or deleted.
+    public event Action? TagsChanged;
+    // Tags added to or removed from these songs.
+    public event Action<IReadOnlyCollection<string>>? TrackTagsChanged;
 
     private static readonly Dictionary<string, Profile> Open = new();
 
@@ -133,6 +156,16 @@ public sealed class Profile
         if (Data.Playlists.All(p => !p.IsFavorites))
             Data.Playlists.Insert(0, new Playlist { Id = Playlist.FavoritesId, Name = "Preferiti" });
         if (Data.Eq.Gains.Length != Equalizer.BandCount) Data.Eq.Gains = new double[Equalizer.BandCount];
+        DropUnknownTags();
+    }
+
+    // References to tags that no longer exist (e.g. a file edited by hand).
+    private void DropUnknownTags()
+    {
+        var known = Data.Tags.Select(t => t.Id).ToHashSet();
+        foreach (var list in Data.TrackTags.Values) list.RemoveAll(id => !known.Contains(id));
+        foreach (var k in Data.TrackTags.Where(kv => kv.Value.Count == 0).Select(kv => kv.Key).ToList()) Data.TrackTags.Remove(k);
+        foreach (var p in Data.Playlists) p.Tags.RemoveAll(id => !known.Contains(id));
     }
 
     private string FilePath => Path.Combine(AppPaths.ProfileDir(Info.Id), "data.json");
@@ -300,11 +333,121 @@ public sealed class Profile
             touched = Data.Playlists.Where(p => p.Tracks.Any(set.Contains)).ToList();
             foreach (var p in touched) p.Tracks.RemoveAll(set.Contains);
             Data.History.RemoveAll(h => set.Contains(h.TrackId));
+            foreach (var id in set) Data.TrackTags.Remove(id);
             Data.Queue?.Forget(set);
             if (Data.LastTrack != null && set.Contains(Data.LastTrack)) Data.LastTrack = null;
         }
         Save();
         foreach (var p in touched) PlaylistChanged?.Invoke(p);
+    }
+
+    // ------------------------------------------------------------------ tags
+
+    public List<Tag> TagsSnapshot()
+    {
+        lock (_lock) return Data.Tags.ToList();
+    }
+
+    public Tag? GetTag(string id)
+    {
+        lock (_lock) return Data.Tags.FirstOrDefault(t => t.Id == id);
+    }
+
+    public Tag CreateTag(string name, string color)
+    {
+        var t = new Tag { Name = UniqueTagName(name, null), Color = color };
+        lock (_lock) Data.Tags.Add(t);
+        Save();
+        TagsChanged?.Invoke();
+        return t;
+    }
+
+    public void UpdateTag(Tag t, string name, string color)
+    {
+        lock (_lock)
+        {
+            if (!string.IsNullOrWhiteSpace(name)) t.Name = UniqueTagName(name, t);
+            t.Color = color;
+        }
+        Save();
+        TagsChanged?.Invoke();
+    }
+
+    // Gone from every song and playlist too.
+    public void DeleteTag(Tag t)
+    {
+        List<string> songs;
+        lock (_lock)
+        {
+            Data.Tags.Remove(t);
+            songs = Data.TrackTags.Where(kv => kv.Value.Remove(t.Id)).Select(kv => kv.Key).ToList();
+            foreach (var id in songs.Where(id => Data.TrackTags[id].Count == 0)) Data.TrackTags.Remove(id);
+            foreach (var p in Data.Playlists) p.Tags.Remove(t.Id);
+        }
+        Save();
+        TagsChanged?.Invoke();
+        if (songs.Count > 0) TrackTagsChanged?.Invoke(songs);
+    }
+
+    private string UniqueTagName(string name, Tag? self)
+    {
+        name = string.IsNullOrWhiteSpace(name) ? L.T("Nuovo tag") : name.Trim();
+        var n = name;
+        for (int i = 2; Data.Tags.Any(x => x != self && string.Equals(x.Name, n, StringComparison.CurrentCultureIgnoreCase)); i++)
+            n = $"{name} ({i})";
+        return n;
+    }
+
+    public IReadOnlyList<string> TagsOf(string trackId)
+    {
+        lock (_lock) return Data.TrackTags.TryGetValue(trackId, out var list) ? list.ToList() : Array.Empty<string>();
+    }
+
+    public int CountTagged(string tagId)
+    {
+        lock (_lock) return Data.TrackTags.Values.Count(l => l.Contains(tagId));
+    }
+
+    // Puts the tag on the songs (or takes it off); returns how many changed.
+    public int SetTag(IEnumerable<string> trackIds, string tagId, bool on)
+    {
+        var changed = new List<string>();
+        lock (_lock)
+        {
+            foreach (var id in trackIds.Distinct())
+            {
+                Data.TrackTags.TryGetValue(id, out var list);
+                bool has = list?.Contains(tagId) == true;
+                if (has == on) continue;
+                if (on)
+                {
+                    if (list == null) Data.TrackTags[id] = list = new List<string>();
+                    list.Add(tagId);
+                }
+                else
+                {
+                    list!.Remove(tagId);
+                    if (list.Count == 0) Data.TrackTags.Remove(id);
+                }
+                changed.Add(id);
+            }
+        }
+        if (changed.Count == 0) return 0;
+        Save();
+        TrackTagsChanged?.Invoke(changed);
+        return changed.Count;
+    }
+
+    public void SetPlaylistTag(Playlist p, string tagId, bool on)
+    {
+        lock (_lock)
+        {
+            if (p.Tags.Contains(tagId) == on) return;
+            if (on) p.Tags.Add(tagId);
+            else p.Tags.Remove(tagId);
+        }
+        Save();
+        PlaylistChanged?.Invoke(p);
     }
 
     public void AddHistory(string trackId)

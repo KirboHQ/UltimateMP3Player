@@ -18,14 +18,14 @@ public sealed class TrackListSource : ITrackList
     public Playlist? Playlist => null;
 }
 
-// Filters rows but keeps their numbers; playing still uses the whole list.
+// Filters rows (text and tags) but keeps their numbers; playing still uses the whole list.
 public static class TrackFilter
 {
-    public static List<TrackRow> Apply(List<TrackViewModel> order, string filter, ITrackList owner)
+    public static List<TrackRow> Apply(List<TrackViewModel> order, string filter, TagFilter tags, ITrackList owner)
     {
-        var words = Text.Normalize(filter).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var query = new TrackQuery(filter);
         return order.Select((t, i) => new TrackRow(i + 1, t, owner))
-            .Where(r => words.All(w => r.Track.SearchText.Contains(w)))
+            .Where(r => query.Matches(r.Track) && tags.Matches(r.Track))
             .ToList();
     }
 }
@@ -78,17 +78,19 @@ public sealed class NewPlaylistCard
     public static readonly NewPlaylistCard Instance = new();
 }
 
-// "All songs", or with unsorted = the songs in no playlist.
+// "All songs"; with unsorted = the songs in no playlist; with a tag = the songs with that tag.
 public sealed class LibraryViewModel : Observable, ITrackList
 {
     private readonly MainViewModel _main;
     private List<TrackViewModel> _order = new();
     private bool _dirty;
 
-    public LibraryViewModel(MainViewModel main, bool unsorted)
+    public LibraryViewModel(MainViewModel main, bool unsorted, TagViewModel? tag = null)
     {
         _main = main;
         Unsorted = unsorted;
+        Tag = tag;
+        TagFilter.Changed += ApplyFilter;
         Sorts = new List<Choice>
         {
             new(L.T("Aggiunti di recente"), "added"), new(L.T("Titolo"), "title"), new(L.T("Artista"), "artist"),
@@ -102,24 +104,38 @@ public sealed class LibraryViewModel : Observable, ITrackList
     }
 
     public bool Unsorted { get; }
+    public TagViewModel? Tag { get; }
+    public bool IsTagPage => Tag != null;
+    // "Add files" only makes sense for the whole library.
+    public bool CanImport => !Unsorted && Tag == null;
     public ICommand PlayCommand { get; }
     public ICommand ShuffleCommand { get; }
 
-    public string ContextId => Unsorted ? "unsorted" : "library";
-    public string ContextName => L.T(Unsorted ? "Senza playlist" : "Tutti i brani");
+    public string ContextId => Tag != null ? "tag:" + Tag.Id : Unsorted ? "unsorted" : "library";
+    public string ContextName => Tag?.Name ?? L.T(Unsorted ? "Senza playlist" : "Tutti i brani");
     public IReadOnlyList<TrackViewModel> PlayOrder => _order;
     public Playlist? Playlist => null;
 
     public string Title => ContextName;
-    public string Kicker => L.T(Unsorted ? "DA SISTEMARE" : "LIBRERIA");
-    public string Glyph => Unsorted ? "" : "";
-    public string Hint => L.T(Unsorted
-        ? "Brani che non sono in nessuna playlist (né nei Preferiti): selezionali per aggiungerli a una playlist o eliminarli."
-        : "Ctrl o Maiusc + clic per selezionare più brani (Ctrl+A tutti), poi Canc o tasto destro per eliminarli o spostarli.");
-    public string EmptyTitle => L.T(Unsorted ? "Tutto in ordine" : "Nessun brano, per ora");
-    public string EmptyText => L.T(Unsorted
-        ? "Ogni brano è in almeno una playlist."
-        : "Incolla un link nella barra in alto per scaricare musica, oppure aggiungi file dal computer.");
+    public string Kicker => Tag != null ? L.T("TAG") : L.T(Unsorted ? "DA SISTEMARE" : "LIBRERIA");
+    public string Glyph => Tag != null ? "" : Unsorted ? "" : "";
+    public string Hint => Tag != null
+        ? L.T("Metti o togli il tag dal menu … di un brano, oppure selezionandone più di uno.")
+        : L.T(Unsorted
+            ? "Brani che non sono in nessuna playlist (né nei Preferiti): selezionali per aggiungerli a una playlist o eliminarli."
+            : "Ctrl o Maiusc + clic per selezionare più brani (Ctrl+A tutti), poi Canc o tasto destro per eliminarli o spostarli.");
+    public string EmptyTitle => Tag != null ? L.T("Nessun brano con questo tag") : L.T(Unsorted ? "Tutto in ordine" : "Nessun brano, per ora");
+    public string EmptyText => Tag != null
+        ? L.T("Tasto destro su un brano → Tag, oppure seleziona più brani e premi Tag.")
+        : L.T(Unsorted
+            ? "Ogni brano è in almeno una playlist."
+            : "Incolla un link nella barra in alto per scaricare musica, oppure aggiungi file dal computer.");
+
+    // A tag page also lists the playlists with that tag.
+    public List<PlaylistViewModel> TaggedPlaylists { get; private set; } = new();
+    public bool HasTaggedPlaylists => TaggedPlaylists.Count > 0;
+
+    public TagFilter TagFilter { get; } = new();
 
     public List<Choice> Sorts { get; }
     private Choice _sort;
@@ -143,9 +159,9 @@ public sealed class LibraryViewModel : Observable, ITrackList
     public string Filter { get => _filter; set { if (Set(ref _filter, value)) ApplyFilter(); } }
     public bool NoMatches => Rows.Count == 0 && _order.Count > 0;
 
-    private void ApplyFilter()
+    public void ApplyFilter()
     {
-        Rows = TrackFilter.Apply(_order, _filter, this);
+        Rows = TrackFilter.Apply(_order, _filter, TagFilter, this);
         OnChanged(nameof(Rows), nameof(NoMatches));
     }
 
@@ -160,6 +176,13 @@ public sealed class LibraryViewModel : Observable, ITrackList
         {
             var inPlaylists = _main.Profile.PlaylistsSnapshot().SelectMany(p => p.Tracks).ToHashSet();
             tracks = tracks.Where(t => !inPlaylists.Contains(t.Id));
+        }
+        if (Tag != null)
+        {
+            var id = Tag.Id;
+            tracks = tracks.Where(t => _main.Profile.TagsOf(t.Id).Contains(id));
+            TaggedPlaylists = _main.Playlists.Where(p => p.P.Tags.Contains(id)).ToList();
+            OnChanged(nameof(TaggedPlaylists), nameof(HasTaggedPlaylists), nameof(Title), nameof(ContextName));
         }
         IEnumerable<Track> sorted = (string)_sort.Value! switch
         {
@@ -198,8 +221,11 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
         CoverCommand = new RelayCommand(() => _main.ChangePlaylistCover(Vm), () => !Vm.IsFavorites);
         RemoveCoverCommand = new RelayCommand(() => _main.RemovePlaylistCover(Vm), () => Vm.HasCustomCover);
         DeleteCommand = new RelayCommand(() => _main.DeletePlaylist(Vm), () => !Vm.IsFavorites);
+        TagFilter.Changed += ApplyFilter;
         Rebuild();
     }
+
+    public TagFilter TagFilter { get; } = new();
 
     public PlaylistViewModel Vm { get; }
     public ICommand PlayCommand { get; }
@@ -221,9 +247,9 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
     public string Filter { get => _filter; set { if (Set(ref _filter, value)) ApplyFilter(); } }
     public bool NoMatches => Rows.Count == 0 && _order.Count > 0;
 
-    private void ApplyFilter()
+    public void ApplyFilter()
     {
-        Rows = TrackFilter.Apply(_order, _filter, this);
+        Rows = TrackFilter.Apply(_order, _filter, TagFilter, this);
         OnChanged(nameof(Rows), nameof(NoMatches));
     }
 
@@ -262,15 +288,15 @@ public sealed class SearchViewModel : Observable, ITrackList
     public void Run(string query)
     {
         Query = query.Trim();
-        var words = Text.Normalize(Query).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var q = new TrackQuery(Query);
         _order = _main.AllVms()
-            .Where(t => words.All(w => t.SearchText.Contains(w)))
-            .OrderByDescending(t => Text.Normalize(t.Title).StartsWith(words.FirstOrDefault() ?? "") ? 1 : 0)
+            .Where(q.Matches)
+            .OrderByDescending(t => Text.Normalize(t.Title).StartsWith(q.FirstWord) ? 1 : 0)
             .ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
             .Take(300)
             .ToList();
         Rows = _order.Select((t, i) => new TrackRow(i + 1, t, this)).ToList();
-        PlaylistResults = _main.Playlists.Where(p => words.All(w => Text.Normalize(p.Name).Contains(w))).ToList();
+        PlaylistResults = _main.Playlists.Where(q.Matches).ToList();
         OnChanged(nameof(Query), nameof(Rows), nameof(PlaylistResults), nameof(HasPlaylists), nameof(NoResults), nameof(Title), nameof(ContextName));
     }
 }

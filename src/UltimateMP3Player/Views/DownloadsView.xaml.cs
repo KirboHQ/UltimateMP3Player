@@ -48,6 +48,12 @@ public partial class DownloadsView : UserControl
         JobList.MaxHeight = bigCard ? 170 : double.PositiveInfinity;
     }
 
+    private void Tags_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is LinkViewModel link && App.Host.Session is { } main)
+            Menus.Open(Menus.TagPicker(link.TagIds, main, link.OnTagsChosen), (UIElement)sender, true);
+    }
+
     // A downloaded song has the usual song menu.
     private void Job_RightClick(object sender, MouseButtonEventArgs e)
     {

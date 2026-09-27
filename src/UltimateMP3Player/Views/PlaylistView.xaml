@@ -34,10 +34,28 @@
                 <TextBlock Text="{Binding Vm.Name}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" Cursor="Hand"
                            MouseLeftButtonUp="Name_Click" ToolTip="{local:T 'Clicca per rinominare'}"/>
                 <TextBlock Text="{Binding Vm.TotalText}" Foreground="{StaticResource SubTextBrush}"/>
+                <!-- the playlist's own tags -->
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <ItemsControl ItemsSource="{Binding Vm.Tags}" ItemTemplate="{StaticResource TagChip}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <Button Style="{StaticResource SubtleButton}" Padding="9,3" FontSize="12.5" Click="PlaylistTags_Click" VerticalAlignment="Center"
+                            ToolTip="{local:T 'Tag della playlist, e come metterli sui suoi brani'}" AutomationProperties.Name="{local:T 'Tag della playlist'}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8EC;" Style="{StaticResource Glyph}" FontSize="12"/>
+                            <TextBlock Text="{local:T 'Tag…'}" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </StackPanel>
         </Grid>
 
         <DockPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
+            <Button DockPanel.Dock="Right" Style="{StaticResource TagFilterButton}" Margin="10,0,0,0" Click="TagFilter_Click"/>
             <TextBox DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="260" VerticalAlignment="Center"
                      Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" Tag="{local:T 'Cerca nella playlist'}" KeyDown="Filter_KeyDown"
                      AutomationProperties.Name="{local:T 'Cerca nella playlist'}"/>

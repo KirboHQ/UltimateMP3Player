@@ -31,6 +31,12 @@
                     <TextBlock Text="Playlist" Margin="7,0,0,0"/>
                 </StackPanel>
             </Button>
+            <Button Style="{StaticResource SubtleButton}" Padding="10,6" Click="Tag_Click" ToolTip="{local:T 'Metti o togli un tag ai brani selezionati'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE8EC;" Style="{StaticResource Glyph}" FontSize="13"/>
+                    <TextBlock Text="Tag" Margin="7,0,0,0"/>
+                </StackPanel>
+            </Button>
             <Button x:Name="RemoveButton" Style="{StaticResource SubtleButton}" Padding="10,6" Click="Remove_Click" Visibility="Collapsed"
                     ToolTip="{local:T 'Togli dalla playlist (i brani restano nella libreria)'}">
                 <StackPanel Orientation="Horizontal">

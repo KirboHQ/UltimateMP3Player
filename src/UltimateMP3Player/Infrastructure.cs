@@ -115,6 +115,15 @@ public sealed class ZeroToVisibleConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
 }
 
+// Height → fully round ends (pill buttons of any height).
+public sealed class PillRadiusConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => new CornerRadius(value is double h && h > 0 ? h / 2 : 10);
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => Binding.DoNothing;
+}
+
 public sealed class NotConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) => value is not true;
@@ -144,6 +153,40 @@ public static class Ui
 
     public static string? GetGlyph(DependencyObject o) => (string?)o.GetValue(GlyphProperty);
     public static void SetGlyph(DependencyObject o, string? value) => o.SetValue(GlyphProperty, value);
+
+    // Soft right edge this many pixels wide: what runs past the element fades out instead of being cut.
+    // In pixels of the element itself (a relative brush would follow the size of the overflowing content).
+    public static readonly DependencyProperty FadeRightProperty = DependencyProperty.RegisterAttached(
+        "FadeRight", typeof(double), typeof(Ui), new PropertyMetadata(0.0, OnFadeRight));
+
+    public static double GetFadeRight(DependencyObject o) => (double)o.GetValue(FadeRightProperty);
+    public static void SetFadeRight(DependencyObject o, double value) => o.SetValue(FadeRightProperty, value);
+
+    private static void OnFadeRight(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not FrameworkElement fe) return;
+        fe.SizeChanged -= OnFadeSize;
+        if ((double)e.NewValue > 0) fe.SizeChanged += OnFadeSize;
+        ApplyFade(fe);
+    }
+
+    private static void OnFadeSize(object sender, SizeChangedEventArgs e) => ApplyFade((FrameworkElement)sender);
+
+    private static void ApplyFade(FrameworkElement fe)
+    {
+        double w = fe.ActualWidth, fade = GetFadeRight(fe);
+        if (fade <= 0 || w <= fade)
+        {
+            fe.ClearValue(UIElement.OpacityMaskProperty);
+            return;
+        }
+        var mask = new LinearGradientBrush { MappingMode = BrushMappingMode.Absolute, StartPoint = new Point(0, 0), EndPoint = new Point(w, 0) };
+        mask.GradientStops.Add(new GradientStop(Colors.Black, 0));
+        mask.GradientStops.Add(new GradientStop(Colors.Black, (w - fade) / w));
+        mask.GradientStops.Add(new GradientStop(Colors.Transparent, 1));
+        mask.Freeze();
+        fe.OpacityMask = mask;
+    }
 
     public static Brush BrushFrom(string hex)
     {

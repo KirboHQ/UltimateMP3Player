@@ -48,7 +48,8 @@ public static class Themes
         r["AccentHoverBrush"] = Solid(Mix(a, white, 0.12));
         r["AccentTextBrush"] = Solid(Mix(a, white, 0.35));
         r["AccentTextHoverBrush"] = Solid(Mix(a, white, 0.6));
-        r["AccentSoftBrush"] = Solid(Mix(a, Bg, 0.29));
+        // Selected rows: a dark tint of the accent (mostly background), readable with any theme colour.
+        r["AccentSoftBrush"] = Solid(Mix(a, Bg, 0.76));
         r["PinkBrush"] = Solid(Parse(t.Heart));
         r["OnAccentBrush"] = Solid(Luminance(Mix(a, b, 0.5)) > 0.4 ? Parse("#0E1014") : white);
         r["AccentGradient"] = Gradient(a, b);

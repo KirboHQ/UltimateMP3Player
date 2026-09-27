@@ -85,23 +85,28 @@ public static class WebImages
     }
 }
 
-// Where one request's songs go, in the original order.
+// Where one request's songs go, in the original order, and the tags they get.
 public sealed class DownloadBatch
 {
-    public DownloadBatch(Profile profile, string? playlistId, int size)
+    public DownloadBatch(Profile profile, string? playlistId, int size, IReadOnlyList<string>? tagIds = null)
     {
         Profile = profile;
         PlaylistId = playlistId;
         Slots = new string?[size];
+        TagIds = tagIds ?? Array.Empty<string>();
     }
 
     public Profile Profile { get; }
     public string? PlaylistId { get; }
     public string?[] Slots { get; }
+    public IReadOnlyList<string> TagIds { get; }
 
     public void Place(int index, string trackId)
     {
         Slots[index] = trackId;
+        // A tag deleted meanwhile is skipped.
+        foreach (var tag in TagIds)
+            if (Profile.GetTag(tag) != null) Profile.SetTag(new[] { trackId }, tag, true);
         if (PlaylistId == null || Profile.GetPlaylist(PlaylistId) is not { } pl || Profile.Contains(pl, trackId)) return;
         int? at = null;
         for (int j = index - 1; j >= 0 && at == null; j--)
@@ -680,6 +685,13 @@ public sealed class LinkViewModel : Observable
 
     public bool ShowNewName => Equals(_playlist.Value, NewPlaylist);
 
+    // Tags the downloaded songs get.
+    private readonly HashSet<string> _tags = new();
+    public ISet<string> TagIds => _tags;
+    public List<TagViewModel> ChosenTags => _main.Tags.Where(t => _tags.Contains(t.Id)).ToList();
+    public bool HasChosenTags => ChosenTags.Count > 0;
+    public void OnTagsChosen() => OnChanged(nameof(ChosenTags), nameof(HasChosenTags));
+
     private string _newName;
     public string NewName { get => _newName; set { if (Set(ref _newName, value)) CommandManager.InvalidateRequerySuggested(); } }
 
@@ -719,7 +731,7 @@ public sealed class LinkViewModel : Observable
             var p = _main.Profile.CreatePlaylist(NewName, R.SourceUrl);
             playlistId = p.Id;
         }
-        var batch = new DownloadBatch(_main.Profile, playlistId, Items.Count);
+        var batch = new DownloadBatch(_main.Profile, playlistId, Items.Count, ChosenTags.Select(t => t.Id).ToList());
         _main.Host.Downloads.Add(batch, selected.Select(i => (i.Item, i.Number - 1)), HasVideo && WithVideo);
         var target = playlistId != null && _main.Profile.GetPlaylist(playlistId) is { } pl ? PlaylistViewModel.DisplayName(pl) : null;
         var what = selected.Count == 1 ? L.F("«{0}» in download", selected[0].Title) : L.F("{0} brani in download", selected.Count);

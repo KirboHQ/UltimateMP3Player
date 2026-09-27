@@ -26,6 +26,7 @@ public sealed class MainViewModel : Observable
         Profile = profile;
         _ui = Application.Current.Dispatcher;
         CleanProfile();
+        SyncTags();
 
         Player = new PlayerViewModel(this, host.Audio, adopt);
         LibraryPage = new LibraryViewModel(this, unsorted: false);
@@ -59,22 +60,32 @@ public sealed class MainViewModel : Observable
         PasteLinkCommand = new RelayCommand(PasteLink);
         SwitchProfileCommand = new RelayCommand(() => Host.SwitchProfile());
         ImportCommand = new RelayCommand(() => ImportDialog(false));
+        NewTagCommand = new RelayCommand(() => NewTag());
+        OpenTagCommand = new RelayCommand(t => { if (t is TagViewModel tag) OpenTag(tag); });
+        EditTagCommand = new RelayCommand(t => { if (t is TagViewModel tag) EditTag(tag); });
+        DeleteTagCommand = new RelayCommand(t => { if (t is TagViewModel tag) DeleteTag(tag); });
 
         _added = t => _ui.BeginInvoke(() => OnTrackAdded(t));
         _changed = t => _ui.BeginInvoke(() => OnTrackChanged(t));
         _removed = t => _ui.BeginInvoke(() => OnTrackRemoved(t));
         _playlistChanged = p => _ui.BeginInvoke(() => OnPlaylistChanged(p));
         _playlistsChanged = () => _ui.BeginInvoke(RebuildPlaylists);
+        // Tags only change from the UI: handled right away, so a new tag can be used at once.
+        _tagsChanged = () => { if (_ui.CheckAccess()) OnTagsChanged(); else _ui.BeginInvoke(OnTagsChanged); };
+        _trackTagsChanged = ids => { if (_ui.CheckAccess()) OnTrackTagsChanged(ids); else _ui.BeginInvoke(() => OnTrackTagsChanged(ids)); };
         host.Library.TrackAdded += _added;
         host.Library.TrackChanged += _changed;
         host.Library.TrackRemoved += _removed;
         profile.PlaylistChanged += _playlistChanged;
         profile.PlaylistsChanged += _playlistsChanged;
+        profile.TagsChanged += _tagsChanged;
+        profile.TrackTagsChanged += _trackTagsChanged;
     }
 
     private readonly Action<Track> _added, _changed, _removed;
     private readonly Action<Playlist> _playlistChanged;
-    private readonly Action _playlistsChanged;
+    private readonly Action _playlistsChanged, _tagsChanged;
+    private readonly Action<IReadOnlyCollection<string>> _trackTagsChanged;
 
     public AppHost Host { get; }
     public Profile Profile { get; }
@@ -112,6 +123,10 @@ public sealed class MainViewModel : Observable
     public ICommand PasteLinkCommand { get; }
     public ICommand SwitchProfileCommand { get; }
     public ICommand ImportCommand { get; }
+    public ICommand NewTagCommand { get; }
+    public ICommand OpenTagCommand { get; }
+    public ICommand EditTagCommand { get; }
+    public ICommand DeleteTagCommand { get; }
 
     public TrackViewModel Vm(Track t)
     {
@@ -138,6 +153,8 @@ public sealed class MainViewModel : Observable
         Host.Library.TrackRemoved -= _removed;
         Profile.PlaylistChanged -= _playlistChanged;
         Profile.PlaylistsChanged -= _playlistsChanged;
+        Profile.TagsChanged -= _tagsChanged;
+        Profile.TrackTagsChanged -= _trackTagsChanged;
     }
 
     // Songs deleted by another profile leave this one too.
@@ -163,6 +180,7 @@ public sealed class MainViewModel : Observable
             if (!Set(ref _page, value)) return;
             Player.UpNextVisible = value == NowPlaying;
             foreach (var p in Playlists) p.IsSelected = value is PlaylistPageViewModel pp && pp.Vm == p;
+            foreach (var t in Tags) t.IsSelected = value is LibraryViewModel { Tag: { } tag } && tag == t;
             OnChanged(nameof(Section), nameof(IsNowPlaying));
             if (value == NowPlaying) NowPlaying.Refresh();
         }
@@ -171,6 +189,7 @@ public sealed class MainViewModel : Observable
     public string Section => Page switch
     {
         HomeViewModel => "home",
+        LibraryViewModel { IsTagPage: true } => "tag",
         LibraryViewModel { Unsorted: true } => "unsorted",
         LibraryViewModel => "library",
         DownloadsPageViewModel => "downloads",
@@ -192,6 +211,7 @@ public sealed class MainViewModel : Observable
         if (page == Page) return;
         if (page is HomeViewModel) Home.Refresh();
         if (page == UnsortedPage) UnsortedPage.Rebuild();
+        else if (page is LibraryViewModel lib) lib.EnsureFresh();
         if (Page is not SearchViewModel || page is SearchViewModel) _back.Push(Page);
         if (_back.Count > 30) { var keep = _back.Take(30).Reverse().ToList(); _back.Clear(); foreach (var k in keep) _back.Push(k); }
         Page = page;
@@ -368,6 +388,12 @@ public sealed class MainViewModel : Observable
         if (Page is PlaylistPageViewModel page && (library || dirty.Contains(page.Vm.Id))) page.Rebuild();
         if (favorites)
             foreach (var t in _vms.Values) t.RefreshFavorite();
+        // Tag pages also list playlists: a playlist's tags may have changed.
+        if (_trackTagsDirty || library || dirty.Count > 0)
+        {
+            _trackTagsDirty = false;
+            RefreshTaggedPages();
+        }
     }
 
     public void OpenPlaylist(PlaylistViewModel vm)
@@ -600,6 +626,130 @@ public sealed class MainViewModel : Observable
     {
         var changed = Library.RenameArtist(from, to);
         Toast(L.Count(changed.Count, "1 brano aggiornato", "{0} brani aggiornati"));
+    }
+
+    // ------------------------------------------------------------------ tags
+
+    public ObservableCollection<TagViewModel> Tags { get; } = new();
+    public bool HasTags => Tags.Count > 0;
+    private readonly Dictionary<string, LibraryViewModel> _tagPages = new();
+    private bool _trackTagsDirty;
+
+    private void SyncTags()
+    {
+        var old = Tags.ToDictionary(t => t.Id);
+        Tags.Clear();
+        foreach (var t in Profile.TagsSnapshot())
+        {
+            var vm = old.TryGetValue(t.Id, out var o) ? o : new TagViewModel(t, this);
+            vm.Refresh();
+            vm.IsSelected = _page is LibraryViewModel { Tag: { } tag } && tag.Id == t.Id;
+            Tags.Add(vm);
+        }
+        // The "Tag" column of the song lists only exists once there are tags.
+        Application.Current.Resources["TagColumnWidth"] = new GridLength(Tags.Count > 0 ? 1.3 : 0, GridUnitType.Star);
+        OnChanged(nameof(HasTags));
+    }
+
+    private void OnTagsChanged()
+    {
+        SyncTags();
+        var ids = Tags.Select(t => t.Id).ToHashSet();
+        foreach (var gone in _tagPages.Keys.Where(k => !ids.Contains(k)).ToList()) _tagPages.Remove(gone);
+        foreach (var vm in _vms.Values) vm.RefreshTags();
+        foreach (var p in Playlists) p.Refresh();
+        foreach (var f in TagFilters()) f.Keep(ids);
+        if (Page is LibraryViewModel { Tag: { } tag } && !ids.Contains(tag.Id)) Navigate(Home);
+        else RefreshTaggedPages();
+    }
+
+    private void OnTrackTagsChanged(IReadOnlyCollection<string> ids)
+    {
+        foreach (var id in ids)
+            if (_vms.TryGetValue(id, out var vm)) vm.RefreshTags();
+        foreach (var t in Tags) t.RefreshCount();
+        _trackTagsDirty = true;
+        ScheduleRefresh();
+    }
+
+    private IEnumerable<TagFilter> TagFilters()
+    {
+        yield return LibraryPage.TagFilter;
+        yield return UnsortedPage.TagFilter;
+        foreach (var p in _tagPages.Values) yield return p.TagFilter;
+        if (Page is PlaylistPageViewModel pp) yield return pp.TagFilter;
+    }
+
+    // Lists that depend on tags follow the changes (without jumping back to the top when nothing is filtered).
+    private void RefreshTaggedPages()
+    {
+        foreach (var page in _tagPages.Values)
+            if (page == Page) page.Rebuild();
+            else page.MarkDirty();
+        foreach (var lib in new[] { LibraryPage, UnsortedPage })
+            if (lib.TagFilter.IsActive || lib.Filter.Length > 0) lib.ApplyFilter();
+        if (Page is PlaylistPageViewModel pp && (pp.TagFilter.IsActive || pp.Filter.Length > 0)) pp.ApplyFilter();
+        if (Page == Search && Search.Query.Contains('#')) Search.Run(Search.Query);
+    }
+
+    public void OpenTag(TagViewModel t)
+    {
+        if (!_tagPages.TryGetValue(t.Id, out var page)) _tagPages[t.Id] = page = new LibraryViewModel(this, false, t);
+        Navigate(page);
+    }
+
+    // Creates a tag (and puts it on these songs or this playlist, if given).
+    public TagViewModel? NewTag(IReadOnlyList<TrackViewModel>? songs = null, PlaylistViewModel? playlist = null)
+    {
+        var r = Views.TagDialogs.Edit(null, Tag.Palette[Tags.Count % Tag.Palette.Length]);
+        if (r == null) return null;
+        var tag = Profile.CreateTag(r.Value.Name, r.Value.Color);
+        var vm = Tags.FirstOrDefault(t => t.Id == tag.Id);
+        if (vm == null) return null;
+        if (songs is { Count: > 0 }) SetTag(songs, vm, true);
+        if (playlist != null) SetPlaylistTag(playlist, vm, true);
+        if (songs == null && playlist == null) Toast(L.F("Tag «{0}» creato", vm.Name));
+        return vm;
+    }
+
+    public void EditTag(TagViewModel t)
+    {
+        var r = Views.TagDialogs.Edit(t.Name, t.Color);
+        if (r != null) Profile.UpdateTag(t.T, r.Value.Name, r.Value.Color);
+    }
+
+    public void DeleteTag(TagViewModel t)
+    {
+        int songs = t.Count, lists = Profile.PlaylistsSnapshot().Count(p => p.Tags.Contains(t.Id));
+        var used = songs == 0 && lists == 0
+            ? L.T("Non è usato da nessun brano.")
+            : L.F("Verrà tolto da {0} e da {1}.", L.Count(songs, "1 brano", "{0} brani"), L.Count(lists, "1 playlist", "{0} playlist"));
+        if (!Dialogs.Confirm(L.T("Eliminare il tag?"), L.F("Il tag «{0}» verrà eliminato.", t.Name) + " " + used, L.T("Elimina"), true)) return;
+        Profile.DeleteTag(t.T);
+    }
+
+    public void SetTag(IReadOnlyList<TrackViewModel> tracks, TagViewModel tag, bool on)
+    {
+        int n = Profile.SetTag(tracks.Select(t => t.Id), tag.Id, on);
+        if (tracks.Count == 1) Toast(on ? L.F("Tag «{0}» aggiunto", tag.Name) : L.F("Tag «{0}» tolto", tag.Name));
+        else if (n == 0) Toast(on ? L.F("Avevano già tutti il tag «{0}»", tag.Name) : L.F("Nessuno aveva il tag «{0}»", tag.Name));
+        else Toast(on ? L.F("Tag «{0}» aggiunto a {1} brani", tag.Name, n) : L.F("Tag «{0}» tolto da {1} brani", tag.Name, n));
+    }
+
+    public void SetPlaylistTag(PlaylistViewModel p, TagViewModel tag, bool on) => Profile.SetPlaylistTag(p.P, tag.Id, on);
+
+    // A playlist's tags onto its songs (all, or the ones left ticked).
+    public void TagPlaylistSongs(PlaylistViewModel p)
+    {
+        var songs = p.P.Tracks.Select(id => Library.Get(id)).Where(t => t != null).Select(t => Vm(t!)).ToList();
+        if (songs.Count == 0) { Toast(L.T("La playlist è vuota.")); return; }
+        if (!HasTags && NewTag() == null) return;
+        var r = Views.TagDialogs.ApplyToSongs(p, songs);
+        if (r == null) return;
+        int changed = 0;
+        foreach (var tag in r.Value.Tags) changed += Profile.SetTag(r.Value.Songs.Select(t => t.Id), tag.Id, r.Value.Add);
+        Toast(changed == 0 ? L.T("Nessun brano da cambiare")
+            : r.Value.Add ? L.F("Tag aggiunti: {0} modifiche", changed) : L.F("Tag tolti: {0} modifiche", changed));
     }
 
     // ------------------------------------------------------------------ library events

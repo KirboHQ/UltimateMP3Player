@@ -113,6 +113,12 @@ public partial class SelectionBar : UserControl
         if (tracks.Count > 0) Menus.Open(Menus.AddManyToPlaylist(tracks), (UIElement)sender, true);
     }
 
+    private void Tag_Click(object sender, RoutedEventArgs e)
+    {
+        var tracks = Tracks;
+        if (tracks.Count > 0) Menus.Open(Menus.TagMenu(tracks), (UIElement)sender, true);
+    }
+
     private void Remove_Click(object sender, RoutedEventArgs e)
     {
         var rows = Rows;

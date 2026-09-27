@@ -16,6 +16,12 @@ public partial class LibraryView : UserControl
         e.Handled = true;
     }
 
+    private void TagFilter_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is LibraryViewModel vm && App.Host.Session is { } main)
+            Menus.Open(Menus.TagFilterMenu(vm.TagFilter, main), (UIElement)sender, true);
+    }
+
     private void SelectAll_Click(object sender, RoutedEventArgs e)
     {
         List.SelectAll();

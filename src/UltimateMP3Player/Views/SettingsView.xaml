@@ -17,12 +17,20 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
         <StackPanel Margin="28,6,28,28" MaxWidth="1640">
-            <TextBlock Text="{local:T Impostazioni}" FontSize="30" FontWeight="Bold" Margin="0,0,0,20"/>
+            <DockPanel Margin="0,0,0,20">
+                <TextBox x:Name="SearchBox" DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="300" VerticalAlignment="Center"
+                         Tag="{local:T 'Cerca nelle impostazioni'}" AutomationProperties.Name="{local:T 'Cerca nelle impostazioni'}"
+                         TextChanged="Search_TextChanged" KeyDown="Search_KeyDown"/>
+                <TextBlock Text="{local:T Impostazioni}" FontSize="30" FontWeight="Bold" VerticalAlignment="Center"/>
+            </DockPanel>
+            <TextBlock x:Name="NoResults" Text="{local:T 'Nessuna impostazione corrisponde alla ricerca.'}" Style="{StaticResource Hint}" FontSize="14"
+                       HorizontalAlignment="Center" Margin="0,30,0,0" Visibility="Collapsed"/>
 
-            <views:MasonryPanel ColumnWidth="500" MaxColumns="3" Gap="16">
+            <!-- SettingsView.Keywords: extra words (in the app language) the search box finds; Tag="whole": the card is shown or hidden as a whole -->
+            <views:MasonryPanel x:Name="Cards" ColumnWidth="500" MaxColumns="3" Gap="16">
 
                 <!-- ==================================================== appearance -->
-                <Border Style="{StaticResource Card}" Padding="22">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'tema colori lingua inglese italiano animazioni scorrimento rotella mouse copertina 3d'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Aspetto}" Style="{StaticResource CardTitle}"/>
                         <TextBlock Text="{local:T 'Tema (per questo profilo)'}" Style="{StaticResource FieldLabel}"/>
@@ -85,7 +93,8 @@
                 </Border>
 
                 <!-- ==================================================== equalizer -->
-                <Border Style="{StaticResource Card}" Padding="22" DataContext="{Binding Equalizer}">
+                <Border Style="{StaticResource Card}" Padding="22" DataContext="{Binding Equalizer}" Tag="whole"
+                        views:SettingsView.Keywords="{local:T 'equalizzatore eq bassi medi alti frequenze preset suono audio'}">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,6">
                             <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" VerticalAlignment="Center"
@@ -188,7 +197,7 @@
                 </Border>
 
                 <!-- ==================================================== playback -->
-                <Border Style="{StaticResource Card}" Padding="22">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'riproduzione volume dissolvenza sfumatura normalizza'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Riproduzione}" Style="{StaticResource CardTitle}"/>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding Normalize}">
@@ -218,7 +227,7 @@
                 </Border>
 
                 <!-- ==================================================== downloads -->
-                <Border Style="{StaticResource Card}" Padding="22">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'download formato mp3 m4a opus flac qualità video cookie browser chrome firefox edge cartella musica'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Download}" Style="{StaticResource CardTitle}"/>
 
@@ -270,8 +279,51 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== tags -->
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'tag etichette colore colori'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T Tag}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Etichette colorate solo per questo profilo: mettile ai brani e alle playlist col tasto destro, o selezionando più brani.'}"
+                                   Style="{StaticResource Hint}" Margin="0,-8,0,12"/>
+                        <ItemsControl ItemsSource="{Binding DataContext.Tags, RelativeSource={RelativeSource AncestorType=Window}}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:TagViewModel}">
+                                    <Border x:Name="Row" CornerRadius="8" Padding="10,4,4,4" Background="Transparent">
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="&#xE74D;"
+                                                    Command="{Binding DataContext.DeleteTagCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    ToolTip="{local:T 'Elimina tag'}" AutomationProperties.Name="{local:T 'Elimina tag'}"/>
+                                            <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="&#xE70F;"
+                                                    Command="{Binding DataContext.EditTagCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
+                                                    ToolTip="{local:T 'Modifica nome e colore'}" AutomationProperties.Name="{local:T 'Modifica tag'}"/>
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" FontSize="12.5" Foreground="{StaticResource MutedBrush}"
+                                                       VerticalAlignment="Center" Margin="10,0,8,0"/>
+                                            <Ellipse Width="12" Height="12" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Name}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        </DockPanel>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Row" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                                        </Trigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{local:T 'Nessun tag, per ora.'}" Style="{StaticResource Hint}" Margin="2,0,0,4"
+                                   Visibility="{Binding DataContext.HasTags, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InvBoolVis}}"/>
+                        <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                                Command="{Binding DataContext.NewTagCommand, RelativeSource={RelativeSource AncestorType=Window}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}"/>
+                                <TextBlock Text="{local:T 'Nuovo tag'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== bulk edit -->
-                <Border Style="{StaticResource Card}" Padding="22">
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'artista artisti rinomina nomi modifica'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Modifica di massa'}" Style="{StaticResource CardTitle}"/>
                         <TextBlock Text="{local:T 'Un artista scaricato con il nome sbagliato? Sceglilo e rinominalo su tutti i suoi brani.'}"
@@ -316,7 +368,7 @@
                 </Border>
 
                 <!-- ==================================================== library -->
-                <Border Style="{StaticResource Card}" Padding="22">
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'importa aggiungi file cartella computer'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Musica già sul computer'}" Style="{StaticResource CardTitle}"/>
                         <TextBlock Text="{local:T 'Aggiungi file audio o video che hai già: restano dove sono. Puoi anche trascinarli nella finestra.'}"
@@ -339,7 +391,7 @@
                 </Border>
 
                 <!-- ==================================================== profiles & app -->
-                <Border Style="{StaticResource Card}" Padding="22">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'profilo profili avvio icona orologio chiudi sottofondo'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Profili e avvio'}" Style="{StaticResource CardTitle}"/>
                         <TextBlock Text="{local:T 'All\'avvio'}" Style="{StaticResource FieldLabel}"/>
@@ -367,7 +419,7 @@
                 </Border>
 
                 <!-- ==================================================== integrations -->
-                <Border Style="{StaticResource Card}" Padding="22">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'discord stato attività'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Integrazioni}" Style="{StaticResource CardTitle}"/>
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DiscordPresence}" IsEnabled="{Binding DiscordAvailable}">
@@ -381,7 +433,7 @@
                 </Border>
 
                 <!-- ==================================================== updates -->
-                <Border Style="{StaticResource Card}" Padding="22">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'aggiornamenti aggiorna versione github motori yt-dlp gallery-dl dati'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Aggiornamenti}" Style="{StaticResource CardTitle}"/>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding AutoUpdateApp}">
