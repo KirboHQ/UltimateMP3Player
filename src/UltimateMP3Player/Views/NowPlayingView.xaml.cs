@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using UltimateMP3Player.ViewModels;
@@ -149,26 +150,42 @@ public partial class NowPlayingView : UserControl
     // ------------------------------------------------------------------ 3D cover
 
     // Targets from the mouse; the angles glide to them every frame.
-    private double _tiltX, _tiltY, _nowX, _nowY, _glareX = 0.5, _glareY = 0.5, _glare, _glareTarget;
+    private double _mouseX, _mouseY, _nowX, _nowY, _glare, _glareTarget;
     private bool _ticking;
     private TimeSpan _lastFrame;
+    // The streaks lean 28° (as in the XAML).
+    private static readonly double SheenCos = Math.Cos(28 * Math.PI / 180), SheenSin = Math.Sin(28 * Math.PI / 180);
 
     private void Cover_MouseMove(object sender, MouseEventArgs e)
     {
         if (_vm?.CoverTilt != true) return;
         var p = e.GetPosition(CoverHit);
-        double nx = Math.Clamp(p.X / CoverHit.ActualWidth * 2 - 1, -1, 1), ny = Math.Clamp(p.Y / CoverHit.ActualHeight * 2 - 1, -1, 1);
-        _tiltY = nx * MaxTilt;
-        _tiltX = ny * MaxTilt;
-        _glareX = (nx + 1) / 2;
-        _glareY = (ny + 1) / 2;
+        _mouseX = Math.Clamp(p.X / CoverHit.ActualWidth * 2 - 1, -1, 1);
+        _mouseY = Math.Clamp(p.Y / CoverHit.ActualHeight * 2 - 1, -1, 1);
         _glareTarget = 1;
         StartTicking();
     }
 
+    // The light sits opposite the mouse: the streaks slide against it (farther than the tilt), glow near it, and its edge lights up.
+    private void PlaceSheen(double x, double y)
+    {
+        double shift = -(x * SheenCos + y * SheenSin) * 230;
+        SheenNear.X = shift;
+        SheenFar.X = shift * 0.55;
+        SheenMask.Center = SheenMask.GradientOrigin = new Point(200 - x * 180, 200 - y * 180);
+        double len = Math.Sqrt(x * x + y * y);
+        if (len > 0.001)
+        {
+            double dx = -x / len * 283, dy = -y / len * 283;
+            RimBrush.StartPoint = new Point(200 + dx, 200 + dy);
+            RimBrush.EndPoint = new Point(200 - dx, 200 - dy);
+        }
+        RimBrush.Opacity = Math.Min(1, len * 1.6);
+    }
+
     private void Cover_MouseLeave(object sender, MouseEventArgs e)
     {
-        _tiltX = _tiltY = _glareTarget = 0;
+        _mouseX = _mouseY = _glareTarget = 0;
         StartTicking();
     }
 
@@ -194,18 +211,16 @@ public partial class NowPlayingView : UserControl
         double dt = _lastFrame == TimeSpan.Zero ? 1 / 60.0 : Math.Min(0.1, (now - _lastFrame).TotalSeconds);
         _lastFrame = now;
         double k = 1 - Math.Exp(-dt / 0.075), kg = 1 - Math.Exp(-dt / 0.12);
-        _nowX += (_tiltX - _nowX) * k;
-        _nowY += (_tiltY - _nowY) * k;
+        // _nowX/_nowY: the mouse as the cover follows it (-1..1).
+        _nowX += (_mouseX - _nowX) * k;
+        _nowY += (_mouseY - _nowY) * k;
         _glare += (_glareTarget - _glare) * kg;
-        var c = GlareBrush.Center;
-        var glare = new Point(c.X + (_glareX - c.X) * k, c.Y + (_glareY - c.Y) * k);
-        TiltX.Angle = _nowX;
-        TiltY.Angle = _nowY;
-        GlareBrush.Center = GlareBrush.GradientOrigin = glare;
+        TiltY.Angle = _nowX * MaxTilt;
+        TiltX.Angle = _nowY * MaxTilt;
+        PlaceSheen(_nowX, _nowY);
         GlareLayer.Opacity = _glare;
         // Arrived: stop until the mouse moves again.
-        bool settled = Math.Abs(_tiltX - _nowX) < 0.01 && Math.Abs(_tiltY - _nowY) < 0.01 && Math.Abs(_glareTarget - _glare) < 0.005 &&
-                       Math.Abs(glare.X - _glareX) < 0.001 && Math.Abs(glare.Y - _glareY) < 0.001;
+        bool settled = Math.Abs(_mouseX - _nowX) < 0.001 && Math.Abs(_mouseY - _nowY) < 0.001 && Math.Abs(_glareTarget - _glare) < 0.005;
         if (!settled) return;
         if (_glareTarget == 0)
         {
@@ -301,32 +316,111 @@ public partial class NowPlayingView : UserControl
         var p = e.GetPosition(null);
         if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
         _dragStart = null;
-        if (sender is FrameworkElement fe && fe.DataContext is QueueRow row)
-            DragVisuals.Run(fe, new DataObject(typeof(QueueRow), row), DragDropEffects.Move);
+        if (sender is not FrameworkElement fe || fe.DataContext is not QueueRow row || _vm == null) return;
+        var session = new DragSession(QueueList, row, TrashZone);
+        session.TrashHot += SetTrashHot;
+        ShowTrash(true);
+        var outcome = DragVisuals.Run(fe, new DataObject(typeof(QueueRow), row), DragDropEffects.Move, session);
+        ShowTrash(false);
+        // The song lands where the line was, even if the mouse was released elsewhere.
+        if (outcome == DragOutcome.Trashed) _vm.Player.RemoveUpcoming(row.Index);
+        else if (outcome == DragOutcome.Placed && session.Target is QueueRow target)
+        {
+            int last = _vm.Player.UpNext.LastOrDefault()?.Index ?? row.Index;
+            _vm.Player.MoveUpcoming(row.Index, Math.Clamp(DragVisuals.MoveIndex(row.Index, target.Index, session.After), 0, last));
+        }
     }
 
     private void Queue_DragOver(object sender, DragEventArgs e)
     {
-        bool ok = e.Data.GetDataPresent(typeof(QueueRow));
-        e.Effects = ok ? DragDropEffects.Move : DragDropEffects.None;
-        if (ok) DragVisuals.Hit(QueueList, e);
+        e.Effects = e.Data.GetDataPresent(typeof(QueueRow)) ? DragDropEffects.Move : DragDropEffects.None;
         e.Handled = true;
     }
 
-    private void Queue_DragLeave(object sender, DragEventArgs e)
+    private static readonly Color TrashIdle = Color.FromArgb(0xF2, 0x2A, 0x12, 0x16), TrashHot = Color.FromArgb(0xF2, 0xD4, 0x32, 0x3A);
+    private static readonly Brush TrashIconIdle = Ui.BrushFrom("#FF7076");
+    private bool _trashShown;
+
+    // The bin pops out of the queue's edge, pulses while waiting and shrinks away at the end.
+    private void ShowTrash(bool show)
     {
-        var p = e.GetPosition(QueueList);
-        if (p.X < 0 || p.Y < 0 || p.X > QueueList.ActualWidth || p.Y > QueueList.ActualHeight) DragVisuals.HideLine();
+        _trashShown = show;
+        if (show)
+        {
+            TrashScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            TrashScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            TrashTilt.BeginAnimation(RotateTransform.AngleProperty, null);
+            TrashFill.BeginAnimation(SolidColorBrush.ColorProperty, null);
+            TrashFill.Color = TrashIdle;
+            TrashIcon.Foreground = TrashIconIdle;
+        }
+        if (!Ui.Animations)
+        {
+            TrashZone.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+        TrashZone.Visibility = Visibility.Visible;
+        var time = TimeSpan.FromMilliseconds(show ? 300 : 170);
+        var pop = show
+            ? new DoubleAnimation(0.3, 1, time) { EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.6 } }
+            : new DoubleAnimation(0.25, time) { EasingFunction = new BackEase { EasingMode = EasingMode.EaseIn, Amplitude = 0.4 } };
+        if (!show)
+            pop.Completed += (_, _) =>
+            {
+                if (_trashShown) return;
+                TrashZone.Visibility = Visibility.Collapsed;
+                Ripple(false);
+            };
+        TrashPop.BeginAnimation(ScaleTransform.ScaleXProperty, pop);
+        TrashPop.BeginAnimation(ScaleTransform.ScaleYProperty, pop);
+        if (show) TrashShift.BeginAnimation(TranslateTransform.XProperty,
+            new DoubleAnimation(40, 0, time) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        TrashZone.BeginAnimation(OpacityProperty, show
+            ? new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160))
+            : new DoubleAnimation(0, TimeSpan.FromMilliseconds(150)));
+        if (show) Ripple(true);
     }
 
-    private void Queue_Drop(object sender, DragEventArgs e)
+    // A ring spreading out from the bin, over and over.
+    private void Ripple(bool on)
     {
-        if (e.Data.GetData(typeof(QueueRow)) is not QueueRow row || _vm == null) return;
-        e.Handled = true;
-        var (target, after) = DragVisuals.Hit(QueueList, e);
-        DragVisuals.HideLine();
-        int last = _vm.Player.UpNext.LastOrDefault()?.Index ?? row.Index;
-        int to = target is QueueRow t ? DragVisuals.MoveIndex(row.Index, t.Index, after) : last;
-        _vm.Player.MoveUpcoming(row.Index, Math.Clamp(to, 0, last));
+        AnimationTimeline? grow = null, fade = null;
+        if (on)
+        {
+            var period = TimeSpan.FromMilliseconds(1200);
+            grow = new DoubleAnimation(1, 1.75, period) { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+            fade = new DoubleAnimation(0.8, 0, period) { RepeatBehavior = RepeatBehavior.Forever };
+        }
+        RippleScale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+        RippleScale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+        TrashRipple.BeginAnimation(OpacityProperty, fade);
     }
+
+    // Over the bin: it grows, turns red and wiggles.
+    private void SetTrashHot(bool hot)
+    {
+        TrashIcon.Foreground = hot ? Brushes.White : TrashIconIdle;
+        if (!Ui.Animations)
+        {
+            TrashFill.Color = hot ? TrashHot : TrashIdle;
+            TrashScale.ScaleX = TrashScale.ScaleY = hot ? 1.2 : 1;
+            return;
+        }
+        TrashFill.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(hot ? TrashHot : TrashIdle, TimeSpan.FromMilliseconds(140)));
+        var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.6 };
+        var scale = new DoubleAnimation(hot ? 1.22 : 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease };
+        TrashScale.BeginAnimation(ScaleTransform.ScaleXProperty, scale);
+        TrashScale.BeginAnimation(ScaleTransform.ScaleYProperty, scale);
+        if (hot)
+        {
+            var wiggle = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(420), RepeatBehavior = RepeatBehavior.Forever };
+            foreach (var (t, a) in new[] { (0, 0.0), (80, -14.0), (180, 12.0), (280, -8.0), (360, 4.0), (420, 0.0) })
+                wiggle.KeyFrames.Add(new EasingDoubleKeyFrame(a, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(t))));
+            TrashTilt.BeginAnimation(RotateTransform.AngleProperty, wiggle);
+        }
+        else TrashTilt.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(120)));
+    }
+
+    // The move itself happens when the drag ends (Row_MouseMove).
+    private void Queue_Drop(object sender, DragEventArgs e) => e.Handled = e.Data.GetDataPresent(typeof(QueueRow));
 }

@@ -95,22 +95,111 @@
                                                             <ImageBrush x:Name="CoverImage"/>
                                                         </DiffuseMaterial.Brush>
                                                     </DiffuseMaterial>
-                                                    <!-- glare that follows the mouse -->
+                                                    <!-- glossy sheen (added as light): diagonal streaks sliding against the mouse, a slower wide band behind -->
                                                     <EmissiveMaterial>
                                                         <EmissiveMaterial.Brush>
                                                             <DrawingBrush x:Name="GlareLayer" Opacity="0" Stretch="Fill">
                                                                 <DrawingBrush.Drawing>
-                                                                    <GeometryDrawing>
-                                                                        <GeometryDrawing.Geometry>
+                                                                    <DrawingGroup>
+                                                                        <DrawingGroup.ClipGeometry>
                                                                             <RectangleGeometry Rect="0,0,400,400" RadiusX="14" RadiusY="14"/>
-                                                                        </GeometryDrawing.Geometry>
-                                                                        <GeometryDrawing.Brush>
-                                                                            <RadialGradientBrush x:Name="GlareBrush" RadiusX="0.6" RadiusY="0.6" Center="0.5,0.5" GradientOrigin="0.5,0.5">
-                                                                                <GradientStop Color="#34FFFFFF" Offset="0"/>
-                                                                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                                                        </DrawingGroup.ClipGeometry>
+                                                                        <GeometryDrawing Brush="Transparent" Geometry="M0,0 H400 V400 H0 Z"/>
+                                                                        <!-- the streaks, brightest near the light (opposite the mouse) -->
+                                                                        <DrawingGroup>
+                                                                        <DrawingGroup.ClipGeometry>
+                                                                            <RectangleGeometry Rect="0,0,400,400"/>
+                                                                        </DrawingGroup.ClipGeometry>
+                                                                        <DrawingGroup.OpacityMask>
+                                                                            <RadialGradientBrush x:Name="SheenMask" MappingMode="Absolute" Center="200,200" GradientOrigin="200,200" RadiusX="330" RadiusY="330">
+                                                                                <GradientStop Color="#FF000000" Offset="0"/>
+                                                                                <GradientStop Color="#40000000" Offset="1"/>
                                                                             </RadialGradientBrush>
-                                                                        </GeometryDrawing.Brush>
-                                                                    </GeometryDrawing>
+                                                                        </DrawingGroup.OpacityMask>
+                                                                        <GeometryDrawing Brush="Transparent" Geometry="M0,0 H400 V400 H0 Z"/>
+                                                                        <!-- far layer: one wide soft band, moving slower -->
+                                                                        <DrawingGroup>
+                                                                            <DrawingGroup.Transform>
+                                                                                <TransformGroup>
+                                                                                    <TranslateTransform x:Name="SheenFar"/>
+                                                                                    <RotateTransform Angle="28" CenterX="200" CenterY="200"/>
+                                                                                </TransformGroup>
+                                                                            </DrawingGroup.Transform>
+                                                                            <GeometryDrawing Geometry="M-60,-250 H160 V650 H-60 Z">
+                                                                                <GeometryDrawing.Brush>
+                                                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                                                        <GradientStop Color="#00FFFFFF" Offset="0"/>
+                                                                                        <GradientStop Color="#12FFFFFF" Offset="0.5"/>
+                                                                                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                                                                    </LinearGradientBrush>
+                                                                                </GeometryDrawing.Brush>
+                                                                            </GeometryDrawing>
+                                                                        </DrawingGroup>
+                                                                        <!-- near layer: glass band, crisp lines and an iridescent fringe -->
+                                                                        <DrawingGroup>
+                                                                            <DrawingGroup.Transform>
+                                                                                <TransformGroup>
+                                                                                    <TranslateTransform x:Name="SheenNear"/>
+                                                                                    <RotateTransform Angle="28" CenterX="200" CenterY="200"/>
+                                                                                </TransformGroup>
+                                                                            </DrawingGroup.Transform>
+                                                                            <GeometryDrawing Geometry="M140,-250 H260 V650 H140 Z">
+                                                                                <GeometryDrawing.Brush>
+                                                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                                                        <GradientStop Color="#00FFFFFF" Offset="0"/>
+                                                                                        <GradientStop Color="#12FFFFFF" Offset="0.3"/>
+                                                                                        <GradientStop Color="#22FFFFFF" Offset="0.5"/>
+                                                                                        <GradientStop Color="#12FFFFFF" Offset="0.7"/>
+                                                                                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                                                                    </LinearGradientBrush>
+                                                                                </GeometryDrawing.Brush>
+                                                                            </GeometryDrawing>
+                                                                            <GeometryDrawing Geometry="M258,-250 H272 V650 H258 Z">
+                                                                                <GeometryDrawing.Brush>
+                                                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                                                        <GradientStop Color="#0070E4FF" Offset="0"/>
+                                                                                        <GradientStop Color="#2A70E4FF" Offset="1"/>
+                                                                                    </LinearGradientBrush>
+                                                                                </GeometryDrawing.Brush>
+                                                                            </GeometryDrawing>
+                                                                            <GeometryDrawing Geometry="M272,-250 H280 V650 H272 Z">
+                                                                                <GeometryDrawing.Brush>
+                                                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                                                        <GradientStop Color="#18FFFFFF" Offset="0"/>
+                                                                                        <GradientStop Color="#5CFFFFFF" Offset="0.5"/>
+                                                                                        <GradientStop Color="#18FFFFFF" Offset="1"/>
+                                                                                    </LinearGradientBrush>
+                                                                                </GeometryDrawing.Brush>
+                                                                            </GeometryDrawing>
+                                                                            <GeometryDrawing Geometry="M280,-250 H294 V650 H280 Z">
+                                                                                <GeometryDrawing.Brush>
+                                                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                                                        <GradientStop Color="#2AFF7ACF" Offset="0"/>
+                                                                                        <GradientStop Color="#00FF7ACF" Offset="1"/>
+                                                                                    </LinearGradientBrush>
+                                                                                </GeometryDrawing.Brush>
+                                                                            </GeometryDrawing>
+                                                                            <GeometryDrawing Brush="#40FFFFFF" Geometry="M304,-250 H306.5 V650 H304 Z"/>
+                                                                            <GeometryDrawing Brush="#26FFFFFF" Geometry="M116,-250 H118 V650 H116 Z"/>
+                                                                        </DrawingGroup>
+                                                                        </DrawingGroup>
+                                                                        <!-- the edge catching the light -->
+                                                                        <GeometryDrawing>
+                                                                            <GeometryDrawing.Geometry>
+                                                                                <RectangleGeometry Rect="1,1,398,398" RadiusX="13" RadiusY="13"/>
+                                                                            </GeometryDrawing.Geometry>
+                                                                            <GeometryDrawing.Pen>
+                                                                                <Pen Thickness="2.5">
+                                                                                    <Pen.Brush>
+                                                                                        <LinearGradientBrush x:Name="RimBrush" MappingMode="Absolute" StartPoint="0,0" EndPoint="400,400" Opacity="0">
+                                                                                            <GradientStop Color="#80FFFFFF" Offset="0"/>
+                                                                                            <GradientStop Color="#00FFFFFF" Offset="0.45"/>
+                                                                                        </LinearGradientBrush>
+                                                                                    </Pen.Brush>
+                                                                                </Pen>
+                                                                            </GeometryDrawing.Pen>
+                                                                        </GeometryDrawing>
+                                                                    </DrawingGroup>
                                                                 </DrawingBrush.Drawing>
                                                             </DrawingBrush>
                                                         </EmissiveMaterial.Brush>
@@ -122,8 +211,7 @@
                                 </ModelVisual3D>
                             </Viewport3D>
                             <Border x:Name="CoverHit" Width="400" Height="400" Background="Transparent" Cursor="Hand"
-                                    MouseMove="Cover_MouseMove" MouseLeave="Cover_MouseLeave" MouseRightButtonUp="Current_RightClick"
-                                    ToolTip="{local:T 'Tasto destro per le opzioni del brano'}" ToolTipService.InitialShowDelay="1500"/>
+                                    MouseMove="Cover_MouseMove" MouseLeave="Cover_MouseLeave" MouseRightButtonUp="Current_RightClick"/>
                         </Grid>
                     </Viewbox>
                 </Grid>
@@ -189,8 +277,10 @@
                                    Text="{local:T 'Doppio clic per saltare a un brano, trascina per riordinare.'}"/>
                     </StackPanel>
                 </DockPanel>
+                <!-- at most 150 rows: no virtualization, so scrolling and dragging stay exact -->
                 <ListBox x:Name="QueueList" Grid.Row="1" Style="{StaticResource PlainList}" ItemsSource="{Binding Player.UpNext}"
-                         AllowDrop="True" DragOver="Queue_DragOver" DragLeave="Queue_DragLeave" Drop="Queue_Drop" AutomationProperties.Name="{local:T Successivi}">
+                         VirtualizingPanel.IsVirtualizing="False" ScrollViewer.CanContentScroll="False"
+                         AllowDrop="True" DragOver="Queue_DragOver" Drop="Queue_Drop" AutomationProperties.Name="{local:T Successivi}">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:QueueRow}">
                             <StackPanel>
@@ -235,5 +325,37 @@
                            Visibility="{Binding Player.UpNextCount, Converter={StaticResource ZeroVis}}"/>
             </Grid>
         </Border>
+
+        <!-- floats left of the queue while dragging (over the stage, the layout doesn't move): drop a song on it to take it out -->
+        <Grid x:Name="TrashZone" Width="64" Height="64" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,20,16"
+              Visibility="Collapsed" AllowDrop="True" DragOver="Queue_DragOver" Drop="Queue_Drop" RenderTransformOrigin="0.5,0.5"
+              AutomationProperties.Name="{local:T 'Trascina qui per togliere'}">
+            <Grid.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="TrashScale"/>
+                    <ScaleTransform x:Name="TrashPop"/>
+                    <TranslateTransform x:Name="TrashShift"/>
+                </TransformGroup>
+            </Grid.RenderTransform>
+            <Ellipse x:Name="TrashRipple" Stroke="#E5484D" StrokeThickness="2" Opacity="0" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                <Ellipse.RenderTransform>
+                    <ScaleTransform x:Name="RippleScale"/>
+                </Ellipse.RenderTransform>
+            </Ellipse>
+            <Ellipse Stroke="#E5484D" StrokeThickness="2">
+                <Ellipse.Fill>
+                    <SolidColorBrush x:Name="TrashFill" Color="#F22A1216"/>
+                </Ellipse.Fill>
+                <Ellipse.Effect>
+                    <DropShadowEffect BlurRadius="26" ShadowDepth="0" Opacity="0.6" Color="#E5484D"/>
+                </Ellipse.Effect>
+            </Ellipse>
+            <TextBlock x:Name="TrashIcon" Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="24" Foreground="#FF7076"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+                <TextBlock.RenderTransform>
+                    <RotateTransform x:Name="TrashTilt"/>
+                </TextBlock.RenderTransform>
+            </TextBlock>
+        </Grid>
     </Grid>
 </UserControl>

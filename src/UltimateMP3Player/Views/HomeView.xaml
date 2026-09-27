@@ -1,7 +1,8 @@
-<UserControl x:Class="UltimateMP3Player.Views.HomeView"
+﻿<UserControl x:Class="UltimateMP3Player.Views.HomeView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:UltimateMP3Player">
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels">
     <Grid>
         <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
@@ -40,36 +41,42 @@
                     </Grid>
                 </Border>
 
+                <!-- card grids end 8 px before the right margin, level with the welcome card: same space left and right -->
                 <StackPanel Visibility="{Binding HasRecent, Converter={StaticResource BoolVis}}">
                     <TextBlock Text="{local:T 'Ascoltati di recente'}" Style="{StaticResource SectionTitle}"/>
-                    <ItemsControl ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource WrapPanelTemplate}"
-                                  Margin="0,0,0,18"/>
+                    <ItemsControl ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource CardGridTemplate}"
+                                  Margin="0,0,8,30"/>
                 </StackPanel>
 
                 <TextBlock Text="{local:T 'Le tue playlist'}" Style="{StaticResource SectionTitle}"/>
-                <WrapPanel Margin="0,0,0,18">
-                    <ItemsControl ItemsSource="{Binding Playlists}" ItemTemplate="{StaticResource PlaylistCard}" ItemsPanel="{StaticResource WrapPanelTemplate}"/>
-                    <Border x:Name="NewCard" Width="176" Height="218" CornerRadius="12" Margin="0,0,12,12" Cursor="Hand"
-                            BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1.5">
-                        <Border.InputBindings>
-                            <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.NewPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                        </Border.InputBindings>
-                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                            <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="26" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
-                            <TextBlock Text="{local:T 'Nuova playlist'}" Margin="0,10,0,0" Foreground="{StaticResource SubTextBrush}" FontWeight="SemiBold"/>
-                        </StackPanel>
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                    </Border>
-                </WrapPanel>
+                <ItemsControl ItemsSource="{Binding PlaylistCards}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30">
+                    <ItemsControl.Resources>
+                        <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
+                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
+                        </DataTemplate>
+                        <DataTemplate DataType="{x:Type vm:NewPlaylistCard}">
+                            <Border CornerRadius="12" Cursor="Hand" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1.5">
+                                <Border.InputBindings>
+                                    <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.NewPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                </Border.InputBindings>
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="26" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                                    <TextBlock Text="{local:T 'Nuova playlist'}" Margin="0,10,0,0" Foreground="{StaticResource SubTextBrush}" FontWeight="SemiBold"/>
+                                </StackPanel>
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.Resources>
+                </ItemsControl>
 
                 <StackPanel Visibility="{Binding HasRecentlyAdded, Converter={StaticResource BoolVis}}">
                     <DockPanel LastChildFill="False" Margin="0,0,8,0">

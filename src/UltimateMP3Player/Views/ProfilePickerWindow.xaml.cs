@@ -19,6 +19,21 @@ public sealed class ProfileTile
     public bool IsCurrent { get; init; }
 }
 
+public sealed class ColorSwatch : Observable
+{
+    public ColorSwatch(string hex)
+    {
+        Hex = hex;
+        Brush = Ui.BrushFrom(hex);
+    }
+
+    public string Hex { get; }
+    public Brush Brush { get; }
+
+    private bool _selected;
+    public bool IsSelected { get => _selected; set => Set(ref _selected, value); }
+}
+
 // "Who's listening?": pick, add or edit profiles (like Chrome).
 public partial class ProfilePickerWindow : Window
 {
@@ -31,6 +46,7 @@ public partial class ProfilePickerWindow : Window
     private string _editColor = ProfileInfo.Palette[0];
     private string? _pendingAvatar;
     private bool _removeAvatar;
+    private readonly List<ColorSwatch> _swatches = ProfileInfo.Palette.Select(c => new ColorSwatch(c)).ToList();
 
     public static ProfileInfo? Pick(AppHost host, Window? owner, bool startup)
     {
@@ -51,7 +67,7 @@ public partial class ProfilePickerWindow : Window
         InitializeComponent();
         WindowFrame.Apply(this, Root, null, null, CloseButton);
         SmoothScroll.Attach(this);
-        Swatches.ItemsSource = ProfileInfo.Palette.Select(Ui.BrushFrom).ToList();
+        Swatches.ItemsSource = _swatches;
         Remember.IsChecked = host.Settings.StartupProfile != null;
         if (currentId != null) SubTitle.Text = L.T("Scegli un profilo, aggiungine uno o modifica quelli esistenti.");
         PreviewKeyDown += (_, e) =>
@@ -135,6 +151,7 @@ public partial class ProfilePickerWindow : Window
     private void UpdatePreview()
     {
         EditColorDisc.Fill = Ui.BrushFrom(_editColor);
+        foreach (var s in _swatches) s.IsSelected = s.Hex.Equals(_editColor, StringComparison.OrdinalIgnoreCase);
         var name = NameBox.Text.Trim();
         EditInitial.Text = name.Length > 0 ? char.ToUpper(name[0]).ToString() : "?";
         ImageSource? avatar = null;
@@ -148,11 +165,9 @@ public partial class ProfilePickerWindow : Window
 
     private void Swatch_Click(object sender, MouseButtonEventArgs e)
     {
-        if ((sender as FrameworkElement)?.Tag is SolidColorBrush b)
-        {
-            _editColor = $"#{b.Color.R:X2}{b.Color.G:X2}{b.Color.B:X2}";
-            UpdatePreview();
-        }
+        if ((sender as FrameworkElement)?.DataContext is not ColorSwatch s) return;
+        _editColor = s.Hex;
+        UpdatePreview();
     }
 
     private void PickAvatar_Click(object sender, RoutedEventArgs e)

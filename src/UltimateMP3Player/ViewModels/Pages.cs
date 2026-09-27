@@ -52,7 +52,8 @@ public sealed class HomeViewModel : Observable
 
     public List<TrackViewModel> Recent { get; private set; } = new();
     public List<TrackRow> RecentlyAdded { get; private set; } = new();
-    public List<PlaylistViewModel> Playlists => _main.Playlists.ToList();
+    // The playlists, then the "New playlist" card, in the same grid.
+    public List<object> PlaylistCards => [.. _main.Playlists, NewPlaylistCard.Instance];
     public bool HasRecent => Recent.Count > 0;
     public bool HasRecentlyAdded => RecentlyAdded.Count > 0;
     public bool IsEmpty => _main.Library.Count == 0;
@@ -65,11 +66,16 @@ public sealed class HomeViewModel : Observable
         var added = _main.Library.Snapshot().OrderByDescending(t => t.Added).Take(8).Select(_main.Vm).ToList();
         var addedList = new TrackListSource("added", L.T("Aggiunti di recente"), added);
         RecentlyAdded = added.Select((t, i) => new TrackRow(i + 1, t, addedList)).ToList();
-        OnChanged(nameof(Greeting), nameof(Recent), nameof(RecentlyAdded), nameof(Playlists), nameof(HasRecent), nameof(HasRecentlyAdded),
+        OnChanged(nameof(Greeting), nameof(Recent), nameof(RecentlyAdded), nameof(PlaylistCards), nameof(HasRecent), nameof(HasRecentlyAdded),
             nameof(IsEmpty), nameof(RecentList));
     }
 
     public void PlayRecent(TrackViewModel t) => _main.Player.PlayFrom(RecentList, t);
+}
+
+public sealed class NewPlaylistCard
+{
+    public static readonly NewPlaylistCard Instance = new();
 }
 
 // "All songs", or with unsorted = the songs in no playlist.

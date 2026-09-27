@@ -9,8 +9,9 @@ public static class YtDlp
 {
     private const string Marker = "[UD]";
 
-    // After a rate limit: pause between requests.
-    public static volatile bool Gentle;
+    // Set per download (flows with async calls): pause between requests after a rate limit.
+    private static readonly AsyncLocal<bool> GentleFlow = new();
+    public static bool Gentle { get => GentleFlow.Value; set => GentleFlow.Value = value; }
 
     private static List<string> BaseArgs(string? cookiesBrowser)
     {

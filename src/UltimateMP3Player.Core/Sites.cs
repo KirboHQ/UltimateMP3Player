@@ -79,6 +79,14 @@ public static class Sites
         return host.Length > 0 ? host : "Web";
     }
 
+    // The service that actually serves the file (rate limits are per service).
+    public static string ServiceOf(MediaItem item)
+    {
+        if (item.Source == SourceKind.Search) return "YouTube";
+        var name = NameFor(item.PageUrl ?? item.Url);
+        return name == "YouTube Music" ? "YouTube" : name;
+    }
+
     public static string ColorFor(string siteName)
         => All.FirstOrDefault(s => s.Name == siteName)?.Color ?? "#8B93A7";
 }

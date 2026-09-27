@@ -290,12 +290,12 @@
                 <TextBlock Text="{Binding Queue.Summary}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="14,4,0,0"/>
             </DockPanel>
             <Border CornerRadius="10" Padding="14,8,8,8" Margin="0,0,0,10" Background="{StaticResource WarningSoftBrush}"
-                    Visibility="{Binding Queue.IsPaused, Converter={StaticResource BoolVis}}">
+                    Visibility="{Binding Queue.IsThrottled, Converter={StaticResource BoolVis}}">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Padding="10,4" FontSize="12.5" Content="{local:T 'Riprendi ora'}"
-                            Command="{Binding Queue.ResumeNowCommand}"/>
+                    <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Padding="10,4" FontSize="12.5" Content="{local:T 'Velocità normale'}"
+                            Command="{Binding Queue.NormalSpeedCommand}" ToolTip="{local:T 'Riprendi subito a scaricare alla velocità normale'}"/>
                     <TextBlock Text="&#xE916;" Style="{StaticResource Glyph}" Foreground="{StaticResource WarningBrush}"/>
-                    <TextBlock Text="{Binding Queue.PauseText}" Margin="10,0,0,0" Foreground="{StaticResource WarningBrush}" FontSize="13" TextWrapping="Wrap"
+                    <TextBlock Text="{Binding Queue.ThrottleText}" Margin="10,0,0,0" Foreground="{StaticResource WarningBrush}" FontSize="13" TextWrapping="Wrap"
                                VerticalAlignment="Center"/>
                 </DockPanel>
             </Border>

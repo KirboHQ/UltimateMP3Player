@@ -72,16 +72,17 @@
                                                        HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsAdd, Converter={StaticResource InvBoolVis}}"/>
                                             <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="34" Foreground="{StaticResource SubTextBrush}"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsAdd, Converter={StaticResource BoolVis}}"/>
-                                            <Ellipse Visibility="{Binding Avatar, Converter={StaticResource NotNullVis}}">
+                                            <!-- the photo sits inside a ring of the profile colour -->
+                                            <Ellipse Margin="5" Visibility="{Binding Avatar, Converter={StaticResource NotNullVis}}">
                                                 <Ellipse.Fill>
                                                     <ImageBrush ImageSource="{Binding Avatar}" Stretch="UniformToFill"/>
                                                 </Ellipse.Fill>
                                             </Ellipse>
-                                            <Ellipse x:Name="Ring" Stroke="White" StrokeThickness="3" Opacity="0"/>
+                                            <Ellipse x:Name="Ring" Stroke="White" StrokeThickness="3" Margin="-5" Opacity="0"/>
                                             <Button x:Name="Edit" Style="{StaticResource PlayButton}" Width="34" Height="34" FontSize="13" Content="&#xE70F;"
                                                     HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="Edit_Click" Opacity="0.85"
                                                     ToolTip="{local:T 'Modifica o elimina il profilo'}"
-                                                    AutomationProperties.Name="{Binding Name}"
+                                                    AutomationProperties.Name="{Binding Name, StringFormat={}{0} ✎}"
                                                     Visibility="{Binding IsAdd, Converter={StaticResource InvBoolVis}}"/>
                                         </Grid>
                                         <TextBlock Text="{Binding Name}" HorizontalAlignment="Center" Margin="0,12,0,0" FontSize="15" FontWeight="SemiBold"
@@ -121,7 +122,7 @@
                             <Grid Width="88" Height="88">
                                 <Ellipse x:Name="EditColorDisc"/>
                                 <TextBlock x:Name="EditInitial" FontSize="36" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Ellipse x:Name="EditAvatar"/>
+                                <Ellipse x:Name="EditAvatar" Margin="5"/>
                             </Grid>
                             <StackPanel Grid.Column="1" Margin="18,0,0,0" VerticalAlignment="Center">
                                 <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Click="PickAvatar_Click">
@@ -146,10 +147,23 @@
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid Width="34" Height="34" Margin="0,0,8,8" Cursor="Hand" MouseLeftButtonUp="Swatch_Click" Tag="{Binding}">
-                                        <Ellipse Fill="{Binding}"/>
+                                <DataTemplate DataType="{x:Type views:ColorSwatch}">
+                                    <Grid x:Name="Swatch" Width="38" Height="38" Margin="0,0,6,6" Cursor="Hand" Background="Transparent"
+                                          MouseLeftButtonUp="Swatch_Click">
+                                        <Ellipse x:Name="Ring" Stroke="{StaticResource TextBrush}" StrokeThickness="2" Opacity="0"/>
+                                        <Ellipse Margin="5" Fill="{Binding Brush}"/>
+                                        <TextBlock x:Name="Check" Text="&#xE73E;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="White"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
                                     </Grid>
+                                    <DataTemplate.Triggers>
+                                        <Trigger SourceName="Swatch" Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Ring" Property="Opacity" Value="0.45"/>
+                                        </Trigger>
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter TargetName="Ring" Property="Opacity" Value="1"/>
+                                            <Setter TargetName="Check" Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

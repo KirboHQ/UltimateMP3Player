@@ -52,6 +52,85 @@ public sealed class AnimatedContent : ContentControl
     }
 }
 
+// Cards in equal columns that fill the width: as many as fit at MinItemWidth, then widened (no ragged gap on the right).
+public sealed class CardGrid : Panel
+{
+    public static readonly DependencyProperty MinItemWidthProperty = DependencyProperty.Register(nameof(MinItemWidth), typeof(double),
+        typeof(CardGrid), new FrameworkPropertyMetadata(176.0, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
+    public static readonly DependencyProperty GapProperty = DependencyProperty.Register(nameof(Gap), typeof(double),
+        typeof(CardGrid), new FrameworkPropertyMetadata(12.0, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
+    // 0 = all rows; otherwise the cards that don't fit are left out.
+    public static readonly DependencyProperty MaxRowsProperty = DependencyProperty.Register(nameof(MaxRows), typeof(int),
+        typeof(CardGrid), new FrameworkPropertyMetadata(0, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
+    public double MinItemWidth { get => (double)GetValue(MinItemWidthProperty); set => SetValue(MinItemWidthProperty, value); }
+    public double Gap { get => (double)GetValue(GapProperty); set => SetValue(GapProperty, value); }
+    public int MaxRows { get => (int)GetValue(MaxRowsProperty); set => SetValue(MaxRowsProperty, value); }
+
+    private double _rowHeight;
+
+    private int Limit(int cols) => MaxRows > 0 ? MaxRows * cols : int.MaxValue;
+
+    private (int Cols, double ItemWidth) Columns(double width)
+    {
+        if (double.IsInfinity(width)) return (Math.Max(1, InternalChildren.Count), MinItemWidth);
+        int cols = Math.Max(1, (int)((width + Gap) / (MinItemWidth + Gap)));
+        return (cols, Math.Max(0, (width - Gap * (cols - 1)) / cols));
+    }
+
+    // Every row as tall as the tallest card, so they all line up.
+    protected override Size MeasureOverride(Size available)
+    {
+        var (cols, itemW) = Columns(available.Width);
+        _rowHeight = 0;
+        int count = 0, limit = Limit(cols);
+        foreach (UIElement child in InternalChildren)
+        {
+            child.Measure(new Size(itemW, double.PositiveInfinity));
+            if (child.Visibility == Visibility.Collapsed || count == limit) continue;
+            _rowHeight = Math.Max(_rowHeight, child.DesiredSize.Height);
+            count++;
+        }
+        if (count == 0) return new Size();
+        int rows = (count + cols - 1) / cols;
+        double w = double.IsInfinity(available.Width) ? cols * itemW + (cols - 1) * Gap : available.Width;
+        return new Size(w, rows * _rowHeight + (rows - 1) * Gap);
+    }
+
+    protected override Size ArrangeOverride(Size final)
+    {
+        var (cols, itemW) = Columns(final.Width);
+        int i = 0, limit = Limit(cols);
+        foreach (UIElement child in InternalChildren)
+        {
+            if (child.Visibility == Visibility.Collapsed) continue;
+            // Past the last row: a zero-size slot hides it.
+            child.Arrange(i < limit ? new Rect(i % cols * (itemW + Gap), i / cols * (_rowHeight + Gap), itemW, _rowHeight) : new Rect());
+            i++;
+        }
+        return final;
+    }
+}
+
+// As tall as it is wide: card covers that grow with the grid.
+public sealed class SquareBox : Decorator
+{
+    protected override Size MeasureOverride(Size constraint)
+    {
+        double side = double.IsInfinity(constraint.Width) ? 152 : constraint.Width;
+        Child?.Measure(new Size(side, side));
+        return new Size(side, side);
+    }
+
+    protected override Size ArrangeOverride(Size size)
+    {
+        Child?.Arrange(new Rect(size));
+        return size;
+    }
+}
+
 // Cards in as many columns as fit, each into the shortest one.
 public sealed class MasonryPanel : Panel
 {

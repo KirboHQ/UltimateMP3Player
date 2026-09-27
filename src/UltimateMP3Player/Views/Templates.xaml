@@ -2,6 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:local="clr-namespace:UltimateMP3Player"
                     xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+                    xmlns:views="clr-namespace:UltimateMP3Player.Views"
                     x:Class="UltimateMP3Player.Views.Templates">
 
     <!-- ============================================================ covers -->
@@ -229,20 +230,22 @@
     <!-- ============================================================ cards -->
 
     <DataTemplate x:Key="TrackCard" DataType="{x:Type vm:TrackViewModel}">
-        <Border x:Name="Card" Width="176" CornerRadius="12" Padding="12" Margin="0,0,12,12" Background="{StaticResource SurfaceBrush}"
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{StaticResource SurfaceBrush}"
                 Cursor="Hand" MouseRightButtonUp="Card_RightClick">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                               CommandParameter="{Binding}"/>
             </Border.InputBindings>
             <StackPanel>
-                <Grid Width="152" Height="152">
-                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource TrackCoverMedium}"/>
-                    <Border x:Name="PlayDisc" Width="44" Height="44" CornerRadius="22" Background="{DynamicResource AccentGradient}"
-                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0">
-                        <TextBlock x:Name="PlayIco" Text="&#xE768;" Style="{StaticResource Glyph}" Foreground="{DynamicResource OnAccentBrush}" FontSize="16" HorizontalAlignment="Center"/>
-                    </Border>
-                </Grid>
+                <views:SquareBox>
+                    <Grid>
+                        <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource TrackCoverMedium}"/>
+                        <Border x:Name="PlayDisc" Width="44" Height="44" CornerRadius="22" Background="{DynamicResource AccentGradient}"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0">
+                            <TextBlock x:Name="PlayIco" Text="&#xE768;" Style="{StaticResource Glyph}" Foreground="{DynamicResource OnAccentBrush}" FontSize="16" HorizontalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                </views:SquareBox>
                 <TextBlock x:Name="Title" Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
@@ -263,20 +266,22 @@
     </DataTemplate>
 
     <DataTemplate x:Key="PlaylistCard" DataType="{x:Type vm:PlaylistViewModel}">
-        <Border x:Name="Card" Width="176" CornerRadius="12" Padding="12" Margin="0,0,12,12" Background="{StaticResource SurfaceBrush}"
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{StaticResource SurfaceBrush}"
                 Cursor="Hand" MouseRightButtonUp="Playlist_RightClick">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                               CommandParameter="{Binding}"/>
             </Border.InputBindings>
             <StackPanel>
-                <Grid Width="152" Height="152">
-                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
-                    <Button x:Name="PlayDisc" Style="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="16" Content="&#xE768;"
-                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
-                            Command="{Binding DataContext.PlayPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                            CommandParameter="{Binding}" ToolTip="{local:T Riproduci}"/>
-                </Grid>
+                <views:SquareBox>
+                    <Grid>
+                        <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
+                        <Button x:Name="PlayDisc" Style="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="16" Content="&#xE768;"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
+                                Command="{Binding DataContext.PlayPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                CommandParameter="{Binding}" ToolTip="{local:T Riproduci}"/>
+                    </Grid>
+                </views:SquareBox>
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
@@ -289,7 +294,7 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
-    <ItemsPanelTemplate x:Key="WrapPanelTemplate">
-        <WrapPanel/>
+    <ItemsPanelTemplate x:Key="CardGridTemplate">
+        <views:CardGrid/>
     </ItemsPanelTemplate>
 </ResourceDictionary>

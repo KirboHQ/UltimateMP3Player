@@ -503,5 +503,12 @@ public static partial class L
         ["webm"] = "webm",
         ["YouTube chiede di confermare che non sei un bot."] = "YouTube is asking you to confirm you're not a bot.",
         ["yt-dlp non ha prodotto alcun file."] = "yt-dlp didn't produce any file.",
+        ["Trascina qui per togliere"] = "Drop here to remove",
+        ["In attesa: {0} sta limitando i download"] = "Waiting: {0} is limiting downloads",
+        ["{0} sta limitando i download: riprendo tra {1}, più lentamente"] = "{0} is limiting downloads: resuming in {1}, more slowly",
+        ["{0}: download rallentati per evitare nuovi blocchi"] = "{0}: downloads slowed down to avoid new blocks",
+        ["Gli altri siti continuano normalmente."] = "Other sites keep going normally.",
+        ["Velocità normale"] = "Normal speed",
+        ["Riprendi subito a scaricare alla velocità normale"] = "Go back to normal download speed right away",
     };
 }

@@ -136,6 +136,8 @@ public sealed class DownloadJobViewModel : Observable
     }
 
     public MediaItem Item { get; private set; }
+    // Rate limits apply per service ("YouTube", "SoundCloud"...).
+    public string Service => Sites.ServiceOf(Item);
     public DownloadBatch Batch { get; }
     public int Index { get; }
     public bool WantVideo { get; }
@@ -246,11 +248,16 @@ public sealed class DownloadJobViewModel : Observable
         var s = _queue.Host.Settings;
         var req = new TrackRequest(Item, WantVideo, s.VideoMaxRes, s.AudioFormat, s.MusicDir, s.CookiesBrowserOrNull, _originalKeys);
         var ui = Application.Current.Dispatcher;
+        var service = Service;
+        bool gentle = _queue.IsGentle(service);
         try
         {
             Directory.CreateDirectory(s.MusicDir);
-            var res = await Task.Run(() => TrackDownloader.RunAsync(_queue.Host.Library, req,
-                p => ui.BeginInvoke(() => Apply(p)), ct), ct);
+            var res = await Task.Run(() =>
+            {
+                YtDlp.Gentle = gentle;
+                return TrackDownloader.RunAsync(_queue.Host.Library, req, p => ui.BeginInvoke(() => Apply(p)), ct);
+            }, ct);
             Result = res.Track;
             Batch.Place(Index, res.Track.Id);
             Percent = 100;
@@ -263,7 +270,7 @@ public sealed class DownloadJobViewModel : Observable
             };
             _thumbRequested = false;
             OnChanged(nameof(Title), nameof(Subtitle), nameof(Thumb));
-            _queue.OnSucceeded();
+            _queue.OnSucceeded(service);
         }
         catch (OperationCanceledException)
         {
@@ -275,9 +282,9 @@ public sealed class DownloadJobViewModel : Observable
             // Back in the queue: it restarts on its own when the site allows it.
             State = JobState.Queued;
             Indeterminate = true;
-            StatusText = L.T("In attesa: il sito sta limitando i download");
+            StatusText = L.F("In attesa: {0} sta limitando i download", service);
             Details = ex.Details.Trim();
-            _queue.OnRateLimited();
+            _queue.OnRateLimited(service);
         }
         catch (EngineException ex)
         {
@@ -355,11 +362,19 @@ public sealed class DownloadJobViewModel : Observable
 // All downloads; they survive profile switches and closing.
 public sealed class DownloadQueue : Observable
 {
+    // One service that answered "too many requests".
+    private sealed class Throttle
+    {
+        public DateTime PauseUntil;
+        public DateTime LastLimit;
+        public DateTime LastStart = DateTime.MinValue;
+        public int Strikes;
+    }
+
+    private static readonly TimeSpan CalmAfter = TimeSpan.FromMinutes(10);
     private readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
-    private DateTime _pauseUntil = DateTime.MinValue;
+    private readonly Dictionary<string, Throttle> _throttles = new(StringComparer.OrdinalIgnoreCase);
     private DateTime _lastStart = DateTime.MinValue;
-    private DateTime _lastLimit = DateTime.MinValue;
-    private int _strikes;
 
     public DownloadQueue(AppHost host)
     {
@@ -372,9 +387,9 @@ public sealed class DownloadQueue : Observable
         {
             foreach (var j in Jobs.Where(j => j.CanRetryYouTube).ToList()) j.RetryOnYouTube();
         });
-        ResumeNowCommand = new RelayCommand(() =>
+        NormalSpeedCommand = new RelayCommand(() =>
         {
-            _pauseUntil = DateTime.MinValue;
+            _throttles.Clear();
             Pump();
         });
         Jobs.CollectionChanged += (_, _) => Notify();
@@ -388,7 +403,7 @@ public sealed class DownloadQueue : Observable
     public ICommand RetryFailedCommand { get; }
     public ICommand CancelAllCommand { get; }
     public ICommand RetryFailedOnYouTubeCommand { get; }
-    public ICommand ResumeNowCommand { get; }
+    public ICommand NormalSpeedCommand { get; }
 
     public event Action? Finished;
 
@@ -401,47 +416,65 @@ public sealed class DownloadQueue : Observable
 
     // ------------------------------------------------------------------ pacing
 
-    public bool IsPaused => DateTime.Now < _pauseUntil;
+    // Slowed down (one at a time, pauses between requests) until it stays calm for a while.
+    public bool IsGentle(string service) => _throttles.ContainsKey(service);
 
-    public string? PauseText => IsPaused
-        ? L.F("Il sito sta limitando i download (troppe richieste): riprendo da solo tra {0}, più lentamente.",
-            Text.Duration(Math.Max(1, (_pauseUntil - DateTime.Now).TotalSeconds)))
-        : null;
+    private bool IsPaused(string service) => _throttles.TryGetValue(service, out var t) && DateTime.Now < t.PauseUntil;
 
-    // Too many requests: everyone waits, longer each time.
-    internal void OnRateLimited()
+    public bool IsThrottled => _throttles.Count > 0;
+
+    public string? ThrottleText
     {
-        _strikes++;
-        _lastLimit = DateTime.Now;
-        var wait = TimeSpan.FromSeconds(Math.Min(900, 60 * Math.Pow(2, _strikes - 1)));
-        if (DateTime.Now + wait > _pauseUntil) _pauseUntil = DateTime.Now + wait;
-        YtDlp.Gentle = true;
+        get
+        {
+            if (_throttles.Count == 0) return null;
+            var parts = _throttles.OrderBy(t => t.Key).Select(t => DateTime.Now < t.Value.PauseUntil
+                ? L.F("{0} sta limitando i download: riprendo tra {1}, più lentamente", t.Key, Text.Duration(Math.Max(1, (t.Value.PauseUntil - DateTime.Now).TotalSeconds)))
+                : L.F("{0}: download rallentati per evitare nuovi blocchi", t.Key));
+            return string.Join("  ·  ", parts) + ". " + L.T("Gli altri siti continuano normalmente.");
+        }
     }
 
-    internal void OnSucceeded() => _strikes = 0;
+    // Too many requests: only that service waits, longer each time.
+    internal void OnRateLimited(string service)
+    {
+        if (!_throttles.TryGetValue(service, out var t)) _throttles[service] = t = new Throttle();
+        t.Strikes++;
+        t.LastLimit = DateTime.Now;
+        var wait = TimeSpan.FromSeconds(Math.Min(900, 60 * Math.Pow(2, t.Strikes - 1)));
+        if (DateTime.Now + wait > t.PauseUntil) t.PauseUntil = DateTime.Now + wait;
+    }
+
+    internal void OnSucceeded(string service)
+    {
+        if (_throttles.TryGetValue(service, out var t)) t.Strikes = 0;
+    }
 
     public void Pump()
     {
         // Calm for a while: back to normal speed.
-        if (YtDlp.Gentle && DateTime.Now - _lastLimit > TimeSpan.FromMinutes(20)) YtDlp.Gentle = false;
-        bool gentle = YtDlp.Gentle;
-        int limit = gentle ? 1 : Math.Clamp(Host.Settings.MaxParallel, 1, 6);
-        var gap = TimeSpan.FromSeconds(gentle ? 5 : 0.7);
+        foreach (var calm in _throttles.Where(t => DateTime.Now - t.Value.LastLimit > CalmAfter).Select(t => t.Key).ToList())
+            _throttles.Remove(calm);
+        int limit = Math.Clamp(Host.Settings.MaxParallel, 1, 6);
         int running = Jobs.Count(j => j.State == JobState.Running);
         bool waiting = false;
-        if (!IsPaused)
+        foreach (var j in Jobs.Where(j => j.State == JobState.Queued).ToList())
         {
-            foreach (var j in Jobs.Where(j => j.State == JobState.Queued).ToList())
+            if (running >= limit) break;
+            var service = j.Service;
+            if (_throttles.TryGetValue(service, out var t))
             {
-                if (running >= limit) break;
-                if (DateTime.Now - _lastStart < gap) { waiting = true; break; }
-                j.Start();
-                _lastStart = DateTime.Now;
-                running++;
+                if (DateTime.Now < t.PauseUntil) { waiting = true; continue; }
+                if (Jobs.Any(o => o.State == JobState.Running && o.Service.Equals(service, StringComparison.OrdinalIgnoreCase))) continue;
+                if (DateTime.Now - t.LastStart < TimeSpan.FromSeconds(5)) { waiting = true; continue; }
+                t.LastStart = DateTime.Now;
             }
+            else if (DateTime.Now - _lastStart < TimeSpan.FromSeconds(0.7)) { waiting = true; break; }
+            j.Start();
+            _lastStart = DateTime.Now;
+            running++;
         }
-        bool queued = Jobs.Any(j => j.State == JobState.Queued);
-        if ((IsPaused || waiting) && queued) _tick.Start();
+        if (IsThrottled || (waiting && Jobs.Any(j => j.State == JobState.Queued))) _tick.Start();
         else _tick.Stop();
         Notify();
         if (!HasActive) Finished?.Invoke();
@@ -490,7 +523,7 @@ public sealed class DownloadQueue : Observable
     }
 
     private void Notify() => OnChanged(nameof(HasActive), nameof(HasJobs), nameof(HasDone), nameof(HasFailed), nameof(ActiveCount), nameof(Summary),
-        nameof(HasFailedForYouTube), nameof(IsPaused), nameof(PauseText));
+        nameof(HasFailedForYouTube), nameof(IsThrottled), nameof(ThrottleText));
 }
 
 public sealed class LinkItemViewModel : Observable
