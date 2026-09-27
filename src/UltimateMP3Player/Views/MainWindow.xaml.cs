@@ -71,7 +71,12 @@ public partial class MainWindow : Window
         switch (e.Key)
         {
             case Key.Space when !inText:
-                vm.Player.PlayPause();
+                vm.TogglePlay();
+                e.Handled = true;
+                break;
+            // DJ "Tap BPM" tab: T taps the tempo.
+            case Key.T when !inText && !e.IsRepeat && vm.Page is DjViewModel { TapMode: true } dj:
+                dj.Tap();
                 e.Handled = true;
                 break;
             case Key.Right when ctrl:

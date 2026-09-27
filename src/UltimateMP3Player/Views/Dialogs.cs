@@ -16,11 +16,12 @@ public static class Dialogs
     public static string? Prompt(string title, string label, string initial)
         => Show(title, null, new[] { (label, initial) }, L.T("Salva"), false)?[0];
 
-    public static (string Title, string Artist, string Album)? EditTrack(Track t)
+    public static (string Title, string Artist, string Album, string Bpm)? EditTrack(Track t)
     {
+        var bpm = t.Bpm?.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) ?? "";
         var r = Show(L.T("Modifica informazioni"), null,
-            new[] { (L.T("Titolo"), t.Title), (L.T("Artista"), t.Artist ?? ""), (L.T("Album"), t.Album ?? "") }, L.T("Salva"), false);
-        return r == null ? null : (r[0], r[1], r[2]);
+            new[] { (L.T("Titolo"), t.Title), (L.T("Artista"), t.Artist ?? ""), (L.T("Album"), t.Album ?? ""), ("BPM", bpm) }, L.T("Salva"), false);
+        return r == null ? null : (r[0], r[1], r[2], r[3]);
     }
 
     private static string[]? Show(string title, string? message, (string Label, string Value)[] fields, string ok, bool danger)

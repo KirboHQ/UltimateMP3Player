@@ -27,6 +27,10 @@ public sealed class Track
     public double? Loudness { get; set; }
     // Sample peak (dBFS), caps the normalization boost.
     public double? Peak { get; set; }
+    // Beats per minute: detected, tapped or typed.
+    public double? Bpm { get; set; }
+    // Where the beat grid starts (seconds): detected, or set with "1st beat here".
+    public double? BeatOffset { get; set; }
     public DateTime Added { get; set; } = DateTime.Now;
 
     public bool HasVideo => !string.IsNullOrEmpty(VideoPath);

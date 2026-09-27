@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -12,7 +13,13 @@ public sealed class WaveformBar : FrameworkElement
         new PropertyMetadata(null, (d, _) => ((WaveformBar)d).Rebuild()));
 
     public static readonly DependencyProperty ProgressProperty = DependencyProperty.Register(nameof(Progress), typeof(double), typeof(WaveformBar),
-        new PropertyMetadata(0.0, (d, _) => ((WaveformBar)d).UpdateClips()));
+        new PropertyMetadata(0.0, (d, _) => ((WaveformBar)d).OnProgress()));
+
+    public static readonly DependencyProperty IsPlayingProperty = DependencyProperty.Register(nameof(IsPlaying), typeof(bool), typeof(WaveformBar),
+        new PropertyMetadata(false, (d, _) => ((WaveformBar)d).UpdateClock()));
+
+    public static readonly DependencyProperty DurationProperty = DependencyProperty.Register(nameof(Duration), typeof(double), typeof(WaveformBar),
+        new PropertyMetadata(0.0, (d, _) => ((WaveformBar)d).UpdateClock()));
 
     public static readonly DependencyProperty PlayedBrushProperty = DependencyProperty.Register(nameof(PlayedBrush), typeof(Brush), typeof(WaveformBar),
         new PropertyMetadata(Brushes.MediumPurple, (d, _) => ((WaveformBar)d).Rebuild()));
@@ -27,6 +34,9 @@ public sealed class WaveformBar : FrameworkElement
 
     public byte[]? Peaks { get => (byte[]?)GetValue(PeaksProperty); set => SetValue(PeaksProperty, value); }
     public double Progress { get => (double)GetValue(ProgressProperty); set => SetValue(ProgressProperty, value); }
+    public bool IsPlaying { get => (bool)GetValue(IsPlayingProperty); set => SetValue(IsPlayingProperty, value); }
+    // Seconds; with IsPlaying, lets the bar move on between the player's position updates.
+    public double Duration { get => (double)GetValue(DurationProperty); set => SetValue(DurationProperty, value); }
     public Brush PlayedBrush { get => (Brush)GetValue(PlayedBrushProperty); set => SetValue(PlayedBrushProperty, value); }
     public Brush RestBrush { get => (Brush)GetValue(RestBrushProperty); set => SetValue(RestBrushProperty, value); }
     public double BarWidth { get => (double)GetValue(BarWidthProperty); set => SetValue(BarWidthProperty, value); }
@@ -50,6 +60,53 @@ public sealed class WaveformBar : FrameworkElement
         _hover.Clip = _hoverClip;
         _played.Clip = _playedClip;
         _children = new VisualCollection(this) { _rest, _hover, _played };
+        IsVisibleChanged += (_, _) => UpdateClock();
+    }
+
+    // ------------------------------------------------------------------ smooth progress
+
+    // The player updates the position 4 times a second; in between the played part runs on by itself every frame
+    // and glides onto each new value (a seek or a new song jumps straight there).
+    private double _shown;
+    private double _base;
+    private long _baseAt, _frameAt;
+    private bool _ticking;
+
+    private void OnProgress()
+    {
+        _base = Progress;
+        _baseAt = Stopwatch.GetTimestamp();
+        if (!_ticking || Math.Abs(_base - _shown) * Duration > 0.6) _shown = _base;
+        UpdateClips();
+    }
+
+    private void UpdateClock()
+    {
+        bool want = IsPlaying && Duration > 0 && IsVisible;
+        if (want == _ticking) return;
+        _ticking = want;
+        if (want)
+        {
+            _baseAt = _frameAt = Stopwatch.GetTimestamp();
+            CompositionTarget.Rendering += OnFrame;
+        }
+        else
+        {
+            CompositionTarget.Rendering -= OnFrame;
+            _shown = Progress;
+            UpdateClips();
+        }
+    }
+
+    private void OnFrame(object? sender, EventArgs e)
+    {
+        long now = Stopwatch.GetTimestamp();
+        double f = Stopwatch.Frequency, dt = Math.Min(0.1, (now - _frameAt) / f);
+        _frameAt = now;
+        double target = Math.Min(1, _base + (now - _baseAt) / f / Duration);
+        double next = _shown + dt / Duration;
+        _shown = Math.Clamp(next + (target - next) * (1 - Math.Exp(-dt / 0.15)), 0, 1);
+        UpdateClips();
     }
 
     private static Brush Freeze(Brush b)
@@ -134,7 +191,7 @@ public sealed class WaveformBar : FrameworkElement
     private void UpdateClips()
     {
         double w = RenderSize.Width, h = RenderSize.Height;
-        double played = Math.Clamp(_dragging && _hoverAt is double d ? d : Progress, 0, 1) * w;
+        double played = Math.Clamp(_dragging && _hoverAt is double d ? d : _shown, 0, 1) * w;
         _playedClip.Rect = new Rect(0, 0, played, h);
         if (_hoverAt is double hv && !_dragging && hv * w > played) _hoverClip.Rect = new Rect(played, 0, hv * w - played, h);
         else _hoverClip.Rect = Rect.Empty;

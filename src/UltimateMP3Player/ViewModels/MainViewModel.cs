@@ -99,6 +99,29 @@ public sealed class MainViewModel : Observable
     public NowPlayingViewModel NowPlaying { get; }
     private SettingsViewModel? _settings;
     public SettingsViewModel Settings => _settings ??= new SettingsViewModel(this);
+    private DjViewModel? _dj;
+    public DjViewModel Dj => _dj ??= new DjViewModel(this);
+
+    // Space, media keys, tray: on the DJ page they drive both decks, elsewhere the player.
+    public void TogglePlay()
+    {
+        if (Page is DjViewModel dj) dj.ToggleAll();
+        else Player.PlayPause();
+    }
+
+    public void SetPlaying(bool on)
+    {
+        if (Page is DjViewModel dj) { if (dj.AnyPlaying != on) dj.ToggleAll(); }
+        else if (on) Player.Play();
+        else Player.Pause();
+    }
+
+    // "Load in the DJ" from a song menu: opens the page with the song on that deck.
+    public void LoadInDj(TrackViewModel t, bool deckB)
+    {
+        Dj.Load(t, deckB ? Dj.B : Dj.A);
+        Navigate(Dj);
+    }
     public DownloadQueue Queue => Host.Downloads;
 
     public string ProfileName => Profile.Info.Name;
@@ -145,6 +168,7 @@ public sealed class MainViewModel : Observable
     {
         Player.Detach();
         Downloads.Detach();
+        _dj?.Detach();
         _refreshTimer.Stop();
         _searchTimer.Stop();
         _toastTimer.Stop();
@@ -177,7 +201,11 @@ public sealed class MainViewModel : Observable
         get => _page;
         private set
         {
+            var old = _page;
             if (!Set(ref _page, value)) return;
+            if (old is DjViewModel leaving) leaving.Leave();
+            if (value is DjViewModel entering) entering.Enter();
+            OnChanged(nameof(ShowPlayerBar));
             Player.UpNextVisible = value == NowPlaying;
             foreach (var p in Playlists) p.IsSelected = value is PlaylistPageViewModel pp && pp.Vm == p;
             foreach (var t in Tags) t.IsSelected = value is LibraryViewModel { Tag: { } tag } && tag == t;
@@ -193,6 +221,7 @@ public sealed class MainViewModel : Observable
         LibraryViewModel { Unsorted: true } => "unsorted",
         LibraryViewModel => "library",
         DownloadsPageViewModel => "downloads",
+        DjViewModel => "dj",
         SettingsViewModel => "settings",
         NowPlayingViewModel => "nowplaying",
         SearchViewModel => "search",
@@ -203,6 +232,9 @@ public sealed class MainViewModel : Observable
     public bool IsLibrary { get => Section == "library"; set { if (value) Navigate(LibraryPage); } }
     public bool IsUnsorted { get => Section == "unsorted"; set { if (value) Navigate(UnsortedPage); } }
     public bool IsDownloads { get => Section == "downloads"; set { if (value) Navigate(Downloads); } }
+    public bool IsDj { get => Section == "dj"; set { if (value) Navigate(Dj); } }
+    // On the DJ page the decks are the player.
+    public bool ShowPlayerBar => Page is not DjViewModel;
     public bool IsSettings { get => Section == "settings"; set { if (value) GoSettings(); } }
     public bool IsNowPlaying => Section == "nowplaying";
 
@@ -219,7 +251,7 @@ public sealed class MainViewModel : Observable
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private void OnNavChanged() => OnChanged(nameof(IsHome), nameof(IsLibrary), nameof(IsUnsorted), nameof(IsDownloads), nameof(IsSettings));
+    private void OnNavChanged() => OnChanged(nameof(IsHome), nameof(IsLibrary), nameof(IsUnsorted), nameof(IsDownloads), nameof(IsDj), nameof(IsSettings));
 
     private void GoBack()
     {
@@ -404,7 +436,7 @@ public sealed class MainViewModel : Observable
 
     private void PlayPlaylist(PlaylistViewModel vm) => Player.PlayAll(new PlaylistPageViewModel(vm, this), Player.Shuffle);
 
-    private string NewPlaylistName() => L.F("La mia playlist n. {0}", Playlists.Count);
+    public string NewPlaylistName() => L.F("La mia playlist n. {0}", Playlists.Count);
 
     public Playlist? NewPlaylist(TrackViewModel? with)
     {
@@ -546,6 +578,8 @@ public sealed class MainViewModel : Observable
         t.T.Title = string.IsNullOrWhiteSpace(r.Value.Title) ? t.T.Title : r.Value.Title.Trim();
         t.T.Artist = string.IsNullOrWhiteSpace(r.Value.Artist) ? null : r.Value.Artist.Trim();
         t.T.Album = string.IsNullOrWhiteSpace(r.Value.Album) ? null : r.Value.Album.Trim();
+        t.T.Bpm = double.TryParse(r.Value.Bpm.Trim().Replace(',', '.'), System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var bpm) && bpm is > 20 and < 400 ? Math.Round(bpm, 2) : null;
         Library.Changed(t.T);
     }
 

@@ -104,6 +104,7 @@ public static class Menus
             menu.Items.Add(Item(L.F("Rimuovi da «{0}»", Short(pl.Name)), "", () => main.RemoveFromPlaylist(t, pl)));
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(TagSubmenu(new[] { t }));
+        menu.Items.Add(DjSubmenu(t));
         menu.Items.Add(new Separator());
         AddEditItems(menu, t);
         return menu;
@@ -149,6 +150,15 @@ public static class Menus
         var m = new MenuItem { Header = header };
         Ui.SetGlyph(m, glyph);
         return m;
+    }
+
+    public static MenuItem DjSubmenu(TrackViewModel t)
+    {
+        var sub = new MenuItem { Header = L.T("Carica nel DJ") };
+        Ui.SetGlyph(sub, "");
+        sub.Items.Add(Item(L.T("Traccia A"), "", () => t.Main.LoadInDj(t, false)));
+        sub.Items.Add(Item(L.T("Traccia B"), "", () => t.Main.LoadInDj(t, true)));
+        return sub;
     }
 
     public static MenuItem TagSubmenu(IReadOnlyList<TrackViewModel> tracks)

@@ -43,13 +43,13 @@ public sealed class AppHost : Observable
         Updates = new Updater();
         Presence = new DiscordPresence { Enabled = Settings.DiscordPresence };
         Media = new MediaControls(_ui);
-        Media.PlayPressed += () => Session?.Player.Play();
-        Media.PausePressed += () => Session?.Player.Pause();
+        Media.PlayPressed += () => Session?.SetPlaying(true);
+        Media.PausePressed += () => Session?.SetPlaying(false);
         Media.NextPressed += () => Session?.Player.NextCommand.Execute(null);
         Media.PreviousPressed += () => Session?.Player.PreviousCommand.Execute(null);
         Media.SeekRequested += t => Session?.Player.Seek(t.TotalSeconds);
         Tray = new TrayIcon(ShowWindow,
-            () => Session?.Player.PlayPause(),
+            () => Session?.TogglePlay(),
             () => Session?.Player.NextCommand.Execute(null),
             () => Session?.Player.PreviousCommand.Execute(null),
             () => Exit());
