@@ -69,6 +69,23 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopico
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+; Self-update (silent, /relaunch=1): start the app again.
+Filename: "{app}\{#AppExe}"; Parameters: "{code:RelaunchArgs}"; Flags: nowait; Check: IsRelaunch
+
+[Code]
+function IsRelaunch: Boolean;
+begin
+  Result := ExpandConstant('{param:relaunch|0}') = '1';
+end;
+
+function RelaunchArgs(Param: String): String;
+begin
+  Result := '';
+  if ExpandConstant('{param:profile|}') <> '' then
+    Result := '--profile ' + ExpandConstant('{param:profile|}');
+  if ExpandConstant('{param:bg|0}') = '1' then
+    Result := Result + ' --background';
+end;
 
 [UninstallDelete]
 ; Files the app updated itself. Music and the library (playlists, profiles) are never touched.

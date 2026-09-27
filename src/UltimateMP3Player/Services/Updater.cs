@@ -2,18 +2,21 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Win32;
 using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.Services;
 
-public sealed record ReleaseInfo(Version Version, string Tag, string ExeUrl, long Size, string? Sha256, string PageUrl);
+// IsSetup: only the installer was attached to the release.
+public sealed record ReleaseInfo(Version Version, string Tag, string Url, string FileName, long Size, string? Sha256, bool IsSetup);
 
-// Self-update from the latest GitHub release: the exe is swapped in place.
+// Self-update from the latest GitHub release: swaps the exe, or runs the setup silently.
 public sealed class Updater : Observable
 {
     public const string AssetName = "UltimateMP3Player.exe";
+    private const string SetupPrefix = "UltimateMP3Player-Setup";
     private const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{3F6C2A71-9D4E-4B8A-A1C5-7E2D90B4F618}_is1";
 
     private Task<bool>? _running;
@@ -37,11 +40,16 @@ public sealed class Updater : Observable
 
     public bool IsBusy => _running is { IsCompleted: false };
 
-    // Leftovers of the previous swap.
+    // Leftovers of the previous update.
     public static void CleanUp()
     {
         try { File.Delete(Exe + ".old"); } catch { }
         try { File.Delete(NewExe); } catch { }
+        try
+        {
+            foreach (var f in Directory.EnumerateFiles(AppPaths.TempDir, SetupPrefix + "*.exe")) File.Delete(f);
+        }
+        catch { }
     }
 
     // Checks and downloads; true when a new version is ready.
@@ -64,18 +72,19 @@ public sealed class Updater : Observable
                 Status = manual ? L.F("Hai già l'ultima versione ({0}).", AppInfo.VersionText) : null;
                 return false;
             }
+            var target = release.IsSetup ? Path.Combine(AppPaths.TempDir, release.FileName) : NewExe;
             Status = L.F("Download della versione {0}…", release.Version.ToString(3));
-            await Http.DownloadFileAsync(release.ExeUrl, NewExe, null, (done, total) =>
+            await Http.DownloadFileAsync(release.Url, target, null, (done, total) =>
             {
                 if (total > 0) Status = L.F("Download della versione {0}… {1:0}%", release.Version.ToString(3), done * 100.0 / total.Value);
             }, CancellationToken.None);
-            if (!Verify(NewExe, release))
+            if (!Verify(target, release))
             {
-                try { File.Delete(NewExe); } catch { }
+                try { File.Delete(target); } catch { }
                 Status = L.T("Aggiornamento scaricato male: riprova più tardi.");
                 return false;
             }
-            _downloaded = NewExe;
+            _downloaded = target;
             Status = null;
             Ready = release;
             return true;
@@ -87,6 +96,7 @@ public sealed class Updater : Observable
         }
     }
 
+    // The bare exe if attached (smaller download), otherwise the setup.
     private static async Task<ReleaseInfo?> LatestAsync()
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{AppInfo.GitHubRepo}/releases/latest");
@@ -99,14 +109,19 @@ public sealed class Updater : Observable
         var root = doc.RootElement;
         var tag = root.GetProperty("tag_name").GetString() ?? "";
         if (!Version.TryParse(tag.TrimStart('v', 'V'), out var version)) return null;
+        ReleaseInfo? setup = null;
         foreach (var a in root.GetProperty("assets").EnumerateArray())
         {
-            if (!string.Equals(a.GetProperty("name").GetString(), AssetName, StringComparison.OrdinalIgnoreCase)) continue;
+            var name = a.GetProperty("name").GetString() ?? "";
+            bool exe = name.Equals(AssetName, StringComparison.OrdinalIgnoreCase);
+            bool isSetup = name.StartsWith(SetupPrefix, StringComparison.OrdinalIgnoreCase) && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+            if (!exe && !isSetup) continue;
             string? sha = a.TryGetProperty("digest", out var d) && d.GetString() is { } dg && dg.StartsWith("sha256:") ? dg[7..] : null;
-            return new ReleaseInfo(version, tag, a.GetProperty("browser_download_url").GetString()!, a.GetProperty("size").GetInt64(), sha,
-                root.GetProperty("html_url").GetString() ?? "");
+            var info = new ReleaseInfo(version, tag, a.GetProperty("browser_download_url").GetString()!, name, a.GetProperty("size").GetInt64(), sha, isSetup);
+            if (exe) return info;
+            setup = info;
         }
-        return null;
+        return setup;
     }
 
     private static bool Verify(string file, ReleaseInfo r)
@@ -118,34 +133,60 @@ public sealed class Updater : Observable
         return Convert.ToHexString(SHA256.HashData(s)).Equals(r.Sha256, StringComparison.OrdinalIgnoreCase);
     }
 
-    // Puts the new exe in place; the running one becomes .old.
-    public bool Swap()
+    // Installs the downloaded version; with relaunch the app starts again afterwards.
+    public bool Apply(bool relaunch, string? profileId, bool background)
     {
         if (_downloaded == null || Ready == null || !File.Exists(_downloaded)) return false;
+        bool ok = Ready.IsSetup ? RunSetup(relaunch, profileId, background) : Swap(relaunch, profileId, background);
+        if (ok) _downloaded = null;
+        return ok;
+    }
+
+    // The running exe can be renamed: the new one takes its place.
+    private bool Swap(bool relaunch, string? profileId, bool background)
+    {
         try
         {
             var old = Exe + ".old";
             try { File.Delete(old); } catch { }
             File.Move(Exe, old);
-            File.Move(_downloaded, Exe);
-            _downloaded = null;
+            File.Move(_downloaded!, Exe);
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey(UninstallKey, true);
-                key?.SetValue("DisplayVersion", Ready.Version.ToString(3));
+                key?.SetValue("DisplayVersion", Ready!.Version.ToString(3));
             }
             catch { }
+        }
+        catch { return false; }
+        if (relaunch)
+        {
+            var args = $"--wait {Environment.ProcessId}";
+            if (profileId != null) args += $" --profile {profileId}";
+            if (background) args += " --background";
+            try { Process.Start(new ProcessStartInfo(Exe, args) { UseShellExecute = false }); } catch { }
+        }
+        return true;
+    }
+
+    // Setup runs silently into the same folder once this process has exited.
+    private bool RunSetup(bool relaunch, string? profileId, bool background)
+    {
+        var args = $"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=\"{Path.GetDirectoryName(Exe)}\"";
+        if (relaunch) args += " /relaunch=1" + (profileId != null ? $" /profile={profileId}" : "") + (background ? " /bg=1" : "");
+        static string Quote(string s) => "'" + s.Replace("'", "''") + "'";
+        var script = $"Wait-Process -Id {Environment.ProcessId} -Timeout 60 -ErrorAction SilentlyContinue; " +
+                     $"Start-Process -FilePath {Quote(_downloaded!)} -ArgumentList {Quote(args)}";
+        try
+        {
+            Process.Start(new ProcessStartInfo("powershell.exe",
+                "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -EncodedCommand " + Convert.ToBase64String(Encoding.Unicode.GetBytes(script)))
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            });
             return true;
         }
         catch { return false; }
-    }
-
-    // Starts the updated exe once this process has exited.
-    public static void Relaunch(string? profileId, bool background)
-    {
-        var args = $"--wait {Environment.ProcessId}";
-        if (profileId != null) args += $" --profile {profileId}";
-        if (background) args += " --background";
-        try { Process.Start(new ProcessStartInfo(Exe, args) { UseShellExecute = false }); } catch { }
     }
 }

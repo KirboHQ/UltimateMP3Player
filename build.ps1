@@ -2,8 +2,8 @@
 #   .\build.ps1               portable app in .\app plus a Desktop shortcut
 #   .\build.ps1 -NoShortcut   same, without touching the Desktop
 #   .\build.ps1 -Installer    only the installer: installer\Output\UltimateMP3Player-Setup-<version>.exe
-#   .\build.ps1 -Release      the files for a GitHub release in .\dist: the installer and UltimateMP3Player.exe
-#                             (the exe is what the app downloads to update itself)
+#   .\build.ps1 -Release      the files for a GitHub release in .\dist: the installer (enough on its own) and
+#                             UltimateMP3Player.exe (optional: if attached, updates download 70 MB instead of the whole setup)
 # -Installer and -Release first update yt-dlp/gallery-dl in .\engines and need Inno Setup 6.
 # Engines are copied into .\app\engines only when missing, so versions updated by the app are kept.
 param([switch]$NoShortcut, [switch]$Installer, [switch]$Release)
@@ -61,7 +61,7 @@ if ($Installer -or $Release) {
     Get-ChildItem "$outDir\*.exe" | ForEach-Object {
         Write-Host ("{0} ({1:N0} MB)  sha256 {2}" -f $_.FullName, ($_.Length / 1MB), (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())
     }
-    if ($Release) { Write-Host "`nUpload both files to a new GitHub release tagged v$version." }
+    if ($Release) { Write-Host "`nNew GitHub release tagged v$version with the setup (optionally also UltimateMP3Player.exe for lighter updates)." }
     return
 }
 

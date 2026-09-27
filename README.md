@@ -39,12 +39,12 @@ Requirements: .NET 8 SDK, and for the installer Inno Setup 6. Put the external p
 |---|---|
 | `.\build.ps1` | Portable app in `app\` and a Desktop shortcut |
 | `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-Setup-<version>.exe` |
-| `.\build.ps1 -Release` | `dist\`: the setup and `UltimateMP3Player.exe` to attach to a GitHub release |
+| `.\build.ps1 -Release` | `dist\`: the setup to attach to a GitHub release (plus `UltimateMP3Player.exe`, optional, for lighter updates) |
 
 Two settings in `src\UltimateMP3Player\UltimateMP3Player.csproj`:
 
-- `<GitHubRepo>owner/repo</GitHubRepo>`: where the app looks for updates (the latest release must contain an asset
-  named `UltimateMP3Player.exe`).
+- `<GitHubRepo>owner/repo</GitHubRepo>`: where the app looks for updates. The latest release must contain the setup;
+  if it also contains `UltimateMP3Player.exe`, updates download only that (70 MB instead of the whole setup).
 - `<DiscordAppId>…</DiscordAppId>`: the Discord application used for Rich Presence.
 
 `UMP_DATA=<folder>` runs a test copy with its own data next to the normal one. `src\Mp3Cli` is a command line harness

@@ -243,7 +243,7 @@ public sealed class AppHost : Observable
         Settings.Save();
         try { Library.Flush(); } catch { }
         Profile.FlushAll();
-        if (Updates.IsReady) Updates.Swap();
+        if (Updates.IsReady) Updates.Apply(false, null, false);
         Presence.Dispose();
         Tray.Dispose();
         Media.Dispose();
@@ -338,9 +338,7 @@ public sealed class AppHost : Observable
         if (Downloads.HasActive &&
             !Dialogs.Confirm(L.T("Ci sono download in corso"), L.T("Vuoi interromperli e aggiornare adesso?"), L.T("Aggiorna"), false))
             return;
-        var profile = Session?.Profile.Info.Id;
-        if (!Updates.Swap()) return;
-        Updater.Relaunch(profile, background);
+        if (!Updates.Apply(true, Session?.Profile.Info.Id, background)) return;
         Exit(true);
     }
 
