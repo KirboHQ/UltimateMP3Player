@@ -78,7 +78,7 @@ public sealed class DjWave : FrameworkElement
         if (Overview && e.PropertyName == nameof(DjDeckViewModel.Position) && Duration > 0
             && Math.Abs(Deck!.Position / Duration * ActualWidth - _drawnX) < 0.5) return;
         if (e.PropertyName is nameof(DjDeckViewModel.Position) or nameof(DjDeckViewModel.Analysis) or nameof(DjDeckViewModel.Cue)
-            or nameof(DjDeckViewModel.TempoPercent) or nameof(DjDeckViewModel.HasTrack) or nameof(DjDeckViewModel.IsLoading) or nameof(DjDeckViewModel.Bpm)
+            or nameof(DjDeckViewModel.Rate) or nameof(DjDeckViewModel.HasTrack) or nameof(DjDeckViewModel.IsLoading) or nameof(DjDeckViewModel.Bpm)
             or nameof(DjDeckViewModel.FirstBeat))
             InvalidateVisual();
     }

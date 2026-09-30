@@ -124,6 +124,9 @@ public sealed class ProfileData
     public bool Normalize { get; set; } = true;
     public bool Crossfade { get; set; }
     public int CrossfadeSeconds { get; set; } = 6;
+    // Playback speed 0.5-2; SpeedPitch = the key follows it (like a record), otherwise it stays.
+    public double Speed { get; set; } = 1;
+    public bool SpeedPitch { get; set; }
     public bool ShowVideo { get; set; } = true;
     // Automatic queue: a song started from a list brings the rest of it, and the queue refills at every new song.
     public bool AutoQueue { get; set; } = true;

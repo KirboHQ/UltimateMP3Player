@@ -266,12 +266,105 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
     }
 }
 
-public sealed class SearchViewModel : Observable, ITrackList
+// A song found online (search page, "Online" tab): a click opens it on the download page, as if its link was pasted.
+public sealed class OnlineHitViewModel : Observable
 {
     private readonly MainViewModel _main;
-    private List<TrackViewModel> _order = new();
 
-    public SearchViewModel(MainViewModel main) => _main = main;
+    public OnlineHitViewModel(SearchHit hit, MainViewModel main)
+    {
+        Hit = hit;
+        _main = main;
+        var lib = main.Library;
+        InLibrary = Find();
+        DownloadCommand = new RelayCommand(() => _main.StartDownload(Hit.Url, fromSearch: true));
+    }
+
+    private bool Find()
+    {
+        var lib = _main.Library;
+        return lib.FindByKeys(SourceKeys.ForItem(new MediaItem { Url = Hit.Url, PageUrl = Hit.Url })) != null ||
+               lib.FindSimilar(Hit.Title, Hit.Artist, Hit.Duration) != null;
+    }
+
+    // A download finished: it may be in the library now.
+    public void RefreshLibrary()
+    {
+        bool now = Find();
+        if (now == InLibrary) return;
+        InLibrary = now;
+        OnChanged(nameof(InLibrary));
+    }
+
+    public SearchHit Hit { get; }
+    public string Title => Hit.Title;
+    public string Subtitle => string.Join(" · ", new[] { Hit.Artist, Hit.Album }.Where(s => !string.IsNullOrWhiteSpace(s)));
+    public string DurationText => Hit.Duration is > 0 and var d ? Text.Duration(d) : "";
+    public string Service => Hit.Service;
+    public System.Windows.Media.Brush ServiceBrush => Ui.BrushFrom(Sites.ColorFor(Hit.Service));
+    // Already downloaded (same link, or the same song from another site).
+    public bool InLibrary { get; private set; }
+    public ICommand DownloadCommand { get; }
+
+    private System.Windows.Media.ImageSource? _thumb;
+    private bool _thumbRequested;
+    public System.Windows.Media.ImageSource? Thumb
+    {
+        get
+        {
+            if (!_thumbRequested && Hit.Thumb != null)
+            {
+                _thumbRequested = true;
+                _ = LoadThumb();
+            }
+            return _thumb;
+        }
+    }
+
+    private async Task LoadThumb()
+    {
+        _thumb = await WebImages.LoadAsync(new[] { Hit.Thumb! }, 112);
+        OnChanged(nameof(Thumb));
+    }
+}
+
+// A filter over the online results: all of them, or one site.
+public sealed class ServiceTab : Observable
+{
+    public ServiceTab(string? service, string label, int count)
+    {
+        Service = service;
+        Label = label;
+        Count = count;
+        Brush = service != null ? Ui.BrushFrom(Sites.ColorFor(service)) : null;
+    }
+
+    public string? Service { get; }
+    public string Label { get; }
+    public int Count { get; }
+    public System.Windows.Media.Brush? Brush { get; }
+    public bool HasDot => Brush != null;
+
+    private bool _isSelected;
+    public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
+}
+
+public sealed class SearchViewModel : Observable, ITrackList
+{
+    private const int PerService = 15;
+    private readonly MainViewModel _main;
+    private List<TrackViewModel> _order = new();
+    private readonly System.Windows.Threading.DispatcherTimer _onlineTimer = new() { Interval = TimeSpan.FromMilliseconds(650) };
+
+    public SearchViewModel(MainViewModel main)
+    {
+        _main = main;
+        _onlineTimer.Tick += (_, _) => RunOnlineNow();
+        ShowLocalCommand = new RelayCommand(() => PickTab(false));
+        ShowOnlineCommand = new RelayCommand(() => PickTab(true));
+        SelectServiceCommand = new RelayCommand(p => { if (p is ServiceTab t) SelectService(t.Service); });
+        OnlineSettingsCommand = new RelayCommand(() => _main.GoSettings());
+    }
 
     public string ContextId => "search";
     public string ContextName => L.F("Ricerca «{0}»", Query);
@@ -285,6 +378,11 @@ public sealed class SearchViewModel : Observable, ITrackList
     public bool NoResults => Rows.Count == 0 && PlaylistResults.Count == 0;
     public string Title => L.F("Risultati per «{0}»", Query);
 
+    public ICommand ShowLocalCommand { get; }
+    public ICommand ShowOnlineCommand { get; }
+    public ICommand SelectServiceCommand { get; }
+    public ICommand OnlineSettingsCommand { get; }
+
     public void Run(string query)
     {
         Query = query.Trim();
@@ -297,7 +395,189 @@ public sealed class SearchViewModel : Observable, ITrackList
             .ToList();
         Rows = _order.Select((t, i) => new TrackRow(i + 1, t, this)).ToList();
         PlaylistResults = _main.Playlists.Where(q.Matches).ToList();
-        OnChanged(nameof(Query), nameof(Rows), nameof(PlaylistResults), nameof(HasPlaylists), nameof(NoResults), nameof(Title), nameof(ContextName));
+        OnChanged(nameof(Query), nameof(Rows), nameof(PlaylistResults), nameof(HasPlaylists), nameof(NoResults), nameof(Title), nameof(ContextName),
+            nameof(LocalTabText), nameof(ShowLocalEmpty));
+        ScheduleOnline();
+    }
+
+    // ------------------------------------------------------------------ online
+
+    // The search box also looks on the music sites (Settings > Search online): the results are in the "Online" tab,
+    // which opens by itself when none of your songs match (until you pick a tab yourself).
+    private AppSettings S => _main.Host.Settings;
+    private List<string> Services => OnlineSearchServices.Ordered(S.SearchServices, S.SearchServicesOff);
+    public bool OnlineEnabled => S.OnlineSearch && Services.Count > 0;
+    // A search by tag (#rock) or a word too short isn't sent to the sites.
+    private bool Searchable(string q) => q.Length >= 2 && !q.StartsWith('#');
+
+    private bool _onlineMode, _tabPicked;
+    public bool OnlineMode
+    {
+        get => _onlineMode && OnlineEnabled;
+        private set
+        {
+            if (!Set(ref _onlineMode, value)) return;
+            OnChanged(nameof(LocalMode), nameof(ShowLocalEmpty));
+        }
+    }
+    public bool LocalMode => !OnlineMode;
+    public bool ShowLocalEmpty => LocalMode && NoResults;
+    public string LocalEmptyHint => OnlineEnabled
+        ? L.T("Cerca per titolo, artista o album. Per un brano che non hai guarda nella scheda Online, oppure incolla il suo link.")
+        : L.T("Cerca per titolo, artista o album. Per scaricare un brano nuovo incolla il suo link.");
+
+    private void PickTab(bool online)
+    {
+        _tabPicked = true;
+        OnlineMode = online;
+        if (online && _onlineQuery != Query) RunOnlineNow();
+    }
+
+    // The search box was emptied: the next search chooses its tab again.
+    public void Reset()
+    {
+        _tabPicked = false;
+        _tabQuery = null;
+        _onlineTimer.Stop();
+        // A search stopped halfway is done again if the same words come back.
+        if (OnlineBusy) _onlineQuery = "";
+        _onlineCts?.Cancel();
+    }
+
+    public string LocalTabText => L.F("Nei tuoi brani · {0}", Rows.Count);
+    public string OnlineTabText => _allHits.Count > 0 ? L.F("Online · {0}", _allHits.Count) : L.T("Online");
+
+    private CancellationTokenSource? _onlineCts;
+    private string _onlineQuery = "";
+    private readonly Dictionary<string, List<SearchHit>> _byService = new();
+    private readonly List<string> _failed = new();
+    private List<OnlineHitViewModel> _allHits = new();
+    private string? _serviceFilter;
+
+    public List<OnlineHitViewModel> OnlineHits { get; private set; } = new();
+    public List<ServiceTab> ServiceTabs { get; private set; } = new();
+    public bool HasServiceTabs => ServiceTabs.Count > 2;
+
+    private bool _onlineBusy;
+    public bool OnlineBusy { get => _onlineBusy; private set { if (Set(ref _onlineBusy, value)) OnChanged(nameof(NoOnlineResults)); } }
+    private string? _onlineStatus;
+    public string? OnlineStatus { get => _onlineStatus; private set => Set(ref _onlineStatus, value); }
+    public bool NoOnlineResults => !OnlineBusy && _allHits.Count == 0 && _onlineQuery.Length > 0;
+    public string NoOnlineText => !Searchable(Query) ? L.T("Scrivi almeno due lettere per cercare online.")
+        : _failed.Count > 0 && _byService.Count == 0 ? L.T("I siti non hanno risposto: controlla la connessione e riprova.")
+        : L.T("Nessun brano trovato online.");
+
+    private void ScheduleOnline()
+    {
+        _onlineTimer.Stop();
+        if (!OnlineEnabled) return;
+        // Chosen once per search (not again when a finished download changes your songs under the same words).
+        if (!_tabPicked && Query != _tabQuery)
+        {
+            _tabQuery = Query;
+            OnlineMode = Rows.Count == 0 && PlaylistResults.Count == 0 && Searchable(Query);
+        }
+        if (Query == _onlineQuery)
+        {
+            foreach (var h in _allHits) h.RefreshLibrary();
+            return;
+        }
+        _onlineTimer.Start();
+    }
+
+    private string? _tabQuery;
+
+    // Enter in the search box: no wait.
+    public void RunOnlineNow()
+    {
+        _onlineTimer.Stop();
+        if (!OnlineEnabled || Query == _onlineQuery && (OnlineBusy || _allHits.Count > 0)) return;
+        _onlineCts?.Cancel();
+        _onlineQuery = Query;
+        _byService.Clear();
+        _failed.Clear();
+        _serviceFilter = null;
+        Rebuild();
+        if (!Searchable(Query))
+        {
+            OnChanged(nameof(NoOnlineText));
+            return;
+        }
+        var cts = _onlineCts = new CancellationTokenSource();
+        _ = SearchOnline(Query, Services, S.SearchParallel, cts);
+    }
+
+    private async Task SearchOnline(string query, List<string> services, bool parallel, CancellationTokenSource cts)
+    {
+        OnlineBusy = true;
+        OnlineStatus = L.F("Cerco su {0}…", parallel ? string.Join(", ", services) : services[0]);
+        try
+        {
+            if (parallel) await Task.WhenAll(services.Select(s => SearchOne(s, query, cts)));
+            else
+                // One site after the other: the next one only if the one before found nothing (or didn't answer).
+                foreach (var s in services)
+                {
+                    if (cts.IsCancellationRequested) return;
+                    OnlineStatus = L.F("Cerco su {0}…", s);
+                    await SearchOne(s, query, cts);
+                    if (_byService.TryGetValue(s, out var got) && got.Count > 0) break;
+                }
+        }
+        finally
+        {
+            if (_onlineCts == cts)
+            {
+                OnlineBusy = false;
+                OnlineStatus = _failed.Count > 0 ? L.F("Non hanno risposto: {0}", string.Join(", ", _failed)) : null;
+                OnChanged(nameof(NoOnlineText));
+            }
+        }
+    }
+
+    private async Task SearchOne(string service, string query, CancellationTokenSource cts)
+    {
+        List<SearchHit> hits;
+        try { hits = await Task.Run(() => OnlineSearchServices.SearchAsync(service, query, PerService, cts.Token)); }
+        catch
+        {
+            if (!cts.IsCancellationRequested && _onlineCts == cts) _failed.Add(service);
+            return;
+        }
+        if (cts.IsCancellationRequested || _onlineCts != cts) return;
+        _byService[service] = hits;
+        Rebuild();
+    }
+
+    // All the sites mixed, best of each first (in the order chosen in the settings), or one site.
+    private void Rebuild()
+    {
+        var order = Services.Where(_byService.ContainsKey).ToList();
+        _allHits = order.SelectMany(s => _byService[s]).OrderBy(h => h.Rank).ThenBy(h => order.IndexOf(h.Service))
+            .Select(h => new OnlineHitViewModel(h, _main)).ToList();
+        if (_serviceFilter != null && !_byService.ContainsKey(_serviceFilter)) _serviceFilter = null;
+        var tabs = new List<ServiceTab> { new(null, L.T("Tutti"), _allHits.Count) };
+        tabs.AddRange(order.Where(s => _byService[s].Count > 0).Select(s => new ServiceTab(s, s, _byService[s].Count)));
+        foreach (var t in tabs) t.IsSelected = t.Service == _serviceFilter;
+        ServiceTabs = tabs;
+        OnlineHits = _serviceFilter == null ? _allHits : _allHits.Where(h => h.Service == _serviceFilter).ToList();
+        OnChanged(nameof(OnlineHits), nameof(ServiceTabs), nameof(HasServiceTabs), nameof(OnlineTabText), nameof(NoOnlineResults), nameof(NoOnlineText));
+    }
+
+    private void SelectService(string? service)
+    {
+        _serviceFilter = service;
+        Rebuild();
+    }
+
+    // The settings changed (sites, order, on/off).
+    public void OnSettingsChanged()
+    {
+        _onlineQuery = "";
+        _allHits = new();
+        OnlineHits = new();
+        OnChanged(nameof(OnlineEnabled), nameof(OnlineMode), nameof(LocalMode), nameof(OnlineHits), nameof(OnlineTabText), nameof(ShowLocalEmpty),
+            nameof(LocalEmptyHint), nameof(NoOnlineResults));
     }
 }
 

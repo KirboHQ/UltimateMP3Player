@@ -30,6 +30,24 @@ public sealed class QueueRow
     public override string ToString() => $"{Track.Title} – {Track.Artist}";
 }
 
+// A button of the speed panel (0,5 · 0,75 · 1 · 1,25 · 1,5 · 2); the one playing is lit.
+public sealed class SpeedPreset : Observable
+{
+    public SpeedPreset(double value, PlayerViewModel player)
+    {
+        Value = value;
+        Label = value.ToString("0.##", L.Culture);
+        Command = new RelayCommand(() => player.Speed = value, () => player.CanSetSpeed);
+    }
+
+    public double Value { get; }
+    public string Label { get; }
+    public ICommand Command { get; }
+
+    private bool _isCurrent;
+    public bool IsCurrent { get => _isCurrent; set => Set(ref _isCurrent, value); }
+}
+
 public sealed class PlayerViewModel : Observable
 {
     private const double TargetLufs = -14;
@@ -59,6 +77,9 @@ public sealed class PlayerViewModel : Observable
         ApplyVolume();
         ApplyEqualizer();
         ApplyCrossfade();
+        ApplySpeed();
+        _speedTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+        _speedTimer.Tick += (_, _) => SendRoomSpeed();
 
         _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(250) };
         _timer.Tick += (_, _) => Tick();
@@ -69,11 +90,16 @@ public sealed class PlayerViewModel : Observable
         // In a room of "Listen together" these buttons need the host's permission: without it they are greyed out.
         PlayPauseCommand = new RelayCommand(PlayPause, () => _room == null || _room.CanPause);
         NextCommand = new RelayCommand(() => _ = Next(false), () => _room == null || _room.CanSkip);
-        PreviousCommand = new RelayCommand(() => _ = Previous(), () => _room == null || _room.CanSeek);
-        CycleRepeatCommand = new RelayCommand(CycleRepeat, () => _room == null);
+        PreviousCommand = new RelayCommand(() => _ = Previous(), () => _room == null || _room.CanPause);
+        // In a room: loop of the song playing, for everyone (with the pause permission).
+        CycleRepeatCommand = new RelayCommand(() => { if (_room != null) _room.ToggleLoop(); else CycleRepeat(); }, () => _room == null || _room.CanPause);
         ToggleMuteCommand = new RelayCommand(() => Muted = !Muted);
         FavoriteCommand = new RelayCommand(() => { if (Current != null) _main.ToggleFavorite(Current); }, () => Current != null);
-        SeekCommand = new RelayCommand(p => { if (p is double f) SeekFraction(f); }, _ => _room == null || _room.CanSeek);
+        SeekCommand = new RelayCommand(p => { if (p is double f) SeekFraction(f); }, _ => _room == null || _room.CanPause);
+        SpeedStepCommand = new RelayCommand(p => { if (p is string s && double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)) Speed += d; },
+            _ => CanSetSpeed);
+        SetSpeedCommand = new RelayCommand(p => { if (p is string s && double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)) Speed = d; },
+            _ => CanSetSpeed);
         ClearQueueCommand = new RelayCommand(ClearQueue, () => _room == null && _queue.UpcomingCount > 0);
         GenerateQueueCommand = new RelayCommand(GenerateQueue, () => _room == null && Current != null);
 
@@ -127,6 +153,7 @@ public sealed class PlayerViewModel : Observable
     public void Detach()
     {
         _timer.Stop();
+        _speedTimer.Stop();
         _audio.Ended -= OnEnded;
         _audio.NearEnd -= OnNearEnd;
         _audio.Failed -= OnFailed;
@@ -143,6 +170,145 @@ public sealed class PlayerViewModel : Observable
     public ICommand SeekCommand { get; }
     public ICommand ClearQueueCommand { get; }
     public ICommand GenerateQueueCommand { get; }
+    public ICommand SpeedStepCommand { get; }
+    public ICommand SetSpeedCommand { get; }
+
+    // ------------------------------------------------------------------ speed
+
+    // Playback speed like YouTube's: 0.5-2 in steps of 0.05, the key kept or (SpeedPitch) following it like a record.
+    // Your own is saved in the profile; in a room the room's one plays (changed by who has the permission) and yours
+    // comes back when you leave.
+    private readonly DispatcherTimer _speedTimer;
+    private double? _roomSpeedDraft;
+    private bool? _roomPitchDraft;
+    private long _roomSpeedSentAt;
+
+    public static string SpeedLabel(double s) => (Math.Abs(s - 1) < 0.001 ? "1" : s.ToString("0.##", L.Culture)) + "×";
+
+    public double Speed
+    {
+        get => _room != null ? _roomSpeedDraft ?? _room.RoomSpeed : _main.Profile.Data.Speed;
+        set
+        {
+            value = Math.Round(Math.Clamp(value, 0.5, 2) * 20) / 20;
+            if (Math.Abs(value - Speed) < 0.001) return;
+            if (_room != null)
+            {
+                if (!_room.CanSpeed) return;
+                _roomSpeedDraft = value;
+                _speedTimer.Start();
+            }
+            else
+            {
+                _main.Profile.Data.Speed = value;
+                _main.Profile.Save();
+                ApplySpeed();
+            }
+            OnSpeedChanged();
+        }
+    }
+
+    public bool SpeedPitch
+    {
+        get => _room != null ? _roomPitchDraft ?? _room.RoomPitch : _main.Profile.Data.SpeedPitch;
+        set
+        {
+            if (value == SpeedPitch) return;
+            if (_room != null)
+            {
+                if (!_room.CanSpeed) return;
+                _roomPitchDraft = value;
+                _speedTimer.Start();
+            }
+            else
+            {
+                _main.Profile.Data.SpeedPitch = value;
+                _main.Profile.Save();
+                ApplySpeed();
+            }
+            OnSpeedChanged();
+        }
+    }
+
+    public bool CanSetSpeed => _room == null || _room.CanSpeed;
+    public bool IsSpeedChanged => Math.Abs(Speed - 1) > 0.001;
+    public string SpeedText => SpeedLabel(Speed);
+    // Big number in the speed panel ("1,25×").
+    public string SpeedValueText => Speed.ToString("0.00", L.Culture) + "×";
+    public string SpeedTip => _room == null ? L.T("Velocità di riproduzione (tasti < e >)")
+        : _room.CanSpeed ? L.T("Velocità di riproduzione per tutti nella stanza (tasti < e >)")
+        : L.T("Solo chi ha il permesso può cambiare la velocità (lo decide l'host)");
+    public string SpeedHint => _room == null ? L.T("Vale per tutti i brani, finché non la cambi.")
+        : _room.CanSpeed ? L.T("Cambia la velocità per tutti nella stanza.")
+        : L.T("Solo chi ha il permesso può cambiare la velocità (lo decide l'host).");
+
+    private List<SpeedPreset>? _presets;
+    public List<SpeedPreset> SpeedPresets
+    {
+        get
+        {
+            if (_presets == null)
+            {
+                _presets = new[] { 0.5, 0.75, 1, 1.25, 1.5, 2 }.Select(v => new SpeedPreset(v, this)).ToList();
+                MarkPreset();
+            }
+            return _presets;
+        }
+    }
+
+    private void MarkPreset()
+    {
+        if (_presets == null) return;
+        double s = Speed;
+        foreach (var p in _presets) p.IsCurrent = Math.Abs(p.Value - s) < 0.001;
+    }
+
+    private void OnSpeedChanged()
+    {
+        MarkPreset();
+        OnChanged(nameof(Speed), nameof(SpeedPitch), nameof(IsSpeedChanged), nameof(SpeedText), nameof(SpeedValueText));
+    }
+
+    private void ApplySpeed()
+    {
+        if (_room != null) return;
+        _audio.SetSpeed(_main.Profile.Data.Speed, _main.Profile.Data.SpeedPitch);
+        _main.Host.OnSeek();
+    }
+
+    // Changes in a room go out a few times a second while the slider is dragged; the last one always goes.
+    private void SendRoomSpeed()
+    {
+        _speedTimer.Stop();
+        if (_room == null || (_roomSpeedDraft == null && _roomPitchDraft == null)) return;
+        _roomSpeedSentAt = Environment.TickCount64;
+        _room.SetSpeed(_roomSpeedDraft ?? _room.RoomSpeed, _roomPitchDraft ?? _room.RoomPitch);
+    }
+
+    // The room's speed, from TogetherViewModel.Follow.
+    internal void RoomSpeed(double speed, bool pitch)
+    {
+        if (Math.Abs(_audio.Speed - speed) > 0.001 || _roomPitchApplied != pitch)
+        {
+            _roomPitchApplied = pitch;
+            _audio.SetSpeed(speed, pitch);
+            _main.Host.OnSeek();
+        }
+    }
+
+    private bool _roomPitchApplied;
+
+    // The room's state changed (loop, speed): the buttons and the panel follow; an answer to our own change ends its draft.
+    public void OnRoomPlayback()
+    {
+        if (_room != null && !_speedTimer.IsEnabled && Environment.TickCount64 - _roomSpeedSentAt > 400)
+        {
+            _roomSpeedDraft = null;
+            _roomPitchDraft = null;
+        }
+        OnSpeedChanged();
+        OnChanged(nameof(RepeatOn), nameof(RepeatGlyph), nameof(RepeatTip));
+    }
 
     // ------------------------------------------------------------------ state
 
@@ -274,15 +440,20 @@ public sealed class PlayerViewModel : Observable
         }
     }
 
-    public bool RepeatOn => Repeat != RepeatMode.Off;
-    public string RepeatGlyph => Repeat == RepeatMode.One ? "" : "";
+    // In a room the button is the loop of the song playing (the room has no "repeat the queue").
+    public bool RepeatOn => _room != null ? _room.RoomLoop : Repeat != RepeatMode.Off;
+    public string RepeatGlyph => _room != null || Repeat == RepeatMode.One ? "" : "";
     // "Repeat one" loops the song until it's turned off, as in the other players (skipping still moves on).
-    public string RepeatTip => L.T(Repeat switch
-    {
-        RepeatMode.All => "Ripeti la playlist (clicca per ripetere il brano)",
-        RepeatMode.One => "Ripeti questo brano all'infinito (clicca per disattivare)",
-        _ => "Ripeti: disattivato",
-    });
+    public string RepeatTip => _room != null
+        ? !_room.CanPause ? L.T("Solo chi ha il permesso di mettere in pausa può ripetere il brano (lo decide l'host)")
+        : _room.RoomLoop ? L.T("Il brano si ripete per tutti (clicca per togliere il loop)")
+        : L.T("Ripeti questo brano per tutti nella stanza")
+        : L.T(Repeat switch
+        {
+            RepeatMode.All => "Ripeti la playlist (clicca per ripetere il brano)",
+            RepeatMode.One => "Ripeti questo brano all'infinito (clicca per disattivare)",
+            _ => "Ripeti: disattivato",
+        });
 
     private void CycleRepeat() => Repeat = Repeat switch
     {
@@ -723,6 +894,11 @@ public sealed class PlayerViewModel : Observable
         _room = room;
         _roomLoaded = null;
         ApplyCrossfade();
+        // The room's speed from now on (Follow sets it).
+        _audio.SetSpeed(1, false);
+        _roomPitchApplied = false;
+        _roomSpeedDraft = null;
+        _roomPitchDraft = null;
         Current = null;
         Position = 0;
         Duration = 0;
@@ -743,6 +919,10 @@ public sealed class PlayerViewModel : Observable
         IsPlaying = false;
         Current = null;
         ApplyCrossfade();
+        _speedTimer.Stop();
+        _roomSpeedDraft = null;
+        _roomPitchDraft = null;
+        ApplySpeed();
         // Back to your own song, paused where you left it.
         Restore(false);
         OnRoomChanged();
@@ -752,7 +932,8 @@ public sealed class PlayerViewModel : Observable
     private void OnRoomChanged()
     {
         OnChanged(nameof(InRoom), nameof(NotInRoom), nameof(RoomName), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(PlayTip), nameof(NextTip), nameof(PreviousTip),
-            nameof(SeekTip), nameof(QueueHint));
+            nameof(SeekTip), nameof(QueueHint), nameof(RepeatOn), nameof(RepeatGlyph), nameof(RepeatTip), nameof(CanSetSpeed), nameof(SpeedTip), nameof(SpeedHint));
+        OnSpeedChanged();
         RefreshUpNext();
         CommandManager.InvalidateRequerySuggested();
         _main.Host.OnTrackChanged();
@@ -761,7 +942,8 @@ public sealed class PlayerViewModel : Observable
     // The host changed what we may do: buttons greyed out or back.
     public void OnRoomPermissions()
     {
-        OnChanged(nameof(PlayTip), nameof(NextTip), nameof(PreviousTip), nameof(SeekTip), nameof(QueueHint), nameof(RoomName));
+        OnChanged(nameof(PlayTip), nameof(NextTip), nameof(PreviousTip), nameof(SeekTip), nameof(QueueHint), nameof(RoomName), nameof(RepeatTip),
+            nameof(CanSetSpeed), nameof(SpeedTip), nameof(SpeedHint));
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -793,7 +975,8 @@ public sealed class PlayerViewModel : Observable
         if (!_opened || _roomLoaded != _room?.Session?.Current?.Id) Position = position;
     }
 
-    internal async Task RoomLoad(string itemId, TrackViewModel vm, string path)
+    // False when the file couldn't be opened.
+    internal async Task<bool> RoomLoad(string itemId, TrackViewModel vm, string path)
     {
         int version = ++_loadVersion;
         _roomLoaded = itemId;
@@ -801,16 +984,18 @@ public sealed class PlayerViewModel : Observable
         try
         {
             await _audio.OpenAsync(path, vm.T.Duration, TrackGain(vm.T));
-            if (version != _loadVersion) return;
+            if (version != _loadVersion) return true;
             _opened = true;
             Duration = _audio.Duration.TotalSeconds > 0 ? _audio.Duration.TotalSeconds : vm.T.Duration;
             if (_main.Library.Get(vm.Id) != null) _main.Profile.AddHistory(vm.Id);
+            return true;
         }
         catch (Exception ex)
         {
-            if (version != _loadVersion) return;
+            if (version != _loadVersion) return true;
             _roomLoaded = null;
             _main.Toast(L.F("Impossibile riprodurre «{0}»: {1}", vm.Title, ex.Message));
+            return false;
         }
     }
 
@@ -832,9 +1017,9 @@ public sealed class PlayerViewModel : Observable
     // Tooltips of the transport: in a room without permission they say why the button is greyed out.
     public string PlayTip => _room != null && !_room.CanPause ? L.T("Solo chi ha il permesso può mettere in pausa (lo decide l'host)") : L.T("Riproduci / Pausa (Spazio)");
     public string NextTip => _room != null && !_room.CanSkip ? L.T("Solo chi ha il permesso può saltare i brani (lo decide l'host)") : L.T("Successivo");
-    public string? SeekTip => _room != null && !_room.CanSeek ? L.T("Solo chi ha il permesso può andare avanti o indietro (lo decide l'host)") : null;
+    public string? SeekTip => _room != null && !_room.CanPause ? L.T("Solo chi ha il permesso può andare avanti o indietro (lo decide l'host)") : null;
     public string PreviousTip => _room == null ? L.T("Precedente")
-        : _room.CanSeek ? L.T("Dall'inizio") : L.T("Solo chi ha il permesso può andare avanti o indietro (lo decide l'host)");
+        : _room.CanPause ? L.T("Dall'inizio") : L.T("Solo chi ha il permesso può andare avanti o indietro (lo decide l'host)");
     public string QueueHint => _room == null ? L.T("Doppio clic per saltare a un brano, trascina per riordinare.")
         : _room.CanRemove ? L.T("La coda della stanza: doppio clic per farlo partire, trascina per riordinare.")
         : L.T("La coda della stanza, uguale per tutti.");

@@ -178,6 +178,45 @@ public sealed class ThemeOption
     public bool IsSelected { get; }
 }
 
+// A site of the online search in Settings: on/off, up/down.
+public sealed class SearchServiceOption : Observable
+{
+    private readonly SettingsViewModel _owner;
+
+    public SearchServiceOption(string name, int index, SettingsViewModel owner)
+    {
+        Name = name;
+        Index = index;
+        _owner = owner;
+        UpCommand = new RelayCommand(() => owner.MoveService(Name, -1), () => Index > 0);
+        DownCommand = new RelayCommand(() => owner.MoveService(Name, 1), () => Index < OnlineSearchServices.Default.Length - 1);
+    }
+
+    public string Name { get; }
+    public int Index { get; }
+    public string Number => (Index + 1).ToString();
+    public System.Windows.Media.Brush Brush => Ui.BrushFrom(Sites.ColorFor(Name));
+    public string Description => L.T(Name switch
+    {
+        OnlineSearchServices.YouTubeMusic => "i brani ufficiali, con album e copertine",
+        OnlineSearchServices.YouTube => "video: cover, live, versioni che non sono altrove",
+        OnlineSearchServices.SoundCloud => "remix, mashup e artisti indipendenti",
+        _ => "un catalogo come quello di Spotify; l'audio arriva da YouTube Music",
+    });
+    public ICommand UpCommand { get; }
+    public ICommand DownCommand { get; }
+
+    public bool Enabled
+    {
+        get => _owner.IsServiceOn(Name);
+        set
+        {
+            _owner.SetServiceOn(Name, value);
+            OnChanged();
+        }
+    }
+}
+
 public sealed class SettingsViewModel : Observable
 {
     private readonly MainViewModel _main;
@@ -329,6 +368,70 @@ public sealed class SettingsViewModel : Observable
     }
 
     public string CrossfadeText => $"{_main.Profile.Data.CrossfadeSeconds} s";
+
+    // ------------------------------------------------------------------ online search (app)
+
+    public bool OnlineSearch
+    {
+        get => S.OnlineSearch;
+        set
+        {
+            S.OnlineSearch = value;
+            Save();
+            OnChanged();
+            _main.Search.OnSettingsChanged();
+        }
+    }
+
+    // The sites in the order they're asked, each on or off.
+    public List<SearchServiceOption> SearchServices
+        => OnlineSearchServices.Ordered(S.SearchServices, Array.Empty<string>())
+            .Select((name, i) => new SearchServiceOption(name, i, this)).ToList();
+
+    internal bool IsServiceOn(string name) => !S.SearchServicesOff.Contains(name, StringComparer.OrdinalIgnoreCase);
+
+    internal void SetServiceOn(string name, bool on)
+    {
+        S.SearchServicesOff.RemoveAll(s => s.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (!on) S.SearchServicesOff.Add(name);
+        Save();
+        _main.Search.OnSettingsChanged();
+    }
+
+    internal void MoveService(string name, int delta)
+    {
+        var order = OnlineSearchServices.Ordered(S.SearchServices, Array.Empty<string>());
+        int i = order.IndexOf(name), j = i + delta;
+        if (i < 0 || j < 0 || j >= order.Count) return;
+        (order[i], order[j]) = (order[j], order[i]);
+        S.SearchServices = order;
+        Save();
+        OnChanged(nameof(SearchServices));
+        _main.Search.OnSettingsChanged();
+    }
+
+    public List<Choice> SearchModes { get; } = new()
+    {
+        new(L.T("Tutti insieme"), true, L.T("più risultati")),
+        new(L.T("Uno alla volta"), false, L.T("il successivo se il primo non trova niente")),
+    };
+
+    public Choice SearchMode
+    {
+        get => SearchModes.First(c => (bool)c.Value! == S.SearchParallel);
+        set
+        {
+            if (value == null) return;
+            S.SearchParallel = (bool)value.Value!;
+            Save();
+            OnChanged(nameof(SearchModeHint));
+            _main.Search.OnSettingsChanged();
+        }
+    }
+
+    public string SearchModeHint => S.SearchParallel
+        ? L.T("Cerca su tutti i siti accesi nello stesso momento: i risultati arrivano mescolati, i migliori di ogni sito per primi.")
+        : L.T("Cerca sul primo sito; se non trova niente o non risponde passa al successivo, nell'ordine qui sopra.");
 
     // ------------------------------------------------------------------ downloads (app)
 

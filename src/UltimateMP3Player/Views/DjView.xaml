@@ -25,38 +25,6 @@
             <Setter Property="FontSize" Value="13"/>
         </Style>
 
-        <!-- The two tabs (Console / Tap BPM): a segmented pill, the open one tinted. -->
-        <Style x:Key="Segment" TargetType="RadioButton">
-            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
-            <Setter Property="FontSize" Value="13.5"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Bd" CornerRadius="16" Padding="16,7" Background="Transparent">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="Ico" Text="{TemplateBinding local:Ui.Glyph}" FontFamily="{StaticResource IconFont}" FontSize="13" FontWeight="Normal"
-                                           VerticalAlignment="Center"/>
-                                <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Surface2Brush}"/>
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
-                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
-                                <Setter TargetName="Ico" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
 
         <!-- The TAP pad: a big key in the deck's colour, lit while pressed. -->
         <Style x:Key="TapPad" TargetType="Button">
@@ -341,14 +309,15 @@
                             </DockPanel>
                         </StackPanel>
 
-                        <!-- tempo fader: down = faster, like on a CDJ -->
+                        <!-- tempo fader, 0.5× to 2× (1× in the middle): down = faster, like on a CDJ -->
                         <StackPanel Grid.Column="1" Margin="18,0,0,0" HorizontalAlignment="Center">
-                            <Button Style="{StaticResource SubtleButton}" Padding="8,2" FontSize="12" Content="{Binding RangeText}" HorizontalAlignment="Center"
-                                    Command="{Binding Dj.RangeCommand}" CommandParameter="{Binding}" ToolTip="{local:T 'Portata del fader del tempo'}"/>
-                            <Slider Style="{StaticResource EqSlider}" Height="190" Minimum="{Binding TempoMin}" Maximum="{Binding TempoMax}" Value="{Binding TempoPercent}"
-                                    IsDirectionReversed="True" SmallChange="0.05" Tag="0" MouseDoubleClick="Reset_DoubleClick" Margin="0,6"
-                                    ToolTip="{local:T 'Tempo (doppio clic per azzerare)'}"/>
-                            <TextBlock Text="{Binding TempoText}" FontSize="12.5" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding TempoText}" FontSize="13" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,3,0,0"
+                                       ToolTip="{local:T 'Velocità del deck'}"/>
+                            <Slider Style="{StaticResource EqSlider}" Height="190" Minimum="-1" Maximum="1" Value="{Binding TempoFader}"
+                                    IsDirectionReversed="True" SmallChange="0.001" LargeChange="0.05" Tag="0" MouseDoubleClick="Reset_DoubleClick"
+                                    PreviewMouseWheel="Tempo_Wheel" Margin="0,6"
+                                    ToolTip="{local:T 'Velocità da 0,5× a 2×: giù = più veloce. Rotella per ritocchi fini, doppio clic per tornare a 1×'}"/>
+                            <TextBlock Text="{Binding TempoPercentText}" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                 </Grid>

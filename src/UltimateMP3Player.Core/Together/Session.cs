@@ -30,7 +30,8 @@ public sealed class JoinResult
 // All state is touched only on the owner's thread (post); the network threads only post to it.
 public sealed class TogetherSession : IDisposable
 {
-    public const int Proto = 1;
+    // 2: loop, speed, pause and seek as one permission (3.1).
+    public const int Proto = 2;
     public const int FirstPort = 47800, LastPort = 47819;
     public const int MaxQueue = 200;
     private const int MaxChat = 200, ChatLength = 500, NameLength = 40;
@@ -108,7 +109,7 @@ public sealed class TogetherSession : IDisposable
         get
         {
             var p = Play;
-            double pos = p.State == PlayState.Playing ? p.Position + (HostMs - p.At) / 1000.0 : p.Position;
+            double pos = p.State == PlayState.Playing ? p.Position + (HostMs - p.At) / 1000.0 * p.Speed : p.Position;
             return Math.Max(0, Current is { Duration: > 0 } c ? Math.Min(pos, c.Duration) : pos);
         }
     }
@@ -585,8 +586,8 @@ public sealed class TogetherSession : IDisposable
                 Perm.Add => "Non hai il permesso di aggiungere brani.",
                 Perm.Remove => "Non hai il permesso di togliere o spostare brani.",
                 Perm.Skip => "Non hai il permesso di saltare i brani.",
-                Perm.Pause => "Non hai il permesso di mettere in pausa.",
-                Perm.Seek => "Non hai il permesso di andare avanti o indietro.",
+                Perm.Pause => "Non hai il permesso di mettere in pausa o andare avanti e indietro.",
+                Perm.Speed => "Non hai il permesso di cambiare la velocità.",
                 _ => "Non hai il permesso.",
             });
             return false;
@@ -662,8 +663,22 @@ public sealed class TogetherSession : IDisposable
                 break;
 
             case "seek":
-                if (Current == null || !Allowed(Perm.Seek)) return;
+                if (Current == null || !Allowed(Perm.Pause)) return;
                 SeekNow(m.Pos);
+                break;
+
+            case "loop":
+                if (!Allowed(Perm.Pause) || Play.Loop == m.Flag) return;
+                var looped = Play.Clone();
+                looped.Loop = m.Flag;
+                Play = looped;
+                AddSystem(m.Flag ? "{0} ha messo in loop il brano" : "{0} ha tolto il loop", who.Name);
+                BroadcastPlay();
+                break;
+
+            case "speed":
+                if (!Allowed(Perm.Speed) || double.IsNaN(m.Pos)) return;
+                SetSpeedNow(m.Pos, m.Flag);
                 break;
 
             case "perms":
@@ -768,8 +783,8 @@ public sealed class TogetherSession : IDisposable
         if (Current != null) Queue.RemoveAt(0);
         long now = LocalMs;
         Play = Current == null
-            ? new Playback { State = PlayState.Idle, At = now }
-            : new Playback { ItemId = Current.Id, State = PlayState.Waiting, Position = 0, At = now, WaitSince = now };
+            ? Play.Next(null, PlayState.Idle, 0, now)
+            : Play.Next(Current.Id, PlayState.Waiting, 0, now);
         var keep = new[] { Current }.Concat(Queue).OfType<RoomTrack>().Select(t => t.Id).ToHashSet();
         foreach (var k in Covers.Keys.Where(k => !keep.Contains(k)).ToList()) Covers.Remove(k);
         BroadcastQueue();
@@ -794,7 +809,7 @@ public sealed class TogetherSession : IDisposable
         long waited = LocalMs - Play.WaitSince;
         if (ready > 0 && (ready == total || ready + failed == total || waited > WaitForAll))
         {
-            Play = new Playback { ItemId = id, State = PlayState.Playing, Position = 0, At = LocalMs };
+            Play = Play.Next(id, PlayState.Playing, 0, LocalMs);
             BroadcastPlay();
         }
         else if (waited > GiveUp || (total > 0 && failed == total))
@@ -809,10 +824,35 @@ public sealed class TogetherSession : IDisposable
         var p = Play;
         long now = LocalMs;
         if (paused && p.State is PlayState.Playing or PlayState.Waiting)
-            Play = new Playback { ItemId = p.ItemId, State = PlayState.Paused, Position = Position, At = now };
+            Play = p.Next(p.ItemId, PlayState.Paused, Position, now);
         else if (!paused && p.State == PlayState.Paused)
-            Play = new Playback { ItemId = p.ItemId, State = PlayState.Playing, Position = p.Position, At = now };
+            Play = p.Next(p.ItemId, PlayState.Playing, p.Position, now);
         else return;
+        BroadcastPlay();
+    }
+
+    // Faster or slower for everyone: the song goes on from where it is now at the new speed.
+    private void SetSpeedNow(double speed, bool pitch)
+    {
+        speed = Math.Round(Math.Clamp(speed, 0.5, 2), 2);
+        var p = Play.Clone();
+        if (p.Speed == speed && p.Pitch == pitch) return;
+        p.Position = Position;
+        p.At = LocalMs;
+        p.Speed = speed;
+        p.Pitch = pitch;
+        Play = p;
+        BroadcastPlay();
+    }
+
+    // Loop: the song playing starts over instead of moving on.
+    private void Restart()
+    {
+        if (Current == null) return;
+        var p = Play.Clone();
+        p.Position = 0;
+        p.At = LocalMs;
+        Play = p;
         BroadcastPlay();
     }
 
@@ -846,7 +886,11 @@ public sealed class TogetherSession : IDisposable
         long now = LocalMs;
         if (IsHost)
         {
-            if (Play.State == PlayState.Playing && Current is { Duration: > 0 } cur && Position >= cur.Duration - 0.05) Advance();
+            if (Play.State == PlayState.Playing && Current is { Duration: > 0 } cur && Position >= cur.Duration - 0.05)
+            {
+                if (Play.Loop) Restart();
+                else Advance();
+            }
             CheckWaiting();
             foreach (var (id, c) in _peers.ToList())
                 if (Environment.TickCount64 - c.LastHeard > PeerTimeout) c.Close();
@@ -1091,6 +1135,8 @@ public sealed class TogetherSession : IDisposable
     public void Skip() => Do(new Msg { T = "skip" });
     public void SetPaused(bool paused) => Do(new Msg { T = "pause", Flag = paused });
     public void Seek(double seconds) => Do(new Msg { T = "seek", Pos = seconds });
+    public void SetLoop(bool on) => Do(new Msg { T = "loop", Flag = on });
+    public void SetSpeed(double speed, bool pitch) => Do(new Msg { T = "speed", Pos = speed, Flag = pitch });
     public void SetPerm(IEnumerable<string> ids, Perm perm, bool on) => Do(new Msg { T = "perms", Ids = ids.ToList(), Perms = perm, Flag = on });
     public void KickMember(string id) => Do(new Msg { T = "kick", Id = id });
     public void Promote(string id) => Do(new Msg { T = "promote", Id = id });

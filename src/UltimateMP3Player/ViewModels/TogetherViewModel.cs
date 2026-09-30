@@ -72,7 +72,7 @@ public sealed class MemberViewModel : Observable
     public bool PermRemove => IsHost || (M.Perms & Perm.Remove) != 0;
     public bool PermSkip => IsHost || (M.Perms & Perm.Skip) != 0;
     public bool PermPause => IsHost || (M.Perms & Perm.Pause) != 0;
-    public bool PermSeek => IsHost || (M.Perms & Perm.Seek) != 0;
+    public bool PermSpeed => IsHost || (M.Perms & Perm.Speed) != 0;
     public string PermsTip => IsHost ? L.T("L'host può fare tutto.") : TogetherViewModel.PermsText(M.Perms);
 
     // How far they are with the song playing and the next ones.
@@ -92,7 +92,7 @@ public sealed class MemberViewModel : Observable
         var s = _owner.Session;
         if (s != null) UpdateStatus(s);
         OnChanged(nameof(Name), nameof(Initial), nameof(Brush), nameof(Avatar), nameof(IsHost), nameof(IsMe), nameof(Away), nameof(NameText),
-            nameof(RoleText), nameof(PermAdd), nameof(PermRemove), nameof(PermSkip), nameof(PermPause), nameof(PermSeek), nameof(PermsTip),
+            nameof(RoleText), nameof(PermAdd), nameof(PermRemove), nameof(PermSkip), nameof(PermPause), nameof(PermSpeed), nameof(PermsTip),
             nameof(StatusText), nameof(StatusPct), nameof(StatusBusy), nameof(StatusReady), nameof(StatusFailed));
     }
 
@@ -246,7 +246,8 @@ public sealed class TogetherViewModel : Observable
     private readonly Dictionary<string, Track> _ephemeral = new();
     private readonly Dictionary<string, RoomItemViewModel> _items = new();
     private bool _shown, _scanning, _loading, _justSeeked;
-    private long _lastSeek;
+    private long _lastSeek, _failedUntil;
+    private string? _failedItem;
     // Extra delay measured after a jump on this song (slow decoders): seeks aim this much ahead.
     private double _lag;
     private string? _joinedAddress;
@@ -259,7 +260,7 @@ public sealed class TogetherViewModel : Observable
         _newRoomName = L.F("Stanza di {0}", main.ProfileName);
         MaxChoices = new[] { 2, 3, 4, 5, 6, 8, 10, 12, 16 }.Select(n => new Choice(L.F("{0} persone", n), n)).ToList();
         _maxChoice = MaxChoices.FirstOrDefault(c => (int)c.Value! == s.TogetherMax) ?? MaxChoices[5];
-        _defaultPerms = (Perm)s.TogetherPerms & Perm.All;
+        _defaultPerms = (Perm)s.TogetherRoomPerms & Perm.All;
         _scanTimer.Tick += (_, _) => _ = Scan();
         _follow.Tick += (_, _) => Follow();
 
@@ -276,7 +277,12 @@ public sealed class TogetherViewModel : Observable
         TogglePermCommand = new RelayCommand(p => { if (p is string name && Enum.TryParse<Perm>(name, out var perm)) TogglePerm(perm); });
         KickSelectedCommand = new RelayCommand(KickSelected);
         ClearSelectionCommand = new RelayCommand(() => { foreach (var m in Members) m.IsSelected = false; });
+        ToggleRandomCommand = new RelayCommand(() => ShowRandom = !ShowRandom);
+        AddRandomCommand = new RelayCommand(AddRandom);
     }
+
+    public ICommand ToggleRandomCommand { get; }
+    public ICommand AddRandomCommand { get; }
 
     public MainViewModel Main => _main;
     public TogetherSession? Session => _s;
@@ -375,13 +381,13 @@ public sealed class TogetherViewModel : Observable
     public bool DefRemove { get => Has(Perm.Remove); set => SetDefault(Perm.Remove, value); }
     public bool DefSkip { get => Has(Perm.Skip); set => SetDefault(Perm.Skip, value); }
     public bool DefPause { get => Has(Perm.Pause); set => SetDefault(Perm.Pause, value); }
-    public bool DefSeek { get => Has(Perm.Seek); set => SetDefault(Perm.Seek, value); }
+    public bool DefSpeed { get => Has(Perm.Speed); set => SetDefault(Perm.Speed, value); }
     private bool Has(Perm p) => (_defaultPerms & p) != 0;
 
     private void SetDefault(Perm p, bool on)
     {
         _defaultPerms = on ? _defaultPerms | p : _defaultPerms & ~p;
-        OnChanged(nameof(DefAdd), nameof(DefRemove), nameof(DefSkip), nameof(DefPause), nameof(DefSeek), nameof(DefaultPermsText));
+        OnChanged(nameof(DefAdd), nameof(DefRemove), nameof(DefSkip), nameof(DefPause), nameof(DefSpeed), nameof(DefaultPermsText));
     }
 
     public string DefaultPermsText => _defaultPerms == Perm.None
@@ -396,8 +402,8 @@ public sealed class TogetherViewModel : Observable
         if ((p & Perm.Add) != 0) parts.Add(L.T("aggiungere brani"));
         if ((p & Perm.Remove) != 0) parts.Add(L.T("togliere e spostare brani"));
         if ((p & Perm.Skip) != 0) parts.Add(L.T("saltare"));
-        if ((p & Perm.Pause) != 0) parts.Add(L.T("mettere in pausa"));
-        if ((p & Perm.Seek) != 0) parts.Add(L.T("andare avanti e indietro"));
+        if ((p & Perm.Pause) != 0) parts.Add(L.T("mettere in pausa, andare avanti e indietro e ripetere il brano"));
+        if ((p & Perm.Speed) != 0) parts.Add(L.T("cambiare la velocità"));
         return string.Join(", ", parts);
     }
 
@@ -406,7 +412,7 @@ public sealed class TogetherViewModel : Observable
         if (InRoom) return;
         var settings = _main.Host.Settings;
         settings.TogetherMax = (int)MaxChoice.Value!;
-        settings.TogetherPerms = (int)_defaultPerms;
+        settings.TogetherRoomPerms = (int)_defaultPerms;
         settings.Save();
         var s = NewSession();
         try
@@ -573,8 +579,9 @@ public sealed class TogetherViewModel : Observable
         Queue = new List<RoomItemViewModel>();
         CurrentItem = null;
         Chat.Clear();
+        ShowRandom = false;
         OnChanged(nameof(InRoom), nameof(IsHost), nameof(Queue), nameof(HasQueue), nameof(QueueCountText), nameof(MemberCount), nameof(RoomName),
-            nameof(RoomSubtitle), nameof(Reconnecting), nameof(CanAdd), nameof(CanRemove), nameof(CanSkip), nameof(CanPause), nameof(CanSeek));
+            nameof(RoomSubtitle), nameof(Reconnecting), nameof(CanAdd), nameof(CanRemove), nameof(CanSkip), nameof(CanPause), nameof(CanSpeed));
         _main.OnRoomChanged();
         if (_shown)
         {
@@ -692,7 +699,7 @@ public sealed class TogetherViewModel : Observable
         }
         foreach (var item in _items.Values) item.Refresh();
         OnChanged(nameof(RoomName), nameof(MemberCount), nameof(Reconnecting), nameof(HostName), nameof(RoomSubtitle), nameof(AddressText), nameof(IsHost),
-            nameof(CanAdd), nameof(CanRemove), nameof(CanSkip), nameof(CanPause), nameof(CanSeek), nameof(MyRoleText), nameof(AddHint));
+            nameof(CanAdd), nameof(CanRemove), nameof(CanSkip), nameof(CanPause), nameof(CanSpeed), nameof(MyRoleText), nameof(AddHint));
         OnMemberSelection();
         _main.OnRoomChanged();
         _main.Player.OnRoomPermissions();
@@ -715,8 +722,9 @@ public sealed class TogetherViewModel : Observable
     public bool CanAdd => _s?.Can(Perm.Add) == true;
     public bool CanRemove => _s?.Can(Perm.Remove) == true;
     public bool CanSkip => _s?.Can(Perm.Skip) == true;
+    // Pause, seek and loop are one permission.
     public bool CanPause => _s?.Can(Perm.Pause) == true;
-    public bool CanSeek => _s?.Can(Perm.Seek) == true;
+    public bool CanSpeed => _s?.Can(Perm.Speed) == true;
     public bool CanRemoveItem(RoomTrack t) => CanRemove || _s?.Me.Id == t.AddedBy;
 
     public string MyRoleText => _s == null ? "" : IsHost ? L.T("Sei l'host: puoi fare tutto e decidi cosa possono fare gli altri.") : PermsText(_s.MyPerms);
@@ -734,8 +742,8 @@ public sealed class TogetherViewModel : Observable
         Perm.Add => "Non hai il permesso di aggiungere brani alla stanza (lo decide l'host).",
         Perm.Remove => "Non hai il permesso di togliere o spostare brani (lo decide l'host).",
         Perm.Skip => "Non hai il permesso di saltare i brani (lo decide l'host).",
-        Perm.Pause => "Non hai il permesso di mettere in pausa (lo decide l'host).",
-        _ => "Non hai il permesso di andare avanti o indietro (lo decide l'host).",
+        Perm.Pause => "Non hai il permesso di mettere in pausa o andare avanti e indietro (lo decide l'host).",
+        _ => "Non hai il permesso di cambiare la velocità (lo decide l'host).",
     });
 
     // Host: the people selected in the list.
@@ -748,7 +756,7 @@ public sealed class TogetherViewModel : Observable
     public bool? SelRemove => SelState(Perm.Remove);
     public bool? SelSkip => SelState(Perm.Skip);
     public bool? SelPause => SelState(Perm.Pause);
-    public bool? SelSeek => SelState(Perm.Seek);
+    public bool? SelSpeed => SelState(Perm.Speed);
 
     private bool? SelState(Perm p)
     {
@@ -759,7 +767,7 @@ public sealed class TogetherViewModel : Observable
     }
 
     public void OnMemberSelection()
-        => OnChanged(nameof(HasSelection), nameof(SelectionText), nameof(SelAdd), nameof(SelRemove), nameof(SelSkip), nameof(SelPause), nameof(SelSeek));
+        => OnChanged(nameof(HasSelection), nameof(SelectionText), nameof(SelAdd), nameof(SelRemove), nameof(SelSkip), nameof(SelPause), nameof(SelSpeed));
 
     public void TogglePerm(Perm p) => TogglePerm(SelectedMembers, p);
 
@@ -937,6 +945,93 @@ public sealed class TogetherViewModel : Observable
             : L.F("{0} brani aggiunti alla coda della stanza", items.Count));
     }
 
+    // ------------------------------------------------------------------ random songs
+
+    // A few songs picked at random from all your songs, a playlist or a tag: a queue for the room in two clicks.
+    private bool _showRandom;
+    public bool ShowRandom
+    {
+        get => _showRandom;
+        set
+        {
+            if (value) RefreshRandomSources();
+            Set(ref _showRandom, value);
+        }
+    }
+
+    public List<Choice> RandomSources { get; private set; } = new();
+
+    private Choice? _randomSource;
+    public Choice? RandomSource { get => _randomSource; set { if (value != null && Set(ref _randomSource, value)) _lastRandomSource = value.Value as string; } }
+    private string? _lastRandomSource;
+
+    public List<Choice> RandomCounts { get; } = new[] { 1, 5, 10, 25, 50 }.Select(n => new Choice(n.ToString(), n)).ToList();
+
+    private Choice? _randomCount;
+    public Choice RandomCount { get => _randomCount ??= RandomCounts[1]; set { if (value != null) Set(ref _randomCount, value); } }
+
+    // Songs the button already put in the room: not again until the list has been used up.
+    private readonly HashSet<string> _randomUsed = new();
+
+    private void RefreshRandomSources()
+    {
+        var list = new List<Choice> { new(L.T("Tutti i brani"), "library", L.Count(_main.Library.Count, "1 brano", "{0} brani")) };
+        foreach (var p in _main.Playlists.Where(p => p.P.Tracks.Count > 0))
+            list.Add(new Choice(p.IsFavorites ? "♥ " + p.Name : p.Name, "playlist:" + p.Id, L.Count(p.P.Tracks.Count, "1 brano", "{0} brani")));
+        foreach (var t in _main.Tags.Where(t => t.Count > 0))
+            list.Add(new Choice("# " + t.Name, "tag:" + t.Id, L.Count(t.Count, "1 brano", "{0} brani")));
+        RandomSources = list;
+        _randomSource = list.FirstOrDefault(c => (string)c.Value! == _lastRandomSource) ?? list[0];
+        OnChanged(nameof(RandomSources), nameof(RandomSource));
+    }
+
+    private IEnumerable<Track> RandomPool(string source)
+    {
+        var lib = _main.Library;
+        if (source.StartsWith("playlist:"))
+            return _main.Profile.GetPlaylist(source[9..]) is { } p ? p.Tracks.ToList().Select(lib.Get).OfType<Track>() : Enumerable.Empty<Track>();
+        if (source.StartsWith("tag:"))
+        {
+            var tag = source[4..];
+            return lib.Snapshot().Where(t => _main.Profile.TagsOf(t.Id).Contains(tag));
+        }
+        return lib.Snapshot();
+    }
+
+    private void AddRandom()
+    {
+        if (_s == null) return;
+        if (!CanAdd)
+        {
+            Deny(Denied(Perm.Add));
+            return;
+        }
+        int want = Math.Min((int)RandomCount.Value!, TogetherSession.MaxQueue - _s.Queue.Count);
+        if (want <= 0)
+        {
+            _main.Toast(L.T("La coda della stanza è piena."));
+            return;
+        }
+        var pool = RandomPool(RandomSource?.Value as string ?? "library").DistinctBy(t => t.Id).ToList();
+        // Not what the room already has (playing or waiting).
+        var inRoom = new[] { _s.Current }.Concat(_s.Queue).OfType<RoomTrack>()
+            .Select(t => _fetcher?.LibraryTrack(t.Id)?.Id).OfType<string>().ToHashSet();
+        var fresh = pool.Where(t => !inRoom.Contains(t.Id) && !_randomUsed.Contains(t.Id)).ToList();
+        if (fresh.Count < want)
+        {
+            foreach (var t in pool) _randomUsed.Remove(t.Id);
+            fresh = pool.Where(t => !inRoom.Contains(t.Id)).ToList();
+        }
+        var pick = fresh.OrderBy(_ => Random.Shared.Next()).Where(t => File.Exists(t.Path)).Take(want).Select(_main.Vm).ToList();
+        if (pick.Count == 0)
+        {
+            _main.Toast(L.T("In questa lista non ci sono altri brani da aggiungere."));
+            return;
+        }
+        foreach (var t in pick) _randomUsed.Add(t.Id);
+        _ = AddAsync(pick, false);
+    }
+
     private RoomTrack RoomTrackFor(TrackViewModel vm)
     {
         if (RoomTrackOf(vm) is { } known)
@@ -1058,13 +1153,46 @@ public sealed class TogetherViewModel : Observable
     public void Seek(double seconds)
     {
         if (_s?.Current == null) return;
-        if (!CanSeek)
+        if (!CanPause)
         {
-            Deny(Denied(Perm.Seek));
+            Deny(Denied(Perm.Pause));
             return;
         }
         _s.Seek(Math.Max(0, seconds));
     }
+
+    // Loop of the song playing (the room has no "repeat the queue"): same permission as pause.
+    public bool RoomLoop => _s?.Play.Loop == true;
+
+    public void ToggleLoop()
+    {
+        if (_s == null) return;
+        if (!CanPause)
+        {
+            Deny(Denied(Perm.Pause));
+            return;
+        }
+        _s.SetLoop(!RoomLoop);
+    }
+
+    // Speed for everyone in the room.
+    public double RoomSpeed => _s?.Play.Speed is > 0 and var v ? v : 1;
+    public bool RoomPitch => _s?.Play.Pitch == true;
+
+    public void SetSpeed(double speed, bool pitch)
+    {
+        if (_s == null) return;
+        if (!CanSpeed)
+        {
+            Deny(Denied(Perm.Speed));
+            return;
+        }
+        _s.SetSpeed(speed, pitch);
+    }
+
+    // Small signs on the song card: loop on, not at the normal speed.
+    public string SpeedBadge => Math.Abs(RoomSpeed - 1) < 0.001 ? "" : PlayerViewModel.SpeedLabel(RoomSpeed);
+    public bool HasSpeedBadge => SpeedBadge.Length > 0;
 
     public bool IsPlaying => _s?.Play.State == PlayState.Playing;
     public double TargetPosition => _s?.Position ?? 0;
@@ -1087,6 +1215,8 @@ public sealed class TogetherViewModel : Observable
     private void OnPlayback()
     {
         UpdateNowPlaying();
+        OnChanged(nameof(RoomLoop), nameof(RoomSpeed), nameof(RoomPitch), nameof(SpeedBadge), nameof(HasSpeedBadge));
+        _main.Player.OnRoomPlayback();
         Follow();
         _main.Host.OnSeek();
     }
@@ -1133,9 +1263,14 @@ public sealed class TogetherViewModel : Observable
         }
         var vm = TrackFor(item);
         p.RoomShow(vm, item.Duration);
-        double target = s.Position;
-        bool playing = s.Play.State == PlayState.Playing;
+        // "queue" (the new song) and "play" (its state) come one after the other: until the second one arrives
+        // the state still belongs to the song before, so the new one waits at the start.
+        bool mine = s.Play.ItemId == item.Id;
+        double target = mine ? s.Position : 0;
+        bool playing = mine && s.Play.State == PlayState.Playing;
+        double speed = RoomSpeed;
         p.RoomState(playing, target);
+        p.RoomSpeed(speed, RoomPitch);
         var path = _fetcher?.PathFor(item.Id);
         if (path == null)
         {
@@ -1143,20 +1278,26 @@ public sealed class TogetherViewModel : Observable
             if (p.RoomLoadedId != null) p.RoomStop();
             return;
         }
+        // While the file opens the engine still holds the song before: nothing is played, paused or moved until then.
+        if (_loading) return;
+        long now = Environment.TickCount64;
         if (p.RoomLoadedId != item.Id)
         {
-            if (_loading) return;
+            // A file that didn't open is tried again after a while, not every 200 ms.
+            if (_failedItem == item.Id && now < _failedUntil) return;
             _loading = true;
+            // The song before stops here (it doesn't go on under the new one); the new one starts at the right point once open.
+            p.RoomPlay(false);
             _ = Load(item.Id, vm, path);
             return;
         }
         var audio = p.Audio;
-        long now = Environment.TickCount64;
+        double lead = Lead * speed;
         if (playing)
         {
             if (!audio.IsPlaying)
             {
-                audio.Seek(TimeSpan.FromSeconds(target + Lead + _lag));
+                audio.Seek(TimeSpan.FromSeconds(target + lead + _lag));
                 p.RoomPlay(true);
                 _lastSeek = now;
                 _justSeeked = true;
@@ -1164,12 +1305,12 @@ public sealed class TogetherViewModel : Observable
             else if (now - _lastSeek > 1500)
             {
                 double behind = target - audio.Position.TotalSeconds;
-                if (Math.Abs(behind) > 0.2)
+                if (Math.Abs(behind) > 0.2 * Math.Max(1, speed))
                 {
                     // Drifted (a hiccup, a seek by someone): back on the room's time. If the last jump itself landed
                     // late (files decoded through ffmpeg take a moment to restart), the next ones aim that much further.
                     if (_justSeeked) _lag = Math.Clamp(_lag + behind, 0, 1.5);
-                    audio.Seek(TimeSpan.FromSeconds(target + Lead + _lag));
+                    audio.Seek(TimeSpan.FromSeconds(target + lead + _lag));
                     _lastSeek = now;
                     _justSeeked = true;
                 }
@@ -1189,8 +1330,14 @@ public sealed class TogetherViewModel : Observable
 
     private async Task Load(string itemId, TrackViewModel vm, string path)
     {
-        try { await _main.Player.RoomLoad(itemId, vm, path); }
+        bool ok = false;
+        try { ok = await _main.Player.RoomLoad(itemId, vm, path); }
         finally { _loading = false; }
+        if (!ok)
+        {
+            _failedItem = itemId;
+            _failedUntil = Environment.TickCount64 + 5000;
+        }
         _lastSeek = 0;
         _lag = 0;
         _justSeeked = false;

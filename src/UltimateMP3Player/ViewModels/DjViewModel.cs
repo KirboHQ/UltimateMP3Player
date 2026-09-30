@@ -67,7 +67,7 @@ public sealed class DjDeckViewModel : Observable
         FirstBeat = track?.BeatOffset ?? 0;
         Cue = 0;
         IsSynced = false;
-        TempoPercent = 0;
+        Rate = 1;
         ResetTaps();
         OnChanged(nameof(Title), nameof(Artist), nameof(Song), nameof(Analysis), nameof(Bpm), nameof(BpmText), nameof(OriginalBpmText), nameof(BpmInput), nameof(ShowDetected), nameof(IsPlaying));
         try
@@ -373,47 +373,44 @@ public sealed class DjDeckViewModel : Observable
         }
     }
 
-    public double Rate => 1 + _tempo / 100;
     public double? PlayedBpm => _bpm * Rate;
     // With « / » held it shows the nudged speed, so you see it working.
     public string BpmText => PlayedBpm is { } b ? (b * (1 + _bend)).ToString("0.0", CultureInfo.CurrentCulture) : "—";
     public string OriginalBpmText => _bpm is { } b ? L.F("originale {0}", b.ToString("0.0", CultureInfo.CurrentCulture)) : L.T("BPM sconosciuti");
 
-    private double _range = 8;
-    // Tempo fader range in percent, like on a CDJ.
-    public double Range { get => _range; private set { if (Set(ref _range, value)) OnChanged(nameof(RangeText), nameof(TempoMin), nameof(TempoMax)); } }
-    public string RangeText => "±" + _range + "%";
-    public double TempoMin => -_range;
-    public double TempoMax => _range;
-
-    public void CycleRange()
+    private double _rate = 1;
+    // The deck's speed, from 0.5× to 2× (1 = the song as it is).
+    public double Rate
     {
-        Range = _range switch { 8 => 16, 16 => 50, _ => 8 };
-        TempoPercent = Math.Clamp(_tempo, -_range, _range);
-    }
-
-    private double _tempo;
-    public double TempoPercent
-    {
-        get => _tempo;
+        get => _rate;
         set
         {
-            value = Math.Round(Math.Clamp(value, -50, 50), 2);
-            if (Math.Abs(value) > _range) Range = Math.Abs(value) > 16 ? 50 : 16;
-            if (!Set(ref _tempo, value)) return;
-            Engine.Tempo = Rate * (1 + _bend);
-            OnChanged(nameof(TempoText), nameof(BpmText), nameof(RemainingText));
+            value = Math.Round(Math.Clamp(value, 0.5, 2), 4);
+            if (!Set(ref _rate, value)) return;
+            Engine.Tempo = _rate * (1 + _bend);
+            OnChanged(nameof(TempoFader), nameof(TempoText), nameof(TempoPercentText), nameof(BpmText), nameof(RemainingText));
             if (Dj.Linking) return;
             // Synced decks change tempo together, so their beats stay on each other.
             Dj.Linking = true;
             try
             {
-                if (IsSynced && Other.Bpm is { } master && PlayedBpm is { } played) Other.TempoPercent = (played / master - 1) * 100;
+                if (IsSynced && Other.Bpm is { } master && PlayedBpm is { } played) Other.Rate = played / master;
                 else if (Other.IsSynced) Other.Follow(false);
             }
             finally { Dj.Linking = false; }
         }
     }
+
+    // The tempo fader works in octaves (log2 of the speed): 1× in the middle, 0.5× and 2× at the ends,
+    // so slowing down and speeding up get the same room.
+    public double TempoFader
+    {
+        get => Math.Log2(_rate);
+        set => Rate = Math.Pow(2, Math.Clamp(value, -1, 1));
+    }
+
+    // Wheel on the fader: fine steps of 0.1 %.
+    public void NudgeTempo(int steps) => Rate *= Math.Pow(1.001, steps);
 
     private bool _synced;
     // SYNC on: this deck follows the other's tempo; its beats were lined up on the other's when it was turned on.
@@ -442,12 +439,13 @@ public sealed class DjDeckViewModel : Observable
         if (_bpm is not { } mine || o.PlayedBpm is not { } target) return;
         bool was = Dj.Linking;
         Dj.Linking = true;
-        try { TempoPercent = (target / mine - 1) * 100; }
+        try { Rate = target / mine; }
         finally { Dj.Linking = was; }
         if (phase) AlignPhase();
     }
 
-    public string TempoText => (_tempo > 0 ? "+" : "") + _tempo.ToString("0.00", CultureInfo.CurrentCulture) + " %";
+    public string TempoText => _rate.ToString("0.00", CultureInfo.CurrentCulture) + "×";
+    public string TempoPercentText => (_rate > 1.00005 ? "+" : "") + ((_rate - 1) * 100).ToString("0.0", CultureInfo.CurrentCulture) + " %";
 
     public bool KeyLock
     {
@@ -522,7 +520,6 @@ public sealed class DjViewModel : Observable
         TapResetCommand = new RelayCommand(p => (p as DjDeckViewModel)?.ResetTaps());
         TapRoundCommand = new RelayCommand(p => (p as DjDeckViewModel)?.SaveTaps(true));
         TapExactCommand = new RelayCommand(p => (p as DjDeckViewModel)?.SaveTaps(false));
-        RangeCommand = new RelayCommand(p => (p as DjDeckViewModel)?.CycleRange());
         EjectCommand = new RelayCommand(p => (p as DjDeckViewModel)?.Eject());
         RecordCommand = new RelayCommand(() => _ = ToggleRecord());
         ToggleAllCommand = new RelayCommand(ToggleAll);
@@ -599,7 +596,6 @@ public sealed class DjViewModel : Observable
     public ICommand TapResetCommand { get; }
     public ICommand TapRoundCommand { get; }
     public ICommand TapExactCommand { get; }
-    public ICommand RangeCommand { get; }
     public ICommand EjectCommand { get; }
     public ICommand RecordCommand { get; }
     public ICommand ToggleAllCommand { get; }

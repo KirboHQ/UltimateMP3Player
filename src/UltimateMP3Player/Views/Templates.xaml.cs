@@ -197,8 +197,8 @@ public static class Menus
                      (Core.Together.Perm.Add, L.T("Può aggiungere brani")),
                      (Core.Together.Perm.Remove, L.T("Può togliere e spostare brani")),
                      (Core.Together.Perm.Skip, L.T("Può saltare i brani")),
-                     (Core.Together.Perm.Pause, L.T("Può mettere in pausa")),
-                     (Core.Together.Perm.Seek, L.T("Può andare avanti e indietro")),
+                     (Core.Together.Perm.Pause, L.T("Può mettere in pausa, andare avanti e indietro e ripetere il brano")),
+                     (Core.Together.Perm.Speed, L.T("Può cambiare la velocità")),
                  })
         {
             int n = who.Count(m => (m.M.Perms & perm) != 0);

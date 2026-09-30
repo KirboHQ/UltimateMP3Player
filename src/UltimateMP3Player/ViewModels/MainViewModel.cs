@@ -324,6 +324,7 @@ public sealed class MainViewModel : Observable
             if (IsLink) return;
             if (string.IsNullOrWhiteSpace(value))
             {
+                Search.Reset();
                 if (Page == Search) GoBack();
                 return;
             }
@@ -351,11 +352,27 @@ public sealed class MainViewModel : Observable
     private void SubmitSearch()
     {
         if (IsLink) StartDownload(SearchText.Trim());
-        else RunSearch();
+        else
+        {
+            _searchTimer.Stop();
+            RunSearch();
+            // Enter: the online search starts right away too.
+            Search.RunOnlineNow();
+        }
     }
 
-    public void StartDownload(string url)
+    // fromSearch: a song found online. The search stays (text and results), so Back returns to it.
+    public void StartDownload(string url, bool fromSearch = false)
     {
+        if (fromSearch && Page == Search)
+        {
+            _back.Push(Search);
+            Page = Downloads;
+            OnNavChanged();
+            CommandManager.InvalidateRequerySuggested();
+            _ = Downloads.AnalyzeAsync(url);
+            return;
+        }
         Navigate(Downloads);
         _ = Downloads.AnalyzeAsync(url);
         _searchText = "";

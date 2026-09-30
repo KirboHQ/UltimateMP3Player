@@ -306,7 +306,9 @@ public sealed class AppHost : Observable
         _lastTimeline = DateTime.Now;
         var duration = TimeSpan.FromSeconds(p?.Duration ?? 0);
         if (p?.Current != null) Media.SetTimeline(p.EnginePosition, duration);
-        Presence.Update(p?.Current?.T, p?.IsPlaying == true, p?.EnginePosition ?? TimeSpan.Zero, duration);
+        // Discord runs its bar on the clock: at another speed the song lasts that much more or less.
+        double speed = p?.Speed is > 0 and var s ? s : 1;
+        Presence.Update(p?.Current?.T, p?.IsPlaying == true, (p?.EnginePosition ?? TimeSpan.Zero) / speed, duration / speed);
     }
 
     public void SetDiscordPresence(bool on)

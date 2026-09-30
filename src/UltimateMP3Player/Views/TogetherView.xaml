@@ -18,6 +18,34 @@
             </Grid>
         </DataTemplate>
 
+        <!-- the host's crown: gold, three points with round jewels, a darker band (drawn, so it stays sharp at any size) -->
+        <LinearGradientBrush x:Key="CrownGold" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#FFF1A8" Offset="0"/>
+            <GradientStop Color="#FFCB2E" Offset="0.45"/>
+            <GradientStop Color="#E99A00" Offset="1"/>
+        </LinearGradientBrush>
+        <ControlTemplate x:Key="Crown" TargetType="ContentControl">
+            <Viewbox Stretch="Uniform">
+                <Canvas Width="24" Height="20">
+                    <Path Fill="{StaticResource CrownGold}" Stroke="#3A2600" StrokeThickness="1" StrokeLineJoin="Round"
+                          Data="M3.2,7.4 L7.7,11.4 L12,4.6 L16.3,11.4 L20.8,7.4 L19.1,15.4 Q18.9,16.4 17.9,16.4 L6.1,16.4 Q5.1,16.4 4.9,15.4 Z"/>
+                    <Path Fill="#D08400" Stroke="#3A2600" StrokeThickness="1" StrokeLineJoin="Round"
+                          Data="M5.4,17.3 L18.6,17.3 Q19.5,17.3 19.5,18.2 Q19.5,19.1 18.6,19.1 L5.4,19.1 Q4.5,19.1 4.5,18.2 Q4.5,17.3 5.4,17.3 Z"/>
+                    <Path Fill="{StaticResource CrownGold}" Stroke="#3A2600" StrokeThickness="1">
+                        <Path.Data>
+                            <GeometryGroup>
+                                <EllipseGeometry Center="3.2,6.6" RadiusX="1.7" RadiusY="1.7"/>
+                                <EllipseGeometry Center="12,3.4" RadiusX="1.9" RadiusY="1.9"/>
+                                <EllipseGeometry Center="20.8,6.6" RadiusX="1.7" RadiusY="1.7"/>
+                            </GeometryGroup>
+                        </Path.Data>
+                    </Path>
+                    <!-- a glint on the middle point -->
+                    <Path Fill="#FFFBE0" Opacity="0.8" Data="M12,8.2 L13.3,12.6 L12,14.2 L10.7,12.6 Z"/>
+                </Canvas>
+            </Viewbox>
+        </ControlTemplate>
+
         <!-- one permission of a person: lit when they have it -->
         <Style x:Key="PermIcon" TargetType="TextBlock" BasedOn="{StaticResource Glyph}">
             <Setter Property="FontSize" Value="11.5"/>
@@ -69,6 +97,57 @@
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- a row of small round choices (how many random songs) -->
+        <Style x:Key="CountPills" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="ItemsPanel">
+                <Setter.Value>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <ItemsPresenter/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                        <Setter Property="Cursor" Value="Hand"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="Bd" MinWidth="36" Height="32" CornerRadius="16" Margin="0,0,6,0" Padding="10,0" Background="{StaticResource Surface3Brush}"
+                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                        <TextBlock x:Name="Tx" Text="{Binding Label}" FontSize="12.5" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource SubTextBrush}"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+                                            <Setter TargetName="Tx" Property="Foreground" Value="{StaticResource TextBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                            <Setter TargetName="Tx" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
                 </Setter.Value>
             </Setter>
         </Style>
@@ -175,8 +254,10 @@
                                 <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE710;" Content="{local:T 'aggiungere brani'}" IsChecked="{Binding DefAdd}"/>
                                 <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE738;" Content="{local:T 'togliere e spostare'}" IsChecked="{Binding DefRemove}"/>
                                 <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE893;" Content="{local:T saltare}" IsChecked="{Binding DefSkip}"/>
-                                <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE769;" Content="{local:T 'mettere in pausa'}" IsChecked="{Binding DefPause}"/>
-                                <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE916;" Content="{local:T 'avanti e indietro'}" IsChecked="{Binding DefSeek}"/>
+                                <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE769;" Content="{local:T 'pausa e avanti/indietro'}" IsChecked="{Binding DefPause}"
+                                              ToolTip="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"/>
+                                <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE916;" Content="{local:T velocità}" IsChecked="{Binding DefSpeed}"
+                                              ToolTip="{local:T 'Cambiare la velocità di riproduzione per tutti'}"/>
                             </WrapPanel>
                             <TextBlock Text="{Binding DefaultPermsText}" Style="{StaticResource Hint}" FontSize="12" Margin="2,0,0,0"/>
                             <Button Style="{StaticResource PrimaryButton}" Margin="0,20,0,0" Padding="18,11" Command="{Binding CreateCommand}">
@@ -380,7 +461,27 @@
                                             <TextBlock Text="{local:T Salva}" Margin="7,0,0,0"/>
                                         </StackPanel>
                                     </Button>
-                                    <TextBlock Text="{Binding NowKicker}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center"/>
+                                    <WrapPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding NowKicker}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center"
+                                                   Margin="0,0,10,0"/>
+                                        <!-- the room's loop and speed, when on (the buttons are in the player bar) -->
+                                        <Border CornerRadius="9" Padding="7,1,8,1" Margin="0,0,6,0" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center"
+                                                Visibility="{Binding RoomLoop, Converter={StaticResource BoolVis}}"
+                                                ToolTip="{local:T 'Il brano ricomincia da capo quando finisce, finché qualcuno toglie il loop'}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE8ED;" Style="{StaticResource Glyph}" FontSize="10.5" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                <TextBlock Text="{local:T 'In loop'}" FontSize="11" FontWeight="SemiBold" Margin="5,0,0,0" Foreground="{DynamicResource AccentTextBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border CornerRadius="9" Padding="7,1,8,1" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center"
+                                                Visibility="{Binding HasSpeedBadge, Converter={StaticResource BoolVis}}"
+                                                ToolTip="{local:T 'Velocità di riproduzione della stanza'}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE916;" Style="{StaticResource Glyph}" FontSize="10.5" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                <TextBlock Text="{Binding SpeedBadge}" FontSize="11" FontWeight="SemiBold" Margin="5,0,0,0" Foreground="{DynamicResource AccentTextBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </WrapPanel>
                                 </DockPanel>
                                 <TextBlock Text="{Binding Main.Player.Current.Title}" FontSize="22" FontWeight="Bold" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
                                            local:Marquee.IsEnabled="True"/>
@@ -408,16 +509,53 @@
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <DockPanel Margin="6,2,4,10">
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding QueueCountText}" Foreground="{StaticResource MutedBrush}" FontSize="12.5" VerticalAlignment="Top" Margin="0,4,0,0"/>
+                                <!-- a few songs at random from your songs, a playlist or a tag -->
+                                <ToggleButton DockPanel.Dock="Right" Style="{StaticResource PermChip}" Margin="10,0,0,0" VerticalAlignment="Top" local:Ui.Glyph="&#xE8B1;"
+                                              Content="{local:T 'Brani casuali'}" IsChecked="{Binding ShowRandom, Mode=OneWay}" Command="{Binding ToggleRandomCommand}"
+                                              Visibility="{Binding CanAdd, Converter={StaticResource BoolVis}}"
+                                              ToolTip="{local:T 'Aggiungi alla coda brani a caso da tutti i tuoi brani, da una playlist o da un tag'}"/>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding QueueCountText}" Foreground="{StaticResource MutedBrush}" FontSize="12.5" VerticalAlignment="Top" Margin="0,8,0,0"/>
                                 <StackPanel>
                                     <TextBlock Text="{local:T 'In coda'}" FontSize="17" FontWeight="Bold"/>
                                     <TextBlock x:Name="QueueHint" Text="{Binding AddHint}" Style="{StaticResource Hint}" FontSize="12" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </DockPanel>
-                            <ListBox Grid.Row="1" Style="{StaticResource PlainList}" ItemsSource="{Binding Queue}" AutomationProperties.Name="{local:T 'In coda'}">
+                            <Border Grid.Row="1" Margin="2,0,2,12" CornerRadius="12" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1" Padding="14,10,8,12" Visibility="{Binding ShowRandom, Converter={StaticResource BoolVis}}">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="10" Content="&#xE711;"
+                                                Command="{Binding ToggleRandomCommand}" ToolTip="{local:T Chiudi}" AutomationProperties.Name="{local:T Chiudi}"/>
+                                        <TextBlock Text="{local:T 'Aggiungi brani a caso'}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                    <Grid Margin="0,8,6,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" MinWidth="150"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <ComboBox ItemsSource="{Binding RandomSources}" SelectedItem="{Binding RandomSource}" AutomationProperties.Name="{local:T 'Da dove'}"
+                                                  ToolTip="{local:T 'Da dove prenderli'}"/>
+                                        <ListBox Grid.Column="1" Margin="10,0,0,0" Style="{StaticResource CountPills}" ItemsSource="{Binding RandomCounts}"
+                                                 SelectedItem="{Binding RandomCount}" VerticalAlignment="Center" AutomationProperties.Name="{local:T Quanti}"
+                                                 ToolTip="{local:T 'Quanti brani'}"/>
+                                    </Grid>
+                                    <DockPanel Margin="0,10,6,0">
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Padding="16,7" Margin="10,0,0,0" Command="{Binding AddRandomCommand}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE8B1;" Style="{StaticResource Glyph}" FontSize="12"/>
+                                                <TextBlock Text="{local:T 'Aggiungi alla coda'}" Margin="8,0,0,0"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <TextBlock Text="{local:T 'Scelti a caso, senza quelli già nella stanza: premi ancora per aggiungerne altri.'}" Style="{StaticResource Hint}"
+                                                   FontSize="12" VerticalAlignment="Center"/>
+                                    </DockPanel>
+                                </StackPanel>
+                            </Border>
+                            <ListBox Grid.Row="2" Style="{StaticResource PlainList}" ItemsSource="{Binding Queue}" AutomationProperties.Name="{local:T 'In coda'}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:RoomItemViewModel}">
                                         <Border x:Name="Row" CornerRadius="8" Padding="6" Margin="0,0,0,1" Background="Transparent" local:Marquee.Host="True"
@@ -501,7 +639,7 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
-                            <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="320" Margin="0,0,0,20"
+                            <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="320" Margin="0,0,0,20"
                                         Visibility="{Binding HasQueue, Converter={StaticResource InvBoolVis}}">
                                 <Grid Width="72" Height="72" HorizontalAlignment="Center">
                                     <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
@@ -570,19 +708,24 @@
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
                                                 <Grid x:Name="Face" Width="38" Height="38" VerticalAlignment="Top">
+                                                    <!-- the host: a gold ring and a crown sitting on the picture -->
+                                                    <Ellipse x:Name="HostRing" Margin="-3" Stroke="{StaticResource CrownGold}" StrokeThickness="2" Visibility="Collapsed"/>
                                                     <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource MemberAvatar}"/>
-                                                    <!-- the host's crown -->
-                                                    <Grid Width="17" Height="17" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3"
-                                                          Visibility="{Binding IsHost, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Host della stanza'}">
-                                                        <Ellipse Fill="#F5B400" Stroke="{StaticResource SurfaceBrush}" StrokeThickness="2"/>
-                                                        <TextBlock Text="♛" FontFamily="Segoe UI Symbol" FontSize="9.5" Foreground="#2A1F00" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                   Margin="0,0,0,1"/>
-                                                    </Grid>
+                                                    <ContentControl x:Name="HostCrown" Template="{StaticResource Crown}" Width="30" Height="25" HorizontalAlignment="Center" VerticalAlignment="Top"
+                                                                    Margin="6,-22,-6,0" RenderTransformOrigin="0.5,0.5" Visibility="Collapsed" Focusable="False" IsTabStop="False"
+                                                                    ToolTip="{local:T 'Host della stanza'}">
+                                                        <ContentControl.RenderTransform>
+                                                            <RotateTransform Angle="14"/>
+                                                        </ContentControl.RenderTransform>
+                                                        <ContentControl.Effect>
+                                                            <DropShadowEffect BlurRadius="5" ShadowDepth="1.5" Direction="290" Opacity="0.7" Color="Black"/>
+                                                        </ContentControl.Effect>
+                                                    </ContentControl>
                                                 </Grid>
                                                 <StackPanel Grid.Column="1" Margin="11,0,0,0">
                                                     <DockPanel>
-                                                        <Border DockPanel.Dock="Right" CornerRadius="8" Padding="7,1" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
-                                                            <TextBlock Text="{Binding RoleText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}"/>
+                                                        <Border x:Name="RolePill" DockPanel.Dock="Right" CornerRadius="8" Padding="7,1" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
+                                                            <TextBlock x:Name="RoleText" Text="{Binding RoleText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}"/>
                                                         </Border>
                                                         <TextBlock Text="{Binding NameText}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
                                                     </DockPanel>
@@ -591,7 +734,7 @@
                                                         <TextBlock Text="&#xE738;" Style="{StaticResource PermIcon}" Tag="{Binding PermRemove}"/>
                                                         <TextBlock Text="&#xE893;" Style="{StaticResource PermIcon}" Tag="{Binding PermSkip}"/>
                                                         <TextBlock Text="&#xE769;" Style="{StaticResource PermIcon}" Tag="{Binding PermPause}"/>
-                                                        <TextBlock Text="&#xE916;" Style="{StaticResource PermIcon}" Tag="{Binding PermSeek}"/>
+                                                        <TextBlock Text="&#xE916;" Style="{StaticResource PermIcon}" Tag="{Binding PermSpeed}"/>
                                                     </StackPanel>
                                                     <!-- their download: a thin bar while it comes -->
                                                     <ProgressBar Height="3" Maximum="100" Value="{Binding StatusPct, Mode=OneWay}" Margin="0,1,0,3"
@@ -616,6 +759,13 @@
                                             <DataTrigger Binding="{Binding Away}" Value="True">
                                                 <Setter TargetName="Face" Property="Opacity" Value="0.4"/>
                                             </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsHost}" Value="True">
+                                                <Setter TargetName="HostRing" Property="Visibility" Value="Visible"/>
+                                                <Setter TargetName="HostCrown" Property="Visibility" Value="Visible"/>
+                                                <Setter TargetName="Face" Property="Margin" Value="0,16,0,0"/>
+                                                <Setter TargetName="RolePill" Property="Background" Value="#3A2F0C"/>
+                                                <Setter TargetName="RoleText" Property="Foreground" Value="#FFD24D"/>
+                                            </DataTrigger>
                                         </DataTemplate.Triggers>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
@@ -637,10 +787,12 @@
                                                       IsChecked="{Binding SelRemove, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Remove"/>
                                         <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE893;" Content="{local:T saltare}" IsThreeState="True"
                                                       IsChecked="{Binding SelSkip, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Skip"/>
-                                        <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE769;" Content="{local:T pausa}" IsThreeState="True"
-                                                      IsChecked="{Binding SelPause, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Pause"/>
-                                        <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE916;" Content="{local:T 'avanti/indietro'}" IsThreeState="True"
-                                                      IsChecked="{Binding SelSeek, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Seek"/>
+                                        <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE769;" Content="{local:T 'pausa e avanti/indietro'}" IsThreeState="True"
+                                                      IsChecked="{Binding SelPause, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Pause"
+                                                      ToolTip="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"/>
+                                        <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE916;" Content="{local:T velocità}" IsThreeState="True"
+                                                      IsChecked="{Binding SelSpeed, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Speed"
+                                                      ToolTip="{local:T 'Cambiare la velocità di riproduzione per tutti'}"/>
                                     </WrapPanel>
                                     <Button Style="{StaticResource DangerButton}" Padding="12,5" FontSize="12.5" HorizontalAlignment="Left" Margin="0,2,0,4"
                                             Command="{Binding KickSelectedCommand}">

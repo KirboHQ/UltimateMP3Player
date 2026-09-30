@@ -14,16 +14,16 @@ public enum Perm
     Remove = 2,
     // Skip the song playing.
     Skip = 4,
-    // Pause and resume.
+    // Pause and resume, move forward and back in the song, repeat it (the same thing: where the song is).
     Pause = 8,
-    // Move forward and back in the song.
-    Seek = 16,
-    All = Add | Remove | Skip | Pause | Seek,
+    // Play faster or slower, for everyone.
+    Speed = 16,
+    All = Add | Remove | Skip | Pause | Speed,
 }
 
 public static class Perms
 {
-    public static readonly Perm[] Each = { Perm.Add, Perm.Remove, Perm.Skip, Perm.Pause, Perm.Seek };
+    public static readonly Perm[] Each = { Perm.Add, Perm.Remove, Perm.Skip, Perm.Pause, Perm.Speed };
 
     // How "important" someone is when the host has to be handed over: the one allowed to do more.
     public static int Weight(Perm p)
@@ -79,7 +79,7 @@ public sealed class RoomTrack
 
 public enum PlayState { Idle, Waiting, Playing, Paused }
 
-// Where the song is: Position seconds at host time At (ms).
+// Where the song is: Position seconds at host time At (ms), moving Speed seconds of song per second.
 public sealed class Playback
 {
     public string? ItemId { get; set; }
@@ -88,8 +88,20 @@ public sealed class Playback
     public long At { get; set; }
     // Waiting: since when (host ms).
     public long WaitSince { get; set; }
+    // The song playing starts over when it ends (only that one: the room has no "repeat the queue").
+    public bool Loop { get; set; }
+    // Playback speed for everyone, 0.5-2; Pitch = the key follows it (like a record), otherwise it stays.
+    public double Speed { get; set; } = 1;
+    public bool Pitch { get; set; }
 
     public Playback Clone() => (Playback)MemberwiseClone();
+
+    // A new state of the room that keeps its loop and speed.
+    public Playback Next(string? item, PlayState state, double position, long at) => new()
+    {
+        ItemId = item, State = state, Position = position, At = at, WaitSince = state == PlayState.Waiting ? at : 0,
+        Loop = Loop, Speed = Speed, Pitch = Pitch,
+    };
 }
 
 public sealed class ChatLine

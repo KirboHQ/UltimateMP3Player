@@ -67,6 +67,14 @@ public partial class DjView : UserControl
 
     private void Both_Up(object sender, MouseButtonEventArgs e) => (sender as FrameworkElement)?.ReleaseMouseCapture();
 
+    // Wheel on the tempo fader: 0.1 % a notch (the knob goes the way the wheel turns: up = slower, as the fader is drawn).
+    private void Tempo_Wheel(object sender, MouseWheelEventArgs e)
+    {
+        if (DeckOf(sender) is not { } deck) return;
+        deck.NudgeTempo(e.Delta > 0 ? -1 : 1);
+        e.Handled = true;
+    }
+
     // Double click puts a knob or fader back to its default (its Tag).
     private void Reset_DoubleClick(object sender, MouseButtonEventArgs e)
     {

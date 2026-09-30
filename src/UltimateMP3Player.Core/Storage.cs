@@ -130,8 +130,15 @@ public sealed class AppSettings
     public string? TogetherId { get; set; }
     public int TogetherCacheSize { get; set; } = 10;
     public int TogetherMax { get; set; } = 8;
-    public int TogetherPerms { get; set; } = 1;
+    // Permissions of who joins (3.1: pause and seek became one, speed is new; the 3.0 value isn't read).
+    public int TogetherRoomPerms { get; set; } = 1;
     public string? TogetherLastAddress { get; set; }
+    // The search box also searches these sites (in this order); parallel = all at once, otherwise the next one
+    // only when the one before found nothing.
+    public bool OnlineSearch { get; set; } = true;
+    public List<string> SearchServices { get; set; } = new(OnlineSearchServices.Default);
+    public List<string> SearchServicesOff { get; set; } = new();
+    public bool SearchParallel { get; set; } = true;
     public double WindowWidth { get; set; } = 1280;
     public double WindowHeight { get; set; } = 820;
     public bool WindowMaximized { get; set; }

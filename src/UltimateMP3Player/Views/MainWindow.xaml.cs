@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using UltimateMP3Player.Core;
 using UltimateMP3Player.Services;
 using UltimateMP3Player.ViewModels;
 
@@ -31,6 +32,7 @@ public partial class MainWindow : Window
             if (WindowState != WindowState.Minimized) s.WindowMaximized = WindowState == WindowState.Maximized;
         };
         PreviewKeyDown += OnKeyDown;
+        PreviewTextInput += OnTextInput;
         PreviewMouseLeftButtonDown += (_, e) => SelectionBar.ClearOnOutsideClick(e.OriginalSource as DependencyObject);
         PreviewDragOver += OnDragOver;
         Drop += OnDrop;
@@ -121,6 +123,21 @@ public partial class MainWindow : Window
         }
     }
 
+    // "<" and ">" slow down and speed up like on YouTube (by the character, so whatever key types them here).
+    private void OnTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (Vm is not { } vm || Keyboard.FocusedElement is TextBox || vm.Page is DjViewModel || e.Text is not ("<" or ">")) return;
+        e.Handled = true;
+        var p = vm.Player;
+        if (!p.CanSetSpeed)
+        {
+            vm.Toast(L.T("Solo chi ha il permesso può cambiare la velocità (lo decide l'host)"));
+            return;
+        }
+        p.Speed += e.Text == ">" ? 0.25 : -0.25;
+        vm.Toast(L.F("Velocità: {0}", p.SpeedText));
+    }
+
     private void Search_KeyDown(object sender, KeyEventArgs e)
     {
         if (Vm == null) return;
@@ -149,6 +166,27 @@ public partial class MainWindow : Window
         if (Vm == null) return;
         Vm.Player.Volume += e.Delta > 0 ? 0.05 : -0.05;
         e.Handled = true;
+    }
+
+    // The wheel on the speed button or its slider: 0.05 a notch.
+    private void Speed_Wheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Vm?.Player is not { CanSetSpeed: true } p) return;
+        p.Speed += e.Delta > 0 ? 0.05 : -0.05;
+        e.Handled = true;
+    }
+
+    // On a narrow window the volume slider gives up some width, so the right side of the player bar fits its column.
+    private void PlayerBar_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        double column = PlayerGrid.ColumnDefinitions[2].ActualWidth;
+        if (column <= 0) return;
+        double others = 0;
+        foreach (UIElement child in RightBlock.Children)
+            if (child is FrameworkElement fe && fe != VolumeSlider && fe.Visibility == Visibility.Visible)
+                others += fe.ActualWidth + fe.Margin.Left + fe.Margin.Right;
+        double width = Math.Clamp(column - others - VolumeSlider.Margin.Left - 2, 56, 110);
+        if (Math.Abs(VolumeSlider.Width - width) > 0.5) VolumeSlider.Width = width;
     }
 
     private void AddCurrentToPlaylist_Click(object sender, RoutedEventArgs e)

@@ -482,6 +482,39 @@
         </Setter>
     </Style>
 
+    <!-- Tabs as a segmented pill (DJ Console / Tap BPM, search: your songs / online), the open one tinted. -->
+    <Style x:Key="Segment" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" CornerRadius="16" Padding="16,7" Background="Transparent">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="Ico" Text="{TemplateBinding local:Ui.Glyph}" FontFamily="{StaticResource IconFont}" FontSize="13" FontWeight="Normal"
+                                       VerticalAlignment="Center"/>
+                            <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                            <Setter TargetName="Ico" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Toggle icon (shuffle / repeat): accent colour and a dot when active. -->
     <Style x:Key="ToggleIcon" TargetType="ToggleButton">
         <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
@@ -864,6 +897,62 @@
                                 </Setter.Value>
                             </Setter>
                         </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The same thin slider with its knob always showing (a value you set, like the speed). -->
+    <Style x:Key="KnobSlider" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid Background="Transparent">
+                        <Border Height="4" CornerRadius="2" Margin="8,0" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"/>
+                        <Track x:Name="PART_Track">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource SliderRepeat}">
+                                    <RepeatButton.Template>
+                                        <ControlTemplate TargetType="RepeatButton">
+                                            <Grid Background="Transparent">
+                                                <Border Height="4" CornerRadius="2" VerticalAlignment="Center" Margin="8,0,-8,0"
+                                                        Background="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Slider}}"/>
+                                            </Grid>
+                                        </ControlTemplate>
+                                    </RepeatButton.Template>
+                                </RepeatButton>
+                            </Track.DecreaseRepeatButton>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource SliderRepeat}"/>
+                            </Track.IncreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Ellipse x:Name="K" Width="16" Height="16" Fill="White">
+                                                <Ellipse.Effect>
+                                                    <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.5" Color="Black"/>
+                                                </Ellipse.Effect>
+                                            </Ellipse>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsDragging" Value="True">
+                                                    <Setter TargetName="K" Property="Width" Value="18"/>
+                                                    <Setter TargetName="K" Property="Height" Value="18"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </Grid>
+                    <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter Property="Opacity" Value="0.45"/>
                         </Trigger>

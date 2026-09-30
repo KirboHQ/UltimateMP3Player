@@ -310,6 +310,56 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== online search -->
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'ricerca online cerca siti youtube music soundcloud deezer spotify ordine'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Ricerca online'}" Style="{StaticResource CardTitle}"/>
+                        <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding OnlineSearch}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Cerca anche sui siti di musica'}"/>
+                                <TextBlock Text="{local:T 'La barra in alto trova anche i brani che non hai: cliccane uno per scaricarlo, come un link incollato.'}"
+                                           Style="{StaticResource Hint}"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <StackPanel IsEnabled="{Binding OnlineSearch}">
+                            <TextBlock Text="{local:T 'Siti, in ordine di preferenza'}" Style="{StaticResource FieldLabel}"/>
+                            <ItemsControl ItemsSource="{Binding SearchServices}" Focusable="False" Margin="0,0,0,10">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:SearchServiceOption}">
+                                        <Border CornerRadius="10" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                                Padding="12,8,6,8" Margin="0,0,0,6">
+                                            <DockPanel>
+                                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Button Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="11" Content="&#xE70E;" Command="{Binding UpCommand}"
+                                                            ToolTip="{local:T 'Più su: cercato prima'}" AutomationProperties.Name="{local:T 'Sposta su'}"/>
+                                                    <Button Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="11" Content="&#xE70D;" Command="{Binding DownCommand}"
+                                                            ToolTip="{local:T 'Più giù: cercato dopo'}" AutomationProperties.Name="{local:T 'Sposta giù'}"/>
+                                                </StackPanel>
+                                                <CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}">
+                                                    <StackPanel Margin="2,0,0,0">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Number}" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                                                            <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                                        </StackPanel>
+                                                        <TextBlock Text="{Binding Description}" Style="{StaticResource Hint}" FontSize="12"/>
+                                                    </StackPanel>
+                                                </CheckBox>
+                                            </DockPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{local:T 'Come cercare'}" Style="{StaticResource FieldLabel}"/>
+                            <ComboBox ItemsSource="{Binding SearchModes}" SelectedItem="{Binding SearchMode}" Width="280" HorizontalAlignment="Left"
+                                      AutomationProperties.Name="{local:T 'Come cercare'}"/>
+                            <TextBlock Text="{Binding SearchModeHint}" Style="{StaticResource Hint}" FontSize="12" Margin="2,8,0,0"/>
+                            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,10,0,0" Foreground="{StaticResource MutedBrush}"
+                                       Text="{local:T 'Spotify non permette di cercare senza un account: Deezer ha lo stesso catalogo, e l\'audio arriva da YouTube Music come per i link di Spotify.'}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== tags -->
                 <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'tag etichette colore colori'}">
                     <StackPanel>

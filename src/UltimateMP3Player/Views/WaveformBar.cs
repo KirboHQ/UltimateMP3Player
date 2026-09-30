@@ -21,6 +21,9 @@ public sealed class WaveformBar : FrameworkElement
     public static readonly DependencyProperty DurationProperty = DependencyProperty.Register(nameof(Duration), typeof(double), typeof(WaveformBar),
         new PropertyMetadata(0.0, (d, _) => ((WaveformBar)d).UpdateClock()));
 
+    public static readonly DependencyProperty RateProperty = DependencyProperty.Register(nameof(Rate), typeof(double), typeof(WaveformBar),
+        new PropertyMetadata(1.0));
+
     public static readonly DependencyProperty PlayedBrushProperty = DependencyProperty.Register(nameof(PlayedBrush), typeof(Brush), typeof(WaveformBar),
         new PropertyMetadata(Brushes.MediumPurple, (d, _) => ((WaveformBar)d).Rebuild()));
 
@@ -37,6 +40,8 @@ public sealed class WaveformBar : FrameworkElement
     public bool IsPlaying { get => (bool)GetValue(IsPlayingProperty); set => SetValue(IsPlayingProperty, value); }
     // Seconds; with IsPlaying, lets the bar move on between the player's position updates.
     public double Duration { get => (double)GetValue(DurationProperty); set => SetValue(DurationProperty, value); }
+    // Playback speed: seconds of song per second.
+    public double Rate { get => (double)GetValue(RateProperty); set => SetValue(RateProperty, value); }
     public Brush PlayedBrush { get => (Brush)GetValue(PlayedBrushProperty); set => SetValue(PlayedBrushProperty, value); }
     public Brush RestBrush { get => (Brush)GetValue(RestBrushProperty); set => SetValue(RestBrushProperty, value); }
     public double BarWidth { get => (double)GetValue(BarWidthProperty); set => SetValue(BarWidthProperty, value); }
@@ -101,10 +106,10 @@ public sealed class WaveformBar : FrameworkElement
     private void OnFrame(object? sender, EventArgs e)
     {
         long now = Stopwatch.GetTimestamp();
-        double f = Stopwatch.Frequency, dt = Math.Min(0.1, (now - _frameAt) / f);
+        double f = Stopwatch.Frequency, dt = Math.Min(0.1, (now - _frameAt) / f), rate = Rate > 0 ? Rate : 1;
         _frameAt = now;
-        double target = Math.Min(1, _base + (now - _baseAt) / f / Duration);
-        double next = _shown + dt / Duration;
+        double target = Math.Min(1, _base + (now - _baseAt) / f * rate / Duration);
+        double next = _shown + dt * rate / Duration;
         _shown = Math.Clamp(next + (target - next) * (1 - Math.Exp(-dt / 0.15)), 0, 1);
         UpdateClips();
     }
