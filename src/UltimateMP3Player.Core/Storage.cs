@@ -125,6 +125,13 @@ public sealed class AppSettings
     public bool SmoothScroll { get; set; } = true;
     public bool CoverTilt { get; set; } = true;
     public bool DiscordPresence { get; set; } = true;
+    // "Listen together": who this installation is in rooms (kept, so a kicked person stays out),
+    // how many songs of rooms are kept, the last choices when creating a room.
+    public string? TogetherId { get; set; }
+    public int TogetherCacheSize { get; set; } = 10;
+    public int TogetherMax { get; set; } = 8;
+    public int TogetherPerms { get; set; } = 1;
+    public string? TogetherLastAddress { get; set; }
     public double WindowWidth { get; set; } = 1280;
     public double WindowHeight { get; set; } = 820;
     public bool WindowMaximized { get; set; }

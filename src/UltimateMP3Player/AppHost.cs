@@ -94,6 +94,12 @@ public sealed class AppHost : Observable
     public void SetLanguage(string code)
     {
         if (code == Settings.Language) return;
+        // The window is rebuilt: a room can't come along.
+        if (Session != null && !Session.ConfirmLeaveRoom(L.T("Cambiando lingua la finestra si ricrea e uscirai dalla stanza."), L.T("Esci e cambia lingua")))
+        {
+            Session.Settings.Refresh();
+            return;
+        }
         Settings.Language = code;
         Settings.Save();
         L.English = code == "en";
@@ -137,6 +143,8 @@ public sealed class AppHost : Observable
     public void SwitchProfile()
     {
         var picked = ProfilePickerWindow.Pick(this, Window, false);
+        if (picked != null && picked.Id != Session?.Profile.Info.Id &&
+            Session?.ConfirmLeaveRoom(L.T("Cambiando profilo uscirai dalla stanza."), L.T("Esci e cambia profilo")) == false) picked = null;
         if (picked != null && picked.Id != Session?.Profile.Info.Id) OpenProfile(picked);
         else if (Session != null && Window != null)
         {
@@ -236,6 +244,11 @@ public sealed class AppHost : Observable
         if (!force && Downloads.HasActive &&
             !Dialogs.Confirm(L.T("Ci sono download in corso"), L.T("Vuoi interromperli e chiudere Ultimate MP3 Player?"), L.T("Chiudi"), true))
             return false;
+        if (!force && Session?.InRoom == true &&
+            !Dialogs.Confirm(L.T("Uscire dalla stanza?"), L.F("Chiudendo l'app uscirai dalla stanza «{0}».", Session.Together.RoomName), L.T("Chiudi"), true))
+            return false;
+        // The others are told (and a host hands the room over) before the app goes.
+        if (Session?.InRoom == true) Session.Together.Shutdown();
         _exiting = true;
         Downloads.CancelAll();
         Session?.Player.SaveState();
@@ -323,7 +336,7 @@ public sealed class AppHost : Observable
         }
         // In the tray, idle for a while: install silently.
         if (Updates.IsReady && Window == null && DateTime.Now - _hiddenSince > TimeSpan.FromMinutes(5) &&
-            Session?.Player.IsPlaying != true && !Downloads.HasActive)
+            Session?.Player.IsPlaying != true && Session?.InRoom != true && !Downloads.HasActive)
             RestartToUpdate(true);
     }
 

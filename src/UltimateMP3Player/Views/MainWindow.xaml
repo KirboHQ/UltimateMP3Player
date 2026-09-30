@@ -18,6 +18,7 @@
         <DataTemplate DataType="{x:Type vm:NowPlayingViewModel}"><views:NowPlayingView/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><views:SettingsView/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:DjViewModel}"><views:DjView/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TogetherViewModel}"><views:TogetherView/></DataTemplate>
     </Window.Resources>
 
     <Grid x:Name="Root">
@@ -51,8 +52,15 @@
 
             <!-- ======================================================== sidebar -->
             <Border Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
-                <DockPanel Margin="14,14,14,12">
-                    <StackPanel DockPanel.Dock="Top">
+                <!-- the menu keeps its size; below it the playlists get 2/3 of what is left and the tags 1/3, so both shrink with the window -->
+                <Grid Margin="14,14,14,12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="2*" MinHeight="60"/>
+                        <RowDefinition Height="*" MinHeight="44"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE80F;" Content="{local:T Home}" IsChecked="{Binding IsHome}"/>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8F1;" Content="{local:T 'Tutti i brani'}" IsChecked="{Binding IsLibrary}"/>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8B7;" Content="{local:T 'Senza playlist'}" IsChecked="{Binding IsUnsorted}"
@@ -69,11 +77,22 @@
                         </RadioButton>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8D6;" Content="DJ" IsChecked="{Binding IsDj}"
                                      ToolTip="{local:T 'Mixa due brani: tempo, pitch, taglio e volume'}"/>
+                        <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE716;" IsChecked="{Binding IsTogether}"
+                                     AutomationProperties.Name="{local:T 'Ascolta insieme'}" ToolTip="{local:T 'Ascolta la stessa musica con gli amici, sulla stessa rete'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:T 'Ascolta insieme'}"/>
+                                <!-- in a room: how many are listening -->
+                                <Border Margin="8,0,0,0" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Background="{StaticResource SuccessBrush}"
+                                        Visibility="{Binding Together.InRoom, Converter={StaticResource BoolVis}}">
+                                    <TextBlock Text="{Binding Together.MemberCount}" FontSize="11" FontWeight="Bold" Foreground="#0E1014" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </StackPanel>
+                        </RadioButton>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE713;" Content="{local:T Impostazioni}" IsChecked="{Binding IsSettings}"/>
                     </StackPanel>
 
                     <!-- profile -->
-                    <Button DockPanel.Dock="Bottom" Style="{StaticResource SubtleButton}" Padding="8,8" HorizontalContentAlignment="Stretch"
+                    <Button Grid.Row="3" Style="{StaticResource SubtleButton}" Padding="8,8" HorizontalContentAlignment="Stretch"
                             Command="{Binding SwitchProfileCommand}" ToolTip="{local:T 'Cambia o gestisci i profili'}" Margin="0,10,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -99,15 +118,15 @@
                     </Button>
 
                     <!-- tags: each one opens the page of its songs; songs can be dropped on them -->
-                    <StackPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
-                        <DockPanel Margin="8,6,0,4">
+                    <DockPanel Grid.Row="2" Margin="0,6,0,0">
+                        <DockPanel DockPanel.Dock="Top" Margin="8,6,0,4">
                             <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
                                     Command="{Binding NewTagCommand}" ToolTip="{local:T 'Nuovo tag'}" AutomationProperties.Name="{local:T 'Nuovo tag'}"/>
                             <TextBlock Text="{local:T TAG}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
                         </DockPanel>
-                        <TextBlock Text="{local:T 'Etichette colorate per raggruppare brani e playlist a modo tuo.'}" Style="{StaticResource Hint}"
+                        <TextBlock DockPanel.Dock="Top" Text="{local:T 'Etichette colorate per raggruppare brani e playlist a modo tuo.'}" Style="{StaticResource Hint}"
                                    FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" Visibility="{Binding HasTags, Converter={StaticResource InvBoolVis}}"/>
-                        <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto" Focusable="False">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
                             <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:TagViewModel}">
@@ -136,8 +155,9 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
-                    </StackPanel>
+                    </DockPanel>
 
+                    <DockPanel Grid.Row="1">
                     <DockPanel DockPanel.Dock="Top" Margin="8,22,0,8">
                         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
                                 Command="{Binding NewPlaylistCommand}" ToolTip="{local:T 'Nuova playlist'}"/>
@@ -184,7 +204,8 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                </DockPanel>
+                    </DockPanel>
+                </Grid>
             </Border>
 
             <!-- ======================================================== content -->
@@ -287,7 +308,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- now playing -->
-                <Grid VerticalAlignment="Center" Visibility="{Binding HasTrack, Converter={StaticResource BoolVis}}"
+                <Grid VerticalAlignment="Center" Visibility="{Binding ShowNowPlaying, Converter={StaticResource BoolVis}}"
                       MouseRightButtonUp="Current_RightClick" Background="Transparent" local:Marquee.Host="True">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -302,6 +323,14 @@
                     <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Current.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
                         <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" local:Marquee.IsEnabled="True"/>
+                        <!-- in a room: which one (green dot), a click opens it -->
+                        <Button Style="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="0,3,0,0" FontSize="11.5" Command="{Binding OpenRoomCommand}"
+                                Visibility="{Binding InRoom, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Sei in una stanza di Ascolta insieme: aprila'}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding RoomName}" Margin="6,0,0,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal">
                         <Button x:Name="HeartButton" AutomationProperties.Name="{local:T Preferiti}" Style="{StaticResource ControlButton}" Command="{Binding FavoriteCommand}"
@@ -322,23 +351,25 @@
                         </Button>
                         <Button Style="{StaticResource ControlButton}" Content="&#xE710;" Click="AddCurrentToPlaylist_Click" AutomationProperties.Name="{local:T 'Aggiungi a playlist'}"
                                 ToolTip="{local:T 'Aggiungi a una playlist'}"/>
-                        <!-- automatic queue: lit = "next up" refills itself at every song -->
+                        <!-- automatic queue: lit = "next up" refills itself at every song (in a room the room's queue rules) -->
                         <ToggleButton Style="{StaticResource ToggleIcon}" Content="&#xE90B;" IsChecked="{Binding AutoQueue}"
-                                      ToolTip="{Binding AutoQueueTip}" AutomationProperties.Name="{local:T 'Coda automatica'}"/>
+                                      ToolTip="{Binding AutoQueueTip}" AutomationProperties.Name="{local:T 'Coda automatica'}"
+                                      Visibility="{Binding InRoom, Converter={StaticResource InvBoolVis}}"/>
                     </StackPanel>
                 </Grid>
 
                 <!-- transport + waveform -->
                 <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <!-- in a room shuffle and repeat don't apply (dimmed); prev/play/next need the host's permission (greyed out, the tooltip says why) -->
                         <ToggleButton Style="{StaticResource ToggleIcon}" Content="&#xE8B1;" IsChecked="{Binding Shuffle}" AutomationProperties.Name="{local:T Casuale}"
-                                      ToolTip="{local:T 'Riproduzione casuale'}"/>
+                                      ToolTip="{local:T 'Riproduzione casuale'}" IsEnabled="{Binding NotInRoom}"/>
                         <Button Style="{StaticResource ControlButton}" Content="&#xE892;" Command="{Binding PreviousCommand}" AutomationProperties.Name="{local:T Precedente}"
-                                Margin="8,0,0,0" ToolTip="{local:T Precedente}"/>
+                                Margin="8,0,0,0" ToolTip="{Binding PreviousTip}" ToolTipService.ShowOnDisabled="True"/>
                         <Button Style="{StaticResource PlayButton}" Content="{Binding PlayGlyph}" Command="{Binding PlayPauseCommand}"
-                                AutomationProperties.Name="{local:T 'Riproduci/Pausa'}" Margin="12,0" ToolTip="{local:T 'Riproduci / Pausa (Spazio)'}"/>
+                                AutomationProperties.Name="{local:T 'Riproduci/Pausa'}" Margin="12,0" ToolTip="{Binding PlayTip}" ToolTipService.ShowOnDisabled="True"/>
                         <Button Style="{StaticResource ControlButton}" Content="&#xE893;" Command="{Binding NextCommand}" AutomationProperties.Name="{local:T Successivo}"
-                                Margin="0,0,8,0" ToolTip="{local:T Successivo}"/>
+                                Margin="0,0,8,0" ToolTip="{Binding NextTip}" ToolTipService.ShowOnDisabled="True"/>
                         <ToggleButton Style="{StaticResource ToggleIcon}" Content="{Binding RepeatGlyph}" AutomationProperties.Name="{local:T Ripeti}"
                                       IsChecked="{Binding RepeatOn, Mode=OneWay}" Command="{Binding CycleRepeatCommand}" ToolTip="{Binding RepeatTip}"/>
                     </StackPanel>
@@ -352,7 +383,7 @@
                         <views:WaveformBar Grid.Column="1" Height="30" Peaks="{Binding Current.Wave}" Progress="{Binding Progress}"
                                            IsPlaying="{Binding IsPlaying}" Duration="{Binding Duration}"
                                            PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{StaticResource WaveBrush}"
-                                           SeekCommand="{Binding SeekCommand}"/>
+                                           SeekCommand="{Binding SeekCommand}" ToolTip="{Binding SeekTip}"/>
                         <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </Grid>
                 </StackPanel>

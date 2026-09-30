@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -93,20 +93,133 @@ public static class Menus
     public static ContextMenu ForTrack(TrackViewModel t, ITrackList? owner)
     {
         var main = t.Main;
+        // A song of the room itself (the one playing, from the player bar; a song that isn't in the library).
+        if (main.InRoom && main.Together.ItemFor(t) is { } roomItem && (owner == null || main.Together.IsStandIn(t)))
+            return ForRoomItem(roomItem, main.Together);
         var menu = new ContextMenu();
-        if (owner != null) menu.Items.Add(Item(L.T("Riproduci"), "", () => main.Player.PlayFrom(owner, t)));
-        else if (main.Player.Current != t) menu.Items.Add(Item(L.T("Riproduci"), "", () => main.Player.PlaySingle(t.T)));
-        menu.Items.Add(Item(L.T("Riproduci dopo"), "", () => main.Player.PlayNext(t)));
-        menu.Items.Add(Item(L.T("Aggiungi alla coda"), "", () => main.Player.Enqueue(t)));
+        if (main.InRoom) AddRoomItems(menu, new[] { t });
+        else
+        {
+            if (owner != null) menu.Items.Add(Item(L.T("Riproduci"), "", () => main.Player.PlayFrom(owner, t)));
+            else if (main.Player.Current != t) menu.Items.Add(Item(L.T("Riproduci"), "", () => main.Player.PlaySingle(t.T)));
+            menu.Items.Add(Item(L.T("Riproduci dopo"), "", () => main.Player.PlayNext(t)));
+            menu.Items.Add(Item(L.T("Aggiungi alla coda"), "", () => main.Player.Enqueue(t)));
+        }
         menu.Items.Add(new Separator());
         menu.Items.Add(AddToPlaylist(t));
         if (owner?.Playlist is { } pl && !pl.IsFavorites)
             menu.Items.Add(Item(L.F("Rimuovi da «{0}»", Short(pl.Name)), "", () => main.RemoveFromPlaylist(t, pl)));
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(TagSubmenu(new[] { t }));
-        menu.Items.Add(DjSubmenu(t));
+        if (!main.InRoom) menu.Items.Add(DjSubmenu(t));
         menu.Items.Add(new Separator());
         AddEditItems(menu, t);
+        return menu;
+    }
+
+    // In a room: songs go into the room's queue (greyed out without the host's permission).
+    private static void AddRoomItems(ContextMenu menu, IReadOnlyList<TrackViewModel> tracks)
+    {
+        var room = tracks[0].Main.Together;
+        var add = Item(tracks.Count == 1 ? L.T("Aggiungi alla coda della stanza") : L.F("Aggiungi {0} brani alla stanza", tracks.Count), "",
+            () => room.Add(tracks), room.CanAdd);
+        var next = Item(L.T("Metti come prossimo nella stanza"), "", () => room.Add(tracks, next: true), room.CanAdd && room.CanRemove);
+        if (!room.CanAdd)
+        {
+            add.ToolTip = room.Denied(Core.Together.Perm.Add);
+            ToolTipService.SetShowOnDisabled(add, true);
+        }
+        menu.Items.Add(add);
+        menu.Items.Add(next);
+    }
+
+    // A song of the room: its place in the queue, and keeping it.
+    public static ContextMenu ForRoomItem(RoomItemViewModel item, TogetherViewModel room)
+    {
+        var menu = new ContextMenu();
+        var main = room.Main;
+        menu.Items.Add(Item(item.AddedByText, "", () => { }, false));
+        menu.Items.Add(new Separator());
+        if (!item.IsCurrent)
+        {
+            int index = room.Queue.IndexOf(item), last = room.Queue.Count - 1;
+            menu.Items.Add(Item(L.T("Fallo partire ora"), "", () => room.PlayNow(item.Id), room.CanRemove && room.CanSkip));
+            menu.Items.Add(Item(L.T("Sposta in cima"), "", () => room.MoveTo(item, 0), room.CanRemove && index > 0));
+            menu.Items.Add(Item(L.T("Sposta in fondo"), "", () => room.MoveTo(item, last), room.CanRemove && index < last));
+            menu.Items.Add(Item(L.T("Togli dalla coda"), "", () => room.Remove(item), item.CanRemove));
+        }
+        else menu.Items.Add(Item(L.T("Salta"), "", room.Skip, room.CanSkip));
+        menu.Items.Add(new Separator());
+        if (item.InLibrary)
+        {
+            menu.Items.Add(AddToPlaylist(item.Track));
+            menu.Items.Add(FavoriteItem(item.Track));
+        }
+        else
+        {
+            menu.Items.Add(Item(L.T("Salva nella libreria"), "", () => _ = room.Save(item, null), item.IsReady));
+            var sub = new SubmenuEntry { Header = L.T("Salva in una playlist"), IsEnabled = item.IsReady };
+            Ui.SetGlyph(sub, "");
+            sub.Items.Add(Item(L.T("Nuova playlist…"), "", () =>
+            {
+                var name = Dialogs.Prompt(L.T("Nuova playlist"), L.T("Nome della playlist"), main.NewPlaylistName());
+                if (!string.IsNullOrWhiteSpace(name)) _ = room.Save(item, main.Profile.CreatePlaylist(name));
+            }));
+            sub.Items.Add(new Separator());
+            foreach (var p in main.Playlists)
+            {
+                var pl = p.P;
+                sub.Items.Add(Item(Short(p.Name), p.IsFavorites ? "" : "", () => _ = room.Save(item, pl)));
+            }
+            menu.Items.Add(sub);
+        }
+        if (item.Item.SourceUrl is { } url)
+            menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Clipboard.SetText(url); main.Toast(L.T("Link copiato")); } catch { } }));
+        return menu;
+    }
+
+    // The host on the people of the room (the one clicked, or the selected ones): permissions, kick, hand over.
+    public static ContextMenu ForMembers(TogetherViewModel room, MemberViewModel? clicked = null)
+    {
+        var menu = new ContextMenu();
+        var who = room.SelectedMembers;
+        if (clicked != null && !who.Contains(clicked)) who = new List<MemberViewModel> { clicked };
+        who = who.Where(m => !m.IsMe).ToList();
+        if (!room.IsHost || who.Count == 0)
+        {
+            menu.Items.Add(Item(room.IsHost ? L.T("Seleziona qualcuno nell'elenco") : L.T("Solo l'host può cambiare i permessi"), "", () => { }, false));
+            return menu;
+        }
+        menu.Items.Add(Item(who.Count == 1 ? who[0].Name : L.F("{0} persone", who.Count), "", () => { }, false));
+        menu.Items.Add(new Separator());
+        foreach (var (perm, text) in new[]
+                 {
+                     (Core.Together.Perm.Add, L.T("Può aggiungere brani")),
+                     (Core.Together.Perm.Remove, L.T("Può togliere e spostare brani")),
+                     (Core.Together.Perm.Skip, L.T("Può saltare i brani")),
+                     (Core.Together.Perm.Pause, L.T("Può mettere in pausa")),
+                     (Core.Together.Perm.Seek, L.T("Può andare avanti e indietro")),
+                 })
+        {
+            int n = who.Count(m => (m.M.Perms & perm) != 0);
+            var item = Item(text, n == 0 ? "" : n == who.Count ? Check : Some, () => { });
+            item.StaysOpenOnClick = true;
+            var p = perm;
+            item.Click += (_, _) =>
+            {
+                bool on = who.Any(m => (m.M.Perms & p) == 0);
+                room.TogglePerm(who, p);
+                Ui.SetGlyph(item, on ? Check : "");
+            };
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Dai tutti i permessi"), "", () => room.SetAllPerms(who, true)));
+        menu.Items.Add(Item(L.T("Togli tutti i permessi"), "", () => room.SetAllPerms(who, false)));
+        if (who.Count == 1 && !who[0].Away)
+            menu.Items.Add(Item(L.T("Rendi host"), "", () => room.MakeHost(who[0])));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(who.Count == 1 ? L.T("Espelli dalla stanza…") : L.F("Espelli {0} persone…", who.Count), "", () => room.Kick(who)));
         return menu;
     }
 
@@ -307,8 +420,12 @@ public static class Menus
         var menu = new ContextMenu();
         menu.Items.Add(Item(L.F("{0} brani selezionati", tracks.Count), "", () => { }, false));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Riproduci"), "", () => main.PlaySelection(tracks)));
-        menu.Items.Add(Item(L.T("Aggiungi alla coda"), "", () => main.Enqueue(tracks)));
+        if (main.InRoom) AddRoomItems(menu, tracks);
+        else
+        {
+            menu.Items.Add(Item(L.T("Riproduci"), "\uE768", () => main.PlaySelection(tracks)));
+            menu.Items.Add(Item(L.T("Aggiungi alla coda"), "\uE8FD", () => main.Enqueue(tracks)));
+        }
         menu.Items.Add(new Separator());
         var sub = new SubmenuEntry { Header = L.T("Aggiungi a playlist") };
         Ui.SetGlyph(sub, "");
@@ -347,6 +464,7 @@ public static class Menus
     {
         var t = row.Track;
         var player = row.Player;
+        if (player.InRoom && t.Main.Together.ItemFor(t) is { } roomItem) return ForRoomItem(roomItem, t.Main.Together);
         int last = player.UpNext.LastOrDefault()?.Index ?? row.Index;
         var menu = new ContextMenu();
         menu.Items.Add(Item(L.T("Riproduci ora"), "", () => _ = player.JumpTo(row.Index)));

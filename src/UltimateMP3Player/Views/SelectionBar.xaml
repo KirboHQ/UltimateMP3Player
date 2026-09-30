@@ -13,13 +13,14 @@
         </Border.Effect>
         <StackPanel Orientation="Horizontal">
             <TextBlock x:Name="CountText" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,14,0"/>
-            <Button Style="{StaticResource SubtleButton}" Padding="10,6" Click="Play_Click" ToolTip="{local:T 'Riproduci i brani selezionati'}">
+            <Button x:Name="PlayButton" Style="{StaticResource SubtleButton}" Padding="10,6" Click="Play_Click" ToolTip="{local:T 'Riproduci i brani selezionati'}"
+                    ToolTipService.ShowOnDisabled="True">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE768;" Style="{StaticResource Glyph}" FontSize="13"/>
-                    <TextBlock Text="{local:T Riproduci}" Margin="7,0,0,0"/>
+                    <TextBlock x:Name="PlayGlyph" Text="&#xE768;" Style="{StaticResource Glyph}" FontSize="13"/>
+                    <TextBlock x:Name="PlayLabel" Text="{local:T Riproduci}" Margin="7,0,0,0"/>
                 </StackPanel>
             </Button>
-            <Button Style="{StaticResource SubtleButton}" Padding="10,6" Click="Queue_Click" ToolTip="{local:T 'Aggiungi alla coda'}">
+            <Button x:Name="QueueButton" Style="{StaticResource SubtleButton}" Padding="10,6" Click="Queue_Click" ToolTip="{local:T 'Aggiungi alla coda'}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE8FD;" Style="{StaticResource Glyph}" FontSize="13"/>
                     <TextBlock Text="{local:T 'In coda'}" Margin="7,0,0,0"/>

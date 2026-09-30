@@ -49,16 +49,18 @@ public sealed class MainViewModel : Observable
         GoLibraryCommand = new RelayCommand(() => Navigate(LibraryPage));
         GoDownloadsCommand = new RelayCommand(() => Navigate(Downloads));
         GoSettingsCommand = new RelayCommand(GoSettings);
+        GoTogetherCommand = new RelayCommand(() => Navigate(Together));
         GoNowPlayingCommand = new RelayCommand(() => { if (Page == NowPlaying) GoBack(); else Navigate(NowPlaying); });
         BackCommand = new RelayCommand(GoBack, () => _back.Count > 0);
         NewPlaylistCommand = new RelayCommand(() => NewPlaylist(null));
         OpenPlaylistCommand = new RelayCommand(p => { if (p is PlaylistViewModel vm) OpenPlaylist(vm); });
         PlayPlaylistCommand = new RelayCommand(p => { if (p is PlaylistViewModel vm) PlayPlaylist(vm); });
-        // A song card: the one already playing pauses and resumes.
+        // A song card: the one already playing pauses and resumes. In a room: into the room's queue.
         PlayTrackCommand = new RelayCommand(p =>
         {
             if (p is not TrackViewModel t) return;
-            if (t.IsCurrent) Player.PlayPause();
+            if (InRoom) Together.Add(new[] { t });
+            else if (t.IsCurrent) Player.PlayPause();
             else Home.PlayRecent(t);
         });
         SubmitSearchCommand = new RelayCommand(SubmitSearch);
@@ -107,6 +109,20 @@ public sealed class MainViewModel : Observable
     public SettingsViewModel Settings => _settings ??= new SettingsViewModel(this);
     private DjViewModel? _dj;
     public DjViewModel Dj => _dj ??= new DjViewModel(this);
+    private TogetherViewModel? _together;
+    public TogetherViewModel Together => _together ??= new TogetherViewModel(this);
+
+    // In a room of "Listen together": the play buttons of the lists become "+" (add to the room).
+    public bool InRoom => _together?.InRoom == true;
+    public bool CanAddToRoom => _together?.CanAdd == true;
+
+    public void OnRoomChanged() => OnChanged(nameof(InRoom), nameof(CanAddToRoom), nameof(ShowPlayerBar));
+
+    // The DJ, another profile, another language: they can't work while in a room, so leaving it is asked first.
+    public bool ConfirmLeaveRoom(string why, string action) => _together == null || _together.ConfirmLeave(why, action);
+
+    // A stand-in for a room song that isn't in the library: the TrackViewModel cache forgets it.
+    public void ForgetVm(string id) => _vms.Remove(id);
 
     // Space, media keys, tray: on the DJ page they drive both decks, elsewhere the player.
     public void TogglePlay()
@@ -125,9 +141,12 @@ public sealed class MainViewModel : Observable
     // "Load in the DJ" from a song menu: opens the page with the song on that deck.
     public void LoadInDj(TrackViewModel t, bool deckB)
     {
+        if (!ConfirmLeaveRoom(DjLeaveText(), L.T("Esci e apri il DJ"))) return;
         Dj.Load(t, deckB ? Dj.B : Dj.A);
         Navigate(Dj);
     }
+
+    private string DjLeaveText() => L.F("La sezione DJ usa l'audio per conto suo: aprendola uscirai dalla stanza «{0}».", Together.RoomName);
     public DownloadQueue Queue => Host.Downloads;
 
     public string ProfileName => Profile.Info.Name;
@@ -141,6 +160,7 @@ public sealed class MainViewModel : Observable
     public ICommand GoLibraryCommand { get; }
     public ICommand GoDownloadsCommand { get; }
     public ICommand GoSettingsCommand { get; }
+    public ICommand GoTogetherCommand { get; }
     public ICommand GoNowPlayingCommand { get; }
     public ICommand BackCommand { get; }
     public ICommand NewPlaylistCommand { get; }
@@ -172,6 +192,7 @@ public sealed class MainViewModel : Observable
 
     public void Detach()
     {
+        _together?.Shutdown();
         Player.Detach();
         Downloads.Detach();
         _dj?.Detach();
@@ -211,6 +232,8 @@ public sealed class MainViewModel : Observable
             if (!Set(ref _page, value)) return;
             if (old is DjViewModel leaving) leaving.Leave();
             if (value is DjViewModel entering) entering.Enter();
+            if (old is TogetherViewModel hidden) hidden.Hidden();
+            if (value is TogetherViewModel shown) shown.Shown();
             OnChanged(nameof(ShowPlayerBar));
             Player.UpNextVisible = value == NowPlaying;
             foreach (var p in Playlists) p.IsSelected = value is PlaylistPageViewModel pp && pp.Vm == p;
@@ -228,6 +251,7 @@ public sealed class MainViewModel : Observable
         LibraryViewModel => "library",
         DownloadsPageViewModel => "downloads",
         DjViewModel => "dj",
+        TogetherViewModel => "together",
         SettingsViewModel => "settings",
         NowPlayingViewModel => "nowplaying",
         SearchViewModel => "search",
@@ -239,6 +263,7 @@ public sealed class MainViewModel : Observable
     public bool IsUnsorted { get => Section == "unsorted"; set { if (value) Navigate(UnsortedPage); } }
     public bool IsDownloads { get => Section == "downloads"; set { if (value) Navigate(Downloads); } }
     public bool IsDj { get => Section == "dj"; set { if (value) Navigate(Dj); } }
+    public bool IsTogether { get => Section == "together"; set { if (value) Navigate(Together); } }
     // On the DJ page the decks are the player.
     public bool ShowPlayerBar => Page is not DjViewModel;
     public bool IsSettings { get => Section == "settings"; set { if (value) GoSettings(); } }
@@ -247,6 +272,12 @@ public sealed class MainViewModel : Observable
     public void Navigate(object page)
     {
         if (page == Page) return;
+        // The DJ has its own audio: in a room it would mean leaving it, so it's asked first.
+        if (page is DjViewModel && InRoom && !ConfirmLeaveRoom(DjLeaveText(), L.T("Esci e apri il DJ")))
+        {
+            OnNavChanged();
+            return;
+        }
         if (page is HomeViewModel) Home.Refresh();
         if (page == UnsortedPage) UnsortedPage.Rebuild();
         else if (page is LibraryViewModel lib) lib.EnsureFresh();
@@ -257,7 +288,8 @@ public sealed class MainViewModel : Observable
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private void OnNavChanged() => OnChanged(nameof(IsHome), nameof(IsLibrary), nameof(IsUnsorted), nameof(IsDownloads), nameof(IsDj), nameof(IsSettings));
+    private void OnNavChanged() => OnChanged(nameof(IsHome), nameof(IsLibrary), nameof(IsUnsorted), nameof(IsDownloads), nameof(IsDj), nameof(IsTogether),
+        nameof(IsSettings));
 
     private void GoBack()
     {
@@ -449,6 +481,7 @@ public sealed class MainViewModel : Observable
         var name = Dialogs.Prompt(L.T("Nuova playlist"), L.T("Nome della playlist"), NewPlaylistName());
         if (string.IsNullOrWhiteSpace(name)) return null;
         var p = Profile.CreatePlaylist(name);
+        if (with != null && SaveRoomSong(with, p)) return p;
         if (with != null)
         {
             Profile.AddTrack(p, with.Id);
@@ -504,8 +537,17 @@ public sealed class MainViewModel : Observable
 
     // ------------------------------------------------------------------ track actions
 
+    // A song heard in a room that isn't in the library yet: saved there first, then used as asked.
+    private bool SaveRoomSong(TrackViewModel t, Playlist? p)
+    {
+        if (_together == null || !_together.IsStandIn(t)) return false;
+        if (_together.ItemFor(t) is { } item) _ = _together.Save(item, p);
+        return true;
+    }
+
     public void ToggleFavorite(TrackViewModel t)
     {
+        if (SaveRoomSong(t, Profile.Favorites)) return;
         var fav = Profile.Favorites;
         if (Profile.Contains(fav, t.Id))
         {
@@ -522,6 +564,7 @@ public sealed class MainViewModel : Observable
 
     public void AddToPlaylist(TrackViewModel t, Playlist p)
     {
+        if (SaveRoomSong(t, p)) return;
         var name = PlaylistViewModel.DisplayName(p);
         Toast(Profile.AddTrack(p, t.Id) ? L.F("Aggiunto a «{0}»", name) : L.F("È già in «{0}»", name));
     }
@@ -567,6 +610,11 @@ public sealed class MainViewModel : Observable
 
     public void Enqueue(IReadOnlyList<TrackViewModel> tracks)
     {
+        if (InRoom)
+        {
+            Together.Add(tracks);
+            return;
+        }
         foreach (var t in tracks) Player.Enqueue(t, quiet: true);
         Toast(tracks.Count == 1 ? L.F("«{0}» aggiunto alla coda", tracks[0].Title) : L.F("{0} brani aggiunti alla coda", tracks.Count));
     }
@@ -574,6 +622,11 @@ public sealed class MainViewModel : Observable
     public void PlaySelection(IReadOnlyList<TrackViewModel> tracks)
     {
         if (tracks.Count == 0) return;
+        if (InRoom)
+        {
+            Together.Add(tracks);
+            return;
+        }
         Player.PlayFrom(new TrackListSource("selection", L.T("Brani selezionati"), tracks), tracks[0], alwaysQueue: true);
     }
 
@@ -611,6 +664,13 @@ public sealed class MainViewModel : Observable
 
     public void DeleteTracks(IReadOnlyList<TrackViewModel> tracks)
     {
+        // The song the room is playing stays until it's over (its file is open).
+        if (InRoom && Player.Current is { } playing && tracks.Contains(playing))
+        {
+            Toast(L.F("«{0}» sta suonando nella stanza: eliminalo quando è finito.", playing.Title));
+            tracks = tracks.Where(t => t != playing).ToList();
+        }
+        tracks = tracks.Where(t => Library.Get(t.Id) != null).ToList();
         if (tracks.Count == 0) return;
         string msg;
         if (tracks.Count == 1)
@@ -875,7 +935,8 @@ public sealed class MainViewModel : Observable
         }
         Toast(ok == files.Count ? L.Count(ok, "Brano aggiunto alla libreria", "{0} brani aggiunti alla libreria")
                                 : L.F("{0} di {1} brani aggiunti (gli altri non sono leggibili)", ok, files.Count));
-        if (playFirst && first != null) Player.PlaySingle(first);
+        // In a room a dropped file doesn't start: it's just in the library now.
+        if (playFirst && first != null && !InRoom) Player.PlaySingle(first);
     }
 
     public static void OpenFolder(string dir)

@@ -186,9 +186,10 @@
                 <Grid>
                     <TextBlock x:Name="Num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    <!-- play, or pause/resume on the song already playing -->
+                    <!-- play, or pause/resume on the song already playing; in a room "+" (into the room's queue) -->
                     <Button x:Name="PlayBtn" Style="{StaticResource RowIconButton}" Content="&#xE768;" Command="{Binding PlayPauseCommand}"
-                            Foreground="{StaticResource TextBrush}" Visibility="Collapsed" ToolTip="{local:T Riproduci}" AutomationProperties.Name="{local:T 'Riproduci brano'}"/>
+                            Foreground="{StaticResource TextBrush}" Visibility="Collapsed" ToolTip="{local:T Riproduci}" AutomationProperties.Name="{local:T 'Riproduci brano'}"
+                            ToolTipService.ShowOnDisabled="True"/>
                 </Grid>
 
                 <Grid Grid.Column="1" Margin="4,0,12,0">
@@ -256,6 +257,19 @@
                 <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T Pausa}"/>
                 <Setter TargetName="PlayBtn" Property="AutomationProperties.Name" Value="{local:T Pausa}"/>
             </DataTrigger>
+            <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
+                <Setter TargetName="PlayBtn" Property="Content" Value="&#xE710;"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T 'Aggiungi alla coda della stanza (anche doppio clic)'}"/>
+                <Setter TargetName="PlayBtn" Property="AutomationProperties.Name" Value="{local:T 'Aggiungi alla coda della stanza'}"/>
+            </DataTrigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True"/>
+                    <Condition Binding="{Binding DataContext.CanAddToRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="False"/>
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="PlayBtn" Property="IsEnabled" Value="False"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T 'Solo chi ha il permesso può aggiungere brani alla stanza (lo decide l\'host)'}"/>
+            </MultiDataTrigger>
             <DataTrigger Binding="{Binding Track.IsFavorite}" Value="True">
                 <Setter TargetName="Heart" Property="Visibility" Value="Visible"/>
                 <Setter TargetName="Heart" Property="Content" Value="&#xEB52;"/>
@@ -323,6 +337,11 @@
                 <Setter TargetName="PlayDisc" Property="Opacity" Value="1"/>
                 <Setter TargetName="PlayIco" Property="Text" Value="&#xE769;"/>
             </DataTrigger>
+            <!-- in a room the card puts the song in the room's queue -->
+            <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
+                <Setter TargetName="PlayIco" Property="Text" Value="&#xE710;"/>
+                <Setter TargetName="Card" Property="ToolTip" Value="{local:T 'Aggiungi alla coda della stanza'}"/>
+            </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
@@ -352,8 +371,41 @@
                 <Setter TargetName="Card" Property="Background" Value="{StaticResource Surface2Brush}"/>
                 <Setter TargetName="PlayDisc" Property="Opacity" Value="1"/>
             </Trigger>
+            <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
+                <Setter TargetName="PlayDisc" Property="Content" Value="&#xE710;"/>
+                <Setter TargetName="PlayDisc" Property="ToolTip" Value="{local:T 'Aggiungi tutti alla coda della stanza'}"/>
+            </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
+
+    <!-- The big play / shuffle buttons of a page: in a room they put the whole list in the room's queue. -->
+    <Style x:Key="HeaderPlayButton" TargetType="Button" BasedOn="{StaticResource BigPlayButton}">
+        <Setter Property="Content" Value="&#xE768;"/>
+        <Setter Property="ToolTip" Value="{local:T Riproduci}"/>
+        <Setter Property="AutomationProperties.Name" Value="{local:T 'Riproduci tutto'}"/>
+        <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
+                <Setter Property="Content" Value="&#xE710;"/>
+                <Setter Property="ToolTip" Value="{local:T 'Aggiungi tutti alla coda della stanza'}"/>
+                <Setter Property="AutomationProperties.Name" Value="{local:T 'Aggiungi tutti alla coda della stanza'}"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="HeaderShuffleButton" TargetType="Button" BasedOn="{StaticResource BigPlayButton}">
+        <Setter Property="Width" Value="46"/>
+        <Setter Property="Height" Value="46"/>
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="Content" Value="&#xE8B1;"/>
+        <Setter Property="ToolTip" Value="{local:T 'Riproduci in ordine casuale'}"/>
+        <Setter Property="AutomationProperties.Name" Value="{local:T 'Riproduci in ordine casuale'}"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
+                <Setter Property="ToolTip" Value="{local:T 'Aggiungi tutti alla coda della stanza, in ordine casuale'}"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
 
     <!-- "Tag" filter pill above a song list (only once there are tags); highlighted while it filters. -->
     <Style x:Key="TagFilterButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">

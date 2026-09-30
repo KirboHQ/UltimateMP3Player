@@ -1,4 +1,4 @@
-<UserControl x:Class="UltimateMP3Player.Views.DjView"
+﻿<UserControl x:Class="UltimateMP3Player.Views.DjView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:UltimateMP3Player"
@@ -25,6 +25,181 @@
             <Setter Property="FontSize" Value="13"/>
         </Style>
 
+        <!-- The two tabs (Console / Tap BPM): a segmented pill, the open one tinted. -->
+        <Style x:Key="Segment" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" CornerRadius="16" Padding="16,7" Background="Transparent">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="Ico" Text="{TemplateBinding local:Ui.Glyph}" FontFamily="{StaticResource IconFont}" FontSize="13" FontWeight="Normal"
+                                           VerticalAlignment="Center"/>
+                                <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                <Setter TargetName="Ico" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- The TAP pad: a big key in the deck's colour, lit while pressed. -->
+        <Style x:Key="TapPad" TargetType="Button">
+            <Setter Property="Foreground" Value="{Binding Brush}"/>
+            <Setter Property="BorderBrush" Value="{Binding Brush}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="16" Background="{StaticResource Surface2Brush}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Surface3Brush}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{Binding Brush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ============================================================ a track in the "Tap BPM" tab -->
+        <DataTemplate x:Key="TapPanel" DataType="{x:Type vm:DjDeckViewModel}">
+            <Border Style="{StaticResource Card}" Padding="18">
+                <!-- the pad takes the height that's left, so everything fits even in a small window -->
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*" MinHeight="64"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <!-- the song (the cover also opens the song browser) -->
+                    <DockPanel local:Marquee.Host="True" Background="Transparent">
+                        <Button DockPanel.Dock="Left" Width="52" Height="52" Padding="0" Style="{StaticResource SubtleButton}" Click="Load_Click"
+                                ToolTip="{local:T 'Scegli il brano'}" AutomationProperties.Name="{local:T 'Scegli il brano'}">
+                            <Grid Width="52" Height="52">
+                                <Border CornerRadius="8" Background="{Binding Brush}">
+                                    <TextBlock Text="{Binding Name}" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <Border Visibility="{Binding Song, Converter={StaticResource NotNullVis}}">
+                                    <ContentPresenter Content="{Binding Song}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                                </Border>
+                            </Grid>
+                        </Button>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Padding="14,6" Click="Load_Click" VerticalAlignment="Center"
+                                ToolTip="{local:T 'Scegli il brano da mettere su questo deck'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE8B7;" Style="{StaticResource Glyph}" FontSize="13"/>
+                                <TextBlock Text="{local:T Carica}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <StackPanel Margin="12,0,10,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                            <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                                       local:Marquee.IsEnabled="True"/>
+                            <TextBlock Text="{Binding EmptyText}" Style="{StaticResource Hint}" Visibility="{Binding HasTrack, Converter={StaticResource InvBoolVis}}"/>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <!-- listen to it as it is -->
+                    <Border Grid.Row="1" Margin="0,14,0,0" CornerRadius="12" Background="{StaticResource BgBrush}" Padding="12,8" IsEnabled="{Binding HasTrack}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button Style="{StaticResource PlayButton}" Width="46" Height="46" FontSize="17" Command="{Binding Dj.TapPlayCommand}" CommandParameter="{Binding}"
+                                    AutomationProperties.Name="Play" ToolTip="{local:T 'Ascoltala così com\'è (Spazio)'}">
+                                <Button.Content>
+                                    <TextBlock FontFamily="{StaticResource IconFont}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="&#xE768;"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsTapPlaying}" Value="True">
+                                                        <Setter Property="Text" Value="&#xE769;"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Button.Content>
+                            </Button>
+                            <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding TapTimeText}" FontSize="15" FontWeight="SemiBold"/>
+                                <TextBlock Text="{local:T 'Suona così com\'è, senza tempo, pitch né effetti'}" Style="{StaticResource Hint}" FontSize="12"
+                                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- the pad: press in time (or T) -->
+                    <Button Grid.Row="2" Style="{StaticResource TapPad}" MaxHeight="170" Margin="0,12,0,0" IsEnabled="{Binding HasTrack}" PreviewMouseLeftButtonDown="Tap_Down"
+                            AutomationProperties.Name="Tap BPM" ToolTip="{local:T 'Clicca a tempo con la musica (o premi T): trova i BPM del brano. Una pausa di 2 secondi ricomincia'}">
+                        <StackPanel>
+                            <TextBlock Text="TAP" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding TapCountText}" FontSize="12.5" Opacity="0.75" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- the result, and keeping it (the buttons go under it when the panel is narrow) -->
+                    <WrapPanel Grid.Row="3" Margin="2,10,0,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,18,0">
+                            <TextBlock Text="{Binding TapText}" FontSize="40" FontWeight="Bold" Foreground="{Binding Brush}"/>
+                            <TextBlock Text="BPM" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}" Margin="8,0,0,9" VerticalAlignment="Bottom"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource PrimaryButton}" Padding="14,6" Content="{Binding TapRoundText}" Background="{Binding Brush}" local:Ui.HoverBrush="{Binding Brush}"
+                                    Command="{Binding Dj.TapRoundCommand}" CommandParameter="{Binding}" ToolTip="{local:T 'Salva i BPM nel brano, arrotondati'}"
+                                    Visibility="{Binding HasTapBpm, Converter={StaticResource BoolVis}}"/>
+                            <Button Style="{StaticResource GhostButton}" Padding="14,6" Margin="8,0,0,0" Content="{Binding TapExactText}"
+                                    Command="{Binding Dj.TapExactCommand}" CommandParameter="{Binding}" ToolTip="{local:T 'Salva i BPM nel brano, con i decimali'}"
+                                    Visibility="{Binding HasTapBpm, Converter={StaticResource BoolVis}}"/>
+                            <Button Style="{StaticResource IconButton}" Width="32" Height="32" FontSize="12" Content="&#xE72C;" Margin="6,0,0,0"
+                                    Command="{Binding Dj.TapResetCommand}" CommandParameter="{Binding}" ToolTip="{local:T Ricomincia}"
+                                    Visibility="{Binding IsTapping, Converter={StaticResource BoolVis}}"/>
+                        </StackPanel>
+                    </WrapPanel>
+
+                    <!-- what the song has now: click and type -->
+                    <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="2,6,0,0" IsEnabled="{Binding HasTrack}">
+                        <TextBlock Text="{local:T 'BPM del brano'}" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center"/>
+                        <Border BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="0,0,0,1" Margin="8,0,0,0" Width="64">
+                            <TextBox Style="{StaticResource BareTextBox}" FontSize="12.5" Tag="—" KeyDown="Bpm_KeyDown"
+                                     Text="{Binding BpmInput, UpdateSourceTrigger=LostFocus}"
+                                     ToolTip="{local:T 'I BPM del brano: clicca e scrivi il numero, poi Invio'}" AutomationProperties.Name="BPM"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
         <!-- ============================================================ a deck -->
         <DataTemplate x:Key="DeckPanel" DataType="{x:Type vm:DjDeckViewModel}">
             <Border Style="{StaticResource Card}" Padding="16">
@@ -35,21 +210,24 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- song -->
+                    <!-- song: the cover (or the deck letter) also opens the song browser -->
                     <DockPanel local:Marquee.Host="True" Background="Transparent">
-                        <Grid DockPanel.Dock="Left" Width="52" Height="52">
-                            <Border CornerRadius="8" Background="{Binding Brush}">
-                                <TextBlock Text="{Binding Name}" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <Border Visibility="{Binding Song, Converter={StaticResource NotNullVis}}">
-                                <ContentPresenter Content="{Binding Song}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
-                            </Border>
-                        </Grid>
+                        <Button DockPanel.Dock="Left" Width="52" Height="52" Padding="0" Style="{StaticResource SubtleButton}" Click="Load_Click"
+                                ToolTip="{local:T 'Scegli il brano'}" AutomationProperties.Name="{local:T 'Scegli il brano'}">
+                            <Grid Width="52" Height="52">
+                                <Border CornerRadius="8" Background="{Binding Brush}">
+                                    <TextBlock Text="{Binding Name}" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <Border Visibility="{Binding Song, Converter={StaticResource NotNullVis}}">
+                                    <ContentPresenter Content="{Binding Song}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                                </Border>
+                            </Grid>
+                        </Button>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Style="{StaticResource GhostButton}" Padding="14,6" Click="Load_Click">
+                            <Button Style="{StaticResource GhostButton}" Padding="14,6" Click="Load_Click" ToolTip="{local:T 'Scegli il brano da mettere su questo deck'}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:T Carica}"/>
-                                    <TextBlock Text="&#xE70D;" Style="{StaticResource Glyph}" FontSize="9" Margin="8,0,0,0"/>
+                                    <TextBlock Text="&#xE8B7;" Style="{StaticResource Glyph}" FontSize="13"/>
+                                    <TextBlock Text="{local:T Carica}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource IconButton}" Content="&#xE711;" FontSize="11" Margin="4,0,0,0" ToolTip="{local:T 'Espelli'}"
@@ -65,7 +243,8 @@
                     </DockPanel>
 
                     <!-- tempo and time -->
-                    <DockPanel Grid.Row="1" Margin="0,14,0,10">
+                    <StackPanel Grid.Row="1" Margin="0,14,0,10">
+                    <DockPanel>
                         <StackPanel DockPanel.Dock="Right" HorizontalAlignment="Right">
                             <TextBlock Text="{Binding RemainingText}" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Right"/>
                             <TextBlock Text="{Binding ElapsedText}" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Right"/>
@@ -90,6 +269,7 @@
                             </StackPanel>
                         </StackPanel>
                     </DockPanel>
+                    </StackPanel>
 
                     <!-- transport on the left, tempo fader on the right -->
                     <Grid Grid.Row="2" IsEnabled="{Binding HasTrack}">
@@ -216,13 +396,55 @@
         </Grid.RowDefinitions>
 
         <!-- ================================================================ tabs -->
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-            <RadioButton Style="{StaticResource PillToggle}" FontFamily="{StaticResource UiFont}" FontSize="14" FontWeight="SemiBold" Padding="16,0"
-                         Content="Console" IsChecked="{Binding ConsoleMode}"/>
-            <RadioButton Style="{StaticResource PillToggle}" FontFamily="{StaticResource UiFont}" FontSize="14" FontWeight="SemiBold" Padding="16,0"
-                         Content="Tap BPM" IsChecked="{Binding TapMode}" Margin="4,0,0,0"
-                         ToolTip="{local:T 'Ascolta il brano così com\'è e batti il tempo per trovarne i BPM'}"/>
-        </StackPanel>
+        <Border HorizontalAlignment="Left" Margin="0,0,0,12" CornerRadius="20" Padding="4" Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+            <StackPanel Orientation="Horizontal">
+                <RadioButton Style="{StaticResource Segment}" local:Ui.Glyph="&#xE9E9;" Content="Console" IsChecked="{Binding ConsoleMode}"/>
+                <RadioButton Style="{StaticResource Segment}" local:Ui.Glyph="&#xE7C9;" Content="Tap BPM" IsChecked="{Binding TapMode}" Margin="4,0,0,0"
+                             ToolTip="{local:T 'Ascolta le due tracce così come sono e batti il tempo per trovarne i BPM'}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ================================================================ tap BPM: each song as it is, tap along -->
+        <Grid Grid.Row="1" Visibility="{Binding TapMode, Converter={StaticResource BoolVis}}" SizeChanged="TapArea_SizeChanged">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <!-- what's playing here, as it is (left out in a short window: the pads come first) -->
+            <Border x:Name="TapWave" Style="{StaticResource Card}" Padding="12,10,12,10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="76"/>
+                        <RowDefinition Height="16"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="4,0,4,8">
+                        <TextBlock DockPanel.Dock="Right" Text="{local:T 'così com\'è: niente tempo, pitch o effetti del mixer'}" Style="{StaticResource Hint}" FontSize="12"
+                                   VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Visibility="{Binding TapSource, Converter={StaticResource NotNullVis}}">
+                            <Border Width="22" Height="22" CornerRadius="11" Background="{Binding TapSource.Brush}">
+                                <TextBlock Text="{Binding TapSource.Name}" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Text="{Binding Tapper.Title}" FontWeight="SemiBold" Margin="9,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+                        </StackPanel>
+                        <TextBlock Text="{local:T 'Premi ▶ su una delle due tracce qui sotto per ascoltarla.'}" Style="{StaticResource Hint}" VerticalAlignment="Center"
+                                   Visibility="{Binding TapSource, Converter={StaticResource NullVis}}"/>
+                    </DockPanel>
+                    <views:DjWave Grid.Row="1" Deck="{Binding Tapper}"/>
+                    <views:DjWave Grid.Row="2" Deck="{Binding Tapper}" Overview="True" Margin="0,3,0,0"/>
+                </Grid>
+            </Border>
+            <Grid Grid.Row="1" Margin="0,14,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <ContentPresenter Content="{Binding A}" ContentTemplate="{StaticResource TapPanel}"/>
+                <ContentPresenter Grid.Column="2" Content="{Binding B}" ContentTemplate="{StaticResource TapPanel}"/>
+            </Grid>
+        </Grid>
 
         <!-- ================================================================ console -->
         <Grid Grid.Row="1" Visibility="{Binding ConsoleMode, Converter={StaticResource BoolVis}}">
@@ -339,118 +561,6 @@
 
             <ContentPresenter Grid.Column="2" Content="{Binding B}" ContentTemplate="{StaticResource DeckPanel}"/>
         </Grid>
-        </Grid>
-
-        <!-- ================================================================ tap BPM: the song as it is, tap along -->
-        <Grid Grid.Row="1" DataContext="{Binding Tapper}" Visibility="{Binding Dj.TapMode, Converter={StaticResource BoolVis}}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-            <Border Style="{StaticResource Card}" Padding="10">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="120"/>
-                        <RowDefinition Height="18"/>
-                    </Grid.RowDefinitions>
-                    <views:DjWave Deck="{Binding}"/>
-                    <views:DjWave Grid.Row="1" Deck="{Binding}" Overview="True" Margin="0,3,0,0"/>
-                </Grid>
-            </Border>
-            <Grid Grid.Row="1" Margin="0,14,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="14"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- the song -->
-                <Border Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
-                    <StackPanel>
-                        <DockPanel local:Marquee.Host="True" Background="Transparent">
-                            <Grid DockPanel.Dock="Left" Width="52" Height="52">
-                                <Border CornerRadius="8" Background="{Binding Brush}">
-                                    <TextBlock Text="&#xE8D6;" FontFamily="{StaticResource IconFont}" FontSize="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <Border Visibility="{Binding Song, Converter={StaticResource NotNullVis}}">
-                                    <ContentPresenter Content="{Binding Song}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
-                                </Border>
-                            </Grid>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Padding="14,6" Click="Load_Click" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:T Carica}"/>
-                                    <TextBlock Text="&#xE70D;" Style="{StaticResource Glyph}" FontSize="9" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <StackPanel Margin="12,0,10,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                                <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
-                                           local:Marquee.IsEnabled="True"/>
-                                <TextBlock Text="{local:T 'Nessun brano: premi Carica.'}" Style="{StaticResource Hint}"
-                                           Visibility="{Binding HasTrack, Converter={StaticResource InvBoolVis}}"/>
-                            </StackPanel>
-                        </DockPanel>
-                        <TextBlock Text="{local:T 'Qui il brano suona così com\'è, senza tempo né effetti del mixer. Spazio: play/pausa.'}" Style="{StaticResource Hint}"
-                                   TextWrapping="Wrap" Margin="0,12,0,0"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,14,0,0" IsEnabled="{Binding HasTrack}">
-                            <Button Style="{StaticResource PlayButton}" Width="56" Height="56" FontSize="20"
-                                    Command="{Binding Dj.PlayCommand}" CommandParameter="{Binding}" AutomationProperties.Name="Play">
-                                <Button.Content>
-                                    <TextBlock FontFamily="{StaticResource IconFont}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="&#xE768;"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                                        <Setter Property="Text" Value="&#xE769;"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Button.Content>
-                            </Button>
-                            <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding ElapsedText}" FontSize="18" FontWeight="SemiBold"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                    <TextBlock Text="{local:T 'BPM del brano'}" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center"/>
-                                    <Border BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="0,0,0,1" Margin="6,0,0,0" Width="64">
-                                        <TextBox Style="{StaticResource BareTextBox}" FontSize="12.5" Tag="—" KeyDown="Bpm_KeyDown"
-                                                 Text="{Binding BpmInput, UpdateSourceTrigger=LostFocus}"
-                                                 ToolTip="{local:T 'I BPM del brano: clicca e scrivi il numero, poi Invio'}" AutomationProperties.Name="BPM"/>
-                                    </Border>
-                                </StackPanel>
-                            </StackPanel>
-                            <Button Style="{StaticResource GhostButton}" Padding="12,6" Margin="18,0,0,0" VerticalAlignment="Center" Content="{local:T '1° beat qui'}"
-                                    Command="{Binding Dj.BeatHereCommand}" CommandParameter="{Binding}"
-                                    ToolTip="{local:T 'Metti la testina su un colpo (cassa) e premi: la griglia dei battiti riparte da qui'}"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- the tap pad -->
-                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="16" VerticalAlignment="Top">
-                    <StackPanel IsEnabled="{Binding HasTrack}">
-                        <Button Style="{StaticResource GhostButton}" Height="150" FontSize="30" FontWeight="Bold" Content="TAP"
-                                Command="{Binding Dj.TapCommand}" ToolTip="{local:T 'Clicca o premi T a tempo con la musica'}"/>
-                        <TextBlock Text="{Binding Dj.TapCountText}" Style="{StaticResource Hint}" HorizontalAlignment="Center" Margin="0,10,0,0"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
-                            <TextBlock Text="{Binding Dj.TapText}" FontSize="40" FontWeight="Bold" Foreground="{Binding Brush}"/>
-                            <TextBlock Text="BPM" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}" Margin="8,0,0,9" VerticalAlignment="Bottom"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
-                            <Button Style="{StaticResource PrimaryButton}" Padding="16,6" Content="{Binding Dj.TapRoundText}"
-                                    Command="{Binding Dj.TapSaveCommand}" CommandParameter="round"
-                                    Visibility="{Binding Dj.HasTapBpm, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Salva i BPM nel brano, arrotondati'}"/>
-                            <Button Style="{StaticResource GhostButton}" Padding="16,6" Margin="8,0,0,0" Content="{Binding Dj.TapExactText}"
-                                    Command="{Binding Dj.TapSaveCommand}" CommandParameter="exact"
-                                    Visibility="{Binding Dj.HasTapBpm, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Salva i BPM nel brano, con i decimali'}"/>
-                            <Button Style="{StaticResource GhostButton}" Padding="16,6" Margin="8,0,0,0" Content="{local:T Ricomincia}"
-                                    Command="{Binding Dj.TapResetCommand}"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-            </Grid>
         </Grid>
 
         <TextBlock Grid.Row="2" Text="{Binding Status}" Foreground="{StaticResource WarningBrush}" FontSize="13" Margin="2,10,0,0"

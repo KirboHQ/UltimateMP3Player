@@ -78,6 +78,15 @@ public partial class SelectionBar : UserControl
         Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         CountText.Text = L.F("{0} selezionati", rows.Count);
         RemoveButton.Visibility = rows.FirstOrDefault()?.Owner.Playlist != null ? Visibility.Visible : Visibility.Collapsed;
+        // In a room: "add to the room" instead of play and queue.
+        var main = rows.FirstOrDefault()?.Track.Main;
+        bool room = main?.InRoom == true;
+        PlayGlyph.Text = room ? "" : "";
+        PlayLabel.Text = room ? L.T("Aggiungi alla stanza") : L.T("Riproduci");
+        PlayButton.ToolTip = !room ? L.T("Riproduci i brani selezionati")
+            : main!.CanAddToRoom ? L.T("Aggiungi i brani selezionati alla coda della stanza") : main.Together.Denied(Core.Together.Perm.Add);
+        PlayButton.IsEnabled = !room || main!.CanAddToRoom;
+        QueueButton.Visibility = room ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void OnKey(object sender, KeyEventArgs e)
@@ -91,7 +100,8 @@ public partial class SelectionBar : UserControl
                 e.Handled = true;
                 break;
             case Key.Enter when rows.Count > 0:
-                rows[0].PlayCommand.Execute(null);
+                if (rows[0].Track.Main.InRoom) rows[0].Track.Main.Together.Add(rows.Select(r => r.Track).ToList());
+                else rows[0].PlayCommand.Execute(null);
                 e.Handled = true;
                 break;
             case Key.Escape when rows.Count > 0:

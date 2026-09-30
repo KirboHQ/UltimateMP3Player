@@ -315,10 +315,12 @@
                         <StackPanel>
                             <TextBlock Text="{local:T Successivi}" FontSize="17" FontWeight="Bold"/>
                             <TextBlock FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"
-                                       Text="{local:T 'Doppio clic per saltare a un brano, trascina per riordinare.'}"
+                                       Text="{Binding Player.QueueHint}"
                                        Visibility="{Binding Player.HasUpNext, Converter={StaticResource BoolVis}}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="8,-3,-4,0">
+                            <!-- your own queue only: in a room the queue is the room's -->
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding Player.InRoom, Converter={StaticResource InvBoolVis}}">
                             <Button Style="{StaticResource QueueIconButton}" Content="&#xE895;" Command="{Binding Player.GenerateQueueCommand}"
                                     Visibility="{Binding Player.HasTrack, Converter={StaticResource BoolVis}}"
                                     AutomationProperties.Name="{local:T 'Completa la coda (se è già piena, la rigenera da capo)'}">
@@ -333,6 +335,7 @@
                             <Button Style="{StaticResource QueueIconButton}" Content="&#xE74D;" Command="{Binding Player.ClearQueueCommand}"
                                     Visibility="{Binding Player.HasUpNext, Converter={StaticResource BoolVis}}"
                                     ToolTip="{local:T 'Svuota la coda: finito questo brano, la musica si ferma'}" AutomationProperties.Name="{local:T 'Svuota coda'}"/>
+                            </StackPanel>
                             <Button Style="{StaticResource QueueIconButton}" Content="&#xE89F;" Command="{Binding ToggleQueueCommand}"
                                     ToolTip="{local:T 'Nascondi di lato'}" AutomationProperties.Name="{local:T 'Nascondi i successivi'}"/>
                         </StackPanel>
@@ -409,7 +412,7 @@
                         <TextBlock Text="{local:T 'La coda è vuota'}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,16,0,0"/>
                         <TextBlock Text="{Binding Player.QueueEndHint}" Style="{StaticResource Hint}" TextAlignment="Center" Margin="0,6,0,0"/>
                         <Button Style="{StaticResource PrimaryButton}" Command="{Binding Player.GenerateQueueCommand}" HorizontalAlignment="Center" Margin="0,18,0,0"
-                                Visibility="{Binding Player.HasTrack, Converter={StaticResource BoolVis}}">
+                                Visibility="{Binding Player.CanGenerate, Converter={StaticResource BoolVis}}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE895;" Style="{StaticResource Glyph}" FontSize="13"/>
                                 <TextBlock Text="{local:T 'Genera coda'}" Margin="8,0,0,0"/>
@@ -417,7 +420,7 @@
                         </Button>
                         <TextBlock Text="{Binding Player.GenerateHint}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"
                                    TextAlignment="Center" TextWrapping="Wrap" Margin="0,8,0,0"
-                                   Visibility="{Binding Player.HasTrack, Converter={StaticResource BoolVis}}"/>
+                                   Visibility="{Binding Player.CanGenerate, Converter={StaticResource BoolVis}}"/>
                     </StackPanel>
                 </Grid>
             </Border>

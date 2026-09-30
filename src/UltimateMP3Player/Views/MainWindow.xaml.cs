@@ -74,9 +74,9 @@ public partial class MainWindow : Window
                 vm.TogglePlay();
                 e.Handled = true;
                 break;
-            // DJ "Tap BPM" tab: T taps the tempo.
+            // DJ "Tap BPM" tab: T taps along with the song playing there (or the deck tapped last).
             case Key.T when !inText && !e.IsRepeat && vm.Page is DjViewModel { TapMode: true } dj:
-                dj.Tap();
+                dj.TapKey();
                 e.Handled = true;
                 break;
             case Key.Right when ctrl:

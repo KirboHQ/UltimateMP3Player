@@ -78,15 +78,30 @@ inglese, copertina 3D e stato su Discord.
 
 </td>
 </tr>
+<tr>
+<td colspan="2" valign="top">
+
+### 🎉 Ascolta insieme
+Stanze sulla tua rete (o tramite Radmin VPN): tutti sentono lo stesso brano nello stesso momento, con la chat, una
+coda condivisa e i permessi decisi dall'host. Ogni computer scarica i brani dal loro link, oppure glieli manda
+qualcuno nella stanza.
+
+</td>
+</tr>
 </table>
 
-## 🆕 Novità della 2.3.1
+## 🆕 Novità della 3.0.0
 
-- Pulsante **Coda automatica** nella barra del player: fino a 50 brani in fila, riempiti di nuovo a ogni brano
-- Pulsanti **Genera** e **Svuota** per i *Successivi*, e il pannello si può nascondere di lato
-- Il tasto play su un brano ora mette in pausa e riprende quello che sta già suonando
-- Corretti *Ripeti brano* che restava bloccato senza audio e i sottomenu del tasto destro che si chiudevano
-- **Aiuto e supporto** nelle impostazioni: segnala un problema o suggerisci un'idea con un clic
+- **Ascolta insieme**: crea una stanza o entra in una trovata sulla rete; riproduzione sincronizzata, chat, coda
+  condivisa, l'host decide chi può aggiungere, togliere, saltare, mettere in pausa o andare avanti e indietro (e può
+  espellere). Se l'host esce, la stanza passa a un altro. I brani che ti piacciono li salvi nella libreria con un clic.
+- **DJ**: un nuovo selettore dei brani (copertine, BPM, playlist e tag, selezione chiara) e il **TAP** su entrambe le
+  tracce
+- **Scorrimento fluido** rifatto come quello di Firefox: una sola scivolata continua, in tutte le liste, i menu e le
+  finestre
+- **Discord**: le copertine che non comparivano (immagini enormi di SoundCloud, miniature di YouTube mancanti) ora si
+  vedono, e senza copertina c'è l'icona dell'app
+- La barra laterale divide lo spazio: due terzi alle playlist e un terzo ai tag, e si restringono con la finestra
 
 ## 📥 Installazione
 
@@ -129,9 +144,30 @@ inglese, copertina 3D e stato su Discord.
 
 **DJ**
 - Due tracce con forme d'onda scorrevoli e panoramica, CUE, avanti/indietro, range del tempo ±8 / 16 / 50 %, key lock
-- BPM rilevati in automatico, Tap BPM, griglia dei beat e SYNC di tempo e fase
+- Un selettore dei brani per ogni traccia: libreria, playlist, tag, il brano in riproduzione o un file
+- BPM rilevati in automatico, TAP su ogni traccia (anche con il tasto T), griglia dei beat e SYNC di tempo e fase
 - Mixer con EQ a 3 bande e kill, fader dei canali e crossfader
 - Registra il mix e salvalo come MP3 nella libreria, anche in una playlist nuova
+
+**Ascolta insieme**
+- Le stanze sulla stessa rete (Wi-Fi o cavo) si trovano da sole; da lontano entrate tutti nella stessa rete di Radmin
+  VPN. Una stanza può avere una password e un numero massimo di persone; si può entrare anche con l'indirizzo.
+- Tutti sentono lo stesso brano allo stesso punto: comanda l'orologio dell'host, ogni computer lo segue (volume ed
+  equalizzatore restano i tuoi)
+- Ogni computer si procura il brano in riproduzione e i due dopo: dalla sua libreria, dalla memoria delle stanze, dal
+  link del brano, oppure glielo manda qualcuno nella stanza. Un brano parte quando ce l'hanno tutti (o dopo qualche
+  secondo per chi ce l'ha); chi arriva dopo entra al punto giusto.
+- L'host decide chi può aggiungere, togliere e spostare, saltare, mettere in pausa, andare avanti e indietro; per gli
+  altri i tasti sono oscurati. In una stanza i tasti play delle tue liste diventano **+** e il doppio clic mette il
+  brano nella stanza.
+- Chat, chi ha aggiunto ogni brano, l'avanzamento dei download di tutti, espulsioni, passaggio dell'host. Se l'host
+  esce o il suo PC si spegne, la stanza passa a chi ha più permessi (a parità, a chi è entrato per primo).
+- I brani ascoltati nelle stanze restano in memoria (10 di base); quelli che ti piacciono li salvi nella libreria o in
+  una playlist
+
+> [!TIP]
+> La prima volta Windows chiede se l'app può usare la rete: consenti l'accesso. Con Radmin VPN spunta anche *Reti
+> pubbliche*, oppure usa **Consenti nel firewall** nell'app.
 
 **E poi**
 - Profili come in Chrome, temi, italiano e inglese, animazioni e scorrimento fluidi
@@ -182,6 +218,7 @@ da riga di comando per provare il core (download, import, coda, casuale).
 |---|---|
 | `Musica\Ultimate MP3 Player` | Brani scaricati (MP3/M4A con tag e copertina) e video |
 | `%LOCALAPPDATA%\Ultimate MP3 Player` | Libreria, copertine, profili, impostazioni, `errori.log` |
+| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Brani delle stanze di *Ascolta insieme* tenuti per la prossima volta |
 
 ## 🙏 Software di terze parti
 

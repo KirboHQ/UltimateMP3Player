@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -40,8 +40,9 @@ public sealed class DjDeckViewModel : Observable
     public string Title { get; private set; } = "";
     public string Artist { get; private set; } = "";
     public bool HasTrack { get; private set; }
+    public string EmptyText => L.F("Deck {0}: carica un brano", Name);
+    // The player of the "Tap BPM" tab (not a deck of the mixer).
     public bool IsTapper => this == Dj.Tapper;
-    public string EmptyText => IsTapper ? L.T("Carica un brano per trovarne i BPM") : L.F("Deck {0}: carica un brano", Name);
 
     private bool _loading;
     public bool IsLoading { get => _loading; private set => Set(ref _loading, value); }
@@ -53,6 +54,8 @@ public sealed class DjDeckViewModel : Observable
     {
         int id = ++_loadId;
         Engine.Playing = false;
+        // A new song on the deck: the tap tab no longer plays the old one.
+        if (!IsTapper && Dj.TapSource == this) Dj.StopTap();
         IsLoading = true;
         Title = title;
         Artist = artist ?? "";
@@ -65,6 +68,7 @@ public sealed class DjDeckViewModel : Observable
         Cue = 0;
         IsSynced = false;
         TempoPercent = 0;
+        ResetTaps();
         OnChanged(nameof(Title), nameof(Artist), nameof(Song), nameof(Analysis), nameof(Bpm), nameof(BpmText), nameof(OriginalBpmText), nameof(BpmInput), nameof(ShowDetected), nameof(IsPlaying));
         try
         {
@@ -105,8 +109,72 @@ public sealed class DjDeckViewModel : Observable
         _bpm = null;
         IsSynced = false;
         IsLoading = false;
+        ResetTaps();
+        if (Dj.TapSource == this) Dj.StopTap();
         OnChanged(nameof(HasTrack), nameof(Title), nameof(Artist), nameof(Song), nameof(Analysis), nameof(Bpm), nameof(BpmText), nameof(OriginalBpmText), nameof(BpmInput), nameof(ShowDetected), nameof(IsPlaying));
         Dj.Poll();
+    }
+
+    // ------------------------------------------------------------------ tap
+
+    private readonly List<long> _taps = new();
+    private double? _tapBpm;
+
+    // "Tap BPM" tab: this deck's song plays as it is (Dj.Tapper, no tempo or effects) and you tap along.
+    public bool IsTapPlaying => Dj.TapSource == this && Dj.Tapper.IsPlaying;
+    public string TapTimeText => Dj.TapSource == this && Dj.Tapper.HasTrack
+        ? $"{Dj.Tapper.ElapsedText} / {Text.Duration(Dj.Tapper.Engine.Duration)}"
+        : HasTrack ? Text.Duration(Engine.Duration) : "";
+
+    // The BPM of the taps, as the straight line that fits them all best (one tap a bit off barely moves it).
+    // What you hear is the song as it is, so that's the song's own BPM. A pause of 2 s starts over.
+    public void Tap()
+    {
+        if (!HasTrack) return;
+        Dj.TapDeck = this;
+        long now = Stopwatch.GetTimestamp();
+        if (_taps.Count > 0 && (now - _taps[^1]) / (double)Stopwatch.Frequency > 2) _taps.Clear();
+        _taps.Add(now);
+        if (_taps.Count > 64) _taps.RemoveAt(0);
+        _tapBpm = null;
+        int n = _taps.Count;
+        if (n >= 4)
+        {
+            double mi = (n - 1) / 2.0, mt = _taps.Average(t => (t - _taps[0]) / (double)Stopwatch.Frequency), num = 0, den = 0;
+            for (int i = 0; i < n; i++)
+            {
+                double t = (_taps[i] - _taps[0]) / (double)Stopwatch.Frequency;
+                num += (i - mi) * (t - mt);
+                den += (i - mi) * (i - mi);
+            }
+            if (num > 0) _tapBpm = 60 / (num / den);
+        }
+        OnTaps();
+    }
+
+    public void ResetTaps()
+    {
+        _taps.Clear();
+        _tapBpm = null;
+        OnTaps();
+    }
+
+    private void OnTaps() => OnChanged(nameof(IsTapping), nameof(HasTapBpm), nameof(TapText), nameof(TapCountText), nameof(TapRoundText), nameof(TapExactText));
+
+    public bool IsTapping => _taps.Count > 0;
+    public bool HasTapBpm => _tapBpm != null;
+    public string TapText => _tapBpm is { } b ? b.ToString("0.0", CultureInfo.CurrentCulture) : "—";
+    public string TapCountText => _taps.Count == 0 ? L.T("Clicca o premi T a tempo con la musica")
+        : _taps.Count < 4 ? L.T("continua… (almeno 4 colpi)") : L.F("{0} colpi (una pausa di 2 secondi ricomincia)", _taps.Count);
+    public string TapRoundText => _tapBpm is { } b ? L.F("Usa {0}", Math.Round(b).ToString(CultureInfo.CurrentCulture)) : "";
+    public string TapExactText => _tapBpm is { } b ? Math.Round(b, 2).ToString("0.##", CultureInfo.CurrentCulture) : "";
+
+    public void SaveTaps(bool round)
+    {
+        if (_tapBpm is not { } b) return;
+        Bpm = round ? Math.Round(b) : Math.Round(b, 2);
+        ResetTaps();
+        Dj.Main.Toast(Track != null ? L.F("BPM salvati: {0}", BpmInput) : L.F("BPM impostati: {0}", BpmInput));
     }
 
     // ------------------------------------------------------------------ transport
@@ -120,12 +188,13 @@ public sealed class DjDeckViewModel : Observable
         {
             Dj.Engine.EnsureRunning();
             Dj.Main.Player.Pause();
-            // The tap tool and the decks don't play over each other.
+            // The tap player and the decks don't play over each other.
             if (IsTapper) foreach (var d in Dj.Decks) d.Engine.Playing = false;
             else Dj.Tapper.Engine.Playing = false;
         }
         Engine.Playing = !Engine.Playing;
         OnChanged(nameof(IsPlaying));
+        Dj.Poll();
     }
 
     private double _cue;
@@ -256,7 +325,7 @@ public sealed class DjDeckViewModel : Observable
     {
         Frame();
         Level = Engine.Level;
-        OnChanged(nameof(ElapsedText), nameof(RemainingText), nameof(IsPlaying));
+        OnChanged(nameof(ElapsedText), nameof(RemainingText), nameof(IsPlaying), nameof(IsTapPlaying), nameof(TapTimeText));
     }
 
     // ------------------------------------------------------------------ tempo
@@ -444,12 +513,15 @@ public sealed class DjViewModel : Observable
         B = new DjDeckViewModel("B", "#FF4FA3", Engine.B, this);
         Tapper = new DjDeckViewModel("T", "#A970FF", Engine.T, this);
         Decks = new[] { A, B };
+        _tapDeck = A;
+        TapPlayCommand = new RelayCommand(p => { if (p is DjDeckViewModel d) TapPlay(d); });
         PlayCommand = new RelayCommand(p => (p as DjDeckViewModel)?.PlayPause());
         CueCommand = new RelayCommand(p => (p as DjDeckViewModel)?.CuePressed());
         SyncCommand = new RelayCommand(p => { if (p is DjDeckViewModel d) d.IsSynced = !d.IsSynced; });
-        TapCommand = new RelayCommand(Tap);
-        TapResetCommand = new RelayCommand(ResetTaps);
-        TapSaveCommand = new RelayCommand(p => SaveTaps(p is "round"));
+        TapCommand = new RelayCommand(p => (p as DjDeckViewModel)?.Tap());
+        TapResetCommand = new RelayCommand(p => (p as DjDeckViewModel)?.ResetTaps());
+        TapRoundCommand = new RelayCommand(p => (p as DjDeckViewModel)?.SaveTaps(true));
+        TapExactCommand = new RelayCommand(p => (p as DjDeckViewModel)?.SaveTaps(false));
         RangeCommand = new RelayCommand(p => (p as DjDeckViewModel)?.CycleRange());
         EjectCommand = new RelayCommand(p => (p as DjDeckViewModel)?.Eject());
         RecordCommand = new RelayCommand(() => _ = ToggleRecord());
@@ -463,16 +535,70 @@ public sealed class DjViewModel : Observable
     public DjEngine Engine { get; } = new();
     public DjDeckViewModel A { get; }
     public DjDeckViewModel B { get; }
-    // The song player of the "Tap BPM" tab.
-    public DjDeckViewModel Tapper { get; }
     public DjDeckViewModel[] Decks { get; }
+
+    // ------------------------------------------------------------------ tap BPM tab
+
+    // Plays a deck's song as it is (no tempo, pitch or EQ), outside the mixer: you tap along with the real song.
+    public DjDeckViewModel Tapper { get; }
+
+    private DjDeckViewModel? _tapSource;
+    // Whose song the tap player has (A or B).
+    public DjDeckViewModel? TapSource { get => _tapSource; private set => Set(ref _tapSource, value); }
+
+    private DjDeckViewModel _tapDeck;
+    // The deck tapped last (or playing in the tap tab): the T key taps there.
+    public DjDeckViewModel TapDeck { get => _tapDeck; set => Set(ref _tapDeck, value); }
+
+    public void TapKey() => (TapSource is { } s && Tapper.IsPlaying ? s : TapDeck).Tap();
+
+    private bool _tapMode;
+    // The "Tap BPM" tab: A and B side by side, each playable as it is, each with its TAP.
+    public bool TapMode
+    {
+        get => _tapMode;
+        set
+        {
+            if (!Set(ref _tapMode, value)) return;
+            OnChanged(nameof(ConsoleMode), nameof(AnyPlaying));
+            if (!value && Tapper.IsPlaying) Tapper.PlayPause();
+            Poll();
+        }
+    }
+
+    public bool ConsoleMode { get => !_tapMode; set => TapMode = !value; }
+
+    // ▶ on A or B in the tap tab: that song as it is, from where the deck is (pressing again pauses).
+    public void TapPlay(DjDeckViewModel deck)
+    {
+        if (!deck.HasTrack || deck.FilePath == null) return;
+        TapDeck = deck;
+        if (TapSource == deck && Tapper.FilePath == deck.FilePath && (Tapper.HasTrack || Tapper.IsLoading))
+        {
+            Tapper.PlayPause();
+            return;
+        }
+        TapSource = deck;
+        _ = Tapper.LoadAsync(deck.FilePath, deck.Title, deck.Artist, deck.Track, deck.Song, Math.Max(0, deck.Position), play: true);
+        Poll();
+    }
+
+    public void StopTap()
+    {
+        if (Tapper.IsPlaying) Tapper.PlayPause();
+        TapSource = null;
+        Poll();
+    }
+
+    public ICommand TapPlayCommand { get; }
 
     public ICommand PlayCommand { get; }
     public ICommand CueCommand { get; }
     public ICommand SyncCommand { get; }
     public ICommand TapCommand { get; }
     public ICommand TapResetCommand { get; }
-    public ICommand TapSaveCommand { get; }
+    public ICommand TapRoundCommand { get; }
+    public ICommand TapExactCommand { get; }
     public ICommand RangeCommand { get; }
     public ICommand EjectCommand { get; }
     public ICommand RecordCommand { get; }
@@ -500,13 +626,13 @@ public sealed class DjViewModel : Observable
 
     public bool AnyPlaying => TapMode ? Tapper.IsPlaying : Decks.Any(d => d.IsPlaying);
 
-    // Space / the "A + B" button: both decks start together, or everything stops. On the tap tab: its song.
+    // Space / the "A + B" button: both decks start together, or everything stops. On the tap tab: the song there.
     public void ToggleAll()
     {
         if (TapMode)
         {
-            Tapper.PlayPause();
-            Poll();
+            if (TapSource is { } s) TapPlay(s);
+            else if (Decks.FirstOrDefault(d => d.HasTrack) is { } first) TapPlay(first);
             return;
         }
         var loaded = Decks.Where(d => d.HasTrack).ToList();
@@ -529,7 +655,7 @@ public sealed class DjViewModel : Observable
     public void ShareGrid(DjDeckViewModel from)
     {
         if (from.Track == null) return;
-        foreach (var d in new[] { A, B, Tapper })
+        foreach (var d in Decks.Append(Tapper))
         {
             if (d == from || d.Track != from.Track) continue;
             // First beat first: setting the BPM shares again from d.
@@ -538,84 +664,9 @@ public sealed class DjViewModel : Observable
         }
     }
 
-    // ------------------------------------------------------------------ tap tab
-
-    private bool _tapMode;
-    // The "Tap BPM" tab: the song plays as it is and you tap along to find its BPM.
-    public bool TapMode
-    {
-        get => _tapMode;
-        set
-        {
-            if (!Set(ref _tapMode, value)) return;
-            OnChanged(nameof(ConsoleMode), nameof(AnyPlaying));
-            if (!value)
-            {
-                if (Tapper.IsPlaying) Tapper.PlayPause();
-                return;
-            }
-            // Starts with the song of deck A (or the one playing).
-            if (Tapper.HasTrack || Tapper.IsLoading) return;
-            if (A.HasTrack && A.FilePath != null) _ = Tapper.LoadAsync(A.FilePath, A.Title, A.Artist, A.Track, A.Song);
-            else if (Main.Player.Current is { } cur && File.Exists(cur.T.Path)) Load(cur, Tapper);
-        }
-    }
-
-    public bool ConsoleMode { get => !_tapMode; set => TapMode = !value; }
-
     public void LoadFrom(DjDeckViewModel from, DjDeckViewModel to)
     {
         if (from.FilePath != null) _ = to.LoadAsync(from.FilePath, from.Title, from.Artist, from.Track, from.Song);
-    }
-
-    private readonly List<long> _taps = new();
-    private double? _tapBpm;
-
-    // The BPM of the taps: the straight line that fits them all best, so one tap a bit off barely moves it.
-    // A pause of 2 s starts over.
-    public void Tap()
-    {
-        long now = Stopwatch.GetTimestamp();
-        if (_taps.Count > 0 && (now - _taps[^1]) / (double)Stopwatch.Frequency > 2) _taps.Clear();
-        _taps.Add(now);
-        if (_taps.Count > 64) _taps.RemoveAt(0);
-        _tapBpm = null;
-        int n = _taps.Count;
-        if (n >= 4)
-        {
-            double mi = (n - 1) / 2.0, mt = _taps.Average(t => (t - _taps[0]) / (double)Stopwatch.Frequency), num = 0, den = 0;
-            for (int i = 0; i < n; i++)
-            {
-                double t = (_taps[i] - _taps[0]) / (double)Stopwatch.Frequency;
-                num += (i - mi) * (t - mt);
-                den += (i - mi) * (i - mi);
-            }
-            if (num > 0) _tapBpm = 60 / (num / den);
-        }
-        OnTaps();
-    }
-
-    public void ResetTaps()
-    {
-        _taps.Clear();
-        _tapBpm = null;
-        OnTaps();
-    }
-
-    private void OnTaps() => OnChanged(nameof(TapText), nameof(TapCountText), nameof(HasTapBpm), nameof(TapRoundText), nameof(TapExactText));
-
-    public bool HasTapBpm => _tapBpm != null;
-    public string TapText => _tapBpm is { } b ? b.ToString("0.0", CultureInfo.CurrentCulture) : "—";
-    public string TapCountText => _taps.Count == 0 ? L.T("Clicca o premi T a tempo con la musica") :
-        _taps.Count < 4 ? L.T("Continua… (almeno 4 colpi)") : L.F("{0} colpi (una pausa di 2 secondi ricomincia)", _taps.Count);
-    public string TapRoundText => _tapBpm is { } b ? L.F("Salva {0}", Math.Round(b).ToString(CultureInfo.CurrentCulture)) : "";
-    public string TapExactText => _tapBpm is { } b ? L.F("Salva {0}", Math.Round(b, 2).ToString("0.##", CultureInfo.CurrentCulture)) : "";
-
-    private void SaveTaps(bool round)
-    {
-        if (_tapBpm is not { } b || !Tapper.HasTrack) return;
-        Tapper.Bpm = round ? Math.Round(b) : Math.Round(b, 2);
-        Main.Toast(Tapper.Track != null ? L.F("BPM salvati: {0}", Tapper.BpmInput) : L.F("BPM impostati: {0}", Tapper.BpmInput));
     }
 
     public double Crossfader { get => Engine.Crossfader; set { Engine.Crossfader = (float)value; OnChanged(); } }
@@ -702,45 +753,13 @@ public sealed class DjViewModel : Observable
         if (Main.Player.Current is { } cur) Load(cur, deck);
     }
 
-    public void PickFromLibrary(DjDeckViewModel deck)
+    // "Carica": the song browser (library, playlists, tags, the song playing, a file); the song goes on the deck chosen there.
+    public void Pick(DjDeckViewModel deck)
     {
-        var all = Main.AllVms().OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
-        var filter = new TextBox { Style = (Style)Application.Current.Resources["FilterBox"], Tag = L.T("Cerca nei brani"), Margin = new Thickness(0, 0, 0, 10) };
-        var list = new ListBox
-        {
-            Style = (Style)Application.Current.Resources["PlainList"], Height = 380, ItemsSource = all,
-            ItemTemplate = (DataTemplate)XamlReader.Parse(
-                "<DataTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'><StackPanel Margin='8,5'>" +
-                "<TextBlock Text='{Binding Title}' FontSize='13.5' TextTrimming='CharacterEllipsis'/>" +
-                "<TextBlock Text='{Binding Artist}' FontSize='12' Opacity='0.6' TextTrimming='CharacterEllipsis'/></StackPanel></DataTemplate>"),
-        };
-        filter.TextChanged += (_, _) =>
-        {
-            var q = new TrackQuery(filter.Text);
-            list.ItemsSource = all.Where(q.Matches).ToList();
-        };
-        var body = new StackPanel();
-        body.Children.Add(filter);
-        body.Children.Add(list);
-        var ok = Dialogs.Button(L.T("Carica"), "PrimaryButton", isDefault: true);
-        var win = Dialogs.Frame(L.F("Scegli il brano per il deck {0}", deck.Name), body, 460, Dialogs.Button(L.T("Annulla"), "GhostButton", isCancel: true), ok);
-        TrackViewModel? picked = null;
-        void Pick() { if (list.SelectedItem is TrackViewModel t) { picked = t; win.DialogResult = true; } }
-        ok.Click += (_, _) => Pick();
-        list.MouseDoubleClick += (_, _) => Pick();
-        win.Loaded += (_, _) => filter.Focus();
-        win.ShowDialog();
-        if (picked != null) Load(picked, deck);
-    }
-
-    public void PickFile(DjDeckViewModel deck)
-    {
-        var dlg = new OpenFileDialog
-        {
-            Title = L.T("Scegli un file audio"),
-            Filter = L.T("Audio e video") + "|" + string.Join(";", Importer.Extensions.Select(e => "*" + e)) + "|" + L.T("Tutti i file") + "|*.*",
-        };
-        if (dlg.ShowDialog() == true) _ = deck.LoadAsync(dlg.FileName, Path.GetFileNameWithoutExtension(dlg.FileName), null, null, null);
+        if (Views.DjSongPicker.Show(this, deck) is not { } r) return;
+        if (r.Track != null) Load(r.Track, r.Deck);
+        else if (r.FromDeck != null) LoadFrom(r.FromDeck, r.Deck);
+        else if (r.File != null) _ = r.Deck.LoadAsync(r.File, Path.GetFileNameWithoutExtension(r.File), null, null, null);
     }
 
     // ------------------------------------------------------------------ recording

@@ -31,6 +31,7 @@ public partial class App : Application
         Updater.CleanUp();
         SliderDrag.Register();
         MenuAim.Register();
+        SmoothScroll.Register();
         string? profileArg = Take(args, "--profile");
         bool background = args.Remove("--background");
 

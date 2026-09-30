@@ -574,8 +574,44 @@ public sealed class SettingsViewModel : Observable
     public void Refresh()
     {
         RefreshStartupChoices();
-        OnChanged(nameof(MusicDir), nameof(Themes), nameof(Artists));
+        OnChanged(nameof(MusicDir), nameof(Themes), nameof(Artists), nameof(Language), nameof(TogetherCacheText));
     }
+
+    // ------------------------------------------------------------------ listen together
+
+    public List<Choice> TogetherCacheChoices { get; } =
+        new[] { 3, 5, 10, 15, 20, 30, 50 }.Select(n => new Choice(L.F("{0} brani", n), n)).ToList();
+
+    public Choice TogetherCacheSize
+    {
+        get => TogetherCacheChoices.FirstOrDefault(c => (int)c.Value! == S.TogetherCacheSize) ?? TogetherCacheChoices[2];
+        set
+        {
+            if (value == null) return;
+            S.TogetherCacheSize = (int)value.Value!;
+            Save();
+        }
+    }
+
+    public string TogetherCacheText
+    {
+        get
+        {
+            var (count, bytes) = TogetherViewModel.CacheStats();
+            return count == 0 ? L.T("Ora è vuota.") : L.F("Ora: {0} · {1}.", L.Count(count, "1 brano", "{0} brani"), Text.Size(bytes));
+        }
+    }
+
+    public ICommand ClearTogetherCacheCommand => new RelayCommand(() =>
+    {
+        _main.Together.ClearCache();
+        OnChanged(nameof(TogetherCacheText));
+        _main.Toast(L.T("Memoria di Ascolta insieme svuotata"));
+    });
+
+    public ICommand OpenTogetherCacheCommand => new RelayCommand(() => MainViewModel.OpenFolder(TogetherViewModel.CacheDir));
+
+    public ICommand FirewallCommand => _main.Together.FirewallCommand;
 }
 
 // Browsers installed here whose cookies yt-dlp can read.

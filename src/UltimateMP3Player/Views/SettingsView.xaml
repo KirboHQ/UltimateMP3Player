@@ -463,6 +463,46 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== listen together -->
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'ascolta insieme stanza stanze amici rete lan radmin vpn memoria cache firewall'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Ascolta insieme'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Brani delle stanze tenuti sul computer'}" Style="{StaticResource FieldLabel}"/>
+                        <StackPanel Margin="0,0,0,16">
+                            <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding TogetherCacheChoices}" SelectedItem="{Binding TogetherCacheSize}"
+                                      AutomationProperties.Name="{local:T 'Brani delle stanze tenuti sul computer'}"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                       Text="{local:T 'I brani ascoltati nelle stanze che non sono nella tua libreria restano pronti per la prossima volta; oltre questo numero i più vecchi si cancellano. Salvandone uno nella libreria esce da qui.'}"/>
+                            <TextBlock Text="{Binding TogetherCacheText}" Style="{StaticResource Hint}" Margin="0,4,0,10"/>
+                            <WrapPanel>
+                                <Button Style="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ClearTogetherCacheCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE74D;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T Svuota}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource GhostButton}" Command="{Binding OpenTogetherCacheCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE838;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T 'Apri la cartella'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                        </StackPanel>
+                        <TextBlock Text="{local:T 'Rete'}" Style="{StaticResource FieldLabel}"/>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10"
+                                       Text="{local:T 'Se gli altri non riescono a entrare nella tua stanza (o tu nella loro), di solito è il firewall di Windows: consenti l\'app su tutte le reti (serve la conferma dell\'amministratore).'}"/>
+                            <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding FirewallCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xEA18;" Style="{StaticResource Glyph}"/>
+                                    <TextBlock Text="{local:T 'Consenti nel firewall'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== updates -->
                 <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'aggiornamenti aggiorna versione github motori yt-dlp gallery-dl dati'}">
                     <StackPanel>

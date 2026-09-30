@@ -507,6 +507,9 @@
                             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                             <Setter TargetName="Dot" Property="Visibility" Value="Visible"/>
                         </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.35"/>
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

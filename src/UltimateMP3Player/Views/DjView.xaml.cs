@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using UltimateMP3Player.Core;
 using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
@@ -13,31 +12,10 @@ public partial class DjView : UserControl
 
     private static DjDeckViewModel? DeckOf(object sender) => (sender as FrameworkElement)?.DataContext as DjDeckViewModel;
 
-    // Load: the song playing, from the library or from a file.
+    // Load: the song browser (library, playlists, tags, the song playing, the other deck, a file).
     private void Load_Click(object sender, RoutedEventArgs e)
     {
-        if (DeckOf(sender) is not { } deck) return;
-        var dj = deck.Dj;
-        var menu = new ContextMenu();
-        MenuItem Item(string text, string glyph, Action click, bool enabled = true)
-        {
-            var m = new MenuItem { Header = text, IsEnabled = enabled };
-            Ui.SetGlyph(m, glyph);
-            m.Click += (_, _) => click();
-            return m;
-        }
-        var current = dj.Main.Player.Current;
-        menu.Items.Add(Item(current != null ? L.F("In riproduzione: {0}", current.Title) : L.T("Nessun brano in riproduzione"), "",
-            () => dj.LoadCurrent(deck), current != null));
-        menu.Items.Add(Item(L.T("Dalla libreria…"), "", () => dj.PickFromLibrary(deck)));
-        menu.Items.Add(Item(L.T("Da file…"), "", () => dj.PickFile(deck)));
-        // The tap tab can take a deck's song.
-        if (deck.IsTapper)
-            foreach (var d in dj.Decks.Where(d => d.HasTrack && d.FilePath != null))
-                menu.Items.Add(Item(L.F("Dal deck {0}: {1}", d.Name, d.Title), "", () => dj.LoadFrom(d, deck)));
-        menu.PlacementTarget = (UIElement)sender;
-        menu.Placement = PlacementMode.Bottom;
-        menu.IsOpen = true;
+        if (DeckOf(sender) is { } deck) deck.Dj.Pick(deck);
     }
 
     // « / » nudge while the button is held.
@@ -47,6 +25,15 @@ public partial class DjView : UserControl
     }
 
     private void Nudge_Up(object sender, MouseEventArgs e) => DeckOf(sender)?.StopNudge();
+
+    // Tap tab in a short window: the waveform strip gives its room to the pads.
+    private void TapArea_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.NewSize.Height > 0) TapWave.Visibility = e.NewSize.Height < 500 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    // TAP reacts on press, not on release: the tap lands on the beat you hear (the pad still lights up while held).
+    private void Tap_Down(object sender, MouseButtonEventArgs e) => DeckOf(sender)?.Tap();
 
     // Enter confirms the typed BPM.
     private void Bpm_KeyDown(object sender, KeyEventArgs e)

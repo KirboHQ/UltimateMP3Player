@@ -24,6 +24,7 @@ public sealed class TrackViewModel : Observable
     public string? Album => T.Album;
     public string AlbumText => T.Album ?? "";
     public string DurationText => Text.Duration(T.Duration);
+    public string BpmText => T.Bpm is double b ? b.ToString("0.#", L.Culture) : "";
     public bool HasVideo => T.HasVideo;
     public byte[]? Wave => T.Wave;
     public string SearchText { get; private set; } = "";
@@ -107,9 +108,11 @@ public sealed class TrackRow
 
     public ICommand PlayCommand => new RelayCommand(() => Track.Main.Player.PlayFrom(Owner, Track));
     // The row's play button: on the song already playing it pauses and resumes it instead of starting it over.
+    // In a room it's a "+": the song goes into the room's queue.
     public ICommand PlayPauseCommand => new RelayCommand(() =>
     {
-        if (Track.IsCurrent) Track.Main.Player.PlayPause();
+        if (Track.Main.InRoom) Track.Main.Together.Add(new[] { Track });
+        else if (Track.IsCurrent) Track.Main.Player.PlayPause();
         else Track.Main.Player.PlayFrom(Owner, Track);
     });
     public ICommand FavoriteCommand => new RelayCommand(() => Track.Main.ToggleFavorite(Track));

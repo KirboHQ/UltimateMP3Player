@@ -1,8 +1,10 @@
 using System.IO;
 using System.IO.Pipes;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.Services;
@@ -11,13 +13,17 @@ namespace UltimateMP3Player.Services;
 public sealed class DiscordPresence : IDisposable
 {
     private static readonly JsonSerializerOptions Json = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+    private static readonly HttpClient Web = new() { Timeout = TimeSpan.FromSeconds(6) };
 
     private readonly SemaphoreSlim _gate = new(1, 1);
     private NamedPipeClientStream? _pipe;
-    private string? _wanted;
+    private Wanted? _wanted;
     private string? _sent;
     private DateTime _retryAfter;
     private bool _enabled;
+
+    // What should be shown; the JSON is built when sending, once the cover has been checked.
+    private sealed record Wanted(Track Track, long Start, long? End);
 
     public bool Available => AppInfo.DiscordAppId.Length > 0;
 
@@ -40,26 +46,31 @@ public sealed class DiscordPresence : IDisposable
             Push(null);
             return;
         }
-        var now = DateTimeOffset.UtcNow;
-        long start = (now - position).ToUnixTimeMilliseconds();
+        long start = (DateTimeOffset.UtcNow - position).ToUnixTimeMilliseconds();
+        Push(new Wanted(t, start, duration > TimeSpan.Zero ? start + (long)duration.TotalMilliseconds : null));
+    }
+
+    private static string Build(Wanted w, string? art)
+    {
+        var t = w.Track;
         var activity = new Dictionary<string, object?>
         {
             ["type"] = 2,
             ["status_display_type"] = 2,
             ["details"] = Fit(t.Title),
             ["state"] = Fit(t.DisplayArtist),
-            ["timestamps"] = duration > TimeSpan.Zero
-                ? new Dictionary<string, long> { ["start"] = start, ["end"] = start + (long)duration.TotalMilliseconds }
-                : new Dictionary<string, long> { ["start"] = start },
+            ["timestamps"] = w.End is long end
+                ? new Dictionary<string, long> { ["start"] = w.Start, ["end"] = end }
+                : new Dictionary<string, long> { ["start"] = w.Start },
             ["assets"] = new Dictionary<string, string?>
             {
-                ["large_image"] = Art(t) ?? "logo",
+                ["large_image"] = art ?? "logo",
                 ["large_text"] = Fit(t.Album ?? t.Title),
             },
         };
         if (AppInfo.RepoUrl is { } repo)
             activity["buttons"] = new[] { new Dictionary<string, string> { ["label"] = "Ultimate MP3 Player", ["url"] = repo } };
-        Push(JsonSerializer.Serialize(activity, Json));
+        return JsonSerializer.Serialize(activity, Json);
     }
 
     private static string Fit(string s)
@@ -69,16 +80,62 @@ public sealed class DiscordPresence : IDisposable
         return s.Length < 2 ? s + "  " : s;
     }
 
-    private static string? Art(Track t)
+    // ------------------------------------------------------------------ cover
+
+    // Discord fetches the picture itself and silently shows nothing when it can't: a 404 (YouTube's "maxresdefault"
+    // doesn't exist for every video), or a huge file (SoundCloud's "-original" artwork can be 3000×3000 and several MB).
+    // So the cover goes as a small, always existing version, is checked once, and the app icon stands in when it fails.
+    private static readonly Dictionary<string, bool> Checked = new();
+
+    private static IEnumerable<string> Candidates(Track t)
     {
-        if (t.ArtUrl != null) return t.ArtUrl;
+        if (t.ArtUrl is { } art && Friendly(art) is { } a) yield return a;
         var yt = t.Keys.FirstOrDefault(k => k.StartsWith("youtube:", StringComparison.OrdinalIgnoreCase));
-        return yt != null ? $"https://i.ytimg.com/vi/{yt[8..]}/hqdefault.jpg" : AppInfo.LogoUrl;
+        if (yt != null) yield return $"https://i.ytimg.com/vi/{yt[8..]}/hqdefault.jpg";
     }
 
-    private void Push(string? activityJson)
+    // The same picture in a size Discord takes.
+    public static string? Friendly(string url)
     {
-        _wanted = activityJson;
+        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) && !url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) return null;
+        if (url.Contains("sndcdn.com", StringComparison.OrdinalIgnoreCase))
+            url = Regex.Replace(url, @"-(original|large|crop|t\d+x\d+)\.(jpg|jpeg|png|webp)(\?.*)?$", "-t500x500.jpg", RegexOptions.IgnoreCase);
+        var yt = Regex.Match(url, @"^https?://i\d?\.ytimg\.com/(vi|vi_webp)/([\w-]{11})/", RegexOptions.IgnoreCase);
+        if (yt.Success) url = $"https://i.ytimg.com/vi/{yt.Groups[2].Value}/hqdefault.jpg";
+        return url.Length <= 256 ? url : null;
+    }
+
+    private static async Task<string?> ArtFor(Track t)
+    {
+        foreach (var url in Candidates(t).Distinct())
+            if (await Works(url)) return url;
+        return AppInfo.LogoUrl is { } logo && await Works(logo) ? logo : null;
+    }
+
+    private static async Task<bool> Works(string url)
+    {
+        lock (Checked)
+            if (Checked.TryGetValue(url, out var ok)) return ok;
+        bool good;
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Head, url);
+            using var res = await Web.SendAsync(req);
+            var type = res.Content.Headers.ContentType?.MediaType ?? "";
+            long size = res.Content.Headers.ContentLength ?? 0;
+            good = res.IsSuccessStatusCode && (type.Length == 0 || type.StartsWith("image/")) && size < 3_000_000;
+        }
+        catch (HttpRequestException) { good = false; }
+        catch (TaskCanceledException) { return false; }
+        lock (Checked) Checked[url] = good;
+        return good;
+    }
+
+    // ------------------------------------------------------------------ pipe
+
+    private void Push(Wanted? w)
+    {
+        _wanted = w;
         _ = Task.Run(Flush);
     }
 
@@ -87,8 +144,10 @@ public sealed class DiscordPresence : IDisposable
         await _gate.WaitAsync();
         try
         {
-            var wanted = _wanted;
-            if (wanted == _sent) return;
+            var w = _wanted;
+            var wanted = w == null ? null : Build(w, await ArtFor(w.Track));
+            // A newer song came while the cover was being checked: that one goes next.
+            if (!ReferenceEquals(w, _wanted) || wanted == _sent) return;
             if (!await ConnectAsync()) return;
             var payload = "{\"cmd\":\"SET_ACTIVITY\",\"args\":{\"pid\":" + Environment.ProcessId +
                           (wanted != null ? ",\"activity\":" + wanted : "") + "},\"nonce\":\"" + Guid.NewGuid() + "\"}";

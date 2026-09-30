@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using NAudio.CoreAudioApi;
 using NAudio.Dsp;
 using NAudio.Wave;
@@ -253,7 +253,7 @@ public sealed class DjEngine : ISampleProvider, IDisposable
 
     public DjDeckEngine A { get; } = new();
     public DjDeckEngine B { get; } = new();
-    // The "Tap BPM" tab: the song as it is, outside the crossfader.
+    // The "Tap BPM" tab: a deck's song as it is (no tempo, pitch or EQ), outside the crossfader.
     public DjDeckEngine T { get; } = new();
     public volatile float Master = 1;
     public volatile float Level;

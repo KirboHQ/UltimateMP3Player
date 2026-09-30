@@ -66,15 +66,16 @@ public sealed class PlayerViewModel : Observable
         _audio.NearEnd += OnNearEnd;
         _audio.Failed += OnFailed;
 
-        PlayPauseCommand = new RelayCommand(PlayPause);
-        NextCommand = new RelayCommand(() => _ = Next(false));
-        PreviousCommand = new RelayCommand(() => _ = Previous());
-        CycleRepeatCommand = new RelayCommand(CycleRepeat);
+        // In a room of "Listen together" these buttons need the host's permission: without it they are greyed out.
+        PlayPauseCommand = new RelayCommand(PlayPause, () => _room == null || _room.CanPause);
+        NextCommand = new RelayCommand(() => _ = Next(false), () => _room == null || _room.CanSkip);
+        PreviousCommand = new RelayCommand(() => _ = Previous(), () => _room == null || _room.CanSeek);
+        CycleRepeatCommand = new RelayCommand(CycleRepeat, () => _room == null);
         ToggleMuteCommand = new RelayCommand(() => Muted = !Muted);
         FavoriteCommand = new RelayCommand(() => { if (Current != null) _main.ToggleFavorite(Current); }, () => Current != null);
-        SeekCommand = new RelayCommand(p => { if (p is double f) SeekFraction(f); });
-        ClearQueueCommand = new RelayCommand(ClearQueue, () => _queue.UpcomingCount > 0);
-        GenerateQueueCommand = new RelayCommand(GenerateQueue, () => Current != null);
+        SeekCommand = new RelayCommand(p => { if (p is double f) SeekFraction(f); }, _ => _room == null || _room.CanSeek);
+        ClearQueueCommand = new RelayCommand(ClearQueue, () => _room == null && _queue.UpcomingCount > 0);
+        GenerateQueueCommand = new RelayCommand(GenerateQueue, () => _room == null && Current != null);
 
         Restore(adopt);
         _queue.Changed += () =>
@@ -115,6 +116,8 @@ public sealed class PlayerViewModel : Observable
 
     public void SaveState()
     {
+        // In a room the saved song is still your own one, from before.
+        if (_room != null) return;
         double pos = 0;
         if (Current != null && Current.Id == _queue.Current) pos = _opened ? _audio.Position.TotalSeconds : _resumeAt;
         _main.Profile.Data.Queue = _queue.Save(pos);
@@ -153,11 +156,15 @@ public sealed class PlayerViewModel : Observable
             if (!Set(ref _current, value)) return;
             if (old != null) old.IsCurrent = false;
             if (value != null) value.IsCurrent = true;
-            OnChanged(nameof(HasTrack), nameof(ContextName));
+            OnChanged(nameof(HasTrack), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(ContextName));
         }
     }
 
     public bool HasTrack => Current != null;
+    // The song block of the player bar: also in a room with nothing playing (it shows the room's name).
+    public bool ShowNowPlaying => Current != null || _room != null;
+    // "Generate queue" (the song page): your own queue only.
+    public bool CanGenerate => Current != null && _room == null;
     public string? ContextId => _queue.ContextId;
 
     // Name of the list being played, in the current language.
@@ -247,7 +254,7 @@ public sealed class PlayerViewModel : Observable
         get => _queue.Shuffle;
         set
         {
-            if (_queue.Shuffle == value) return;
+            if (_queue.Shuffle == value || _room != null) return;
             _queue.Shuffle = value;
             _main.Profile.Data.Shuffle = value;
             _main.Profile.Save();
@@ -298,7 +305,8 @@ public sealed class PlayerViewModel : Observable
     public void ApplyCrossfade()
     {
         var d = _main.Profile.Data;
-        _audio.CrossfadeSeconds = d.Crossfade ? Math.Clamp(d.CrossfadeSeconds, 1, 12) : 0;
+        // In a room songs change when the host says so, never early.
+        _audio.CrossfadeSeconds = d.Crossfade && _room == null ? Math.Clamp(d.CrossfadeSeconds, 1, 12) : 0;
     }
 
     private double TrackGain(Track t)
@@ -314,6 +322,12 @@ public sealed class PlayerViewModel : Observable
     // The rest of the list follows unless "automatic queue" is off (alwaysQueue: it follows anyway, e.g. several selected songs).
     public void PlayFrom(ITrackList list, TrackViewModel track, bool alwaysQueue = false)
     {
+        // In a room nothing plays on its own: the song goes into the room's queue.
+        if (_room != null)
+        {
+            _room.Add(new[] { track });
+            return;
+        }
         // A search only finds the song: what follows comes from all the songs, as in the other players.
         if (list.ContextId == "search")
         {
@@ -333,6 +347,11 @@ public sealed class PlayerViewModel : Observable
 
     public void PlayAll(ITrackList list, bool shuffle)
     {
+        if (_room != null)
+        {
+            _room.AddAll(list.PlayOrder, list.ContextName, shuffle);
+            return;
+        }
         var ids = list.PlayOrder.Select(t => t.Id).ToList();
         if (ids.Count == 0) return;
         if (shuffle)
@@ -346,18 +365,33 @@ public sealed class PlayerViewModel : Observable
 
     public void PlaySingle(Track t)
     {
+        if (_room != null)
+        {
+            _room.Add(new[] { _main.Vm(t) });
+            return;
+        }
         _queue.Play(new[] { t.Id }, 0, null, null);
         _ = Load(t, true);
     }
 
     public void Enqueue(TrackViewModel t, bool quiet = false)
     {
+        if (_room != null)
+        {
+            _room.Add(new[] { t });
+            return;
+        }
         _queue.Enqueue(t.Id);
         if (!quiet) _main.Toast(L.F("«{0}» aggiunto alla coda", t.Title));
     }
 
     public void PlayNext(TrackViewModel t)
     {
+        if (_room != null)
+        {
+            _room.Add(new[] { t }, next: true);
+            return;
+        }
         _queue.PlayNextInQueue(t.Id);
         _main.Toast(L.F("«{0}» sarà il prossimo brano", t.Title));
     }
@@ -387,7 +421,7 @@ public sealed class PlayerViewModel : Observable
         get => _main.Profile.Data.AutoQueue;
         set
         {
-            if (_main.Profile.Data.AutoQueue == value) return;
+            if (_main.Profile.Data.AutoQueue == value || _room != null) return;
             _main.Profile.Data.AutoQueue = value;
             _main.Profile.Save();
             _queue.AutoFill = value;
@@ -458,6 +492,11 @@ public sealed class PlayerViewModel : Observable
 
     public void PlayPause()
     {
+        if (_room != null)
+        {
+            _room.TogglePause();
+            return;
+        }
         if (Current == null)
         {
             if (_main.Library.Count > 0) PlayAll(_main.LibraryPage, Shuffle);
@@ -481,12 +520,14 @@ public sealed class PlayerViewModel : Observable
 
     public void Play()
     {
-        if (!IsPlaying) PlayPause();
+        if (_room != null) _room.SetPaused(false);
+        else if (!IsPlaying) PlayPause();
     }
 
     public void Pause()
     {
-        if (IsPlaying) PlayPause();
+        if (_room != null) _room.SetPaused(true);
+        else if (IsPlaying) PlayPause();
     }
 
     // First song whose file still exists.
@@ -504,6 +545,11 @@ public sealed class PlayerViewModel : Observable
 
     public async Task Next(bool auto)
     {
+        if (_room != null)
+        {
+            if (!auto) _room.Skip();
+            return;
+        }
         var t = NextPlayable(() => _queue.Next(auto));
         if (t == null)
         {
@@ -518,6 +564,12 @@ public sealed class PlayerViewModel : Observable
 
     public async Task Previous()
     {
+        // In a room there's no going back to an earlier song: back to the start of this one.
+        if (_room != null)
+        {
+            _room.Restart();
+            return;
+        }
         if (Position > 3 || Current == null)
         {
             Seek(0);
@@ -534,6 +586,8 @@ public sealed class PlayerViewModel : Observable
 
     private void OnEnded()
     {
+        // In a room the host's clock decides when the next song starts.
+        if (_room != null) return;
         if (Repeat == RepeatMode.One && Current != null)
         {
             Seek(0);
@@ -546,23 +600,41 @@ public sealed class PlayerViewModel : Observable
     // Crossfade: next song starts while this one fades.
     private void OnNearEnd()
     {
-        if (!IsPlaying || Repeat == RepeatMode.One || _audio.CrossfadeSeconds <= 0) return;
+        if (_room != null || !IsPlaying || Repeat == RepeatMode.One || _audio.CrossfadeSeconds <= 0) return;
         var t = NextPlayable(() => _queue.Next(true));
         if (t != null) _ = Load(t, true, crossfade: true);
     }
 
     public async Task JumpTo(int index)
     {
+        if (_room != null)
+        {
+            _room.PlayNowAt(index);
+            return;
+        }
         var t = NextPlayable(() => _queue.JumpTo(index));
         if (t != null) await Load(t, true);
     }
 
-    public void RemoveUpcoming(int index) => _queue.RemoveAt(index);
+    public void RemoveUpcoming(int index)
+    {
+        if (_room != null) _room.RemoveAt(index);
+        else _queue.RemoveAt(index);
+    }
 
-    public void MoveUpcoming(int from, int to) => _queue.Move(from, to);
+    public void MoveUpcoming(int from, int to)
+    {
+        if (_room != null) _room.MoveAt(from, to);
+        else _queue.Move(from, to);
+    }
 
     public void Seek(double seconds)
     {
+        if (_room != null)
+        {
+            _room.Seek(seconds);
+            return;
+        }
         if (Current == null) return;
         if (!_opened)
         {
@@ -586,7 +658,7 @@ public sealed class PlayerViewModel : Observable
     {
         bool wasCurrent = Current != null && trackIds.Contains(Current.Id);
         foreach (var id in trackIds) _queue.Forget(id);
-        if (!wasCurrent) return;
+        if (!wasCurrent || _room != null) return;
         bool wasPlaying = IsPlaying;
         var t = NextPlayable(() => _queue.Next(false));
         if (t != null && !trackIds.Contains(t.Id))
@@ -622,8 +694,150 @@ public sealed class PlayerViewModel : Observable
 
     private void Tick()
     {
-        if (_opened) Position = _audio.Position.TotalSeconds;
+        if (_room != null) Position = _opened && _roomLoaded == _room.Session?.Current?.Id ? _audio.Position.TotalSeconds : _room.TargetPosition;
+        else if (_opened) Position = _audio.Position.TotalSeconds;
     }
+
+    // ------------------------------------------------------------------ listen together
+
+    // In a room: the room decides what plays and where (TogetherViewModel.Follow); play, skip, seek and
+    // "add to queue" go to the room. Your own queue waits untouched and comes back when you leave.
+    private TogetherViewModel? _room;
+    private string? _roomLoaded;
+
+    public bool InRoom => _room != null;
+    public bool NotInRoom => _room == null;
+    public string? RoomName => _room?.RoomName;
+    public ICommand OpenRoomCommand => new RelayCommand(() => _main.Navigate(_main.Together));
+    internal string? RoomLoadedId => _roomLoaded;
+    internal AudioEngine Audio => _audio;
+
+    public void EnterRoom(TogetherViewModel room)
+    {
+        if (_room != null) return;
+        SaveState();
+        _loadVersion++;
+        _audio.Pause();
+        _audio.Close();
+        _opened = false;
+        _room = room;
+        _roomLoaded = null;
+        ApplyCrossfade();
+        Current = null;
+        Position = 0;
+        Duration = 0;
+        IsPlaying = false;
+        OnRoomChanged();
+        _main.OnCurrentChanged();
+    }
+
+    public void LeaveRoom()
+    {
+        if (_room == null) return;
+        _room = null;
+        _roomLoaded = null;
+        _loadVersion++;
+        _audio.Pause();
+        _audio.Close();
+        _opened = false;
+        IsPlaying = false;
+        Current = null;
+        ApplyCrossfade();
+        // Back to your own song, paused where you left it.
+        Restore(false);
+        OnRoomChanged();
+        _main.OnCurrentChanged();
+    }
+
+    private void OnRoomChanged()
+    {
+        OnChanged(nameof(InRoom), nameof(NotInRoom), nameof(RoomName), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(PlayTip), nameof(NextTip), nameof(PreviousTip),
+            nameof(SeekTip), nameof(QueueHint));
+        RefreshUpNext();
+        CommandManager.InvalidateRequerySuggested();
+        _main.Host.OnTrackChanged();
+    }
+
+    // The host changed what we may do: buttons greyed out or back.
+    public void OnRoomPermissions()
+    {
+        OnChanged(nameof(PlayTip), nameof(NextTip), nameof(PreviousTip), nameof(SeekTip), nameof(QueueHint), nameof(RoomName));
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    public void OnRoomQueue()
+    {
+        RefreshUpNext();
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    // The room's song, shown even before its file is here.
+    internal void RoomShow(TrackViewModel? vm, double duration)
+    {
+        if (Current != vm)
+        {
+            Current = vm;
+            if (vm == null) Duration = 0;
+            _main.OnCurrentChanged();
+            _main.Host.OnTrackChanged();
+            if (UpNextVisible) RefreshUpNext();
+        }
+        if (!_opened || _roomLoaded != _room?.Session?.Current?.Id)
+            if (duration > 0) Duration = duration;
+    }
+
+    // What the room is doing, for the buttons and the progress bar (the sound follows separately).
+    internal void RoomState(bool playing, double position)
+    {
+        IsPlaying = playing;
+        if (!_opened || _roomLoaded != _room?.Session?.Current?.Id) Position = position;
+    }
+
+    internal async Task RoomLoad(string itemId, TrackViewModel vm, string path)
+    {
+        int version = ++_loadVersion;
+        _roomLoaded = itemId;
+        _opened = false;
+        try
+        {
+            await _audio.OpenAsync(path, vm.T.Duration, TrackGain(vm.T));
+            if (version != _loadVersion) return;
+            _opened = true;
+            Duration = _audio.Duration.TotalSeconds > 0 ? _audio.Duration.TotalSeconds : vm.T.Duration;
+            if (_main.Library.Get(vm.Id) != null) _main.Profile.AddHistory(vm.Id);
+        }
+        catch (Exception ex)
+        {
+            if (version != _loadVersion) return;
+            _roomLoaded = null;
+            _main.Toast(L.F("Impossibile riprodurre «{0}»: {1}", vm.Title, ex.Message));
+        }
+    }
+
+    internal void RoomPlay(bool on)
+    {
+        if (on && !_audio.IsPlaying) _audio.Play();
+        else if (!on && _audio.IsPlaying) _audio.Pause();
+    }
+
+    internal void RoomStop()
+    {
+        _loadVersion++;
+        _roomLoaded = null;
+        _opened = false;
+        _audio.Pause();
+        _audio.Close();
+    }
+
+    // Tooltips of the transport: in a room without permission they say why the button is greyed out.
+    public string PlayTip => _room != null && !_room.CanPause ? L.T("Solo chi ha il permesso può mettere in pausa (lo decide l'host)") : L.T("Riproduci / Pausa (Spazio)");
+    public string NextTip => _room != null && !_room.CanSkip ? L.T("Solo chi ha il permesso può saltare i brani (lo decide l'host)") : L.T("Successivo");
+    public string? SeekTip => _room != null && !_room.CanSeek ? L.T("Solo chi ha il permesso può andare avanti o indietro (lo decide l'host)") : null;
+    public string PreviousTip => _room == null ? L.T("Precedente")
+        : _room.CanSeek ? L.T("Dall'inizio") : L.T("Solo chi ha il permesso può andare avanti o indietro (lo decide l'host)");
+    public string QueueHint => _room == null ? L.T("Doppio clic per saltare a un brano, trascina per riordinare.")
+        : _room.CanRemove ? L.T("La coda della stanza: doppio clic per farlo partire, trascina per riordinare.")
+        : L.T("La coda della stanza, uguale per tutti.");
 
     // ------------------------------------------------------------------ up next
 
@@ -641,6 +855,19 @@ public sealed class PlayerViewModel : Observable
         var rows = new List<QueueRow>();
         bool queuedHeader = false, planHeader = false;
         int index = 0;
+        if (_room != null)
+        {
+            // The room's queue, the same for everyone.
+            foreach (var t in _room.RoomQueue.Take(150))
+            {
+                rows.Add(new QueueRow(index, _room.TrackFor(t), true, index == 0 ? L.F("Coda di «{0}»", _room.RoomName) : null, this));
+                index++;
+            }
+            UpNext = rows;
+            OnChanged(nameof(UpNext), nameof(UpNextCount), nameof(ContextName), nameof(HasUpNext), nameof(UpcomingBadge), nameof(MoreText),
+                nameof(GenerateHint), nameof(QueueEndHint), nameof(QueueHint));
+            return;
+        }
         foreach (var e in _queue.Upcoming(150))
         {
             if (_main.Library.Get(e.Id) is { } t)
@@ -666,7 +893,7 @@ public sealed class PlayerViewModel : Observable
     public bool HasUpNext => UpNext.Count > 0;
 
     // Count on the "show next up" button when the panel is folded away.
-    public string? UpcomingBadge => _queue.UpcomingCount switch
+    public string? UpcomingBadge => (_room?.RoomQueue.Count ?? _queue.UpcomingCount) switch
     {
         0 => null,
         > 999 => "999+",
@@ -674,7 +901,7 @@ public sealed class PlayerViewModel : Observable
     };
 
     // Under the list: the songs that don't fit in it.
-    public string? MoreText => _queue.UpcomingCount - UpNext.Count is var more and > 0 ? L.Count(more, "e un altro brano", "e altri {0} brani") : null;
+    public string? MoreText => (_room?.RoomQueue.Count ?? _queue.UpcomingCount) - UpNext.Count is var more and > 0 ? L.Count(more, "e un altro brano", "e altri {0} brani") : null;
 
     // Where "Generate" takes the songs from.
     public string GenerateHint
@@ -688,7 +915,9 @@ public sealed class PlayerViewModel : Observable
     }
 
     // What happens when this song ends with nothing after it.
-    public string QueueEndHint => Current == null
+    public string QueueEndHint => _room != null
+        ? _room.CanAdd ? L.T("Aggiungi brani alla stanza con il tasto + dalle tue playlist.") : L.T("Aspetta che qualcuno aggiunga un brano alla stanza.")
+        : Current == null
         ? L.T("Avvia un brano: quelli dopo di lui compariranno qui.")
         : AutoQueue && Repeat != RepeatMode.One ? L.T("Coda automatica attiva: si riempie da sola alla fine del brano.")
         : L.T(Repeat switch

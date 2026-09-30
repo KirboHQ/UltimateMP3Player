@@ -77,15 +77,28 @@ Italian, a 3D tilting cover and Discord Rich Presence.
 
 </td>
 </tr>
+<tr>
+<td colspan="2" valign="top">
+
+### 🎉 Listen together
+Rooms on your network (or over Radmin VPN): everyone hears the same song at the same moment, with a chat, a shared
+queue and permissions decided by the host. Songs are downloaded by each computer from their link, or sent over by
+someone in the room.
+
+</td>
+</tr>
 </table>
 
-## 🆕 What's new in 2.3.1
+## 🆕 What's new in 3.0.0
 
-- **Automatic queue** button in the player bar: up to 50 songs lined up, refilled after every song
-- **Generate** and **Clear** buttons for *Up next*, and the panel can be tucked away to the side
-- The play button on a song now pauses and resumes the song that's already playing
-- Fixed *Repeat one* getting stuck in silence, and right-click submenus closing on the way to them
-- **Help & support** in Settings: report a problem or suggest an idea in one click
+- **Listen together**: create a room or join one found on the network; synced playback, chat, shared queue, the host
+  decides who can add, remove, skip, pause or seek (and can kick people). If the host leaves, the room moves on to
+  someone else. Songs you like can be saved to your library in one click.
+- **DJ**: a new song browser (covers, BPM, playlists and tags, a clear selection) and **TAP** on both decks
+- **Smooth scrolling** rewritten after Firefox's: one continuous glide, in every list, menu and window
+- **Discord**: covers that didn't show (huge SoundCloud artwork, missing YouTube thumbnails) now do, with the app
+  icon as a fallback
+- The sidebar splits its room: playlists two thirds, tags one third, both shrinking with the window
 
 ## 📥 Install
 
@@ -127,9 +140,28 @@ Italian, a 3D tilting cover and Discord Rich Presence.
 
 **DJ**
 - Two decks with scrolling waveforms and overviews, CUE, nudge, tempo range ±8 / 16 / 50 %, key lock
-- Automatic BPM detection, Tap BPM, beat grid and SYNC of tempo and phase
+- A song browser for each deck: library, playlists, tags, the song playing or a file
+- Automatic BPM detection, TAP on each deck (also with the T key), beat grid and SYNC of tempo and phase
 - Mixer with 3-band EQ and kills, channel faders and crossfader
 - Record the mix and save it as an MP3 in your library, even into a new playlist
+
+**Listen together**
+- Rooms found by themselves on the same network (Wi-Fi or cable); from afar, everyone joins the same Radmin VPN
+  network. Rooms can have a password and a maximum number of people; you can also join by address.
+- Everyone hears the same song at the same point: the host's clock leads, each computer follows it (volume and
+  equalizer stay your own)
+- Each computer gets the playing song and the next two: from its library, from the room cache, from the song's link,
+  or sent by someone in the room. A song starts when everyone has it (or after a few seconds for those who have it);
+  late ones join in at the right point.
+- The host decides who can add, remove and move, skip, pause, and seek; greyed-out buttons for the others. In a room
+  the play buttons of your lists become **+**, and a double click adds the song to the room.
+- Chat, who added each song, everyone's download progress, kick, hand over the host. If the host leaves or their PC
+  goes off, the room passes to the person with the most permissions (on a tie, who joined first).
+- Songs heard in rooms stay in a cache (10 by default); save the ones you like to your library or a playlist
+
+> [!TIP]
+> The first time, Windows asks whether the app may use the network: allow it. With Radmin VPN also tick *Public
+> networks*, or use **Allow through the firewall** in the app.
 
 **And also**
 - Profiles like in Chrome, themes, English and Italian, smooth animations and scrolling
@@ -180,6 +212,7 @@ for the core (downloads, import, queue, shuffle).
 |---|---|
 | `Music\Ultimate MP3 Player` | Downloaded songs (MP3/M4A with tags and cover) and videos |
 | `%LOCALAPPDATA%\Ultimate MP3 Player` | Library, covers, profiles, settings, `errori.log` |
+| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Songs of *Listen together* rooms kept for next time |
 
 ## 🙏 Third-party software
 
