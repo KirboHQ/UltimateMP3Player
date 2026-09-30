@@ -570,7 +570,7 @@ public sealed class TogetherViewModel : Observable
         foreach (var id in _ephemeral.Keys)
         {
             _main.ForgetVm("lt-" + id);
-            try { File.Delete(AppPaths.TrackCover("lt-" + id)); } catch { }
+            try { File.Delete(AppPaths.TrackCover("lt-" + id)); } catch { } LyricsStore.Delete("lt-" + id);
         }
         _ephemeral.Clear();
         _items.Clear();
@@ -833,7 +833,7 @@ public sealed class TogetherViewModel : Observable
         {
             _ephemeral.Remove(id);
             _main.ForgetVm("lt-" + id);
-            try { File.Delete(AppPaths.TrackCover("lt-" + id)); } catch { }
+            try { File.Delete(AppPaths.TrackCover("lt-" + id)); } catch { } LyricsStore.Delete("lt-" + id);
         }
         CurrentItem = s.Current != null ? ItemVm(s.Current, 0, true) : null;
         Queue = s.Queue.Select((t, i) => ItemVm(t, i + 1, false)).ToList();
@@ -1410,6 +1410,8 @@ public sealed class TogetherViewModel : Observable
                 t.HasCover = true;
             }
             else t.HasCover = await AudioAnalysis.ExtractCoverAsync(target, AppPaths.TrackCover(t.Id), false, CancellationToken.None);
+            // The lyrics found while it played in the room come along.
+            if (_ephemeral.TryGetValue(r.Id, out var standIn)) LyricsStore.Copy(standIn.Id, t, standIn.Lyrics);
             if (t.Wave == null || t.Loudness == null || t.Duration <= 0)
             {
                 try

@@ -42,6 +42,7 @@ public sealed class AppHost : Observable
         Downloads = new DownloadQueue(this);
         Updates = new Updater();
         Presence = new DiscordPresence { Enabled = Settings.DiscordPresence };
+        Lyrics = new LyricsService(this);
         Media = new MediaControls(_ui);
         Media.PlayPressed += () => Session?.SetPlaying(true);
         Media.PausePressed += () => Session?.SetPlaying(false);
@@ -67,6 +68,7 @@ public sealed class AppHost : Observable
     public DownloadQueue Downloads { get; }
     public Updater Updates { get; }
     public DiscordPresence Presence { get; }
+    public LyricsService Lyrics { get; }
     public MediaControls Media { get; }
     public TrayIcon Tray { get; }
     public ICommand RestartToUpdateCommand { get; }

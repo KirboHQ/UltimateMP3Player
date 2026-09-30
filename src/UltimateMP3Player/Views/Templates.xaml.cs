@@ -111,10 +111,37 @@ public static class Menus
             menu.Items.Add(Item(L.F("Rimuovi da «{0}»", Short(pl.Name)), "", () => main.RemoveFromPlaylist(t, pl)));
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(TagSubmenu(new[] { t }));
+        menu.Items.Add(LyricsSubmenu(t));
         if (!main.InRoom) menu.Items.Add(DjSubmenu(t));
         menu.Items.Add(new Separator());
         AddEditItems(menu, t);
         return menu;
+    }
+
+    private const string LyricsGlyph = "";
+
+    // What the song has (with times, plain, nothing...), and the actions: show, search online (again), delete.
+    public static MenuItem LyricsSubmenu(TrackViewModel t)
+    {
+        var main = t.Main;
+        var sub = new SubmenuEntry { Header = L.T("Testo") };
+        Ui.SetGlyph(sub, LyricsGlyph);
+        bool searching = main.Host.Lyrics.IsSearching(t.T);
+        var state = searching ? L.T("Ricerca in corso…") : t.T.Lyrics switch
+        {
+            LyricsKind.Synced => L.T("Con i tempi: si illumina mentre ascolti"),
+            LyricsKind.Plain => L.T("Senza tempi"),
+            LyricsKind.Instrumental => L.T("Brano strumentale"),
+            LyricsKind.None => L.T("Non trovato online"),
+            _ => L.T("Non ancora cercato"),
+        };
+        sub.Items.Add(Item(state, "", () => { }, false));
+        sub.Items.Add(new Separator());
+        if (t.HasLyrics && main.Player.Current == t)
+            sub.Items.Add(Item(L.T("Mostra il testo"), "", main.ShowLyrics));
+        sub.Items.Add(Item(t.HasLyrics ? L.T("Cerca di nuovo online") : L.T("Cerca online"), "", () => main.SearchLyrics(new[] { t }), !searching));
+        if (t.HasLyrics) sub.Items.Add(Item(L.T("Elimina il testo"), "", () => main.DeleteLyrics(t)));
+        return sub;
     }
 
     // In a room: songs go into the room's queue (greyed out without the host's permission).
@@ -435,6 +462,7 @@ public static class Menus
             menu.Items.Add(Item(L.F("Togli da «{0}»", Short(PlaylistViewModel.DisplayName(pl))), "", () => main.RemoveFromPlaylist(tracks, pl)));
         menu.Items.Add(Item(L.T("Aggiungi ai Preferiti"), "", () => main.AddToFavorites(tracks)));
         menu.Items.Add(TagSubmenu(tracks));
+        menu.Items.Add(Item(L.F("Cerca i testi online ({0})", tracks.Count), LyricsGlyph, () => main.SearchLyrics(tracks)));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(L.F("Elimina {0} brani…", tracks.Count), "", () => main.DeleteTracks(tracks)));
         return menu;
@@ -475,6 +503,7 @@ public static class Menus
         menu.Items.Add(AddToPlaylist(t));
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(TagSubmenu(new[] { t }));
+        menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(new Separator());
         AddEditItems(menu, t);
         return menu;

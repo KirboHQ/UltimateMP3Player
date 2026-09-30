@@ -31,9 +31,12 @@ public sealed class Track
     public double? Bpm { get; set; }
     // Where the beat grid starts (seconds): detected, or set with "1st beat here".
     public double? BeatOffset { get; set; }
+    // Lyrics found online (the text is in LyricsStore); null = never searched.
+    public LyricsKind? Lyrics { get; set; }
     public DateTime Added { get; set; } = DateTime.Now;
 
     public bool HasVideo => !string.IsNullOrEmpty(VideoPath);
+    [System.Text.Json.Serialization.JsonIgnore] public bool HasLyrics => Lyrics is LyricsKind.Synced or LyricsKind.Plain;
     public bool IsLocal => Site == "File locale";
     public string DisplayArtist => string.IsNullOrWhiteSpace(Artist) ? L.T("Artista sconosciuto") : Artist!;
 }

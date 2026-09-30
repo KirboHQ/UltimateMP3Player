@@ -21,6 +21,7 @@ public static class AppPaths
     public static string SettingsFile => Path.Combine(DataDir, "settings.json");
     public static string ProfilesFile => Path.Combine(DataDir, "profiles.json");
     public static string CoversDir => Dir(Path.Combine(DataDir, "covers"));
+    public static string LyricsDir => Dir(Path.Combine(DataDir, "lyrics"));
     // Not created here, so deleted profiles stay deleted.
     public static string ProfileDir(string id) => Path.Combine(DataDir, "profiles", id);
     public static string TempDir => Dir(Path.Combine(Path.GetTempPath(), "UltimateMP3Player"));
@@ -146,6 +147,8 @@ public sealed class AppSettings
     public List<string> SearchServices { get; set; } = new(OnlineSearchServices.Default);
     public List<string> SearchServicesOff { get; set; } = new();
     public bool SearchParallel { get; set; } = true;
+    // Lyrics searched by themselves: for new songs and for the song playing, when never searched before.
+    public bool AutoLyrics { get; set; } = true;
     public double WindowWidth { get; set; } = 1280;
     public double WindowHeight { get; set; } = 820;
     public bool WindowMaximized { get; set; }

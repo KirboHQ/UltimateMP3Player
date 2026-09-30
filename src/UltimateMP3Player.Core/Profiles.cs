@@ -128,6 +128,8 @@ public sealed class ProfileData
     public double Speed { get; set; } = 1;
     public bool SpeedPitch { get; set; }
     public bool ShowVideo { get; set; } = true;
+    // The song page shows the lyrics instead of the cover or the video (when the song has them).
+    public bool ShowLyrics { get; set; }
     // Automatic queue: a song started from a list brings the rest of it, and the queue refills at every new song.
     public bool AutoQueue { get; set; } = true;
     // "Next up" panel folded away on the song page.

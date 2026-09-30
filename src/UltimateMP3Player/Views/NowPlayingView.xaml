@@ -34,12 +34,18 @@
         <Grid x:Name="Stage" Margin="20,0,0,16" ClipToBounds="True" SizeChanged="Stage_SizeChanged">
             <Border CornerRadius="16" Background="{StaticResource SurfaceBrush}"/>
             <!-- backdrop: the cover, or the video itself blurred -->
-            <Border CornerRadius="16" Opacity="0.22" Visibility="{Binding ShowCover, Converter={StaticResource BoolVis}}">
+            <Border CornerRadius="16" Opacity="0.22" Visibility="{Binding IsVideo, Converter={StaticResource InvBoolVis}}">
                 <Border.Background>
                     <ImageBrush ImageSource="{Binding Player.Current.Cover160}" Stretch="UniformToFill"/>
                 </Border.Background>
             </Border>
-            <Grid x:Name="StageVideo" Opacity="0.6" Visibility="{Binding ShowCover, Converter={StaticResource InvBoolVis}}">
+            <!-- behind the lyrics: the cover's colours, blurred (baked in NowPlayingView.BakeCover) -->
+            <Border x:Name="LyricsGlow" CornerRadius="16" Opacity="0" Visibility="{Binding LyricsOverCover, Converter={StaticResource BoolVis}}">
+                <Border.Background>
+                    <ImageBrush x:Name="LyricsBackdrop" Stretch="UniformToFill"/>
+                </Border.Background>
+            </Border>
+            <Grid x:Name="StageVideo" Opacity="0.6" Visibility="{Binding IsVideo, Converter={StaticResource BoolVis}}">
                 <Rectangle Margin="-80">
                     <Rectangle.Fill>
                         <VisualBrush Visual="{Binding ElementName=Video}" Stretch="UniformToFill"/>
@@ -49,7 +55,7 @@
                     </Rectangle.Effect>
                 </Rectangle>
             </Grid>
-            <Border CornerRadius="16">
+            <Border CornerRadius="16" Visibility="{Binding LyricsOverCover, Converter={StaticResource InvBoolVis}}">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                         <GradientStop Color="#550E1014" Offset="0"/>
@@ -57,6 +63,18 @@
                     </LinearGradientBrush>
                 </Border.Background>
             </Border>
+            <!-- over the cover's colour the lyrics keep more of it; the bottom stays dark for the title -->
+            <Border CornerRadius="16" Visibility="{Binding LyricsOverCover, Converter={StaticResource BoolVis}}">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#1A0E1014" Offset="0"/>
+                        <GradientStop Color="#330E1014" Offset="0.55"/>
+                        <GradientStop Color="#D90E1014" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+            <!-- a moving video behind the lyrics: calmed down -->
+            <Border CornerRadius="16" Background="#590E1014" Visibility="{Binding LyricsOverVideo, Converter={StaticResource BoolVis}}"/>
 
             <Grid Margin="28">
                 <Grid.RowDefinitions>
@@ -236,9 +254,19 @@
                     </Viewbox>
                 </Grid>
 
-                <!-- video framed like a cover (the backdrop above is its blurred copy) -->
-                <Grid x:Name="VideoArea" Background="Transparent" Visibility="{Binding ShowCover, Converter={StaticResource InvBoolVis}}"
+                <!-- video framed like a cover (the backdrop above is its blurred copy); under the lyrics it's only the backdrop -->
+                <Grid x:Name="VideoArea" Background="Transparent" Visibility="{Binding IsVideo, Converter={StaticResource BoolVis}}"
                       MouseRightButtonUp="Current_RightClick" SizeChanged="VideoArea_SizeChanged">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding LyricsVisible}" Value="True">
+                                    <Setter Property="Opacity" Value="0"/>
+                                    <Setter Property="IsHitTestVisible" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
                     <Grid x:Name="VideoFrame" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Border CornerRadius="14" Background="Black">
                             <Border.Effect>
@@ -248,6 +276,19 @@
                         <MediaElement x:Name="Video" LoadedBehavior="Manual" UnloadedBehavior="Close" IsMuted="True" ScrubbingEnabled="True" Stretch="Fill"/>
                         <Border CornerRadius="14" BorderThickness="1" BorderBrush="#30FFFFFF" IsHitTestVisible="False"/>
                     </Grid>
+                </Grid>
+
+                <!-- the lyrics in place of the cover (NowPlayingView.ShowLyricsText) -->
+                <Grid x:Name="LyricsHost" Visibility="{Binding LyricsVisible, Converter={StaticResource BoolVis}}" Margin="0,-8,0,0">
+                    <views:LyricsView x:Name="LyricsPane" MouseRightButtonUp="Current_RightClick"/>
+                    <!-- scrolled away by hand: back to the line being sung -->
+                    <Button x:Name="FollowBtn" Style="{StaticResource StagePill}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,6"
+                            Click="Follow_Click" Visibility="Collapsed" Opacity="0" AutomationProperties.Name="{local:T 'Torna alla riga cantata'}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE720;" Style="{StaticResource Glyph}" FontSize="13"/>
+                            <TextBlock Text="{local:T 'Torna alla riga cantata'}" Margin="9,0,6,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                 </Grid>
 
                 <Grid Grid.Row="1" Margin="0,22,0,0">
@@ -273,6 +314,15 @@
                             <StackPanel Orientation="Horizontal" Margin="8,0">
                                 <TextBlock Text="&#xE714;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center"/>
                                 <TextBlock Text="Video" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ToggleButton>
+                        <!-- only when the song has lyrics -->
+                        <ToggleButton Style="{StaticResource ToggleIcon}" Width="Auto" Height="36" IsChecked="{Binding ShowLyrics}" Margin="6,0,0,0"
+                                      Visibility="{Binding HasLyrics, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Mostra il testo al posto della copertina'}"
+                                      AutomationProperties.Name="{local:T Testo}">
+                            <StackPanel Orientation="Horizontal" Margin="8,0">
+                                <TextBlock Text="&#xE720;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{local:T Testo}" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ToggleButton>
                     </StackPanel>

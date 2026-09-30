@@ -360,6 +360,43 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== lyrics -->
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'testi testo lyrics parole karaoke lrclib sincronizzati tempi'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Testi delle canzoni'}" Style="{StaticResource CardTitle}"/>
+                        <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding AutoLyrics}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Cerca i testi da solo'}"/>
+                                <TextBlock Text="{local:T 'Per i brani appena scaricati e per quelli che ascolti, se non sono mai stati cercati. Se il testo c\'è, nella schermata del brano compare il pulsante Testo.'}"
+                                           Style="{StaticResource Hint}"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <TextBlock Text="{local:T 'Nella libreria'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{Binding LyricsStats}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+                        <!-- the missing ones of the whole library, one at a time -->
+                        <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding ScanLyricsCommand}"
+                                Visibility="{Binding Lyrics.IsScanning, Converter={StaticResource InvBoolVis}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE720;" Style="{StaticResource Glyph}"/>
+                                <TextBlock Text="{local:T 'Cerca i testi mancanti'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Grid Visibility="{Binding Lyrics.IsScanning, Converter={StaticResource BoolVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
+                                <TextBlock Text="{Binding Lyrics.ScanText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                <ProgressBar Maximum="1" Value="{Binding Lyrics.ScanProgress, Mode=OneWay}" Margin="0,7,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="{local:T Ferma}" Command="{Binding Lyrics.StopScanCommand}"/>
+                        </Grid>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,14,0,0" Foreground="{StaticResource MutedBrush}"
+                                   Text="{local:T 'I testi arrivano da LRCLIB, un archivio libero e gratuito. Quelli con i tempi si illuminano riga per riga mentre ascolti; per una canzone sola usa il tasto destro → Testo, per più brani selezionali e usa il tasto destro.'}"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== tags -->
                 <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'tag etichette colore colori'}">
                     <StackPanel>

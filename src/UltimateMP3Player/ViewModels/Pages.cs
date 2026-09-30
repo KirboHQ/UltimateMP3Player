@@ -595,6 +595,27 @@ public sealed class NowPlayingViewModel : Observable
     public ICommand ToggleVideoCommand { get; }
     public ICommand ToggleQueueCommand { get; }
 
+    // The lyrics instead of the cover (or over the video, blurred behind): the button only exists when the song has them.
+    public bool ShowLyrics
+    {
+        get => Main.Profile.Data.ShowLyrics;
+        set
+        {
+            if (Main.Profile.Data.ShowLyrics == value) return;
+            Main.Profile.Data.ShowLyrics = value;
+            Main.Profile.Save();
+            Refresh();
+        }
+    }
+
+    public bool HasLyrics => Player.Current?.T.HasLyrics == true;
+    public bool LyricsVisible => ShowLyrics && HasLyrics;
+    // The video keeps playing behind the lyrics (it's the blurred backdrop); its frame is hidden.
+    public bool IsVideo => VideoPath != null;
+    public bool ShowVideoFrame => IsVideo && !LyricsVisible;
+    public bool LyricsOverCover => LyricsVisible && !IsVideo;
+    public bool LyricsOverVideo => LyricsVisible && IsVideo;
+
     // "Next up" folded away to the side: the song gets the whole page.
     public bool QueueHidden
     {
@@ -615,14 +636,15 @@ public sealed class NowPlayingViewModel : Observable
         {
             Main.Profile.Data.ShowVideo = value;
             Main.Profile.Save();
-            OnChanged(nameof(ShowVideo), nameof(VideoPath), nameof(ShowCover));
+            Refresh();
         }
     }
 
     public string? VideoPath => ShowVideo ? Player.Current?.T.VideoPath : null;
     public bool HasVideo => Player.Current?.HasVideo == true;
-    public bool ShowCover => VideoPath == null;
+    public bool ShowCover => VideoPath == null && !LyricsVisible;
     public bool CoverTilt => Main.Host.Settings.CoverTilt;
 
-    public void Refresh() => OnChanged(nameof(VideoPath), nameof(HasVideo), nameof(ShowCover), nameof(CoverTilt));
+    public void Refresh() => OnChanged(nameof(ShowVideo), nameof(VideoPath), nameof(HasVideo), nameof(ShowCover), nameof(CoverTilt), nameof(ShowLyrics),
+        nameof(HasLyrics), nameof(LyricsVisible), nameof(IsVideo), nameof(ShowVideoFrame), nameof(LyricsOverCover), nameof(LyricsOverVideo));
 }

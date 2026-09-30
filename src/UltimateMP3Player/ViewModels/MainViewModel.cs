@@ -88,6 +88,9 @@ public sealed class MainViewModel : Observable
         profile.PlaylistsChanged += _playlistsChanged;
         profile.TagsChanged += _tagsChanged;
         profile.TrackTagsChanged += _trackTagsChanged;
+        host.Lyrics.TrackDone += OnLyricsDone;
+        host.Lyrics.BatchDone += OnLyricsBatchDone;
+        if (Player.Current is { } playing) host.Lyrics.Auto(playing.T, true);
     }
 
     private readonly Action<Track> _added, _changed, _removed;
@@ -206,6 +209,8 @@ public sealed class MainViewModel : Observable
         Profile.PlaylistsChanged -= _playlistsChanged;
         Profile.TagsChanged -= _tagsChanged;
         Profile.TrackTagsChanged -= _trackTagsChanged;
+        Host.Lyrics.TrackDone -= OnLyricsDone;
+        Host.Lyrics.BatchDone -= OnLyricsBatchDone;
     }
 
     // Songs deleted by another profile leave this one too.
@@ -716,6 +721,8 @@ public sealed class MainViewModel : Observable
         {
             Library.Remove(t.T);
             files.Add(AppPaths.TrackCover(t.Id));
+            files.Add(LyricsStore.PathFor(t.Id, true));
+            files.Add(LyricsStore.PathFor(t.Id, false));
             if (!t.T.IsLocal) files.AddRange(new[] { t.T.Path, t.T.VideoPath }.OfType<string>());
         }
         if (tracks.Count > 1) Toast(L.F("{0} brani eliminati", tracks.Count));
@@ -901,7 +908,52 @@ public sealed class MainViewModel : Observable
     {
         foreach (var p in Playlists) p.IsPlayingFrom = Player?.ContextId == "playlist:" + p.Id;
         NowPlaying?.Refresh();
+        // A song never searched gets its lyrics while it plays (Settings > Lyrics).
+        if (Player?.Current is { } c) Host.Lyrics.Auto(c.T, true);
     }
+
+    // ------------------------------------------------------------------ lyrics
+
+    public void SearchLyrics(IReadOnlyList<TrackViewModel> tracks)
+    {
+        if (tracks.Count == 0) return;
+        Host.Lyrics.Search(tracks.Select(t => t.T).ToList());
+        Toast(tracks.Count == 1 ? L.F("Cerco il testo di «{0}»…", tracks[0].Title) : L.F("Cerco i testi di {0} brani…", tracks.Count));
+    }
+
+    public void DeleteLyrics(TrackViewModel t)
+    {
+        Host.Lyrics.Delete(t.T);
+        Toast(L.F("Testo di «{0}» eliminato", t.Title));
+    }
+
+    // "Show lyrics" from a song's menu: the song page, with the lyrics on.
+    public void ShowLyrics()
+    {
+        NowPlaying.ShowLyrics = true;
+        if (Page != NowPlaying) Navigate(NowPlaying);
+    }
+
+    private void OnLyricsDone(Track t, LyricsKind? kind, bool manual, Services.LyricsBatch? batch)
+    {
+        if (_vms.TryGetValue(t.Id, out var vm)) vm.Refresh();
+        if (Player.Current?.Id == t.Id) NowPlaying.Refresh();
+        _settings?.RefreshLyricsStats();
+        if (!manual || batch != null) return;
+        Toast(kind switch
+        {
+            null => L.T("LRCLIB non risponde: controlla la connessione e riprova."),
+            LyricsKind.Synced => L.F("Testo trovato per «{0}»", t.Title),
+            LyricsKind.Plain => L.F("Testo trovato per «{0}» (senza tempi)", t.Title),
+            LyricsKind.Instrumental => L.F("«{0}» è strumentale: niente testo", t.Title),
+            _ when t.HasLyrics => L.F("Nessun altro testo trovato per «{0}»: resta quello di prima", t.Title),
+            _ => L.F("Nessun testo trovato per «{0}»", t.Title),
+        });
+    }
+
+    private void OnLyricsBatchDone(Services.LyricsBatch b)
+        => Toast(b.Failed == b.Total ? L.T("LRCLIB non risponde: controlla la connessione e riprova.")
+            : L.F("Testi: {0} trovati, {1} senza testo", b.Found, b.Missing));
 
     // ------------------------------------------------------------------ import
 

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -6,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using UltimateMP3Player.Core;
 using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
@@ -33,6 +35,9 @@ public partial class NowPlayingView : UserControl
             Sync(true);
         };
         Video.MediaEnded += (_, _) => { Video.Position = TimeSpan.Zero; };
+        LyricsPane.CanSeek = () => _vm?.Player.SeekCommand.CanExecute(null) == true;
+        LyricsPane.SeekRequested += t => _vm?.Player.Seek(t);
+        LyricsPane.FollowingChanged += ShowFollowButton;
     }
 
     // ------------------------------------------------------------------ video frame
@@ -62,6 +67,8 @@ public partial class NowPlayingView : UserControl
         WatchCover();
         Update();
         PlaceQueue(false);
+        _lyricsShown = null;
+        ShowLyricsText();
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -96,6 +103,73 @@ public partial class NowPlayingView : UserControl
     {
         if (e.PropertyName is nameof(NowPlayingViewModel.VideoPath) or nameof(NowPlayingViewModel.ShowVideo)) Update();
         else if (e.PropertyName == nameof(NowPlayingViewModel.QueueHidden)) PlaceQueue(true);
+        else if (e.PropertyName == nameof(NowPlayingViewModel.LyricsVisible)) ShowLyricsText();
+    }
+
+    // ------------------------------------------------------------------ lyrics
+
+    // Which lyrics are shown: song, kind and file time (a new search replaces them).
+    private string? _lyricsKey;
+    private bool? _lyricsShown;
+    private const double GlowOpacity = 1;
+
+    private void ShowLyricsText()
+    {
+        var t = _vm?.Player.Current?.T;
+        bool visible = _vm?.LyricsVisible == true && t != null;
+        string? key = visible ? $"{t!.Id}|{t.Lyrics}|{FileStamp(t)}" : null;
+        if (key != _lyricsKey)
+        {
+            _lyricsKey = key;
+            LyricsPane.SetLyrics(visible ? LyricsStore.Load(t!) : null);
+        }
+        PushClock();
+        if (visible == _lyricsShown) return;
+        bool first = _lyricsShown == null;
+        _lyricsShown = visible;
+        if (!visible) ShowFollowButton(true);
+        if (first || !Ui.Animations || !IsLoaded)
+        {
+            LyricsGlow.BeginAnimation(OpacityProperty, null);
+            LyricsGlow.Opacity = visible ? GlowOpacity : 0;
+            return;
+        }
+        // Cross-fade: what comes in fades up, the glow of the cover's colours spreads behind the lyrics.
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        (visible ? (UIElement)LyricsHost : CoverArea).BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(visible ? 320 : 260)) { EasingFunction = ease });
+        LyricsGlow.BeginAnimation(OpacityProperty, new DoubleAnimation(visible ? GlowOpacity : 0, TimeSpan.FromMilliseconds(visible ? 500 : 200)));
+    }
+
+    private static long FileStamp(Core.Track t)
+    {
+        try { return File.GetLastWriteTimeUtc(LyricsStore.PathFor(t.Id, t.Lyrics == LyricsKind.Synced)).Ticks; }
+        catch { return 0; }
+    }
+
+    // The song's position (4 times a second), playing or not, speed: the lyrics run on by themselves in between.
+    private void PushClock()
+    {
+        if (_vm == null) return;
+        var p = _vm.Player;
+        LyricsPane.SetClock(p.Position, p.IsPlaying, p.Speed);
+    }
+
+    private void Follow_Click(object sender, RoutedEventArgs e) => LyricsPane.Follow();
+
+    private void ShowFollowButton(bool following)
+    {
+        bool show = !following && LyricsPane.IsSynced;
+        if (!Ui.Animations)
+        {
+            FollowBtn.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            FollowBtn.Opacity = 1;
+            return;
+        }
+        if (show) FollowBtn.Visibility = Visibility.Visible;
+        var fade = new DoubleAnimation(show ? 1 : 0, TimeSpan.FromMilliseconds(show ? 200 : 140));
+        if (!show) fade.Completed += (_, _) => { if (LyricsPane.IsFollowing || !LyricsPane.IsSynced) FollowBtn.Visibility = Visibility.Collapsed; };
+        FollowBtn.BeginAnimation(OpacityProperty, fade);
     }
 
     // ------------------------------------------------------------------ folding "next up" away
@@ -147,10 +221,19 @@ public partial class NowPlayingView : UserControl
             _vm?.Refresh();
             WatchCover();
             Update();
+            ShowLyricsText();
         }
-        else if (e.PropertyName == nameof(PlayerViewModel.IsPlaying)) Sync(true);
-        else if (e.PropertyName == nameof(PlayerViewModel.Position) && _vm != null && Math.Abs(Video.Position.TotalSeconds - _vm.Player.Position) > 1.5)
+        else if (e.PropertyName == nameof(PlayerViewModel.IsPlaying))
+        {
             Sync(true);
+            PushClock();
+        }
+        else if (e.PropertyName == nameof(PlayerViewModel.Position))
+        {
+            PushClock();
+            if (_vm != null && _source != null && Math.Abs(Video.Position.TotalSeconds - _vm.Player.Position) > 1.5) Sync(true);
+        }
+        else if (e.PropertyName == nameof(PlayerViewModel.Speed)) PushClock();
     }
 
     private void Update()
@@ -324,6 +407,81 @@ public partial class NowPlayingView : UserControl
         bmp.Render(dv);
         bmp.Freeze();
         CoverImage.ImageSource = bmp;
+        LyricsBackdrop.ImageSource = BakeGlow(img);
+    }
+
+    // Behind the lyrics, like Spotify: the cover's strongest colour, with a very blurred copy of the cover over it.
+    private ImageSource BakeGlow(BitmapSource? img)
+    {
+        const int size = 120, spill = 40;
+        bool hasImage = img != null && img.PixelWidth > 0 && img.PixelHeight > 0;
+        var fill = hasImage ? new ImageBrush(img) { Stretch = Stretch.UniformToFill } : (Brush)FindResource("PlaceholderGradient");
+        var mood = hasImage ? Mood(img!) : Darken(((SolidColorBrush)FindResource("AccentBrush")).Color);
+        // Larger than the picture, so the blur doesn't pull the edges in.
+        var blob = new System.Windows.Shapes.Rectangle { Fill = fill, Margin = new Thickness(-spill), Opacity = 0.5,
+            Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 34, KernelType = System.Windows.Media.Effects.KernelType.Gaussian } };
+        var host = new Grid { Width = size, Height = size, ClipToBounds = true, Background = new SolidColorBrush(mood) };
+        host.Children.Add(blob);
+        RenderOptions.SetBitmapScalingMode(host, BitmapScalingMode.HighQuality);
+        host.Measure(new Size(size, size));
+        host.Arrange(new Rect(0, 0, size, size));
+        var bmp = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(host);
+        bmp.Freeze();
+        return bmp;
+    }
+
+    // The cover's colour: its pixels averaged, the vivid ones counting more (a grey sky doesn't win over a red dress).
+    private static Color Mood(BitmapSource img)
+    {
+        try
+        {
+            var small = new FormatConvertedBitmap(new TransformedBitmap(img, new ScaleTransform(24.0 / img.PixelWidth, 24.0 / img.PixelHeight)),
+                PixelFormats.Bgra32, null, 0);
+            int w = small.PixelWidth, h = small.PixelHeight;
+            var px = new byte[w * h * 4];
+            small.CopyPixels(px, w * 4, 0);
+            double r = 0, g = 0, b = 0, sum = 0;
+            for (int i = 0; i < px.Length; i += 4)
+            {
+                var (_, s, l) = ToHsl(px[i + 2] / 255.0, px[i + 1] / 255.0, px[i] / 255.0);
+                double weight = 0.03 + s * s * Math.Max(0, 1 - Math.Abs(l - 0.5) * 1.7);
+                r += px[i + 2] * weight;
+                g += px[i + 1] * weight;
+                b += px[i] * weight;
+                sum += weight;
+            }
+            return Darken(Color.FromRgb((byte)(r / sum), (byte)(g / sum), (byte)(b / sum)));
+        }
+        catch { return Color.FromRgb(0x2A, 0x24, 0x3A); }
+    }
+
+    // Vivid enough to be a colour, dark enough for white text.
+    private static Color Darken(Color c)
+    {
+        var (hue, s, _) = ToHsl(c.R / 255.0, c.G / 255.0, c.B / 255.0);
+        s = s < 0.08 ? s : Math.Clamp(s * 1.25, 0.3, 0.78);
+        return FromHsl(hue, s, 0.3);
+    }
+
+    private static (double H, double S, double L) ToHsl(double r, double g, double b)
+    {
+        double max = Math.Max(r, Math.Max(g, b)), min = Math.Min(r, Math.Min(g, b)), l = (max + min) / 2, d = max - min;
+        if (d < 1e-6) return (0, 0, l);
+        double s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        double h = max == r ? (g - b) / d + (g < b ? 6 : 0) : max == g ? (b - r) / d + 2 : (r - g) / d + 4;
+        return (h / 6, s, l);
+    }
+
+    private static Color FromHsl(double h, double s, double l)
+    {
+        double q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+        double Channel(double t)
+        {
+            t = t < 0 ? t + 1 : t > 1 ? t - 1 : t;
+            return t < 1 / 6.0 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3.0 ? p + (q - p) * (2 / 3.0 - t) * 6 : p;
+        }
+        return Color.FromRgb((byte)Math.Round(Channel(h + 1 / 3.0) * 255), (byte)Math.Round(Channel(h) * 255), (byte)Math.Round(Channel(h - 1 / 3.0) * 255));
     }
 
     // ------------------------------------------------------------------ menus

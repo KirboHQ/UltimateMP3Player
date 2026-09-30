@@ -434,6 +434,42 @@ public sealed class SettingsViewModel : Observable
         ? L.T("Cerca su tutti i siti accesi nello stesso momento: i risultati arrivano mescolati, i migliori di ogni sito per primi.")
         : L.T("Cerca sul primo sito; se non trova niente o non risponde passa al successivo, nell'ordine qui sopra.");
 
+    // ------------------------------------------------------------------ lyrics (app)
+
+    public Services.LyricsService Lyrics => _main.Host.Lyrics;
+
+    public bool AutoLyrics
+    {
+        get => S.AutoLyrics;
+        set
+        {
+            S.AutoLyrics = value;
+            Save();
+            OnChanged();
+            if (value && _main.Player.Current is { } c) Lyrics.Auto(c.T, true);
+        }
+    }
+
+    // How the library stands: with lyrics (with times), without, never searched.
+    public string LyricsStats
+    {
+        get
+        {
+            var all = _main.Library.Snapshot();
+            int synced = all.Count(t => t.Lyrics == LyricsKind.Synced), plain = all.Count(t => t.Lyrics == LyricsKind.Plain);
+            int missing = Lyrics.Missing().Count;
+            return L.F("{0} con il testo ({1} con i tempi) · {2} da cercare", synced + plain, synced, missing);
+        }
+    }
+
+    public ICommand ScanLyricsCommand => new RelayCommand(() =>
+    {
+        Lyrics.ScanLibrary();
+        OnChanged(nameof(LyricsStats));
+    }, () => !Lyrics.IsScanning);
+
+    public void RefreshLyricsStats() => OnChanged(nameof(LyricsStats));
+
     // ------------------------------------------------------------------ downloads (app)
 
     public string MusicDir
@@ -678,7 +714,7 @@ public sealed class SettingsViewModel : Observable
     public void Refresh()
     {
         RefreshStartupChoices();
-        OnChanged(nameof(MusicDir), nameof(Themes), nameof(Artists), nameof(Language), nameof(TogetherCacheText));
+        OnChanged(nameof(MusicDir), nameof(Themes), nameof(Artists), nameof(Language), nameof(TogetherCacheText), nameof(LyricsStats));
     }
 
     // ------------------------------------------------------------------ listen together

@@ -26,6 +26,7 @@ public sealed class TrackViewModel : Observable
     public string DurationText => Text.Duration(T.Duration);
     public string BpmText => T.Bpm is double b ? b.ToString("0.#", L.Culture) : "";
     public bool HasVideo => T.HasVideo;
+    public bool HasLyrics => T.HasLyrics;
     public byte[]? Wave => T.Wave;
     public string SearchText { get; private set; } = "";
 
@@ -69,7 +70,7 @@ public sealed class TrackViewModel : Observable
     public void Refresh()
     {
         UpdateSearchText();
-        OnChanged(nameof(Title), nameof(Artist), nameof(Album), nameof(AlbumText), nameof(DurationText), nameof(HasVideo), nameof(Wave),
+        OnChanged(nameof(Title), nameof(Artist), nameof(Album), nameof(AlbumText), nameof(DurationText), nameof(HasVideo), nameof(HasLyrics), nameof(Wave),
             nameof(Cover48), nameof(Cover160), nameof(Cover300));
     }
 
