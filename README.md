@@ -29,65 +29,10 @@
 
 ## ✨ Highlights
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### 🔗 Paste a link, get the music
-Songs, albums and whole playlists, saved in their original order into a playlist of yours, with the video if you
-want it. Songs you already have are never downloaded twice.
-
-</td>
-<td width="50%" valign="top">
-
-### 🎧 A player that feels like Spotify
-Waveform seek bar, fair shuffle, crossfade, loudness normalization, a 10-band equalizer, media keys and Windows
-media controls.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-### ♾️ A queue that fills itself
-Start a song and the next ones from its playlist line up by themselves (up to 50), topped up after every song. Or
-switch it off and play one song at a time.
-
-</td>
-<td valign="top">
-
-### 🎛️ DJ mode
-Two decks with scrolling waveforms, BPM detection, sync, key lock, a 3-band EQ with kills and a crossfader. Record
-your mix straight into the library.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-### 🏷️ Playlists, favorites and tags
-Colored tags like Discord roles, filters, a page for every tag, bulk edits and right-click menus everywhere.
-
-</td>
-<td valign="top">
-
-### 👥 Profiles and themes
-One profile per person with their own playlists, history, equalizer and theme; songs are shared. English and
-Italian, a 3D tilting cover and Discord Rich Presence.
-
-</td>
-</tr>
-<tr>
-<td colspan="2" valign="top">
-
-### 🎉 Listen together
-Rooms on your network (or over Radmin VPN): everyone hears the same song at the same moment, with a chat, a shared
-queue and permissions decided by the host. Songs are downloaded by each computer from their link, or sent over by
-someone in the room.
-
-</td>
-</tr>
-</table>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/readme/highlights-en-dark.svg">
+  <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · a player that feels like Spotify · a queue that fills itself · DJ mode · playlists, favorites and tags · profiles and themes · listen together">
+</picture>
 
 ## 🆕 What's new in 3.0.0
 

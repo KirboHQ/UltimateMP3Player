@@ -29,66 +29,10 @@
 
 ## ✨ In breve
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
-### 🔗 Incolli un link, hai la musica
-Brani, album e playlist intere, salvati nello stesso ordine in una tua playlist, anche con il video se lo vuoi.
-I brani che hai già non vengono mai riscaricati.
-
-</td>
-<td width="50%" valign="top">
-
-### 🎧 Un lettore come Spotify
-Forma d'onda per spostarsi nel brano, casuale vero, dissolvenza, volume normalizzato, equalizzatore a 10 bande,
-tasti multimediali e controlli di Windows.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-### ♾️ Una coda che si riempie da sola
-Avvii un brano e i successivi della sua playlist si mettono in fila da soli (fino a 50), rimpiazzati a ogni brano.
-Oppure la spegni e ascolti un brano alla volta.
-
-</td>
-<td valign="top">
-
-### 🎛️ Modalità DJ
-Due tracce con forme d'onda scorrevoli, BPM rilevati, sync, key lock, EQ a 3 bande con kill e crossfader.
-Registra il mix direttamente nella libreria.
-
-</td>
-</tr>
-<tr>
-<td valign="top">
-
-### 🏷️ Playlist, preferiti e tag
-Tag colorati come i ruoli di Discord, filtri, una pagina per ogni tag, modifiche di massa e menu col tasto destro
-ovunque.
-
-</td>
-<td valign="top">
-
-### 👥 Profili e temi
-Un profilo per persona con playlist, cronologia, equalizzatore e tema suoi; i brani sono condivisi. Italiano e
-inglese, copertina 3D e stato su Discord.
-
-</td>
-</tr>
-<tr>
-<td colspan="2" valign="top">
-
-### 🎉 Ascolta insieme
-Stanze sulla tua rete (o tramite Radmin VPN): tutti sentono lo stesso brano nello stesso momento, con la chat, una
-coda condivisa e i permessi decisi dall'host. Ogni computer scarica i brani dal loro link, oppure glieli manda
-qualcuno nella stanza.
-
-</td>
-</tr>
-</table>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/readme/highlights-it-dark.svg">
+  <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · un lettore come Spotify · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · profili e temi · ascolta insieme">
+</picture>
 
 ## 🆕 Novità della 3.0.0
 

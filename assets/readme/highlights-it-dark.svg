@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="756" viewBox="0 0 880 756" role="img" aria-label="Incolli un link, hai la musica · Un lettore come Spotify · Una coda che si riempie da sola · Modalità DJ · Playlist, preferiti e tag · Profili e temi · Ascolta insieme">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#FF4FA3"/>
+    </linearGradient>
+  </defs>
+  <style>
+    .title { font: 600 17px 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; fill: #f0f6fc; }
+    .body { font: 400 14.5px 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; fill: #9198a1; }
+  </style>
+  <g transform="translate(0 0)">
+    <rect x="0.5" y="0.5" width="431" height="176" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></g>
+    <text class="title" x="86" y="54">Incolli un link, hai la musica</text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Brani, album e playlist intere, salvati nello stesso ordine</tspan><tspan x="26" dy="23">in una tua playlist, anche con il video se lo vuoi. I brani</tspan><tspan x="26" dy="23">che hai già non vengono mai riscaricati.</tspan></text>
+  </g>
+  <g transform="translate(448 0)">
+    <rect x="0.5" y="0.5" width="431" height="176" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="7" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="7" rx="1.5"/></g>
+    <text class="title" x="86" y="54">Un lettore come Spotify</text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Forma d&apos;onda per spostarsi nel brano, casuale vero,</tspan><tspan x="26" dy="23">dissolvenza, volume normalizzato, equalizzatore a 10</tspan><tspan x="26" dy="23">bande, tasti multimediali e controlli di Windows.</tspan></text>
+  </g>
+  <g transform="translate(0 193)">
+    <rect x="0.5" y="0.5" width="431" height="176" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 11h12M4 16h7"/><path d="M15 14.5v6l5-3z" fill="#fff"/></g>
+    <text class="title" x="86" y="54">Una coda che si riempie da sola</text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Avvii un brano e i successivi della sua playlist si</tspan><tspan x="26" dy="23">mettono in fila da soli (fino a 50), rimpiazzati a ogni</tspan><tspan x="26" dy="23">brano. Oppure la spegni e ascolti un brano alla volta.</tspan></text>
+  </g>
+  <g transform="translate(448 193)">
+    <rect x="0.5" y="0.5" width="431" height="176" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="13" r="7.5"/><circle cx="10.5" cy="13" r="2" fill="#fff"/><path d="M20.5 3v7.5l-3.5 3.5"/></g>
+    <text class="title" x="86" y="54">Modalità DJ</text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Due tracce con forme d&apos;onda scorrevoli, BPM rilevati,</tspan><tspan x="26" dy="23">sync, key lock, EQ a 3 bande con kill e crossfader.</tspan><tspan x="26" dy="23">Registra il mix direttamente nella libreria.</tspan></text>
+  </g>
+  <g transform="translate(0 386)">
+    <rect x="0.5" y="0.5" width="431" height="176" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5v6.8a1.5 1.5 0 0 0 .44 1.06l8.2 8.2a1.5 1.5 0 0 0 2.12 0l6.8-6.8a1.5 1.5 0 0 0 0-2.12l-8.2-8.2A1.5 1.5 0 0 0 11.3 3H4.5A1.5 1.5 0 0 0 3 4.5z"/><circle cx="8" cy="8" r="1.4" fill="#fff"/></g>
+    <text class="title" x="86" y="54">Playlist, preferiti e tag</text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Tag colorati come i ruoli di Discord, filtri, una pagina</tspan><tspan x="26" dy="23">per ogni tag, modifiche di massa e menu col</tspan><tspan x="26" dy="23">tasto destro ovunque.</tspan></text>
+  </g>
+  <g transform="translate(448 386)">
+    <rect x="0.5" y="0.5" width="431" height="176" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20.5a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M21.5 20.5a6.5 6.5 0 0 0-3.5-5.8"/></g>
+    <text class="title" x="86" y="54">Profili e temi</text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Un profilo per persona con playlist, cronologia,</tspan><tspan x="26" dy="23">equalizzatore e tema suoi; i brani sono condivisi.</tspan><tspan x="26" dy="23">Italiano e inglese, copertina 3D e stato su Discord.</tspan></text>
+  </g>
+  <g transform="translate(0 579)">
+    <rect x="0.5" y="0.5" width="879" height="176" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="0.5" y="0.5" width="879" height="176" rx="16" fill="url(#accent)" fill-opacity="0.1" stroke="url(#accent)" stroke-opacity="0.7"/>
+    <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2" fill="#fff"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.4 5.4a9.3 9.3 0 0 0 0 13.2M18.6 5.4a9.3 9.3 0 0 1 0 13.2"/></g>
+    <text class="title" x="86" y="54">Ascolta insieme</text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Stanze sulla tua rete (o tramite Radmin VPN): tutti sentono lo stesso brano nello stesso momento, con la chat, una coda</tspan><tspan x="26" dy="23">condivisa e i permessi decisi dall&apos;host. Ogni computer scarica i brani dal loro link,</tspan><tspan x="26" dy="23">oppure glieli manda qualcuno nella stanza.</tspan></text>
+  </g>
+</svg>
