@@ -736,8 +736,8 @@ public static partial class L
         ["aggiornamenti aggiorna versione github motori yt-dlp gallery-dl dati"] = "updates update version github engines yt-dlp gallery-dl data",
         ["aiuto supporto segnala problema bug errore github issue idea suggerimento contatto"] =
             "help support report problem bug error github issue idea suggestion feature contact",
-        ["ascolta insieme stanza stanze amici rete lan radmin vpn memoria cache firewall"] =
-            "listen together room rooms friends network lan radmin vpn memory cache firewall",
+        ["ascolta insieme stanza stanze amici rete lan radmin vpn memoria cache firewall p2p host anticipo"] =
+            "listen together room rooms friends network lan radmin vpn memory cache firewall p2p host ahead",
         ["[Idea] "] = "[Idea] ",
 
         // ---------------------------------------------------------------- 3.0: DJ
@@ -853,7 +853,6 @@ public static partial class L
         ["Seleziona qualcuno nell'elenco"] = "Select someone in the list",
         ["Solo l'host può cambiare i permessi"] = "Only the host can change permissions",
         ["Togli tutti i permessi"] = "Remove every permission",
-        ["aggiungere"] = "add",
         ["Ascolta con gli amici"] = "Listen with friends",
         ["avanti e indietro"] = "skip forward and back",
         ["avanti/indietro"] = "forward/back",
@@ -891,8 +890,6 @@ public static partial class L
         ["Serve la password"] = "Needs a password",
         ["Stanze sulla rete"] = "Rooms on the network",
         ["Tienilo: nella tua libreria o in una playlist"] = "Keep it: in your library or a playlist",
-        ["togliere"] = "remove",
-        ["togliere e spostare"] = "remove and move",
         ["{0} (tu)"] = "{0} (you)",
         ["{0} brani aggiunti alla coda della stanza"] = "{0} songs added to the room's queue",
         ["{0} brani di «{1}» andranno nella coda della stanza{2}."] = "{0} songs from “{1}” will go into the room's queue{2}.",
@@ -914,9 +911,6 @@ public static partial class L
         ["andare avanti e indietro"] = "skip forward and back",
         ["Ascoltatore"] = "Listener",
         ["Aspettiamo che tutti abbiano il brano · {0} di {1} pronti"] = "Waiting for everyone to have the song · {0} of {1} ready",
-        ["Chi entra ascolta e basta: i permessi li dai tu, a chi vuoi, dall'elenco delle persone."] =
-            "People who join just listen: you give permissions to whoever you like from the list of people.",
-        ["Chi entra potrà:"] = "People who join can:",
         ["Co-host"] = "Co-host",
         ["Collegato a {0}"] = "Connected to {0}",
         ["con password"] = "with password",
@@ -1025,8 +1019,6 @@ public static partial class L
         ["cambiare la velocità"] = "change the speed",
         ["Può mettere in pausa, andare avanti e indietro e ripetere il brano"] = "Can pause, move forward and back and loop the song",
         ["Può cambiare la velocità"] = "Can change the speed",
-        ["pausa e avanti/indietro"] = "pause and seek",
-        ["velocità"] = "speed",
         ["Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop"] = "Pause, move forward and back in the song and put it on loop",
         ["Cambiare la velocità di riproduzione per tutti"] = "Change the playback speed for everyone",
         ["Il brano ricomincia da capo quando finisce, finché qualcuno toglie il loop"] = "The song starts over when it ends, until someone turns the loop off",
@@ -1089,5 +1081,35 @@ public static partial class L
         // ---------------------------------------------------------------- 3.1: DJ speed
         ["Velocità del deck"] = "Deck speed",
         ["Velocità da 0,5× a 2×: giù = più veloce. Rotella per ritocchi fini, doppio clic per tornare a 1×"] = "Speed from 0.5× to 2×: down = faster. Wheel for fine steps, double click to go back to 1×",
+
+        // ---------------------------------------------------------------- 3.1.1: rooms (P2P, songs ahead, permission icons)
+        ["Arriverà dall'host: lo sta preparando · {0:0}%"] = "Coming from the host: it's getting it ready · {0:0}%",
+        ["Arriverà dall'host appena l'ha preparato"] = "Coming from the host as soon as it's ready there",
+        ["Brani preparati in anticipo"] = "Songs got ready ahead",
+        ["Quando ascolti"] = "When you listen",
+        ["Quando sei l'host"] = "When you're the host",
+        ["Brani preparati in anticipo quando ascolti"] = "Songs got ready ahead when you listen",
+        ["Brani preparati in anticipo quando sei l'host"] = "Songs got ready ahead when you're the host",
+        ["Quanti brani della coda scaricare prima che tocchi a loro, oltre a quello in riproduzione."] =
+            "How many songs of the queue to download before their turn, besides the one playing.",
+        ["Brani passati dall'host (P2P)"] = "Songs sent by the host (P2P)",
+        ["Quando sei l'host, invia tu i brani"] = "When you're the host, send the songs yourself",
+        ["Chi ha acceso «Ricevi i brani dall'host» li riceve da te invece di scaricarli da internet: conviene se hai una connessione veloce. Gli altri li scaricano come sempre."] =
+            "Whoever turned on “Take the songs from the host” gets them from you instead of downloading them from the internet: worth it if your connection is fast. The others download them as usual.",
+        ["Ricevi i brani dall'host"] = "Take the songs from the host",
+        ["Se l'host li invia, quelli che prepara lui arrivano da lui; gli altri li scarichi tu e, se non si trovano, aspetti l'host. Spento (o se l'host non li invia): prima dal link, poi da chi nella stanza ce l'ha."] =
+            "If the host sends them, the ones it gets ready come from it; you download the others and, if they can't be found, wait for the host. Off (or if the host doesn't send them): from the link first, then from whoever in the room has it.",
+        ["Aggiungere brani alla coda"] = "Add songs to the queue",
+        ["Togliere e spostare i brani della coda"] = "Remove and move songs in the queue",
+        ["Saltare il brano in riproduzione"] = "Skip the song playing",
+
+        // ---------------------------------------------------------------- 3.1.1: DJ padlock
+        ["Lucchetto tolto: hai cambiato una traccia."] = "Padlock off: you changed a track.",
+        ["Per bloccarle insieme servono due tracce, una per deck."] = "To lock them together you need two tracks, one per deck.",
+        ["Per bloccarle insieme le due tracce devono suonare entrambe o essere ferme entrambe."] = "To lock them together both tracks must be playing, or both stopped.",
+        ["Le tracce sono bloccate insieme: togli il lucchetto per cambiarlo."] = "The tracks are locked together: take the padlock off to change it.",
+        ["Blocca le tracce insieme"] = "Lock the tracks together",
+        ["Lucchetto: spostando una traccia si sposta anche l'altra e partono e si fermano insieme, così restano a tempo. Tempo, BPM, SYNC, « » e 1° beat restano bloccati finché non lo togli"] =
+            "Padlock: moving one track moves the other too, and they start and stop together, so they stay in time. Tempo, BPM, SYNC, « » and 1st beat stay locked until you take it off",
     };
 }

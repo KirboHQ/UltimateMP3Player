@@ -34,6 +34,8 @@ public sealed class TogetherSession : IDisposable
     public const int Proto = 2;
     public const int FirstPort = 47800, LastPort = 47819;
     public const int MaxQueue = 200;
+    // Songs after the one playing that each person gets ready (their choice, 3.1.1).
+    public const int DefaultAhead = 2, MaxAhead = 6;
     private const int MaxChat = 200, ChatLength = 500, NameLength = 40;
     private const long WaitForAll = 8000, GiveUp = 90000, PeerTimeout = 12000, HostTimeout = 9000, PingEvery = 2000,
         KeepPlace = 20000, UploadTimeout = 90000;
@@ -96,6 +98,12 @@ public sealed class TogetherSession : IDisposable
 
     public FileStatus? StatusOf(string member, string item)
         => Files.TryGetValue(member, out var map) && map.TryGetValue(item, out var s) ? s : null;
+
+    // How many songs of the queue this person gets ready: the host its "as the host" choice.
+    public int AheadOf(Member m) => Math.Clamp((m.Id == HostId ? m.HostAhead : m.Ahead) is > 0 and var n ? n : DefaultAhead, 1, MaxAhead);
+
+    // The host sends the songs to whoever takes them from it first (both chose so).
+    public bool HostSendsFiles => Host is { SendsFiles: true, Away: false } && HostId != Me.Id;
 
     // ------------------------------------------------------------------ clock
 
@@ -503,6 +511,7 @@ public sealed class TogetherSession : IDisposable
         mem.Port = who.Port;
         mem.Ip = c.RemoteIp.ToString();
         mem.Version = Clean(who.Version, 20);
+        CopyPrefs(who, mem);
         mem.Away = false;
         if (existing == null) Members.Add(mem);
         _keepPlace.Remove(mem.Id);
@@ -531,6 +540,13 @@ public sealed class TogetherSession : IDisposable
     {
         c.Send(new Msg { T = "deny", Text = key, Flag = needsPassword });
         _ = CloseSoon(c);
+    }
+
+    private static void CopyPrefs(Member from, Member to)
+    {
+        to.Ahead = Math.Clamp(from.Ahead, 0, MaxAhead);
+        to.HostAhead = Math.Clamp(from.HostAhead, 0, MaxAhead);
+        to.SendsFiles = from.SendsFiles;
     }
 
     private bool ShouldTakeOver()
@@ -565,6 +581,11 @@ public sealed class TogetherSession : IDisposable
                 break;
             case "fileReq":
                 if (m.Id != null) ServeFile(id, m.Id);
+                break;
+            case "prefs":
+                if (m.Me == null || Members.FirstOrDefault(x => x.Id == id) is not { } who) break;
+                CopyPrefs(m.Me, who);
+                BroadcastMembers();
                 break;
             default:
                 Apply(id, m);
@@ -1003,7 +1024,7 @@ public sealed class TogetherSession : IDisposable
                 else HostLost(m.HostId, m.Flag, lost);
                 break;
             case "upload":
-                if (m.Id != null && _host != null) _ = SendFile(_host, m.Id, LocalFile?.Invoke(m.Id));
+                if (m.Id != null && _host != null) _ = SendTo(_host, m.Id, LocalFile?.Invoke(m.Id));
                 break;
             case "fileNone":
                 if (m.Id != null) FileUnavailable?.Invoke(m.Id);
@@ -1112,6 +1133,7 @@ public sealed class TogetherSession : IDisposable
             me.Perms = Perm.All;
             me.Away = false;
             me.Port = _listenPort;
+            CopyPrefs(Me, me);
         }
         _seq = Members.Count == 0 ? 0 : Members.Max(x => x.Seq);
         Files[Me.Id] = _myFiles;
@@ -1141,6 +1163,21 @@ public sealed class TogetherSession : IDisposable
     public void KickMember(string id) => Do(new Msg { T = "kick", Id = id });
     public void Promote(string id) => Do(new Msg { T = "promote", Id = id });
 
+    // Songs to get ready and P2P as the host, changed in the settings while in the room: the others see it.
+    public void SetPrefs(int ahead, int hostAhead, bool sendsFiles)
+    {
+        Me.Ahead = Math.Clamp(ahead, 1, MaxAhead);
+        Me.HostAhead = Math.Clamp(hostAhead, 1, MaxAhead);
+        Me.SendsFiles = sendsFiles;
+        if (Status != RoomStatus.Connected) return;
+        if (HostId == Me.Id)
+        {
+            if (MeInRoom is { } me) CopyPrefs(Me, me);
+            BroadcastMembers();
+        }
+        else _host?.Send(new Msg { T = "prefs", Me = new Member { Id = Me.Id, Ahead = Me.Ahead, HostAhead = Me.HostAhead, SendsFiles = sendsFiles } });
+    }
+
     private void Do(Msg m)
     {
         if (IsHost) Apply(Me.Id, m);
@@ -1156,6 +1193,7 @@ public sealed class TogetherSession : IDisposable
         {
             Files[Me.Id] = _myFiles;
             _filesDirty = true;
+            ServeOwn();
             RaiseFiles();
             CheckWaiting();
         }
@@ -1203,12 +1241,14 @@ public sealed class TogetherSession : IDisposable
         var local = to == Me.Id ? null : LocalFile?.Invoke(itemId);
         if (local != null && File.Exists(local))
         {
-            _ = SendFile(c!, itemId, local);
+            _ = SendTo(c!, itemId, local);
             return;
         }
         if (!_waiting.TryGetValue(itemId, out var list)) _waiting[itemId] = list = new List<string>();
         if (!list.Contains(to)) list.Add(to);
         if (_uploading.ContainsKey(itemId)) return;
+        // The host is getting it itself: it goes on as soon as it's here (ReportFiles).
+        if (to != Me.Id && GettingIt(itemId)) return;
         var holder = Holder(itemId, to);
         if (holder == null)
         {
@@ -1246,9 +1286,32 @@ public sealed class TogetherSession : IDisposable
         foreach (var to in list)
         {
             if (to == Me.Id) continue;
-            if (local != null && _peers.TryGetValue(to, out var c)) _ = SendFile(c, itemId, local);
+            if (local != null && _peers.TryGetValue(to, out var c)) _ = SendTo(c, itemId, local);
             else NoFile(to, itemId);
         }
+    }
+
+    private bool GettingIt(string itemId) => _myFiles.TryGetValue(itemId, out var s) && s.State is FileState.Downloading or FileState.Transfer;
+
+    // Host: people waiting for a song the host was getting itself get it now (or hear it didn't come).
+    private void ServeOwn()
+    {
+        foreach (var itemId in _waiting.Keys.ToList())
+        {
+            if (_uploading.ContainsKey(itemId) || GettingIt(itemId)) continue;
+            if (LocalFile?.Invoke(itemId) != null) ServeWaiting(itemId);
+            else FailUpload(itemId);
+        }
+    }
+
+    // One copy of a song at a time to each person (a second request while it's on its way changes nothing).
+    private readonly HashSet<(Connection, string)> _sending = new();
+
+    private async Task SendTo(Connection c, string itemId, string? path)
+    {
+        if (!_sending.Add((c, itemId))) return;
+        try { await SendFile(c, itemId, path); }
+        finally { _sending.Remove((c, itemId)); }
     }
 
     private void FailUpload(string itemId)

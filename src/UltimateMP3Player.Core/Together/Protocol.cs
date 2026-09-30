@@ -51,6 +51,11 @@ public sealed class Member
     public string? Version { get; set; }
     // Lost the connection a moment ago: the place is kept for a while.
     public bool Away { get; set; }
+    // How many songs after the one playing this person gets ready, as a guest and as the host (0 = before 3.1.1: 2).
+    public int Ahead { get; set; }
+    public int HostAhead { get; set; }
+    // As the host, sends the songs to whoever asks first (P2P) instead of letting them download them.
+    public bool SendsFiles { get; set; }
 
     public Member Clone() => (Member)MemberwiseClone();
 }

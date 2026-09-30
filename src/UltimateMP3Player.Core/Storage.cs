@@ -133,6 +133,13 @@ public sealed class AppSettings
     // Permissions of who joins (3.1: pause and seek became one, speed is new; the 3.0 value isn't read).
     public int TogetherRoomPerms { get; set; } = 1;
     public string? TogetherLastAddress { get; set; }
+    // Songs of the room's queue got ready ahead, as a guest and as the host (1-6).
+    public int TogetherAhead { get; set; } = 2;
+    public int TogetherHostAhead { get; set; } = 2;
+    // P2P: as the host, send the songs to whoever takes them from you; as a guest, take them from the host first
+    // (only when the host sends them). Off: from the link first, from someone in the room as a last resort.
+    public bool TogetherSendAsHost { get; set; }
+    public bool TogetherTakeFromHost { get; set; }
     // The search box also searches these sites (in this order); parallel = all at once, otherwise the next one
     // only when the one before found nothing.
     public bool OnlineSearch { get; set; } = true;

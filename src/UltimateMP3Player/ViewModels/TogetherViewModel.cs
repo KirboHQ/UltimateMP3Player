@@ -105,7 +105,7 @@ public sealed class MemberViewModel : Observable
             StatusText = L.T("Si sta ricollegando…");
             return;
         }
-        var window = new[] { s.Current }.Concat(s.Queue.Take(TogetherFetcher.Ahead)).OfType<RoomTrack>().ToList();
+        var window = new[] { s.Current }.Concat(s.Queue.Take(s.AheadOf(M))).OfType<RoomTrack>().ToList();
         if (window.Count == 0)
         {
             StatusText = L.T("Pronto");
@@ -178,6 +178,7 @@ public sealed class RoomItemViewModel : Observable
     {
         FileState.Ready => _owner.InLibrary(Item.Id) ? L.T("Pronto: è nella tua libreria") : L.T("Pronto"),
         FileState.Downloading => L.F("Lo stai scaricando · {0:0}%", Pct),
+        FileState.Transfer when _owner.WaitingHost(Item.Id) => _owner.HostWaitText(Item.Id),
         FileState.Transfer => L.F("Lo stai ricevendo da qualcuno nella stanza · {0:0}%", Pct),
         FileState.Failed => L.T("Non si riesce ad averlo: si riprova tra poco"),
         _ => L.T("Verrà preparato quando si avvicina il suo turno"),
@@ -387,12 +388,8 @@ public sealed class TogetherViewModel : Observable
     private void SetDefault(Perm p, bool on)
     {
         _defaultPerms = on ? _defaultPerms | p : _defaultPerms & ~p;
-        OnChanged(nameof(DefAdd), nameof(DefRemove), nameof(DefSkip), nameof(DefPause), nameof(DefSpeed), nameof(DefaultPermsText));
+        OnChanged(nameof(DefAdd), nameof(DefRemove), nameof(DefSkip), nameof(DefPause), nameof(DefSpeed));
     }
-
-    public string DefaultPermsText => _defaultPerms == Perm.None
-        ? L.T("Chi entra ascolta e basta: i permessi li dai tu, a chi vuoi, dall'elenco delle persone.")
-        : L.T("Chi entra potrà:") + " " + PermsList(_defaultPerms) + ".";
 
     public static string PermsText(Perm p) => p == Perm.None ? L.T("Può solo ascoltare.") : L.T("Può") + " " + PermsList(p) + ".";
 
@@ -508,6 +505,7 @@ public sealed class TogetherViewModel : Observable
         {
             Id = settings.TogetherId, Name = info.Name, Color = info.Color, Version = AppInfo.VersionText,
             Avatar = info.HasAvatar ? JpegOf(info.AvatarPath, 96) : null,
+            Ahead = AheadSetting(settings.TogetherAhead), HostAhead = AheadSetting(settings.TogetherHostAhead), SendsFiles = settings.TogetherSendAsHost,
         };
         var ui = Application.Current.Dispatcher;
         return new TogetherSession(me, a => ui.BeginInvoke(a));
@@ -521,7 +519,8 @@ public sealed class TogetherViewModel : Observable
         _joinedAddress = address;
         var settings = _main.Host.Settings;
         _fetcher = new TogetherFetcher(s, _main.Library, Cache,
-            () => new FetchOptions(settings.AudioFormat, settings.CookiesBrowserOrNull, Math.Clamp(settings.TogetherCacheSize, 1, 200)));
+            () => new FetchOptions(settings.AudioFormat, settings.CookiesBrowserOrNull, Math.Clamp(settings.TogetherCacheSize, 1, 200),
+                AheadSetting(settings.TogetherAhead), AheadSetting(settings.TogetherHostAhead), settings.TogetherTakeFromHost));
         s.RoomChanged += OnRoom;
         s.QueueChanged += OnQueue;
         s.PlaybackChanged += OnPlayback;
@@ -711,6 +710,9 @@ public sealed class TogetherViewModel : Observable
         if (s == null) return;
         foreach (var vm in Members)
             if (s.Members.FirstOrDefault(m => m.Id == vm.Id) is { } m) vm.Update(m);
+        // Songs coming from the host show how far the host is.
+        foreach (var item in _items.Values)
+            if (WaitingHost(item.Id)) item.Refresh();
         UpdateNowPlaying();
     }
 
@@ -850,6 +852,16 @@ public sealed class TogetherViewModel : Observable
     }
 
     public FileStatus? MyStatus(string itemId) => _fetcher?.StatusOf(itemId);
+    public bool WaitingHost(string itemId) => _fetcher?.WaitingHost(itemId) == true;
+
+    // A song that will come from the host (P2P): how far the host is with it.
+    public string HostWaitText(string itemId)
+    {
+        var st = _s?.StatusOf(_s.HostId, itemId);
+        return st?.State is FileState.Downloading or FileState.Transfer
+            ? L.F("Arriverà dall'host: lo sta preparando · {0:0}%", st.Pct)
+            : L.T("Arriverà dall'host appena l'ha preparato");
+    }
     public bool InLibrary(string itemId) => _fetcher?.LibraryTrack(itemId) is { } t && _main.Library.Get(t.Id) != null;
 
     // The song as the rest of the app sees it: the library one if you have it, otherwise a stand-in with the room's data.
@@ -1239,6 +1251,7 @@ public sealed class TogetherViewModel : Observable
         NowStatus = mine?.State switch
         {
             FileState.Downloading => L.F("Lo stai scaricando · {0:0}%: appena finisce entri al punto giusto", mine.Pct),
+            FileState.Transfer when WaitingHost(cur.Id) => HostWaitText(cur.Id),
             FileState.Transfer => L.F("Lo stai ricevendo da qualcuno nella stanza · {0:0}%", mine.Pct),
             FileState.Failed => L.T("Non si riesce ad avere il brano: si riprova tra poco"),
             _ when s.Play.State == PlayState.Waiting => L.F("Aspettiamo che tutti abbiano il brano · {0} di {1} pronti", ready, total),
@@ -1478,6 +1491,18 @@ public sealed class TogetherViewModel : Observable
     }
 
     public static string CacheDir => Cache.Dir;
+
+    public static int AheadSetting(int n) => Math.Clamp(n, 1, TogetherSession.MaxAhead);
+
+    // Settings changed while in a room (songs to get ready, P2P): the others are told, the fetcher follows.
+    public void OnPrefsChanged()
+    {
+        if (_s == null) return;
+        var settings = _main.Host.Settings;
+        _s.SetPrefs(AheadSetting(settings.TogetherAhead), AheadSetting(settings.TogetherHostAhead), settings.TogetherSendAsHost);
+        _fetcher?.Refresh();
+        OnFiles();
+    }
 
     // App closing or profile going away: out of the room, no questions.
     public void Shutdown()

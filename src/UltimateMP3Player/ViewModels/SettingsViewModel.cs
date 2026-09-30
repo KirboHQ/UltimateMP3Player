@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Win32;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Together;
 using UltimateMP3Player.Services;
 
 namespace UltimateMP3Player.ViewModels;
@@ -713,6 +714,63 @@ public sealed class SettingsViewModel : Observable
     });
 
     public ICommand OpenTogetherCacheCommand => new RelayCommand(() => MainViewModel.OpenFolder(TogetherViewModel.CacheDir));
+
+    // Songs of the queue got ready ahead, as a guest and as the host.
+    public List<Choice> TogetherAheadChoices { get; } =
+        Enumerable.Range(1, TogetherSession.MaxAhead).Select(n => new Choice(L.Count(n, "1 brano", "{0} brani"), n)).ToList();
+
+    private Choice AheadChoice(int n) => TogetherAheadChoices.FirstOrDefault(c => (int)c.Value! == n) ?? TogetherAheadChoices[TogetherSession.DefaultAhead - 1];
+
+    public Choice TogetherAhead
+    {
+        get => AheadChoice(S.TogetherAhead);
+        set
+        {
+            if (value == null) return;
+            S.TogetherAhead = (int)value.Value!;
+            OnTogetherPrefs();
+        }
+    }
+
+    public Choice TogetherHostAhead
+    {
+        get => AheadChoice(S.TogetherHostAhead);
+        set
+        {
+            if (value == null) return;
+            S.TogetherHostAhead = (int)value.Value!;
+            OnTogetherPrefs();
+        }
+    }
+
+    // P2P: two separate choices, it happens only when the host sends and the guest takes.
+    public bool TogetherSendAsHost
+    {
+        get => S.TogetherSendAsHost;
+        set
+        {
+            S.TogetherSendAsHost = value;
+            OnTogetherPrefs();
+            OnChanged();
+        }
+    }
+
+    public bool TogetherTakeFromHost
+    {
+        get => S.TogetherTakeFromHost;
+        set
+        {
+            S.TogetherTakeFromHost = value;
+            OnTogetherPrefs();
+            OnChanged();
+        }
+    }
+
+    private void OnTogetherPrefs()
+    {
+        Save();
+        _main.Together.OnPrefsChanged();
+    }
 
     public ICommand FirewallCommand => _main.Together.FirewallCommand;
 }

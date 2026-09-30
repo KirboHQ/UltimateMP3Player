@@ -101,6 +101,46 @@
             </Setter>
         </Style>
 
+        <!-- a permission to switch on and off: just its icon in a circle, tinted when on (only the ring when some of the
+             selected people have it); the name is in the tooltip -->
+        <Style x:Key="PermToggle" TargetType="ToggleButton">
+            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="250"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bd" CornerRadius="18" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                            <TextBlock x:Name="Ico" Text="{TemplateBinding local:Ui.Glyph}" FontFamily="{StaticResource IconFont}" FontSize="14"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Surface3Brush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Ico" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="{x:Null}">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter TargetName="Ico" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- a row of small round choices (how many random songs) -->
         <Style x:Key="CountPills" TargetType="ListBox">
             <Setter Property="Background" Value="Transparent"/>
@@ -250,16 +290,19 @@
                                 </StackPanel>
                             </Grid>
                             <TextBlock Text="{local:T 'Chi entra può'}" Style="{StaticResource FieldLabel}" Margin="2,16,0,8"/>
-                            <WrapPanel>
-                                <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE710;" Content="{local:T 'aggiungere brani'}" IsChecked="{Binding DefAdd}"/>
-                                <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE738;" Content="{local:T 'togliere e spostare'}" IsChecked="{Binding DefRemove}"/>
-                                <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE893;" Content="{local:T saltare}" IsChecked="{Binding DefSkip}"/>
-                                <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE769;" Content="{local:T 'pausa e avanti/indietro'}" IsChecked="{Binding DefPause}"
-                                              ToolTip="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"/>
-                                <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE916;" Content="{local:T velocità}" IsChecked="{Binding DefSpeed}"
-                                              ToolTip="{local:T 'Cambiare la velocità di riproduzione per tutti'}"/>
-                            </WrapPanel>
-                            <TextBlock Text="{Binding DefaultPermsText}" Style="{StaticResource Hint}" FontSize="12" Margin="2,0,0,0"/>
+                            <StackPanel Orientation="Horizontal">
+                                <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE710;" IsChecked="{Binding DefAdd}"
+                                              ToolTip="{local:T 'Aggiungere brani alla coda'}" AutomationProperties.Name="{local:T 'Aggiungere brani alla coda'}"/>
+                                <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE738;" IsChecked="{Binding DefRemove}"
+                                              ToolTip="{local:T 'Togliere e spostare i brani della coda'}" AutomationProperties.Name="{local:T 'Togliere e spostare i brani della coda'}"/>
+                                <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE893;" IsChecked="{Binding DefSkip}"
+                                              ToolTip="{local:T 'Saltare il brano in riproduzione'}" AutomationProperties.Name="{local:T 'Saltare il brano in riproduzione'}"/>
+                                <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE769;" IsChecked="{Binding DefPause}"
+                                              ToolTip="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"
+                                              AutomationProperties.Name="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"/>
+                                <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE916;" IsChecked="{Binding DefSpeed}" Margin="0"
+                                              ToolTip="{local:T 'Cambiare la velocità di riproduzione per tutti'}" AutomationProperties.Name="{local:T 'Cambiare la velocità di riproduzione per tutti'}"/>
+                            </StackPanel>
                             <Button Style="{StaticResource PrimaryButton}" Margin="0,20,0,0" Padding="18,11" Command="{Binding CreateCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE716;" Style="{StaticResource Glyph}"/>
@@ -780,21 +823,25 @@
                                                 Command="{Binding ClearSelectionCommand}" ToolTip="{local:T Deseleziona}"/>
                                         <TextBlock Text="{Binding SelectionText}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     </DockPanel>
-                                    <WrapPanel>
-                                        <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE710;" Content="{local:T aggiungere}" IsThreeState="True"
-                                                      IsChecked="{Binding SelAdd, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Add"/>
-                                        <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE738;" Content="{local:T togliere}" IsThreeState="True"
-                                                      IsChecked="{Binding SelRemove, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Remove"/>
-                                        <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE893;" Content="{local:T saltare}" IsThreeState="True"
-                                                      IsChecked="{Binding SelSkip, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Skip"/>
-                                        <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE769;" Content="{local:T 'pausa e avanti/indietro'}" IsThreeState="True"
+                                    <StackPanel Orientation="Horizontal">
+                                        <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE710;" IsThreeState="True"
+                                                      IsChecked="{Binding SelAdd, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Add"
+                                                      ToolTip="{local:T 'Aggiungere brani alla coda'}" AutomationProperties.Name="{local:T 'Aggiungere brani alla coda'}"/>
+                                        <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE738;" IsThreeState="True"
+                                                      IsChecked="{Binding SelRemove, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Remove"
+                                                      ToolTip="{local:T 'Togliere e spostare i brani della coda'}" AutomationProperties.Name="{local:T 'Togliere e spostare i brani della coda'}"/>
+                                        <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE893;" IsThreeState="True"
+                                                      IsChecked="{Binding SelSkip, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Skip"
+                                                      ToolTip="{local:T 'Saltare il brano in riproduzione'}" AutomationProperties.Name="{local:T 'Saltare il brano in riproduzione'}"/>
+                                        <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE769;" IsThreeState="True"
                                                       IsChecked="{Binding SelPause, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Pause"
-                                                      ToolTip="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"/>
-                                        <ToggleButton Style="{StaticResource PermChip}" local:Ui.Glyph="&#xE916;" Content="{local:T velocità}" IsThreeState="True"
+                                                      ToolTip="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"
+                                                      AutomationProperties.Name="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"/>
+                                        <ToggleButton Style="{StaticResource PermToggle}" local:Ui.Glyph="&#xE916;" IsThreeState="True" Margin="0"
                                                       IsChecked="{Binding SelSpeed, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Speed"
-                                                      ToolTip="{local:T 'Cambiare la velocità di riproduzione per tutti'}"/>
-                                    </WrapPanel>
-                                    <Button Style="{StaticResource DangerButton}" Padding="12,5" FontSize="12.5" HorizontalAlignment="Left" Margin="0,2,0,4"
+                                                      ToolTip="{local:T 'Cambiare la velocità di riproduzione per tutti'}" AutomationProperties.Name="{local:T 'Cambiare la velocità di riproduzione per tutti'}"/>
+                                    </StackPanel>
+                                    <Button Style="{StaticResource DangerButton}" Padding="12,5" FontSize="12.5" HorizontalAlignment="Left" Margin="0,10,0,4"
                                             Command="{Binding KickSelectedCommand}">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="&#xE8F8;" Style="{StaticResource Glyph}" FontSize="12"/>

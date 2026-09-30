@@ -247,6 +247,7 @@ public sealed class DjEngine : ISampleProvider, IDisposable
     public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(DjDeckEngine.SampleRate, 2);
 
     private readonly MixingSampleProvider _mix;
+    private readonly object _mixLock = new();
     private WasapiOut? _out;
     private WaveFileWriter? _rec;
     private readonly object _recLock = new();
@@ -288,9 +289,16 @@ public sealed class DjEngine : ISampleProvider, IDisposable
         _out.Play();
     }
 
+    // Changes to the decks made between two buffers of sound: decks started, stopped or moved together
+    // do it on the same sample (otherwise one could go a buffer, ~10 ms, before the other).
+    public void Atomically(Action change)
+    {
+        lock (_mixLock) change();
+    }
+
     public int Read(float[] buffer, int offset, int count)
     {
-        _mix.Read(buffer, offset, count);
+        lock (_mixLock) _mix.Read(buffer, offset, count);
         float m = Master, peak = 0;
         for (int i = offset, end = offset + count; i < end; i++)
         {

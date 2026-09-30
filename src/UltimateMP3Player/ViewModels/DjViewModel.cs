@@ -50,9 +50,16 @@ public sealed class DjDeckViewModel : Observable
     // Detailed waveform and beat grid.
     public DjAnalysis? Analysis { get; private set; }
 
+    // Padlock on (decks A and B, not the tap player): nothing may shift one track against the other.
+    public bool Held => Dj.Locked && !IsTapper;
+    public bool CanAdjust => !Held;
+    public void OnLock() => OnChanged(nameof(Held), nameof(CanAdjust));
+
     public async Task LoadAsync(string path, string title, string? artist, Track? track, TrackViewModel? song, double startAt = 0, bool play = false)
     {
         int id = ++_loadId;
+        // Another song: what was locked together no longer is.
+        if (Held) Dj.Unlock(L.T("Lucchetto tolto: hai cambiato una traccia."));
         Engine.Playing = false;
         // A new song on the deck: the tap tab no longer plays the old one.
         if (!IsTapper && Dj.TapSource == this) Dj.StopTap();
@@ -98,6 +105,7 @@ public sealed class DjDeckViewModel : Observable
 
     public void Eject()
     {
+        if (Held) Dj.Unlock(L.T("Lucchetto tolto: hai cambiato una traccia."));
         _loadId++;
         Engine.Unload();
         HasTrack = false;
@@ -172,6 +180,11 @@ public sealed class DjDeckViewModel : Observable
     public void SaveTaps(bool round)
     {
         if (_tapBpm is not { } b) return;
+        if (Held && _bpm != null)
+        {
+            Dj.LockedNotice();
+            return;
+        }
         Bpm = round ? Math.Round(b) : Math.Round(b, 2);
         ResetTaps();
         Dj.Main.Toast(Track != null ? L.F("BPM salvati: {0}", BpmInput) : L.F("BPM impostati: {0}", BpmInput));
@@ -184,12 +197,18 @@ public sealed class DjDeckViewModel : Observable
     public void PlayPause()
     {
         if (!HasTrack) return;
+        // Locked: the two start and stop together.
+        if (Held)
+        {
+            Dj.ToggleAll();
+            return;
+        }
         if (!Engine.Playing)
         {
             Dj.Engine.EnsureRunning();
             Dj.Main.Player.Pause();
             // The tap player and the decks don't play over each other.
-            if (IsTapper) foreach (var d in Dj.Decks) d.Engine.Playing = false;
+            if (IsTapper) Dj.Engine.Atomically(() => { foreach (var d in Dj.Decks) d.Engine.Playing = false; });
             else Dj.Tapper.Engine.Playing = false;
         }
         Engine.Playing = !Engine.Playing;
@@ -204,7 +223,13 @@ public sealed class DjDeckViewModel : Observable
     public void CuePressed()
     {
         if (!HasTrack) return;
-        if (Engine.Playing)
+        if (Engine.Playing && Held)
+        {
+            // Locked: both stop, and the other goes back as much as this one.
+            Dj.StopDecks();
+            Dj.MoveLocked(this, Cue);
+        }
+        else if (Engine.Playing)
         {
             Engine.Playing = false;
             Engine.Seek(Cue);
@@ -217,7 +242,9 @@ public sealed class DjDeckViewModel : Observable
     public void Seek(double seconds)
     {
         if (!HasTrack) return;
-        Engine.Seek(seconds);
+        // Locked: the other track moves by the same time.
+        if (Held) Dj.MoveLocked(this, seconds);
+        else Engine.Seek(seconds);
         Dj.Poll();
     }
 
@@ -229,6 +256,11 @@ public sealed class DjDeckViewModel : Observable
     public void SetBeatHere()
     {
         if (!HasTrack || Engine.Position < 0) return;
+        if (Held)
+        {
+            Dj.LockedNotice();
+            return;
+        }
         FirstBeat = Engine.Position;
         if (Track != null)
         {
@@ -253,6 +285,11 @@ public sealed class DjDeckViewModel : Observable
     public void StartNudge(int dir)
     {
         if (!HasTrack) return;
+        if (Held)
+        {
+            Dj.LockedNotice();
+            return;
+        }
         _nudge = Math.Sign(dir);
         _nudgeFrom = Stopwatch.GetTimestamp();
     }
@@ -338,6 +375,13 @@ public sealed class DjDeckViewModel : Observable
         set
         {
             if (value is { } v) value = Math.Round(Math.Clamp(v, 30, 300), 2);
+            // Locked: a known BPM stays (with SYNC it would move the tempo); an unknown one can still be filled in.
+            if (Held && _bpm != null && value != _bpm)
+            {
+                Dj.LockedNotice();
+                OnChanged(nameof(BpmInput));
+                return;
+            }
             if (!Set(ref _bpm, value)) return;
             if (Track != null && value != null)
             {
@@ -386,6 +430,13 @@ public sealed class DjDeckViewModel : Observable
         set
         {
             value = Math.Round(Math.Clamp(value, 0.5, 2), 4);
+            // Locked: the tempo stays (the fader goes back where it was).
+            if (Held && value != _rate)
+            {
+                Dj.LockedNotice();
+                OnChanged(nameof(TempoFader));
+                return;
+            }
             if (!Set(ref _rate, value)) return;
             Engine.Tempo = _rate * (1 + _bend);
             OnChanged(nameof(TempoFader), nameof(TempoText), nameof(TempoPercentText), nameof(BpmText), nameof(RemainingText));
@@ -419,6 +470,12 @@ public sealed class DjDeckViewModel : Observable
         get => _synced;
         set
         {
+            if (Held && value != _synced)
+            {
+                Dj.LockedNotice();
+                OnChanged(nameof(IsSynced));
+                return;
+            }
             if (value && (_bpm == null || Other.PlayedBpm == null))
             {
                 Dj.Status = L.T("Servono i BPM di entrambe le tracce.");
@@ -525,7 +582,79 @@ public sealed class DjViewModel : Observable
         ToggleAllCommand = new RelayCommand(ToggleAll);
         BeatHereCommand = new RelayCommand(p => (p as DjDeckViewModel)?.SetBeatHere());
         UseDetectedCommand = new RelayCommand(p => (p as DjDeckViewModel)?.UseDetected());
+        LockCommand = new RelayCommand(() => Locked = !Locked);
         _clock.Tick += (_, _) => Poll();
+    }
+
+    // ------------------------------------------------------------------ padlock
+
+    private bool _locked;
+    // Where the two tracks are against each other while locked, in seconds of real time: A / its speed − B / its speed.
+    // Every move keeps it, so they stay on the beat they were on.
+    private double _lockGap;
+
+    // The padlock: moving one track moves the other by the same time, they start and stop together, and nothing
+    // that could shift one against the other (tempo, BPM, SYNC, « », 1st beat) can be touched.
+    public bool Locked
+    {
+        get => _locked;
+        set
+        {
+            if (value == _locked) return;
+            if (value && (!A.HasTrack || !B.HasTrack))
+            {
+                Status = L.T("Per bloccarle insieme servono due tracce, una per deck.");
+                OnChanged();
+                return;
+            }
+            if (value && A.IsPlaying != B.IsPlaying)
+            {
+                Status = L.T("Per bloccarle insieme le due tracce devono suonare entrambe o essere ferme entrambe.");
+                OnChanged();
+                return;
+            }
+            if (value)
+            {
+                foreach (var d in Decks) d.StopNudge();
+                Engine.Atomically(() => _lockGap = A.Engine.Position / A.Rate - B.Engine.Position / B.Rate);
+            }
+            _locked = value;
+            Status = null;
+            OnChanged();
+            foreach (var d in Decks) d.OnLock();
+        }
+    }
+
+    public ICommand LockCommand { get; }
+
+    public void Unlock(string? why)
+    {
+        if (!_locked) return;
+        _locked = false;
+        OnChanged(nameof(Locked));
+        foreach (var d in Decks) d.OnLock();
+        Status = why;
+    }
+
+    public void LockedNotice() => Status = L.T("Le tracce sono bloccate insieme: togli il lucchetto per cambiarlo.");
+
+    // Locked: this deck goes to `seconds`, the other where it keeps the same distance (both on the same sample).
+    public void MoveLocked(DjDeckViewModel deck, double seconds)
+    {
+        var other = deck.Other;
+        double otherAt = deck == A ? (seconds / A.Rate - _lockGap) * B.Rate : (seconds / B.Rate + _lockGap) * A.Rate;
+        Engine.Atomically(() =>
+        {
+            deck.Engine.Seek(seconds);
+            other.Engine.Seek(otherAt);
+        });
+        Poll();
+    }
+
+    public void StopDecks()
+    {
+        Engine.Atomically(() => { foreach (var d in Decks) d.Engine.Playing = false; });
+        Poll();
     }
 
     public MainViewModel Main { get; }
@@ -615,6 +744,11 @@ public sealed class DjViewModel : Observable
 
     public void ScrubBoth(double seconds)
     {
+        if (Locked)
+        {
+            MoveLocked(A, _scrubFrom[0] + seconds * A.Rate);
+            return;
+        }
         for (int i = 0; i < 2; i++)
             if (Decks[i].HasTrack) Decks[i].Engine.Seek(_scrubFrom[i] + seconds * Decks[i].Rate);
         Poll();
@@ -635,14 +769,15 @@ public sealed class DjViewModel : Observable
         if (loaded.Count == 0) return;
         if (loaded.Any(d => d.IsPlaying))
         {
-            foreach (var d in loaded) d.Engine.Playing = false;
+            Engine.Atomically(() => { foreach (var d in loaded) d.Engine.Playing = false; });
         }
         else
         {
             Engine.EnsureRunning();
             Main.Player.Pause();
             Tapper.Engine.Playing = false;
-            foreach (var d in loaded) d.Engine.Playing = true;
+            // On the same sample: two tracks lined up stay lined up.
+            Engine.Atomically(() => { foreach (var d in loaded) d.Engine.Playing = true; });
         }
         Poll();
     }
@@ -722,11 +857,9 @@ public sealed class DjViewModel : Observable
         _clock.Stop();
         _open = false;
         Frames(false);
-        foreach (var d in Decks.Append(Tapper))
-        {
-            d.StopNudge();
-            if (d.Engine.Playing) d.PlayPause();
-        }
+        foreach (var d in Decks.Append(Tapper)) d.StopNudge();
+        Engine.Atomically(() => { foreach (var d in Decks.Append(Tapper)) d.Engine.Playing = false; });
+        Poll();
     }
 
     public void Detach()
