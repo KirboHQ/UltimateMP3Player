@@ -51,6 +51,9 @@ public sealed class PlayerViewModel : Observable
         var d = main.Profile.Data;
         _queue.Shuffle = d.Shuffle;
         _queue.Repeat = d.Repeat;
+        _queue.AutoFill = d.AutoQueue;
+        // A song alone in its list (e.g. played from a card): the queue comes from the whole library.
+        _queue.Fallback = () => (_main.Library.Snapshot().OrderByDescending(t => t.Added).Select(t => t.Id).ToList(), "library", "Tutti i brani");
         _volume = d.Volume;
         _muted = d.Muted;
         ApplyVolume();
@@ -70,7 +73,8 @@ public sealed class PlayerViewModel : Observable
         ToggleMuteCommand = new RelayCommand(() => Muted = !Muted);
         FavoriteCommand = new RelayCommand(() => { if (Current != null) _main.ToggleFavorite(Current); }, () => Current != null);
         SeekCommand = new RelayCommand(p => { if (p is double f) SeekFraction(f); });
-        ClearQueueCommand = new RelayCommand(() => _queue.ClearQueue(), () => _queue.UpNext.Count > 0);
+        ClearQueueCommand = new RelayCommand(ClearQueue, () => _queue.UpcomingCount > 0);
+        GenerateQueueCommand = new RelayCommand(GenerateQueue, () => Current != null);
 
         Restore(adopt);
         _queue.Changed += () =>
@@ -135,6 +139,7 @@ public sealed class PlayerViewModel : Observable
     public ICommand FavoriteCommand { get; }
     public ICommand SeekCommand { get; }
     public ICommand ClearQueueCommand { get; }
+    public ICommand GenerateQueueCommand { get; }
 
     // ------------------------------------------------------------------ state
 
@@ -246,7 +251,7 @@ public sealed class PlayerViewModel : Observable
             _queue.Shuffle = value;
             _main.Profile.Data.Shuffle = value;
             _main.Profile.Save();
-            OnChanged();
+            OnChanged(nameof(Shuffle), nameof(GenerateHint));
         }
     }
 
@@ -258,16 +263,17 @@ public sealed class PlayerViewModel : Observable
             _queue.Repeat = value;
             _main.Profile.Data.Repeat = value;
             _main.Profile.Save();
-            OnChanged(nameof(Repeat), nameof(RepeatOn), nameof(RepeatGlyph), nameof(RepeatTip));
+            OnChanged(nameof(Repeat), nameof(RepeatOn), nameof(RepeatGlyph), nameof(RepeatTip), nameof(QueueEndHint));
         }
     }
 
     public bool RepeatOn => Repeat != RepeatMode.Off;
     public string RepeatGlyph => Repeat == RepeatMode.One ? "" : "";
+    // "Repeat one" loops the song until it's turned off, as in the other players (skipping still moves on).
     public string RepeatTip => L.T(Repeat switch
     {
         RepeatMode.All => "Ripeti la playlist (clicca per ripetere il brano)",
-        RepeatMode.One => "Ripeti il brano (clicca per disattivare)",
+        RepeatMode.One => "Ripeti questo brano all'infinito (clicca per disattivare)",
         _ => "Ripeti: disattivato",
     });
 
@@ -305,8 +311,15 @@ public sealed class PlayerViewModel : Observable
 
     // ------------------------------------------------------------------ playback
 
-    public void PlayFrom(ITrackList list, TrackViewModel track)
+    // The rest of the list follows unless "automatic queue" is off (alwaysQueue: it follows anyway, e.g. several selected songs).
+    public void PlayFrom(ITrackList list, TrackViewModel track, bool alwaysQueue = false)
     {
+        // A search only finds the song: what follows comes from all the songs, as in the other players.
+        if (list.ContextId == "search")
+        {
+            _main.PlayInLibrary(track);
+            return;
+        }
         var ids = list.PlayOrder.Select(t => t.Id).ToList();
         int index = ids.IndexOf(track.Id);
         if (index < 0)
@@ -314,7 +327,7 @@ public sealed class PlayerViewModel : Observable
             PlaySingle(track.T);
             return;
         }
-        _queue.Play(ids, index, list.ContextId, list.ContextName);
+        _queue.Play(ids, index, list.ContextId, list.ContextName, alwaysQueue || AutoQueue);
         _ = Load(track.T, true);
     }
 
@@ -348,6 +361,45 @@ public sealed class PlayerViewModel : Observable
         _queue.PlayNextInQueue(t.Id);
         _main.Toast(L.F("«{0}» sarà il prossimo brano", t.Title));
     }
+
+    // Nothing after this song: it plays alone (Generate brings the list back).
+    private void ClearQueue()
+    {
+        _queue.ClearAll();
+        _main.Toast(L.T("Coda svuotata"));
+    }
+
+    // Full queue: generated again from scratch; otherwise the missing songs of the list go at the end.
+    // A song played on its own takes the library.
+    private void GenerateQueue()
+    {
+        if (Current == null) return;
+        var (added, regenerated) = _queue.Generate();
+        _main.Toast(added == 0 ? L.T("Non ci sono altri brani da mettere in coda.")
+            : regenerated ? L.T("Coda generata di nuovo da capo")
+            : L.Count(added, "1 brano aggiunto in fondo alla coda", "{0} brani aggiunti in fondo alla coda"));
+    }
+
+    // Automatic queue (button next to the song): the rest of the list comes with a song, and at every new song
+    // the missing ones go back at the end, so the queue stays full.
+    public bool AutoQueue
+    {
+        get => _main.Profile.Data.AutoQueue;
+        set
+        {
+            if (_main.Profile.Data.AutoQueue == value) return;
+            _main.Profile.Data.AutoQueue = value;
+            _main.Profile.Save();
+            _queue.AutoFill = value;
+            if (value) _queue.TopUp();
+            OnChanged(nameof(AutoQueue), nameof(AutoQueueTip), nameof(QueueEndHint));
+            _main.Toast(value ? L.T("Coda automatica attiva: si riempie da sola a ogni brano") : L.T("Coda automatica spenta: finita la coda, la musica si ferma"));
+        }
+    }
+
+    public string AutoQueueTip => AutoQueue
+        ? L.T("Coda automatica attiva: a ogni brano i successivi si rigenerano (clicca per spegnerla)")
+        : L.T("Coda automatica spenta: cliccando un brano suona solo quello (clicca per accenderla)");
 
     private async Task Load(Track t, bool play, bool crossfade = false)
     {
@@ -458,6 +510,7 @@ public sealed class PlayerViewModel : Observable
             _audio.Pause();
             IsPlaying = false;
             Seek(0);
+            if (!auto && Current != null) _main.Toast(L.T("Nessun altro brano in coda."));
             return;
         }
         await Load(t, true);
@@ -604,10 +657,45 @@ public sealed class PlayerViewModel : Observable
             index++;
         }
         UpNext = rows;
-        OnChanged(nameof(UpNext), nameof(UpNextCount), nameof(ContextName), nameof(HasManualQueue));
+        OnChanged(nameof(UpNext), nameof(UpNextCount), nameof(ContextName), nameof(HasUpNext), nameof(UpcomingBadge), nameof(MoreText),
+            nameof(GenerateHint), nameof(QueueEndHint));
         CommandManager.InvalidateRequerySuggested();
     }
 
     public int UpNextCount => UpNext.Count;
-    public bool HasManualQueue => _queue.UpNext.Count > 0;
+    public bool HasUpNext => UpNext.Count > 0;
+
+    // Count on the "show next up" button when the panel is folded away.
+    public string? UpcomingBadge => _queue.UpcomingCount switch
+    {
+        0 => null,
+        > 999 => "999+",
+        var n => n.ToString(L.Culture),
+    };
+
+    // Under the list: the songs that don't fit in it.
+    public string? MoreText => _queue.UpcomingCount - UpNext.Count is var more and > 0 ? L.Count(more, "e un altro brano", "e altri {0} brani") : null;
+
+    // Where "Generate" takes the songs from.
+    public string GenerateHint
+    {
+        get
+        {
+            var name = _queue.CanGenerate ? ContextName : L.T("Tutti i brani");
+            if (name == null) return Shuffle ? L.T("In ordine casuale") : "";
+            return Shuffle ? L.F("Da «{0}», in ordine casuale", name) : L.F("Da «{0}»", name);
+        }
+    }
+
+    // What happens when this song ends with nothing after it.
+    public string QueueEndHint => Current == null
+        ? L.T("Avvia un brano: quelli dopo di lui compariranno qui.")
+        : AutoQueue && Repeat != RepeatMode.One ? L.T("Coda automatica attiva: si riempie da sola alla fine del brano.")
+        : L.T(Repeat switch
+        {
+            RepeatMode.One => "Il brano in riproduzione si ripete all'infinito.",
+            RepeatMode.All when _queue.Cleared || !_queue.CanGenerate => "Il brano in riproduzione ricomincerà da capo.",
+            RepeatMode.All => "Poi la lista ricomincia da capo.",
+            _ => "Finito questo brano, la musica si ferma.",
+        });
 }

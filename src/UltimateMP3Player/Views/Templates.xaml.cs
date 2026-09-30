@@ -154,7 +154,7 @@ public static class Menus
 
     public static MenuItem DjSubmenu(TrackViewModel t)
     {
-        var sub = new MenuItem { Header = L.T("Carica nel DJ") };
+        var sub = new SubmenuEntry { Header = L.T("Carica nel DJ") };
         Ui.SetGlyph(sub, "");
         sub.Items.Add(Item(L.T("Traccia A"), "", () => t.Main.LoadInDj(t, false)));
         sub.Items.Add(Item(L.T("Traccia B"), "", () => t.Main.LoadInDj(t, true)));
@@ -163,7 +163,7 @@ public static class Menus
 
     public static MenuItem TagSubmenu(IReadOnlyList<TrackViewModel> tracks)
     {
-        var sub = new MenuItem { Header = L.T("Tag") };
+        var sub = new SubmenuEntry { Header = L.T("Tag") };
         Ui.SetGlyph(sub, TagGlyph);
         foreach (var i in TagItems(tracks)) sub.Items.Add(i);
         return sub;
@@ -199,7 +199,7 @@ public static class Menus
 
     private static MenuItem PlaylistTagSubmenu(PlaylistViewModel p)
     {
-        var sub = new MenuItem { Header = L.T("Tag") };
+        var sub = new SubmenuEntry { Header = L.T("Tag") };
         Ui.SetGlyph(sub, TagGlyph);
         foreach (var i in PlaylistTagItems(p)) sub.Items.Add(i);
         return sub;
@@ -310,7 +310,7 @@ public static class Menus
         menu.Items.Add(Item(L.T("Riproduci"), "", () => main.PlaySelection(tracks)));
         menu.Items.Add(Item(L.T("Aggiungi alla coda"), "", () => main.Enqueue(tracks)));
         menu.Items.Add(new Separator());
-        var sub = new MenuItem { Header = L.T("Aggiungi a playlist") };
+        var sub = new SubmenuEntry { Header = L.T("Aggiungi a playlist") };
         Ui.SetGlyph(sub, "");
         foreach (var i in PlaylistItems(tracks)) sub.Items.Add(i);
         menu.Items.Add(sub);
@@ -365,7 +365,7 @@ public static class Menus
     public static MenuItem AddToPlaylist(TrackViewModel t)
     {
         var main = t.Main;
-        var sub = new MenuItem { Header = L.T("Aggiungi a playlist") };
+        var sub = new SubmenuEntry { Header = L.T("Aggiungi a playlist") };
         Ui.SetGlyph(sub, "");
         sub.Items.Add(Item(L.T("Nuova playlist…"), "", () => main.NewPlaylist(t)));
         sub.Items.Add(new Separator());

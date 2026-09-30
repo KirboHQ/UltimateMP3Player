@@ -12,7 +12,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>2.3.0</Version>
+    <Version>2.3.1</Version>
     <Product>Ultimate MP3 Player</Product>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>

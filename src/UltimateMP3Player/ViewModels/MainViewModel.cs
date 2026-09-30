@@ -54,7 +54,13 @@ public sealed class MainViewModel : Observable
         NewPlaylistCommand = new RelayCommand(() => NewPlaylist(null));
         OpenPlaylistCommand = new RelayCommand(p => { if (p is PlaylistViewModel vm) OpenPlaylist(vm); });
         PlayPlaylistCommand = new RelayCommand(p => { if (p is PlaylistViewModel vm) PlayPlaylist(vm); });
-        PlayTrackCommand = new RelayCommand(p => { if (p is TrackViewModel t) Home.PlayRecent(t); });
+        // A song card: the one already playing pauses and resumes.
+        PlayTrackCommand = new RelayCommand(p =>
+        {
+            if (p is not TrackViewModel t) return;
+            if (t.IsCurrent) Player.PlayPause();
+            else Home.PlayRecent(t);
+        });
         SubmitSearchCommand = new RelayCommand(SubmitSearch);
         ClearSearchCommand = new RelayCommand(() => SearchText = "");
         PasteLinkCommand = new RelayCommand(PasteLink);
@@ -568,7 +574,7 @@ public sealed class MainViewModel : Observable
     public void PlaySelection(IReadOnlyList<TrackViewModel> tracks)
     {
         if (tracks.Count == 0) return;
-        Player.PlayFrom(new TrackListSource("selection", L.T("Brani selezionati"), tracks), tracks[0]);
+        Player.PlayFrom(new TrackListSource("selection", L.T("Brani selezionati"), tracks), tracks[0], alwaysQueue: true);
     }
 
     public void EditTrack(TrackViewModel t)
@@ -879,6 +885,13 @@ public sealed class MainViewModel : Observable
             Directory.CreateDirectory(dir);
             Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true });
         }
+        catch { }
+    }
+
+    // A web page in the default browser.
+    public static void OpenUrl(string url)
+    {
+        try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
         catch { }
     }
 }

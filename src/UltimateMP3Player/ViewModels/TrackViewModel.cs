@@ -106,6 +106,12 @@ public sealed class TrackRow
     public ITrackList Owner { get; }
 
     public ICommand PlayCommand => new RelayCommand(() => Track.Main.Player.PlayFrom(Owner, Track));
+    // The row's play button: on the song already playing it pauses and resumes it instead of starting it over.
+    public ICommand PlayPauseCommand => new RelayCommand(() =>
+    {
+        if (Track.IsCurrent) Track.Main.Player.PlayPause();
+        else Track.Main.Player.PlayFrom(Owner, Track);
+    });
     public ICommand FavoriteCommand => new RelayCommand(() => Track.Main.ToggleFavorite(Track));
 
     public override string ToString() => $"{Track.Title} – {Track.Artist}";

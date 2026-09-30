@@ -4,14 +4,34 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <UserControl.Resources>
+        <!-- Round icon button of the "next up" header. -->
+        <Style x:Key="QueueIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="2,0,0,0"/>
+            <Setter Property="Template" Value="{StaticResource PillButtonTemplate}"/>
+        </Style>
+        <!-- Frosted pill floating on the stage. -->
+        <Style x:Key="StagePill" TargetType="Button" BasedOn="{StaticResource BaseButton}">
+            <Setter Property="Template" Value="{StaticResource PillButtonTemplate}"/>
+            <Setter Property="Background" Value="#A6101318"/>
+            <Setter Property="BorderBrush" Value="#30FFFFFF"/>
+            <Setter Property="local:Ui.HoverBrush" Value="#E61D2129"/>
+            <Setter Property="Padding" Value="14,7,8,7"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+    </UserControl.Resources>
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="340"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <!-- ======================================================== stage -->
-        <Grid x:Name="Stage" Margin="20,0,10,16" ClipToBounds="True" SizeChanged="Stage_SizeChanged">
+        <Grid x:Name="Stage" Margin="20,0,0,16" ClipToBounds="True" SizeChanged="Stage_SizeChanged">
             <Border CornerRadius="16" Background="{StaticResource SurfaceBrush}"/>
             <!-- backdrop: the cover, or the video itself blurred -->
             <Border CornerRadius="16" Opacity="0.22" Visibility="{Binding ShowCover, Converter={StaticResource BoolVis}}">
@@ -258,81 +278,153 @@
                     </StackPanel>
                 </Grid>
             </Grid>
+
+            <!-- brings back "next up" when it's folded away (NowPlayingView.PlaceQueue) -->
+            <Button x:Name="ShowQueueBtn" Style="{StaticResource StagePill}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
+                    Command="{Binding ToggleQueueCommand}" Visibility="Collapsed" Opacity="0"
+                    ToolTip="{local:T 'Mostra i successivi'}" AutomationProperties.Name="{local:T 'Mostra i successivi'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE8A0;" Style="{StaticResource Glyph}" FontSize="13"/>
+                    <TextBlock Text="{local:T Successivi}" Margin="9,0,0,0" VerticalAlignment="Center"/>
+                    <Border CornerRadius="9" MinWidth="22" Height="18" Padding="6,0" Margin="8,0,0,0" Background="{DynamicResource AccentBrush}"
+                            Visibility="{Binding Player.UpcomingBadge, Converter={StaticResource NotNullVis}}">
+                        <TextBlock Text="{Binding Player.UpcomingBadge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </StackPanel>
+            </Button>
         </Grid>
 
         <!-- ======================================================== up next -->
-        <Border Grid.Column="1" Margin="0,0,20,16" Style="{StaticResource Card}" Padding="14">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <DockPanel Margin="6,2,0,10">
-                    <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Padding="8,4" FontSize="12.5" Content="{local:T 'Svuota coda'}"
-                            Command="{Binding Player.ClearQueueCommand}" VerticalAlignment="Top"
-                            Visibility="{Binding Player.HasManualQueue, Converter={StaticResource BoolVis}}"
-                            ToolTip="{local:T 'Togli tutti i brani aggiunti a mano alla coda'}"/>
-                    <StackPanel>
-                        <TextBlock Text="{local:T Successivi}" FontSize="17" FontWeight="Bold"/>
-                        <TextBlock FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"
-                                   Text="{local:T 'Doppio clic per saltare a un brano, trascina per riordinare.'}"/>
-                    </StackPanel>
-                </DockPanel>
-                <!-- at most 150 rows: no virtualization, so scrolling and dragging stay exact -->
-                <ListBox x:Name="QueueList" Grid.Row="1" Style="{StaticResource PlainList}" ItemsSource="{Binding Player.UpNext}"
-                         VirtualizingPanel.IsVirtualizing="False" ScrollViewer.CanContentScroll="False"
-                         AllowDrop="True" DragOver="Queue_DragOver" Drop="Queue_Drop" AutomationProperties.Name="{local:T Successivi}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:QueueRow}">
-                            <StackPanel>
-                                <TextBlock Text="{Binding Header}" Style="{StaticResource SmallCaps}" Margin="8,10,0,6" TextTrimming="CharacterEllipsis"
-                                           Visibility="{Binding Header, Converter={StaticResource NotNullVis}}"/>
-                                <Border x:Name="Row" CornerRadius="8" Padding="6" Background="Transparent" local:Marquee.Host="True"
-                                        MouseRightButtonUp="Row_RightClick" PreviewMouseLeftButtonDown="Row_MouseDown" MouseMove="Row_MouseMove">
-                                    <Border.InputBindings>
-                                        <MouseBinding Gesture="LeftDoubleClick" Command="{Binding PlayCommand}"/>
-                                    </Border.InputBindings>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="40"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <ContentPresenter Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
-                                        <!-- small round play over the cover, so the cover stays visible -->
-                                        <Button x:Name="PlayBtn" Width="26" Height="26" Style="{StaticResource IconButton}" Template="{StaticResource PillButtonTemplate}"
-                                                Content="&#xE768;" FontSize="10.5" Foreground="White" Background="#B8000000" local:Ui.HoverBrush="#E6000000"
-                                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                Command="{Binding PlayCommand}" Visibility="Hidden" ToolTip="{local:T 'Riproduci ora'}"
-                                                AutomationProperties.Name="{Binding Track.Title}"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
-                                            <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"
-                                                       local:Marquee.IsEnabled="True"/>
-                                        </StackPanel>
-                                        <Button x:Name="RemoveBtn" Grid.Column="2" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="11"
-                                                Content="&#xE711;" Command="{Binding RemoveCommand}" Visibility="Hidden" ToolTip="{local:T 'Togli dai successivi'}"
-                                                AutomationProperties.Name="{local:T 'Togli dai successivi'}"/>
-                                    </Grid>
-                                </Border>
+        <!-- the pane shrinks and the card slides out to the right when folded away -->
+        <Grid x:Name="QueuePane" Grid.Column="1" Width="350" ClipToBounds="True">
+            <Border x:Name="QueueCard" Width="320" HorizontalAlignment="Left" Margin="10,0,0,16" Style="{StaticResource Card}" Padding="14">
+                <Border.RenderTransform>
+                    <TranslateTransform x:Name="QueueShift"/>
+                </Border.RenderTransform>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid Margin="6,2,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="{local:T Successivi}" FontSize="17" FontWeight="Bold"/>
+                            <TextBlock FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"
+                                       Text="{local:T 'Doppio clic per saltare a un brano, trascina per riordinare.'}"
+                                       Visibility="{Binding Player.HasUpNext, Converter={StaticResource BoolVis}}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="8,-3,-4,0">
+                            <Button Style="{StaticResource QueueIconButton}" Content="&#xE895;" Command="{Binding Player.GenerateQueueCommand}"
+                                    Visibility="{Binding Player.HasTrack, Converter={StaticResource BoolVis}}"
+                                    AutomationProperties.Name="{local:T 'Completa la coda (se è già piena, la rigenera da capo)'}">
+                                <Button.ToolTip>
+                                    <StackPanel MaxWidth="260">
+                                        <TextBlock Text="{local:T 'Completa la coda (se è già piena, la rigenera da capo)'}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Player.GenerateHint}" Foreground="{StaticResource SubTextBrush}" TextWrapping="Wrap"
+                                                   Visibility="{Binding Player.GenerateHint, Converter={StaticResource NotNullVis}}"/>
+                                    </StackPanel>
+                                </Button.ToolTip>
+                            </Button>
+                            <Button Style="{StaticResource QueueIconButton}" Content="&#xE74D;" Command="{Binding Player.ClearQueueCommand}"
+                                    Visibility="{Binding Player.HasUpNext, Converter={StaticResource BoolVis}}"
+                                    ToolTip="{local:T 'Svuota la coda: finito questo brano, la musica si ferma'}" AutomationProperties.Name="{local:T 'Svuota coda'}"/>
+                            <Button Style="{StaticResource QueueIconButton}" Content="&#xE89F;" Command="{Binding ToggleQueueCommand}"
+                                    ToolTip="{local:T 'Nascondi di lato'}" AutomationProperties.Name="{local:T 'Nascondi i successivi'}"/>
+                        </StackPanel>
+                    </Grid>
+                    <!-- at most 150 rows: no virtualization, so scrolling and dragging stay exact -->
+                    <ListBox x:Name="QueueList" Grid.Row="1" Style="{StaticResource PlainList}" ItemsSource="{Binding Player.UpNext}"
+                             VirtualizingPanel.IsVirtualizing="False" ScrollViewer.CanContentScroll="False"
+                             AllowDrop="True" DragOver="Queue_DragOver" Drop="Queue_Drop" AutomationProperties.Name="{local:T Successivi}">
+                        <!-- the rows, then how many more don't fit -->
+                        <ListBox.Template>
+                            <ControlTemplate TargetType="ListBox">
+                                <ScrollViewer Focusable="False" CanContentScroll="False" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <ItemsPresenter/>
+                                        <TextBlock Text="{Binding Player.MoreText}" Style="{StaticResource SmallCaps}" HorizontalAlignment="Center" Margin="0,14,0,8"
+                                                   Visibility="{Binding Player.MoreText, Converter={StaticResource NotNullVis}}"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </ControlTemplate>
+                        </ListBox.Template>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:QueueRow}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Header}" Style="{StaticResource SmallCaps}" Margin="8,10,0,6" TextTrimming="CharacterEllipsis"
+                                               Visibility="{Binding Header, Converter={StaticResource NotNullVis}}"/>
+                                    <Border x:Name="Row" CornerRadius="8" Padding="6" Background="Transparent" local:Marquee.Host="True"
+                                            MouseRightButtonUp="Row_RightClick" PreviewMouseLeftButtonDown="Row_MouseDown" MouseMove="Row_MouseMove">
+                                        <Border.InputBindings>
+                                            <MouseBinding Gesture="LeftDoubleClick" Command="{Binding PlayCommand}"/>
+                                        </Border.InputBindings>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="40"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <ContentPresenter Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                                            <!-- small round play over the cover, so the cover stays visible -->
+                                            <Button x:Name="PlayBtn" Width="26" Height="26" Style="{StaticResource IconButton}" Template="{StaticResource PillButtonTemplate}"
+                                                    Content="&#xE768;" FontSize="10.5" Foreground="White" Background="#B8000000" local:Ui.HoverBrush="#E6000000"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                    Command="{Binding PlayCommand}" Visibility="Hidden" ToolTip="{local:T 'Riproduci ora'}"
+                                                    AutomationProperties.Name="{Binding Track.Title}"/>
+                                            <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
+                                                <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"
+                                                           local:Marquee.IsEnabled="True"/>
+                                            </StackPanel>
+                                            <Button x:Name="RemoveBtn" Grid.Column="2" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="11"
+                                                    Content="&#xE711;" Command="{Binding RemoveCommand}" Visibility="Hidden" ToolTip="{local:T 'Togli dai successivi'}"
+                                                    AutomationProperties.Name="{local:T 'Togli dai successivi'}"/>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                                <DataTemplate.Triggers>
+                                    <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Row" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                                        <Setter TargetName="PlayBtn" Property="Visibility" Value="Visible"/>
+                                        <Setter TargetName="RemoveBtn" Property="Visibility" Value="Visible"/>
+                                    </Trigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <!-- empty queue: what happens next, and the way to fill it -->
+                    <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14,0,14,40" MaxWidth="250"
+                                Visibility="{Binding Player.UpNextCount, Converter={StaticResource ZeroVis}}">
+                        <Grid Width="76" Height="76" HorizontalAlignment="Center">
+                            <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
+                            <Ellipse Stroke="{DynamicResource AccentGradient}" StrokeThickness="1.5" Opacity="0.7"/>
+                            <TextBlock Text="&#xE90B;" FontFamily="{StaticResource IconFont}" FontSize="30" Foreground="{DynamicResource AccentTextBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <TextBlock Text="{local:T 'La coda è vuota'}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                        <TextBlock Text="{Binding Player.QueueEndHint}" Style="{StaticResource Hint}" TextAlignment="Center" Margin="0,6,0,0"/>
+                        <Button Style="{StaticResource PrimaryButton}" Command="{Binding Player.GenerateQueueCommand}" HorizontalAlignment="Center" Margin="0,18,0,0"
+                                Visibility="{Binding Player.HasTrack, Converter={StaticResource BoolVis}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE895;" Style="{StaticResource Glyph}" FontSize="13"/>
+                                <TextBlock Text="{local:T 'Genera coda'}" Margin="8,0,0,0"/>
                             </StackPanel>
-                            <DataTemplate.Triggers>
-                                <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Row" Property="Background" Value="{StaticResource RowHoverBrush}"/>
-                                    <Setter TargetName="PlayBtn" Property="Visibility" Value="Visible"/>
-                                    <Setter TargetName="RemoveBtn" Property="Visibility" Value="Visible"/>
-                                </Trigger>
-                            </DataTemplate.Triggers>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                <TextBlock Grid.Row="1" Text="{local:T 'Nessun altro brano in coda.'}" Style="{StaticResource Hint}" Margin="6,4,0,0"
-                           Visibility="{Binding Player.UpNextCount, Converter={StaticResource ZeroVis}}"/>
-            </Grid>
-        </Border>
+                        </Button>
+                        <TextBlock Text="{Binding Player.GenerateHint}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"
+                                   TextAlignment="Center" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Visibility="{Binding Player.HasTrack, Converter={StaticResource BoolVis}}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- floats left of the queue while dragging (over the stage, the layout doesn't move): drop a song on it to take it out -->
-        <Grid x:Name="TrashZone" Width="64" Height="64" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,20,16"
+        <Grid x:Name="TrashZone" Width="64" Height="64" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,16"
               Visibility="Collapsed" AllowDrop="True" DragOver="Queue_DragOver" Drop="Queue_Drop" RenderTransformOrigin="0.5,0.5"
               AutomationProperties.Name="{local:T 'Trascina qui per togliere'}">
             <Grid.RenderTransform>

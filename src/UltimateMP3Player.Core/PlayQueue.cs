@@ -3,11 +3,16 @@ namespace UltimateMP3Player.Core;
 public readonly record struct QueueEntry(string Id, bool Queued);
 
 // Manual queue first, then the rest of the list; fair shuffle.
+// Full queue = MaxQueue songs of the list (or all the others, for a shorter list), each once.
 public sealed class PlayQueue
 {
+    public const int MaxQueue = 50;
+
     private readonly Random _rng = new();
     private readonly List<(string Id, bool Queued)> _history = new();
     private List<string> _plan = new();
+    // Shuffle: this pass through the list in random order; the queue is dealt from it, then a new pass.
+    private List<string> _round = new();
 
     public List<string> Context { get; private set; } = new();
     public string? ContextId { get; private set; }
@@ -16,6 +21,12 @@ public sealed class PlayQueue
     public RepeatMode Repeat { get; set; }
     public string? Current { get; private set; }
     private bool _currentQueued;
+    // Emptied by hand (or a song started alone): the list stops refilling what comes next, until Generate.
+    public bool Cleared { get; private set; }
+    // Automatic queue: at every new song the queue is topped up again, so it stays full.
+    public bool AutoFill { get; set; }
+    // The list for a song that's alone in its own (the library), with its id and name.
+    public Func<(IList<string> Ids, string? Id, string? Name)>? Fallback { get; set; }
 
     public event Action? Changed;
 
@@ -27,12 +38,14 @@ public sealed class PlayQueue
         {
             if (_shuffle == value) return;
             _shuffle = value;
-            _plan = value ? NewRound(Current) : OrderedAfter(Current);
+            // An emptied queue stays empty.
+            if (!Cleared) Deal(Current, false);
             Changed?.Invoke();
         }
     }
 
-    public void Play(IList<string> tracks, int start, string? contextId, string? contextName)
+    // fill = false: only this song plays, the rest of the list waits for Generate.
+    public void Play(IList<string> tracks, int start, string? contextId, string? contextName, bool fill = true)
     {
         Context = tracks.Distinct().ToList();
         ContextId = contextId;
@@ -40,8 +53,27 @@ public sealed class PlayQueue
         if (Context.Count == 0) return;
         string first = start >= 0 && start < tracks.Count ? tracks[start] : Context[_rng.Next(Context.Count)];
         SetCurrent(first, false);
-        _plan = Shuffle ? NewRound(first) : OrderedAfter(first);
+        Cleared = !fill;
+        _plan = new();
+        if (fill) Deal(first, AutoFill);
+        else if (Shuffle) _round = NewRound(first);
         Changed?.Invoke();
+    }
+
+    // A fresh "next up" after this song: shuffled, around the list (automatic queue) or to its end; at most MaxQueue.
+    private void Deal(string? from, bool fallback)
+    {
+        _plan = new();
+        if (Shuffle || AutoFill)
+        {
+            if (Shuffle) _round = NewRound(from);
+            Fill(fallback, fromCurrent: true);
+        }
+        else
+        {
+            var manual = UpNext.ToHashSet();
+            _plan = OrderedAfter(from).Where(id => !manual.Contains(id)).Take(MaxQueue).ToList();
+        }
     }
 
     // Shuffled, starting from a random song.
@@ -54,6 +86,8 @@ public sealed class PlayQueue
     public string? Next(bool auto)
     {
         if (auto && Repeat == RepeatMode.One && Current != null) return Current;
+        // Automatic queue: it never runs dry (emptied by hand: the songs that were coming come back).
+        if (AutoFill && UpNext.Count == 0 && _plan.Count == 0) Fill(true);
         string? id = null;
         bool queued = false;
         if (UpNext.Count > 0)
@@ -64,15 +98,21 @@ public sealed class PlayQueue
         }
         else
         {
-            if (_plan.Count == 0 && Context.Count > 0 && !(auto && Repeat == RepeatMode.Off))
-                _plan = Shuffle ? NewRound(null) : Context.ToList();
+            // End of the queue: "repeat all" (or a press on next) goes on with the list.
+            if (_plan.Count == 0 && !Cleared && Context.Count > 0 && !(auto && Repeat == RepeatMode.Off)) Fill(false);
             if (_plan.Count > 0)
             {
                 id = _plan[0];
                 _plan.RemoveAt(0);
             }
+            // Emptied queue and "repeat all": all that is left is this song.
+            else if (Cleared && auto && Repeat == RepeatMode.All) id = Current;
         }
-        if (id != null) SetCurrent(id, queued);
+        if (id != null)
+        {
+            SetCurrent(id, queued);
+            if (AutoFill) Fill(true);
+        }
         Changed?.Invoke();
         return id;
     }
@@ -99,6 +139,13 @@ public sealed class PlayQueue
         }
         if (prev == null) return Current;
         Current = prev;
+        if (AutoFill)
+        {
+            // It may have been waiting: now it's playing. And the queue keeps its maximum.
+            _plan.Remove(prev);
+            var inList = Context.ToHashSet();
+            while (_plan.Count > 0 && UpNext.Concat(_plan).Count(inList.Contains) > Target) _plan.RemoveAt(_plan.Count - 1);
+        }
         Changed?.Invoke();
         return prev;
     }
@@ -169,10 +216,85 @@ public sealed class PlayQueue
         Changed?.Invoke();
     }
 
-    public void ClearQueue()
+    // Everything after this song goes, the list's songs too: then playback stops (or repeats this one).
+    public void ClearAll()
     {
         UpNext.Clear();
+        _plan.Clear();
+        Cleared = true;
         Changed?.Invoke();
+    }
+
+    // Songs the list could give: the others in it.
+    public bool CanGenerate => Context.Any(id => id != Current);
+
+    // How many songs of the list a full queue holds.
+    private int Target => Math.Min(MaxQueue, Context.Count(id => id != Current));
+
+    // The generate button: a full queue is generated again from scratch; otherwise the songs that come next in the
+    // list go at the END until it's full (49 waiting of 50 → 1 added, none → 50).
+    public (int Added, bool Regenerated) Generate()
+    {
+        Cleared = false;
+        int added = Fill(true);
+        bool regenerated = false;
+        if (added == 0 && Target > 0)
+        {
+            Deal(Current, true);
+            added = _plan.Count;
+            regenerated = true;
+        }
+        Changed?.Invoke();
+        return (added, regenerated && added > 0);
+    }
+
+    // Automatic queue switched on: the queue fills up right away.
+    public void TopUp()
+    {
+        if (Current == null) return;
+        Cleared = false;
+        Fill(true);
+        Changed?.Invoke();
+    }
+
+    // Tops "next up" up to Target songs of the list, at the end: the ones that come after the last one waiting
+    // (after this song when nothing waits, or fromCurrent), in list order or in the shuffled pass (then a new pass),
+    // wrapping around the list. A song alone in its list takes the fallback list.
+    private int Fill(bool fallback, bool fromCurrent = false)
+    {
+        if (fallback && !CanGenerate && Fallback != null)
+        {
+            var (ids, fid, fname) = Fallback();
+            Context = ids.Distinct().ToList();
+            ContextId = fid;
+            ContextName = fname;
+            if (Shuffle) _round = NewRound(Current);
+        }
+        var inList = Context.ToHashSet();
+        var waiting = UpNext.Concat(_plan).ToHashSet();
+        int need = Target - waiting.Count(inList.Contains);
+        if (need <= 0) return 0;
+        var order = Shuffle ? _round : Context;
+        var inOrder = order.ToHashSet();
+        string? anchor = fromCurrent ? Current : UpNext.Concat(_plan).LastOrDefault(inOrder.Contains) ?? Current;
+        int i = anchor != null ? order.IndexOf(anchor) : -1;
+        int added = 0;
+        for (int guard = 0; added < need && guard < 3 * (Context.Count + 1); guard++)
+        {
+            if (++i >= order.Count)
+            {
+                // End of the list (or of the shuffled pass): around again.
+                if (Shuffle) order = _round = NewRound(null);
+                i = 0;
+                if (order.Count == 0) break;
+            }
+            var id = order[i];
+            if (id == Current || waiting.Contains(id) || !inList.Contains(id)) continue;
+            _plan.Add(id);
+            waiting.Add(id);
+            added++;
+        }
+        return added;
     }
 
     public List<QueueEntry> Upcoming(int max)
@@ -184,6 +306,7 @@ public sealed class PlayQueue
     }
 
     public int UpcomingCount => UpNext.Count + _plan.Count;
+    public int PlanCount => _plan.Count;
 
     public void RemoveAt(int index)
     {
@@ -234,6 +357,7 @@ public sealed class PlayQueue
             queued = false;
         }
         SetCurrent(id, queued);
+        if (AutoFill) Fill(true);
         Changed?.Invoke();
         return id;
     }
@@ -244,6 +368,7 @@ public sealed class PlayQueue
         Context.Remove(id);
         UpNext.RemoveAll(x => x == id);
         _plan.Remove(id);
+        _round.Remove(id);
         _history.RemoveAll(h => h.Id == id);
         if (Current == id && _history.Count > 0) _currentQueued = _history[^1].Queued;
         Changed?.Invoke();
@@ -258,10 +383,12 @@ public sealed class PlayQueue
         ContextName = ContextName,
         UpNext = UpNext.ToList(),
         Plan = _plan.ToList(),
+        Round = _round.ToList(),
         History = _history.TakeLast(100).Select(h => h.Id).ToList(),
         Current = Current,
         CurrentQueued = _currentQueued,
         Position = position,
+        Cleared = Cleared,
     };
 
     // Restores a saved queue, skipping songs that no longer exist.
@@ -272,15 +399,18 @@ public sealed class PlayQueue
         ContextName = s.ContextName;
         UpNext.Clear();
         UpNext.AddRange(s.UpNext.Where(exists));
-        _plan = s.Plan.Where(exists).ToList();
+        // Saves from before the maximum may hold the whole list.
+        _plan = s.Plan.Where(exists).Take(MaxQueue).ToList();
+        _round = s.Round.Where(exists).ToList();
+        if (Shuffle && _round.Count == 0) _round = _plan.ToList();
         _history.Clear();
         _history.AddRange(s.History.Where(exists).Select(id => (id, false)));
         Current = s.Current != null && exists(s.Current) ? s.Current : null;
         _currentQueued = s.CurrentQueued;
+        Cleared = s.Cleared;
         if (Current != null && (_history.Count == 0 || _history[^1].Id != Current)) _history.Add((Current, _currentQueued));
         // An old save without a plan: rebuild what follows from the list.
-        if (Current != null && _plan.Count == 0 && UpNext.Count == 0 && Context.Count > 1)
-            _plan = Shuffle ? NewRound(Current) : OrderedAfter(Current);
+        if (!Cleared && Current != null && _plan.Count == 0 && UpNext.Count == 0 && Context.Count > 1) Deal(Current, false);
         Changed?.Invoke();
     }
 }

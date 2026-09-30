@@ -186,9 +186,8 @@
                 <Grid>
                     <TextBlock x:Name="Num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="Eq" Text="&#xE995;" Style="{StaticResource Glyph}" Foreground="{DynamicResource AccentTextBrush}"
-                               HorizontalAlignment="Center" Visibility="Collapsed"/>
-                    <Button x:Name="PlayBtn" Style="{StaticResource RowIconButton}" Content="&#xE768;" Command="{Binding PlayCommand}"
+                    <!-- play, or pause/resume on the song already playing -->
+                    <Button x:Name="PlayBtn" Style="{StaticResource RowIconButton}" Content="&#xE768;" Command="{Binding PlayPauseCommand}"
                             Foreground="{StaticResource TextBrush}" Visibility="Collapsed" ToolTip="{local:T Riproduci}" AutomationProperties.Name="{local:T 'Riproduci brano'}"/>
                 </Grid>
 
@@ -253,9 +252,9 @@
                 <Setter TargetName="Num" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding Track.IsPlaying}" Value="True">
-                <Setter TargetName="Eq" Property="Visibility" Value="Visible"/>
-                <Setter TargetName="Num" Property="Visibility" Value="Hidden"/>
                 <Setter TargetName="PlayBtn" Property="Content" Value="&#xE769;"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T Pausa}"/>
+                <Setter TargetName="PlayBtn" Property="AutomationProperties.Name" Value="{local:T Pausa}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding Track.IsFavorite}" Value="True">
                 <Setter TargetName="Heart" Property="Visibility" Value="Visible"/>
@@ -322,7 +321,7 @@
             </DataTrigger>
             <DataTrigger Binding="{Binding IsPlaying}" Value="True">
                 <Setter TargetName="PlayDisc" Property="Opacity" Value="1"/>
-                <Setter TargetName="PlayIco" Property="Text" Value="&#xE995;"/>
+                <Setter TargetName="PlayIco" Property="Text" Value="&#xE769;"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>

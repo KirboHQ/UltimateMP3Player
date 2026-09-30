@@ -61,6 +61,7 @@ public partial class NowPlayingView : UserControl
         Attach(DataContext as NowPlayingViewModel);
         WatchCover();
         Update();
+        PlaceQueue(false);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -94,6 +95,49 @@ public partial class NowPlayingView : UserControl
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(NowPlayingViewModel.VideoPath) or nameof(NowPlayingViewModel.ShowVideo)) Update();
+        else if (e.PropertyName == nameof(NowPlayingViewModel.QueueHidden)) PlaceQueue(true);
+    }
+
+    // ------------------------------------------------------------------ folding "next up" away
+
+    // Pane width with the card, and without (the gap at the page edge stays).
+    private const double PaneOpen = 350, PaneClosed = 20;
+
+    // The pane narrows while the card slides out to the right; the stage takes the room and a pill brings it back.
+    private void PlaceQueue(bool animate)
+    {
+        bool hidden = _vm?.QueueHidden == true;
+        double width = hidden ? PaneClosed : PaneOpen, shift = hidden ? PaneOpen : 0;
+        QueueCard.Visibility = ShowQueueBtn.Visibility = Visibility.Visible;
+        void Settle()
+        {
+            if ((_vm?.QueueHidden == true) != hidden) return;
+            QueueCard.Visibility = hidden ? Visibility.Collapsed : Visibility.Visible;
+            ShowQueueBtn.Visibility = hidden ? Visibility.Visible : Visibility.Collapsed;
+        }
+        if (!animate || !Ui.Animations)
+        {
+            QueuePane.BeginAnimation(WidthProperty, null);
+            QueueShift.BeginAnimation(TranslateTransform.XProperty, null);
+            QueueCard.BeginAnimation(OpacityProperty, null);
+            ShowQueueBtn.BeginAnimation(OpacityProperty, null);
+            QueuePane.Width = width;
+            QueueShift.X = shift;
+            QueueCard.Opacity = hidden ? 0 : 1;
+            ShowQueueBtn.Opacity = hidden ? 1 : 0;
+            Settle();
+            return;
+        }
+        var time = TimeSpan.FromMilliseconds(hidden ? 280 : 320);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
+        var narrow = new DoubleAnimation(width, time) { EasingFunction = ease };
+        narrow.Completed += (_, _) => Settle();
+        QueuePane.BeginAnimation(WidthProperty, narrow);
+        QueueShift.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(shift, time) { EasingFunction = ease });
+        QueueCard.BeginAnimation(OpacityProperty, new DoubleAnimation(hidden ? 0 : 1, time));
+        ShowQueueBtn.BeginAnimation(OpacityProperty, hidden
+            ? new DoubleAnimation(1, TimeSpan.FromMilliseconds(220)) { BeginTime = TimeSpan.FromMilliseconds(160) }
+            : new DoubleAnimation(0, TimeSpan.FromMilliseconds(120)));
     }
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)

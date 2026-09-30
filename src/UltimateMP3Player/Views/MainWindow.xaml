@@ -322,6 +322,9 @@
                         </Button>
                         <Button Style="{StaticResource ControlButton}" Content="&#xE710;" Click="AddCurrentToPlaylist_Click" AutomationProperties.Name="{local:T 'Aggiungi a playlist'}"
                                 ToolTip="{local:T 'Aggiungi a una playlist'}"/>
+                        <!-- automatic queue: lit = "next up" refills itself at every song -->
+                        <ToggleButton Style="{StaticResource ToggleIcon}" Content="&#xE90B;" IsChecked="{Binding AutoQueue}"
+                                      ToolTip="{Binding AutoQueueTip}" AutomationProperties.Name="{local:T 'Coda automatica'}"/>
                     </StackPanel>
                 </Grid>
 

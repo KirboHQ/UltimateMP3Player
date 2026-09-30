@@ -208,6 +208,11 @@ public sealed class SettingsViewModel : Observable
         ImportFolderCommand = new RelayCommand(() => _main.ImportDialog(true));
         SelectThemeCommand = new RelayCommand(p => { if (p is string id) SelectTheme(id); });
         RenameArtistCommand = new RelayCommand(RenameArtist, () => SelectedArtist != null && !string.IsNullOrWhiteSpace(NewArtistName));
+        bool hasRepo = AppInfo.RepoUrl != null;
+        ReportProblemCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Problema] "), BugTemplate())!), () => hasRepo);
+        SuggestIdeaCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Idea] "), IdeaTemplate())!), () => hasRepo);
+        OpenIssuesCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.RepoUrl + "/issues"), () => hasRepo);
+        OpenRepoCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.RepoUrl!), () => hasRepo);
         BuildBrowsers();
         RefreshStartupChoices();
         _ = RefreshEngineInfo();
@@ -227,6 +232,10 @@ public sealed class SettingsViewModel : Observable
     public ICommand ImportFolderCommand { get; }
     public ICommand SelectThemeCommand { get; }
     public ICommand RenameArtistCommand { get; }
+    public ICommand ReportProblemCommand { get; }
+    public ICommand SuggestIdeaCommand { get; }
+    public ICommand OpenIssuesCommand { get; }
+    public ICommand OpenRepoCommand { get; }
 
     private void Save() => S.Save();
 
@@ -539,6 +548,28 @@ public sealed class SettingsViewModel : Observable
 
     public string Version => L.F("Versione {0}", AppInfo.VersionText);
     public string DataDir => AppPaths.DataDir;
+
+    // ------------------------------------------------------------------ help (GitHub issues)
+
+    // Pre-filled issue text: the questions to answer, then the app and Windows versions.
+    private static string BugTemplate() => string.Join("\n",
+        "### " + L.T("Cosa è successo?"), "", "",
+        "### " + L.T("Cosa ti aspettavi che succedesse?"), "", "",
+        "### " + L.T("Come farlo succedere di nuovo"), "1. ", "2. ", "",
+        "_" + L.T("Se è comparso un errore, allega il file errori.log (Impostazioni → Aggiornamenti → Apri la cartella dei dati).") + "_",
+        "", "---", SystemLine());
+
+    private static string IdeaTemplate() => string.Join("\n",
+        "### " + L.T("La tua idea"), "", "",
+        "### " + L.T("A cosa ti servirebbe?"), "", "",
+        "---", SystemLine());
+
+    private static string SystemLine()
+    {
+        var os = Environment.OSVersion.Version;
+        string windows = os.Major == 10 && os.Build >= 22000 ? "Windows 11" : os.Major == 10 ? "Windows 10" : "Windows " + os;
+        return $"Ultimate MP3 Player {AppInfo.VersionText} · {windows} (build {os.Build}) · {(L.English ? "English" : "Italiano")}";
+    }
 
     public void Refresh()
     {

@@ -329,6 +329,9 @@ public sealed class MasterProvider : ISampleProvider
             dst[offset + i] *= g;
             dst[offset + i + 1] *= g;
         }
+        // A jump asked at the end of the song (repeat one, back to the start): no sound left to fade out,
+        // so the fade would never finish and the song stayed stuck in silence. Jump on the next read.
+        if (v.PendingSeek != null && read < count) v.Fade = 0f;
         return read;
     }
 

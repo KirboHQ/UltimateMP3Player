@@ -30,6 +30,7 @@ public partial class App : Application
         CleanTemp();
         Updater.CleanUp();
         SliderDrag.Register();
+        MenuAim.Register();
         string? profileArg = Take(args, "--profile");
         bool background = args.Remove("--background");
 

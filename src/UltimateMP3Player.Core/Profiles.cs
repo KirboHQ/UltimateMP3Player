@@ -92,6 +92,10 @@ public sealed class QueueState
     public string? Current { get; set; }
     public bool CurrentQueued { get; set; }
     public double Position { get; set; }
+    // "Next up" emptied by hand: the list doesn't refill it.
+    public bool Cleared { get; set; }
+    // Shuffle: this pass through the list in random order (the queue is dealt from it).
+    public List<string> Round { get; set; } = new();
 
     public void Forget(ISet<string> ids)
     {
@@ -99,6 +103,7 @@ public sealed class QueueState
         UpNext.RemoveAll(ids.Contains);
         Plan.RemoveAll(ids.Contains);
         History.RemoveAll(ids.Contains);
+        Round.RemoveAll(ids.Contains);
         if (Current != null && ids.Contains(Current))
         {
             Current = null;
@@ -120,6 +125,10 @@ public sealed class ProfileData
     public bool Crossfade { get; set; }
     public int CrossfadeSeconds { get; set; } = 6;
     public bool ShowVideo { get; set; } = true;
+    // Automatic queue: a song started from a list brings the rest of it, and the queue refills at every new song.
+    public bool AutoQueue { get; set; } = true;
+    // "Next up" panel folded away on the song page.
+    public bool QueueHidden { get; set; }
     public string? LastTrack { get; set; }
     public QueueState? Queue { get; set; }
     public string LibrarySort { get; set; } = "added";

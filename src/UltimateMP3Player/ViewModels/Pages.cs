@@ -307,11 +307,26 @@ public sealed class NowPlayingViewModel : Observable
     {
         Main = main;
         ToggleVideoCommand = new RelayCommand(() => ShowVideo = !ShowVideo);
+        ToggleQueueCommand = new RelayCommand(() => QueueHidden = !QueueHidden);
     }
 
     public MainViewModel Main { get; }
     public PlayerViewModel Player => Main.Player;
     public ICommand ToggleVideoCommand { get; }
+    public ICommand ToggleQueueCommand { get; }
+
+    // "Next up" folded away to the side: the song gets the whole page.
+    public bool QueueHidden
+    {
+        get => Main.Profile.Data.QueueHidden;
+        set
+        {
+            if (Main.Profile.Data.QueueHidden == value) return;
+            Main.Profile.Data.QueueHidden = value;
+            Main.Profile.Save();
+            OnChanged();
+        }
+    }
 
     public bool ShowVideo
     {

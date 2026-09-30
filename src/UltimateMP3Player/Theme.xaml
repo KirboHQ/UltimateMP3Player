@@ -1138,7 +1138,8 @@
                                            VerticalAlignment="Center" Margin="12,0,0,0" Foreground="{StaticResource SubTextBrush}" Visibility="Collapsed"/>
                             </Grid>
                         </Border>
-                        <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="2" VerticalOffset="-6" AllowsTransparency="True"
+                        <!-- right against its entry: no gap to cross on the way in -->
+                        <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="0" VerticalOffset="-6" AllowsTransparency="True"
                                IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}" Focusable="False" PopupAnimation="Fade">
                             <Border Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1"
                                     CornerRadius="10" Padding="5" Margin="0,0,10,10" MinWidth="200">

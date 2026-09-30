@@ -20,5 +20,9 @@ public static class AppInfo
 
     public static string? RepoUrl => GitHubRepo.Length > 0 ? "https://github.com/" + GitHubRepo : null;
 
+    // A new GitHub issue with the title and text already filled in.
+    public static string? NewIssueUrl(string title, string body)
+        => RepoUrl is { } repo ? $"{repo}/issues/new?title={Uri.EscapeDataString(title)}&body={Uri.EscapeDataString(body)}" : null;
+
     public static string? LogoUrl => GitHubRepo.Length > 0 ? $"https://raw.githubusercontent.com/{GitHubRepo}/main/assets/logo.png" : null;
 }
