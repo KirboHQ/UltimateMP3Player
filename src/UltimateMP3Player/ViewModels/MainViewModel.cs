@@ -1008,6 +1008,56 @@ public sealed class MainViewModel : Observable
         if (playFirst && first != null && !InRoom) Player.PlaySingle(first);
     }
 
+    // ------------------------------------------------------------------ .ump packs
+
+    private readonly Queue<string> _packs = new();
+    private bool _packOpen;
+
+    // A pack opened (double click, dragged in, Settings): one dialog at a time.
+    public async void OpenPack(string path)
+    {
+        _packs.Enqueue(path);
+        if (_packOpen) return;
+        _packOpen = true;
+        try
+        {
+            // After the window has appeared: a double click on a pack can be what started the app.
+            await _ui.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            while (_packs.TryDequeue(out var next)) await Views.PackDialogs.Import(this, next);
+        }
+        finally { _packOpen = false; }
+    }
+
+    public void PickPack()
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = L.T("Importa un pacchetto"),
+            Filter = L.T("Pacchetto di Ultimate MP3 Player") + " (*" + Pack.Extension + ")|*" + Pack.Extension + "|" + L.T("Tutti i file") + "|*.*",
+        };
+        if (dlg.ShowDialog() == true) OpenPack(dlg.FileName);
+    }
+
+    public void ExportPack(PlaylistViewModel? playlist = null, TagViewModel? tag = null) => Views.PackDialogs.Export(this, playlist, tag);
+
+    // Songs of a pack that travelled as links: downloaded like any other, then into their playlists and tags.
+    public void QueuePackDownloads(PackImportResult r)
+    {
+        if (r.Downloads.Count == 0) return;
+        var profile = Profile;
+        var map = new Dictionary<string, string>(r.Map);
+        var batch = new DownloadBatch(profile, null, r.Downloads.Count)
+        {
+            Placed = (i, id) =>
+            {
+                var d = r.Downloads[i];
+                map[d.Track.Id] = id;
+                if (Library.Get(id) is { } t) PackImporter.Place(d, t, Library, profile, map);
+            },
+        };
+        Queue.Add(batch, r.Downloads.Select((d, i) => (PackImporter.ToMediaItem(d.Track), i)), false);
+    }
+
     public static void OpenFolder(string dir)
     {
         try

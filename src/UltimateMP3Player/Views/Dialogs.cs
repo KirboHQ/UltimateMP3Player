@@ -13,6 +13,16 @@ public static class Dialogs
     public static bool Confirm(string title, string message, string ok, bool danger = false)
         => Show(title, message, Array.Empty<(string, string)>(), ok, danger) != null;
 
+    // A message with only "OK".
+    public static void Alert(string title, string message)
+    {
+        var text = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)Application.Current.Resources["SubTextBrush"], LineHeight = 20 };
+        var ok = Button("OK", "PrimaryButton", isDefault: true, isCancel: true);
+        var win = Frame(title, text, 400, ok);
+        ok.Click += (_, _) => win.DialogResult = true;
+        win.ShowDialog();
+    }
+
     public static string? Prompt(string title, string label, string initial)
         => Show(title, null, new[] { (label, initial) }, L.T("Salva"), false)?[0];
 

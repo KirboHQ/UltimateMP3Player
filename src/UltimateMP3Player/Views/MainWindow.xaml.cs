@@ -35,6 +35,10 @@ public partial class MainWindow : Window
         PreviewTextInput += OnTextInput;
         PreviewMouseLeftButtonDown += (_, e) => SelectionBar.ClearOnOutsideClick(e.OriginalSource as DependencyObject);
         PreviewDragOver += OnDragOver;
+        // Leaving one element for another is a leave followed by an over: only a real exit hides the pack overlay.
+        PreviewDragLeave += (_, _) => _dropHide.Start();
+        _dropHide.Tick += (_, _) => HidePackDrop();
+        PreviewDrop += OnPackDrop;
         Drop += OnDrop;
         Loaded += (_, _) => _host.OnTrackChanged();
     }
@@ -286,8 +290,48 @@ public partial class MainWindow : Window
     {
         if (e.Handled) return;
         if (e.Data.GetDataPresent(typeof(TrackRow)) || e.Data.GetDataPresent(typeof(QueueRow))) return;
+        if (PacksIn(e.Data) is { Count: > 0 } packs) ShowPackDrop(packs);
         e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) || LinkFrom(e.Data) != null ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
+    }
+
+    // ------------------------------------------------------------------ .ump packs dropped on the window
+
+    private readonly System.Windows.Threading.DispatcherTimer _dropHide = new() { Interval = TimeSpan.FromMilliseconds(90) };
+
+    private static List<string>? PacksIn(IDataObject data)
+    {
+        try
+        {
+            return data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] files
+                ? files.Where(Pack.IsPack).ToList()
+                : null;
+        }
+        catch { return null; }
+    }
+
+    private void ShowPackDrop(List<string> packs)
+    {
+        _dropHide.Stop();
+        PackDropName.Text = packs.Count == 1 ? Path.GetFileNameWithoutExtension(packs[0]) : L.F("{0} pacchetti", packs.Count);
+        PackDrop.Visibility = Visibility.Visible;
+    }
+
+    private void HidePackDrop()
+    {
+        _dropHide.Stop();
+        PackDrop.Visibility = Visibility.Collapsed;
+    }
+
+    // Before any part of the window: packs open the import, other files dropped along are added as usual.
+    private void OnPackDrop(object sender, DragEventArgs e)
+    {
+        HidePackDrop();
+        if (Vm == null || PacksIn(e.Data) is not { Count: > 0 } packs) return;
+        e.Handled = true;
+        var rest = ((string[])e.Data.GetData(DataFormats.FileDrop)).Where(f => !Pack.IsPack(f)).ToList();
+        if (rest.Count > 0) _ = Vm.Import(rest, false);
+        foreach (var p in packs) Vm.OpenPack(p);
     }
 
     private void OnDrop(object sender, DragEventArgs e)

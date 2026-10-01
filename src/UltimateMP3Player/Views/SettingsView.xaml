@@ -508,6 +508,39 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== .ump packs -->
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
+                        views:SettingsView.Keywords="{local:T 'esporta importa pacchetto pacchetti ump condividi backup copia sposta trasferisci amici playlist tag libreria'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Esporta e importa'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Metti playlist, tag o tutta la libreria in un file .ump: per tenerne una copia, passarla su un altro computer o mandarla a un amico.'}"
+                                   Style="{StaticResource Hint}" Margin="0,-8,0,14"/>
+                        <UniformGrid Columns="2">
+                            <Button Style="{StaticResource SupportTile}" Command="{Binding ExportPackCommand}" Margin="0,0,6,0"
+                                    AutomationProperties.Name="{local:T 'Esporta…'}">
+                                <StackPanel>
+                                    <Grid Width="38" Height="38" HorizontalAlignment="Left">
+                                        <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
+                                        <TextBlock Text="&#xEDE1;" Style="{StaticResource Glyph}" FontSize="17" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                                    </Grid>
+                                    <TextBlock Text="{local:T 'Esporta…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                    <TextBlock Text="{local:T 'Scegli cosa mettere nel pacchetto'}" Style="{StaticResource Hint}" FontSize="12"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource SupportTile}" Command="{Binding ImportPackCommand}" Margin="6,0,0,0"
+                                    AutomationProperties.Name="{local:T 'Importa un pacchetto…'}">
+                                <StackPanel>
+                                    <Image Source="{StaticResource PackImage}" Width="38" Height="38" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="{local:T 'Importa un pacchetto…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                    <TextBlock Text="{local:T 'I brani che hai già non si doppiano'}" Style="{StaticResource Hint}" FontSize="12"/>
+                                </StackPanel>
+                            </Button>
+                        </UniformGrid>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,14,0,0" Foreground="{StaticResource MutedBrush}"
+                                   Text="{local:T 'Un file .ump si apre anche con un doppio clic o trascinandolo nella finestra. Una playlist o un tag si esportano anche col tasto destro.'}"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== profiles & app -->
                 <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'profilo profili avvio icona orologio chiudi sottofondo'}">
                     <StackPanel>

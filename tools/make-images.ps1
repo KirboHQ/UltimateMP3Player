@@ -1,5 +1,7 @@
-# Renders src\UltimateMP3Player\Logo.xaml into app.ico, assets\logo.png and the installer wizard images.
-# Run: powershell -Sta -File .\tools\make-images.ps1
+# Renders src\UltimateMP3Player\Logo.xaml into app.ico, pack.ico (icon of the .ump files), assets\logo.png and the
+# installer wizard images.
+# Run: powershell -Sta -File .\tools\make-images.ps1            (-PackOnly: only pack.ico)
+param([switch]$PackOnly)
 Add-Type -AssemblyName PresentationCore, PresentationFramework, WindowsBase
 $root = Split-Path $PSScriptRoot -Parent
 $imgDir = Join-Path $root 'installer\images'
@@ -8,6 +10,7 @@ New-Item -ItemType Directory -Force $imgDir, $assets | Out-Null
 
 $dict = [Windows.Markup.XamlReader]::Parse([IO.File]::ReadAllText((Join-Path $root 'src\UltimateMP3Player\Logo.xaml')))
 $logo = $dict['LogoDrawing']
+$packIcon = $dict['PackDrawing']
 
 function Render([int]$w, [int]$h, [scriptblock]$draw) {
     $dv = New-Object Windows.Media.DrawingVisual
@@ -27,33 +30,45 @@ function Png($bmp) {
     return , $ms.ToArray()
 }
 
-function Logo([int]$s, [double]$margin = 0) {
+function Logo([int]$s, [double]$margin = 0, $drawing = $logo) {
     Render $s $s {
         param($dc)
         $m = $s * $margin
         $dc.PushTransform((New-Object Windows.Media.TranslateTransform $m, $m))
         $dc.PushTransform((New-Object Windows.Media.ScaleTransform (($s - 2 * $m) / 256), (($s - 2 * $m) / 256)))
-        $dc.DrawDrawing($logo)
+        $dc.DrawDrawing($drawing)
         $dc.Pop(); $dc.Pop()
     }
 }
 
-# ---- app.ico (PNG entries)
-$sizes = 16, 20, 24, 32, 40, 48, 64, 128, 256
-$pngs = foreach ($s in $sizes) { , (Png (Logo $s 0.02)) }
-$ico = New-Object IO.MemoryStream
-$bw = New-Object IO.BinaryWriter $ico
-$bw.Write([UInt16]0); $bw.Write([UInt16]1); $bw.Write([UInt16]$sizes.Count)
-$offset = 6 + 16 * $sizes.Count
-for ($i = 0; $i -lt $sizes.Count; $i++) {
-    $s = $sizes[$i]; $len = $pngs[$i].Length
-    $b = [byte]$(if ($s -ge 256) { 0 } else { $s })
-    $bw.Write($b); $bw.Write($b); $bw.Write([byte]0); $bw.Write([byte]0); $bw.Write([UInt16]1); $bw.Write([UInt16]32)
-    $bw.Write([UInt32]$len); $bw.Write([UInt32]$offset); $offset += $len
+# An .ico with PNG entries.
+function Ico($drawing, [double]$margin, [string]$path) {
+    $sizes = 16, 20, 24, 32, 40, 48, 64, 128, 256
+    $pngs = foreach ($s in $sizes) { , (Png (Logo $s $margin $drawing)) }
+    $ico = New-Object IO.MemoryStream
+    $bw = New-Object IO.BinaryWriter $ico
+    $bw.Write([UInt16]0); $bw.Write([UInt16]1); $bw.Write([UInt16]$sizes.Count)
+    $offset = 6 + 16 * $sizes.Count
+    for ($i = 0; $i -lt $sizes.Count; $i++) {
+        $s = $sizes[$i]; $len = $pngs[$i].Length
+        $b = [byte]$(if ($s -ge 256) { 0 } else { $s })
+        $bw.Write($b); $bw.Write($b); $bw.Write([byte]0); $bw.Write([byte]0); $bw.Write([UInt16]1); $bw.Write([UInt16]32)
+        $bw.Write([UInt32]$len); $bw.Write([UInt32]$offset); $offset += $len
+    }
+    foreach ($p in $pngs) { $bw.Write($p) }
+    $bw.Flush()
+    [IO.File]::WriteAllBytes($path, $ico.ToArray())
 }
-foreach ($p in $pngs) { $bw.Write($p) }
-$bw.Flush()
-[IO.File]::WriteAllBytes((Join-Path $root 'src\UltimateMP3Player\app.ico'), $ico.ToArray())
+
+# ---- pack.ico (.ump files)
+Ico $packIcon 0 (Join-Path $root 'src\UltimateMP3Player\pack.ico')
+if ($PackOnly) {
+    Get-Item (Join-Path $root 'src\UltimateMP3Player\pack.ico') | Select-Object Name, Length
+    return
+}
+
+# ---- app.ico
+Ico $logo 0.02 (Join-Path $root 'src\UltimateMP3Player\app.ico')
 [IO.File]::WriteAllBytes((Join-Path $assets 'logo.png'), (Png (Logo 512)))
 
 # ---- installer wizard images (one per DPI scale)
@@ -80,4 +95,5 @@ foreach ($scale in 100, 125, 150, 200, 250) {
     }
     [IO.File]::WriteAllBytes((Join-Path $imgDir "large-$scale.png"), (Png $bmp))
 }
-Get-Item (Join-Path $root 'src\UltimateMP3Player\app.ico'), (Join-Path $assets 'logo.png') | Select-Object Name, Length
+Get-Item (Join-Path $root 'src\UltimateMP3Player\app.ico'), (Join-Path $root 'src\UltimateMP3Player\pack.ico'), (Join-Path $assets 'logo.png') |
+    Select-Object Name, Length

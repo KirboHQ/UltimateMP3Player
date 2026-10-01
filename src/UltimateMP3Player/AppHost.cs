@@ -268,12 +268,13 @@ public sealed class AppHost : Observable
         return true;
     }
 
-    // Command line or second launch: files to play, links to download.
+    // Command line or second launch: files to play, .ump packs to import, links to download.
     public void HandleArgs(string[] args)
     {
         ShowWindow();
         if (Session == null) return;
-        var files = args.Where(a => File.Exists(a) || Directory.Exists(a)).ToList();
+        foreach (var pack in args.Where(a => Pack.IsPack(a) && File.Exists(a))) Session.OpenPack(pack);
+        var files = args.Where(a => !Pack.IsPack(a) && (File.Exists(a) || Directory.Exists(a))).ToList();
         if (files.Count > 0) _ = Session.Import(files, true);
         var url = args.FirstOrDefault(a => a.StartsWith("http", StringComparison.OrdinalIgnoreCase) || a.StartsWith("spotify:", StringComparison.OrdinalIgnoreCase));
         if (url != null) Session.StartDownload(url);

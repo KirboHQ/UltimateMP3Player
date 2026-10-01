@@ -254,13 +254,13 @@
                     </Viewbox>
                 </Grid>
 
-                <!-- video framed like a cover (the backdrop above is its blurred copy); under the lyrics it's only the backdrop -->
+                <!-- video framed like a cover (the backdrop above is its blurred copy); under plain lyrics it's only the backdrop -->
                 <Grid x:Name="VideoArea" Background="Transparent" Visibility="{Binding IsVideo, Converter={StaticResource BoolVis}}"
                       MouseRightButtonUp="Current_RightClick" SizeChanged="VideoArea_SizeChanged">
                     <Grid.Style>
                         <Style TargetType="Grid">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding LyricsVisible}" Value="True">
+                                <DataTrigger Binding="{Binding LyricsPage}" Value="True">
                                     <Setter Property="Opacity" Value="0"/>
                                     <Setter Property="IsHitTestVisible" Value="False"/>
                                 </DataTrigger>
@@ -274,12 +274,14 @@
                             </Border.Effect>
                         </Border>
                         <MediaElement x:Name="Video" LoadedBehavior="Manual" UnloadedBehavior="Close" IsMuted="True" ScrubbingEnabled="True" Stretch="Fill"/>
+                        <!-- timed lyrics: the line being sung, as subtitles -->
+                        <views:LyricsCaptions x:Name="Captions" Visibility="{Binding Subtitles, Converter={StaticResource BoolVis}}"/>
                         <Border CornerRadius="14" BorderThickness="1" BorderBrush="#30FFFFFF" IsHitTestVisible="False"/>
                     </Grid>
                 </Grid>
 
                 <!-- the lyrics in place of the cover (NowPlayingView.ShowLyricsText) -->
-                <Grid x:Name="LyricsHost" Visibility="{Binding LyricsVisible, Converter={StaticResource BoolVis}}" Margin="0,-8,0,0">
+                <Grid x:Name="LyricsHost" Visibility="{Binding LyricsPage, Converter={StaticResource BoolVis}}" Margin="0,-8,0,0">
                     <views:LyricsView x:Name="LyricsPane" MouseRightButtonUp="Current_RightClick"/>
                     <!-- scrolled away by hand: back to the line being sung -->
                     <Button x:Name="FollowBtn" Style="{StaticResource StagePill}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,6"

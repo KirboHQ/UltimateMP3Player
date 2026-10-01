@@ -21,7 +21,8 @@ public partial class App : Application
         _single = new SingleInstance();
         if (!_single.IsFirst)
         {
-            SingleInstance.SendToFirst(args.ToArray());
+            // The running copy has another working folder: files go with their full path.
+            SingleInstance.SendToFirst(args.Select(a => File.Exists(a) || Directory.Exists(a) ? Path.GetFullPath(a) : a).ToArray());
             Shutdown();
             return;
         }
@@ -58,6 +59,8 @@ public partial class App : Application
         _single.Listen(a => Dispatcher.BeginInvoke(() => Host.HandleArgs(a)));
         if (args.Count > 0) Host.HandleArgs(args.ToArray());
         if (Engines.Missing().Count > 0) _ = Host.EnsureEnginesAsync();
+        // .ump packs open with this copy of the app, with their icon.
+        Dispatcher.BeginInvoke(FileAssociation.Register, DispatcherPriority.ApplicationIdle);
     }
 
     // After a self-update the new exe waits for the old one to quit.

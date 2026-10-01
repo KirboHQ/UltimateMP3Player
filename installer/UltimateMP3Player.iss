@@ -41,6 +41,8 @@ WizardSmallImageFile=images\small-100.png,images\small-125.png,images\small-150.
 AppMutex=UltimateMP3Player.SingleInstance
 CloseApplications=yes
 RestartApplications=no
+; .ump packs open with the app (Explorer refreshes their icon).
+ChangesAssociations=yes
 
 [Languages]
 Name: "en"; MessagesFile: "compiler:Default.isl"
@@ -50,11 +52,17 @@ Name: "it"; MessagesFile: "compiler:Languages\Italian.isl"
 en.WelcomeLabel2=This will install [name/ver] on your computer.%n%nYour offline, ad-free music player: download songs and whole playlists from YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram and hundreds of other sites.%n%nNo administrator rights or other programs needed: everything is included.
 it.WelcomeLabel2=Verrà installato [name/ver] sul computer.%n%nIl tuo lettore musicale offline e senza pubblicità: scarica brani e playlist intere da YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram e centinaia di altri siti.%n%nNon servono diritti di amministratore né altri programmi: tutto il necessario è incluso.
 
+[CustomMessages]
+en.PackType=Ultimate MP3 Player pack
+it.PackType=Pacchetto di Ultimate MP3 Player
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
 Source: "staging\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
+; Icon of the .ump packs.
+Source: "..\src\UltimateMP3Player\pack.ico"; DestDir: "{app}"; Flags: ignoreversion
 ; yt-dlp is compared by version: a newer one updated by the app is kept.
 Source: "staging\engines\yt-dlp.exe"; DestDir: "{app}\engines"
 Source: "staging\engines\*"; DestDir: "{app}\engines"; Excludes: "yt-dlp.exe"; Flags: ignoreversion
@@ -62,6 +70,12 @@ Source: "staging\engines\*"; DestDir: "{app}\engines"; Excludes: "yt-dlp.exe"; F
 [Registry]
 ; Read by the app on its first start ("en" or "it").
 Root: HKCU; Subkey: "Software\Ultimate MP3 Player"; ValueType: string; ValueName: "Language"; ValueData: "{language}"; Flags: uninsdeletekey
+; .ump packs (the app writes the same keys at every start, see Services\FileAssociation.cs).
+Root: HKCU; Subkey: "Software\Classes\.ump"; ValueType: string; ValueName: ""; ValueData: "UltimateMP3Player.Pack"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\.ump\OpenWithProgids"; ValueType: string; ValueName: "UltimateMP3Player.Pack"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\UltimateMP3Player.Pack"; ValueType: string; ValueName: ""; ValueData: "{cm:PackType}"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\Classes\UltimateMP3Player.Pack\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\pack.ico"",0"
+Root: HKCU; Subkey: "Software\Classes\UltimateMP3Player.Pack\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
@@ -92,3 +106,4 @@ end;
 Type: filesandordirs; Name: "{app}\engines"
 Type: files; Name: "{app}\{#AppExe}.old"
 Type: files; Name: "{app}\{#AppExe}.new"
+Type: files; Name: "{localappdata}\Ultimate MP3 Player\pack.ico"

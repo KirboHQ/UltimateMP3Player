@@ -12,7 +12,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>3.2.0</Version>
+    <Version>3.2.1</Version>
     <Product>Ultimate MP3 Player</Product>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -37,6 +37,8 @@
 
   <ItemGroup>
     <Resource Include="app.ico" />
+    <!-- icon of the .ump packs: written next to the data for the file association (Services\FileAssociation.cs) -->
+    <Resource Include="pack.ico" />
   </ItemGroup>
 
   <ItemGroup>

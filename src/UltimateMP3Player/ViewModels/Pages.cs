@@ -610,11 +610,14 @@ public sealed class NowPlayingViewModel : Observable
 
     public bool HasLyrics => Player.Current?.T.HasLyrics == true;
     public bool LyricsVisible => ShowLyrics && HasLyrics;
-    // The video keeps playing behind the lyrics (it's the blurred backdrop); its frame is hidden.
     public bool IsVideo => VideoPath != null;
-    public bool ShowVideoFrame => IsVideo && !LyricsVisible;
+    // With the video, timed lyrics are subtitles on it (the line being sung). Plain ones take the stage as text and the
+    // video keeps playing behind them (the blurred backdrop), its frame hidden.
+    public bool Subtitles => LyricsVisible && IsVideo && Player.Current?.T.Lyrics == LyricsKind.Synced;
+    public bool LyricsPage => LyricsVisible && !Subtitles;
+    public bool ShowVideoFrame => IsVideo && !LyricsPage;
     public bool LyricsOverCover => LyricsVisible && !IsVideo;
-    public bool LyricsOverVideo => LyricsVisible && IsVideo;
+    public bool LyricsOverVideo => LyricsPage && IsVideo;
 
     // "Next up" folded away to the side: the song gets the whole page.
     public bool QueueHidden
@@ -646,5 +649,6 @@ public sealed class NowPlayingViewModel : Observable
     public bool CoverTilt => Main.Host.Settings.CoverTilt;
 
     public void Refresh() => OnChanged(nameof(ShowVideo), nameof(VideoPath), nameof(HasVideo), nameof(ShowCover), nameof(CoverTilt), nameof(ShowLyrics),
-        nameof(HasLyrics), nameof(LyricsVisible), nameof(IsVideo), nameof(ShowVideoFrame), nameof(LyricsOverCover), nameof(LyricsOverVideo));
+        nameof(HasLyrics), nameof(LyricsVisible), nameof(IsVideo), nameof(Subtitles), nameof(LyricsPage), nameof(ShowVideoFrame), nameof(LyricsOverCover),
+        nameof(LyricsOverVideo));
 }

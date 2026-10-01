@@ -419,6 +419,7 @@ public static class Menus
         var menu = new ContextMenu();
         menu.Items.Add(Item(L.T("Apri"), "", () => main.OpenTag(t)));
         menu.Items.Add(Item(L.T("Modifica…"), "", () => main.EditTag(t)));
+        menu.Items.Add(Item(L.T("Esporta in un file .ump…"), "", () => main.ExportPack(tag: t)));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(L.T("Elimina tag…"), "", () => main.DeleteTag(t)));
         return menu;
@@ -544,6 +545,7 @@ public static class Menus
         menu.Items.Add(new Separator());
         menu.Items.Add(PlaylistTagSubmenu(p));
         menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "\uE8B3", () => main.TagPlaylistSongs(p), p.Count > 0));
+        menu.Items.Add(Item(L.T("Esporta in un file .ump…"), "", () => main.ExportPack(p)));
         if (!p.IsFavorites)
         {
             menu.Items.Add(new Separator());

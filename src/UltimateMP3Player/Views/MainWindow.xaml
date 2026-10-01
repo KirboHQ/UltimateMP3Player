@@ -515,5 +515,23 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+        <!-- ============================================================ a .ump pack dragged over the window -->
+        <Border x:Name="PackDrop" Grid.Row="1" Grid.RowSpan="2" Background="#C40A0C0F" IsHitTestVisible="False" Visibility="Collapsed">
+            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border CornerRadius="24" Background="{StaticResource SurfaceBrush}" Padding="48,32,48,30" MinWidth="360">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="34" ShadowDepth="8" Opacity="0.6" Color="Black"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <Image Source="{StaticResource PackImage}" Width="104" Height="104" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{local:T 'Rilascia per importare'}" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,18,0,4"/>
+                        <TextBlock x:Name="PackDropName" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Center" MaxWidth="420"
+                                   TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Border>
+                <Rectangle RadiusX="24" RadiusY="24" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" StrokeDashArray="5 3" Margin="8"/>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

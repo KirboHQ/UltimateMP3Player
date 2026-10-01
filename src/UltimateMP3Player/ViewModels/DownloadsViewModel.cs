@@ -100,6 +100,8 @@ public sealed class DownloadBatch
     public string? PlaylistId { get; }
     public string?[] Slots { get; }
     public IReadOnlyList<string> TagIds { get; }
+    // Songs of an imported pack: they go into their playlists and tags (index, library id).
+    public Action<int, string>? Placed { get; init; }
 
     public void Place(int index, string trackId)
     {
@@ -107,6 +109,7 @@ public sealed class DownloadBatch
         // A tag deleted meanwhile is skipped.
         foreach (var tag in TagIds)
             if (Profile.GetTag(tag) != null) Profile.SetTag(new[] { trackId }, tag, true);
+        Placed?.Invoke(index, trackId);
         if (PlaylistId == null || Profile.GetPlaylist(PlaylistId) is not { } pl || Profile.Contains(pl, trackId)) return;
         int? at = null;
         for (int j = index - 1; j >= 0 && at == null; j--)

@@ -165,6 +165,47 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
+    <!-- A song of a .ump pack being imported: new, already in the library, to download, missing. -->
+    <DataTemplate x:Key="PackSongTemplate" DataType="{x:Type vm:PackSongRow}">
+        <Border x:Name="Row" CornerRadius="8" Padding="8,4" Background="Transparent" ToolTip="{Binding StateTip}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid Width="34" Height="34">
+                    <Border CornerRadius="5" Background="{StaticResource PlaceholderGradient}">
+                        <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="14" Foreground="{StaticResource MutedBrush}"/>
+                    </Border>
+                    <Border CornerRadius="5" Visibility="{Binding Cover, Converter={StaticResource NotNullVis}}">
+                        <Border.Background>
+                            <ImageBrush ImageSource="{Binding Cover}" Stretch="UniformToFill"/>
+                        </Border.Background>
+                    </Border>
+                </Grid>
+                <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
+                    <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                </StackPanel>
+                <Border Grid.Column="2" CornerRadius="10" Padding="8,2,10,3" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="7" Height="7" Fill="{Binding StateBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StateText}" FontSize="11.5" Margin="6,0,0,1" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+        <DataTemplate.Triggers>
+            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                <Setter TargetName="Row" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            </Trigger>
+            <DataTrigger Binding="{Binding IsIncluded}" Value="False">
+                <Setter TargetName="Row" Property="Opacity" Value="0.4"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
     <DataTemplate x:Key="TrackRowTemplate" DataType="{x:Type vm:TrackRow}">
         <Border x:Name="Row" CornerRadius="8" Padding="8,5" Background="Transparent" Margin="0,0,0,1"
                 MouseRightButtonUp="Row_RightClick" PreviewMouseLeftButtonDown="Row_MouseDown" MouseMove="Row_MouseMove"

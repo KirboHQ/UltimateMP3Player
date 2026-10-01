@@ -12,11 +12,11 @@ namespace UltimateMP3Player.Views;
 // The lyrics on the song page, like Spotify's: the line being sung is lit and glides to a third of the height, the ones
 // sung are half lit, the next ones dim; a click on a line jumps there; during a pause in the singing three dots fill up.
 // Scrolling by hand stops the following (FollowingChanged) until Follow() or a click on a line.
-// Without times (plain lyrics) it's just the text to scroll.
+// Without times (plain lyrics) it's just the text to scroll, with a note pinned at the top left.
 public sealed class LyricsView : Grid
 {
     // The line lights up a moment before it's sung: there's time to read it.
-    private const double Lead = 0.18;
+    internal const double Lead = 0.18;
     // Where the lit line sits, as a share of the height.
     private const double Anchor = 0.3;
     // A pause at the start longer than this gets its dots.
@@ -39,17 +39,15 @@ public sealed class LyricsView : Grid
     private readonly ScrollViewer _scroll;
     private readonly StackPanel _panel = new();
     private readonly Border _top = new(), _bottom = new();
+    // The lines fade out at the top and bottom edges (Relayout places the stops).
+    private readonly LinearGradientBrush _fade = new() { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
     private readonly List<Row> _rows = new();
+    private readonly LyricsClock _clock = new();
+    private Border? _note;
     private LyricsText? _lyrics;
     private int _active = -2;
     private bool _following = true, _ignoreOffset, _ticking;
     private long _userScrolledAt;
-
-    // The song's position 4 times a second; in between it runs on by the clock.
-    private double _base;
-    private long _baseAt;
-    private bool _playing;
-    private double _rate = 1;
 
     public LyricsView()
     {
@@ -61,12 +59,11 @@ public sealed class LyricsView : Grid
             CanContentScroll = false,
             Focusable = false,
             Content = _panel,
-            // The lines fade out at the top and bottom edges.
-            OpacityMask = new LinearGradientBrush(new GradientStopCollection
-            {
-                new(Colors.Transparent, 0), new(Colors.Black, 0.1), new(Colors.Black, 0.86), new(Colors.Transparent, 1),
-            }, new Point(0, 0), new Point(0, 1)),
+            OpacityMask = _fade,
+            // The mask is laid over what's drawn: a background makes that the whole height, not just the lines.
+            Background = Brushes.Transparent,
         };
+        SetFade(0, 0.1);
         Children.Add(_scroll);
         AddHandler(PreviewMouseWheelEvent, new MouseWheelEventHandler((_, _) => UserScrolled()), true);
         _scroll.PreviewMouseLeftButtonDown += (_, e) => { if (e.OriginalSource is System.Windows.Controls.Primitives.Thumb) UserScrolled(); };
@@ -91,13 +88,15 @@ public sealed class LyricsView : Grid
         _panel.Children.Clear();
         _active = -2;
         SetFollowing(true);
+        bool plain = lyrics is { Synced: false, Lines.Count: > 0 };
+        if (plain && _note == null) Children.Add(_note = Note(L.T("Testo senza tempi: scorri per leggerlo")));
+        if (_note != null) _note.Visibility = plain ? Visibility.Visible : Visibility.Collapsed;
         if (lyrics == null || lyrics.Lines.Count == 0)
         {
             UpdateTicking();
             return;
         }
         _panel.Children.Add(_top);
-        if (!lyrics.Synced) _panel.Children.Add(Note(L.T("Testo senza tempi: scorri per leggerlo")));
         var lines = lyrics.Lines;
         if (lyrics.Synced && lines[0].Time >= IntroGap) AddGap(0, lines[0].Time);
         for (int i = 0; i < lines.Count; i++)
@@ -120,7 +119,7 @@ public sealed class LyricsView : Grid
         UpdateTicking();
     }
 
-    private static readonly FontFamily Display = new("Segoe UI Variable Display, Segoe UI");
+    internal static readonly FontFamily Display = new("Segoe UI Variable Display, Segoe UI");
 
     private void AddLine(LyricLine l, bool synced)
     {
@@ -171,7 +170,7 @@ public sealed class LyricsView : Grid
         _panel.Children.Add(strip);
     }
 
-    // "Lyrics without times" at the top of plain lyrics.
+    // "Lyrics without times", pinned at the top left over plain lyrics: the text scrolls away under it.
     private Border Note(string text)
     {
         var fg = new SolidColorBrush(Color.FromArgb(0xEE, 255, 255, 255));
@@ -185,7 +184,17 @@ public sealed class LyricsView : Grid
             Padding = new Thickness(11, 5, 12, 5),
             Background = new SolidColorBrush(Color.FromArgb(0x59, 0, 0, 0)),
             HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 0, 0, 22),
+            VerticalAlignment = VerticalAlignment.Top,
+            IsHitTestVisible = false,
+        };
+    }
+
+    // Transparent down to `from`, solid from `to` (shares of the height); the bottom always fades out.
+    private void SetFade(double from, double to)
+    {
+        _fade.GradientStops = new GradientStopCollection
+        {
+            new(Colors.Transparent, 0), new(Colors.Transparent, from), new(Colors.Black, to), new(Colors.Black, 0.86), new(Colors.Transparent, 1),
         };
     }
 
@@ -217,7 +226,11 @@ public sealed class LyricsView : Grid
                 b.MaxWidth = Math.Max(200, Math.Min(w - 8, size * 26));
             }
         }
-        _top.Height = synced ? h * Anchor : h * 0.12;
+        // Plain lyrics start clear below the pinned note and fade out before passing under it.
+        double note = (_note is { ActualHeight: > 0 } n ? n.ActualHeight : 28) + 2;
+        if (synced) SetFade(0, 0.1);
+        else SetFade(Math.Min(0.5, note / h), Math.Min(0.6, (note + 26) / h));
+        _top.Height = synced ? h * Anchor : Math.Max(h * 0.12, note + 32);
         _bottom.Height = synced ? h * (1 - Anchor) : h * 0.2;
         if (synced && (jump || _following))
         {
@@ -231,19 +244,14 @@ public sealed class LyricsView : Grid
 
     public void SetClock(double position, bool playing, double rate)
     {
-        _base = position;
-        _baseAt = Stopwatch.GetTimestamp();
-        _playing = playing;
-        _rate = rate > 0 ? rate : 1;
+        _clock.Set(position, playing, rate);
         UpdateTicking();
         Tick();
     }
 
-    private double Now => _playing ? _base + (Stopwatch.GetTimestamp() - _baseAt) / (double)Stopwatch.Frequency * _rate : _base;
-
     private void UpdateTicking()
     {
-        bool want = IsVisible && IsSynced && _playing;
+        bool want = IsVisible && IsSynced && _clock.Playing;
         if (want == _ticking) return;
         _ticking = want;
         if (want) CompositionTarget.Rendering += OnFrame;
@@ -255,7 +263,7 @@ public sealed class LyricsView : Grid
     private void Tick()
     {
         if (!IsSynced || _rows.Count == 0) return;
-        double pos = Now + Lead;
+        double pos = _clock.Now + Lead;
         int active = -1;
         for (int i = 0; i < _rows.Count; i++)
         {
@@ -369,4 +377,24 @@ public sealed class LyricsView : Grid
         SetFollowing(true);
         ScrollToActive(true);
     }
+}
+
+// The song's position 4 times a second; in between it runs on by the clock.
+internal sealed class LyricsClock
+{
+    private double _base;
+    private long _baseAt;
+    private double _rate = 1;
+
+    public bool Playing { get; private set; }
+
+    public void Set(double position, bool playing, double rate)
+    {
+        _base = position;
+        _baseAt = Stopwatch.GetTimestamp();
+        Playing = playing;
+        _rate = rate > 0 ? rate : 1;
+    }
+
+    public double Now => Playing ? _base + (Stopwatch.GetTimestamp() - _baseAt) / (double)Stopwatch.Frequency * _rate : _base;
 }

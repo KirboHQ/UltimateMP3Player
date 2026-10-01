@@ -75,4 +75,62 @@
     </DrawingGroup>
 
     <DrawingImage x:Key="LogoImage" Drawing="{StaticResource LogoDrawing}"/>
+
+    <!-- Icon of the .ump packs, 256x256: a page with a folded corner and the logo, a coloured card behind it (a "pack").
+         tools\make-images.ps1 renders pack.ico from it. -->
+    <DrawingGroup x:Key="PackDrawing">
+        <!-- the card behind -->
+        <DrawingGroup>
+            <DrawingGroup.Transform>
+                <TransformGroup>
+                    <RotateTransform Angle="-11" CenterX="128" CenterY="136"/>
+                    <TranslateTransform X="-22" Y="4"/>
+                </TransformGroup>
+            </DrawingGroup.Transform>
+            <GeometryDrawing Geometry="M 82,24 L 192,24 A 22,22 0 0 1 214,46 L 214,218 A 22,22 0 0 1 192,240 L 82,240 A 22,22 0 0 1 60,218 L 60,46 A 22,22 0 0 1 82,24 Z">
+                <GeometryDrawing.Brush>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#6D4DFF" Offset="0"/>
+                        <GradientStop Color="#A54CF5" Offset="0.55"/>
+                        <GradientStop Color="#FF4FA3" Offset="1"/>
+                    </LinearGradientBrush>
+                </GeometryDrawing.Brush>
+            </GeometryDrawing>
+        </DrawingGroup>
+        <!-- soft shadow of the page on the card -->
+        <GeometryDrawing Brush="#33140A30" Geometry="M 70,22 L 166,22 L 220,76 L 220,222 A 22,22 0 0 1 198,244 L 70,244 A 22,22 0 0 1 48,222 L 48,44 A 22,22 0 0 1 70,22 Z"/>
+        <!-- the page -->
+        <GeometryDrawing Geometry="M 76,16 L 166,16 L 220,70 L 220,218 A 22,22 0 0 1 198,240 L 76,240 A 22,22 0 0 1 54,218 L 54,38 A 22,22 0 0 1 76,16 Z">
+            <GeometryDrawing.Brush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#FFFFFF" Offset="0"/>
+                    <GradientStop Color="#EEEAFB" Offset="1"/>
+                </LinearGradientBrush>
+            </GeometryDrawing.Brush>
+            <GeometryDrawing.Pen>
+                <Pen Brush="#40241A4F" Thickness="3" LineJoin="Round"/>
+            </GeometryDrawing.Pen>
+        </GeometryDrawing>
+        <!-- the folded corner -->
+        <GeometryDrawing Geometry="M 166,16 L 166,54 A 16,16 0 0 0 182,70 L 220,70 Z">
+            <GeometryDrawing.Brush>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#D4CCF4" Offset="0"/>
+                    <GradientStop Color="#BDB1EC" Offset="1"/>
+                </LinearGradientBrush>
+            </GeometryDrawing.Brush>
+            <GeometryDrawing.Pen>
+                <Pen Brush="#40241A4F" Thickness="3" LineJoin="Round"/>
+            </GeometryDrawing.Pen>
+        </GeometryDrawing>
+        <!-- the logo on the page, with a little shadow -->
+        <GeometryDrawing Brush="#26241A4F">
+            <GeometryDrawing.Geometry>
+                <RectangleGeometry Rect="81,105,112,112" RadiusX="27" RadiusY="27"/>
+            </GeometryDrawing.Geometry>
+        </GeometryDrawing>
+        <ImageDrawing ImageSource="{StaticResource LogoImage}" Rect="81,99,112,112"/>
+    </DrawingGroup>
+
+    <DrawingImage x:Key="PackImage" Drawing="{StaticResource PackDrawing}"/>
 </ResourceDictionary>

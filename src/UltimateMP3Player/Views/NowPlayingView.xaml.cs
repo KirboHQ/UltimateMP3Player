@@ -121,9 +121,13 @@ public partial class NowPlayingView : UserControl
         if (key != _lyricsKey)
         {
             _lyricsKey = key;
-            LyricsPane.SetLyrics(visible ? LyricsStore.Load(t!) : null);
+            var lyrics = visible ? LyricsStore.Load(t!) : null;
+            LyricsPane.SetLyrics(lyrics);
+            Captions.SetLyrics(lyrics);
         }
         PushClock();
+        // Subtitles on the video leave the stage as it is: only the lyrics page fades in.
+        visible = visible && _vm!.LyricsPage;
         if (visible == _lyricsShown) return;
         bool first = _lyricsShown == null;
         _lyricsShown = visible;
@@ -153,6 +157,7 @@ public partial class NowPlayingView : UserControl
         if (_vm == null) return;
         var p = _vm.Player;
         LyricsPane.SetClock(p.Position, p.IsPlaying, p.Speed);
+        Captions.SetClock(p.Position, p.IsPlaying, p.Speed);
     }
 
     private void Follow_Click(object sender, RoutedEventArgs e) => LyricsPane.Follow();

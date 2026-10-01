@@ -246,6 +246,8 @@ public sealed class SettingsViewModel : Observable
         ManageProfilesCommand = new RelayCommand(() => _main.Host.SwitchProfile());
         ImportFilesCommand = new RelayCommand(() => _main.ImportDialog(false));
         ImportFolderCommand = new RelayCommand(() => _main.ImportDialog(true));
+        ExportPackCommand = new RelayCommand(() => _main.ExportPack());
+        ImportPackCommand = new RelayCommand(_main.PickPack);
         SelectThemeCommand = new RelayCommand(p => { if (p is string id) SelectTheme(id); });
         RenameArtistCommand = new RelayCommand(RenameArtist, () => SelectedArtist != null && !string.IsNullOrWhiteSpace(NewArtistName));
         bool hasRepo = AppInfo.RepoUrl != null;
@@ -270,6 +272,8 @@ public sealed class SettingsViewModel : Observable
     public ICommand ManageProfilesCommand { get; }
     public ICommand ImportFilesCommand { get; }
     public ICommand ImportFolderCommand { get; }
+    public ICommand ExportPackCommand { get; }
+    public ICommand ImportPackCommand { get; }
     public ICommand SelectThemeCommand { get; }
     public ICommand RenameArtistCommand { get; }
     public ICommand ReportProblemCommand { get; }
