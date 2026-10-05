@@ -1,7 +1,7 @@
 namespace UltimateMP3Player.Core.Together;
 
-// Songs heard in rooms that aren't in the library: kept in their own folder, at most N (the oldest go),
-// so the same song in the next room is ready at once. Saving one to the library takes it out of here.
+// Songs heard in rooms or suggested online that aren't in the library: kept in their own folder, at most N (the oldest
+// go), so the same song next time is ready at once. Saving one to the library takes it out of here.
 public sealed class TogetherCache
 {
     private sealed class Entry
@@ -45,9 +45,10 @@ public sealed class TogetherCache
 
     private static List<string> KeysOf(RoomTrack t) => t.Keys.Count > 0 ? t.Keys.ToList() : new List<string> { "item:" + t.Id };
 
-    public string? Find(RoomTrack t)
+    public string? Find(RoomTrack t) => Find(KeysOf(t));
+
+    public string? Find(List<string> keys)
     {
-        var keys = KeysOf(t);
         lock (_lock)
         {
             var e = _entries.FirstOrDefault(x => x.Keys.Any(k => keys.Contains(k, StringComparer.OrdinalIgnoreCase)));
@@ -65,14 +66,16 @@ public sealed class TogetherCache
         }
     }
 
+    public string Adopt(RoomTrack t, string file) => Adopt(KeysOf(t), t.Title, t.Artist, file);
+
     // Moves a downloaded or received file in, under a readable name.
-    public string Adopt(RoomTrack t, string file)
+    public string Adopt(List<string> keys, string title, string? artist, string file)
     {
-        var name = Text.SafeFileName(string.IsNullOrWhiteSpace(t.Artist) ? t.Title : $"{t.Artist} - {t.Title}", 90);
+        var name = Text.SafeFileName(string.IsNullOrWhiteSpace(artist) ? title : $"{artist} - {title}", 90);
         var ext = Path.GetExtension(file);
         lock (_lock)
         {
-            var existing = FindEntry(KeysOf(t));
+            var existing = FindEntry(keys);
             if (existing != null)
             {
                 var had = Path.Combine(Dir, existing.File);
@@ -87,7 +90,7 @@ public sealed class TogetherCache
             }
             var target = Text.UniquePath(Dir, name, ext.TrimStart('.'));
             File.Move(file, target);
-            _entries.Add(new Entry { Keys = KeysOf(t), File = Path.GetFileName(target), Title = t.Title, Artist = t.Artist, Used = DateTime.Now });
+            _entries.Add(new Entry { Keys = keys.ToList(), File = Path.GetFileName(target), Title = title, Artist = artist, Used = DateTime.Now });
             Save();
             return target;
         }
@@ -100,11 +103,35 @@ public sealed class TogetherCache
         lock (_lock) return _entries.Any(e => string.Equals(Path.Combine(Dir, e.File), path, StringComparison.OrdinalIgnoreCase));
     }
 
+    // Files a room or the suggested songs are using right now: never deleted.
+    private readonly Dictionary<object, Func<IEnumerable<string>>> _users = new();
+
+    public void Use(object user, Func<IEnumerable<string>> files)
+    {
+        lock (_lock) _users[user] = files;
+    }
+
+    public void Release(object user)
+    {
+        lock (_lock) _users.Remove(user);
+    }
+
+    private HashSet<string> Kept(ISet<string> keep)
+    {
+        var all = new HashSet<string>(keep, StringComparer.OrdinalIgnoreCase);
+        foreach (var files in _users.Values)
+        {
+            try { all.UnionWith(files()); } catch { }
+        }
+        return all;
+    }
+
     // Keeps the newest max songs (never the ones in keep, e.g. the room's current and next ones).
     public void Trim(int max, ISet<string> keep)
     {
         lock (_lock)
         {
+            keep = Kept(keep);
             int extra = _entries.Count - Math.Max(1, max);
             foreach (var e in _entries.OrderBy(e => e.Used).ToList())
             {
@@ -136,6 +163,7 @@ public sealed class TogetherCache
     {
         lock (_lock)
         {
+            keep = Kept(keep);
             foreach (var e in _entries.ToList())
             {
                 var path = Path.Combine(Dir, e.File);
@@ -195,5 +223,26 @@ public sealed class TogetherCache
     private void Save()
     {
         try { JsonStore.Save(_index, new IndexFile { Entries = _entries }); } catch { }
+    }
+
+    // A song from its link, audio only with tags and cover, into dir; progress 0-100.
+    public static async Task<string> DownloadAsync(string url, string audioFormat, string? cookies, string dir, Action<double> progress, CancellationToken ct)
+    {
+        var analysis = await Analyzer.AnalyzeAsync(new AnalyzeRequest(url, cookies), ct);
+        var item = analysis.Items.FirstOrDefault() ?? throw new EngineException(L.T("Nessun contenuto scaricabile trovato in questo link."));
+        if (item.Kind == MediaKind.Video) item.Kind = MediaKind.Audio;
+        var job = new DownloadJob(item, new DownloadOptions
+        {
+            AudioOnly = true,
+            Audio = new AudioOptions(audioFormat == "original" ? "original" : "mp3"),
+            EmbedMetadata = true,
+            CookiesBrowser = cookies,
+        }, dir);
+        job.Progress += p =>
+        {
+            if (p.Percent is double pct) progress(p.Phase == JobPhase.Converting ? 85 + pct * 0.15 : Math.Min(85, pct * 0.85));
+        };
+        await job.RunAsync(ct);
+        return job.ResultPath ?? throw new EngineException(L.T("La conversione non ha prodotto alcun file."));
     }
 }

@@ -201,6 +201,143 @@ public static class Deezer
     }
 }
 
+// DRM-protected: metadata from the iTunes API (songs, albums) or the web page (playlists), audio from YouTube Music.
+public static class AppleMusic
+{
+    private static readonly Regex UrlRx = new(@"(?:music|itunes)\.apple\.com/(?:([a-z]{2})/)?(album|song|playlist)/(?:[^/?#]+/)?(?:id)?([\w.-]+)", RegexOptions.IgnoreCase);
+
+    public static bool IsMatch(string url) => Sites.Find(url)?.Name == "Apple Music";
+
+    public static async Task<AnalysisResult> AnalyzeAsync(string url, CancellationToken ct)
+    {
+        if (!UrlRx.IsMatch(url)) url = (await Http.ProbeAsync(url, ct)).Url;
+        var m = UrlRx.Match(url);
+        if (!m.Success) throw new EngineException(L.T("Link Apple Music non riconosciuto: usa il link di un brano, un album o una playlist."));
+        var country = m.Groups[1].Success ? m.Groups[1].Value.ToLowerInvariant() : "us";
+        var type = m.Groups[2].Value.ToLowerInvariant();
+        var id = m.Groups[3].Value;
+        // An album link with ?i= is one of its songs.
+        if (Regex.Match(url, @"[?&]i=(\d+)") is { Success: true } song)
+        {
+            type = "song";
+            id = song.Groups[1].Value;
+        }
+        var result = new AnalysisResult { Site = "Apple Music", SourceUrl = url, PreferAudio = true };
+        if (type == "playlist") return await PlaylistAsync(url, result, ct);
+
+        using var doc = await LookupAsync(id, type == "album", country, ct);
+        var all = doc.RootElement.Arr("results").ToList();
+        // Some albums also have music videos among their tracks.
+        var songs = all.Where(r => r.Str("wrapperType") == "track" && r.Str("kind") is "song" or "music-video").ToList();
+        if (type == "song")
+        {
+            if (songs.Count == 0) throw new EngineException(L.T("Contenuto Apple Music non trovato (link privato o rimosso?)."));
+            var item = Track(songs[0]);
+            result.Title = item.Title;
+            result.Uploader = item.Artist;
+            result.Thumbnails = item.Thumbnails.ToList();
+            result.Items.Add(item);
+            return result;
+        }
+
+        var album = all.FirstOrDefault(r => r.Str("wrapperType") == "collection");
+        result.IsCollection = true;
+        result.Title = album.Str("collectionName") ?? "Apple Music";
+        result.Uploader = album.Str("artistName");
+        if (Art(album.Str("artworkUrl100"), 300) is { } cover) result.Thumbnails.Add(cover);
+        foreach (var t in songs.OrderBy(s => s.Int("discNumber") ?? 1).ThenBy(s => s.Int("trackNumber") ?? 0)) result.Items.Add(Track(t));
+        if (result.Items.Count == 0) throw new EngineException(L.T("Nessun brano trovato in questo link Apple Music."));
+        return result;
+    }
+
+    // In the link's country first: the catalogue changes from one to another.
+    private static async Task<JsonDocument> LookupAsync(string id, bool album, string country, CancellationToken ct)
+    {
+        foreach (var c in new[] { country, "us" }.Distinct())
+        {
+            var doc = JsonDocument.Parse(await Http.GetStringAsync($"https://itunes.apple.com/lookup?id={id}&country={c}" + (album ? "&entity=song&limit=200" : ""), ct: ct));
+            if (doc.RootElement.Arr("results").Any()) return doc;
+            doc.Dispose();
+        }
+        throw new EngineException(L.T("Contenuto Apple Music non trovato (link privato o rimosso?)."));
+    }
+
+    private static MediaItem Track(JsonElement t)
+    {
+        var url = Regex.Replace(t.Str("trackViewUrl") ?? "", @"[?&]uo=\d+", "");
+        var item = new MediaItem
+        {
+            Title = t.Str("trackName") ?? L.T("Brano"),
+            Artist = t.Str("artistName"),
+            Album = t.Str("collectionName"),
+            Year = t.Str("releaseDate") is { Length: >= 4 } d ? d[..4] : null,
+            TrackNo = t.Int("trackNumber"),
+            Duration = t.Num("trackTimeMillis") / 1000.0,
+            CoverUrl = Art(t.Str("artworkUrl100"), 1200),
+            Kind = MediaKind.Audio,
+            Source = SourceKind.Search,
+            Url = url,
+            PageUrl = url,
+            SiteName = "Apple Music",
+        };
+        if (Art(t.Str("artworkUrl100"), 300) is { } th) item.Thumbnails.Add(th);
+        return item;
+    }
+
+    // Playlists aren't in the iTunes API: their page carries the songs.
+    private static async Task<AnalysisResult> PlaylistAsync(string url, AnalysisResult result, CancellationToken ct)
+    {
+        var html = await Http.GetStringAsync(url, ct: ct);
+        var m = Regex.Match(html, "<script type=\"application/json\" id=\"serialized-server-data\">(.*?)</script>", RegexOptions.Singleline);
+        if (!m.Success) throw new EngineException(L.T("Apple Music non ha restituito i dati di questo link."));
+        using var doc = JsonDocument.Parse(m.Groups[1].Value);
+        var sections = doc.RootElement.Arr("data").FirstOrDefault().Prop("data")?.Arr("sections") ?? Enumerable.Empty<JsonElement>();
+        result.IsCollection = true;
+        result.Title = "Apple Music";
+        foreach (var s in sections)
+        {
+            if (s.Str("itemKind") == "containerDetailHeaderLockup")
+            {
+                var head = s.Arr("items").FirstOrDefault();
+                result.Title = head.Str("title") ?? result.Title;
+                result.Uploader = head.Arr("subtitleLinks").Select(l => l.Str("title")).FirstOrDefault(n => n != null);
+                if (Art(head.Prop("artwork")?.Prop("dictionary")?.Str("url"), 300) is { } cover) result.Thumbnails.Add(cover);
+            }
+            if (s.Str("itemKind") != "trackLockup") continue;
+            foreach (var t in s.Arr("items"))
+            {
+                var art = t.Prop("artwork")?.Prop("dictionary")?.Str("url");
+                var link = t.Prop("contentDescriptor")?.Str("url") ?? url;
+                var item = new MediaItem
+                {
+                    Title = t.Str("title") ?? L.T("Brano"),
+                    Artist = t.Str("artistName") ?? string.Join(", ", t.Arr("subtitleLinks").Select(l => l.Str("title")).OfType<string>()),
+                    Album = t.Arr("tertiaryLinks").Select(l => l.Str("title")).FirstOrDefault(n => n != null),
+                    Duration = t.Num("duration") / 1000.0,
+                    CoverUrl = Art(art, 1200),
+                    Kind = MediaKind.Audio,
+                    Source = SourceKind.Search,
+                    Url = link,
+                    PageUrl = link,
+                    SiteName = "Apple Music",
+                };
+                if (Art(art, 300) is { } th) item.Thumbnails.Add(th);
+                result.Items.Add(item);
+            }
+        }
+        if (result.Items.Count == 0) throw new EngineException(L.T("Nessun brano trovato in questo link Apple Music."));
+        if (result.Thumbnails.Count == 0) result.Thumbnails = result.Items[0].Thumbnails.ToList();
+        // A long playlist: the page has only its first songs.
+        if (Regex.Match(html, "\"numTracks\":\\s*(\\d+)") is { Success: true } total && int.Parse(total.Groups[1].Value) > result.Items.Count)
+            result.Notes.Add(L.F("Apple Music mostra solo i primi {0} brani di questa playlist: sono elencati quelli.", result.Items.Count));
+        return result;
+    }
+
+    // "…/100x100bb.jpg" from the API, "…/{w}x{h}bb.{f}" from the pages: at the wanted size.
+    private static string? Art(string? url, int size)
+        => url == null ? null : Regex.Replace(url.Replace("{w}", "100").Replace("{h}", "100").Replace("{f}", "jpg"), @"/\d+x\d+bb\.", $"/{size}x{size}bb.");
+}
+
 // Engines skip Giphy; GIF is at media.giphy.com/media/ID/giphy.gif.
 public static class Giphy
 {

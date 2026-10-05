@@ -83,6 +83,15 @@ public sealed class TrackViewModel : Observable
 
     public void RefreshFavorite() => OnChanged(nameof(IsFavorite));
     public void RefreshPlaying() => OnChanged(nameof(IsPlaying));
+
+    // How much it was listened to on this profile (the statistics page).
+    public TrackStats? Stats => Main.Profile.StatsOf(Id);
+    public int Plays => Stats?.Plays ?? 0;
+    public string PlaysText => Plays == 0 ? L.T("mai") : L.Count(Plays, "1 ascolto", "{0} ascolti");
+    public string ListenedText => Stats?.Seconds is > 0 and var s ? StatsViewModel.TimeText(s) : "–";
+    public string LastPlayedText => Stats?.Last is { } d ? StatsViewModel.AgoText(d) : "";
+
+    public void RefreshStats() => OnChanged(nameof(Stats), nameof(Plays), nameof(PlaysText), nameof(ListenedText), nameof(LastPlayedText));
 }
 
 // A list to play from: library, playlist, search...

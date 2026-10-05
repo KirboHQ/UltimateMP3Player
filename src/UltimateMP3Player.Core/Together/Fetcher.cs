@@ -2,7 +2,8 @@ namespace UltimateMP3Player.Core.Together;
 
 // Ahead / HostAhead: songs after the one playing to get ready, as a guest and as the host.
 // TakeFromHost: as a guest, songs come from the host first when the host sends them (P2P).
-public sealed record FetchOptions(string AudioFormat, string? Cookies, int CacheSize, int Ahead, int HostAhead, bool TakeFromHost);
+// P2P off: nothing comes from the others, only from the library, the cache and the links.
+public sealed record FetchOptions(string AudioFormat, string? Cookies, int CacheSize, int Ahead, int HostAhead, bool TakeFromHost, bool P2P = true);
 
 // Gets this computer the files of the room's song and the next ones (so nobody has to wait for anyone):
 // from the library if the song is already there, from the cache of past rooms, downloaded from its link,
@@ -63,6 +64,7 @@ public sealed class TogetherFetcher : IDisposable
         s.FileUnavailable += OnFileUnavailable;
         s.LocalFile = PathFor;
         s.TempFile = (id, ext) => Path.Combine(_cache.TempDir, id + "-" + Ids.New() + ext);
+        cache.Use(this, () => InUse);
         // Failed songs are tried again now and then (someone who has them may have arrived).
         _retry = new System.Threading.Timer(_ => s.Post(Refresh), null, 5000, 5000);
     }
@@ -119,14 +121,15 @@ public sealed class TogetherFetcher : IDisposable
         var o = _options();
         var window = Window(o);
         var ids = window.Select(w => w.T.Id).ToHashSet();
+        bool p2p = o.P2P && _s.P2PAllowed;
         // Work on songs no longer wanted here stops.
         if (_download.Id != null && !ids.Contains(_download.Id)) _download.Cancel();
-        if (_transfer.Id != null && !ids.Contains(_transfer.Id)) _transfer.Cancel();
+        if (_transfer.Id != null && (!ids.Contains(_transfer.Id) || !p2p)) _transfer.Cancel();
         // Quick look for all of them: already in the library or the cache?
         foreach (var (t, _) in window)
             if (!IsReady(t.Id) && Local(t) is { } path) MarkReady(t, path);
 
-        bool fromHost = !_s.IsHost && o.TakeFromHost && _s.HostSendsFiles;
+        bool fromHost = p2p && !_s.IsHost && o.TakeFromHost && _s.HostSendsFiles;
         int hostAhead = _s.Host is { } h ? _s.AheadOf(h) : TogetherSession.DefaultAhead;
         long now = Environment.TickCount64;
         (RoomTrack T, int Index)? download = null, transfer = null;
@@ -134,7 +137,7 @@ public sealed class TogetherFetcher : IDisposable
         foreach (var w in window)
         {
             if (IsReady(w.T.Id)) continue;
-            switch (RouteOf(w.T, w.Index, fromHost, hostAhead, now))
+            switch (RouteOf(w.T, w.Index, fromHost, p2p, hostAhead, now))
             {
                 case Route.Download when _transfer.Id != w.T.Id:
                     download ??= w;
@@ -146,6 +149,10 @@ public sealed class TogetherFetcher : IDisposable
                 case Route.WaitHost when _download.Id != w.T.Id && _transfer.Id != w.T.Id:
                     waiting.Add(w.T.Id);
                     break;
+                // Without P2P a song whose link didn't work has nowhere else to come from.
+                case Route.Later when !p2p && _download.Id != w.T.Id && StatusOf(w.T.Id)?.State != FileState.Failed:
+                    Set(w.T.Id, FileState.Failed, 0);
+                    break;
             }
         }
         Waiting(waiting, transfer?.T.Id);
@@ -156,7 +163,7 @@ public sealed class TogetherFetcher : IDisposable
     }
 
     // Where this song comes from now.
-    private Route RouteOf(RoomTrack t, int index, bool fromHost, int hostAhead, long now)
+    private Route RouteOf(RoomTrack t, int index, bool fromHost, bool p2p, int hostAhead, long now)
     {
         bool link = t.SourceUrl != null && !_noLink.Contains(t.Id);
         if (fromHost && !_hostFailed.Contains(t.Id))
@@ -170,7 +177,7 @@ public sealed class TogetherFetcher : IDisposable
         }
         if (link) return Route.Download;
         // No link, or it didn't work: from someone in the room, now and then.
-        return !_retryAt.TryGetValue(t.Id, out var at) || now >= at ? Route.Transfer : Route.Later;
+        return p2p && (!_retryAt.TryGetValue(t.Id, out var at) || now >= at) ? Route.Transfer : Route.Later;
     }
 
     private void Start(Lane lane, (RoomTrack T, int Index)? next, Func<RoomTrack, Task> work)
@@ -331,27 +338,13 @@ public sealed class TogetherFetcher : IDisposable
         if (!_disposed) _s.Post(Refresh);
     }
 
-    private async Task<string> DownloadFile(RoomTrack t, CancellationToken ct)
+    private Task<string> DownloadFile(RoomTrack t, CancellationToken ct)
     {
         var o = _options();
-        var analysis = await Analyzer.AnalyzeAsync(new AnalyzeRequest(t.SourceUrl!, o.Cookies), ct);
-        var item = analysis.Items.FirstOrDefault() ?? throw new EngineException(L.T("Nessun contenuto scaricabile trovato in questo link."));
-        if (item.Kind == MediaKind.Video) item.Kind = MediaKind.Audio;
-        var job = new DownloadJob(item, new DownloadOptions
+        return TogetherCache.DownloadAsync(t.SourceUrl!, o.AudioFormat, o.Cookies, _cache.TempDir, pct => _s.Post(() =>
         {
-            AudioOnly = true,
-            Audio = new AudioOptions(o.AudioFormat == "original" ? "original" : "mp3"),
-            EmbedMetadata = true,
-            CookiesBrowser = o.Cookies,
-        }, _cache.TempDir);
-        job.Progress += p => _s.Post(() =>
-        {
-            if (_download.Id != t.Id || p.Percent is not double pct) return;
-            double overall = p.Phase == JobPhase.Converting ? 85 + pct * 0.15 : Math.Min(85, pct * 0.85);
-            if (Math.Abs((StatusOf(t.Id)?.Pct ?? 0) - overall) >= 2) Set(t.Id, FileState.Downloading, overall);
-        });
-        await job.RunAsync(ct);
-        return job.ResultPath ?? throw new EngineException(L.T("La conversione non ha prodotto alcun file."));
+            if (_download.Id == t.Id && Math.Abs((StatusOf(t.Id)?.Pct ?? 0) - pct) >= 2) Set(t.Id, FileState.Downloading, pct);
+        }), ct);
     }
 
     // A file sent by someone in the room (or, on the host, one it asked for on behalf of others).
@@ -406,6 +399,7 @@ public sealed class TogetherFetcher : IDisposable
         _s.FileReceived -= OnFileReceived;
         _s.FileProgress -= OnFileProgress;
         _s.FileUnavailable -= OnFileUnavailable;
+        _cache.Release(this);
         Trim();
     }
 }

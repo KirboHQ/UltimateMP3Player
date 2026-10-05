@@ -26,6 +26,60 @@ public static class Dialogs
     public static string? Prompt(string title, string label, string initial)
         => Show(title, null, new[] { (label, initial) }, L.T("Salva"), false)?[0];
 
+    // Bumped when the terms of use change: they're asked again.
+    public const int TermsVersion = 1;
+
+    // The terms of use. ask: the first start, they must be accepted (false = the app closes); otherwise only to read them.
+    public static bool Terms(bool ask)
+    {
+        var res = Application.Current.Resources;
+        var sub = (Brush)res["SubTextBrush"];
+        var stack = new StackPanel();
+        stack.Children.Add(new TextBlock
+        {
+            Text = L.T("Ultimate MP3 Player è uno strumento: scarica soltanto quello che gli chiedi tu, attraverso programmi e siti di terze parti, e non ospita né distribuisce musica."),
+            TextWrapping = TextWrapping.Wrap, Foreground = sub, LineHeight = 20,
+        });
+        stack.Children.Add(new TextBlock { Text = L.T("Usandolo dichiari che:"), FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 14, 0, 4) });
+        foreach (var point in new[]
+                 {
+                     "scaricherai solo brani, video e immagini che possiedi già legittimamente (per esempio musica che hai acquistato) o che hai comunque il diritto di scaricare, come contenuti liberi o con il permesso di chi li ha creati;",
+                     "sei l'unico responsabile di cosa scarichi, di come lo usi e di cosa condividi con gli altri (anche con Ascolta insieme), nel rispetto delle leggi sul diritto d'autore del tuo paese e delle condizioni dei siti da cui scarichi;",
+                     "l'autore dell'app non controlla i contenuti che scarichi e non risponde in alcun modo dell'uso che ne fai.",
+                 })
+        {
+            var row = new DockPanel { Margin = new Thickness(2, 6, 0, 0) };
+            var dot = new TextBlock { Text = "•", Foreground = (Brush)res["AccentTextBrush"], FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 10, 0) };
+            DockPanel.SetDock(dot, Dock.Left);
+            row.Children.Add(dot);
+            row.Children.Add(new TextBlock { Text = L.T(point), TextWrapping = TextWrapping.Wrap, Foreground = sub, LineHeight = 20 });
+            stack.Children.Add(row);
+        }
+        if (!ask)
+        {
+            var close = Button(L.T("Chiudi"), "PrimaryButton", isDefault: true, isCancel: true);
+            var info = Frame(L.T("Termini d'uso"), stack, 480, close);
+            close.Click += (_, _) => info.DialogResult = true;
+            info.ShowDialog();
+            return true;
+        }
+        stack.Children.Add(new TextBlock
+        {
+            Text = L.T("Se non sei d'accordo, esci: l'app si chiude e puoi disinstallarla."), TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)res["MutedBrush"], FontSize = 12.5, Margin = new Thickness(0, 14, 0, 0),
+        });
+        var ok = Button(L.T("Accetto"), "PrimaryButton", isDefault: true);
+        ok.IsEnabled = false;
+        var check = new CheckBox { Content = L.T("Ho letto e accetto queste condizioni"), Margin = new Thickness(0, 16, 0, 0) };
+        check.Checked += (_, _) => ok.IsEnabled = true;
+        check.Unchecked += (_, _) => ok.IsEnabled = false;
+        stack.Children.Add(check);
+        var win = Frame(L.T("Prima di iniziare"), stack, 480, Button(L.T("Esci"), "GhostButton", isCancel: true), ok);
+        ok.Click += (_, _) => win.DialogResult = true;
+        win.Loaded += (_, _) => check.Focus();
+        return win.ShowDialog() == true;
+    }
+
     public static (string Title, string Artist, string Album, string Bpm)? EditTrack(Track t)
     {
         var bpm = t.Bpm?.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) ?? "";

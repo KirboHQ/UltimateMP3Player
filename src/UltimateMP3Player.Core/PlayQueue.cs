@@ -17,6 +17,8 @@ public sealed class PlayQueue
     public List<string> Context { get; private set; } = new();
     public string? ContextId { get; private set; }
     public string? ContextName { get; private set; }
+    // The list is songs suggested online: it grows at the end (Extend) instead of starting over, and isn't shuffled.
+    public bool Radio { get; private set; }
     public List<string> UpNext { get; } = new();
     public RepeatMode Repeat { get; set; }
     public string? Current { get; private set; }
@@ -45,18 +47,19 @@ public sealed class PlayQueue
     }
 
     // fill = false: only this song plays, the rest of the list waits for Generate.
-    public void Play(IList<string> tracks, int start, string? contextId, string? contextName, bool fill = true)
+    public void Play(IList<string> tracks, int start, string? contextId, string? contextName, bool fill = true, bool radio = false)
     {
         Context = tracks.Distinct().ToList();
         ContextId = contextId;
         ContextName = contextName;
+        Radio = radio;
         if (Context.Count == 0) return;
         string first = start >= 0 && start < tracks.Count ? tracks[start] : Context[_rng.Next(Context.Count)];
         SetCurrent(first, false);
         Cleared = !fill;
         _plan = new();
         if (fill) Deal(first, AutoFill);
-        else if (Shuffle) _round = NewRound(first);
+        else if (Shuffle && !Radio) _round = NewRound(first);
         Changed?.Invoke();
     }
 
@@ -64,9 +67,9 @@ public sealed class PlayQueue
     private void Deal(string? from, bool fallback)
     {
         _plan = new();
-        if (Shuffle || AutoFill)
+        if (Shuffle && !Radio || AutoFill)
         {
-            if (Shuffle) _round = NewRound(from);
+            if (Shuffle && !Radio) _round = NewRound(from);
             Fill(fallback, fromCurrent: true);
         }
         else
@@ -129,7 +132,7 @@ public sealed class PlayQueue
             PutBack(Current, _currentQueued);
             _currentQueued = _history[^1].Queued;
         }
-        else if (!Shuffle && Context.IndexOf(Current) is int i and > 0)
+        else if ((!Shuffle || Radio) && Context.IndexOf(Current) is int i and > 0)
         {
             prev = Context[i - 1];
             PutBack(Current, _currentQueued);
@@ -257,24 +260,77 @@ public sealed class PlayQueue
         Changed?.Invoke();
     }
 
+    private void UseList((IList<string> Ids, string? Id, string? Name) list)
+    {
+        Context = list.Ids.Distinct().ToList();
+        ContextId = list.Id;
+        ContextName = list.Name;
+        Radio = false;
+        if (Shuffle) _round = NewRound(Current);
+    }
+
+    // More suggested songs at the end of the list, and of the queue unless it was emptied by hand. A long session drops
+    // the oldest ones already played.
+    public void Extend(IEnumerable<string> ids)
+    {
+        if (!Radio) return;
+        var known = Context.ToHashSet();
+        Context.AddRange(ids.Where(known.Add));
+        if (Context.Count > 400)
+        {
+            var keep = UpNext.Concat(_plan).Append(Current ?? "").ToHashSet();
+            int cut = Context.Count - 300;
+            Context = Context.Where((id, i) => i >= cut || keep.Contains(id)).ToList();
+        }
+        if (!Cleared) Fill(false);
+        Changed?.Invoke();
+    }
+
+    // No suggestions to go on with (offline, nothing found): the list becomes the fallback one (the library).
+    public void UseFallback()
+    {
+        if (!Radio || Fallback == null) return;
+        UseList(Fallback());
+        if (!Cleared) Fill(false);
+        Changed?.Invoke();
+    }
+
+    // A suggested song saved to the library: the same places everywhere, under its new id.
+    public void Replace(string oldId, string newId)
+    {
+        string R(string id) => id == oldId ? newId : id;
+        Context = Context.Select(R).Distinct().ToList();
+        for (int i = 0; i < UpNext.Count; i++) UpNext[i] = R(UpNext[i]);
+        _plan = _plan.Select(R).ToList();
+        _round = _round.Select(R).ToList();
+        for (int i = 0; i < _history.Count; i++) _history[i] = (R(_history[i].Id), _history[i].Queued);
+        if (Current == oldId) Current = newId;
+        Changed?.Invoke();
+    }
+
+    // What plays after this song, without moving on.
+    public string? PeekNext() => UpNext.Count > 0 ? UpNext[0] : _plan.FirstOrDefault();
+
+    // Every song the queue still refers to: playing, waiting, in the list or in the (saved part of the) history.
+    public HashSet<string> Referenced()
+    {
+        var all = Context.Concat(UpNext).Concat(_plan).Concat(_history.TakeLast(100).Select(h => h.Id)).ToHashSet();
+        if (Current != null) all.Add(Current);
+        return all;
+    }
+
     // Tops "next up" up to Target songs of the list, at the end: the ones that come after the last one waiting
     // (after this song when nothing waits, or fromCurrent), in list order or in the shuffled pass (then a new pass),
     // wrapping around the list. A song alone in its list takes the fallback list.
     private int Fill(bool fallback, bool fromCurrent = false)
     {
-        if (fallback && !CanGenerate && Fallback != null)
-        {
-            var (ids, fid, fname) = Fallback();
-            Context = ids.Distinct().ToList();
-            ContextId = fid;
-            ContextName = fname;
-            if (Shuffle) _round = NewRound(Current);
-        }
+        // (Suggested songs still on their way don't make it the library.)
+        if (fallback && !CanGenerate && Fallback != null && !Radio) UseList(Fallback());
         var inList = Context.ToHashSet();
         var waiting = UpNext.Concat(_plan).ToHashSet();
         int need = Target - waiting.Count(inList.Contains);
         if (need <= 0) return 0;
-        var order = Shuffle ? _round : Context;
+        var order = Shuffle && !Radio ? _round : Context;
         var inOrder = order.ToHashSet();
         string? anchor = fromCurrent ? Current : UpNext.Concat(_plan).LastOrDefault(inOrder.Contains) ?? Current;
         int i = anchor != null ? order.IndexOf(anchor) : -1;
@@ -283,7 +339,8 @@ public sealed class PlayQueue
         {
             if (++i >= order.Count)
             {
-                // End of the list (or of the shuffled pass): around again.
+                // End of the list (or of the shuffled pass): around again. Suggested songs don't start over, they grow.
+                if (Radio) break;
                 if (Shuffle) order = _round = NewRound(null);
                 i = 0;
                 if (order.Count == 0) break;
@@ -389,6 +446,7 @@ public sealed class PlayQueue
         CurrentQueued = _currentQueued,
         Position = position,
         Cleared = Cleared,
+        Radio = Radio,
     };
 
     // Restores a saved queue, skipping songs that no longer exist.
@@ -397,6 +455,7 @@ public sealed class PlayQueue
         Context = s.Context.Where(exists).Distinct().ToList();
         ContextId = s.ContextId;
         ContextName = s.ContextName;
+        Radio = s.Radio;
         UpNext.Clear();
         UpNext.AddRange(s.UpNext.Where(exists));
         // Saves from before the maximum may hold the whole list.

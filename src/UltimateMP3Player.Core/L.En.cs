@@ -278,7 +278,7 @@ public static partial class L
         ["In riproduzione da:"] = "Playing from:",
         ["in uso"] = "in use",
         ["Incolla link"] = "Paste link",
-        ["Incolla nella barra in alto il link di un brano o di una playlist (YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram e quasi ogni altro sito): viene scaricato e salvato qui. Puoi anche aggiungere la musica che hai già sul computer, o trascinare i file nella finestra."] = "Paste the link to a song or playlist in the bar at the top (YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram and almost any other site): it gets downloaded and saved here. You can also add music you already have on your computer, or drag files into the window.",
+        ["Incolla nella barra in alto il link di un brano o di una playlist (YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram e quasi ogni altro sito): viene scaricato e salvato qui. Puoi anche aggiungere la musica che hai già sul computer, o trascinare i file nella finestra."] = "Paste the link to a song or playlist in the bar at the top (YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram and almost any other site): it gets downloaded and saved here. You can also add music you already have on your computer, or drag files into the window.",
         ["Incolla un link"] = "Paste a link",
         ["Incolla un link dagli appunti e scaricalo"] = "Paste a link from the clipboard and download it",
         ["Incolla un link nella barra in alto"] = "Paste a link in the bar at the top",
@@ -734,8 +734,8 @@ public static partial class L
         ["profilo profili avvio icona orologio chiudi sottofondo"] = "profile profiles startup tray icon clock close background",
         ["discord stato attività"] = "discord status activity rich presence",
         ["aggiornamenti aggiorna versione github motori yt-dlp gallery-dl dati"] = "updates update version github engines yt-dlp gallery-dl data",
-        ["aiuto supporto segnala problema bug errore github issue idea suggerimento contatto"] =
-            "help support report problem bug error github issue idea suggestion feature contact",
+        ["aiuto supporto segnala problema bug errore github issue idea suggerimento contatto termini uso condizioni diritto autore copyright"] =
+            "help support report problem bug error github issue idea suggestion feature contact terms use conditions copyright",
         ["ascolta insieme stanza stanze amici rete lan radmin vpn memoria cache firewall p2p host anticipo"] =
             "listen together room rooms friends network lan radmin vpn memory cache firewall p2p host ahead",
         ["[Idea] "] = "[Idea] ",
@@ -818,15 +818,15 @@ public static partial class L
         ["Questa stanza ha una password."] = "This room has a password.",
         ["Password sbagliata."] = "Wrong password.",
         ["Apri la cartella"] = "Open the folder",
-        ["Brani delle stanze tenuti sul computer"] = "Room songs kept on this computer",
+        ["Brani tenuti sul computer (stanze e consigliati)"] = "Songs kept on this computer (rooms and suggested)",
         ["Consenti nel firewall"] = "Allow through the firewall",
-        ["I brani ascoltati nelle stanze che non sono nella tua libreria restano pronti per la prossima volta; oltre questo numero i più vecchi si cancellano. Salvandone uno nella libreria esce da qui."] =
-            "Songs heard in rooms that aren't in your library stay ready for next time; beyond this number the oldest are deleted. Saving one to your library takes it out of here.",
+        ["I brani ascoltati nelle stanze o tra i consigliati che non sono nella tua libreria restano pronti per la prossima volta; oltre questo numero i più vecchi si cancellano (mai quelli ancora in coda). Salvandone uno nella libreria esce da qui."] =
+            "Songs heard in rooms or among the suggested ones that aren't in your library stay ready for next time; beyond this number the oldest are deleted (never the ones still in the queue). Saving one to your library takes it out of here.",
         ["Rete"] = "Network",
         ["Se gli altri non riescono a entrare nella tua stanza (o tu nella loro), di solito è il firewall di Windows: consenti l'app su tutte le reti (serve la conferma dell'amministratore)."] =
             "If others can't join your room (or you theirs), it's usually Windows Firewall: allow the app on every network (needs administrator confirmation).",
         ["Svuota"] = "Empty",
-        ["Memoria di Ascolta insieme svuotata"] = "Listen together storage emptied",
+        ["Memoria dei brani svuotata (quelli in coda restano)"] = "Song storage emptied (the ones in the queue stay)",
         ["Ora è vuota."] = "It's empty now.",
         ["Ora: {0} · {1}."] = "Now: {0} · {1}.",
         ["Aggiungi alla coda della stanza (anche doppio clic)"] = "Add to the room's queue (double-click works too)",
@@ -1025,8 +1025,21 @@ public static partial class L
         ["In loop"] = "On loop",
         ["Velocità di riproduzione della stanza"] = "The room's playback speed",
         ["Brani casuali"] = "Random songs",
-        ["Aggiungi alla coda brani a caso da tutti i tuoi brani, da una playlist o da un tag"] = "Add random songs to the queue from all your songs, a playlist or a tag",
+        ["Aggiungi alla coda brani a caso da tutti i tuoi brani, da una playlist o da un tag, oppure brani consigliati online"] =
+            "Add random songs to the queue from all your songs, a playlist or a tag, or songs suggested online",
         ["Aggiungi brani a caso"] = "Add random songs",
+        ["Aggiungi brani consigliati"] = "Add suggested songs",
+        ["Consigliati online"] = "Suggested online",
+        ["simili a «{0}»"] = "like “{0}”",
+        ["simili al brano della stanza"] = "like the room's song",
+        ["Simili a quello in riproduzione nella stanza, trovati online come in «Riproduci brani simili»: premi ancora per averne altri."] =
+            "Like the song playing in the room, found online as with “Play similar songs”: press again for more.",
+        ["Cerco brani simili…"] = "Looking for similar songs…",
+        ["Nella stanza non c'è ancora un brano: i consigliati sono simili a quello in riproduzione."] =
+            "There's no song in the room yet: suggestions are like the one playing.",
+        ["Nessun brano simile nuovo trovato online."] = "No new similar songs found online.",
+        ["1 brano consigliato aggiunto alla coda della stanza"] = "1 suggested song added to the room's queue",
+        ["{0} brani consigliati aggiunti alla coda della stanza"] = "{0} suggested songs added to the room's queue",
         ["Da dove"] = "From",
         ["Da dove prenderli"] = "Where to take them from",
         ["Quanti"] = "How many",
@@ -1092,7 +1105,16 @@ public static partial class L
         ["Brani preparati in anticipo quando sei l'host"] = "Songs got ready ahead when you're the host",
         ["Quanti brani della coda scaricare prima che tocchi a loro, oltre a quello in riproduzione."] =
             "How many songs of the queue to download before their turn, besides the one playing.",
-        ["Brani passati dall'host (P2P)"] = "Songs sent by the host (P2P)",
+        ["Brani passati tra computer (P2P)"] = "Songs passed between computers (P2P)",
+        ["Scambia i brani con gli altri"] = "Exchange songs with the others",
+        ["Spento: questo computer non riceve brani da nessuno e non ne manda, nemmeno da host (e da host nessuno se li passa). Ognuno li prende dalla sua libreria, dalla memoria o dal link: chi non trova un brano non lo sente."] =
+            "Off: this computer doesn't receive songs from anyone and doesn't send any, not even as the host (and as the host nobody passes them through you). Everyone gets them from their library, the storage or the link: whoever can't find a song doesn't hear it.",
+        ["Non scambia brani con gli altri: li prende solo dalla sua libreria o dai link (P2P spento)"] =
+            "Doesn't exchange songs with the others: gets them only from their library or the links (P2P off)",
+        ["senza P2P"] = "no P2P",
+        ["Non si riesce a scaricarlo dal suo link, e senza P2P nessuno può mandartelo"] = "It can't be downloaded from its link, and without P2P nobody can send it to you",
+        ["Non si riesce a scaricare il brano dal suo link, e senza P2P nessuno può mandartelo"] =
+            "The song can't be downloaded from its link, and without P2P nobody can send it to you",
         ["Quando sei l'host, invia tu i brani"] = "When you're the host, send the songs yourself",
         ["Chi ha acceso «Ricevi i brani dall'host» li riceve da te invece di scaricarli da internet: conviene se hai una connessione veloce. Gli altri li scaricano come sempre."] =
             "Whoever turned on “Take the songs from the host” gets them from you instead of downloading them from the internet: worth it if your connection is fast. The others download them as usual.",
@@ -1259,5 +1281,117 @@ public static partial class L
         ["Un file .ump si apre anche con un doppio clic o trascinandolo nella finestra. Una playlist o un tag si esportano anche col tasto destro."] =
             "A .ump file also opens with a double click or by dragging it into the window. A playlist or a tag can also be exported with a right-click.",
         ["Esporta in un file .ump…"] = "Export to a .ump file…",
+
+        // 3.3: Apple Music
+        ["Link Apple Music non riconosciuto: usa il link di un brano, un album o una playlist."] =
+            "Apple Music link not recognized: use the link of a song, an album or a playlist.",
+        ["Contenuto Apple Music non trovato (link privato o rimosso?)."] = "Apple Music content not found (private or removed link?).",
+        ["Nessun brano trovato in questo link Apple Music."] = "No songs found in this Apple Music link.",
+        ["Apple Music non ha restituito i dati di questo link."] = "Apple Music didn't return the data of this link.",
+        ["Apple Music mostra solo i primi {0} brani di questa playlist: sono elencati quelli."] =
+            "Apple Music only shows the first {0} songs of this playlist: those are listed.",
+
+        // 3.3: terms of use
+        ["Prima di iniziare"] = "Before you start",
+        ["Termini d'uso"] = "Terms of use",
+        ["Accetto"] = "I accept",
+        ["Ho letto e accetto queste condizioni"] = "I have read and accept these terms",
+        ["Usandolo dichiari che:"] = "By using it you declare that:",
+        ["Ultimate MP3 Player è uno strumento: scarica soltanto quello che gli chiedi tu, attraverso programmi e siti di terze parti, e non ospita né distribuisce musica."] =
+            "Ultimate MP3 Player is a tool: it only downloads what you ask it to, through third-party programs and sites, and it doesn't host or distribute any music.",
+        ["scaricherai solo brani, video e immagini che possiedi già legittimamente (per esempio musica che hai acquistato) o che hai comunque il diritto di scaricare, come contenuti liberi o con il permesso di chi li ha creati;"] =
+            "you will only download songs, videos and images that you already lawfully own (for example music you bought) or that you otherwise have the right to download, such as free content or content its creators allow;",
+        ["sei l'unico responsabile di cosa scarichi, di come lo usi e di cosa condividi con gli altri (anche con Ascolta insieme), nel rispetto delle leggi sul diritto d'autore del tuo paese e delle condizioni dei siti da cui scarichi;"] =
+            "you alone are responsible for what you download, how you use it and what you share with others (Listen together included), in compliance with the copyright laws of your country and the terms of the sites you download from;",
+        ["l'autore dell'app non controlla i contenuti che scarichi e non risponde in alcun modo dell'uso che ne fai."] =
+            "the author of the app doesn't control the content you download and is in no way liable for the use you make of it.",
+        ["Se non sei d'accordo, esci: l'app si chiude e puoi disinstallarla."] = "If you don't agree, quit: the app closes and you can uninstall it.",
+
+        // 3.3: listening statistics
+        ["Statistiche di ascolto"] = "Listening statistics",
+        ["STATISTICHE"] = "STATISTICS",
+        ["ASCOLTI"] = "PLAYS",
+        ["TEMPO"] = "TIME",
+        ["ULTIMO ASCOLTO"] = "LAST PLAYED",
+        ["1 ascolto"] = "1 play",
+        ["{0} ascolti"] = "{0} plays",
+        ["mai"] = "never",
+        ["oggi"] = "today",
+        ["ieri"] = "yesterday",
+        ["{0} giorni fa"] = "{0} days ago",
+        ["1 settimana fa"] = "1 week ago",
+        ["{0} settimane fa"] = "{0} weeks ago",
+        ["1 mese fa"] = "1 month ago",
+        ["{0} mesi fa"] = "{0} months ago",
+        ["meno di un minuto"] = "less than a minute",
+        ["Più ascoltati"] = "Most played",
+        ["Meno ascoltati"] = "Least played",
+        ["Più tempo di ascolto"] = "Most time listened",
+        ["Mai ascoltati"] = "Never played",
+        ["Ascolta qualcosa: i brani compariranno qui."] = "Listen to something: your songs will show up here.",
+        ["Hai ascoltato tutti i tuoi brani almeno una volta."] = "You've played all your songs at least once.",
+        ["Niente da mostrare"] = "Nothing to show",
+        ["Contati dal {0}"] = "Counted since {0}",
+        ["{0} brani su {1}"] = "{0} songs of {1}",
+        ["di ascolto"] = "listened",
+        ["ascoltati"] = "played",
+        ["solo per questo profilo; un ascolto conta dopo 30 secondi."] = "for this profile only; a play counts after 30 seconds.",
+        ["Seleziona l'unico mai ascoltato"] = "Select the only one never played",
+        ["Seleziona i {0} mai ascoltati"] = "Select the {0} never played",
+        ["Poi Canc per eliminarli, o tasto destro per le altre azioni"] = "Then press Delete to delete them, or right-click for the other actions",
+        ["Tutte le statistiche"] = "All statistics",
+        ["Nessun ascolto contato, per ora."] = "No plays counted yet.",
+        ["{0} di ascolto · {1} · {2}"] = "{0} listened · {1} · {2}",
+        ["1 brano ascoltato"] = "1 song played",
+        ["{0} brani ascoltati"] = "{0} songs played",
+        ["Quante volte e per quanto hai ascoltato ogni brano, solo per questo profilo: un ascolto conta dopo 30 secondi."] =
+            "How many times and how long you've listened to each song, for this profile only: a play counts after 30 seconds.",
+        ["Per fare pulizia ordinale per i meno ascoltati: selezionali e premi Canc per eliminarli."] =
+            "To clean up, sort them by least played: select them and press Delete to delete them.",
+        ["statistiche ascolti ascoltati più meno tempo classifica pulizia elimina"] = "statistics plays played most least time chart top clean up delete",
+
+        // 3.3: suggested songs
+        ["Brani consigliati"] = "Suggested songs",
+        ["Riproduci brani simili"] = "Play similar songs",
+        ["Brani simili a «{0}»"] = "Songs like “{0}”",
+        ["Cerco brani simili a «{0}»…"] = "Looking for songs like “{0}”…",
+        ["Cerco altri brani simili…"] = "Looking for more similar songs…",
+        ["Cerco brani simili online…"] = "Looking for similar songs online…",
+        ["Sto già cercando altri brani simili…"] = "Already looking for more similar songs…",
+        ["Altri brani simili, trovati online"] = "More similar songs, found online",
+        ["Finiti questi, ne arrivano altri simili."] = "When these are over, more similar ones come.",
+        ["Nessun brano simile trovato online: dopo questo continuano tutti i tuoi brani."] = "No similar songs found online: all your songs follow this one.",
+        ["Consigliato da {0}"] = "Suggested by {0}",
+        ["pronto"] = "ready",
+        ["lo sto scaricando, {0:0}%"] = "downloading, {0:0}%",
+        ["non si riesce a scaricarlo"] = "can't be downloaded",
+        ["si scarica quando si avvicina il suo turno"] = "downloads when its turn comes near",
+        ["Lo sto scaricando · {0:0}%"] = "Downloading · {0:0}%",
+        ["In arrivo…"] = "On its way…",
+        ["Non si riesce a scaricare «{0}»: passo al successivo."] = "“{0}” can't be downloaded: on to the next one.",
+        ["Il brano non è ancora stato scaricato: aspetta che sia pronto."] = "The song hasn't been downloaded yet: wait until it's ready.",
+        ["Si può salvare quando è stato scaricato"] = "It can be saved once it's downloaded",
+        ["Riprova a scaricarlo"] = "Try downloading it again",
+        ["Fuori da una playlist, continua con brani simili"] = "Outside a playlist, go on with similar songs",
+        ["Un brano avviato dai download, dalla ricerca o da solo è seguito da brani simili trovati online (con la coda automatica accesa). Spento: lo seguono tutti i tuoi brani."] =
+            "A song started from the downloads, the search or on its own is followed by similar songs found online (with the automatic queue on). Off: all your songs follow it.",
+        ["Da dove arrivano"] = "Where they come from",
+        ["Da dove arrivano i brani consigliati"] = "Where suggested songs come from",
+        ["Preparati in anticipo"] = "Ready ahead",
+        ["Brani consigliati preparati in anticipo"] = "Suggested songs ready ahead",
+        ["Automatica"] = "Automatic",
+        ["dal sito del brano"] = "from the song's site",
+        ["Un po' da tutti"] = "A bit of everything",
+        ["a turno"] = "taking turns",
+        ["YouTube Music, SoundCloud e Deezer a turno: più varietà."] = "YouTube Music, SoundCloud and Deezer taking turns: more variety.",
+        ["La radio del brano di YouTube Music: i più simili, con album e copertine."] = "YouTube Music's song radio: the most similar ones, with albums and covers.",
+        ["I brani che SoundCloud collega a questo: remix e artisti indipendenti."] = "The tracks SoundCloud relates to this one: remixes and independent artists.",
+        ["La radio dell'artista di Deezer; l'audio arriva da YouTube Music."] = "Deezer's artist radio; the audio comes from YouTube Music.",
+        ["I brani di SoundCloud da SoundCloud, tutti gli altri dalla radio di YouTube Music. Se un sito non trova niente si prova il successivo."] =
+            "SoundCloud songs from SoundCloud, all the others from YouTube Music's song radio. If a site finds nothing, the next one is tried.",
+        ["Da qualsiasi brano: tasto destro → Riproduci brani simili. Si scaricano poco prima del loro turno, come in Ascolta insieme e nella stessa memoria, e non entrano nella libreria: per tenerne uno, tasto destro → Salva nella libreria."] =
+            "From any song: right-click → Play similar songs. They're downloaded shortly before their turn, as in Listen together and into the same storage, and don't go into your library: to keep one, right-click → Save to library.",
+        ["consigliati consigli simili radio coda automatica online scopri brani nuovi anticipo"] =
+            "suggested suggestions similar radio automatic queue online discover new songs ahead",
     };
 }

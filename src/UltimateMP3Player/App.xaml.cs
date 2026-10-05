@@ -39,6 +39,11 @@ public partial class App : Application
         try
         {
             Host = new AppHost();
+            if (!Host.AcceptTerms())
+            {
+                Host.Exit(true);
+                return;
+            }
             var profile = Host.ChooseStartupProfile(profileArg);
             if (profile == null)
             {

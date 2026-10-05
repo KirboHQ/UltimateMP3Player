@@ -6,8 +6,8 @@
 
 <p align="center">
   <b>La tua musica, offline e senza pubblicità.</b><br>
-  Incolla un link da YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp o centinaia di
-  altri siti: i brani finiscono nella tua libreria con copertina e tag, pronti da ascoltare.
+  Incolla un link da YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp o
+  centinaia di altri siti: i brani finiscono nella tua libreria con copertina e tag, pronti da ascoltare.
 </p>
 
 <p align="center">
@@ -34,18 +34,18 @@
   <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · un lettore come Spotify · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · profili e temi · ascolta insieme">
 </picture>
 
-## 🆕 Novità della 3.0.0
+## 🆕 Novità della 3.3.0
 
-- **Ascolta insieme**: crea una stanza o entra in una trovata sulla rete; riproduzione sincronizzata, chat, coda
-  condivisa, l'host decide chi può aggiungere, togliere, saltare, mettere in pausa o andare avanti e indietro (e può
-  espellere). Se l'host esce, la stanza passa a un altro. I brani che ti piacciono li salvi nella libreria con un clic.
-- **DJ**: un nuovo selettore dei brani (copertine, BPM, playlist e tag, selezione chiara) e il **TAP** su entrambe le
-  tracce
-- **Scorrimento fluido** rifatto come quello di Firefox: una sola scivolata continua, in tutte le liste, i menu e le
-  finestre
-- **Discord**: le copertine che non comparivano (immagini enormi di SoundCloud, miniature di YouTube mancanti) ora si
-  vedono, e senza copertina c'è l'icona dell'app
-- La barra laterale divide lo spazio: due terzi alle playlist e un terzo ai tag, e si restringono con la finestra
+- **Brani simili**: tasto destro su un brano qualsiasi → *Riproduci brani simili*, e la coda si riempie di brani come
+  lui trovati online (YouTube Music, SoundCloud, Deezer, o un po' da tutti), sempre di nuovi man mano che li ascolti.
+  Arrivano anche dopo un brano avviato fuori da una playlist (download, ricerca, da solo). Si scaricano pochi alla
+  volta poco prima del loro turno, nei *Successivi* si vede a che punto sono, e quelli che ti piacciono li tieni con
+  *Salva nella libreria*.
+- **Statistiche di ascolto**: ascolti e tempo di ascolto di ogni brano, come su Spotify; ordinali per i più o i meno
+  ascoltati per trovare i preferiti e fare pulizia di quelli dimenticati
+- Link di **Apple Music**: brani, album e playlist
+- **Ascolta insieme**: il P2P si può spegnere del tutto (nessun brano ricevuto da altri o mandato ad altri)
+- Termini d'uso, da accettare al primo avvio
 
 ## 📥 Installazione
 
@@ -61,8 +61,8 @@
 ## 🎵 Funzioni
 
 **Download**
-- Link da YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp e centinaia di altri siti,
-  grazie a yt-dlp e gallery-dl
+- Link da YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp e centinaia
+  di altri siti, grazie a yt-dlp e gallery-dl
 - MP3 a 320 kbps o formato originale, video fino al 4K, più download insieme
 - Riconosce i doppioni (stessa fonte o stesso brano) e gestisce da solo i limiti dei siti: i download si mettono in
   pausa e riprendono più piano
@@ -79,12 +79,15 @@
 **Successivi**
 - Trascina per riordinare, doppio clic per saltare, lascia sul cestino per togliere
 - Coda automatica, *Genera* e *Svuota*, pannello da nascondere di lato
+- Brani simili trovati online dopo un brano: si scaricano poco prima del loro turno (quanti in anticipo lo scegli tu),
+  e li tieni con il tasto destro
 - Ritrovi tutto com'era quando riapri l'app
 
 **Libreria**
 - Playlist con copertina personalizzata, Preferiti, ascoltati di recente e la vista *Senza playlist* per fare ordine
 - Tag colorati, filtri con più tag (tutti / almeno uno) e `#tag` nella ricerca
 - Rinomina un artista su tutti i suoi brani in un colpo; modifica titolo, artista, album, BPM e copertina
+- Statistiche di ascolto per profilo: ascolti, tempo e ultimo ascolto di ogni brano, i meno ascoltati per fare pulizia
 
 **DJ**
 - Due tracce con forme d'onda scorrevoli e panoramica, CUE, avanti/indietro, range del tempo ±8 / 16 / 50 %, key lock
@@ -106,8 +109,10 @@
   brano nella stanza.
 - Chat, chi ha aggiunto ogni brano, l'avanzamento dei download di tutti, espulsioni, passaggio dell'host. Se l'host
   esce o il suo PC si spegne, la stanza passa a chi ha più permessi (a parità, a chi è entrato per primo).
-- I brani ascoltati nelle stanze restano in memoria (10 di base); quelli che ti piacciono li salvi nella libreria o in
-  una playlist
+- I brani ascoltati nelle stanze restano in memoria (10 di base, insieme ai consigliati); quelli che ti piacciono li
+  salvi nella libreria o in una playlist
+- Il P2P si può spegnere dalle impostazioni: i brani arrivano allora solo dalla tua libreria, dalla memoria o dal loro
+  link
 
 > [!TIP]
 > La prima volta Windows chiede se l'app può usare la rete: consenti l'accesso. Con Radmin VPN spunta anche *Reti
@@ -162,7 +167,7 @@ da riga di comando per provare il core (download, import, coda, casuale).
 |---|---|
 | `Musica\Ultimate MP3 Player` | Brani scaricati (MP3/M4A con tag e copertina) e video |
 | `%LOCALAPPDATA%\Ultimate MP3 Player` | Libreria, copertine, profili, impostazioni, `errori.log` |
-| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Brani delle stanze di *Ascolta insieme* tenuti per la prossima volta |
+| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Brani delle stanze di *Ascolta insieme* e consigliati tenuti per la prossima volta |
 
 ## 🙏 Software di terze parti
 

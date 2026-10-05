@@ -85,6 +85,10 @@ public static class OnlineSearchServices
     private static string Runs(JsonElement? text)
         => text is { } t ? string.Concat(t.Arr("runs").Select(r => r.Str("text"))) : "";
 
+    // What a link of YouTube Music points to: "MUSIC_PAGE_TYPE_ALBUM", "…_ARTIST"...
+    private static string? PageType(JsonElement run) => run.Prop("navigationEndpoint")?.Prop("browseEndpoint")?.Prop("browseEndpointContextSupportedConfigs")
+        ?.Prop("browseEndpointContextMusicConfig")?.Str("pageType");
+
     // ------------------------------------------------------------------ YouTube Music: the "Songs" results
 
     private static async Task<List<SearchHit>> YouTubeMusicAsync(string query, int limit, CancellationToken ct)
@@ -113,8 +117,6 @@ public static class OnlineSearchServices
                     else groups[^1].Add(r);
                 }
                 string Join(List<JsonElement> g) => string.Concat(g.Select(r => r.Str("text"))).Trim();
-                string? PageType(JsonElement r) => r.Prop("navigationEndpoint")?.Prop("browseEndpoint")?.Prop("browseEndpointContextSupportedConfigs")
-                    ?.Prop("browseEndpointContextMusicConfig")?.Str("pageType");
                 double? duration = groups.Select(g => ParseClock(Join(g))).LastOrDefault(d => d != null);
                 var album = groups.Skip(1).FirstOrDefault(g => g.Any(r => PageType(r) == "MUSIC_PAGE_TYPE_ALBUM")) is { } ag ? Join(ag) : null;
                 var artist = groups[0].Count > 0 && ParseClock(Join(groups[0])) == null ? Join(groups[0]) : null;
@@ -182,19 +184,28 @@ public static class OnlineSearchServices
         finally { ScGate.Release(); }
     }
 
-    private static async Task<List<SearchHit>> SoundCloudAsync(string query, int limit, CancellationToken ct)
+    // An API call with the web app's key (a fresh one if SoundCloud refuses it).
+    private static async Task<string> SoundCloudGetAsync(Func<string, string> url, CancellationToken ct)
     {
-        string json;
         var client = await SoundCloudClientAsync(false, ct);
-        string Url(string c) => $"https://api-v2.soundcloud.com/search/tracks?q={Uri.EscapeDataString(query)}&client_id={c}&limit={Math.Min(50, limit * 2)}";
-        try { json = await GetAsync(Url(client), ct); }
+        try { return await GetAsync(url(client), ct); }
         catch (HttpRequestException ex) when (ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
-            json = await GetAsync(Url(await SoundCloudClientAsync(true, ct)), ct);
+            return await GetAsync(url(await SoundCloudClientAsync(true, ct)), ct);
         }
+    }
+
+    private static async Task<List<SearchHit>> SoundCloudAsync(string query, int limit, CancellationToken ct)
+    {
+        var json = await SoundCloudGetAsync(c => $"https://api-v2.soundcloud.com/search/tracks?q={Uri.EscapeDataString(query)}&client_id={c}&limit={Math.Min(50, limit * 2)}", ct);
         using var doc = JsonDocument.Parse(json);
+        return SoundCloudHits(doc.RootElement, limit);
+    }
+
+    private static List<SearchHit> SoundCloudHits(JsonElement root, int limit)
+    {
         var hits = new List<SearchHit>();
-        foreach (var t in doc.RootElement.Arr("collection"))
+        foreach (var t in root.Arr("collection"))
         {
             if (hits.Count >= limit) break;
             // SNIP = only a 30-second preview without SoundCloud Go, BLOCK = not playable here.
@@ -216,11 +227,18 @@ public static class OnlineSearchServices
     {
         var json = await GetAsync($"https://api.deezer.com/search/track?q={Uri.EscapeDataString(query)}&limit={limit}", ct);
         using var doc = JsonDocument.Parse(json);
+        return DeezerHits(doc.RootElement, limit);
+    }
+
+    private static List<SearchHit> DeezerHits(JsonElement root, int limit)
+    {
         var hits = new List<SearchHit>();
-        foreach (var t in doc.RootElement.Arr("data"))
+        foreach (var t in root.Arr("data"))
         {
             if (hits.Count >= limit) break;
-            if (t.Str("link") is not { } url || t.Str("title") is not { Length: > 0 } title) continue;
+            // The radio's songs come without their link.
+            var url = t.Str("link") ?? (t.Str("id") is { } id ? "https://www.deezer.com/track/" + id : null);
+            if (url == null || t.Str("title") is not { Length: > 0 } title) continue;
             hits.Add(new SearchHit
             {
                 Service = Deezer, Title = title, Artist = t.Prop("artist")?.Str("name"), Album = t.Prop("album")?.Str("title"), Duration = t.Num("duration"),
@@ -228,5 +246,136 @@ public static class OnlineSearchServices
             });
         }
         return hits;
+    }
+
+    // ------------------------------------------------------------------ similar songs (the suggested queue)
+
+    // Songs like the seed, without the seed itself and without doubles: from its own site first, every site taking
+    // turns, or the site chosen (the others when it has nothing).
+    public static async Task<List<SearchHit>> SimilarAsync(RadioSeed seed, string source, int limit, CancellationToken ct)
+    {
+        var hits = new List<SearchHit>();
+        if (source == RadioSources.Mix)
+        {
+            var each = await Task.WhenAll(RadioSources.Sites.Select(s => SimilarOn(s, seed, limit, ct)));
+            hits = each.SelectMany(h => h).OrderBy(h => h.Rank).ThenBy(h => Array.IndexOf(RadioSources.Sites, h.Service)).ToList();
+        }
+        else
+            foreach (var s in RadioSources.Order(source, seed))
+                if ((hits = await SimilarOn(s, seed, limit, ct)).Count > 0) break;
+        var seen = new HashSet<string> { SongMeta.Key(seed.Title, seed.Artist) };
+        return hits.Where(h => seen.Add(SongMeta.Key(h.Title, h.Artist))).Take(limit).ToList();
+    }
+
+    private static async Task<List<SearchHit>> SimilarOn(string service, RadioSeed seed, int limit, CancellationToken ct)
+    {
+        try
+        {
+            return await (service switch
+            {
+                YouTubeMusic => YouTubeMusicRadioAsync(seed, limit, ct),
+                SoundCloud => SoundCloudRadioAsync(seed, limit, ct),
+                Deezer => DeezerRadioAsync(seed, limit, ct),
+                _ => Task.FromResult(new List<SearchHit>()),
+            });
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { return new List<SearchHit>(); }
+    }
+
+    // The song's radio, as in YouTube Music's player.
+    private static async Task<List<SearchHit>> YouTubeMusicRadioAsync(RadioSeed seed, int limit, CancellationToken ct)
+    {
+        var id = seed.KeyOf("youtube");
+        if (id == null && (await YouTubeMusicAsync(seed.Query, 1, ct)).FirstOrDefault()?.Url is { } found) id = Regex.Match(found, @"[?&]v=([\w-]{11})").Groups[1].Value;
+        if (string.IsNullOrEmpty(id)) return new List<SearchHit>();
+        var body = JsonSerializer.Serialize(new
+        {
+            context = new { client = new { clientName = "WEB_REMIX", clientVersion = "1.20240904.01.00", hl = Lang, gl = "IT" } },
+            videoId = id,
+            playlistId = "RDAMVM" + id,
+            isAudioOnly = true,
+        });
+        using var doc = JsonDocument.Parse(await PostJsonAsync("https://music.youtube.com/youtubei/v1/next?prettyPrint=false", body, "https://music.youtube.com", ct));
+        var rows = doc.RootElement.Prop("contents")?.Prop("singleColumnMusicWatchNextResultsRenderer")?.Prop("tabbedRenderer")?.Prop("watchNextTabbedResultsRenderer")
+            ?.Arr("tabs").FirstOrDefault().Prop("tabRenderer")?.Prop("content")?.Prop("musicQueueRenderer")?.Prop("content")?.Prop("playlistPanelRenderer")
+            ?.Arr("contents") ?? Enumerable.Empty<JsonElement>();
+        var hits = new List<SearchHit>();
+        foreach (var row in rows)
+        {
+            if (hits.Count >= limit) break;
+            // A song that also has its video: the song.
+            var v = row.Prop("playlistPanelVideoRenderer") ?? row.Prop("playlistPanelVideoWrapperRenderer")?.Prop("primaryRenderer")?.Prop("playlistPanelVideoRenderer");
+            if (v is not { } r || r.Str("videoId") is not { } vid || vid == id || Runs(r.Prop("title")) is not { Length: > 0 } title) continue;
+            // "Artist • Album • 2019", or "Artist • 2 M views • 14 K likes" for a video.
+            var byline = r.Prop("longBylineText")?.Arr("runs").ToList() ?? new List<JsonElement>();
+            var artist = string.Concat(byline.TakeWhile(x => x.Str("text")?.Trim() != "•").Select(x => x.Str("text"))).Trim();
+            var thumb = r.Prop("thumbnail")?.Arr("thumbnails").LastOrDefault().Str("url");
+            hits.Add(new SearchHit
+            {
+                Service = YouTubeMusic, Title = title, Artist = artist.Length > 0 ? artist : null,
+                Album = byline.FirstOrDefault(x => PageType(x) == "MUSIC_PAGE_TYPE_ALBUM").Str("text"), Duration = ParseClock(Runs(r.Prop("lengthText"))),
+                Thumb = thumb != null && thumb.Contains("googleusercontent") ? Regex.Replace(thumb, @"=w\d+-h\d+", "=w544-h544") : $"https://i.ytimg.com/vi/{vid}/mqdefault.jpg",
+                Url = "https://music.youtube.com/watch?v=" + vid, Rank = hits.Count,
+            });
+        }
+        return hits;
+    }
+
+    // The tracks SoundCloud relates to this one.
+    private static async Task<List<SearchHit>> SoundCloudRadioAsync(RadioSeed seed, int limit, CancellationToken ct)
+    {
+        var id = seed.KeyOf("soundcloud");
+        if (id == null)
+        {
+            using var found = JsonDocument.Parse(await SoundCloudGetAsync(c => $"https://api-v2.soundcloud.com/search/tracks?q={Uri.EscapeDataString(seed.Query)}&client_id={c}&limit=1", ct));
+            id = found.RootElement.Arr("collection").FirstOrDefault().Str("id");
+        }
+        if (id == null) return new List<SearchHit>();
+        using var doc = JsonDocument.Parse(await SoundCloudGetAsync(c => $"https://api-v2.soundcloud.com/tracks/{id}/related?client_id={c}&limit={Math.Min(50, limit * 2)}", ct));
+        return SoundCloudHits(doc.RootElement, limit);
+    }
+
+    // The radio of the song's artist.
+    private static async Task<List<SearchHit>> DeezerRadioAsync(RadioSeed seed, int limit, CancellationToken ct)
+    {
+        string? artist = null;
+        if (seed.KeyOf("deezer") is { } track)
+        {
+            using var t = JsonDocument.Parse(await GetAsync("https://api.deezer.com/track/" + track, ct));
+            artist = t.RootElement.Prop("artist")?.Str("id");
+        }
+        if (artist == null)
+        {
+            using var s = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/search/track?q={Uri.EscapeDataString(seed.Query)}&limit=1", ct));
+            artist = s.RootElement.Arr("data").FirstOrDefault().Prop("artist")?.Str("id");
+        }
+        if (artist == null) return new List<SearchHit>();
+        using var doc = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/artist/{artist}/radio?limit={Math.Min(50, limit)}", ct));
+        return DeezerHits(doc.RootElement, limit);
+    }
+}
+
+// The song suggestions start from: what it is, and its ids on the sites it came from ("youtube:ID", "soundcloud:ID"...).
+public sealed record RadioSeed(string Title, string? Artist, IReadOnlyList<string> Keys)
+{
+    public string Query => $"{Artist?.Split(',')[0].Trim()} {SongMeta.CleanTitle(Title)}".Trim();
+
+    public string? KeyOf(string site) => Keys.FirstOrDefault(k => k.StartsWith(site + ":", StringComparison.OrdinalIgnoreCase))?[(site.Length + 1)..];
+}
+
+// Where suggested songs come from: the song's own site ("auto": SoundCloud for SoundCloud songs, YouTube Music for the
+// others), every site taking turns ("mix"), or one site.
+public static class RadioSources
+{
+    public const string Auto = "auto", Mix = "mix";
+    public static readonly string[] Sites = { OnlineSearchServices.YouTubeMusic, OnlineSearchServices.SoundCloud, OnlineSearchServices.Deezer };
+    public static readonly string[] All = [Auto, Mix, .. Sites];
+
+    // The sites to ask, one after the other until one has something.
+    public static IEnumerable<string> Order(string source, RadioSeed seed)
+    {
+        var first = source != Auto ? source : seed.KeyOf("soundcloud") != null ? OnlineSearchServices.SoundCloud : OnlineSearchServices.YouTubeMusic;
+        return new[] { first }.Concat(Sites).Distinct();
     }
 }

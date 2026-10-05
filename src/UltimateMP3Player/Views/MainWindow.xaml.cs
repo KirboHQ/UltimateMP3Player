@@ -63,8 +63,13 @@ public partial class MainWindow : Window
         s.WindowMaximized = WindowState == WindowState.Maximized;
         s.Save();
         if (_silent) return;
+        IsClosing = true;
         if (!_host.OnWindowClosing()) e.Cancel = true;
+        IsClosing = !e.Cancel;
     }
+
+    // Closing by itself: quitting the app from here mustn't close it a second time (WPF refuses it).
+    public bool IsClosing { get; private set; }
 
     // ------------------------------------------------------------------ keyboard
 

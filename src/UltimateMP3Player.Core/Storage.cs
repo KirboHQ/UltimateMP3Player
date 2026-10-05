@@ -141,6 +141,15 @@ public sealed class AppSettings
     // (only when the host sends them). Off: from the link first, from someone in the room as a last resort.
     public bool TogetherSendAsHost { get; set; }
     public bool TogetherTakeFromHost { get; set; }
+    // P2P at all: off, this computer neither receives songs from the room nor sends them to anyone (the two above too).
+    public bool TogetherP2P { get; set; } = true;
+    // Suggested songs: after a song that isn't in a list (search, downloads, played alone) the queue goes on with similar
+    // songs found online instead of all your songs; where they come from ("auto", "mix" or a site), how many get ready ahead.
+    public bool RadioAfterSingle { get; set; } = true;
+    public string RadioSource { get; set; } = RadioSources.Auto;
+    public int RadioAhead { get; set; } = 2;
+    // Version of the terms of use accepted on this computer (0 = never).
+    public int TermsAccepted { get; set; }
     // The search box also searches these sites (in this order); parallel = all at once, otherwise the next one
     // only when the one before found nothing.
     public bool OnlineSearch { get; set; } = true;

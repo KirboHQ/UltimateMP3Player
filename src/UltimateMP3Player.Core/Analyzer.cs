@@ -25,6 +25,7 @@ public static class Analyzer
         var url = NormalizeUrl(req.Url);
         if (Spotify.IsMatch(url)) return await Spotify.AnalyzeAsync(url, ct);
         if (Deezer.IsMatch(url)) return await Deezer.AnalyzeAsync(url, ct);
+        if (AppleMusic.IsMatch(url)) return await AppleMusic.AnalyzeAsync(url, ct);
         if (Giphy.IsMatch(url) && !url.Contains("/clips/")) return await Giphy.AnalyzeAsync(url, ct);
         if (Direct.LooksDirect(url) && Sites.Find(url) is null or { GalleryFirst: false }) return Direct.Analyze(url);
 

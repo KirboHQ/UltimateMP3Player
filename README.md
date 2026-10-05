@@ -6,8 +6,8 @@
 
 <p align="center">
   <b>Your music, offline and ad-free.</b><br>
-  Paste a link from YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp or hundreds of
-  other sites: the songs land in your library with covers and tags, ready to play.
+  Paste a link from YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp or
+  hundreds of other sites: the songs land in your library with covers and tags, ready to play.
 </p>
 
 <p align="center">
@@ -34,16 +34,17 @@
   <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · a player that feels like Spotify · a queue that fills itself · DJ mode · playlists, favorites and tags · profiles and themes · listen together">
 </picture>
 
-## 🆕 What's new in 3.0.0
+## 🆕 What's new in 3.3.0
 
-- **Listen together**: create a room or join one found on the network; synced playback, chat, shared queue, the host
-  decides who can add, remove, skip, pause or seek (and can kick people). If the host leaves, the room moves on to
-  someone else. Songs you like can be saved to your library in one click.
-- **DJ**: a new song browser (covers, BPM, playlists and tags, a clear selection) and **TAP** on both decks
-- **Smooth scrolling** rewritten after Firefox's: one continuous glide, in every list, menu and window
-- **Discord**: covers that didn't show (huge SoundCloud artwork, missing YouTube thumbnails) now do, with the app
-  icon as a fallback
-- The sidebar splits its room: playlists two thirds, tags one third, both shrinking with the window
+- **Similar songs**: right-click any song → *Play similar songs*, and the queue fills with songs like it found online
+  (YouTube Music, SoundCloud, Deezer, or a bit of each), more as they play. A song played outside a playlist
+  (downloads, search, on its own) is followed by them too. They download a few at a time just before their turn, show
+  their progress in *Up next*, and the ones you like are kept with *Save to library*.
+- **Listening statistics**: plays and time listened for every song, like Spotify; sort by most or least played to find
+  your favourites and clean up the forgotten ones
+- **Apple Music** links: songs, albums and playlists
+- **Listen together**: P2P can be switched off completely (no songs received from or sent to anyone)
+- Terms of use, accepted on the first start
 
 ## 📥 Install
 
@@ -59,8 +60,8 @@
 ## 🎵 Features
 
 **Downloads**
-- Links from YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp and hundreds of other
-  sites, powered by yt-dlp and gallery-dl
+- Links from YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp and
+  hundreds of other sites, powered by yt-dlp and gallery-dl
 - MP3 at 320 kbps or the original format, videos up to 4K, several downloads at a time
 - Duplicates are recognized (same source or same song), and site rate limits are handled by themselves: downloads
   pause, then resume more gently
@@ -76,12 +77,15 @@
 **Up next**
 - Drag to reorder, double-click to jump, drop on the bin to remove
 - Automatic queue, *Generate* and *Clear*, a panel you can hide to the side
+- Similar songs found online after a song: downloaded just before their turn (how many ahead is up to you), kept with
+  a right-click
 - Restored exactly where you left it when you reopen the app
 
 **Library**
 - Playlists with custom covers, Favorites, recently played, and a *Not in a playlist* view to tidy up
 - Tags with colors, multi-tag filters (all / any) and `#tag` in the search box
 - Rename an artist on all their songs at once; edit title, artist, album, BPM and cover
+- Listening statistics per profile: plays, time listened and last played of every song, the least played to clean up
 
 **DJ**
 - Two decks with scrolling waveforms and overviews, CUE, nudge, tempo range ±8 / 16 / 50 %, key lock
@@ -102,7 +106,9 @@
   the play buttons of your lists become **+**, and a double click adds the song to the room.
 - Chat, who added each song, everyone's download progress, kick, hand over the host. If the host leaves or their PC
   goes off, the room passes to the person with the most permissions (on a tie, who joined first).
-- Songs heard in rooms stay in a cache (10 by default); save the ones you like to your library or a playlist
+- Songs heard in rooms stay in a cache (10 by default, shared with the suggested songs); save the ones you like to
+  your library or a playlist
+- P2P can be switched off in Settings: songs then come only from your library, the cache or their link
 
 > [!TIP]
 > The first time, Windows asks whether the app may use the network: allow it. With Radmin VPN also tick *Public
@@ -157,7 +163,7 @@ for the core (downloads, import, queue, shuffle).
 |---|---|
 | `Music\Ultimate MP3 Player` | Downloaded songs (MP3/M4A with tags and cover) and videos |
 | `%LOCALAPPDATA%\Ultimate MP3 Player` | Library, covers, profiles, settings, `errori.log` |
-| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Songs of *Listen together* rooms kept for next time |
+| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Songs of *Listen together* rooms and suggested songs kept for next time |
 
 ## 🙏 Third-party software
 

@@ -63,6 +63,7 @@ public sealed class MemberViewModel : Observable
     public bool IsHost => _owner.Session?.HostId == M.Id;
     public bool IsMe => _owner.Session?.Me.Id == M.Id;
     public bool Away => M.Away;
+    public bool NoP2P => M.NoP2P;
     public string NameText => IsMe ? L.F("{0} (tu)", M.Name) : M.Name;
 
     public string RoleText => IsHost ? L.T("Host") : M.Perms == Perm.All ? L.T("Co-host") : (M.Perms & Perm.Add) != 0 ? "DJ" : L.T("Ascoltatore");
@@ -91,7 +92,7 @@ public sealed class MemberViewModel : Observable
         M = m;
         var s = _owner.Session;
         if (s != null) UpdateStatus(s);
-        OnChanged(nameof(Name), nameof(Initial), nameof(Brush), nameof(Avatar), nameof(IsHost), nameof(IsMe), nameof(Away), nameof(NameText),
+        OnChanged(nameof(Name), nameof(Initial), nameof(Brush), nameof(Avatar), nameof(IsHost), nameof(IsMe), nameof(Away), nameof(NoP2P), nameof(NameText),
             nameof(RoleText), nameof(PermAdd), nameof(PermRemove), nameof(PermSkip), nameof(PermPause), nameof(PermSpeed), nameof(PermsTip),
             nameof(StatusText), nameof(StatusPct), nameof(StatusBusy), nameof(StatusReady), nameof(StatusFailed));
     }
@@ -180,6 +181,7 @@ public sealed class RoomItemViewModel : Observable
         FileState.Downloading => L.F("Lo stai scaricando · {0:0}%", Pct),
         FileState.Transfer when _owner.WaitingHost(Item.Id) => _owner.HostWaitText(Item.Id),
         FileState.Transfer => L.F("Lo stai ricevendo da qualcuno nella stanza · {0:0}%", Pct),
+        FileState.Failed when !_owner.P2P => L.T("Non si riesce a scaricarlo dal suo link, e senza P2P nessuno può mandartelo"),
         FileState.Failed => L.T("Non si riesce ad averlo: si riprova tra poco"),
         _ => L.T("Verrà preparato quando si avvicina il suo turno"),
     };
@@ -241,7 +243,6 @@ public sealed class TogetherViewModel : Observable
     private readonly MainViewModel _main;
     private readonly DispatcherTimer _scanTimer = new() { Interval = TimeSpan.FromSeconds(2.5) };
     private readonly DispatcherTimer _follow = new(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(200) };
-    private static TogetherCache? _cache;
     private TogetherSession? _s;
     private TogetherFetcher? _fetcher;
     private readonly Dictionary<string, Track> _ephemeral = new();
@@ -279,7 +280,7 @@ public sealed class TogetherViewModel : Observable
         KickSelectedCommand = new RelayCommand(KickSelected);
         ClearSelectionCommand = new RelayCommand(() => { foreach (var m in Members) m.IsSelected = false; });
         ToggleRandomCommand = new RelayCommand(() => ShowRandom = !ShowRandom);
-        AddRandomCommand = new RelayCommand(AddRandom);
+        AddRandomCommand = new RelayCommand(AddRandom, () => !RandomBusy);
     }
 
     public ICommand ToggleRandomCommand { get; }
@@ -304,7 +305,7 @@ public sealed class TogetherViewModel : Observable
     public ICommand KickSelectedCommand { get; }
     public ICommand ClearSelectionCommand { get; }
 
-    private static TogetherCache Cache => _cache ??= new TogetherCache(Path.Combine(AppPaths.DataDir, "ascolta-insieme"));
+    private TogetherCache Cache => _main.Host.SongCache;
 
     // ------------------------------------------------------------------ page
 
@@ -505,7 +506,8 @@ public sealed class TogetherViewModel : Observable
         {
             Id = settings.TogetherId, Name = info.Name, Color = info.Color, Version = AppInfo.VersionText,
             Avatar = info.HasAvatar ? JpegOf(info.AvatarPath, 96) : null,
-            Ahead = AheadSetting(settings.TogetherAhead), HostAhead = AheadSetting(settings.TogetherHostAhead), SendsFiles = settings.TogetherSendAsHost,
+            Ahead = AheadSetting(settings.TogetherAhead), HostAhead = AheadSetting(settings.TogetherHostAhead),
+            SendsFiles = settings.TogetherSendAsHost && settings.TogetherP2P, NoP2P = !settings.TogetherP2P,
         };
         var ui = Application.Current.Dispatcher;
         return new TogetherSession(me, a => ui.BeginInvoke(a));
@@ -520,7 +522,7 @@ public sealed class TogetherViewModel : Observable
         var settings = _main.Host.Settings;
         _fetcher = new TogetherFetcher(s, _main.Library, Cache,
             () => new FetchOptions(settings.AudioFormat, settings.CookiesBrowserOrNull, Math.Clamp(settings.TogetherCacheSize, 1, 200),
-                AheadSetting(settings.TogetherAhead), AheadSetting(settings.TogetherHostAhead), settings.TogetherTakeFromHost));
+                AheadSetting(settings.TogetherAhead), AheadSetting(settings.TogetherHostAhead), settings.TogetherTakeFromHost, settings.TogetherP2P));
         s.RoomChanged += OnRoom;
         s.QueueChanged += OnQueue;
         s.PlaybackChanged += OnPlayback;
@@ -579,6 +581,7 @@ public sealed class TogetherViewModel : Observable
         CurrentItem = null;
         Chat.Clear();
         ShowRandom = false;
+        _suggestedUsed.Clear();
         OnChanged(nameof(InRoom), nameof(IsHost), nameof(Queue), nameof(HasQueue), nameof(QueueCountText), nameof(MemberCount), nameof(RoomName),
             nameof(RoomSubtitle), nameof(Reconnecting), nameof(CanAdd), nameof(CanRemove), nameof(CanSkip), nameof(CanPause), nameof(CanSpeed));
         _main.OnRoomChanged();
@@ -959,7 +962,8 @@ public sealed class TogetherViewModel : Observable
 
     // ------------------------------------------------------------------ random songs
 
-    // A few songs picked at random from all your songs, a playlist or a tag: a queue for the room in two clicks.
+    // A few songs picked at random from all your songs, a playlist or a tag, or suggested online like the room's song:
+    // a queue for the room in two clicks.
     private bool _showRandom;
     public bool ShowRandom
     {
@@ -974,8 +978,42 @@ public sealed class TogetherViewModel : Observable
     public List<Choice> RandomSources { get; private set; } = new();
 
     private Choice? _randomSource;
-    public Choice? RandomSource { get => _randomSource; set { if (value != null && Set(ref _randomSource, value)) _lastRandomSource = value.Value as string; } }
+    public Choice? RandomSource
+    {
+        get => _randomSource;
+        set
+        {
+            if (value == null || !Set(ref _randomSource, value)) return;
+            _lastRandomSource = value.Value as string;
+            OnRandomChanged();
+        }
+    }
     private string? _lastRandomSource;
+
+    private const string Suggested = "radio";
+    private bool SuggestedSource => RandomSource?.Value as string == Suggested;
+
+    private bool _randomBusy;
+    // Looking for suggested songs online.
+    public bool RandomBusy
+    {
+        get => _randomBusy;
+        private set
+        {
+            if (!Set(ref _randomBusy, value)) return;
+            OnRandomChanged();
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    public string RandomTitle => SuggestedSource ? L.T("Aggiungi brani consigliati") : L.T("Aggiungi brani a caso");
+    public string RandomHint => SuggestedSource
+        ? L.T("Simili a quello in riproduzione nella stanza, trovati online come in «Riproduci brani simili»: premi ancora per averne altri.")
+        : L.T("Scelti a caso, senza quelli già nella stanza: premi ancora per aggiungerne altri.");
+    public string RandomGlyph => SuggestedSource ? "" : "";
+    public string RandomAddText => RandomBusy ? L.T("Cerco brani simili…") : L.T("Aggiungi alla coda");
+
+    private void OnRandomChanged() => OnChanged(nameof(RandomTitle), nameof(RandomHint), nameof(RandomGlyph), nameof(RandomAddText));
 
     public List<Choice> RandomCounts { get; } = new[] { 1, 5, 10, 25, 50 }.Select(n => new Choice(n.ToString(), n)).ToList();
 
@@ -988,6 +1026,9 @@ public sealed class TogetherViewModel : Observable
     private void RefreshRandomSources()
     {
         var list = new List<Choice> { new(L.T("Tutti i brani"), "library", L.Count(_main.Library.Count, "1 brano", "{0} brani")) };
+        var seed = SuggestedSeed();
+        list.Add(new Choice("✦ " + L.T("Consigliati online"), Suggested,
+            seed != null ? L.F("simili a «{0}»", seed.Title.Length > 30 ? seed.Title[..30] + "…" : seed.Title) : L.T("simili al brano della stanza")));
         foreach (var p in _main.Playlists.Where(p => p.P.Tracks.Count > 0))
             list.Add(new Choice(p.IsFavorites ? "♥ " + p.Name : p.Name, "playlist:" + p.Id, L.Count(p.P.Tracks.Count, "1 brano", "{0} brani")));
         foreach (var t in _main.Tags.Where(t => t.Count > 0))
@@ -995,6 +1036,7 @@ public sealed class TogetherViewModel : Observable
         RandomSources = list;
         _randomSource = list.FirstOrDefault(c => (string)c.Value! == _lastRandomSource) ?? list[0];
         OnChanged(nameof(RandomSources), nameof(RandomSource));
+        OnRandomChanged();
     }
 
     private IEnumerable<Track> RandomPool(string source)
@@ -1024,6 +1066,11 @@ public sealed class TogetherViewModel : Observable
             _main.Toast(L.T("La coda della stanza è piena."));
             return;
         }
+        if (SuggestedSource)
+        {
+            _ = AddSuggested(want);
+            return;
+        }
         var pool = RandomPool(RandomSource?.Value as string ?? "library").DistinctBy(t => t.Id).ToList();
         // Not what the room already has (playing or waiting).
         var inRoom = new[] { _s.Current }.Concat(_s.Queue).OfType<RoomTrack>()
@@ -1043,6 +1090,89 @@ public sealed class TogetherViewModel : Observable
         foreach (var t in pick) _randomUsed.Add(t.Id);
         _ = AddAsync(pick, false);
     }
+
+    // Songs the button already suggested: not again (the next ones start from the newest).
+    private readonly HashSet<string> _suggestedUsed = new();
+
+    // What the suggestions are like: the song playing, or the last one waiting.
+    private RoomTrack? SuggestedSeed() => _s?.Current ?? _s?.Queue.LastOrDefault();
+
+    // Songs like the room's found online (the sites of Settings → Suggested songs), without the ones it already has.
+    // A song you have plays from your library for you, the others are downloaded by everyone from their link.
+    private async Task AddSuggested(int want)
+    {
+        if (_s == null || RandomBusy) return;
+        if (SuggestedSeed() is not { } from)
+        {
+            _main.Toast(L.T("Nella stanza non c'è ancora un brano: i consigliati sono simili a quello in riproduzione."));
+            return;
+        }
+        RandomBusy = true;
+        try
+        {
+            var inRoom = new[] { _s.Current }.Concat(_s.Queue).OfType<RoomTrack>().Select(t => SongMeta.Key(t.Title, t.Artist)).ToHashSet();
+            var seed = new RadioSeed(from.Title, from.Artist, from.Keys.ToList());
+            var source = _main.Host.Settings.RadioSource;
+            var lib = _main.Library;
+            var picks = await Task.Run(async () =>
+            {
+                var list = new List<(SearchHit Hit, Track? Have)>();
+                for (int round = 0; round < 3 && list.Count < want; round++)
+                {
+                    var hits = await OnlineSearchServices.SimilarAsync(seed, source, 50, CancellationToken.None);
+                    foreach (var h in hits)
+                    {
+                        var key = SongMeta.Key(h.Title, h.Artist);
+                        if (list.Count >= want || inRoom.Contains(key) || _suggestedUsed.Contains(key)) continue;
+                        var keys = SourceKeys.ForItem(new MediaItem { Url = h.Url, PageUrl = h.Url });
+                        var have = lib.FindByKeys(keys) ?? lib.FindSimilar(h.Title, h.Artist, h.Duration);
+                        list.Add((h, have != null && File.Exists(have.Path) ? have : null));
+                        inRoom.Add(key);
+                    }
+                    if (hits.Count == 0) break;
+                    seed = new RadioSeed(hits[^1].Title, hits[^1].Artist, SourceKeys.ForItem(new MediaItem { Url = hits[^1].Url, PageUrl = hits[^1].Url }));
+                }
+                return list;
+            });
+            if (_s == null) return;
+            if (picks.Count == 0)
+            {
+                _main.Toast(L.T("Nessun brano simile nuovo trovato online."));
+                return;
+            }
+            foreach (var p in picks) _suggestedUsed.Add(SongMeta.Key(p.Hit.Title, p.Hit.Artist));
+            var items = picks.Select(p => p.Have != null ? RoomTrackFor(_main.Vm(p.Have)) : SuggestedTrack(p.Hit)).ToList();
+            var covers = await Task.Run(async () =>
+            {
+                var list = new List<byte[]?>();
+                foreach (var p in picks)
+                {
+                    if (p.Have != null) list.Add(p.Have.HasCover ? JpegOf(AppPaths.TrackCover(p.Have.Id), 300) : null);
+                    else
+                    {
+                        try { list.Add(p.Hit.Thumb != null ? SquareJpeg(await Http.GetBytesAsync(p.Hit.Thumb), 300) : null); }
+                        catch { list.Add(null); }
+                    }
+                }
+                return list;
+            });
+            if (_s == null) return;
+            for (int i = 0; i < items.Count; i++) _s.Add(items[i], covers[i], false);
+            _main.Toast(L.Count(items.Count, "1 brano consigliato aggiunto alla coda della stanza", "{0} brani consigliati aggiunti alla coda della stanza"));
+        }
+        catch
+        {
+            _main.Toast(L.T("I siti non hanno risposto: controlla la connessione e riprova."));
+        }
+        finally { RandomBusy = false; }
+    }
+
+    private static RoomTrack SuggestedTrack(SearchHit h) => new()
+    {
+        Title = h.Title, Artist = h.Artist, Album = h.Album, Duration = h.Duration ?? 0, SourceUrl = h.Url, Site = h.Service,
+        Keys = SourceKeys.ForItem(new MediaItem { Url = h.Url, PageUrl = h.Url }),
+        ArtUrl = h.Thumb is { Length: <= 250 } th && th.StartsWith("https://") && !th.Contains("webp") ? th : null,
+    };
 
     private RoomTrack RoomTrackFor(TrackViewModel vm)
     {
@@ -1253,6 +1383,7 @@ public sealed class TogetherViewModel : Observable
             FileState.Downloading => L.F("Lo stai scaricando · {0:0}%: appena finisce entri al punto giusto", mine.Pct),
             FileState.Transfer when WaitingHost(cur.Id) => HostWaitText(cur.Id),
             FileState.Transfer => L.F("Lo stai ricevendo da qualcuno nella stanza · {0:0}%", mine.Pct),
+            FileState.Failed when !P2P => L.T("Non si riesce a scaricare il brano dal suo link, e senza P2P nessuno può mandartelo"),
             FileState.Failed => L.T("Non si riesce ad avere il brano: si riprova tra poco"),
             _ when s.Play.State == PlayState.Waiting => L.F("Aspettiamo che tutti abbiano il brano · {0} di {1} pronti", ready, total),
             _ when s.Play.State == PlayState.Paused => L.T("In pausa per tutti"),
@@ -1483,16 +1614,12 @@ public sealed class TogetherViewModel : Observable
         _main.Toast(ok ? L.T("Fatto: Windows ora lascia entrare le connessioni degli altri su ogni rete.") : L.T("Il firewall non è stato cambiato."));
     }
 
-    // Cache in Settings.
-    public static (int Count, long Bytes) CacheStats() => Cache.Stats();
-
+    // Cache in Settings (the files in use, by a room or by the suggested songs, stay).
     public void ClearCache()
     {
         var keep = _fetcher?.InUse ?? new HashSet<string>();
         Cache.Clear(keep);
     }
-
-    public static string CacheDir => Cache.Dir;
 
     public static int AheadSetting(int n) => Math.Clamp(n, 1, TogetherSession.MaxAhead);
 
@@ -1501,10 +1628,15 @@ public sealed class TogetherViewModel : Observable
     {
         if (_s == null) return;
         var settings = _main.Host.Settings;
-        _s.SetPrefs(AheadSetting(settings.TogetherAhead), AheadSetting(settings.TogetherHostAhead), settings.TogetherSendAsHost);
+        _s.SetPrefs(AheadSetting(settings.TogetherAhead), AheadSetting(settings.TogetherHostAhead), settings.TogetherSendAsHost && settings.TogetherP2P,
+            !settings.TogetherP2P);
         _fetcher?.Refresh();
         OnFiles();
+        foreach (var item in _items.Values) item.Refresh();
     }
+
+    // Songs can go from one computer to another in this room (P2P on here, and on the host).
+    public bool P2P => _s?.P2PAllowed ?? _main.Host.Settings.TogetherP2P;
 
     // App closing or profile going away: out of the room, no questions.
     public void Shutdown()
@@ -1528,6 +1660,29 @@ public sealed class TogetherViewModel : Observable
             bi.Freeze();
             var enc = new JpegBitmapEncoder { QualityLevel = 85 };
             enc.Frames.Add(BitmapFrame.Create(bi));
+            using var ms = new MemoryStream();
+            enc.Save(ms);
+            return ms.ToArray();
+        }
+        catch { return null; }
+    }
+
+    // A site's picture as a square cover (the middle of a 16:9 video thumbnail).
+    public static byte[]? SquareJpeg(byte[] data, int size)
+    {
+        try
+        {
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.OnLoad;
+            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+            bi.StreamSource = new MemoryStream(data);
+            bi.EndInit();
+            int side = Math.Min(bi.PixelWidth, bi.PixelHeight);
+            BitmapSource square = new CroppedBitmap(bi, new Int32Rect((bi.PixelWidth - side) / 2, (bi.PixelHeight - side) / 2, side, side));
+            if (side > size) square = new TransformedBitmap(square, new ScaleTransform(size / (double)side, size / (double)side));
+            var enc = new JpegBitmapEncoder { QualityLevel = 85 };
+            enc.Frames.Add(BitmapFrame.Create(square));
             using var ms = new MemoryStream();
             enc.Save(ms);
             return ms.ToArray();

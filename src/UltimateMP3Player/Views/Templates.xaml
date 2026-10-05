@@ -343,6 +343,123 @@
         </Border>
     </DataTemplate>
 
+    <!-- A song of the statistics page: how many plays, how long, when last. -->
+    <DataTemplate x:Key="StatsRowTemplate" DataType="{x:Type vm:TrackRow}">
+        <Border x:Name="Row" CornerRadius="8" Padding="8,5" Background="Transparent" Margin="0,0,0,1"
+                MouseRightButtonUp="Row_RightClick" PreviewMouseLeftButtonDown="Row_MouseDown" MouseMove="Row_MouseMove"
+                ToolTipService.InitialShowDelay="900" local:Marquee.Host="True">
+            <Border.InputBindings>
+                <MouseBinding Gesture="LeftDoubleClick" Command="{Binding PlayCommand}"/>
+            </Border.InputBindings>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40"/>
+                    <ColumnDefinition Width="2.6*"/>
+                    <ColumnDefinition Width="0.9*"/>
+                    <ColumnDefinition Width="0.9*"/>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="64"/>
+                    <ColumnDefinition Width="36"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid>
+                    <TextBlock x:Name="Num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Button x:Name="PlayBtn" Style="{StaticResource RowIconButton}" Content="&#xE768;" Command="{Binding PlayPauseCommand}"
+                            Foreground="{StaticResource TextBrush}" Visibility="Collapsed" ToolTip="{local:T Riproduci}" AutomationProperties.Name="{local:T 'Riproduci brano'}"/>
+                </Grid>
+
+                <Grid Grid.Column="1" Margin="4,0,12,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <ContentPresenter Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="Title" Text="{Binding Track.Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                                   local:Marquee.IsEnabled="True"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock x:Name="Plays" Grid.Column="2" Text="{Binding Track.PlaysText}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                <TextBlock Grid.Column="3" Text="{Binding Track.ListenedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                <TextBlock Grid.Column="4" Text="{Binding Track.LastPlayedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+
+                <Button x:Name="Heart" Grid.Column="5" Style="{StaticResource RowIconButton}" Content="&#xEB51;" Command="{Binding FavoriteCommand}"
+                        Visibility="Hidden" ToolTip="{local:T 'Aggiungi ai Preferiti'}"/>
+
+                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                <Button x:Name="More" Grid.Column="7" Style="{StaticResource RowIconButton}" Content="&#xE712;" Click="More_Click"
+                        Visibility="Hidden" ToolTip="{local:T 'Altre opzioni'}" AutomationProperties.Name="{local:T 'Altre opzioni'}"/>
+            </Grid>
+        </Border>
+        <DataTemplate.Triggers>
+            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                <Setter TargetName="Row" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                <Setter TargetName="PlayBtn" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="Num" Property="Visibility" Value="Hidden"/>
+                <Setter TargetName="Heart" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="More" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, FallbackValue=False}" Value="True">
+                <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Track.IsCurrent}" Value="True">
+                <Setter TargetName="Title" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                <Setter TargetName="Num" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Track.IsPlaying}" Value="True">
+                <Setter TargetName="PlayBtn" Property="Content" Value="&#xE769;"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T Pausa}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Track.Plays}" Value="0">
+                <Setter TargetName="Plays" Property="Foreground" Value="{StaticResource MutedBrush}"/>
+                <Setter TargetName="Plays" Property="FontWeight" Value="Normal"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
+                <Setter TargetName="PlayBtn" Property="Content" Value="&#xE710;"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T 'Aggiungi alla coda della stanza (anche doppio clic)'}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Track.IsFavorite}" Value="True">
+                <Setter TargetName="Heart" Property="Visibility" Value="Visible"/>
+                <Setter TargetName="Heart" Property="Content" Value="&#xEB52;"/>
+                <Setter TargetName="Heart" Property="Foreground" Value="{DynamicResource PinkBrush}"/>
+                <Setter TargetName="Heart" Property="ToolTip" Value="{local:T 'Togli dai Preferiti'}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <DataTemplate x:Key="StatsHeader">
+        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,0,18,8" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40"/>
+                    <ColumnDefinition Width="2.6*"/>
+                    <ColumnDefinition Width="0.9*"/>
+                    <ColumnDefinition Width="0.9*"/>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="64"/>
+                    <ColumnDefinition Width="36"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="#" Style="{StaticResource SmallCaps}" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Style="{StaticResource SmallCaps}" Margin="4,0,0,0"/>
+                <TextBlock Grid.Column="2" Text="{local:T ASCOLTI}" Style="{StaticResource SmallCaps}"/>
+                <TextBlock Grid.Column="3" Text="{local:T TEMPO}" Style="{StaticResource SmallCaps}"/>
+                <TextBlock Grid.Column="4" Text="{local:T 'ULTIMO ASCOLTO'}" Style="{StaticResource SmallCaps}"/>
+                <TextBlock Grid.Column="6" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource MutedBrush}"
+                           HorizontalAlignment="Right" Margin="0,0,12,0"/>
+            </Grid>
+        </Border>
+    </DataTemplate>
+
     <!-- ============================================================ cards -->
 
     <DataTemplate x:Key="TrackCard" DataType="{x:Type vm:TrackViewModel}">

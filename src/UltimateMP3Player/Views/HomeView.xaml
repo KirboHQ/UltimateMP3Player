@@ -20,7 +20,7 @@
                         <StackPanel Grid.Column="1" Margin="24,0,0,0">
                             <TextBlock Text="{local:T 'La tua musica, offline e senza pubblicità'}" FontSize="22" FontWeight="Bold"/>
                             <TextBlock Style="{StaticResource Hint}" FontSize="14" LineHeight="21" Margin="0,8,0,16"
-                                       Text="{local:T 'Incolla nella barra in alto il link di un brano o di una playlist (YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram e quasi ogni altro sito): viene scaricato e salvato qui. Puoi anche aggiungere la musica che hai già sul computer, o trascinare i file nella finestra.'}"/>
+                                       Text="{local:T 'Incolla nella barra in alto il link di un brano o di una playlist (YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram e quasi ogni altro sito): viene scaricato e salvato qui. Puoi anche aggiungere la musica che hai già sul computer, o trascinare i file nella finestra.'}"/>
                             <StackPanel Orientation="Horizontal">
                                 <Button Style="{StaticResource PrimaryButton}" Padding="18,10"
                                         Command="{Binding DataContext.PasteLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}">

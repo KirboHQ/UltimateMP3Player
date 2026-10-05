@@ -257,6 +257,40 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== listening statistics -->
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
+                        views:SettingsView.Keywords="{local:T 'statistiche ascolti ascoltati più meno tempo classifica pulizia elimina'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Statistiche di ascolto'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Quante volte e per quanto hai ascoltato ogni brano, solo per questo profilo: un ascolto conta dopo 30 secondi.'}"
+                                   Style="{StaticResource Hint}" Margin="0,-8,0,12"/>
+                        <TextBlock Text="{Binding StatsSummary}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+                        <ItemsControl ItemsSource="{Binding TopTracks}" Focusable="False" Margin="0,0,0,10">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:TrackViewModel}">
+                                    <DockPanel Margin="0,0,0,8">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding PlaysText}" FontSize="12.5" Foreground="{StaticResource MutedBrush}"
+                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        <ContentPresenter Width="38" Height="38" Content="{Binding}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                                        <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding OpenStatsCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE9D2;" Style="{StaticResource Glyph}"/>
+                                <TextBlock Text="{local:T 'Tutte le statistiche'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,12,0,0" Foreground="{StaticResource MutedBrush}"
+                                   Text="{local:T 'Per fare pulizia ordinale per i meno ascoltati: selezionali e premi Canc per eliminarli.'}"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== downloads -->
                 <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'download formato mp3 m4a opus flac qualità video cookie browser chrome firefox edge cartella musica'}">
                     <StackPanel>
@@ -357,6 +391,35 @@
                             <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,10,0,0" Foreground="{StaticResource MutedBrush}"
                                        Text="{local:T 'Spotify non permette di cercare senza un account: Deezer ha lo stesso catalogo, e l\'audio arriva da YouTube Music come per i link di Spotify.'}"/>
                         </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ==================================================== suggested songs -->
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'consigliati consigli simili radio coda automatica online scopri brani nuovi anticipo'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Brani consigliati'}" Style="{StaticResource CardTitle}"/>
+                        <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding RadioAfterSingle}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Fuori da una playlist, continua con brani simili'}"/>
+                                <TextBlock Style="{StaticResource Hint}"
+                                           Text="{local:T 'Un brano avviato dai download, dalla ricerca o da solo è seguito da brani simili trovati online (con la coda automatica accesa). Spento: lo seguono tutti i tuoi brani.'}"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <UniformGrid Columns="2">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="{local:T 'Da dove arrivano'}" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding RadioSourceChoices}" SelectedItem="{Binding RadioSource}"
+                                          AutomationProperties.Name="{local:T 'Da dove arrivano i brani consigliati'}"/>
+                            </StackPanel>
+                            <StackPanel Margin="8,0,0,0">
+                                <TextBlock Text="{local:T 'Preparati in anticipo'}" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding TogetherAheadChoices}" SelectedItem="{Binding RadioAhead}"
+                                          AutomationProperties.Name="{local:T 'Brani consigliati preparati in anticipo'}"/>
+                            </StackPanel>
+                        </UniformGrid>
+                        <TextBlock Text="{Binding RadioSourceHint}" Style="{StaticResource Hint}" FontSize="12" Margin="2,8,0,0"/>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,12,0,0" Foreground="{StaticResource MutedBrush}"
+                                   Text="{local:T 'Da qualsiasi brano: tasto destro → Riproduci brani simili. Si scaricano poco prima del loro turno, come in Ascolta insieme e nella stessa memoria, e non entrano nella libreria: per tenerne uno, tasto destro → Salva nella libreria.'}"/>
                     </StackPanel>
                 </Border>
 
@@ -604,29 +667,47 @@
                             <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
                                        Text="{local:T 'Quanti brani della coda scaricare prima che tocchi a loro, oltre a quello in riproduzione.'}"/>
                         </StackPanel>
-                        <TextBlock Text="{local:T 'Brani passati dall\'host (P2P)'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T 'Brani passati tra computer (P2P)'}" Style="{StaticResource FieldLabel}"/>
                         <StackPanel Margin="0,0,0,16">
-                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding TogetherSendAsHost}" Margin="0,0,0,12">
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding TogetherP2P}" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <TextBlock Text="{local:T 'Quando sei l\'host, invia tu i brani'}"/>
+                                    <TextBlock Text="{local:T 'Scambia i brani con gli altri'}"/>
                                     <TextBlock Style="{StaticResource Hint}"
-                                               Text="{local:T 'Chi ha acceso «Ricevi i brani dall\'host» li riceve da te invece di scaricarli da internet: conviene se hai una connessione veloce. Gli altri li scaricano come sempre.'}"/>
+                                               Text="{local:T 'Spento: questo computer non riceve brani da nessuno e non ne manda, nemmeno da host (e da host nessuno se li passa). Ognuno li prende dalla sua libreria, dalla memoria o dal link: chi non trova un brano non lo sente.'}"/>
                                 </StackPanel>
                             </CheckBox>
-                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding TogetherTakeFromHost}">
-                                <StackPanel>
-                                    <TextBlock Text="{local:T 'Ricevi i brani dall\'host'}"/>
-                                    <TextBlock Style="{StaticResource Hint}"
-                                               Text="{local:T 'Se l\'host li invia, quelli che prepara lui arrivano da lui; gli altri li scarichi tu e, se non si trovano, aspetti l\'host. Spento (o se l\'host non li invia): prima dal link, poi da chi nella stanza ce l\'ha.'}"/>
-                                </StackPanel>
-                            </CheckBox>
+                            <StackPanel IsEnabled="{Binding TogetherP2P}">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.45"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding TogetherSendAsHost}" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="{local:T 'Quando sei l\'host, invia tu i brani'}"/>
+                                        <TextBlock Style="{StaticResource Hint}"
+                                                   Text="{local:T 'Chi ha acceso «Ricevi i brani dall\'host» li riceve da te invece di scaricarli da internet: conviene se hai una connessione veloce. Gli altri li scaricano come sempre.'}"/>
+                                    </StackPanel>
+                                </CheckBox>
+                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding TogetherTakeFromHost}">
+                                    <StackPanel>
+                                        <TextBlock Text="{local:T 'Ricevi i brani dall\'host'}"/>
+                                        <TextBlock Style="{StaticResource Hint}"
+                                                   Text="{local:T 'Se l\'host li invia, quelli che prepara lui arrivano da lui; gli altri li scarichi tu e, se non si trovano, aspetti l\'host. Spento (o se l\'host non li invia): prima dal link, poi da chi nella stanza ce l\'ha.'}"/>
+                                    </StackPanel>
+                                </CheckBox>
+                            </StackPanel>
                         </StackPanel>
-                        <TextBlock Text="{local:T 'Brani delle stanze tenuti sul computer'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T 'Brani tenuti sul computer (stanze e consigliati)'}" Style="{StaticResource FieldLabel}"/>
                         <StackPanel Margin="0,0,0,16">
                             <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding TogetherCacheChoices}" SelectedItem="{Binding TogetherCacheSize}"
-                                      AutomationProperties.Name="{local:T 'Brani delle stanze tenuti sul computer'}"/>
+                                      AutomationProperties.Name="{local:T 'Brani tenuti sul computer (stanze e consigliati)'}"/>
                             <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
-                                       Text="{local:T 'I brani ascoltati nelle stanze che non sono nella tua libreria restano pronti per la prossima volta; oltre questo numero i più vecchi si cancellano. Salvandone uno nella libreria esce da qui.'}"/>
+                                       Text="{local:T 'I brani ascoltati nelle stanze o tra i consigliati che non sono nella tua libreria restano pronti per la prossima volta; oltre questo numero i più vecchi si cancellano (mai quelli ancora in coda). Salvandone uno nella libreria esce da qui.'}"/>
                             <TextBlock Text="{Binding TogetherCacheText}" Style="{StaticResource Hint}" Margin="0,4,0,10"/>
                             <WrapPanel>
                                 <Button Style="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ClearTogetherCacheCommand}">
@@ -703,7 +784,7 @@
 
                 <!-- ==================================================== help -->
                 <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
-                        views:SettingsView.Keywords="{local:T 'aiuto supporto segnala problema bug errore github issue idea suggerimento contatto'}">
+                        views:SettingsView.Keywords="{local:T 'aiuto supporto segnala problema bug errore github issue idea suggerimento contatto termini uso condizioni diritto autore copyright'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Aiuto e supporto'}" Style="{StaticResource CardTitle}"/>
                         <TextBlock Text="{local:T 'Qualcosa non va o ti manca una funzione? Scrivilo su GitHub: prima guarda se qualcuno l\'ha già segnalato.'}"
@@ -748,6 +829,8 @@
                         </WrapPanel>
                         <TextBlock Text="{local:T 'Si apre GitHub nel browser (serve un account gratuito). Versione dell\'app e di Windows sono già scritte nella segnalazione.'}"
                                    Style="{StaticResource Hint}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,16"/>
+                        <Button Style="{StaticResource LinkButton}" Content="{local:T 'Termini d\'uso'}" Command="{Binding ShowTermsCommand}" HorizontalAlignment="Left"/>
                     </StackPanel>
                 </Border>
             </views:MasonryPanel>

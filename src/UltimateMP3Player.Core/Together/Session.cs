@@ -103,7 +103,9 @@ public sealed class TogetherSession : IDisposable
     public int AheadOf(Member m) => Math.Clamp((m.Id == HostId ? m.HostAhead : m.Ahead) is > 0 and var n ? n : DefaultAhead, 1, MaxAhead);
 
     // The host sends the songs to whoever takes them from it first (both chose so).
-    public bool HostSendsFiles => Host is { SendsFiles: true, Away: false } && HostId != Me.Id;
+    public bool HostSendsFiles => Host is { SendsFiles: true, NoP2P: false, Away: false } && HostId != Me.Id;
+    // Songs go from one computer to another only through a host that allows it.
+    public bool P2PAllowed => !Me.NoP2P && Host is not { NoP2P: true };
 
     // ------------------------------------------------------------------ clock
 
@@ -547,6 +549,7 @@ public sealed class TogetherSession : IDisposable
         to.Ahead = Math.Clamp(from.Ahead, 0, MaxAhead);
         to.HostAhead = Math.Clamp(from.HostAhead, 0, MaxAhead);
         to.SendsFiles = from.SendsFiles;
+        to.NoP2P = from.NoP2P;
     }
 
     private bool ShouldTakeOver()
@@ -1024,7 +1027,7 @@ public sealed class TogetherSession : IDisposable
                 else HostLost(m.HostId, m.Flag, lost);
                 break;
             case "upload":
-                if (m.Id != null && _host != null) _ = SendTo(_host, m.Id, LocalFile?.Invoke(m.Id));
+                if (m.Id != null && _host != null) _ = SendTo(_host, m.Id, Me.NoP2P ? null : LocalFile?.Invoke(m.Id));
                 break;
             case "fileNone":
                 if (m.Id != null) FileUnavailable?.Invoke(m.Id);
@@ -1163,19 +1166,21 @@ public sealed class TogetherSession : IDisposable
     public void KickMember(string id) => Do(new Msg { T = "kick", Id = id });
     public void Promote(string id) => Do(new Msg { T = "promote", Id = id });
 
-    // Songs to get ready and P2P as the host, changed in the settings while in the room: the others see it.
-    public void SetPrefs(int ahead, int hostAhead, bool sendsFiles)
+    // Songs to get ready and P2P, changed in the settings while in the room: the others see it.
+    public void SetPrefs(int ahead, int hostAhead, bool sendsFiles, bool noP2P)
     {
         Me.Ahead = Math.Clamp(ahead, 1, MaxAhead);
         Me.HostAhead = Math.Clamp(hostAhead, 1, MaxAhead);
         Me.SendsFiles = sendsFiles;
+        Me.NoP2P = noP2P;
         if (Status != RoomStatus.Connected) return;
         if (HostId == Me.Id)
         {
             if (MeInRoom is { } me) CopyPrefs(Me, me);
+            if (noP2P) DropTransfers();
             BroadcastMembers();
         }
-        else _host?.Send(new Msg { T = "prefs", Me = new Member { Id = Me.Id, Ahead = Me.Ahead, HostAhead = Me.HostAhead, SendsFiles = sendsFiles } });
+        else _host?.Send(new Msg { T = "prefs", Me = new Member { Id = Me.Id, Ahead = Me.Ahead, HostAhead = Me.HostAhead, SendsFiles = sendsFiles, NoP2P = noP2P } });
     }
 
     private void Do(Msg m)
@@ -1229,7 +1234,8 @@ public sealed class TogetherSession : IDisposable
     // A song this computer can't download: someone in the room sends it (through the host).
     public void RequestFile(string itemId)
     {
-        if (HostId == Me.Id && Status == RoomStatus.Connected) ServeFile(Me.Id, itemId);
+        if (!P2PAllowed) FileUnavailable?.Invoke(itemId);
+        else if (HostId == Me.Id && Status == RoomStatus.Connected) ServeFile(Me.Id, itemId);
         else if (_host != null) _host.Send(new Msg { T = "fileReq", Id = itemId });
         else FileUnavailable?.Invoke(itemId);
     }
@@ -1238,6 +1244,12 @@ public sealed class TogetherSession : IDisposable
     {
         Connection? c = null;
         if (to != Me.Id && !_peers.TryGetValue(to, out c)) return;
+        // A host without P2P passes nothing on; who turned it off gets nothing.
+        if (Me.NoP2P || Members.FirstOrDefault(x => x.Id == to) is { NoP2P: true })
+        {
+            NoFile(to, itemId);
+            return;
+        }
         var local = to == Me.Id ? null : LocalFile?.Invoke(itemId);
         if (local != null && File.Exists(local))
         {
@@ -1264,9 +1276,10 @@ public sealed class TogetherSession : IDisposable
     private Connection? Holder(string itemId, string except)
     {
         var item = Find(itemId);
-        var ids = Members.Where(x => x.Id != except && x.Id != Me.Id && !x.Away && StatusOf(x.Id, itemId)?.State == FileState.Ready)
+        var ids = Members.Where(x => x.Id != except && x.Id != Me.Id && !x.Away && !x.NoP2P && StatusOf(x.Id, itemId)?.State == FileState.Ready)
             .OrderBy(x => x.Id == item?.AddedBy ? 0 : 1).Select(x => x.Id).ToList();
-        if (item != null && item.AddedBy != except && item.AddedBy != Me.Id && !ids.Contains(item.AddedBy)) ids.Add(item.AddedBy);
+        if (item != null && item.AddedBy != except && item.AddedBy != Me.Id && !ids.Contains(item.AddedBy) &&
+            Members.FirstOrDefault(x => x.Id == item.AddedBy) is not { NoP2P: true }) ids.Add(item.AddedBy);
         foreach (var id in ids)
             if (_peers.TryGetValue(id, out var c)) return c;
         return null;
@@ -1321,6 +1334,12 @@ public sealed class TogetherSession : IDisposable
             foreach (var to in list) NoFile(to, itemId);
     }
 
+    // The host turned P2P off: whoever was waiting for a song from someone hears it won't come.
+    private void DropTransfers()
+    {
+        foreach (var itemId in _waiting.Keys.ToList()) FailUpload(itemId);
+    }
+
     private static async Task SendFile(Connection c, string itemId, string? path)
     {
         try
@@ -1363,7 +1382,7 @@ public sealed class TogetherSession : IDisposable
         {
             if (m.T == "fileStart")
             {
-                if (m.Size <= 0 || m.Size > MaxFile) return;
+                if (m.Size <= 0 || m.Size > MaxFile || Me.NoP2P) return;
                 var ext = m.Text is { Length: > 1 and < 10 } e && e.StartsWith('.') && e.Skip(1).All(char.IsLetterOrDigit) ? e : ".bin";
                 var path = TempFile?.Invoke(id, ext) ?? System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ump-lt-" + id + ext);
                 try
@@ -1376,8 +1395,8 @@ public sealed class TogetherSession : IDisposable
             }
             if (!_incoming.Remove((c, id), out var inc))
             {
-                // "I don't have it after all" (nothing was sent).
-                if (!m.Flag) _post(() => OnFileFailed(id));
+                // "I don't have it after all" (nothing was sent), or a file this computer doesn't take (P2P off).
+                if (!m.Flag || Me.NoP2P) _post(() => OnFileFailed(id));
                 return;
             }
             try { inc.Stream.Dispose(); } catch { }

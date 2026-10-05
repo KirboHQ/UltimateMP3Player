@@ -64,6 +64,15 @@ public sealed class HistoryEntry
     public DateTime At { get; set; }
 }
 
+// How much a song has been listened to on this profile, like Spotify: a play counts after 30 seconds
+// (half the song when it's shorter than a minute), the time is the real time it played.
+public sealed class TrackStats
+{
+    public int Plays { get; set; }
+    public double Seconds { get; set; }
+    public DateTime? Last { get; set; }
+}
+
 public sealed class EqPreset
 {
     public string Name { get; set; } = "";
@@ -96,6 +105,8 @@ public sealed class QueueState
     public bool Cleared { get; set; }
     // Shuffle: this pass through the list in random order (the queue is dealt from it).
     public List<string> Round { get; set; } = new();
+    // The list is songs suggested online, it grows as they play.
+    public bool Radio { get; set; }
 
     public void Forget(ISet<string> ids)
     {
@@ -142,6 +153,11 @@ public sealed class ProfileData
     public List<Tag> Tags { get; set; } = new();
     // Song id → ids of its tags.
     public Dictionary<string, List<string>> TrackTags { get; set; } = new();
+    // Song id → how much it was listened to, counted since StatsSince.
+    public Dictionary<string, TrackStats> Stats { get; set; } = new();
+    public DateTime? StatsSince { get; set; }
+    // Suggested songs (not in the library) the saved queue refers to.
+    public List<RadioSong> Radio { get; set; } = new();
 }
 
 // One profile's playlists, history and preferences.
@@ -171,6 +187,16 @@ public sealed class Profile
             Data.Playlists.Insert(0, new Playlist { Id = Playlist.FavoritesId, Name = "Preferiti" });
         if (Data.Eq.Gains.Length != Equalizer.BandCount) Data.Eq.Gains = new double[Equalizer.BandCount];
         DropUnknownTags();
+        SeedStats();
+    }
+
+    // Before 3.3 only the recent history existed: its plays are where the statistics start from.
+    private void SeedStats()
+    {
+        if (Data.StatsSince != null) return;
+        foreach (var g in Data.History.GroupBy(h => h.TrackId))
+            Data.Stats[g.Key] = new TrackStats { Plays = g.Count(), Last = g.Max(h => h.At) };
+        Data.StatsSince = Data.History.Count > 0 ? Data.History.Min(h => h.At) : DateTime.Now;
     }
 
     // References to tags that no longer exist (e.g. a file edited by hand).
@@ -347,7 +373,11 @@ public sealed class Profile
             touched = Data.Playlists.Where(p => p.Tracks.Any(set.Contains)).ToList();
             foreach (var p in touched) p.Tracks.RemoveAll(set.Contains);
             Data.History.RemoveAll(h => set.Contains(h.TrackId));
-            foreach (var id in set) Data.TrackTags.Remove(id);
+            foreach (var id in set)
+            {
+                Data.TrackTags.Remove(id);
+                Data.Stats.Remove(id);
+            }
             Data.Queue?.Forget(set);
             if (Data.LastTrack != null && set.Contains(Data.LastTrack)) Data.LastTrack = null;
         }
@@ -470,6 +500,29 @@ public sealed class Profile
         {
             Data.History.Add(new HistoryEntry { TrackId = trackId, At = DateTime.Now });
             if (Data.History.Count > 500) Data.History.RemoveRange(0, Data.History.Count - 500);
+        }
+        Save();
+    }
+
+    public TrackStats? StatsOf(string trackId)
+    {
+        lock (_lock) return Data.Stats.TryGetValue(trackId, out var s) ? s : null;
+    }
+
+    public Dictionary<string, TrackStats> StatsSnapshot()
+    {
+        lock (_lock) return Data.Stats.ToDictionary(kv => kv.Key, kv => kv.Value);
+    }
+
+    // Time listened to a song, and a play when it just counted.
+    public void AddListening(string trackId, double seconds, bool play)
+    {
+        lock (_lock)
+        {
+            if (!Data.Stats.TryGetValue(trackId, out var s)) Data.Stats[trackId] = s = new TrackStats();
+            s.Seconds += seconds;
+            if (play) s.Plays++;
+            s.Last = DateTime.Now;
         }
         Save();
     }

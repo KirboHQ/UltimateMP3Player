@@ -19,6 +19,7 @@
         <DataTemplate DataType="{x:Type vm:SettingsViewModel}"><views:SettingsView/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:DjViewModel}"><views:DjView/></DataTemplate>
         <DataTemplate DataType="{x:Type vm:TogetherViewModel}"><views:TogetherView/></DataTemplate>
+        <DataTemplate DataType="{x:Type vm:StatsViewModel}"><views:StatsView/></DataTemplate>
 
         <!-- the speed in the player bar ("1×"): a small outlined pill, coloured when it isn't the normal speed -->
         <Style x:Key="SpeedToggle" TargetType="ToggleButton">
@@ -373,6 +374,12 @@
                     <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Current.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
                         <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" local:Marquee.IsEnabled="True"/>
+                        <!-- a suggested song still downloading (it starts by itself), or more of them on their way -->
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Visibility="{Binding IsWaiting, Converter={StaticResource BoolVis}}">
+                            <Ellipse Style="{StaticResource Spinner}" Width="12" Height="12" StrokeThickness="1.5"/>
+                            <TextBlock Text="{Binding WaitText}" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" Margin="7,0,0,0" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
                         <!-- in a room: which one (green dot), a click opens it -->
                         <Button Style="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="0,3,0,0" FontSize="11.5" Command="{Binding OpenRoomCommand}"
                                 Visibility="{Binding InRoom, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Sei in una stanza di Ascolta insieme: aprila'}">

@@ -28,6 +28,7 @@ public sealed class MainViewModel : Observable
         CleanProfile();
         SyncTags();
 
+        Radio = new RadioViewModel(this);
         Player = new PlayerViewModel(this, host.Audio, adopt);
         LibraryPage = new LibraryViewModel(this, unsorted: false);
         UnsortedPage = new LibraryViewModel(this, unsorted: true);
@@ -91,6 +92,7 @@ public sealed class MainViewModel : Observable
         host.Lyrics.TrackDone += OnLyricsDone;
         host.Lyrics.BatchDone += OnLyricsBatchDone;
         if (Player.Current is { } playing) host.Lyrics.Auto(playing.T, true);
+        Radio.Refresh();
     }
 
     private readonly Action<Track> _added, _changed, _removed;
@@ -101,6 +103,7 @@ public sealed class MainViewModel : Observable
     public AppHost Host { get; }
     public Profile Profile { get; }
     public Library Library => Host.Library;
+    public RadioViewModel Radio { get; }
     public PlayerViewModel Player { get; }
     public HomeViewModel Home { get; }
     public LibraryViewModel LibraryPage { get; }
@@ -114,6 +117,15 @@ public sealed class MainViewModel : Observable
     public DjViewModel Dj => _dj ??= new DjViewModel(this);
     private TogetherViewModel? _together;
     public TogetherViewModel Together => _together ??= new TogetherViewModel(this);
+    private StatsViewModel? _stats;
+    public StatsViewModel Stats => _stats ??= new StatsViewModel(this);
+
+    // Opened from the settings, always up to date.
+    public void OpenStats()
+    {
+        Stats.Rebuild();
+        Navigate(Stats);
+    }
 
     // In a room of "Listen together": the play buttons of the lists become "+" (add to the room).
     public bool InRoom => _together?.InRoom == true;
@@ -197,6 +209,7 @@ public sealed class MainViewModel : Observable
     {
         _together?.Shutdown();
         Player.Detach();
+        Radio.Detach();
         Downloads.Detach();
         _dj?.Detach();
         _refreshTimer.Stop();
@@ -222,6 +235,8 @@ public sealed class MainViewModel : Observable
                 if (Library.Get(id) == null) gone.Add(id);
         foreach (var h in Profile.Data.History.ToList())
             if (Library.Get(h.TrackId) == null) gone.Add(h.TrackId);
+        foreach (var id in Profile.StatsSnapshot().Keys)
+            if (Library.Get(id) == null) gone.Add(id);
         if (gone.Count > 0) Profile.ForgetTracks(gone);
     }
 
@@ -257,7 +272,8 @@ public sealed class MainViewModel : Observable
         DownloadsPageViewModel => "downloads",
         DjViewModel => "dj",
         TogetherViewModel => "together",
-        SettingsViewModel => "settings",
+        // Reached from the settings.
+        SettingsViewModel or StatsViewModel => "settings",
         NowPlayingViewModel => "nowplaying",
         SearchViewModel => "search",
         _ => "",
@@ -469,6 +485,7 @@ public sealed class MainViewModel : Observable
             LibraryPage.Rebuild();
             if (Page == Search) Search.Run(Search.Query);
             if (Page == Home) Home.Refresh();
+            if (Page == _stats) _stats!.Rebuild();
         }
         if (library || dirty.Count > 0)
         {
@@ -559,9 +576,14 @@ public sealed class MainViewModel : Observable
 
     // ------------------------------------------------------------------ track actions
 
-    // A song heard in a room that isn't in the library yet: saved there first, then used as asked.
+    // A song heard in a room or suggested online that isn't in the library yet: saved there first, then used as asked.
     private bool SaveRoomSong(TrackViewModel t, Playlist? p)
     {
+        if (Radio.Item(t.Id) is { } suggested)
+        {
+            _ = Radio.Save(suggested, p);
+            return true;
+        }
         if (_together == null || !_together.IsStandIn(t)) return false;
         if (_together.ItemFor(t) is { } item) _ = _together.Save(item, p);
         return true;
@@ -597,9 +619,14 @@ public sealed class MainViewModel : Observable
         Toast(L.F("Rimosso da «{0}»", PlaylistViewModel.DisplayName(p)));
     }
 
-    // Plays a song within "All songs" (downloads page).
+    // A song played outside a list (downloads page, search): songs like it follow, or all your songs (Settings).
     public void PlayInLibrary(TrackViewModel t)
     {
+        if (Player.RadioAfterSingle && !InRoom)
+        {
+            Player.PlayRadio(t, false);
+            return;
+        }
         if (!LibraryPage.PlayOrder.Contains(t)) LibraryPage.Rebuild();
         Player.PlayFrom(LibraryPage, t);
     }
@@ -802,6 +829,7 @@ public sealed class MainViewModel : Observable
         yield return UnsortedPage.TagFilter;
         foreach (var p in _tagPages.Values) yield return p.TagFilter;
         if (Page is PlaylistPageViewModel pp) yield return pp.TagFilter;
+        if (_stats != null) yield return _stats.TagFilter;
     }
 
     // Lists that depend on tags follow the changes (without jumping back to the top when nothing is filtered).

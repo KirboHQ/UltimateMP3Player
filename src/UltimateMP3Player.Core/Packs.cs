@@ -833,14 +833,14 @@ public static class PackImporter
         if (changed) lib.Changed(t);
     }
 
-    // How a song of the pack is downloaded again: Spotify and Deezer songs are searched on YouTube Music like a normal
-    // download from those sites, the others come from their own link.
+    // How a song of the pack is downloaded again: Spotify, Deezer and Apple Music songs are searched on YouTube Music like
+    // a normal download from those sites, the others come from their own link.
     public static MediaItem ToMediaItem(PackTrack t)
     {
         var url = t.SourceUrl!;
         var spotify = t.Keys.FirstOrDefault(k => k.StartsWith("spotify:", StringComparison.OrdinalIgnoreCase))?["spotify:".Length..];
         var site = Sites.Find(url)?.Name;
-        bool search = spotify != null || site is "Spotify" or "Deezer";
+        bool search = spotify != null || site is "Spotify" or "Deezer" or "Apple Music";
         var item = new MediaItem
         {
             Title = t.Title,

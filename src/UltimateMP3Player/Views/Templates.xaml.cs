@@ -96,6 +96,8 @@ public static class Menus
         // A song of the room itself (the one playing, from the player bar; a song that isn't in the library).
         if (main.InRoom && main.Together.ItemFor(t) is { } roomItem && (owner == null || main.Together.IsStandIn(t)))
             return ForRoomItem(roomItem, main.Together);
+        // A suggested song that isn't in the library.
+        if (!main.InRoom && main.Radio.Item(t.Id) is { } suggested) return ForRadioItem(suggested, main, null);
         var menu = new ContextMenu();
         if (main.InRoom) AddRoomItems(menu, new[] { t });
         else
@@ -104,6 +106,7 @@ public static class Menus
             else if (main.Player.Current != t) menu.Items.Add(Item(L.T("Riproduci"), "", () => main.Player.PlaySingle(t.T)));
             menu.Items.Add(Item(L.T("Riproduci dopo"), "", () => main.Player.PlayNext(t)));
             menu.Items.Add(Item(L.T("Aggiungi alla coda"), "", () => main.Player.Enqueue(t)));
+            menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => main.Player.PlayRadio(t)));
         }
         menu.Items.Add(new Separator());
         menu.Items.Add(AddToPlaylist(t));
@@ -202,6 +205,54 @@ public static class Menus
         }
         if (item.Item.SourceUrl is { } url)
             menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Clipboard.SetText(url); main.Toast(L.T("Link copiato")); } catch { } }));
+        return menu;
+    }
+
+    private const string RadioGlyph = "";
+
+    // A suggested song that isn't in the library: its place in the queue (row) or skipping it (the one playing), keeping it,
+    // more songs like it.
+    public static ContextMenu ForRadioItem(RadioItemViewModel item, MainViewModel main, QueueRow? row)
+    {
+        var menu = new ContextMenu();
+        var player = main.Player;
+        var t = main.Vm(item.T);
+        menu.Items.Add(Item(item.FromText, RadioGlyph, () => { }, false));
+        menu.Items.Add(new Separator());
+        if (row != null)
+        {
+            int last = player.UpNext.LastOrDefault()?.Index ?? row.Index;
+            menu.Items.Add(Item(L.T("Riproduci ora"), "", () => _ = player.JumpTo(row.Index)));
+            menu.Items.Add(Item(L.T("Sposta in cima"), "", () => player.MoveUpcoming(row.Index, 0), row.Index > 0));
+            menu.Items.Add(Item(L.T("Sposta in fondo"), "", () => player.MoveUpcoming(row.Index, last), row.Index < last));
+            menu.Items.Add(Item(L.T("Togli dai successivi"), "", () => player.RemoveUpcoming(row.Index)));
+        }
+        else if (player.Current == t) menu.Items.Add(Item(L.T("Salta"), "", () => player.NextCommand.Execute(null)));
+        if (item.IsFailed) menu.Items.Add(Item(L.T("Riprova a scaricarlo"), "", () => main.Radio.Prepare(item.Id)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Salva nella libreria"), "", () => _ = main.Radio.Save(item, null), item.IsReady));
+        var sub = new SubmenuEntry { Header = L.T("Salva in una playlist"), IsEnabled = item.IsReady };
+        Ui.SetGlyph(sub, "");
+        sub.Items.Add(Item(L.T("Nuova playlist…"), "", () =>
+        {
+            var name = Dialogs.Prompt(L.T("Nuova playlist"), L.T("Nome della playlist"), main.NewPlaylistName());
+            if (!string.IsNullOrWhiteSpace(name)) _ = main.Radio.Save(item, main.Profile.CreatePlaylist(name));
+        }));
+        sub.Items.Add(new Separator());
+        foreach (var p in main.Playlists)
+        {
+            var pl = p.P;
+            sub.Items.Add(Item(Short(p.Name), p.IsFavorites ? "" : "", () => _ = main.Radio.Save(item, pl)));
+        }
+        menu.Items.Add(sub);
+        if (!item.IsReady)
+        {
+            sub.ToolTip = L.T("Si può salvare quando è stato scaricato");
+            ToolTipService.SetShowOnDisabled(sub, true);
+        }
+        menu.Items.Add(LyricsSubmenu(t));
+        menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => player.PlayRadio(t)));
+        menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Clipboard.SetText(item.Song.Url); main.Toast(L.T("Link copiato")); } catch { } }));
         return menu;
     }
 
@@ -494,12 +545,14 @@ public static class Menus
         var t = row.Track;
         var player = row.Player;
         if (player.InRoom && t.Main.Together.ItemFor(t) is { } roomItem) return ForRoomItem(roomItem, t.Main.Together);
+        if (row.Radio is { } suggested) return ForRadioItem(suggested, t.Main, row);
         int last = player.UpNext.LastOrDefault()?.Index ?? row.Index;
         var menu = new ContextMenu();
         menu.Items.Add(Item(L.T("Riproduci ora"), "", () => _ = player.JumpTo(row.Index)));
         menu.Items.Add(Item(L.T("Sposta in cima"), "", () => player.MoveUpcoming(row.Index, 0), row.Index > 0));
         menu.Items.Add(Item(L.T("Sposta in fondo"), "", () => player.MoveUpcoming(row.Index, last), row.Index < last));
         menu.Items.Add(Item(L.T("Togli dai successivi"), "", () => player.RemoveUpcoming(row.Index)));
+        menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => player.PlayRadio(t)));
         menu.Items.Add(new Separator());
         menu.Items.Add(AddToPlaylist(t));
         menu.Items.Add(FavoriteItem(t));

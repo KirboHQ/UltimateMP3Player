@@ -73,6 +73,22 @@ public sealed class AppHost : Observable
     public TrayIcon Tray { get; }
     public ICommand RestartToUpdateCommand { get; }
 
+    // Songs of the rooms and suggested songs that aren't in the library (the folder keeps its 3.0 name).
+    private Core.Together.TogetherCache? _songCache;
+    public Core.Together.TogetherCache SongCache => _songCache ??= new Core.Together.TogetherCache(Path.Combine(AppPaths.DataDir, "ascolta-insieme"));
+
+    // ------------------------------------------------------------------ terms of use
+
+    // Asked once per computer (again when they change): who doesn't accept, doesn't use the app.
+    public bool AcceptTerms()
+    {
+        if (Settings.TermsAccepted >= Dialogs.TermsVersion) return true;
+        if (!Dialogs.Terms(true)) return false;
+        Settings.TermsAccepted = Dialogs.TermsVersion;
+        Settings.Save();
+        return true;
+    }
+
     private MainViewModel? _session;
     public MainViewModel? Session { get => _session; private set => Set(ref _session, value); }
 
@@ -253,6 +269,7 @@ public sealed class AppHost : Observable
         if (Session?.InRoom == true) Session.Together.Shutdown();
         _exiting = true;
         Downloads.CancelAll();
+        Session?.Radio.Detach();
         Session?.Player.SaveState();
         Session?.Player.Pause();
         Settings.Save();
@@ -263,7 +280,7 @@ public sealed class AppHost : Observable
         Tray.Dispose();
         Media.Dispose();
         Audio.Dispose();
-        Window?.Close();
+        if (Window is { IsClosing: false } w) w.Close();
         Application.Current.Shutdown();
         return true;
     }

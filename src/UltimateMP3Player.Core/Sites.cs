@@ -10,6 +10,7 @@ public static class Sites
         new("YouTube Music", "#FF0033", new[] { "music.youtube.com" }, Music: true, Featured: true),
         new("YouTube", "#FF0033", new[] { "youtube.com", "youtu.be", "youtube-nocookie.com" }, Featured: true),
         new("Spotify", "#1DB954", new[] { "spotify.com", "spotify.link" }, Music: true, Featured: true),
+        new("Apple Music", "#FA2D48", new[] { "music.apple.com", "itunes.apple.com", "apple.co" }, Music: true, Featured: true),
         new("SoundCloud", "#FF5500", new[] { "soundcloud.com", "snd.sc" }, Music: true, Featured: true),
         new("TikTok", "#FE2C55", new[] { "tiktok.com" }, Featured: true),
         new("Instagram", "#E1306C", new[] { "instagram.com", "instagr.am" }, GalleryFirst: true, Featured: true),

@@ -718,7 +718,8 @@ public sealed class SettingsViewModel : Observable
     public void Refresh()
     {
         RefreshStartupChoices();
-        OnChanged(nameof(MusicDir), nameof(Themes), nameof(Artists), nameof(Language), nameof(TogetherCacheText), nameof(LyricsStats));
+        OnChanged(nameof(MusicDir), nameof(Themes), nameof(Artists), nameof(Language), nameof(TogetherCacheText), nameof(LyricsStats), nameof(StatsSummary),
+            nameof(TopTracks));
     }
 
     // ------------------------------------------------------------------ listen together
@@ -741,7 +742,7 @@ public sealed class SettingsViewModel : Observable
     {
         get
         {
-            var (count, bytes) = TogetherViewModel.CacheStats();
+            var (count, bytes) = _main.Host.SongCache.Stats();
             return count == 0 ? L.T("Ora è vuota.") : L.F("Ora: {0} · {1}.", L.Count(count, "1 brano", "{0} brani"), Text.Size(bytes));
         }
     }
@@ -750,10 +751,10 @@ public sealed class SettingsViewModel : Observable
     {
         _main.Together.ClearCache();
         OnChanged(nameof(TogetherCacheText));
-        _main.Toast(L.T("Memoria di Ascolta insieme svuotata"));
+        _main.Toast(L.T("Memoria dei brani svuotata (quelli in coda restano)"));
     });
 
-    public ICommand OpenTogetherCacheCommand => new RelayCommand(() => MainViewModel.OpenFolder(TogetherViewModel.CacheDir));
+    public ICommand OpenTogetherCacheCommand => new RelayCommand(() => MainViewModel.OpenFolder(_main.Host.SongCache.Dir));
 
     // Songs of the queue got ready ahead, as a guest and as the host.
     public List<Choice> TogetherAheadChoices { get; } =
@@ -780,6 +781,18 @@ public sealed class SettingsViewModel : Observable
             if (value == null) return;
             S.TogetherHostAhead = (int)value.Value!;
             OnTogetherPrefs();
+        }
+    }
+
+    // P2P at all: off, nothing goes between computers (the two choices below are greyed out).
+    public bool TogetherP2P
+    {
+        get => S.TogetherP2P;
+        set
+        {
+            S.TogetherP2P = value;
+            OnTogetherPrefs();
+            OnChanged();
         }
     }
 
@@ -813,6 +826,77 @@ public sealed class SettingsViewModel : Observable
     }
 
     public ICommand FirewallCommand => _main.Together.FirewallCommand;
+
+    // ------------------------------------------------------------------ suggested songs
+
+    public bool RadioAfterSingle
+    {
+        get => S.RadioAfterSingle;
+        set { S.RadioAfterSingle = value; Save(); OnChanged(); }
+    }
+
+    public List<Choice> RadioSourceChoices { get; } = new()
+    {
+        new(L.T("Automatica"), RadioSources.Auto, L.T("dal sito del brano")),
+        new(L.T("Un po' da tutti"), RadioSources.Mix, L.T("a turno")),
+        new("YouTube Music", OnlineSearchServices.YouTubeMusic),
+        new("SoundCloud", OnlineSearchServices.SoundCloud),
+        new("Deezer", OnlineSearchServices.Deezer),
+    };
+
+    public Choice RadioSource
+    {
+        get => RadioSourceChoices.FirstOrDefault(c => Equals(c.Value, S.RadioSource)) ?? RadioSourceChoices[0];
+        set
+        {
+            if (value == null) return;
+            S.RadioSource = (string)value.Value!;
+            Save();
+            OnChanged(nameof(RadioSourceHint));
+        }
+    }
+
+    public string RadioSourceHint => L.T(S.RadioSource switch
+    {
+        RadioSources.Mix => "YouTube Music, SoundCloud e Deezer a turno: più varietà.",
+        OnlineSearchServices.YouTubeMusic => "La radio del brano di YouTube Music: i più simili, con album e copertine.",
+        OnlineSearchServices.SoundCloud => "I brani che SoundCloud collega a questo: remix e artisti indipendenti.",
+        OnlineSearchServices.Deezer => "La radio dell'artista di Deezer; l'audio arriva da YouTube Music.",
+        _ => "I brani di SoundCloud da SoundCloud, tutti gli altri dalla radio di YouTube Music. Se un sito non trova niente si prova il successivo.",
+    });
+
+    public Choice RadioAhead
+    {
+        get => AheadChoice(S.RadioAhead);
+        set
+        {
+            if (value == null) return;
+            S.RadioAhead = (int)value.Value!;
+            Save();
+            _main.Radio.Refresh();
+        }
+    }
+
+    // ------------------------------------------------------------------ listening statistics
+
+    public string StatsSummary
+    {
+        get
+        {
+            var stats = _main.Profile.StatsSnapshot().Where(kv => _main.Library.Get(kv.Key) != null).Select(kv => kv.Value).ToList();
+            return stats.Count == 0 ? L.T("Nessun ascolto contato, per ora.")
+                : L.F("{0} di ascolto · {1} · {2}", StatsViewModel.TimeText(stats.Sum(s => s.Seconds)),
+                    L.Count(stats.Sum(s => s.Plays), "1 ascolto", "{0} ascolti"), L.Count(stats.Count(s => s.Plays > 0), "1 brano ascoltato", "{0} brani ascoltati"));
+        }
+    }
+
+    // The three most played, for a taste of it.
+    public List<TrackViewModel> TopTracks => _main.Profile.StatsSnapshot().Where(kv => kv.Value.Plays > 0).OrderByDescending(kv => kv.Value.Plays)
+        .ThenByDescending(kv => kv.Value.Seconds).Select(kv => _main.Library.Get(kv.Key)).OfType<Track>().Take(3).Select(_main.Vm).ToList();
+
+    public ICommand OpenStatsCommand => new RelayCommand(_main.OpenStats);
+
+    public ICommand ShowTermsCommand => new RelayCommand(() => Dialogs.Terms(false));
 }
 
 // Browsers installed here whose cookies yt-dlp can read.

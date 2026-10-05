@@ -277,6 +277,9 @@ public static class SongMeta
         return Text.Normalize(t);
     }
 
+    // The same song, whatever the site: first artist and clean title.
+    public static string Key(string? title, string? artist) => ArtistKey(artist) + "|" + MatchKey(title);
+
     public static string ArtistKey(string? artist)
     {
         if (string.IsNullOrWhiteSpace(artist)) return "";
@@ -290,6 +293,7 @@ public static class SourceKeys
 {
     private static readonly Regex YouTubeId = new(@"(?:[?&]v=|youtu\.be/|/shorts/|/embed/|/live/)([\w-]{11})(?![\w-])", RegexOptions.IgnoreCase);
     private static readonly Regex DeezerId = new(@"deezer\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?track/(\d+)", RegexOptions.IgnoreCase);
+    private static readonly Regex AppleId = new(@"apple\.com/(?:[a-z]{2}/)?(?:song/(?:[^/?#]+/)?(\d+)|album/[^?#]*[?&]i=(\d+))", RegexOptions.IgnoreCase);
 
     public static List<string> ForItem(MediaItem item)
     {
@@ -299,6 +303,7 @@ public static class SourceKeys
         {
             if (YouTubeId.Match(url!) is { Success: true } y) keys.Add("youtube:" + y.Groups[1].Value);
             else if (DeezerId.Match(url!) is { Success: true } d) keys.Add("deezer:" + d.Groups[1].Value);
+            else if (AppleId.Match(url!) is { Success: true } a) keys.Add("applemusic:" + (a.Groups[1].Success ? a.Groups[1] : a.Groups[2]).Value);
             else if (item.Source != SourceKind.Direct && UrlKey(url!) is { } u) keys.Add(u);
         }
         if (item.GalleryUrl != null && UrlKey(item.GalleryUrl) is { } g) keys.Add(g + "#" + item.GalleryIndex);

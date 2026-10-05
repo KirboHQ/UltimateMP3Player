@@ -56,6 +56,8 @@ public sealed class Member
     public int HostAhead { get; set; }
     // As the host, sends the songs to whoever asks first (P2P) instead of letting them download them.
     public bool SendsFiles { get; set; }
+    // P2P off: exchanges no songs with anyone (never asked to send one, never sent one, as the host passes none on).
+    public bool NoP2P { get; set; }
 
     public Member Clone() => (Member)MemberwiseClone();
 }

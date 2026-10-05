@@ -49,8 +49,8 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 Name: "it"; MessagesFile: "compiler:Languages\Italian.isl"
 
 [Messages]
-en.WelcomeLabel2=This will install [name/ver] on your computer.%n%nYour offline, ad-free music player: download songs and whole playlists from YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram and hundreds of other sites.%n%nNo administrator rights or other programs needed: everything is included.
-it.WelcomeLabel2=Verrà installato [name/ver] sul computer.%n%nIl tuo lettore musicale offline e senza pubblicità: scarica brani e playlist intere da YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram e centinaia di altri siti.%n%nNon servono diritti di amministratore né altri programmi: tutto il necessario è incluso.
+en.WelcomeLabel2=This will install [name/ver] on your computer.%n%nYour offline, ad-free music player: download songs and whole playlists from YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram and hundreds of other sites.%n%nNo administrator rights or other programs needed: everything is included.
+it.WelcomeLabel2=Verrà installato [name/ver] sul computer.%n%nIl tuo lettore musicale offline e senza pubblicità: scarica brani e playlist intere da YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram e centinaia di altri siti.%n%nNon servono diritti di amministratore né altri programmi: tutto il necessario è incluso.
 
 [CustomMessages]
 en.PackType=Ultimate MP3 Player pack

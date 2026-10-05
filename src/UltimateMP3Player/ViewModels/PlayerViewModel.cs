@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -6,16 +7,17 @@ using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.ViewModels;
 
-// A row of "next up": queued by hand or from the list.
+// A row of "next up": queued by hand or from the list; Radio = a suggested song (not in the library).
 public sealed class QueueRow
 {
-    public QueueRow(int index, TrackViewModel track, bool queued, string? header, PlayerViewModel player)
+    public QueueRow(int index, TrackViewModel track, bool queued, string? header, PlayerViewModel player, RadioItemViewModel? radio = null)
     {
         Index = index;
         Track = track;
         Queued = queued;
         Header = header;
         Player = player;
+        Radio = radio;
     }
 
     public int Index { get; }
@@ -23,6 +25,8 @@ public sealed class QueueRow
     public bool Queued { get; }
     public string? Header { get; }
     public PlayerViewModel Player { get; }
+    public RadioItemViewModel? Radio { get; }
+    public bool IsRadio => Radio != null;
 
     public ICommand PlayCommand => new RelayCommand(() => _ = Player.JumpTo(Index));
     public ICommand RemoveCommand => new RelayCommand(() => Player.RemoveUpcoming(Index));
@@ -83,6 +87,7 @@ public sealed class PlayerViewModel : Observable
 
         _timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(250) };
         _timer.Tick += (_, _) => Tick();
+        _listenTimer.Tick += (_, _) => CountListening();
         _audio.Ended += OnEnded;
         _audio.NearEnd += OnNearEnd;
         _audio.Failed += OnFailed;
@@ -108,23 +113,28 @@ public sealed class PlayerViewModel : Observable
         {
             if (UpNextVisible) RefreshUpNext();
             SaveState();
+            _main.Radio.Refresh();
         };
     }
+
+    // A song of the library, or a suggested one still in the queue.
+    private Track? TrackOf(string id) => _main.Library.Get(id) ?? _main.Radio.Track(id);
+    private bool Exists(string id) => TrackOf(id) != null;
 
     // Brings back the song, the list and "next up" of the last session.
     private void Restore(bool adopt)
     {
         var d = _main.Profile.Data;
         var lib = _main.Library;
-        if (d.Queue is { } q && q.Current != null && lib.Get(q.Current) != null)
-            _queue.Restore(q, id => lib.Get(id) != null);
+        if (d.Queue is { } q && q.Current != null && Exists(q.Current))
+            _queue.Restore(q, Exists);
         else if (d.LastTrack != null && lib.Get(d.LastTrack) is { } last)
         {
             // No saved queue yet: continue with the library.
             var ids = lib.Snapshot().OrderByDescending(t => t.Added).Select(t => t.Id).ToList();
             _queue.Play(ids, ids.IndexOf(last.Id), "library", "Tutti i brani");
         }
-        if (_queue.Current == null || lib.Get(_queue.Current) is not { } track) return;
+        if (_queue.Current == null || TrackOf(_queue.Current) is not { } track) return;
         Current = _main.Vm(track);
         Duration = track.Duration;
         if (adopt && _audio.HasSource && _audio.SourcePath == track.Path)
@@ -147,6 +157,8 @@ public sealed class PlayerViewModel : Observable
         double pos = 0;
         if (Current != null && Current.Id == _queue.Current) pos = _opened ? _audio.Position.TotalSeconds : _resumeAt;
         _main.Profile.Data.Queue = _queue.Save(pos);
+        _main.Radio.Save();
+        FlushListening();
         _main.Profile.Save();
     }
 
@@ -154,6 +166,9 @@ public sealed class PlayerViewModel : Observable
     {
         _timer.Stop();
         _speedTimer.Stop();
+        CountListening();
+        _listenTimer.Stop();
+        FlushListening();
         _audio.Ended -= OnEnded;
         _audio.NearEnd -= OnNearEnd;
         _audio.Failed -= OnFailed;
@@ -339,6 +354,7 @@ public sealed class PlayerViewModel : Observable
         "library" => L.T("Tutti i brani"),
         "unsorted" => L.T("Senza playlist"),
         { } id when id.StartsWith("playlist:") && _main.Profile.GetPlaylist(id[9..]) is { } p => PlaylistViewModel.DisplayName(p),
+        { } id when id.StartsWith("radio:") => L.F("Brani simili a «{0}»", _queue.ContextName),
         _ => _queue.ContextName,
     };
 
@@ -352,11 +368,13 @@ public sealed class PlayerViewModel : Observable
             OnChanged(nameof(PlayGlyph));
             Current?.RefreshPlaying();
             UpdateTimer();
+            UpdateListening();
             _main.Host.OnPlaybackChanged();
         }
     }
 
-    public string PlayGlyph => IsPlaying ? "" : "";
+    // A suggested song still downloading that will start by itself shows pause, like a song playing.
+    public string PlayGlyph => IsPlaying || _waiting != null && _waitPlay ? "" : "";
 
     private double _position;
     public double Position
@@ -534,6 +552,7 @@ public sealed class PlayerViewModel : Observable
         if (_queue.Current is { } id && _main.Library.Get(id) is { } t) _ = Load(t, true);
     }
 
+    // A song on its own (from a menu, a file opened): after it the suggested songs, or all your songs (Settings).
     public void PlaySingle(Track t)
     {
         if (_room != null)
@@ -541,8 +560,29 @@ public sealed class PlayerViewModel : Observable
             _room.Add(new[] { _main.Vm(t) });
             return;
         }
+        if (RadioAfterSingle)
+        {
+            PlayRadio(_main.Vm(t), false);
+            return;
+        }
         _queue.Play(new[] { t.Id }, 0, null, null);
         _ = Load(t, true);
+    }
+
+    // A song played outside a list is followed by songs like it found online (Settings), with the automatic queue on.
+    public bool RadioAfterSingle => _main.Host.Settings.RadioAfterSingle && AutoQueue;
+
+    // The song now (or on, if it's the one playing) and after it songs like it found online, more as they're heard.
+    public void PlayRadio(TrackViewModel seed, bool announce = true)
+    {
+        if (_room != null) return;
+        var t = seed.T;
+        var contextId = "radio:" + t.Id;
+        bool playing = Current?.Id == t.Id && (_opened || _waiting == t.Id);
+        _main.Radio.Begin(t, contextId);
+        _queue.Play(new[] { t.Id }, 0, contextId, t.Title, radio: true);
+        if (!playing) _ = Load(t, true);
+        if (announce) _main.Toast(L.F("Cerco brani simili a «{0}»…", t.Title));
     }
 
     public void Enqueue(TrackViewModel t, bool quiet = false)
@@ -579,6 +619,13 @@ public sealed class PlayerViewModel : Observable
     private void GenerateQueue()
     {
         if (Current == null) return;
+        // Suggested songs: the ones already found come back (an emptied queue), and more of them, from the last one.
+        if (_queue.Radio)
+        {
+            _queue.Generate();
+            _main.Toast(_main.Radio.More() ? L.T("Cerco altri brani simili…") : L.T("Sto già cercando altri brani simili…"));
+            return;
+        }
         var (added, regenerated) = _queue.Generate();
         _main.Toast(added == 0 ? L.T("Non ci sono altri brani da mettere in coda.")
             : regenerated ? L.T("Coda generata di nuovo da capo")
@@ -608,9 +655,20 @@ public sealed class PlayerViewModel : Observable
 
     private async Task Load(Track t, bool play, bool crossfade = false)
     {
+        if (_main.Radio.Has(t.Id) && _main.Radio.PathFor(t.Id) == null)
+        {
+            Wait(t, play);
+            return;
+        }
         int version = ++_loadVersion;
         double resume = Current?.Id == t.Id ? _resumeAt : 0;
         _resumeAt = 0;
+        CountListening();
+        NewListen();
+        bool wasWaiting = IsWaiting;
+        _waiting = null;
+        _waitMore = false;
+        if (wasWaiting) OnWaitChanged();
         SetCurrent(_main.Vm(t));
         _opened = false;
         try
@@ -629,7 +687,7 @@ public sealed class PlayerViewModel : Observable
             {
                 if (!_audio.IsPlaying) _audio.Play();
                 IsPlaying = _audio.IsPlaying;
-                _main.Profile.AddHistory(t.Id);
+                if (_main.Library.Get(t.Id) != null) _main.Profile.AddHistory(t.Id);
                 _main.OnPlayed();
             }
             else
@@ -661,6 +719,178 @@ public sealed class PlayerViewModel : Observable
         if (UpNextVisible) RefreshUpNext();
     }
 
+    // ------------------------------------------------------------------ suggested songs
+
+    // A suggested song still downloading is the song playing, silent: it starts by itself once it's here (unless paused
+    // meanwhile). At the end of the queue the next suggestions may still be on their way: the same, until they come.
+    private string? _waiting;
+    private bool _waitPlay, _waitMore;
+
+    public bool IsWaiting => _waiting != null || _waitMore;
+    public string? WaitText => _waitMore ? L.T("Cerco altri brani simili…")
+        : _waiting is not { } id ? null
+        : _main.Radio.Item(id) is { IsBusy: true } item ? L.F("Lo sto scaricando · {0:0}%", item.Pct)
+        : L.T("In arrivo…");
+
+    private void OnWaitChanged() => OnChanged(nameof(IsWaiting), nameof(WaitText), nameof(PlayGlyph));
+
+    private void Wait(Track t, bool play)
+    {
+        _loadVersion++;
+        CountListening();
+        NewListen();
+        double resume = Current?.Id == t.Id ? _resumeAt : 0;
+        _audio.Pause();
+        _audio.Close();
+        _opened = false;
+        SetCurrent(_main.Vm(t));
+        _resumeAt = resume;
+        Position = resume;
+        _waiting = t.Id;
+        _waitPlay = play;
+        _waitMore = false;
+        IsPlaying = false;
+        OnWaitChanged();
+        _main.Radio.Prepare(t.Id);
+        _main.Host.OnTrackChanged();
+    }
+
+    internal void OnRadioReady(string id)
+    {
+        if (_waiting == id && TrackOf(id) is { } t) _ = Load(t, _waitPlay);
+    }
+
+    internal void OnRadioProgress(string id)
+    {
+        if (_waiting == id) OnWaitChanged();
+    }
+
+    // The song waited for can't be downloaded: on to the next one.
+    internal void OnRadioFailed(string id)
+    {
+        if (_waiting != id) return;
+        _waiting = null;
+        OnWaitChanged();
+        _main.Toast(L.F("Non si riesce a scaricare «{0}»: passo al successivo.", Current?.Title));
+        _queue.Forget(id);
+        _ = Next(false);
+    }
+
+    internal void OnRadioBusy() => OnChanged(nameof(QueueEndHint), nameof(GenerateHint));
+
+    // Suggestions arrived for this list. None new (offline, nothing found): all your songs follow.
+    internal void ExtendRadio(string contextId, List<string> ids, bool first)
+    {
+        if (_room != null || _queue.ContextId != contextId || !_queue.Radio) return;
+        int before = _queue.Context.Count;
+        if (ids.Count > 0) _queue.Extend(ids);
+        if (_queue.Context.Count == before && (first || _queue.UpcomingCount == 0))
+        {
+            if (first) _main.Toast(L.T("Nessun brano simile trovato online: dopo questo continuano tutti i tuoi brani."));
+            _queue.UseFallback();
+        }
+        if (!_waitMore) return;
+        _waitMore = false;
+        OnWaitChanged();
+        _ = Next(true);
+    }
+
+    // A suggested song saved to the library: it keeps its place in the queue, and plays on if it's playing.
+    internal void ReplaceRadio(string oldId, Track saved)
+    {
+        if (Current?.Id == oldId)
+        {
+            Current = _main.Vm(saved);
+            _main.Profile.Data.LastTrack = saved.Id;
+            _main.OnCurrentChanged();
+            _main.Host.OnTrackChanged();
+        }
+        _queue.Replace(oldId, saved.Id);
+    }
+
+    // The song playing and the next ones: the suggested ones among them get ready.
+    internal List<string> Window(int ahead)
+    {
+        var list = new List<string>();
+        if (_queue.Current is { } c) list.Add(c);
+        list.AddRange(_queue.Upcoming(ahead).Select(e => e.Id));
+        return list;
+    }
+
+    internal HashSet<string> Referenced() => _queue.Referenced();
+
+    // A list of suggestions with few songs left to come: the list (more are asked for).
+    internal string? RadioRunningLow(int low) => _room == null && _queue.Radio && !_queue.Cleared && _queue.PlanCount < low ? _queue.ContextId : null;
+
+    // More suggestions start from the newest one.
+    internal RadioSeed? RadioSeed() => _queue.Radio && _queue.Context.LastOrDefault() is { } last && TrackOf(last) is { } t ? RadioViewModel.SeedOf(t) : null;
+
+    // ------------------------------------------------------------------ listening statistics
+
+    // The real time each song of the library is heard (in a room too, once its file is here); a play counts after
+    // 30 seconds, or half of a song shorter than a minute. Saved now and then, at every play and at a pause.
+    private readonly DispatcherTimer _listenTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private readonly Stopwatch _listenClock = new();
+    private string? _listenId;
+    private double _listenPending, _listenHeard;
+    private bool _listenCounted;
+
+    private void UpdateListening()
+    {
+        if (IsPlaying && !_listenTimer.IsEnabled)
+        {
+            _listenClock.Restart();
+            _listenTimer.Start();
+        }
+        else if (!IsPlaying && _listenTimer.IsEnabled)
+        {
+            CountListening();
+            _listenTimer.Stop();
+            FlushListening();
+        }
+    }
+
+    // The song starts (again): what follows is a new play.
+    private void NewListen()
+    {
+        FlushListening();
+        _listenId = null;
+    }
+
+    private void CountListening()
+    {
+        if (!_listenTimer.IsEnabled) return;
+        double dt = _listenClock.Elapsed.TotalSeconds;
+        _listenClock.Restart();
+        if (HeardId() is not { } id || dt > 5) return;
+        if (id != _listenId)
+        {
+            FlushListening();
+            _listenId = id;
+            _listenHeard = 0;
+            _listenCounted = false;
+        }
+        _listenPending += dt;
+        _listenHeard += dt;
+        if (!_listenCounted && _listenHeard >= (Duration is > 0 and < 60 ? Duration / 2 : 30))
+        {
+            _listenCounted = true;
+            _main.Profile.AddListening(id, _listenPending, true);
+            _listenPending = 0;
+        }
+        else if (_listenPending >= 60) FlushListening();
+    }
+
+    private void FlushListening()
+    {
+        if (_listenId != null && _listenPending > 0) _main.Profile.AddListening(_listenId, _listenPending, false);
+        _listenPending = 0;
+    }
+
+    // The library song sounding here right now.
+    private string? HeardId()
+        => Current is { } c && _opened && (_room == null || _roomLoaded == _room.Session?.Current?.Id) && _main.Library.Get(c.Id) != null ? c.Id : null;
+
     public void PlayPause()
     {
         if (_room != null)
@@ -671,6 +901,13 @@ public sealed class PlayerViewModel : Observable
         if (Current == null)
         {
             if (_main.Library.Count > 0) PlayAll(_main.LibraryPage, Shuffle);
+            return;
+        }
+        // Still downloading: whether it starts by itself once it's here.
+        if (_waiting != null)
+        {
+            _waitPlay = !_waitPlay;
+            OnWaitChanged();
             return;
         }
         if (IsPlaying)
@@ -701,7 +938,7 @@ public sealed class PlayerViewModel : Observable
         else if (IsPlaying) PlayPause();
     }
 
-    // First song whose file still exists.
+    // First song whose file still exists (a suggested song may still be on its way: it's waited for).
     private Track? NextPlayable(Func<string?> next)
     {
         for (int guard = 0; guard < 50; guard++)
@@ -709,6 +946,7 @@ public sealed class PlayerViewModel : Observable
             var id = next();
             if (id == null) return null;
             if (_main.Library.Get(id) is { } t && File.Exists(t.Path)) return t;
+            if (_main.Radio.Track(id) is { } s && !_main.Radio.IsFailed(id)) return s;
             _queue.Forget(id);
         }
         return null;
@@ -726,6 +964,13 @@ public sealed class PlayerViewModel : Observable
         {
             _audio.Pause();
             IsPlaying = false;
+            // The next suggestions are still on their way: the first one starts when they come.
+            if (_queue.Radio && _main.Radio.Busy)
+            {
+                _waitMore = true;
+                OnWaitChanged();
+                return;
+            }
             Seek(0);
             if (!auto && Current != null) _main.Toast(L.T("Nessun altro brano in coda."));
             return;
@@ -752,7 +997,7 @@ public sealed class PlayerViewModel : Observable
             Seek(0);
             return;
         }
-        if (_main.Library.Get(id) is { } t) await Load(t, true);
+        if (TrackOf(id) is { } t) await Load(t, true);
     }
 
     private void OnEnded()
@@ -761,17 +1006,20 @@ public sealed class PlayerViewModel : Observable
         if (_room != null) return;
         if (Repeat == RepeatMode.One && Current != null)
         {
+            CountListening();
+            NewListen();
             Seek(0);
-            _main.Profile.AddHistory(Current.Id);
+            if (_main.Library.Get(Current.Id) != null) _main.Profile.AddHistory(Current.Id);
             return;
         }
         _ = Next(true);
     }
 
-    // Crossfade: next song starts while this one fades.
+    // Crossfade: next song starts while this one fades (a suggested one still downloading waits for the end).
     private void OnNearEnd()
     {
         if (_room != null || !IsPlaying || Repeat == RepeatMode.One || _audio.CrossfadeSeconds <= 0) return;
+        if (_queue.PeekNext() is { } next && _main.Radio.Has(next) && _main.Radio.PathFor(next) == null) return;
         var t = NextPlayable(() => _queue.Next(true));
         if (t != null) _ = Load(t, true, crossfade: true);
     }
@@ -887,10 +1135,14 @@ public sealed class PlayerViewModel : Observable
     {
         if (_room != null) return;
         SaveState();
+        CountListening();
+        NewListen();
         _loadVersion++;
         _audio.Pause();
         _audio.Close();
         _opened = false;
+        _waiting = null;
+        _waitMore = false;
         _room = room;
         _roomLoaded = null;
         ApplyCrossfade();
@@ -904,12 +1156,16 @@ public sealed class PlayerViewModel : Observable
         Duration = 0;
         IsPlaying = false;
         OnRoomChanged();
+        OnWaitChanged();
         _main.OnCurrentChanged();
+        _main.Radio.Refresh();
     }
 
     public void LeaveRoom()
     {
         if (_room == null) return;
+        CountListening();
+        NewListen();
         _room = null;
         _roomLoaded = null;
         _loadVersion++;
@@ -927,6 +1183,7 @@ public sealed class PlayerViewModel : Observable
         Restore(false);
         OnRoomChanged();
         _main.OnCurrentChanged();
+        _main.Radio.Refresh();
     }
 
     private void OnRoomChanged()
@@ -978,6 +1235,8 @@ public sealed class PlayerViewModel : Observable
     // False when the file couldn't be opened.
     internal async Task<bool> RoomLoad(string itemId, TrackViewModel vm, string path)
     {
+        CountListening();
+        NewListen();
         int version = ++_loadVersion;
         _roomLoaded = itemId;
         _opened = false;
@@ -1055,16 +1314,16 @@ public sealed class PlayerViewModel : Observable
         }
         foreach (var e in _queue.Upcoming(150))
         {
-            if (_main.Library.Get(e.Id) is { } t)
+            if (TrackOf(e.Id) is { } t)
             {
                 string? header = null;
                 if (e.Queued && !queuedHeader) { header = L.T("In coda"); queuedHeader = true; }
                 else if (!e.Queued && !planHeader)
                 {
-                    header = ContextName != null ? L.F("Successivi da «{0}»", ContextName) : L.T("Successivi");
+                    header = _queue.Radio ? ContextName : ContextName != null ? L.F("Successivi da «{0}»", ContextName) : L.T("Successivi");
                     planHeader = true;
                 }
-                rows.Add(new QueueRow(index, _main.Vm(t), e.Queued, header, this));
+                rows.Add(new QueueRow(index, _main.Vm(t), e.Queued, header, this, _main.Radio.Item(e.Id)));
             }
             index++;
         }
@@ -1093,6 +1352,7 @@ public sealed class PlayerViewModel : Observable
     {
         get
         {
+            if (_queue.Radio) return _main.Radio.Busy ? L.T("Cerco altri brani simili…") : L.T("Altri brani simili, trovati online");
             var name = _queue.CanGenerate ? ContextName : L.T("Tutti i brani");
             if (name == null) return Shuffle ? L.T("In ordine casuale") : "";
             return Shuffle ? L.F("Da «{0}», in ordine casuale", name) : L.F("Da «{0}»", name);
@@ -1104,6 +1364,8 @@ public sealed class PlayerViewModel : Observable
         ? _room.CanAdd ? L.T("Aggiungi brani alla stanza con il tasto + dalle tue playlist.") : L.T("Aspetta che qualcuno aggiunga un brano alla stanza.")
         : Current == null
         ? L.T("Avvia un brano: quelli dopo di lui compariranno qui.")
+        : _queue.Radio && Repeat != RepeatMode.One && !_queue.Cleared
+        ? _main.Radio.Busy ? L.T("Cerco brani simili online…") : L.T("Finiti questi, ne arrivano altri simili.")
         : AutoQueue && Repeat != RepeatMode.One ? L.T("Coda automatica attiva: si riempie da sola alla fine del brano.")
         : L.T(Repeat switch
         {
