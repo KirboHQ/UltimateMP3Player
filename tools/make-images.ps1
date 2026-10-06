@@ -1,7 +1,7 @@
-# Renders src\UltimateMP3Player\Logo.xaml into app.ico, pack.ico (icon of the .ump files), assets\logo.png and the
-# installer wizard images.
-# Run: powershell -Sta -File .\tools\make-images.ps1            (-PackOnly: only pack.ico)
-param([switch]$PackOnly)
+# Renders src\UltimateMP3Player\Logo.xaml into app.ico, pack.ico (icon of the .ump files), assets\logo.png, the
+# installer wizard images and the macOS icons (app.icns, pack.icns in src\UltimateMP3Player.Avalonia\Assets).
+# Run: powershell -Sta -File .\tools\make-images.ps1            (-PackOnly: only pack.ico, -MacOnly: only the .icns)
+param([switch]$PackOnly, [switch]$MacOnly)
 Add-Type -AssemblyName PresentationCore, PresentationFramework, WindowsBase
 $root = Split-Path $PSScriptRoot -Parent
 $imgDir = Join-Path $root 'installer\images'
@@ -58,6 +58,36 @@ function Ico($drawing, [double]$margin, [string]$path) {
     foreach ($p in $pngs) { $bw.Write($p) }
     $bw.Flush()
     [IO.File]::WriteAllBytes($path, $ico.ToArray())
+}
+
+# A macOS .icns: PNG entries, sizes and lengths big-endian.
+function Icns($drawing, [double]$margin, [string]$path) {
+    $entries = @(('icp4', 16), ('icp5', 32), ('ic11', 32), ('ic12', 64), ('ic07', 128), ('ic13', 256), ('ic08', 256), ('ic14', 512), ('ic09', 512), ('ic10', 1024))
+    $body = New-Object IO.MemoryStream
+    foreach ($e in $entries) {
+        $png = Png (Logo $e[1] $margin $drawing)
+        $body.Write([Text.Encoding]::ASCII.GetBytes($e[0]), 0, 4)
+        $len = [BitConverter]::GetBytes([UInt32]($png.Length + 8)); [Array]::Reverse($len)
+        $body.Write($len, 0, 4)
+        $body.Write($png, 0, $png.Length)
+    }
+    $out = New-Object IO.MemoryStream
+    $out.Write([Text.Encoding]::ASCII.GetBytes('icns'), 0, 4)
+    $len = [BitConverter]::GetBytes([UInt32]($body.Length + 8)); [Array]::Reverse($len)
+    $out.Write($len, 0, 4)
+    $body.WriteTo($out)
+    [IO.File]::WriteAllBytes($path, $out.ToArray())
+}
+
+# ---- macOS: the app sits on the same grid as the system's icons (about a tenth of room around it)
+$macAssets = Join-Path $root 'src\UltimateMP3Player.Avalonia\Assets'
+if (-not $PackOnly) {
+    Icns $logo 0.1 (Join-Path $macAssets 'app.icns')
+    Icns $packIcon 0.06 (Join-Path $macAssets 'pack.icns')
+}
+if ($MacOnly) {
+    Get-Item (Join-Path $macAssets 'app.icns'), (Join-Path $macAssets 'pack.icns') | Select-Object Name, Length
+    return
 }
 
 # ---- pack.ico (.ump files)

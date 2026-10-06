@@ -5,6 +5,19 @@ public static partial class L
     private static readonly Dictionary<string, string> En = new()
     {
         ["(mio)"] = "(mine)",
+        ["Nessuna risposta: la stanza potrebbe essere chiusa, oppure il firewall blocca la connessione."] =
+            "No answer: the room may be closed, or the firewall is blocking the connection.",
+        ["Se gli altri non riescono a entrare nella tua stanza (o tu nella loro), di solito è il firewall: consenti l'app (serve la password dell'amministratore)."] =
+            "If others can't join your room (or you theirs), it's usually the firewall: allow the app (needs the administrator's password).",
+        ["Fatto: il firewall ora lascia entrare le connessioni degli altri su ogni rete."] = "Done: the firewall now lets other people's connections in on every network.",
+        ["Si apre GitHub nel browser (serve un account gratuito). Versione dell'app e del sistema sono già scritte nella segnalazione."] =
+            "GitHub opens in your browser (a free account is needed). The app and system versions are already filled in.",
+        ["Download di {0}"] = "Downloading {0}",
+        ["La stessa musica, nello stesso momento, per tutti nella stanza, con la chat. Funziona sulla stessa rete (Wi-Fi o cavo); da lontano entrate tutti nella stessa rete virtuale (per esempio ZeroTier o Tailscale)."] =
+            "The same music, at the same moment, for everyone in the room, with chat. Works on the same network (Wi-Fi or cable); from far away, all join the same virtual network (for example ZeroTier or Tailscale).",
+        ["Se il sistema chiede se l'app può usare la rete, consenti l'accesso. Se gli altri non riescono a entrare, usa il pulsante qui accanto."] =
+            "If the system asks whether the app may use the network, allow it. If others can't get in, use the button next to this.",
+        ["Estrazione di {0}"] = "Extracting {0}",
         ["{0} alla volta"] = "{0} at a time",
         ["{0} brani"] = "{0} songs",
         ["{0} brani aggiornati"] = "{0} songs updated",
@@ -1335,7 +1348,7 @@ public static partial class L
         ["{0} brani su {1}"] = "{0} songs of {1}",
         ["di ascolto"] = "listened",
         ["ascoltati"] = "played",
-        ["solo per questo profilo; un ascolto conta dopo 30 secondi."] = "for this profile only; a play counts after 30 seconds.",
+        ["solo per questo profilo."] = "for this profile only.",
         ["Seleziona l'unico mai ascoltato"] = "Select the only one never played",
         ["Seleziona i {0} mai ascoltati"] = "Select the {0} never played",
         ["Poi Canc per eliminarli, o tasto destro per le altre azioni"] = "Then press Delete to delete them, or right-click for the other actions",
@@ -1344,8 +1357,8 @@ public static partial class L
         ["{0} di ascolto · {1} · {2}"] = "{0} listened · {1} · {2}",
         ["1 brano ascoltato"] = "1 song played",
         ["{0} brani ascoltati"] = "{0} songs played",
-        ["Quante volte e per quanto hai ascoltato ogni brano, solo per questo profilo: un ascolto conta dopo 30 secondi."] =
-            "How many times and how long you've listened to each song, for this profile only: a play counts after 30 seconds.",
+        ["Quante volte e per quanto hai ascoltato ogni brano, solo per questo profilo."] =
+            "How many times and how long you've listened to each song, for this profile only.",
         ["Per fare pulizia ordinale per i meno ascoltati: selezionali e premi Canc per eliminarli."] =
             "To clean up, sort them by least played: select them and press Delete to delete them.",
         ["statistiche ascolti ascoltati più meno tempo classifica pulizia elimina"] = "statistics plays played most least time chart top clean up delete",

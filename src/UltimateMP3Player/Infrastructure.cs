@@ -25,6 +25,16 @@ public sealed class T : MarkupExtension
     public override object ProvideValue(IServiceProvider serviceProvider) => L.T(Text);
 }
 
+// {local:HoverBrushBinding}: the templated control's Ui.HoverBrush, for the hover triggers of the button templates. Built
+// from the property itself: the same {Binding (local:Ui.HoverBrush)} written in XAML is resolved through the XAML
+// namespaces of the window, which the dialogs built in code don't have (it failed there, and the button lost its background).
+[MarkupExtensionReturnType(typeof(Binding))]
+public sealed class HoverBrushBinding : MarkupExtension
+{
+    public override object ProvideValue(IServiceProvider serviceProvider)
+        => new Binding { Path = new PropertyPath(Ui.HoverBrushProperty), RelativeSource = new RelativeSource(RelativeSourceMode.TemplatedParent) };
+}
+
 public abstract class Observable : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -248,6 +258,63 @@ public static class Ui
             if (d == ancestor) return true;
         return false;
     }
+
+    // ------------------------------------------------------------------ what the view models ask of the platform
+
+    public static Color ColorFrom(string hex)
+    {
+        try { return (Color)ColorConverter.ConvertFromString(hex); }
+        catch { return Colors.Gray; }
+    }
+
+    public static void CopyText(string text)
+    {
+        try { Clipboard.SetText(text); }
+        catch { }
+    }
+
+    public static Task<string?> ClipboardTextAsync()
+    {
+        try { return Task.FromResult(Clipboard.ContainsText() ? Clipboard.GetText() : null); }
+        catch { return Task.FromResult<string?>(null); }
+    }
+
+    // The "Tag" column of the song lists exists only once there are tags.
+    public static void SetTagColumn(bool on) => Application.Current.Resources["TagColumnWidth"] = new GridLength(on ? 1.3 : 0, GridUnitType.Star);
+
+    public static void OpenFolder(string dir)
+    {
+        try
+        {
+            Directory.CreateDirectory(dir);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true });
+        }
+        catch { }
+    }
+
+    public static void ShowInFolder(string file)
+    {
+        try { System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{file}\""); }
+        catch { }
+    }
+
+    // "Windows 11 (build 26200)", for the bug reports.
+    public static string SystemName
+    {
+        get
+        {
+            var os = Environment.OSVersion.Version;
+            string windows = os.Major == 10 && os.Build >= 22000 ? "Windows 11" : os.Major == 10 ? "Windows 10" : "Windows " + os;
+            return $"{windows} (build {os.Build})";
+        }
+    }
+}
+
+// Called once per frame while subscribed (the waveforms of the DJ).
+public static class FrameClock
+{
+    public static void Add(EventHandler handler) => CompositionTarget.Rendering += handler;
+    public static void Remove(EventHandler handler) => CompositionTarget.Rendering -= handler;
 }
 
 // Covers from disk at display size, cached while in use.
@@ -309,5 +376,70 @@ public static class Images
             Recent.Clear();
             Cache.Clear();
         }
+    }
+
+    // A picture in memory (a web thumbnail, a cover inside a pack, an avatar), width = 0: its own size.
+    public static BitmapSource? FromBytes(byte[]? data, int width)
+    {
+        if (data is not { Length: > 0 }) return null;
+        try
+        {
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.OnLoad;
+            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+            bi.StreamSource = new MemoryStream(data);
+            if (width > 0) bi.DecodePixelWidth = width;
+            bi.EndInit();
+            bi.Freeze();
+            return bi;
+        }
+        catch { return null; }
+    }
+
+    // A picture file as a JPEG this wide (covers sent to a room).
+    public static byte[]? Jpeg(string path, int size)
+    {
+        try
+        {
+            if (!File.Exists(path)) return null;
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.OnLoad;
+            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+            bi.UriSource = new Uri(path);
+            bi.DecodePixelWidth = size;
+            bi.EndInit();
+            bi.Freeze();
+            var enc = new JpegBitmapEncoder { QualityLevel = 85 };
+            enc.Frames.Add(BitmapFrame.Create(bi));
+            using var ms = new MemoryStream();
+            enc.Save(ms);
+            return ms.ToArray();
+        }
+        catch { return null; }
+    }
+
+    // A site's picture as a square cover (the middle of a 16:9 video thumbnail).
+    public static byte[]? SquareJpeg(byte[] data, int size)
+    {
+        try
+        {
+            var bi = new BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = BitmapCacheOption.OnLoad;
+            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+            bi.StreamSource = new MemoryStream(data);
+            bi.EndInit();
+            int side = Math.Min(bi.PixelWidth, bi.PixelHeight);
+            BitmapSource square = new CroppedBitmap(bi, new Int32Rect((bi.PixelWidth - side) / 2, (bi.PixelHeight - side) / 2, side, side));
+            if (side > size) square = new TransformedBitmap(square, new ScaleTransform(size / (double)side, size / (double)side));
+            var enc = new JpegBitmapEncoder { QualityLevel = 85 };
+            enc.Frames.Add(BitmapFrame.Create(square));
+            using var ms = new MemoryStream();
+            enc.Save(ms);
+            return ms.ToArray();
+        }
+        catch { return null; }
     }
 }

@@ -1,0 +1,445 @@
+<!-- The Windows app's Views\Templates.xaml for Avalonia: covers, song rows, cards. WPF's DataTriggers are classes on the row
+     (Classes.current="{Binding Track.IsCurrent}") and the styles inside it; the mouse actions are views:Click / views:Rows. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:UltimateMP3Player"
+                    xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+                    xmlns:views="clr-namespace:UltimateMP3Player.Views">
+
+    <local:BoolChoice x:Key="PlayOrAdd" True="{local:Icon E710}" False="{local:Icon E768}"/>
+
+    <!-- ============================================================ covers -->
+
+    <!-- Song cover, or a note on a gradient. -->
+    <DataTemplate x:Key="TrackCoverSmall">
+        <Panel>
+            <Border CornerRadius="5" Background="{StaticResource PlaceholderGradient}">
+                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="16" Foreground="{StaticResource MutedBrush}"/>
+            </Border>
+            <Border CornerRadius="5" IsVisible="{Binding Cover48, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Border.Background>
+                    <ImageBrush Source="{Binding Cover48}" Stretch="UniformToFill"/>
+                </Border.Background>
+            </Border>
+        </Panel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="TrackCoverMedium">
+        <Panel>
+            <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}">
+                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="44" Foreground="{StaticResource MutedBrush}"/>
+            </Border>
+            <Border CornerRadius="10" IsVisible="{Binding Cover160, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Border.Background>
+                    <ImageBrush Source="{Binding Cover160}" Stretch="UniformToFill"/>
+                </Border.Background>
+            </Border>
+        </Panel>
+    </DataTemplate>
+
+    <!-- Playlist cover: custom, favorites, mosaic or first cover. -->
+    <DataTemplate x:Key="PlaylistCover">
+        <Panel>
+            <Border CornerRadius="8" Background="{StaticResource PlaceholderGradient}" IsVisible="{Binding ShowPlaceholder}">
+                <Viewbox>
+                    <Border Width="100" Height="100" Padding="30">
+                        <Viewbox>
+                            <TextBlock Text="{local:Icon EC4F}" FontFamily="{StaticResource IconFont}" Foreground="{StaticResource MutedBrush}"/>
+                        </Viewbox>
+                    </Border>
+                </Viewbox>
+            </Border>
+            <Border CornerRadius="8" Background="{DynamicResource FavoritesGradient}" IsVisible="{Binding IsFavorites}">
+                <Viewbox>
+                    <Border Width="100" Height="100" Padding="30">
+                        <Viewbox>
+                            <TextBlock Text="{local:Icon EB52}" FontFamily="{StaticResource IconFontFilled}" Foreground="White"/>
+                        </Viewbox>
+                    </Border>
+                </Viewbox>
+            </Border>
+            <Border CornerRadius="8" ClipToBounds="True">
+                <Border.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!ShowMosaic"/>
+                        <Binding Path="FirstCover" Converter="{x:Static ObjectConverters.IsNotNull}"/>
+                    </MultiBinding>
+                </Border.IsVisible>
+                <ContentControl Content="{Binding FirstCover}" ContentTemplate="{StaticResource TrackCoverMedium}"/>
+            </Border>
+            <Border CornerRadius="8" ClipToBounds="True" IsVisible="{Binding ShowMosaic}">
+                <ItemsControl ItemsSource="{Binding CoverTracks}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="2" Columns="2"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Rectangle>
+                                <Rectangle.Fill>
+                                    <ImageBrush Source="{Binding Cover160}" Stretch="UniformToFill"/>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+            <Border CornerRadius="8" IsVisible="{Binding HasCustomCover}">
+                <Border.Background>
+                    <ImageBrush Source="{Binding CustomCover}" Stretch="UniformToFill"/>
+                </Border.Background>
+            </Border>
+        </Panel>
+    </DataTemplate>
+
+    <!-- ============================================================ track rows -->
+
+    <ControlTheme x:Key="RowIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="FontSize" Value="15"/>
+    </ControlTheme>
+
+    <!-- A tag like a Discord role: coloured dot and name; a click opens its page. -->
+    <DataTemplate x:Key="TagChip">
+        <Border CornerRadius="10" Padding="7,2,9,2" Margin="0,0,5,0" Background="{StaticResource Surface3Brush}" Cursor="Hand"
+                ToolTip.Tip="{local:T 'Apri il tag'}"
+                views:Click.Command="{Binding $parent[Window].DataContext.OpenTagCommand}">
+            <StackPanel Orientation="Horizontal">
+                <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding Name}" FontSize="11.5" Margin="5,0,0,1" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- A song with a tick box (tags on a playlist's songs). -->
+    <DataTemplate x:Key="SongChoiceTemplate">
+        <Border Classes="choice" Classes.off="{Binding !IsSelected}" CornerRadius="8" Padding="8,5">
+            <Border.Styles>
+                <Style Selector="Border.choice">
+                    <Setter Property="Background" Value="Transparent"/>
+                </Style>
+                <Style Selector="Border.choice:pointerover">
+                    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                </Style>
+                <Style Selector="Border.choice.off">
+                    <Setter Property="Opacity" Value="0.5"/>
+                </Style>
+            </Border.Styles>
+            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                <ContentControl Grid.Column="1" Width="36" Height="36" Margin="12,0,0,0" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
+                    <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                </StackPanel>
+                <TextBlock Grid.Column="3" Text="{Binding Track.TagsText}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" MaxWidth="160"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </DataTemplate>
+
+    <!-- A song of a .ump pack being imported: new, already in the library, to download, missing. -->
+    <DataTemplate x:Key="PackSongTemplate">
+        <Border Classes="pack" Classes.out="{Binding !IsIncluded}" CornerRadius="8" Padding="8,4" ToolTip.Tip="{Binding StateTip}">
+            <Border.Styles>
+                <Style Selector="Border.pack">
+                    <Setter Property="Background" Value="Transparent"/>
+                </Style>
+                <Style Selector="Border.pack:pointerover">
+                    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                </Style>
+                <Style Selector="Border.pack.out">
+                    <Setter Property="Opacity" Value="0.4"/>
+                </Style>
+            </Border.Styles>
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Panel Width="34" Height="34">
+                    <Border CornerRadius="5" Background="{StaticResource PlaceholderGradient}">
+                        <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="15" Foreground="{StaticResource MutedBrush}"/>
+                    </Border>
+                    <Border CornerRadius="5" IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Border.Background>
+                            <ImageBrush Source="{Binding Cover}" Stretch="UniformToFill"/>
+                        </Border.Background>
+                    </Border>
+                </Panel>
+                <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
+                    <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                </StackPanel>
+                <Border Grid.Column="2" CornerRadius="10" Padding="8,2,10,3" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse Width="7" Height="7" Fill="{Binding StateBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StateText}" FontSize="11.5" Margin="6,0,0,1" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </DataTemplate>
+
+
+
+    <DataTemplate x:Key="TrackRowTemplate">
+        <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Classes.playing="{Binding Track.IsPlaying}" Classes.fav="{Binding Track.IsFavorite}"
+                Classes.room="{Binding $parent[Window].DataContext.InRoom, FallbackValue=False}"
+                Classes.noadd="{Binding !$parent[Window].DataContext.CanAddToRoom, FallbackValue=False}"
+                CornerRadius="8" Padding="8,5" Margin="0,0,0,1"
+                views:Rows.Menu="track" views:Rows.Drag="True" views:Click.Double="{Binding PlayCommand}"
+                ToolTip.ShowDelay="900" local:Marquee.Host="True">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40"/>
+                    <ColumnDefinition Width="2.6*"/>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="64"/>
+                    <ColumnDefinition Width="36"/>
+                </Grid.ColumnDefinitions>
+
+                <Panel>
+                    <TextBlock Classes="num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <!-- play, or pause/resume on the song already playing; in a room "+" (into the room's queue) -->
+                    <Button Classes="play" Theme="{StaticResource RowIconButton}" Command="{Binding PlayPauseCommand}"
+                            Foreground="{StaticResource TextBrush}" ToolTip.ShowOnDisabled="True"/>
+                </Panel>
+
+                <Grid Grid.Column="1" Margin="4,0,12,0" ColumnDefinitions="40,*">
+                    <ContentControl Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <views:InlinePanel>
+                            <TextBlock Classes="title" Text="{Binding Track.Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                            <Border Margin="8,0,0,0" CornerRadius="4" Padding="5,0" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
+                                    IsVisible="{Binding Track.HasVideo}" ToolTip.Tip="{local:T 'Ha anche il video'}">
+                                <TextBlock Text="{local:Icon E714}" Classes="glyph" FontSize="11" Foreground="{StaticResource SubTextBrush}" Margin="0,2"/>
+                            </Border>
+                        </views:InlinePanel>
+                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                                   local:Marquee.IsEnabled="True"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Grid.Column="2" Text="{Binding Track.AlbumText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,12,0" local:Marquee.IsEnabled="True"/>
+
+                <!-- the chips get all the room they want inside the canvas, which clips them (soft right edge) -->
+                <Canvas Grid.Column="3" Height="22" Margin="0,0,10,0" ClipToBounds="True" VerticalAlignment="Center" Background="Transparent"
+                        ToolTip.Tip="{Binding Track.TagsText}" ToolTip.IsOpen="False" local:Ui.FadeRight="22">
+                    <ItemsControl ItemsSource="{Binding Track.Tags}" ItemTemplate="{StaticResource TagChip}" Focusable="False" Canvas.Top="1">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </Canvas>
+
+                <Button Classes="heart" Grid.Column="4" Theme="{StaticResource RowIconButton}" Command="{Binding FavoriteCommand}"/>
+
+                <TextBlock Grid.Column="5" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                <Button Classes="more" Grid.Column="6" Theme="{StaticResource RowIconButton}" Content="{local:Icon E712}"
+                        Command="{x:Static views:Menus.MoreCommand}" CommandParameter="{Binding $self}" ToolTip.Tip="{local:T 'Altre opzioni'}"/>
+            </Grid>
+        </Border>
+    </DataTemplate>
+
+    <!-- Column titles above a track list. -->
+    <DataTemplate x:Key="TrackHeader">
+        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,0,18,8" Margin="0,0,0,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40"/>
+                    <ColumnDefinition Width="2.6*"/>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="64"/>
+                    <ColumnDefinition Width="36"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="#" Classes="small-caps" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Classes="small-caps" Margin="4,0,0,0"/>
+                <TextBlock Grid.Column="2" Text="ALBUM" Classes="small-caps"/>
+                <TextBlock Grid.Column="3" Text="{local:T TAG}" Classes="small-caps"/>
+                <TextBlock Grid.Column="5" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{StaticResource MutedBrush}"
+                           HorizontalAlignment="Right" Margin="0,0,12,0"/>
+            </Grid>
+        </Border>
+    </DataTemplate>
+
+    <!-- A song of the statistics page: how many plays, how long, when last. -->
+    <DataTemplate x:Key="StatsRowTemplate">
+        <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Classes.playing="{Binding Track.IsPlaying}" Classes.fav="{Binding Track.IsFavorite}"
+                Classes.never="{Binding Track.Plays, Converter={StaticResource IsZero}}"
+                Classes.room="{Binding $parent[Window].DataContext.InRoom, FallbackValue=False}"
+                CornerRadius="8" Padding="8,5" Margin="0,0,0,1"
+                views:Rows.Menu="track" views:Rows.Drag="True" views:Click.Double="{Binding PlayCommand}"
+                ToolTip.ShowDelay="900" local:Marquee.Host="True">
+            <Grid ColumnDefinitions="40,2.6*,0.9*,0.9*,1*,36,64,36">
+                <Panel>
+                    <TextBlock Classes="num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Button Classes="play" Theme="{StaticResource RowIconButton}" Command="{Binding PlayPauseCommand}" Foreground="{StaticResource TextBrush}"/>
+                </Panel>
+
+                <Grid Grid.Column="1" Margin="4,0,12,0" ColumnDefinitions="40,*">
+                    <ContentControl Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Classes="title" Text="{Binding Track.Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                                   local:Marquee.IsEnabled="True"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Classes="plays" Grid.Column="2" Text="{Binding Track.PlaysText}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                <TextBlock Grid.Column="3" Text="{Binding Track.ListenedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                <TextBlock Grid.Column="4" Text="{Binding Track.LastPlayedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+
+                <Button Classes="heart" Grid.Column="5" Theme="{StaticResource RowIconButton}" Command="{Binding FavoriteCommand}"/>
+
+                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                <Button Classes="more" Grid.Column="7" Theme="{StaticResource RowIconButton}" Content="{local:Icon E712}"
+                        Command="{x:Static views:Menus.MoreCommand}" CommandParameter="{Binding $self}" ToolTip.Tip="{local:T 'Altre opzioni'}"/>
+            </Grid>
+        </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="StatsHeader">
+        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,0,18,8" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="40,2.6*,0.9*,0.9*,1*,36,64,36">
+                <TextBlock Text="#" Classes="small-caps" HorizontalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Classes="small-caps" Margin="4,0,0,0"/>
+                <TextBlock Grid.Column="2" Text="{local:T ASCOLTI}" Classes="small-caps"/>
+                <TextBlock Grid.Column="3" Text="{local:T TEMPO}" Classes="small-caps"/>
+                <TextBlock Grid.Column="4" Text="{local:T 'ULTIMO ASCOLTO'}" Classes="small-caps"/>
+                <TextBlock Grid.Column="6" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{StaticResource MutedBrush}"
+                           HorizontalAlignment="Right" Margin="0,0,12,0"/>
+            </Grid>
+        </Border>
+    </DataTemplate>
+
+    <!-- ============================================================ cards -->
+
+    <DataTemplate x:Key="TrackCard">
+        <Border Classes="card" Classes.current="{Binding IsCurrent}" Classes.playing="{Binding IsPlaying}"
+                Classes.room="{Binding $parent[Window].DataContext.InRoom, FallbackValue=False}"
+                CornerRadius="12" Padding="12" Cursor="Hand" local:Marquee.Host="True"
+                views:Rows.Menu="card" views:Click.Command="{Binding $parent[Window].DataContext.PlayTrackCommand}">
+            <Border.Styles>
+                <Style Selector="Border.card">
+                    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                </Style>
+                <Style Selector="Border.card:pointerover">
+                    <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+                </Style>
+                <Style Selector="Border.card:pointerover Border.disc, Border.card.playing Border.disc">
+                    <Setter Property="Opacity" Value="1"/>
+                </Style>
+                <Style Selector="Border.card.current TextBlock.title">
+                    <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                </Style>
+                <Style Selector="Border.card TextBlock.ico">
+                    <Setter Property="Text" Value="{local:Icon E768}"/>
+                </Style>
+                <Style Selector="Border.card.playing TextBlock.ico">
+                    <Setter Property="Text" Value="{local:Icon E769}"/>
+                </Style>
+                <Style Selector="Border.card.room TextBlock.ico">
+                    <Setter Property="Text" Value="{local:Icon E710}"/>
+                </Style>
+                <Style Selector="Border.card.room">
+                    <Setter Property="ToolTip.Tip" Value="{local:T 'Aggiungi alla coda della stanza'}"/>
+                </Style>
+            </Border.Styles>
+            <StackPanel>
+                <views:SquareBox>
+                    <Panel>
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TrackCoverMedium}"/>
+                        <Border Classes="disc" Width="44" Height="44" CornerRadius="22" Background="{DynamicResource AccentGradient}"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0">
+                            <TextBlock Classes="glyph ico" Foreground="{DynamicResource OnAccentBrush}" FontSize="17" HorizontalAlignment="Center"/>
+                        </Border>
+                    </Panel>
+                </views:SquareBox>
+                <TextBlock Classes="title" Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="PlaylistCard">
+        <Border Classes="card" CornerRadius="12" Padding="12" Cursor="Hand" local:Marquee.Host="True"
+                views:Rows.Menu="playlist" views:Click.Command="{Binding $parent[Window].DataContext.OpenPlaylistCommand}">
+            <Border.Styles>
+                <Style Selector="Border.card">
+                    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                </Style>
+                <Style Selector="Border.card:pointerover">
+                    <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+                </Style>
+                <Style Selector="Border.card:pointerover Button.disc">
+                    <Setter Property="Opacity" Value="1"/>
+                </Style>
+            </Border.Styles>
+            <StackPanel>
+                <views:SquareBox>
+                    <Panel>
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
+                        <Button Classes="disc" Theme="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="17"
+                                Content="{Binding $parent[Window].DataContext.InRoom, Converter={StaticResource PlayOrAdd}, FallbackValue={local:Icon E768}}"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
+                                Command="{Binding $parent[Window].DataContext.PlayPlaylistCommand}" CommandParameter="{Binding}" ToolTip.Tip="{local:T Riproduci}"/>
+                    </Panel>
+                </views:SquareBox>
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- The big play / shuffle buttons of a page: in a room they put the whole list in the room's queue. -->
+    <ControlTheme x:Key="HeaderPlayButton" TargetType="Button" BasedOn="{StaticResource BigPlayButton}">
+        <Setter Property="Content" Value="{Binding $parent[Window].DataContext.InRoom, Converter={StaticResource PlayOrAdd}, FallbackValue={local:Icon E768}}"/>
+        <Setter Property="ToolTip.Tip" Value="{local:T Riproduci}"/>
+        <Setter Property="ToolTip.ShowOnDisabled" Value="True"/>
+    </ControlTheme>
+
+    <ControlTheme x:Key="HeaderShuffleButton" TargetType="Button" BasedOn="{StaticResource BigPlayButton}">
+        <Setter Property="Width" Value="46"/>
+        <Setter Property="Height" Value="46"/>
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="Content" Value="{local:Icon E8B1}"/>
+        <Setter Property="ToolTip.Tip" Value="{local:T 'Riproduci in ordine casuale'}"/>
+    </ControlTheme>
+
+    <!-- "Tag" filter pill above a song list (only once there are tags); highlighted while it filters. -->
+    <ControlTheme x:Key="TagFilterButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="ToolTip.Tip" Value="{local:T 'Filtra per tag'}"/>
+        <Setter Property="IsVisible" Value="{Binding $parent[Window].DataContext.HasTags, FallbackValue=False}"/>
+        <Setter Property="Content" Value="{Binding TagFilter}"/>
+        <Setter Property="ContentTemplate">
+            <DataTemplate>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E71C}" Classes="glyph" FontSize="14"/>
+                    <TextBlock Text="{Binding Label}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </DataTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <ItemsPanelTemplate x:Key="CardGridTemplate">
+        <views:CardGrid/>
+    </ItemsPanelTemplate>
+</ResourceDictionary>

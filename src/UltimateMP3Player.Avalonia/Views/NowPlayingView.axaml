@@ -1,0 +1,341 @@
+<UserControl x:Class="UltimateMP3Player.Views.NowPlayingView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <UserControl.Resources>
+        <!-- Round icon button of the "next up" header. -->
+        <ControlTheme x:Key="QueueIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="2,0,0,0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Bd" Background="{TemplateBinding Background}" CornerRadius="16">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+        <!-- Frosted pill floating on the stage. -->
+        <ControlTheme x:Key="StagePill" TargetType="Button" BasedOn="{StaticResource PillButton}">
+            <Setter Property="Background" Value="#A6101318"/>
+            <Setter Property="BorderBrush" Value="#30FFFFFF"/>
+            <Setter Property="local:Ui.HoverBrush" Value="#E61D2129"/>
+            <Setter Property="Padding" Value="14,7,8,7"/>
+            <Setter Property="FontSize" Value="13"/>
+        </ControlTheme>
+        <!-- Small round play over a queue row's cover. -->
+        <ControlTheme x:Key="RowPlayButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#B8000000"/>
+            <Setter Property="local:Ui.HoverBrush" Value="#E6000000"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Bd" Background="{TemplateBinding Background}" CornerRadius="13">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Bd">
+                <Setter Property="Background" Value="{Binding $parent[Button].(local:Ui.HoverBrush)}"/>
+            </Style>
+        </ControlTheme>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <Style Selector="Panel.videoarea.lyrics">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <!-- a row of "next up": hover shows its play and remove buttons in place of the suggestion's state -->
+        <Style Selector="Border.qrow">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.qrow:pointerover">
+            <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
+        </Style>
+        <Style Selector="Border.qrow Button.rowplay, Border.qrow Button.rowremove">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.qrow:pointerover Button.rowplay, Border.qrow:pointerover Button.rowremove">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+        <Style Selector="Border.qrow:pointerover Panel.radiostate">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="Panel.radiostate TextBlock.ready, Panel.radiostate TextBlock.failed, Panel.radiostate Panel.busy">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="Panel.radiostate.ready TextBlock.ready, Panel.radiostate.failed TextBlock.failed, Panel.radiostate.busy Panel.busy">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="Panel.radiostate.ready TextBlock.online, Panel.radiostate.failed TextBlock.online, Panel.radiostate.busy TextBlock.online">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="*,Auto">
+
+        <!-- ======================================================== stage -->
+        <Panel x:Name="Stage" Margin="20,0,0,16" ClipToBounds="True">
+            <Border CornerRadius="16" Background="{StaticResource SurfaceBrush}"/>
+            <!-- backdrop: the cover, or the video itself blurred -->
+            <Border CornerRadius="16" Opacity="0.22" IsVisible="{Binding !IsVideo}">
+                <Border.Background>
+                    <ImageBrush Source="{Binding Player.Current.Cover160}" Stretch="UniformToFill"/>
+                </Border.Background>
+            </Border>
+            <!-- behind the lyrics: the cover's colours, blurred (baked in NowPlayingView.BakeCover) -->
+            <Border x:Name="LyricsGlow" CornerRadius="16" Opacity="0" IsVisible="{Binding LyricsOverCover}"/>
+            <Border x:Name="StageVideo" CornerRadius="16" ClipToBounds="True" Opacity="0.6" IsVisible="{Binding IsVideo}">
+                <Image x:Name="BackdropVideo" Margin="-80" Stretch="UniformToFill" Effect="blur(60)"/>
+            </Border>
+            <Border CornerRadius="16" IsVisible="{Binding !LyricsOverCover}">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Color="#550E1014" Offset="0"/>
+                        <GradientStop Color="#EE0E1014" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+            <!-- over the cover's colour the lyrics keep more of it; the bottom stays dark for the title -->
+            <Border CornerRadius="16" IsVisible="{Binding LyricsOverCover}">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Color="#1A0E1014" Offset="0"/>
+                        <GradientStop Color="#330E1014" Offset="0.55"/>
+                        <GradientStop Color="#D90E1014" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+            <!-- a moving video behind the lyrics: calmed down -->
+            <Border CornerRadius="16" Background="#590E1014" IsVisible="{Binding LyricsOverVideo}"/>
+
+            <Grid Margin="28" RowDefinitions="*,Auto">
+
+                <!-- cover, tilting in 3D with the mouse -->
+                <Panel x:Name="CoverArea" IsVisible="{Binding ShowCover}">
+                    <Viewbox MaxWidth="460" MaxHeight="460" Stretch="Uniform">
+                        <Panel Width="460" Height="460">
+                            <!-- shadow under the tilting cover -->
+                            <Border Width="330" Height="330" CornerRadius="30" Background="Black" Opacity="0.8" IsHitTestVisible="False"
+                                    RenderTransform="translateY(18px)" Effect="blur(70)"/>
+                            <Panel x:Name="Tilt" Width="400" Height="400" IsHitTestVisible="False" RenderTransformOrigin="50%,50%">
+                                <Image x:Name="CoverImage" Width="400" Height="400" Stretch="Fill" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                <views:CoverSheen x:Name="Sheen" Width="400" Height="400" Opacity="0"/>
+                            </Panel>
+                            <Border x:Name="CoverHit" Width="400" Height="400" Background="Transparent" Cursor="Hand"/>
+                        </Panel>
+                    </Viewbox>
+                </Panel>
+
+                <!-- video framed like a cover (the backdrop above is its blurred copy); under plain lyrics it's only the backdrop -->
+                <Panel x:Name="VideoArea" Classes="videoarea" Classes.lyrics="{Binding LyricsPage}" Background="Transparent" IsVisible="{Binding IsVideo}">
+                    <Panel x:Name="VideoFrame" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Border CornerRadius="14" Background="Black" BoxShadow="0 10 40 0 #99000000"/>
+                        <Border CornerRadius="14" ClipToBounds="True">
+                            <views:VideoView x:Name="Video"/>
+                        </Border>
+                        <!-- timed lyrics: the line being sung, as subtitles -->
+                        <views:LyricsCaptions x:Name="Captions" IsVisible="{Binding Subtitles}"/>
+                        <Border CornerRadius="14" BorderThickness="1" BorderBrush="#30FFFFFF" IsHitTestVisible="False"/>
+                    </Panel>
+                </Panel>
+
+                <!-- the lyrics in place of the cover (NowPlayingView.ShowLyricsText) -->
+                <Panel x:Name="LyricsHost" IsVisible="{Binding LyricsPage}" Margin="0,-8,0,0">
+                    <views:LyricsView x:Name="LyricsPane"/>
+                    <!-- scrolled away by hand: back to the line being sung -->
+                    <Button x:Name="FollowBtn" Theme="{StaticResource StagePill}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,6"
+                            IsVisible="False" Opacity="0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E720}" Classes="glyph" FontSize="13"/>
+                            <TextBlock Text="{local:T 'Torna alla riga cantata'}" Margin="9,0,6,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Panel>
+
+                <Grid Grid.Row="1" Margin="0,22,0,0" ColumnDefinitions="*,Auto">
+                    <StackPanel x:Name="TitleBlock" Background="Transparent" local:Marquee.Host="True">
+                        <TextBlock Text="{Binding Player.Current.Title}" FontSize="30" FontWeight="Bold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                        <TextBlock Text="{Binding Player.Current.Artist}" FontSize="17" Foreground="{StaticResource SubTextBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
+                                   local:Marquee.IsEnabled="True"/>
+                        <TextBlock FontSize="12.5" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0"
+                                   IsVisible="{Binding Player.ContextName, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Run Text="{local:T 'In riproduzione da:'}"/>
+                            <Run Text="{Binding Player.ContextName, Mode=OneWay}" Foreground="{StaticResource SubTextBrush}"/>
+                        </TextBlock>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0" IsVisible="{Binding Player.IsWaiting}">
+                            <Ellipse Classes="spinner" Width="14" Height="14" StrokeThickness="1.6"/>
+                            <TextBlock Text="{Binding Player.WaitText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                        <Button x:Name="MoreButton" Theme="{StaticResource ControlButton}" Content="{local:Icon E712}" ToolTip.Tip="{local:T 'Altre opzioni'}"
+                                IsVisible="{Binding Player.HasTrack}"/>
+                        <ToggleButton Theme="{StaticResource ToggleIcon}" Width="NaN" Height="36" IsChecked="{Binding ShowVideo}" Margin="6,0,0,0"
+                                      IsVisible="{Binding HasVideo}" ToolTip.Tip="{local:T 'Mostra il video al posto della copertina'}">
+                            <StackPanel Orientation="Horizontal" Margin="8,0">
+                                <TextBlock Text="{local:Icon E714}" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Video" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ToggleButton>
+                        <!-- only when the song has lyrics -->
+                        <ToggleButton Theme="{StaticResource ToggleIcon}" Width="NaN" Height="36" IsChecked="{Binding ShowLyrics}" Margin="6,0,0,0"
+                                      IsVisible="{Binding HasLyrics}" ToolTip.Tip="{local:T 'Mostra il testo al posto della copertina'}">
+                            <StackPanel Orientation="Horizontal" Margin="8,0">
+                                <TextBlock Text="{local:Icon E720}" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{local:T Testo}" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ToggleButton>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- brings back "next up" when it's folded away (NowPlayingView.PlaceQueue) -->
+            <Button x:Name="ShowQueueBtn" Theme="{StaticResource StagePill}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
+                    Command="{Binding ToggleQueueCommand}" IsVisible="False" Opacity="0" ToolTip.Tip="{local:T 'Mostra i successivi'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E8A0}" Classes="glyph" FontSize="13"/>
+                    <TextBlock Text="{local:T Successivi}" Margin="9,0,0,0" VerticalAlignment="Center"/>
+                    <Border CornerRadius="9" MinWidth="22" Height="18" Padding="6,0" Margin="8,0,0,0" Background="{DynamicResource AccentBrush}"
+                            IsVisible="{Binding Player.UpcomingBadge, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <TextBlock Text="{Binding Player.UpcomingBadge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </StackPanel>
+            </Button>
+        </Panel>
+
+        <!-- ======================================================== up next -->
+        <!-- the pane shrinks and the card slides out to the right when folded away -->
+        <Panel x:Name="QueuePane" Grid.Column="1" Width="350" ClipToBounds="True">
+            <Border x:Name="QueueCard" Width="320" HorizontalAlignment="Left" Margin="10,0,0,16" Theme="{StaticResource Card}" Padding="14">
+                <Grid RowDefinitions="Auto,*">
+                    <Grid Margin="6,2,0,10" ColumnDefinitions="*,Auto">
+                        <StackPanel>
+                            <TextBlock Text="{local:T Successivi}" FontSize="17" FontWeight="Bold"/>
+                            <TextBlock FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"
+                                       Text="{Binding Player.QueueHint}" IsVisible="{Binding Player.HasUpNext}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="8,-3,-4,0">
+                            <!-- your own queue only: in a room the queue is the room's -->
+                            <StackPanel Orientation="Horizontal" IsVisible="{Binding !Player.InRoom}">
+                                <Button Theme="{StaticResource QueueIconButton}" Content="{local:Icon E895}" Command="{Binding Player.GenerateQueueCommand}"
+                                        IsVisible="{Binding Player.HasTrack}">
+                                    <ToolTip.Tip>
+                                        <StackPanel MaxWidth="260">
+                                            <TextBlock Text="{local:T 'Completa la coda (se è già piena, la rigenera da capo)'}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Player.GenerateHint}" Foreground="{StaticResource SubTextBrush}" TextWrapping="Wrap"
+                                                       IsVisible="{Binding Player.GenerateHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                        </StackPanel>
+                                    </ToolTip.Tip>
+                                </Button>
+                                <Button Theme="{StaticResource QueueIconButton}" Content="{local:Icon E74D}" Command="{Binding Player.ClearQueueCommand}"
+                                        IsVisible="{Binding Player.HasUpNext}" ToolTip.Tip="{local:T 'Svuota la coda: finito questo brano, la musica si ferma'}"/>
+                            </StackPanel>
+                            <Button Theme="{StaticResource QueueIconButton}" Content="{local:Icon E89F}" Command="{Binding ToggleQueueCommand}"
+                                    ToolTip.Tip="{local:T 'Nascondi di lato'}"/>
+                        </StackPanel>
+                    </Grid>
+                    <!-- at most 150 rows: no virtualization, so scrolling and dragging stay exact -->
+                    <ListBox x:Name="QueueList" Grid.Row="1" Theme="{StaticResource PlainList}" ItemsSource="{Binding Player.UpNext}" DragDrop.AllowDrop="True">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel/>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <!-- the rows, then how many more don't fit -->
+                        <ListBox.Template>
+                            <ControlTemplate>
+                                <ScrollViewer Name="PART_ScrollViewer" Focusable="False" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                                        <TextBlock Text="{Binding Player.MoreText}" Classes="small-caps" HorizontalAlignment="Center" Margin="0,14,0,8"
+                                                   IsVisible="{Binding Player.MoreText, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </ControlTemplate>
+                        </ListBox.Template>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Header}" Classes="small-caps" Margin="8,10,0,6" TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding Header, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                    <Border Name="Row" Classes="qrow" CornerRadius="8" Padding="6" local:Marquee.Host="True"
+                                            views:Rows.Menu="queue" views:Click.Double="{Binding PlayCommand}">
+                                        <Grid ColumnDefinitions="40,*,Auto">
+                                            <ContentControl Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                                            <!-- small round play over the cover, so the cover stays visible -->
+                                            <Button Classes="rowplay" Theme="{StaticResource RowPlayButton}" Content="{local:Icon E768}"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                    Command="{Binding PlayCommand}" ToolTip.Tip="{local:T 'Riproduci ora'}"/>
+                                            <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
+                                                <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"
+                                                           local:Marquee.IsEnabled="True"/>
+                                            </StackPanel>
+                                            <!-- a suggested song: online, downloading, ready or not to be found (the remove button on hover) -->
+                                            <Panel Classes="radiostate" Classes.ready="{Binding Radio.IsReady, FallbackValue=False}"
+                                                   Classes.busy="{Binding Radio.IsBusy, FallbackValue=False}" Classes.failed="{Binding Radio.IsFailed, FallbackValue=False}"
+                                                   Grid.Column="2" Width="30" Height="30" Background="Transparent" ToolTip.Tip="{Binding Radio.StateTip, FallbackValue={x:Null}}"
+                                                   IsVisible="{Binding IsRadio}">
+                                                <TextBlock Classes="glyph online" Text="{local:Icon E753}" FontSize="13" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
+                                                <TextBlock Classes="glyph ready" Text="{local:Icon E73E}" FontSize="13" Foreground="{StaticResource SuccessBrush}" HorizontalAlignment="Center"/>
+                                                <TextBlock Classes="glyph failed" Text="{local:Icon E7BA}" FontSize="13" Foreground="{StaticResource WarningBrush}" HorizontalAlignment="Center"/>
+                                                <Panel Classes="busy">
+                                                    <Ellipse Classes="spinner" Width="26" Height="26" StrokeThickness="2"/>
+                                                    <TextBlock Text="{Binding Radio.PctText, FallbackValue={x:Null}}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Panel>
+                                            </Panel>
+                                            <Button Classes="rowremove" Grid.Column="2" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="11"
+                                                    Content="{local:Icon E711}" Command="{Binding RemoveCommand}" ToolTip.Tip="{local:T 'Togli dai successivi'}"/>
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <!-- empty queue: what happens next, and the way to fill it -->
+                    <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14,0,14,40" MaxWidth="250"
+                                IsVisible="{Binding Player.UpNextCount, Converter={StaticResource IsZero}}">
+                        <Panel Width="76" Height="76" HorizontalAlignment="Center">
+                            <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
+                            <Ellipse Stroke="{DynamicResource AccentGradient}" StrokeThickness="1.5" Opacity="0.7"/>
+                            <TextBlock Text="{local:Icon E90B}" FontFamily="{StaticResource IconFont}" FontSize="30" Foreground="{DynamicResource AccentTextBrush}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Panel>
+                        <TextBlock Text="{local:T 'La coda è vuota'}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                        <TextBlock Text="{Binding Player.QueueEndHint}" Classes="hint" TextAlignment="Center" Margin="0,6,0,0"/>
+                        <Button Theme="{StaticResource PrimaryButton}" Command="{Binding Player.GenerateQueueCommand}" HorizontalAlignment="Center" Margin="0,18,0,0"
+                                IsVisible="{Binding Player.CanGenerate}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E895}" Classes="glyph" FontSize="13"/>
+                                <TextBlock Text="{local:T 'Genera coda'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{Binding Player.GenerateHint}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"
+                                   TextAlignment="Center" TextWrapping="Wrap" Margin="0,8,0,0" IsVisible="{Binding Player.CanGenerate}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Panel>
+
+        <!-- floats left of the queue while dragging (over the stage, the layout doesn't move): drop a song on it to take it out -->
+        <Panel x:Name="TrashZone" Width="64" Height="64" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,16"
+               IsVisible="False" DragDrop.AllowDrop="True" RenderTransformOrigin="50%,50%">
+            <Ellipse x:Name="TrashRipple" Stroke="#E5484D" StrokeThickness="2" Opacity="0" IsHitTestVisible="False" RenderTransformOrigin="50%,50%"/>
+            <Border x:Name="TrashDisc" CornerRadius="32" BorderBrush="#E5484D" BorderThickness="2" Background="#F22A1216" BoxShadow="0 0 26 0 #99E5484D"/>
+            <TextBlock x:Name="TrashIcon" Text="{local:Icon E74D}" FontFamily="{StaticResource IconFont}" FontSize="24" Foreground="#FF7076"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" IsHitTestVisible="False"/>
+        </Panel>
+    </Grid>
+</UserControl>

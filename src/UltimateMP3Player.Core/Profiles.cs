@@ -64,8 +64,8 @@ public sealed class HistoryEntry
     public DateTime At { get; set; }
 }
 
-// How much a song has been listened to on this profile, like Spotify: a play counts after 30 seconds
-// (half the song when it's shorter than a minute), the time is the real time it played.
+// How much a song has been listened to on this profile: a play counts once three quarters of the song have been heard,
+// the time is the real time it played.
 public sealed class TrackStats
 {
     public int Plays { get; set; }
@@ -514,8 +514,8 @@ public sealed class Profile
         lock (_lock) return Data.Stats.ToDictionary(kv => kv.Key, kv => kv.Value);
     }
 
-    // Time listened to a song, and a play when it just counted.
-    public void AddListening(string trackId, double seconds, bool play)
+    // Time listened to a song, and a play when it just counted. save = false: the caller saves now and then.
+    public void AddListening(string trackId, double seconds, bool play, bool save = true)
     {
         lock (_lock)
         {
@@ -524,7 +524,7 @@ public sealed class Profile
             if (play) s.Plays++;
             s.Last = DateTime.Now;
         }
-        Save();
+        if (save) Save();
     }
 
     public List<string> RecentTracks(int count)

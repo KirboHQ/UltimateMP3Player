@@ -12,8 +12,10 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>3.3.0</Version>
+    <Version>3.4.0</Version>
     <Product>Ultimate MP3 Player</Product>
+    <!-- File description: the name Windows shows in the volume mixer and the Task Manager. -->
+    <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <SatelliteResourceLanguages>it</SatelliteResourceLanguages>

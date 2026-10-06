@@ -2,7 +2,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using Microsoft.Win32;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.Core.Together;
 using UltimateMP3Player.Services;
@@ -196,7 +195,7 @@ public sealed class SearchServiceOption : Observable
     public string Name { get; }
     public int Index { get; }
     public string Number => (Index + 1).ToString();
-    public System.Windows.Media.Brush Brush => Ui.BrushFrom(Sites.ColorFor(Name));
+    public Brush Brush => Ui.BrushFrom(Sites.ColorFor(Name));
     public string Description => L.T(Name switch
     {
         OnlineSearchServices.YouTubeMusic => "i brani ufficiali, con album e copertine",
@@ -490,8 +489,7 @@ public sealed class SettingsViewModel : Observable
 
     private void Browse()
     {
-        var dlg = new OpenFolderDialog { Title = L.T("Dove salvare la musica scaricata"), InitialDirectory = S.MusicDir };
-        if (dlg.ShowDialog() == true) MusicDir = dlg.FolderName;
+        if (Dialogs.PickFolder(L.T("Dove salvare la musica scaricata"), S.MusicDir) is { } dir) MusicDir = dir;
     }
 
     public List<Choice> AudioFormats { get; }
@@ -709,11 +707,7 @@ public sealed class SettingsViewModel : Observable
         "---", SystemLine());
 
     private static string SystemLine()
-    {
-        var os = Environment.OSVersion.Version;
-        string windows = os.Major == 10 && os.Build >= 22000 ? "Windows 11" : os.Major == 10 ? "Windows 10" : "Windows " + os;
-        return $"Ultimate MP3 Player {AppInfo.VersionText} · {windows} (build {os.Build}) · {(L.English ? "English" : "Italiano")}";
-    }
+        => $"Ultimate MP3 Player {AppInfo.VersionText} · {Ui.SystemName} · {(L.English ? "English" : "Italiano")}";
 
     public void Refresh()
     {
@@ -896,6 +890,13 @@ public sealed class SettingsViewModel : Observable
 
     public ICommand OpenStatsCommand => new RelayCommand(_main.OpenStats);
 
+    // A song is playing: the card follows it.
+    public void OnListened(bool reorder)
+    {
+        OnChanged(nameof(StatsSummary));
+        if (reorder) OnChanged(nameof(TopTracks));
+    }
+
     public ICommand ShowTermsCommand => new RelayCommand(() => Dialogs.Terms(false));
 }
 
@@ -908,29 +909,64 @@ public static class BrowserDetector
     {
         string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         string roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string support = Path.Combine(home, "Library", "Application Support");
         var list = new List<Found>();
-        void Gecko(string name, string dir, bool main)
+        void Gecko(string name, bool main, params string[] dirs)
         {
-            var profiles = Path.Combine(roaming, dir);
-            if (NewestProfile(profiles) is not { } p) return;
+            if (dirs.Select(NewestProfile).FirstOrDefault(p => p != null) is not { } p) return;
             list.Add(new Found(name, main ? "firefox" : "firefox:" + p, "consigliato"));
         }
         void Chromium(string name, string spec, string dir, string hint)
         {
             if (Directory.Exists(dir)) list.Add(new Found(name, spec, hint));
         }
-        Gecko("Firefox", @"Mozilla\Firefox\Profiles", true);
-        Gecko("LibreWolf", @"librewolf\Profiles", false);
-        Gecko("Zen Browser", @"zen\Profiles", false);
-        Gecko("Waterfox", @"Waterfox\Profiles", false);
-        Gecko("Floorp", @"Floorp\Profiles", false);
-        Chromium("Chrome", "chrome", Path.Combine(local, @"Google\Chrome\User Data"), "può non funzionare");
-        Chromium("Edge", "edge", Path.Combine(local, @"Microsoft\Edge\User Data"), "può non funzionare");
-        Chromium("Brave", "brave", Path.Combine(local, @"BraveSoftware\Brave-Browser\User Data"), "può non funzionare");
-        Chromium("Opera", "opera", Path.Combine(roaming, @"Opera Software\Opera Stable"), "");
-        Chromium("Vivaldi", "vivaldi", Path.Combine(local, @"Vivaldi\User Data"), "");
-        Chromium("Chromium", "chromium", Path.Combine(local, @"Chromium\User Data"), "");
-        Chromium("Whale", "whale", Path.Combine(local, @"Naver\Naver Whale\User Data"), "");
+        if (OperatingSystem.IsWindows())
+        {
+            Gecko("Firefox", true, Path.Combine(roaming, @"Mozilla\Firefox\Profiles"));
+            Gecko("LibreWolf", false, Path.Combine(roaming, @"librewolf\Profiles"));
+            Gecko("Zen Browser", false, Path.Combine(roaming, @"zen\Profiles"));
+            Gecko("Waterfox", false, Path.Combine(roaming, @"Waterfox\Profiles"));
+            Gecko("Floorp", false, Path.Combine(roaming, @"Floorp\Profiles"));
+            Chromium("Chrome", "chrome", Path.Combine(local, @"Google\Chrome\User Data"), "può non funzionare");
+            Chromium("Edge", "edge", Path.Combine(local, @"Microsoft\Edge\User Data"), "può non funzionare");
+            Chromium("Brave", "brave", Path.Combine(local, @"BraveSoftware\Brave-Browser\User Data"), "può non funzionare");
+            Chromium("Opera", "opera", Path.Combine(roaming, @"Opera Software\Opera Stable"), "");
+            Chromium("Vivaldi", "vivaldi", Path.Combine(local, @"Vivaldi\User Data"), "");
+            Chromium("Chromium", "chromium", Path.Combine(local, @"Chromium\User Data"), "");
+            Chromium("Whale", "whale", Path.Combine(local, @"Naver\Naver Whale\User Data"), "");
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            Gecko("Firefox", true, Path.Combine(support, "Firefox", "Profiles"));
+            Gecko("LibreWolf", false, Path.Combine(support, "librewolf", "Profiles"));
+            Gecko("Zen Browser", false, Path.Combine(support, "zen", "Profiles"));
+            Gecko("Waterfox", false, Path.Combine(support, "Waterfox", "Profiles"));
+            Gecko("Floorp", false, Path.Combine(support, "Floorp", "Profiles"));
+            Chromium("Safari", "safari", Path.Combine(home, "Library", "Safari"), "può non funzionare");
+            Chromium("Chrome", "chrome", Path.Combine(support, "Google", "Chrome"), "può non funzionare");
+            Chromium("Edge", "edge", Path.Combine(support, "Microsoft Edge"), "può non funzionare");
+            Chromium("Brave", "brave", Path.Combine(support, "BraveSoftware", "Brave-Browser"), "può non funzionare");
+            Chromium("Opera", "opera", Path.Combine(support, "com.operasoftware.Opera"), "");
+            Chromium("Vivaldi", "vivaldi", Path.Combine(support, "Vivaldi"), "");
+            Chromium("Chromium", "chromium", Path.Combine(support, "Chromium"), "");
+        }
+        else
+        {
+            string config = Path.Combine(home, ".config");
+            Gecko("Firefox", true, Path.Combine(home, ".mozilla", "firefox"), Path.Combine(home, "snap", "firefox", "common", ".mozilla", "firefox"),
+                Path.Combine(home, ".var", "app", "org.mozilla.firefox", ".mozilla", "firefox"));
+            Gecko("LibreWolf", false, Path.Combine(home, ".librewolf"), Path.Combine(home, ".var", "app", "io.gitlab.librewolf-community", ".librewolf"));
+            Gecko("Zen Browser", false, Path.Combine(home, ".zen"), Path.Combine(home, ".var", "app", "app.zen_browser.zen", ".zen"));
+            Gecko("Waterfox", false, Path.Combine(home, ".waterfox"));
+            Gecko("Floorp", false, Path.Combine(home, ".floorp"));
+            Chromium("Chrome", "chrome", Path.Combine(config, "google-chrome"), "può non funzionare");
+            Chromium("Edge", "edge", Path.Combine(config, "microsoft-edge"), "può non funzionare");
+            Chromium("Brave", "brave", Path.Combine(config, "BraveSoftware", "Brave-Browser"), "può non funzionare");
+            Chromium("Opera", "opera", Path.Combine(config, "opera"), "");
+            Chromium("Vivaldi", "vivaldi", Path.Combine(config, "vivaldi"), "");
+            Chromium("Chromium", "chromium", Path.Combine(config, "chromium"), "");
+        }
         return list;
     }
 

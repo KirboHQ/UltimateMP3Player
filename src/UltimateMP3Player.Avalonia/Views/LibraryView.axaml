@@ -1,0 +1,90 @@
+<UserControl x:Class="UltimateMP3Player.Views.LibraryView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <Grid RowDefinitions="Auto,Auto,*">
+        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+
+        <Grid Margin="28,8,28,18" ColumnDefinitions="Auto,*">
+            <Panel Width="148" Height="148">
+                <Border CornerRadius="10" Background="{DynamicResource AccentGradient}" IsVisible="{Binding !IsTagPage}"/>
+                <Border CornerRadius="10" Background="{Binding Tag.Brush, FallbackValue={x:Null}}" IsVisible="{Binding IsTagPage}"/>
+                <TextBlock Text="{Binding Glyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="56" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
+            </Panel>
+            <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
+                <TextBlock Text="{Binding Kicker}" Classes="small-caps" Foreground="{StaticResource SubTextBrush}"/>
+                <TextBlock Text="{Binding Title}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding CountText}" Foreground="{StaticResource SubTextBrush}"/>
+                <TextBlock Text="{Binding Hint}" Classes="hint" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+                <!-- tag page: the playlists with this tag -->
+                <ItemsControl ItemsSource="{Binding TaggedPlaylists}" Margin="0,10,0,0" IsVisible="{Binding HasTaggedPlaylists}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Theme="{StaticResource GhostButton}" Padding="4,4,14,4" Margin="0,0,8,6" ToolTip.Tip="{local:T 'Apri la playlist'}"
+                                    Command="{Binding $parent[Window].DataContext.OpenPlaylistCommand}" CommandParameter="{Binding}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Border Width="26" Height="26" CornerRadius="13" ClipToBounds="True">
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" Margin="9,0,0,0" VerticalAlignment="Center" MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Grid>
+
+        <DockPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
+            <Button Theme="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
+            <Button Theme="{StaticResource HeaderShuffleButton}" Margin="12,0,0,0" Command="{Binding ShuffleCommand}"/>
+            <Button Theme="{StaticResource GhostButton}" Margin="14,0,0,0" Padding="16,9"
+                    Command="{Binding $parent[Window].DataContext.ImportCommand}"
+                    ToolTip.Tip="{local:T 'Aggiungi alla libreria brani che hai già sul computer'}"
+                    IsVisible="{Binding CanImport}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
+                    <TextBlock Text="{local:T 'Aggiungi file'}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button x:Name="SelectAllButton" Theme="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9"
+                    IsVisible="{Binding !IsEmpty}" ToolTip.Tip="{x:Static views:Keys.SelectAll}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E762}" Classes="glyph"/>
+                    <TextBlock Text="{local:T 'Seleziona tutti'}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button Theme="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Command="{Binding $parent[Window].DataContext.EditTagCommand}"
+                    CommandParameter="{Binding Tag}" IsVisible="{Binding IsTagPage}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E70F}" Classes="glyph"/>
+                    <TextBlock Text="{local:T 'Modifica tag'}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <ComboBox DockPanel.Dock="Right" Width="180" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
+                      ToolTip.Tip="{local:T 'Ordina per'}"/>
+            <Button x:Name="TagFilterButton" DockPanel.Dock="Right" Theme="{StaticResource TagFilterButton}" Margin="0,0,10,0"/>
+            <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Theme="{StaticResource FilterBox}" Width="210" Margin="0,0,10,0" VerticalAlignment="Center"
+                     Text="{Binding Filter}" Watermark="{local:T 'Cerca nei brani'}"/>
+        </DockPanel>
+
+        <Grid Grid.Row="2" Margin="20,0,12,0" RowDefinitions="Auto,*">
+            <ContentControl ContentTemplate="{StaticResource TrackHeader}" Content="{Binding}" Margin="0,0,10,0"/>
+            <ListBox x:Name="List" Grid.Row="1" Theme="{StaticResource PlainList}" ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource TrackRowTemplate}"/>
+            <views:SelectionBar Grid.Row="1" List="{Binding #List}" ZIndex="1"/>
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0" MaxWidth="480"
+                        IsVisible="{Binding IsEmpty}">
+                <TextBlock Text="{Binding EmptyTitle}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding EmptyText}" Classes="hint" Margin="0,8,0,0" TextAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Grid.Row="1" Text="{local:T 'Nessun brano corrisponde alla ricerca.'}" Classes="hint" FontSize="14"
+                       HorizontalAlignment="Center" Margin="0,40,0,0" IsVisible="{Binding NoMatches}"/>
+        </Grid>
+    </Grid>
+</UserControl>

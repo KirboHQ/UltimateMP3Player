@@ -14,12 +14,20 @@
   <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest"><img alt="Ultima versione" src="https://img.shields.io/github/v/release/KirboHQ/UltimateMP3Player?style=flat-square&color=7C5CFF&label=versione"></a>
   <a href="https://github.com/KirboHQ/UltimateMP3Player/releases"><img alt="Download" src="https://img.shields.io/github/downloads/KirboHQ/UltimateMP3Player/total?style=flat-square&color=FF4FA3&label=download"></a>
   <img alt="Windows 10 e 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows&logoColor=white">
+  <img alt="Linux" src="https://img.shields.io/badge/Linux-x64%20%7C%20arm64-FCC624?style=flat-square&logo=linux&logoColor=black">
+  <img alt="macOS 12 o successivo" src="https://img.shields.io/badge/macOS-12%2B-000000?style=flat-square&logo=apple&logoColor=white">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white">
 </p>
 
 <p align="center">
   <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
     <img alt="Scarica per Windows" src="https://img.shields.io/badge/Scarica_per_Windows-7C5CFF?style=for-the-badge&logo=windows&logoColor=white" height="42">
+  </a>
+  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
+    <img alt="Scarica per Linux" src="https://img.shields.io/badge/Linux-7C5CFF?style=for-the-badge&logo=linux&logoColor=white" height="42">
+  </a>
+  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
+    <img alt="Scarica per macOS" src="https://img.shields.io/badge/macOS-7C5CFF?style=for-the-badge&logo=apple&logoColor=white" height="42">
   </a>
 </p>
 
@@ -34,20 +42,22 @@
   <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · un lettore come Spotify · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · profili e temi · ascolta insieme">
 </picture>
 
-## 🆕 Novità della 3.3.0
+## 🆕 Novità della 3.4.0
 
-- **Brani simili**: tasto destro su un brano qualsiasi → *Riproduci brani simili*, e la coda si riempie di brani come
-  lui trovati online (YouTube Music, SoundCloud, Deezer, o un po' da tutti), sempre di nuovi man mano che li ascolti.
-  Arrivano anche dopo un brano avviato fuori da una playlist (download, ricerca, da solo). Si scaricano pochi alla
-  volta poco prima del loro turno, nei *Successivi* si vede a che punto sono, e quelli che ti piacciono li tieni con
-  *Salva nella libreria*.
-- **Statistiche di ascolto**: ascolti e tempo di ascolto di ogni brano, come su Spotify; ordinali per i più o i meno
-  ascoltati per trovare i preferiti e fare pulizia di quelli dimenticati
-- Link di **Apple Music**: brani, album e playlist
-- **Ascolta insieme**: il P2P si può spegnere del tutto (nessun brano ricevuto da altri o mandato ad altri)
-- Termini d'uso, da accettare al primo avvio
+- **Linux e macOS**: la stessa app, con lo stesso aspetto e le stesse funzioni, su Linux (x64 e arm64) e macOS (Intel
+  e Apple Silicon). Con i controlli multimediali del sistema, l'icona vicino all'orologio, i pacchetti `.ump` e gli
+  aggiornamenti automatici.
+- **Statistiche**: un ascolto conta quando hai sentito il 75% del brano (a velocità 2× basta metà del tempo), il tempo
+  di ascolto conta dal primo secondo, e si aggiornano da soli mentre ascolti. *Seleziona i mai ascoltati* funziona di
+  nuovo con qualsiasi ordine e filtro.
+- **Controlli multimediali di Windows**: l'app mostra il suo nome e la sua icona invece di *App sconosciuta*
+- Un brano consigliato salvato e poi eliminato mentre suona non salta più: finisce dalla memoria
+- La ricerca delle impostazioni resta sempre in alto
+- Finestre di dialogo (come i termini d'uso): i pulsanti non sfarfallano più sotto il mouse
 
 ## 📥 Installazione
+
+**Windows**
 
 1. Scarica **`UltimateMP3Player-Setup-x.y.z.exe`** dall'[ultima release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
 2. Avvialo: niente diritti di amministratore e nient'altro da installare. Ti chiede la lingua (italiano o inglese,
@@ -57,6 +67,36 @@
 > [!NOTE]
 > Windows SmartScreen può dire che l'app non è riconosciuta, perché non è firmata con un certificato a pagamento:
 > clicca **Ulteriori informazioni → Esegui comunque**.
+
+**Linux** (x64 o arm64, qualsiasi distribuzione recente con un desktop)
+
+1. Scarica **`UltimateMP3Player-linux-x64.tar.gz`** (o `-arm64`) dall'[ultima release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
+2. Estrailo in una tua cartella (non in una di sistema come `/opt`: l'app si aggiorna lì dentro), per esempio:
+   ```sh
+   mkdir -p ~/.local/opt
+   tar -xzf UltimateMP3Player-linux-x64.tar.gz -C ~/.local/opt
+   ```
+3. Avviala una volta con `~/.local/opt/UltimateMP3Player/UltimateMP3Player`: da lì in poi è nel menu delle
+   applicazioni e i pacchetti `.ump` si aprono con lei. Al primo avvio scarica da sola yt-dlp, ffmpeg e gli altri
+   motori.
+
+> [!NOTE]
+> Su GNOME "puro" l'icona vicino all'orologio richiede l'estensione *AppIndicator* (Ubuntu ce l'ha già); senza,
+> chiudere la finestra chiude l'app. Se l'app non parte e nomina ICU, installa il pacchetto `libicu` della tua
+> distribuzione.
+
+**macOS** (12 Monterey o successivo)
+
+1. Scarica **`UltimateMP3Player-macos-arm64.zip`** per Apple Silicon (M1 e successivi) o `-x64` per i Mac Intel
+   dall'[ultima release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
+2. Apri lo zip e trascina **Ultimate MP3 Player** in *Applicazioni*.
+3. La prima volta macOS dice che non può verificare l'app, perché non è firmata con un certificato Apple a pagamento:
+   apri **Impostazioni di Sistema → Privacy e sicurezza** e clicca **Apri comunque** (sulle versioni più vecchie: tasto
+   destro sull'app → **Apri**).
+
+> [!NOTE]
+> Se macOS dice che l'app "è danneggiata", esegui una volta nel Terminale:
+> `xattr -dr com.apple.quarantine "/Applications/Ultimate MP3 Player.app"`
 
 ## 🎵 Funzioni
 
@@ -72,8 +112,8 @@
 **Lettore**
 - Forma d'onda, casuale vero, ripeti tutto / ripeti brano, dissolvenza da 1 a 12 secondi
 - Volume normalizzato (−14 LUFS) ed equalizzatore a 10 bande con preset e curva di risposta
-- Tasti multimediali, controlli di Windows e icona vicino all'orologio: chiudi la finestra e la musica continua
-  usando pochissima memoria
+- Tasti multimediali, controlli multimediali del sistema (Windows, MPRIS su Linux, "In riproduzione" su macOS) e
+  icona vicino all'orologio: chiudi la finestra e la musica continua usando pochissima memoria
 - I brani con video lo mostrano nella schermata del brano, su uno sfondo sfocato di sé stesso
 
 **Successivi**
@@ -116,7 +156,8 @@
 
 > [!TIP]
 > La prima volta Windows chiede se l'app può usare la rete: consenti l'accesso. Con Radmin VPN spunta anche *Reti
-> pubbliche*, oppure usa **Consenti nel firewall** nell'app.
+> pubbliche*, oppure usa **Consenti nel firewall** nell'app. Radmin VPN esiste solo per Windows: con amici su Linux o
+> macOS usate ZeroTier o Tailscale, che vanno ovunque (anche su Windows).
 
 **E poi**
 - Profili come in Chrome, temi, italiano e inglese, animazioni e scorrimento fluidi
@@ -141,9 +182,15 @@ Serve il .NET 8 SDK, e per l'installer Inno Setup 6. I programmi esterni vanno i
 |---|---|
 | `.\build.ps1` | App portatile in `app\` e collegamento sul Desktop |
 | `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-Setup-<versione>.exe` |
-| `.\build.ps1 -Release` | `dist\`: il setup da allegare a una release di GitHub (più `UltimateMP3Player.exe`, facoltativo, per aggiornamenti più leggeri) |
+| `.\build.ps1 -Release` | `dist\`: i file da allegare a una release di GitHub: il setup (più `UltimateMP3Player.exe`, facoltativo, per aggiornamenti più leggeri) e i pacchetti per Linux e macOS (`-WindowsOnly` li salta) |
+| `.\build-unix.ps1` | Solo i pacchetti per Linux e macOS in `dist\`: `UltimateMP3Player-linux-x64.tar.gz`, `-linux-arm64.tar.gz`, `UltimateMP3Player-macos-x64.zip`, `-macos-arm64.zip` (`-Targets linux-x64,…` per farne solo alcuni) |
 
-Due impostazioni in `src\UltimateMP3Player\UltimateMP3Player.csproj`:
+Anche i pacchetti per Linux e macOS si fanno da Windows. L'app per macOS è firmata "ad hoc" (senza un certificato
+Apple) con [rcodesign](https://github.com/indygreg/apple-platform-rs), scaricato una volta in `tools\bin`: i Mac Apple
+Silicon non avviano app senza nessuna firma. La versione in `src\UltimateMP3Player.Avalonia\UltimateMP3Player.Avalonia.csproj`
+va tenuta uguale a quella di Windows.
+
+Due impostazioni in `src\UltimateMP3Player\UltimateMP3Player.csproj` (e le stesse due nel progetto Avalonia):
 
 - `<GitHubRepo>proprietario/repo</GitHubRepo>`: dove l'app cerca gli aggiornamenti e apre le segnalazioni. L'ultima
   release deve contenere il setup; se contiene anche `UltimateMP3Player.exe`, gli aggiornamenti scaricano solo quello
@@ -157,7 +204,8 @@ da riga di comando per provare il core (download, import, coda, casuale).
 |---|---|
 | `src\UltimateMP3Player.Core` | Download (yt-dlp, gallery-dl, ffmpeg), libreria, profili, coda, analisi, traduzioni |
 | `src\UltimateMP3Player` | Interfaccia WPF, motore audio (NAudio/WASAPI), motore DJ (SoundTouch), icona, tasti multimediali, aggiornamenti, Discord |
-| `installer` | Script di Inno Setup e immagini dell'installazione (`tools\make-images.ps1` le crea da `Logo.xaml`) |
+| `src\UltimateMP3Player.Avalonia` | Linux e macOS: la stessa interfaccia disegnata con Avalonia; usa i view model, i motori audio e DJ e gran parte dei servizi di `src\UltimateMP3Player` (uscita audio con SDL3, MPRIS, "In riproduzione" di macOS, aggiornamenti) |
+| `installer` | Script di Inno Setup e immagini dell'installazione (`tools\make-images.ps1` le crea da `Logo.xaml`, insieme alle icone per macOS) |
 
 </details>
 
@@ -169,11 +217,19 @@ da riga di comando per provare il core (download, import, coda, casuale).
 | `%LOCALAPPDATA%\Ultimate MP3 Player` | Libreria, copertine, profili, impostazioni, `errori.log` |
 | `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Brani delle stanze di *Ascolta insieme* e consigliati tenuti per la prossima volta |
 
+Su Linux i dati sono in `~/.local/share/Ultimate MP3 Player` e su macOS in `~/Library/Application Support/Ultimate MP3 Player`
+(lì ci sono anche i motori, in `engines`); i brani vanno in `~/Music/Ultimate MP3 Player`.
+
 ## 🙏 Software di terze parti
 
 [yt-dlp](https://github.com/yt-dlp/yt-dlp) (Unlicense), [gallery-dl](https://github.com/mikf/gallery-dl) (GPL-2.0),
-[FFmpeg](https://ffmpeg.org) (GPL, build da [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds)),
+[FFmpeg](https://ffmpeg.org) (GPL, build da [yt-dlp/FFmpeg-Builds](https://github.com/yt-dlp/FFmpeg-Builds), su Linux
+e macOS da [martin-riedl.de](https://ffmpeg.martin-riedl.de)),
 [Deno](https://deno.com) (MIT), [NAudio](https://github.com/naudio/NAudio) (MIT),
 [SoundTouch.Net](https://github.com/owoudenberg/soundtouch.net) (LGPL-2.1).
+Linux e macOS: [Avalonia](https://avaloniaui.net) (MIT), [SDL3](https://www.libsdl.org) (zlib) tramite
+[SDL3-CS](https://github.com/ppy/SDL3-CS) (MIT), [Tmds.DBus](https://github.com/tmds/Tmds.DBus) (MIT),
+[Fluent System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT) e
+[Selawik](https://github.com/microsoft/Selawik) (OFL-1.1), al posto di Segoe UI e delle sue icone.
 
 <sub>Scarica solo contenuti che hai il diritto di scaricare.</sub>

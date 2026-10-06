@@ -98,6 +98,30 @@ public sealed class TogetherCache
 
     private Entry? FindEntry(List<string> keys) => _entries.FirstOrDefault(x => x.Keys.Any(k => keys.Contains(k, StringComparer.OrdinalIgnoreCase)));
 
+    // A file still in the folder back on the list (forgotten when its song was saved to the library, but still playing):
+    // its song was deleted from the library, so it's a cached one again. Another file of the same song wins.
+    public string Keep(List<string> keys, string title, string? artist, string path)
+    {
+        lock (_lock)
+        {
+            if (FindEntry(keys) is { } existing && File.Exists(Path.Combine(Dir, existing.File)))
+            {
+                existing.Used = DateTime.Now;
+                Save();
+                return Path.Combine(Dir, existing.File);
+            }
+            var name = Path.GetFileName(path);
+            _entries.RemoveAll(e => string.Equals(e.File, name, StringComparison.OrdinalIgnoreCase));
+            _entries.Add(new Entry { Keys = keys.ToList(), File = name, Title = title, Artist = artist, Used = DateTime.Now });
+            Save();
+            return path;
+        }
+    }
+
+    // The folder itself, not tmp or another one.
+    public bool IsInside(string path)
+        => string.Equals(Path.GetDirectoryName(Path.GetFullPath(path))?.TrimEnd('\\', '/'), Path.GetFullPath(Dir).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase);
+
     public bool Contains(string path)
     {
         lock (_lock) return _entries.Any(e => string.Equals(Path.Combine(Dir, e.File), path, StringComparison.OrdinalIgnoreCase));

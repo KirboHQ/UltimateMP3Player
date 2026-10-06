@@ -1,0 +1,65 @@
+<!-- The styles of the song rows of Templates.axaml (WPF: the DataTemplate triggers), for every row at once. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:UltimateMP3Player">
+        <Style Selector="Border.row">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.row:pointerover">
+            <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.row">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        </Style>
+        <Style Selector="Border.row Button.play">
+            <Setter Property="IsVisible" Value="False"/>
+            <Setter Property="Content" Value="{local:Icon E768}"/>
+            <Setter Property="ToolTip.Tip" Value="{local:T Riproduci}"/>
+        </Style>
+        <Style Selector="Border.row:pointerover Button.play">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="Border.row:pointerover TextBlock.num">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.row.playing Button.play">
+            <Setter Property="Content" Value="{local:Icon E769}"/>
+            <Setter Property="ToolTip.Tip" Value="{local:T Pausa}"/>
+        </Style>
+        <Style Selector="Border.row.room Button.play">
+            <Setter Property="Content" Value="{local:Icon E710}"/>
+            <Setter Property="ToolTip.Tip" Value="{local:T 'Aggiungi alla coda della stanza (anche doppio clic)'}"/>
+        </Style>
+        <Style Selector="Border.row.room.noadd Button.play">
+            <Setter Property="IsEnabled" Value="False"/>
+            <Setter Property="ToolTip.Tip" Value="{local:T 'Solo chi ha il permesso può aggiungere brani alla stanza (lo decide l\'host)'}"/>
+        </Style>
+        <Style Selector="Border.row.current TextBlock.title">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+        <Style Selector="Border.row.current TextBlock.num">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+        <Style Selector="Border.row Button.heart">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Content" Value="{local:Icon EB51}"/>
+            <Setter Property="ToolTip.Tip" Value="{local:T 'Aggiungi ai Preferiti'}"/>
+        </Style>
+        <Style Selector="Border.row Button.more">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="Border.row:pointerover Button.heart, Border.row:pointerover Button.more">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Border.row.fav Button.heart">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Content" Value="{local:Icon EB52}"/>
+            <Setter Property="FontFamily" Value="{StaticResource IconFontFilled}"/>
+            <Setter Property="Foreground" Value="{DynamicResource PinkBrush}"/>
+            <Setter Property="ToolTip.Tip" Value="{local:T 'Togli dai Preferiti'}"/>
+        </Style>
+        <Style Selector="Border.row.never TextBlock.plays">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+        </Style>
+    </Styles>

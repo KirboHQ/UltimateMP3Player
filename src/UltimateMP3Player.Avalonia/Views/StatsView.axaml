@@ -1,0 +1,86 @@
+<UserControl x:Class="UltimateMP3Player.Views.StatsView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <UserControl.Styles>
+        <!-- One of the totals under the title. -->
+        <Style Selector="Border.stat">
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="Margin" Value="0,0,8,6"/>
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </UserControl.Styles>
+    <Grid RowDefinitions="Auto,Auto,*">
+        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+
+        <Grid Margin="28,8,28,18" ColumnDefinitions="Auto,*">
+            <Border Width="148" Height="148" CornerRadius="10" Background="{DynamicResource AccentGradient}">
+                <TextBlock Text="{local:Icon E9D2}" Classes="glyph" FontSize="56" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
+                <TextBlock Text="{local:T STATISTICHE}" Classes="small-caps" Foreground="{StaticResource SubTextBrush}"/>
+                <TextBlock Text="{local:T 'Statistiche di ascolto'}" FontSize="40" FontWeight="Bold" Margin="0,2,0,10" TextTrimming="CharacterEllipsis"/>
+                <WrapPanel>
+                    <Border Classes="stat">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E916}" Classes="glyph" FontSize="13" Foreground="{DynamicResource AccentTextBrush}"/>
+                            <TextBlock Text="{Binding TimeTotal}" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{local:T 'di ascolto'}" Foreground="{StaticResource SubTextBrush}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="stat">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E768}" Classes="glyph" FontSize="12" Foreground="{DynamicResource AccentTextBrush}"/>
+                            <TextBlock Text="{Binding PlaysTotal}" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Classes="stat">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E8D6}" Classes="glyph" FontSize="13" Foreground="{DynamicResource AccentTextBrush}"/>
+                            <TextBlock Text="{Binding HeardTotal}" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{local:T ascoltati}" Foreground="{StaticResource SubTextBrush}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                </WrapPanel>
+                <TextBlock Classes="hint" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0">
+                    <Run Text="{Binding SinceText, Mode=OneWay}"/>
+                    <Run Text="·"/>
+                    <Run Text="{local:T 'solo per questo profilo.'}"/>
+                </TextBlock>
+            </StackPanel>
+        </Grid>
+
+        <DockPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
+            <Button Theme="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
+            <!-- the forgotten ones in one click, to delete them -->
+            <Button x:Name="NeverButton" Theme="{StaticResource GhostButton}" Margin="14,0,0,0" Padding="16,9"
+                    IsVisible="{Binding HasNever}" ToolTip.Tip="{local:T 'Poi Canc per eliminarli, o tasto destro per le altre azioni'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E762}" Classes="glyph"/>
+                    <TextBlock Text="{Binding NeverText}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <ComboBox DockPanel.Dock="Right" Width="200" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
+                      ToolTip.Tip="{local:T 'Ordina per'}"/>
+            <Button x:Name="TagFilterButton" DockPanel.Dock="Right" Theme="{StaticResource TagFilterButton}" Margin="0,0,10,0"/>
+            <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Theme="{StaticResource FilterBox}" Width="210" Margin="0,0,10,0" VerticalAlignment="Center"
+                     Text="{Binding Filter}" Watermark="{local:T 'Cerca nei brani'}"/>
+        </DockPanel>
+
+        <Grid Grid.Row="2" Margin="20,0,12,0" RowDefinitions="Auto,*">
+            <ContentControl ContentTemplate="{StaticResource StatsHeader}" Content="{Binding}" Margin="0,0,10,0"/>
+            <ListBox x:Name="List" Grid.Row="1" Theme="{StaticResource PlainList}" ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource StatsRowTemplate}"/>
+            <views:SelectionBar Grid.Row="1" List="{Binding #List}" ZIndex="1"/>
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0" MaxWidth="480" IsVisible="{Binding IsEmpty}">
+                <TextBlock Text="{local:T 'Niente da mostrare'}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding EmptyText}" Classes="hint" Margin="0,8,0,0" TextAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Grid.Row="1" Text="{local:T 'Nessun brano corrisponde alla ricerca.'}" Classes="hint" FontSize="14"
+                       HorizontalAlignment="Center" Margin="0,40,0,0" IsVisible="{Binding NoMatches}"/>
+        </Grid>
+    </Grid>
+</UserControl>

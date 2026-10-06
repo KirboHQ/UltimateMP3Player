@@ -46,14 +46,22 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
-        <StackPanel Margin="28,6,28,28" MaxWidth="1640">
-            <DockPanel Margin="0,0,0,20">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <!-- Title and search stay at the top while the cards scroll (right margin = the scroll bar, so it lines up with the cards). -->
+        <Grid Margin="0,0,10,0">
+            <DockPanel Margin="28,6,28,20" MaxWidth="1640">
                 <TextBox x:Name="SearchBox" DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="300" VerticalAlignment="Center"
                          Tag="{local:T 'Cerca nelle impostazioni'}" AutomationProperties.Name="{local:T 'Cerca nelle impostazioni'}"
                          TextChanged="Search_TextChanged" KeyDown="Search_KeyDown"/>
                 <TextBlock Text="{local:T Impostazioni}" FontSize="30" FontWeight="Bold" VerticalAlignment="Center"/>
             </DockPanel>
+        </Grid>
+    <ScrollViewer x:Name="Scroller" Grid.Row="1" VerticalScrollBarVisibility="Auto" Focusable="False">
+        <StackPanel Margin="28,0,28,28" MaxWidth="1640">
             <TextBlock x:Name="NoResults" Text="{local:T 'Nessuna impostazione corrisponde alla ricerca.'}" Style="{StaticResource Hint}" FontSize="14"
                        HorizontalAlignment="Center" Margin="0,30,0,0" Visibility="Collapsed"/>
 
@@ -262,7 +270,7 @@
                         views:SettingsView.Keywords="{local:T 'statistiche ascolti ascoltati più meno tempo classifica pulizia elimina'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Statistiche di ascolto'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Quante volte e per quanto hai ascoltato ogni brano, solo per questo profilo: un ascolto conta dopo 30 secondi.'}"
+                        <TextBlock Text="{local:T 'Quante volte e per quanto hai ascoltato ogni brano, solo per questo profilo.'}"
                                    Style="{StaticResource Hint}" Margin="0,-8,0,12"/>
                         <TextBlock Text="{Binding StatsSummary}" Margin="0,0,0,12" TextWrapping="Wrap"/>
                         <ItemsControl ItemsSource="{Binding TopTracks}" Focusable="False" Margin="0,0,0,10">
@@ -836,4 +844,5 @@
             </views:MasonryPanel>
         </StackPanel>
     </ScrollViewer>
+    </Grid>
 </UserControl>

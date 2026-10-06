@@ -4,11 +4,13 @@ using UltimateMP3Player.Core;
 namespace UltimateMP3Player.ViewModels;
 
 // "Listening statistics": every song with how many times and how long it was heard on this profile, the favourite
-// ones first or the forgotten ones (selected, they're deleted like anywhere else).
+// ones first or the forgotten ones (selected, they're deleted like anywhere else). While a song plays the numbers
+// follow it by themselves.
 public sealed class StatsViewModel : Observable, ITrackList
 {
     private readonly MainViewModel _main;
     private List<TrackViewModel> _order = new();
+    private List<TrackViewModel> _never = new();
 
     public StatsViewModel(MainViewModel main)
     {
@@ -41,27 +43,37 @@ public sealed class StatsViewModel : Observable, ITrackList
         }
     }
 
+    private bool IsNeverSort => (string)_sort.Value! == "never";
+
     public List<TrackRow> Rows { get; private set; } = new();
     public bool IsEmpty => _order.Count == 0;
-    public string EmptyText => (string)_sort.Value! == "never" ? L.T("Hai ascoltato tutti i tuoi brani almeno una volta.") : L.T("Ascolta qualcosa: i brani compariranno qui.");
+    public string EmptyText => IsNeverSort ? L.T("Hai ascoltato tutti i tuoi brani almeno una volta.") : L.T("Ascolta qualcosa: i brani compariranno qui.");
 
     private string _filter = "";
     public string Filter { get => _filter; set { if (Set(ref _filter, value)) ApplyFilter(); } }
     public bool NoMatches => Rows.Count == 0 && _order.Count > 0;
+
+    // The list is about to be replaced while the page is open (the numbers changed): the view keeps what's
+    // selected and where it was scrolled.
+    public event Action? RowsReplacing;
+    private bool _live;
 
     // The header: time, plays and songs heard, since when.
     public string TimeTotal { get; private set; } = "";
     public string PlaysTotal { get; private set; } = "";
     public string HeardTotal { get; private set; } = "";
     public string SinceText { get; private set; } = "";
+    // Never played among the songs the search and the tags let through.
     public int NeverCount { get; private set; }
     public bool HasNever => NeverCount > 0;
     public string NeverText => L.Count(NeverCount, "Seleziona l'unico mai ascoltato", "Seleziona i {0} mai ascoltati");
 
     public void ApplyFilter()
     {
+        if (_live) RowsReplacing?.Invoke();
         Rows = TrackFilter.Apply(_order, _filter, TagFilter, this);
-        OnChanged(nameof(Rows), nameof(NoMatches));
+        NeverCount = IsNeverSort ? Rows.Count : TrackFilter.Apply(_never, _filter, TagFilter, this).Count;
+        OnChanged(nameof(Rows), nameof(NoMatches), nameof(NeverCount), nameof(HasNever), nameof(NeverText));
     }
 
     public void Rebuild()
@@ -78,16 +90,41 @@ public sealed class StatsViewModel : Observable, ITrackList
             _ => all.Where(t => Of(t) is { Plays: > 0 }).OrderByDescending(t => Of(t)!.Plays).ThenByDescending(t => Of(t)!.Seconds),
         };
         _order = sorted.Select(_main.Vm).ToList();
+        _never = all.Where(t => Of(t) is not { Plays: > 0 }).OrderByDescending(t => t.Added).Select(_main.Vm).ToList();
         foreach (var vm in _order) vm.RefreshStats();
-        var mine = all.Select(Of).OfType<TrackStats>().ToList();
+        Totals(stats, all);
+        ApplyFilter();
+        OnChanged(nameof(IsEmpty), nameof(EmptyText));
+    }
+
+    private void Totals(Dictionary<string, TrackStats> stats, IReadOnlyCollection<Track> all)
+    {
+        var mine = all.Select(t => stats.GetValueOrDefault(t.Id)).OfType<TrackStats>().ToList();
         TimeTotal = TimeText(mine.Sum(s => s.Seconds));
         PlaysTotal = L.Count(mine.Sum(s => s.Plays), "1 ascolto", "{0} ascolti");
         HeardTotal = L.F("{0} brani su {1}", mine.Count(s => s.Plays > 0), all.Count);
-        NeverCount = all.Count - mine.Count(s => s.Plays > 0);
         SinceText = _main.Profile.Data.StatsSince is { } since ? L.F("Contati dal {0}", since.ToString("d MMMM yyyy", L.Culture)) : "";
-        ApplyFilter();
-        OnChanged(nameof(IsEmpty), nameof(EmptyText), nameof(TimeTotal), nameof(PlaysTotal), nameof(HeardTotal), nameof(SinceText), nameof(NeverCount),
-            nameof(HasNever), nameof(NeverText));
+        OnChanged(nameof(TimeTotal), nameof(PlaysTotal), nameof(HeardTotal), nameof(SinceText));
+    }
+
+    // A song playing while the page is open: the totals follow it every second, the list is sorted again when
+    // a play counts or another song starts.
+    public void OnListened(bool reorder)
+    {
+        if (!reorder)
+        {
+            Totals(_main.Profile.StatsSnapshot(), _main.Library.Snapshot());
+            return;
+        }
+        _live = true;
+        try { Rebuild(); }
+        finally { _live = false; }
+    }
+
+    // "Select the n never played": they're shown (by themselves) first, so there's something to select.
+    public void ShowNever()
+    {
+        if (!IsNeverSort) Sort = Sorts.First(s => (string)s.Value! == "never");
     }
 
     // "2 h 5 min", "12 min", "less than a minute".

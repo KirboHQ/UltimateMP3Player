@@ -1,0 +1,74 @@
+<UserControl x:Class="UltimateMP3Player.Views.DjSongPicker"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player">
+    <UserControl.Styles>
+        <!-- one song: the chosen one is unmistakable (accent bar, tinted row, tick, bold title) -->
+        <Style Selector="Border.pick">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.pick:pointerover">
+            <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.pick">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.pick Border.bar, ListBoxItem:selected Border.pick Panel.check">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.pick TextBlock.title">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+    </UserControl.Styles>
+    <UserControl.Resources>
+        <DataTemplate x:Key="PickRow">
+            <Border Classes="pick" CornerRadius="9" Padding="4,5,12,5" Margin="0,0,6,2" local:Marquee.Host="True"
+                    BorderThickness="1" BorderBrush="Transparent">
+                <Grid ColumnDefinitions="4,Auto,*,72,56,28">
+                    <Border Classes="bar" CornerRadius="2" Margin="0,3" Background="{DynamicResource AccentGradient}" Opacity="0"/>
+                    <ContentControl Grid.Column="1" Width="42" Height="42" Margin="8,0,0,0" Content="{Binding}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                    <StackPanel Grid.Column="2" Margin="14,0,10,0" VerticalAlignment="Center">
+                        <TextBlock Classes="title" Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                        <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                                   Margin="0,2,0,0" local:Marquee.IsEnabled="True"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="3" Text="{Binding BpmText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Right"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <TextBlock Grid.Column="4" Text="{Binding DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Right"
+                               VerticalAlignment="Center"/>
+                    <Panel Classes="check" Grid.Column="5" Width="20" Height="20" HorizontalAlignment="Right" Opacity="0">
+                        <Ellipse Fill="{DynamicResource AccentGradient}"/>
+                        <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="11" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
+                    </Panel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <StackPanel Width="780">
+        <DockPanel Margin="0,0,0,10">
+            <ComboBox x:Name="Source" DockPanel.Dock="Right" Width="230" Margin="10,0,0,0"/>
+            <TextBox x:Name="Filter" Theme="{StaticResource FilterBox}" Watermark="{local:T 'Cerca per titolo, artista o #tag'}"/>
+        </DockPanel>
+        <!-- shortcuts: the song playing, the other deck's song, a file -->
+        <WrapPanel x:Name="Quick" Margin="0,0,0,6"/>
+
+        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="4,4,24,8" Margin="0,4,0,6">
+            <Grid ColumnDefinitions="*,72,56,28">
+                <TextBlock Text="{local:T TITOLO}" Classes="small-caps" Margin="12,0,0,0"/>
+                <TextBlock Grid.Column="1" Text="BPM" Classes="small-caps" HorizontalAlignment="Right" Margin="0,0,14,0"/>
+                <TextBlock Grid.Column="2" Text="{local:Icon E823}" Classes="glyph" FontSize="12" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Right"/>
+            </Grid>
+        </Border>
+        <Panel Height="420">
+            <ListBox x:Name="List" Theme="{StaticResource PlainList}" ItemTemplate="{StaticResource PickRow}" SelectionMode="Single"/>
+            <StackPanel x:Name="Empty" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False">
+                <TextBlock Text="{local:Icon E721}" Classes="glyph" FontSize="30" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                <TextBlock Text="{local:T 'Nessun brano trovato'}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0"/>
+            </StackPanel>
+        </Panel>
+        <TextBlock x:Name="Hint" Classes="hint" Margin="4,10,0,0"/>
+    </StackPanel>
+</UserControl>

@@ -27,6 +27,8 @@ public partial class App : Application
             return;
         }
         DispatcherUnhandledException += OnUnhandled;
+        // Before any window: Windows' media controls show the app's name and icon (AppIdentity).
+        AppIdentity.ApplyToProcess();
         base.OnStartup(e);
         CleanTemp();
         Updater.CleanUp();
@@ -66,6 +68,7 @@ public partial class App : Application
         if (Engines.Missing().Count > 0) _ = Host.EnsureEnginesAsync();
         // .ump packs open with this copy of the app, with their icon.
         Dispatcher.BeginInvoke(FileAssociation.Register, DispatcherPriority.ApplicationIdle);
+        Dispatcher.BeginInvoke(AppIdentity.EnsureShortcuts, DispatcherPriority.ApplicationIdle);
     }
 
     // After a self-update the new exe waits for the old one to quit.

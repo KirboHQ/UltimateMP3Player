@@ -1,7 +1,3 @@
-using System.IO;
-using System.Windows.Threading;
-using NAudio.CoreAudioApi;
-using NAudio.CoreAudioApi.Interfaces;
 using NAudio.Dsp;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -272,6 +268,29 @@ public sealed class MasterProvider : ISampleProvider
         drop?.Dispose();
     }
 
+    // The same song from another file (its copy in the library is about to be deleted): the new file starts right where
+    // the old one is, with the shortest of crossfades, so nothing is heard. False: nothing was playing.
+    public bool Swap(ITrackSource source)
+    {
+        Voice? drop;
+        lock (_lock)
+        {
+            if (_current is not { } cur) return false;
+            var v = new Voice(source, cur.Gain, cur.Duration) { CrossfadeAt = cur.CrossfadeAt, NearEndRaised = cur.NearEndRaised, Ended = cur.Ended };
+            v.Rebuild(_rate);
+            // Fade 0 with a jump pending: the first read seeks it there and fades it in.
+            v.PendingSeek = cur.PendingSeek ?? cur.Source.Position;
+            v.Fade = 0;
+            v.FadeTarget = 0;
+            drop = _outgoing;
+            _outgoing = cur;
+            Leave(cur, MicroFade);
+            _current = v;
+        }
+        drop?.Dispose();
+        return true;
+    }
+
     private Voice NewVoice(ITrackSource source, double gainDb, double duration, double crossfadeSeconds)
     {
         var v = new Voice(source, Db(gainDb), duration);
@@ -507,217 +526,5 @@ public sealed class MasterProvider : ISampleProvider
             }
         }
         _gain = target;
-    }
-}
-
-// Default output device, followed when it changes.
-public sealed class AudioEngine : IDisposable, IMMNotificationClient
-{
-    public const int LatencyMs = 120;
-    private const double PauseFade = 0.06;
-
-    private readonly Dispatcher _ui;
-    private readonly MMDeviceEnumerator _devices = new();
-    private readonly MasterProvider _master = new(48000);
-    private WasapiOut? _out;
-    private bool _playing;
-    // The device still plays for a moment after Pause (the fade): a song swapped meanwhile must fade too.
-    private bool _outRunning;
-    private int _pauseVersion, _openVersion;
-    private double _crossfade;
-
-    public event Action? Ended;
-    public event Action? NearEnd;
-    public event Action<string>? Failed;
-
-    public AudioEngine(Dispatcher ui)
-    {
-        _ui = ui;
-        _master.Ended += () => _ui.BeginInvoke(() => Ended?.Invoke());
-        _master.NearEnd += () => _ui.BeginInvoke(() => NearEnd?.Invoke());
-        try { _devices.RegisterEndpointNotificationCallback(this); } catch { }
-    }
-
-    public bool IsPlaying => _playing;
-    public bool HasSource => _master.HasSource;
-    public string? SourcePath { get; private set; }
-
-    public TimeSpan Position
-    {
-        get
-        {
-            var p = _master.Position;
-            // The output buffer holds LatencyMs of sound, that is more of the song when it plays faster.
-            if (_playing) p -= TimeSpan.FromMilliseconds(LatencyMs * _master.Speed);
-            return p < TimeSpan.Zero ? TimeSpan.Zero : p;
-        }
-    }
-
-    public TimeSpan Duration => _master.Duration;
-
-    public float Volume { set => _master.Volume = value; }
-
-    // Playback speed 0.5-2; pitch = the key follows the speed (like a record), otherwise it stays.
-    public double Speed => _master.Speed;
-
-    public void SetSpeed(double speed, bool pitch) => _master.SetSpeed(speed, pitch);
-
-    private bool Smooth => _playing || _outRunning;
-
-    // Crossfade seconds, 0 = off.
-    public double CrossfadeSeconds
-    {
-        get => _crossfade;
-        set
-        {
-            _crossfade = value;
-            _master.SetCrossfade(value);
-        }
-    }
-
-    public double RemainingSeconds => _master.RemainingSeconds;
-
-    public void SetEqualizer(bool enabled, IReadOnlyList<double> gains) => _master.SetEqualizer(enabled, gains);
-
-    public void SetTrackGain(double db) => _master.SetTrackGain(db);
-
-    private static Task<ITrackSource> OpenSource(string path, double durationHint) => Task.Run<ITrackSource>(() =>
-    {
-        if (!File.Exists(path)) throw new FileNotFoundException("File not found", path);
-        try { return new MfTrackSource(path); }
-        catch { return new FfmpegTrackSource(path, TimeSpan.FromSeconds(durationHint)); }
-    });
-
-    // Decoders are created off the UI thread. An open overtaken by another one (or by Close) is thrown away:
-    // it would otherwise put its song back in the engine.
-    public async Task OpenAsync(string path, double durationHint, double trackGainDb)
-    {
-        int version = ++_openVersion;
-        var source = await OpenSource(path, durationHint);
-        if (version != _openVersion)
-        {
-            source.Dispose();
-            return;
-        }
-        _master.SetSource(source, trackGainDb, durationHint, _crossfade, Smooth);
-        SourcePath = path;
-    }
-
-    public async Task CrossfadeToAsync(string path, double durationHint, double trackGainDb)
-    {
-        int version = ++_openVersion;
-        var source = await OpenSource(path, durationHint);
-        if (version != _openVersion)
-        {
-            source.Dispose();
-            return;
-        }
-        double seconds = Math.Clamp(Math.Min(_crossfade, _master.RemainingSeconds), 0.3, 12);
-        _master.Crossfade(source, trackGainDb, durationHint, _crossfade, seconds);
-        SourcePath = path;
-    }
-
-    public void Close()
-    {
-        _openVersion++;
-        _master.SetSource(null, 0, 0, 0, Smooth);
-        SourcePath = null;
-    }
-
-    public void Seek(TimeSpan t) => _master.Seek(t);
-
-    public void Play()
-    {
-        _pauseVersion++;
-        try
-        {
-            bool wasStopped = !_playing;
-            EnsureOutput();
-            if (wasStopped && !_outRunning) _master.FadeLevel(0, 0);
-            _out!.Play();
-            _playing = true;
-            _outRunning = true;
-            _master.FadeLevel(1, PauseFade);
-        }
-        catch (Exception ex)
-        {
-            ResetOutput();
-            _playing = false;
-            Failed?.Invoke(L.T("Impossibile usare il dispositivo audio:") + " " + ex.Message);
-        }
-    }
-
-    // Fade out first: a hard stop clicks.
-    public void Pause()
-    {
-        if (!_playing) return;
-        _playing = false;
-        _master.FadeLevel(0, PauseFade);
-        int version = ++_pauseVersion;
-        _ = Task.Delay(TimeSpan.FromSeconds(PauseFade + 0.05)).ContinueWith(_ => _ui.BeginInvoke(() =>
-        {
-            if (version != _pauseVersion || _playing) return;
-            try { _out?.Pause(); } catch { }
-            _outRunning = false;
-        }));
-    }
-
-    private void EnsureOutput()
-    {
-        if (_out != null) return;
-        var device = _devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-        int rate = 48000;
-        try { rate = device.AudioClient.MixFormat.SampleRate; } catch { }
-        _master.SetRate(rate);
-        var o = new WasapiOut(device, AudioClientShareMode.Shared, true, LatencyMs);
-        o.Init(new SampleToWaveProvider(_master));
-        o.PlaybackStopped += (_, e) =>
-        {
-            if (e.Exception == null) return;
-            _ui.BeginInvoke(() =>
-            {
-                bool was = _playing;
-                _playing = false;
-                ResetOutput();
-                if (was) Play();
-            });
-        };
-        _out = o;
-    }
-
-    private void ResetOutput()
-    {
-        var o = _out;
-        _out = null;
-        _outRunning = false;
-        if (o == null) return;
-        try { o.Stop(); } catch { }
-        try { o.Dispose(); } catch { }
-    }
-
-    // Headphones plugged in, Bluetooth: move there.
-    private void SwitchDevice()
-    {
-        bool was = _playing;
-        _playing = false;
-        ResetOutput();
-        if (was) Play();
-    }
-
-    void IMMNotificationClient.OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId)
-    {
-        if (flow == DataFlow.Render && role == Role.Multimedia) _ui.BeginInvoke(SwitchDevice);
-    }
-
-    void IMMNotificationClient.OnDeviceStateChanged(string deviceId, DeviceState newState) { }
-    void IMMNotificationClient.OnDeviceAdded(string pwstrDeviceId) { }
-    void IMMNotificationClient.OnDeviceRemoved(string deviceId) { }
-    void IMMNotificationClient.OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) { }
-
-    public void Dispose()
-    {
-        try { _devices.UnregisterEndpointNotificationCallback(this); } catch { }
-        ResetOutput();
-        _master.SetSource(null, 0, 0, 0, false);
     }
 }

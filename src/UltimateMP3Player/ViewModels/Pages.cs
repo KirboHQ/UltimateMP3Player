@@ -1,4 +1,6 @@
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
 using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.ViewModels;
@@ -301,14 +303,14 @@ public sealed class OnlineHitViewModel : Observable
     public string Subtitle => string.Join(" · ", new[] { Hit.Artist, Hit.Album }.Where(s => !string.IsNullOrWhiteSpace(s)));
     public string DurationText => Hit.Duration is > 0 and var d ? Text.Duration(d) : "";
     public string Service => Hit.Service;
-    public System.Windows.Media.Brush ServiceBrush => Ui.BrushFrom(Sites.ColorFor(Hit.Service));
+    public Brush ServiceBrush => Ui.BrushFrom(Sites.ColorFor(Hit.Service));
     // Already downloaded (same link, or the same song from another site).
     public bool InLibrary { get; private set; }
     public ICommand DownloadCommand { get; }
 
-    private System.Windows.Media.ImageSource? _thumb;
+    private ImageSource? _thumb;
     private bool _thumbRequested;
-    public System.Windows.Media.ImageSource? Thumb
+    public ImageSource? Thumb
     {
         get
         {
@@ -342,7 +344,7 @@ public sealed class ServiceTab : Observable
     public string? Service { get; }
     public string Label { get; }
     public int Count { get; }
-    public System.Windows.Media.Brush? Brush { get; }
+    public Brush? Brush { get; }
     public bool HasDot => Brush != null;
 
     private bool _isSelected;
@@ -354,7 +356,7 @@ public sealed class SearchViewModel : Observable, ITrackList
     private const int PerService = 15;
     private readonly MainViewModel _main;
     private List<TrackViewModel> _order = new();
-    private readonly System.Windows.Threading.DispatcherTimer _onlineTimer = new() { Interval = TimeSpan.FromMilliseconds(650) };
+    private readonly DispatcherTimer _onlineTimer = new() { Interval = TimeSpan.FromMilliseconds(650) };
 
     public SearchViewModel(MainViewModel main)
     {

@@ -1,0 +1,338 @@
+<UserControl x:Class="UltimateMP3Player.Views.DownloadsView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels">
+    <UserControl.Styles>
+        <Style Selector="Border.item">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.item:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+        </Style>
+        <Style Selector="Border.item.off">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+        <Style Selector="Border.job">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.job:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+        </Style>
+    </UserControl.Styles>
+    <UserControl.DataTemplates>
+        <!-- ============================================================ analyzed link -->
+        <DataTemplate DataType="vm:LinkViewModel">
+            <Border Theme="{StaticResource Card}" Padding="20">
+                <Grid RowDefinitions="Auto,Auto,*">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Panel Width="132" Height="132" VerticalAlignment="Top">
+                            <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}">
+                                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="36" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                            </Border>
+                            <Border CornerRadius="10" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Border.Background>
+                                    <ImageBrush Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                                </Border.Background>
+                            </Border>
+                        </Panel>
+                        <StackPanel Grid.Column="1" Margin="20,0,0,0" VerticalAlignment="Center">
+                            <Border HorizontalAlignment="Left" CornerRadius="6" Padding="9,3" Background="{StaticResource Surface2Brush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding SiteBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SiteName}" FontSize="12" FontWeight="SemiBold" Margin="7,0,0,0" Foreground="{StaticResource SubTextBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="{Binding Title}" FontSize="22" FontWeight="Bold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
+                                       MaxHeight="62" Margin="0,10,0,6"/>
+                            <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                            <Button Theme="{StaticResource LinkButton}" Margin="0,10,0,0" HorizontalAlignment="Left"
+                                    IsVisible="{Binding PartOfPlaylist}"
+                                    Command="{Binding $parent[UserControl].DataContext.WholePlaylistCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="13"/>
+                                    <TextBlock Text="{local:T 'Questo brano fa parte di una playlist: scarica tutta la playlist'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <ItemsControl ItemsSource="{Binding Notes}" Margin="0,8,0,0" IsVisible="{Binding HasNotes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="12.5" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- options -->
+                    <WrapPanel Grid.Row="1" Margin="0,20,0,0" VerticalAlignment="Bottom">
+                        <StackPanel Width="280" Margin="0,0,14,0">
+                            <TextBlock Text="{local:T 'Salva nella playlist'}" Classes="field-label"/>
+                            <ComboBox ItemsSource="{Binding PlaylistChoices}" SelectedItem="{Binding Playlist}" HorizontalAlignment="Stretch"/>
+                        </StackPanel>
+                        <StackPanel Width="280" Margin="0,0,14,0" IsVisible="{Binding ShowNewName}">
+                            <TextBlock Text="{local:T 'Nome della nuova playlist'}" Classes="field-label"/>
+                            <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding NewName}" Watermark="{local:T 'Nome della playlist'}"/>
+                        </StackPanel>
+                        <!-- tags the songs get once downloaded -->
+                        <StackPanel Margin="0,0,14,0">
+                            <TextBlock Text="{local:T 'Tag dei brani'}" Classes="field-label"/>
+                            <Button Classes="tags" Theme="{StaticResource GhostButton}" Height="38" Padding="14,0" MinWidth="150" MaxWidth="420" HorizontalAlignment="Left"
+                                    HorizontalContentAlignment="Left" ToolTip.Tip="{local:T 'Scegli i tag da mettere ai brani scaricati'}">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Text="{local:Icon E70D}" Classes="glyph" FontSize="10" Margin="12,0,0,0"
+                                               Foreground="{StaticResource SubTextBrush}"/>
+                                    <TextBlock Text="{local:T 'Nessuno'}" FontWeight="Normal" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                                               IsVisible="{Binding !HasChosenTags}"/>
+                                    <ItemsControl ItemsSource="{Binding ChosenTags}" VerticalAlignment="Center" ClipToBounds="True" IsVisible="{Binding HasChosenTags}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,10,0">
+                                                    <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Normal" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </DockPanel>
+                            </Button>
+                        </StackPanel>
+                        <CheckBox Margin="0,24,24,0" VerticalAlignment="Center" IsChecked="{Binding WithVideo}" IsVisible="{Binding HasVideo}"
+                                  ToolTip.Tip="{local:T 'Salva anche il video (MP4) oltre all\'audio: lo vedrai nella schermata del brano'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E714}" Classes="glyph" Foreground="{StaticResource SubTextBrush}"/>
+                                <TextBlock Text="{local:T 'Scarica anche il video'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <Button Theme="{StaticResource PrimaryButton}" Padding="22,10" Margin="0,24,0,0" VerticalAlignment="Center" Command="{Binding DownloadCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E896}" Classes="glyph"/>
+                                <TextBlock Text="{Binding DownloadLabel}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+
+                    <!-- entries of a playlist / album -->
+                    <Grid Grid.Row="2" Margin="0,18,0,0" IsVisible="{Binding IsCollection}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*" MinHeight="90"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel LastChildFill="False">
+                            <Button Theme="{StaticResource GhostButton}" Command="{Binding ToggleAllCommand}" Padding="12,6">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E762}" Classes="glyph" FontSize="13"/>
+                                    <TextBlock Text="{Binding ToggleAllLabel}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <TextBlock Text="{Binding SelectionText}" Margin="14,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}" FontSize="13"/>
+                        </DockPanel>
+                        <Border Grid.Row="1" Margin="0,10,0,0" CornerRadius="10" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" Padding="6">
+                            <ListBox Theme="{StaticResource PlainList}" ItemsSource="{Binding Items}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="item" Classes.off="{Binding !IsSelected}" CornerRadius="8" Padding="10,6">
+                                            <Grid ColumnDefinitions="Auto,36,Auto,*,Auto">
+                                                <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Number}" Foreground="{StaticResource MutedBrush}" FontSize="12"
+                                                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                <Panel Grid.Column="2" Width="40" Height="40">
+                                                    <Border CornerRadius="5" Background="{StaticResource PlaceholderGradient}"/>
+                                                    <Border CornerRadius="5" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                        <Border.Background>
+                                                            <ImageBrush Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                                                        </Border.Background>
+                                                    </Border>
+                                                </Panel>
+                                                <StackPanel Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
+                                                    <TextBlock Text="{Binding Meta}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"
+                                                               Margin="0,2,0,0" IsVisible="{Binding Meta, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                </StackPanel>
+                                                <Border Grid.Column="4" CornerRadius="6" Padding="8,3" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
+                                                        IsVisible="{Binding InLibrary}" ToolTip.Tip="{local:T 'Non verrà riscaricato: viene solo aggiunto alla playlist scelta'}">
+                                                    <TextBlock Text="{local:T 'Già nella libreria'}" FontSize="11.5" Foreground="{StaticResource SuccessBrush}"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <UserControl.Resources>
+        <!-- ============================================================ queue entry -->
+        <DataTemplate x:Key="JobTemplate">
+            <Border Classes="job" CornerRadius="10" Padding="10,8" Margin="0,0,0,4">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <Panel Width="44" Height="44">
+                        <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
+                            <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                        </Border>
+                        <Border CornerRadius="6" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Border.Background>
+                                <ImageBrush Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                    </Panel>
+                    <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" FontSize="13.5"/>
+                        <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,1,0,0"/>
+                        <ProgressBar Margin="0,6,0,2" Value="{Binding Percent, Mode=OneWay}" IsIndeterminate="{Binding Indeterminate}" IsVisible="{Binding IsRunning}"/>
+                        <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}" FontSize="12" TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding Details}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Theme="{StaticResource IconButton}" Content="{local:Icon E768}" Command="{Binding PlayCommand}" ToolTip.Tip="{local:T 'Riproduci (in «Tutti i brani»)'}"
+                                IsVisible="{Binding CanPlay}"/>
+                        <Button Theme="{StaticResource GhostButton}" Padding="10,5" Margin="0,0,6,0" FontSize="12.5" Command="{Binding RetryYouTubeCommand}"
+                                IsVisible="{Binding CanRetryYouTube}"
+                                ToolTip.Tip="{local:T 'Cerca lo stesso brano (titolo, artista e durata) su YouTube Music e scarica quello'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="12"/>
+                                <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Theme="{StaticResource IconButton}" Content="{local:Icon E72C}" Command="{Binding RetryCommand}" ToolTip.Tip="{local:T 'Riprova dallo stesso sito'}"
+                                IsVisible="{Binding CanRetry}"/>
+                        <Button Theme="{StaticResource IconButton}" Content="{local:Icon E711}" Command="{Binding CancelCommand}" ToolTip.Tip="{local:T Annulla}"
+                                IsVisible="{Binding IsActive}"/>
+                        <Button Theme="{StaticResource IconButton}" Content="{local:Icon E74D}" Command="{Binding RemoveCommand}" ToolTip.Tip="{local:T 'Togli dall\'elenco'}"
+                                IsVisible="{Binding IsFinished}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid x:Name="Root" Margin="28,6,20,16" RowDefinitions="Auto,Auto,Auto,*">
+        <TextBlock Text="{local:T 'Scarica musica'}" FontSize="30" FontWeight="Bold" Margin="0,0,0,16"/>
+
+        <!-- intro / analyzing / error / result -->
+        <Panel Grid.Row="1" Margin="0,0,8,20">
+            <Border Theme="{StaticResource Card}" Padding="22" IsVisible="{Binding ShowIntro}">
+                <StackPanel>
+                    <TextBlock Text="{local:T 'Incolla un link nella barra in alto'}" FontSize="17" FontWeight="SemiBold"/>
+                    <TextBlock Classes="hint" Margin="0,6,0,14" FontSize="13.5" LineHeight="20"
+                               Text="{local:T 'Brani, album e playlist intere: scegli in quale playlist salvarli e, se c\'è, anche il video. I brani che hai già non vengono riscaricati. Funziona anche trascinando un link nella finestra.'}"/>
+                    <ItemsControl ItemsSource="{Binding FeaturedSites}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="12" Padding="10,4" Margin="0,0,6,6" Background="{StaticResource Surface2Brush}">
+                                    <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text="{local:T '…e centinaia di altri siti.'}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="2,2,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <Border Theme="{StaticResource Card}" Padding="22" IsVisible="{Binding IsAnalyzing}">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Classes="spinner" Width="34" Height="34"/>
+                    <TextBlock Text="{Binding AnalyzingText}" FontSize="15" VerticalAlignment="Center" Margin="16,0,0,0"/>
+                    <Button Theme="{StaticResource GhostButton}" Content="{local:T Annulla}" Margin="20,0,0,0" Command="{Binding CancelCommand}"/>
+                </StackPanel>
+            </Border>
+
+            <Border CornerRadius="14" Padding="20" Background="{StaticResource ErrorSoftBrush}"
+                    IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="{local:Icon EA39}" Classes="glyph" FontSize="22" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Top"/>
+                    <StackPanel Grid.Column="1" Margin="14,0,0,0">
+                        <TextBlock Text="{Binding Error}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ErrorHint}" Classes="hint" Margin="0,6,0,0"
+                                   IsVisible="{Binding ErrorHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <Button Theme="{StaticResource GhostButton}" Content="{local:T 'Apri le impostazioni'}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                                Command="{Binding OpenSettingsCommand}" IsVisible="{Binding SuggestCookies}"/>
+                    </StackPanel>
+                    <Button Grid.Column="2" Theme="{StaticResource IconButton}" Content="{local:Icon E711}" Command="{Binding DismissCommand}" VerticalAlignment="Top"/>
+                </Grid>
+            </Border>
+
+            <ContentControl Content="{Binding Link}" Focusable="False"/>
+
+            <Border CornerRadius="12" Padding="16,12" Background="#1A3A2E" IsVisible="{Binding Feedback, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    VerticalAlignment="Top">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E73E}" Classes="glyph" Foreground="{StaticResource SuccessBrush}"/>
+                    <TextBlock Text="{Binding Feedback}" Margin="10,0,0,0" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </Panel>
+
+        <!-- queue header: title, summary, then the actions in a wrapping toolbar -->
+        <StackPanel Grid.Row="2" Margin="0,0,8,6" IsVisible="{Binding Queue.HasJobs}">
+            <DockPanel LastChildFill="False" Margin="0,0,0,10">
+                <TextBlock Text="{local:T Download}" Classes="section-title" Margin="0"/>
+                <TextBlock Text="{Binding Queue.Summary}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="14,4,0,0"/>
+            </DockPanel>
+            <Border CornerRadius="10" Padding="14,8,8,8" Margin="0,0,0,10" Background="{StaticResource WarningSoftBrush}" IsVisible="{Binding Queue.IsThrottled}">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Theme="{StaticResource SubtleButton}" Padding="10,4" FontSize="12.5" Content="{local:T 'Velocità normale'}"
+                            Command="{Binding Queue.NormalSpeedCommand}" ToolTip.Tip="{local:T 'Riprendi subito a scaricare alla velocità normale'}"/>
+                    <TextBlock Text="{local:Icon E916}" Classes="glyph" Foreground="{StaticResource WarningBrush}"/>
+                    <TextBlock Text="{Binding Queue.ThrottleText}" Margin="10,0,0,0" Foreground="{StaticResource WarningBrush}" FontSize="13" TextWrapping="Wrap"
+                               VerticalAlignment="Center"/>
+                </DockPanel>
+            </Border>
+            <WrapPanel>
+                <Button Theme="{StaticResource ToolbarButton}" Command="{Binding Queue.RetryFailedCommand}"
+                        IsVisible="{Binding Queue.HasFailed}" ToolTip.Tip="{local:T 'Riprova i non riusciti dallo stesso sito'}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Riprova non riusciti'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Theme="{StaticResource ToolbarButton}" Command="{Binding Queue.RetryFailedOnYouTubeCommand}"
+                        IsVisible="{Binding Queue.HasFailedForYouTube}"
+                        ToolTip.Tip="{local:T 'Per ogni brano non scaricato cerca lo stesso brano su YouTube Music'}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Icon E721}" Classes="glyph" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Theme="{StaticResource ToolbarButton}" Command="{Binding Queue.DiscardFailedCommand}"
+                        IsVisible="{Binding Queue.HasFailed}" ToolTip.Tip="{local:T 'Togli dall\'elenco i download non riusciti o annullati'}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Icon E74D}" Classes="glyph" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Scarta errori'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Theme="{StaticResource ToolbarButton}" Command="{Binding Queue.ClearFinishedCommand}"
+                        IsVisible="{Binding Queue.HasDone}" ToolTip.Tip="{local:T 'Togli dall\'elenco i download completati'}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Pulisci completati'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+                <Button Theme="{StaticResource ToolbarButton}" Command="{Binding Queue.CancelAllCommand}" IsVisible="{Binding Queue.HasActive}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Icon E711}" Classes="glyph" FontSize="12"/>
+                        <TextBlock Text="{local:T 'Annulla tutti'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
+            </WrapPanel>
+        </StackPanel>
+
+        <ListBox x:Name="JobList" Grid.Row="3" Theme="{StaticResource PlainList}" ItemsSource="{Binding Queue.Jobs}" ItemTemplate="{StaticResource JobTemplate}"/>
+    </Grid>
+</UserControl>

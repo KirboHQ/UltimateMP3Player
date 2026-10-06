@@ -80,6 +80,35 @@ public static class Dialogs
         return win.ShowDialog() == true;
     }
 
+    // ------------------------------------------------------------------ files and folders
+
+    // filters: (name, extensions like ".jpg"); an "all files" choice is added at the end.
+    public static string[]? PickFiles(string title, bool multiple, params (string Name, IEnumerable<string> Extensions)[] filters)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = title,
+            Multiselect = multiple,
+            Filter = string.Join("|", filters.Select(f => f.Name + "|" + string.Join(";", f.Extensions.Select(e => "*" + e)))
+                .Append(L.T("Tutti i file") + "|*.*")),
+        };
+        return dlg.ShowDialog() == true ? dlg.FileNames : null;
+    }
+
+    public static string? PickFile(string title, params (string Name, IEnumerable<string> Extensions)[] filters)
+        => PickFiles(title, false, filters)?.FirstOrDefault();
+
+    public static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".jfif", ".avif" };
+
+    public static string? PickImage() => PickFile(L.T("Scegli un'immagine"), (L.T("Immagini"), ImageExtensions));
+
+    public static string? PickFolder(string title, string? initial = null)
+    {
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = title };
+        if (initial != null) dlg.InitialDirectory = initial;
+        return dlg.ShowDialog() == true ? dlg.FolderName : null;
+    }
+
     public static (string Title, string Artist, string Album, string Bpm)? EditTrack(Track t)
     {
         var bpm = t.Bpm?.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) ?? "";

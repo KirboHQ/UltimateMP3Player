@@ -158,7 +158,7 @@ public sealed class PlayerViewModel : Observable
         if (Current != null && Current.Id == _queue.Current) pos = _opened ? _audio.Position.TotalSeconds : _resumeAt;
         _main.Profile.Data.Queue = _queue.Save(pos);
         _main.Radio.Save();
-        FlushListening();
+        SaveListening();
         _main.Profile.Save();
     }
 
@@ -168,7 +168,7 @@ public sealed class PlayerViewModel : Observable
         _speedTimer.Stop();
         CountListening();
         _listenTimer.Stop();
-        FlushListening();
+        SaveListening();
         _audio.Ended -= OnEnded;
         _audio.NearEnd -= OnNearEnd;
         _audio.Failed -= OnFailed;
@@ -808,6 +808,27 @@ public sealed class PlayerViewModel : Observable
         _queue.Replace(oldId, saved.Id);
     }
 
+    // The other way round: a suggested song saved in this session and now deleted from the library while it plays goes
+    // on as a suggestion (from the cache) instead of jumping to the next song. False: it wasn't one of those.
+    internal async Task<bool> KeepAsSuggestion(Track saved)
+    {
+        if (_room != null || Current?.Id != saved.Id || !_main.Radio.WasSaved(saved.Id)) return false;
+        var item = _main.Radio.Unsave(saved, _opened ? _audio.SourcePath : null);
+        if (item == null) return false;
+        // Still playing the library copy (it's about to be deleted): on from the cache one, at the same point.
+        if (_opened && string.Equals(_audio.SourcePath, saved.Path, StringComparison.OrdinalIgnoreCase))
+            await _audio.SwapAsync(item.T.Path, item.T.Duration > 0 ? item.T.Duration : Duration);
+        _queue.Replace(saved.Id, item.Id);
+        if (Current?.Id == saved.Id)
+        {
+            Current = _main.Vm(item.T);
+            _main.Profile.Data.LastTrack = item.Id;
+            _main.OnCurrentChanged();
+            _main.Host.OnTrackChanged();
+        }
+        return true;
+    }
+
     // The song playing and the next ones: the suggested ones among them get ready.
     internal List<string> Window(int ahead)
     {
@@ -827,12 +848,15 @@ public sealed class PlayerViewModel : Observable
 
     // ------------------------------------------------------------------ listening statistics
 
-    // The real time each song of the library is heard (in a room too, once its file is here); a play counts after
-    // 30 seconds, or half of a song shorter than a minute. Saved now and then, at every play and at a pause.
+    // The real time each song of the library is heard (in a room too, once its file is here), from its first second.
+    // A play counts once at least three quarters of the song have been heard: song time, so at 2× it takes half the
+    // real time, and jumping ahead doesn't count. The numbers change every second (the statistics follow them live);
+    // they're saved now and then, at every play and at a pause.
+    private const double PlayShare = 0.75;
     private readonly DispatcherTimer _listenTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly Stopwatch _listenClock = new();
     private string? _listenId;
-    private double _listenPending, _listenHeard;
+    private double _listenUnsaved, _listenHeard;
     private bool _listenCounted;
 
     private void UpdateListening()
@@ -846,14 +870,14 @@ public sealed class PlayerViewModel : Observable
         {
             CountListening();
             _listenTimer.Stop();
-            FlushListening();
+            SaveListening();
         }
     }
 
     // The song starts (again): what follows is a new play.
     private void NewListen()
     {
-        FlushListening();
+        SaveListening();
         _listenId = null;
     }
 
@@ -863,28 +887,29 @@ public sealed class PlayerViewModel : Observable
         double dt = _listenClock.Elapsed.TotalSeconds;
         _listenClock.Restart();
         if (HeardId() is not { } id || dt > 5) return;
-        if (id != _listenId)
+        bool started = id != _listenId;
+        if (started)
         {
-            FlushListening();
+            SaveListening();
             _listenId = id;
             _listenHeard = 0;
             _listenCounted = false;
         }
-        _listenPending += dt;
-        _listenHeard += dt;
-        if (!_listenCounted && _listenHeard >= (Duration is > 0 and < 60 ? Duration / 2 : 30))
-        {
-            _listenCounted = true;
-            _main.Profile.AddListening(id, _listenPending, true);
-            _listenPending = 0;
-        }
-        else if (_listenPending >= 60) FlushListening();
+        // The song goes by faster or slower than the clock.
+        _listenHeard += dt * _audio.Speed;
+        bool play = !_listenCounted && Duration > 0 && _listenHeard >= Duration * PlayShare;
+        if (play) _listenCounted = true;
+        _main.Profile.AddListening(id, dt, play, save: false);
+        _listenUnsaved += dt;
+        if (play || _listenUnsaved >= 60) SaveListening();
+        _main.OnListened(id, play || started);
     }
 
-    private void FlushListening()
+    private void SaveListening()
     {
-        if (_listenId != null && _listenPending > 0) _main.Profile.AddListening(_listenId, _listenPending, false);
-        _listenPending = 0;
+        if (_listenUnsaved <= 0) return;
+        _listenUnsaved = 0;
+        _main.Profile.Save();
     }
 
     // The library song sounding here right now.

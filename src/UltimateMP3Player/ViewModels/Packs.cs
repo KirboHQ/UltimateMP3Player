@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -81,20 +80,7 @@ public static class PackImages
         if (!pack.Has(entry)) return null;
         return await Task.Run(() =>
         {
-            try
-            {
-                var bytes = pack.ReadBytes(entry);
-                if (bytes == null) return null;
-                var bi = new BitmapImage();
-                bi.BeginInit();
-                bi.CacheOption = BitmapCacheOption.OnLoad;
-                bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-                bi.StreamSource = new MemoryStream(bytes);
-                bi.DecodePixelWidth = width;
-                bi.EndInit();
-                bi.Freeze();
-                return (BitmapSource?)bi;
-            }
+            try { return Images.FromBytes(pack.ReadBytes(entry), width); }
             catch { return null; }
         });
     }

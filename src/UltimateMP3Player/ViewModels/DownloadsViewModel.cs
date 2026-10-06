@@ -46,22 +46,7 @@ public static class WebImages
         return null;
     }
 
-    private static BitmapSource? Decode(byte[] data, int width)
-    {
-        try
-        {
-            var bi = new BitmapImage();
-            bi.BeginInit();
-            bi.CacheOption = BitmapCacheOption.OnLoad;
-            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-            bi.StreamSource = new MemoryStream(data);
-            if (width > 0) bi.DecodePixelWidth = width;
-            bi.EndInit();
-            bi.Freeze();
-            return bi;
-        }
-        catch { return null; }
-    }
+    private static BitmapSource? Decode(byte[] data, int width) => Images.FromBytes(data, width);
 
     private static async Task<BitmapSource?> DecodeWithFfmpeg(byte[] data, int width)
     {

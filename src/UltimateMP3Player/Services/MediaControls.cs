@@ -24,6 +24,8 @@ public sealed class MediaControls : IDisposable
     {
         // Own hidden window: survives closing to the tray.
         _host = new HwndSource(new HwndSourceParameters("UltimateMP3Player.Media") { Width = 0, Height = 0, WindowStyle = 0 });
+        // Its id gives Windows the app's name and icon (otherwise "Unknown app").
+        AppIdentity.ApplyTo(_host.Handle);
         try
         {
             _smtc = SystemMediaTransportControlsInterop.GetForWindow(_host.Handle);

@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using NAudio.CoreAudioApi;
 using NAudio.Dsp;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -248,7 +247,7 @@ public sealed class DjEngine : ISampleProvider, IDisposable
 
     private readonly MixingSampleProvider _mix;
     private readonly object _mixLock = new();
-    private WasapiOut? _out;
+    private IWavePlayer? _out;
     private WaveFileWriter? _rec;
     private readonly object _recLock = new();
 
@@ -284,7 +283,7 @@ public sealed class DjEngine : ISampleProvider, IDisposable
     public void EnsureRunning()
     {
         if (_out != null) return;
-        _out = new WasapiOut(AudioClientShareMode.Shared, true, 60);
+        _out = AudioPlatform.CreateOutput(60);
         _out.Init(this);
         _out.Play();
     }

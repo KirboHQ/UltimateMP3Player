@@ -3,7 +3,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using UltimateMP3Player.Audio;
 using UltimateMP3Player.Core;
@@ -1600,18 +1599,14 @@ public sealed class TogetherViewModel : Observable
     {
         var text = IsHost ? string.Join(", ", Discovery.LocalAddresses().Take(3).Select(ip => _s!.ListenPort == TogetherSession.FirstPort ? ip : $"{ip}:{_s.ListenPort}")) : _joinedAddress;
         if (string.IsNullOrEmpty(text)) return;
-        try
-        {
-            Clipboard.SetText(text);
-            _main.Toast(L.T("Indirizzo copiato"));
-        }
-        catch { }
+        Ui.CopyText(text);
+        _main.Toast(L.T("Indirizzo copiato"));
     }
 
     private async Task AllowFirewall()
     {
         bool ok = await Task.Run(Firewall.Allow);
-        _main.Toast(ok ? L.T("Fatto: Windows ora lascia entrare le connessioni degli altri su ogni rete.") : L.T("Il firewall non è stato cambiato."));
+        _main.Toast(ok ? Firewall.DoneMessage : L.T("Il firewall non è stato cambiato."));
     }
 
     // Cache in Settings (the files in use, by a room or by the suggested songs, stay).
@@ -1645,65 +1640,10 @@ public sealed class TogetherViewModel : Observable
         LeaveForExit();
     }
 
-    public static byte[]? JpegOf(string path, int size)
-    {
-        try
-        {
-            if (!File.Exists(path)) return null;
-            var bi = new BitmapImage();
-            bi.BeginInit();
-            bi.CacheOption = BitmapCacheOption.OnLoad;
-            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-            bi.UriSource = new Uri(path);
-            bi.DecodePixelWidth = size;
-            bi.EndInit();
-            bi.Freeze();
-            var enc = new JpegBitmapEncoder { QualityLevel = 85 };
-            enc.Frames.Add(BitmapFrame.Create(bi));
-            using var ms = new MemoryStream();
-            enc.Save(ms);
-            return ms.ToArray();
-        }
-        catch { return null; }
-    }
+    public static byte[]? JpegOf(string path, int size) => Images.Jpeg(path, size);
 
     // A site's picture as a square cover (the middle of a 16:9 video thumbnail).
-    public static byte[]? SquareJpeg(byte[] data, int size)
-    {
-        try
-        {
-            var bi = new BitmapImage();
-            bi.BeginInit();
-            bi.CacheOption = BitmapCacheOption.OnLoad;
-            bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-            bi.StreamSource = new MemoryStream(data);
-            bi.EndInit();
-            int side = Math.Min(bi.PixelWidth, bi.PixelHeight);
-            BitmapSource square = new CroppedBitmap(bi, new Int32Rect((bi.PixelWidth - side) / 2, (bi.PixelHeight - side) / 2, side, side));
-            if (side > size) square = new TransformedBitmap(square, new ScaleTransform(size / (double)side, size / (double)side));
-            var enc = new JpegBitmapEncoder { QualityLevel = 85 };
-            enc.Frames.Add(BitmapFrame.Create(square));
-            using var ms = new MemoryStream();
-            enc.Save(ms);
-            return ms.ToArray();
-        }
-        catch { return null; }
-    }
+    public static byte[]? SquareJpeg(byte[] data, int size) => Images.SquareJpeg(data, size);
 
-    public static ImageSource? ImageFrom(byte[]? bytes, int size)
-    {
-        if (bytes is not { Length: > 0 }) return null;
-        try
-        {
-            var bi = new BitmapImage();
-            bi.BeginInit();
-            bi.CacheOption = BitmapCacheOption.OnLoad;
-            bi.StreamSource = new MemoryStream(bytes);
-            bi.DecodePixelWidth = size;
-            bi.EndInit();
-            bi.Freeze();
-            return bi;
-        }
-        catch { return null; }
-    }
+    public static ImageSource? ImageFrom(byte[]? bytes, int size) => Images.FromBytes(bytes, size);
 }

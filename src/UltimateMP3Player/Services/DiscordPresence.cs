@@ -16,7 +16,8 @@ public sealed class DiscordPresence : IDisposable
     private static readonly HttpClient Web = new() { Timeout = TimeSpan.FromSeconds(6) };
 
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private NamedPipeClientStream? _pipe;
+    // The named pipe on Windows, a Unix socket elsewhere.
+    private Stream? _pipe;
     private Wanted? _wanted;
     private string? _sent;
     private DateTime _retryAfter;
@@ -161,14 +162,14 @@ public sealed class DiscordPresence : IDisposable
 
     private async Task<bool> ConnectAsync()
     {
-        if (_pipe is { IsConnected: true }) return true;
+        if (_pipe != null) return true;
         if (DateTime.Now < _retryAfter) return false;
         for (int i = 0; i < 10; i++)
         {
-            var pipe = new NamedPipeClientStream(".", "discord-ipc-" + i, PipeDirection.InOut, PipeOptions.Asynchronous);
+            var pipe = await OpenAsync(i);
+            if (pipe == null) continue;
             try
             {
-                await pipe.ConnectAsync(300);
                 _pipe = pipe;
                 await WriteAsync(0, "{\"v\":1,\"client_id\":\"" + AppInfo.DiscordAppId + "\"}");
                 var (op, _) = await ReadAsync();
@@ -185,6 +186,43 @@ public sealed class DiscordPresence : IDisposable
         // Discord is not running: try again later.
         _retryAfter = DateTime.Now.AddSeconds(30);
         return false;
+    }
+
+    // Discord's socket number i: a named pipe on Windows; on Linux and macOS a Unix socket in the runtime or temp folder
+    // (also where the Flatpak and Snap builds of Discord put it).
+    private static async Task<Stream?> OpenAsync(int i)
+    {
+        var name = "discord-ipc-" + i;
+        if (OperatingSystem.IsWindows())
+        {
+            var pipe = new NamedPipeClientStream(".", name, PipeDirection.InOut, PipeOptions.Asynchronous);
+            try
+            {
+                await pipe.ConnectAsync(300);
+                return pipe;
+            }
+            catch
+            {
+                pipe.Dispose();
+                return null;
+            }
+        }
+        var roots = new[] { "XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP" }.Select(Environment.GetEnvironmentVariable).OfType<string>().Append("/tmp").Distinct();
+        foreach (var root in roots)
+            foreach (var sub in new[] { "", "app/com.discordapp.Discord", "snap.discord", ".flatpak/com.discordapp.Discord/xdg-run" })
+            {
+                var path = Path.Combine(root, sub, name);
+                if (!File.Exists(path)) continue;
+                var socket = new System.Net.Sockets.Socket(System.Net.Sockets.AddressFamily.Unix, System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Unspecified);
+                try
+                {
+                    using var cts = new CancellationTokenSource(300);
+                    await socket.ConnectAsync(new System.Net.Sockets.UnixDomainSocketEndPoint(path), cts.Token);
+                    return new System.Net.Sockets.NetworkStream(socket, true);
+                }
+                catch { socket.Dispose(); }
+            }
+        return null;
     }
 
     private async Task WriteAsync(int op, string json)

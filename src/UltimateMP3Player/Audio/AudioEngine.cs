@@ -1,156 +1,213 @@
-using System.Diagnostics;
-using System.IO;
 using System.Windows.Threading;
-using NAudio.CoreAudioApi;
-using NAudio.CoreAudioApi.Interfaces;
-using NAudio.Dsp;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.Audio;
 
-// A decoded song: stereo float at its own rate.
-public interface ITrackSource : IDisposable
+// The player's sound: MasterProvider on the default output device (AudioPlatform), followed when it changes.
+public sealed class AudioEngine : IDisposable
 {
-    ISampleProvider Samples { get; }
-    TimeSpan Position { get; }
-    TimeSpan Duration { get; }
-    void Seek(TimeSpan t);
-}
+    public const int LatencyMs = 120;
+    private const double PauseFade = 0.06;
 
-// Media Foundation: MP3, AAC, MP4, WAV, FLAC, WMA.
-public sealed class MfTrackSource : ITrackSource
-{
-    private readonly MediaFoundationReader _reader;
+    private readonly Dispatcher _ui;
+    private readonly MasterProvider _master = new(48000);
+    private readonly IDisposable? _watcher;
+    private IWavePlayer? _out;
+    private bool _playing;
+    // The device still plays for a moment after Pause (the fade): a song swapped meanwhile must fade too.
+    private bool _outRunning;
+    private int _pauseVersion, _openVersion;
+    private double _crossfade;
 
-    public MfTrackSource(string path)
+    public event Action? Ended;
+    public event Action? NearEnd;
+    public event Action<string>? Failed;
+
+    public AudioEngine(Dispatcher ui)
     {
-        _reader = new MediaFoundationReader(path, new MediaFoundationReader.MediaFoundationReaderSettings { RequestFloatOutput = true });
-        ISampleProvider s = _reader.ToSampleProvider();
-        if (s.WaveFormat.Channels == 1) s = new MonoToStereoSampleProvider(s);
-        else if (s.WaveFormat.Channels > 2) s = new FirstTwoChannels(s);
-        Samples = s;
+        _ui = ui;
+        _master.Ended += () => _ui.BeginInvoke(() => Ended?.Invoke());
+        _master.NearEnd += () => _ui.BeginInvoke(() => NearEnd?.Invoke());
+        _watcher = AudioPlatform.WatchDefaultDevice(() => _ui.BeginInvoke(SwitchDevice));
     }
 
-    public ISampleProvider Samples { get; }
-    public TimeSpan Position => _reader.CurrentTime;
-    public TimeSpan Duration => _reader.TotalTime;
-    public void Seek(TimeSpan t) => _reader.CurrentTime = t < TimeSpan.Zero ? TimeSpan.Zero : t;
-    public void Dispose() => _reader.Dispose();
+    public bool IsPlaying => _playing;
+    public bool HasSource => _master.HasSource;
+    public string? SourcePath { get; private set; }
 
-    private sealed class FirstTwoChannels : ISampleProvider
+    public TimeSpan Position
     {
-        private readonly ISampleProvider _src;
-        private readonly int _ch;
-        private float[] _buf = Array.Empty<float>();
-
-        public FirstTwoChannels(ISampleProvider src)
+        get
         {
-            _src = src;
-            _ch = src.WaveFormat.Channels;
-            WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(src.WaveFormat.SampleRate, 2);
-        }
-
-        public WaveFormat WaveFormat { get; }
-
-        public int Read(float[] buffer, int offset, int count)
-        {
-            int frames = count / 2;
-            if (_buf.Length < frames * _ch) _buf = new float[frames * _ch];
-            int read = _src.Read(_buf, 0, frames * _ch) / _ch;
-            for (int f = 0; f < read; f++)
-            {
-                buffer[offset + f * 2] = _buf[f * _ch];
-                buffer[offset + f * 2 + 1] = _buf[f * _ch + 1];
-            }
-            return read * 2;
+            var p = _master.Position;
+            // The output buffer holds LatencyMs of sound, that is more of the song when it plays faster.
+            if (_playing) p -= TimeSpan.FromMilliseconds(LatencyMs * _master.Speed);
+            return p < TimeSpan.Zero ? TimeSpan.Zero : p;
         }
     }
-}
 
-// ffmpeg PCM stream for Opus, Ogg, WebM, MKV.
-public sealed class FfmpegTrackSource : ITrackSource, ISampleProvider
-{
-    private const int Rate = 48000;
-    private readonly string _path;
-    private Process? _proc;
-    private Stream? _out;
-    private TimeSpan _start;
-    private long _frames;
-    private byte[] _bytes = Array.Empty<byte>();
-    private int _leftover;
+    public TimeSpan Duration => _master.Duration;
 
-    public FfmpegTrackSource(string path, TimeSpan duration)
+    public float Volume { set => _master.Volume = value; }
+
+    // Playback speed 0.5-2; pitch = the key follows the speed (like a record), otherwise it stays.
+    public double Speed => _master.Speed;
+
+    public void SetSpeed(double speed, bool pitch) => _master.SetSpeed(speed, pitch);
+
+    private bool Smooth => _playing || _outRunning;
+
+    // Crossfade seconds, 0 = off.
+    public double CrossfadeSeconds
     {
-        _path = path;
-        Duration = duration;
-        Start(TimeSpan.Zero);
-    }
-
-    public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(Rate, 2);
-    public ISampleProvider Samples => this;
-    public TimeSpan Duration { get; }
-    public TimeSpan Position => _start + TimeSpan.FromSeconds(_frames / (double)Rate);
-
-    private void Start(TimeSpan at)
-    {
-        Kill();
-        var psi = new ProcessStartInfo(Engines.Ffmpeg)
+        get => _crossfade;
+        set
         {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = false,
-            CreateNoWindow = true,
-        };
-        foreach (var a in new[] { "-nostdin", "-loglevel", "quiet", "-ss", at.TotalSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
-                     "-i", _path, "-vn", "-f", "f32le", "-ac", "2", "-ar", Rate.ToString(), "pipe:1" })
-            psi.ArgumentList.Add(a);
-        _proc = Process.Start(psi);
-        _out = _proc?.StandardOutput.BaseStream;
-        _start = at;
-        _frames = 0;
-        _leftover = 0;
+            _crossfade = value;
+            _master.SetCrossfade(value);
+        }
     }
 
-    public int Read(float[] buffer, int offset, int count)
+    public double RemainingSeconds => _master.RemainingSeconds;
+
+    public void SetEqualizer(bool enabled, IReadOnlyList<double> gains) => _master.SetEqualizer(enabled, gains);
+
+    public void SetTrackGain(double db) => _master.SetTrackGain(db);
+
+    private static Task<ITrackSource> OpenSource(string path, double durationHint) => Task.Run(() => AudioPlatform.Open(path, durationHint));
+
+    // Decoders are created off the UI thread. An open overtaken by another one (or by Close) is thrown away:
+    // it would otherwise put its song back in the engine.
+    public async Task OpenAsync(string path, double durationHint, double trackGainDb)
     {
-        if (_out == null) return 0;
-        int bytesWanted = count * 4;
-        if (_bytes.Length < bytesWanted) _bytes = new byte[bytesWanted];
-        int got = _leftover;
-        _leftover = 0;
+        int version = ++_openVersion;
+        var source = await OpenSource(path, durationHint);
+        if (version != _openVersion)
+        {
+            source.Dispose();
+            return;
+        }
+        _master.SetSource(source, trackGainDb, durationHint, _crossfade, Smooth);
+        SourcePath = path;
+    }
+
+    public async Task CrossfadeToAsync(string path, double durationHint, double trackGainDb)
+    {
+        int version = ++_openVersion;
+        var source = await OpenSource(path, durationHint);
+        if (version != _openVersion)
+        {
+            source.Dispose();
+            return;
+        }
+        double seconds = Math.Clamp(Math.Min(_crossfade, _master.RemainingSeconds), 0.3, 12);
+        _master.Crossfade(source, trackGainDb, durationHint, _crossfade, seconds);
+        SourcePath = path;
+    }
+
+    // The song playing goes on from another copy of its file, at the same point.
+    public async Task SwapAsync(string path, double durationHint)
+    {
+        int version = ++_openVersion;
+        var source = await OpenSource(path, durationHint);
+        if (version != _openVersion || !_master.Swap(source))
+        {
+            source.Dispose();
+            return;
+        }
+        SourcePath = path;
+    }
+
+    public void Close()
+    {
+        _openVersion++;
+        _master.SetSource(null, 0, 0, 0, Smooth);
+        SourcePath = null;
+    }
+
+    public void Seek(TimeSpan t) => _master.Seek(t);
+
+    public void Play()
+    {
+        _pauseVersion++;
         try
         {
-            while (got < bytesWanted)
-            {
-                int n = _out.Read(_bytes, got, bytesWanted - got);
-                if (n <= 0) break;
-                got += n;
-            }
+            bool wasStopped = !_playing;
+            EnsureOutput();
+            if (wasStopped && !_outRunning) _master.FadeLevel(0, 0);
+            _out!.Play();
+            _playing = true;
+            _outRunning = true;
+            _master.FadeLevel(1, PauseFade);
         }
-        catch { }
-        int whole = got / 8 * 8;
-        Buffer.BlockCopy(_bytes, 0, buffer, offset * 4, whole);
-        if (got > whole)
+        catch (Exception ex)
         {
-            Buffer.BlockCopy(_bytes, whole, _bytes, 0, got - whole);
-            _leftover = got - whole;
+            ResetOutput();
+            _playing = false;
+            Failed?.Invoke(L.T("Impossibile usare il dispositivo audio:") + " " + ex.Message);
         }
-        _frames += whole / 8;
-        return whole / 4;
     }
 
-    public void Seek(TimeSpan t) => Start(t < TimeSpan.Zero ? TimeSpan.Zero : t);
-
-    private void Kill()
+    // Fade out first: a hard stop clicks.
+    public void Pause()
     {
-        try { if (_proc is { HasExited: false }) _proc.Kill(); } catch { }
-        _proc?.Dispose();
-        _proc = null;
-        _out = null;
+        if (!_playing) return;
+        _playing = false;
+        _master.FadeLevel(0, PauseFade);
+        int version = ++_pauseVersion;
+        _ = Task.Delay(TimeSpan.FromSeconds(PauseFade + 0.05)).ContinueWith(_ => _ui.BeginInvoke(() =>
+        {
+            if (version != _pauseVersion || _playing) return;
+            try { _out?.Pause(); } catch { }
+            _outRunning = false;
+        }));
     }
 
-    public void Dispose() => Kill();
-}
+    private void EnsureOutput()
+    {
+        if (_out != null) return;
+        _master.SetRate(AudioPlatform.OutputRate());
+        var o = AudioPlatform.CreateOutput(LatencyMs);
+        o.Init(new SampleToWaveProvider(_master));
+        o.PlaybackStopped += (_, e) =>
+        {
+            if (e.Exception == null) return;
+            _ui.BeginInvoke(() =>
+            {
+                bool was = _playing;
+                _playing = false;
+                ResetOutput();
+                if (was) Play();
+            });
+        };
+        _out = o;
+    }
 
+    private void ResetOutput()
+    {
+        var o = _out;
+        _out = null;
+        _outRunning = false;
+        if (o == null) return;
+        try { o.Stop(); } catch { }
+        try { o.Dispose(); } catch { }
+    }
+
+    // Headphones plugged in, Bluetooth: move there.
+    private void SwitchDevice()
+    {
+        bool was = _playing;
+        _playing = false;
+        ResetOutput();
+        if (was) Play();
+    }
+
+    public void Dispose()
+    {
+        _watcher?.Dispose();
+        ResetOutput();
+        _master.SetSource(null, 0, 0, 0, false);
+    }
+}

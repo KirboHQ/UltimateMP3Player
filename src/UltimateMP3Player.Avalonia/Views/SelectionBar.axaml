@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             x:Class="UltimateMP3Player.Views.SelectionBar"
+             IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16">
+    <Border CornerRadius="14" Padding="16,8,8,8" Background="{StaticResource Surface3Brush}" BorderBrush="{StaticResource BorderStrongBrush}"
+            BorderThickness="1" BoxShadow="0 4 20 0 #8C000000">
+        <StackPanel Orientation="Horizontal">
+            <TextBlock Name="CountText" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,14,0"/>
+            <Button Name="PlayButton" Theme="{StaticResource SubtleButton}" Padding="10,6" Click="Play_Click" ToolTip.Tip="{local:T 'Riproduci i brani selezionati'}"
+                    ToolTip.ShowOnDisabled="True">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Name="PlayGlyph" Text="{local:Icon E768}" Classes="glyph" FontSize="14"/>
+                    <TextBlock Name="PlayLabel" Text="{local:T Riproduci}" Margin="7,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button Name="QueueButton" Theme="{StaticResource SubtleButton}" Padding="10,6" Click="Queue_Click" ToolTip.Tip="{local:T 'Aggiungi alla coda'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="14"/>
+                    <TextBlock Text="{local:T 'In coda'}" Margin="7,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button Theme="{StaticResource SubtleButton}" Padding="10,6" Click="Playlist_Click" ToolTip.Tip="{local:T 'Aggiungi a una playlist'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E710}" Classes="glyph" FontSize="14"/>
+                    <TextBlock Text="Playlist" Margin="7,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button Theme="{StaticResource SubtleButton}" Padding="10,6" Click="Tag_Click" ToolTip.Tip="{local:T 'Metti o togli un tag ai brani selezionati'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E8EC}" Classes="glyph" FontSize="14"/>
+                    <TextBlock Text="Tag" Margin="7,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button Name="RemoveButton" Theme="{StaticResource SubtleButton}" Padding="10,6" Click="Remove_Click" IsVisible="False"
+                    ToolTip.Tip="{local:T 'Togli dalla playlist (i brani restano nella libreria)'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E738}" Classes="glyph" FontSize="14"/>
+                    <TextBlock Text="{local:T 'Togli dalla playlist'}" Margin="7,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button Theme="{StaticResource DangerButton}" Padding="12,6" Margin="6,0,0,0" Click="Delete_Click" ToolTip.Tip="{local:T 'Elimina dal computer (Canc)'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E74D}" Classes="glyph" FontSize="14"/>
+                    <TextBlock Text="{local:T Elimina}" Margin="7,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button Theme="{StaticResource IconButton}" Content="{local:Icon E711}" FontSize="12" Margin="6,0,0,0" Click="Clear_Click"
+                    ToolTip.Tip="{local:T 'Deseleziona (Esc)'}"/>
+        </StackPanel>
+    </Border>
+</UserControl>

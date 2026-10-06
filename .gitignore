@@ -4,6 +4,7 @@ obj/
 app/
 dist/
 installer/staging/
+installer/staging-unix/
 installer/Output/
 
 # external programs (downloaded, too big for git: see README)

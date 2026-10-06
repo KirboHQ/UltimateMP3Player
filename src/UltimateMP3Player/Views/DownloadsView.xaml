@@ -123,7 +123,7 @@
                         <DockPanel LastChildFill="False">
                             <Button Style="{StaticResource GhostButton}" Command="{Binding ToggleAllCommand}" Padding="12,6">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE8B3;" Style="{StaticResource Glyph}" FontSize="13"/>
+                                    <TextBlock Text="&#xE762;" Style="{StaticResource Glyph}" FontSize="13"/>
                                     <TextBlock Text="{Binding ToggleAllLabel}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>

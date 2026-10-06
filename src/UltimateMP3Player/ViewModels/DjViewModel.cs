@@ -1,17 +1,17 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using UltimateMP3Player.Audio;
 using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.ViewModels;
+
+// What the dialog of a finished recording gives back: the song's title and artist, its cover, where it goes
+// (a playlist, a new one with this name, or none).
+public sealed record MixSave(string Title, string Artist, string? Cover, Playlist? Playlist, string? NewPlaylist);
 
 // One deck: its song, transport, tempo and its channel on the mixer.
 public sealed class DjDeckViewModel : Observable
@@ -22,7 +22,7 @@ public sealed class DjDeckViewModel : Observable
     {
         Name = name;
         Brush = Ui.BrushFrom(color);
-        Color = (Color)ColorConverter.ConvertFromString(color);
+        Color = Ui.ColorFrom(color);
         Engine = engine;
         Dj = dj;
    }
@@ -828,8 +828,8 @@ public sealed class DjViewModel : Observable
     {
         if (on == _frames) return;
         _frames = on;
-        if (on) CompositionTarget.Rendering += OnFrame;
-        else CompositionTarget.Rendering -= OnFrame;
+        if (on) FrameClock.Add(OnFrame);
+        else FrameClock.Remove(OnFrame);
     }
 
     private void OnFrame(object? sender, EventArgs e)
@@ -914,48 +914,7 @@ public sealed class DjViewModel : Observable
     private async Task SaveRecording(string wav)
     {
         var decks = Decks.Where(d => d.HasTrack).ToList();
-        var res = Application.Current.Resources;
-        var body = new StackPanel();
-        TextBox Field(string label, string value)
-        {
-            body.Children.Add(new TextBlock { Text = label, Style = (Style)res["FieldLabel"], Margin = new Thickness(2, 8, 0, 6) });
-            var box = new TextBox { Text = value, Style = (Style)res["BoxTextBox"] };
-            body.Children.Add(box);
-            return box;
-        }
-        var title = Field(L.T("Titolo"), string.Join(" x ", decks.Select(d => d.Title)) + " (mix)");
-        var artist = Field(L.T("Artista"), string.Join(", ", decks.Select(d => d.Artist).Where(a => a.Length > 0).Distinct()));
-        body.Children.Add(new TextBlock { Text = L.T("Copertina"), Style = (Style)res["FieldLabel"], Margin = new Thickness(2, 8, 0, 6) });
-        string? cover = null;
-        var coverButton = new Button { Content = L.T("Scegli un'immagine…"), Style = (Style)res["GhostButton"], HorizontalAlignment = HorizontalAlignment.Left };
-        coverButton.Click += (_, _) =>
-        {
-            var d = new OpenFileDialog { Filter = L.T("Immagini") + "|*.jpg;*.jpeg;*.png;*.webp;*.bmp" };
-            if (d.ShowDialog() != true) return;
-            cover = d.FileName;
-            coverButton.Content = Path.GetFileName(cover);
-        };
-        body.Children.Add(coverButton);
-        body.Children.Add(new TextBlock { Text = L.T("Salva nella playlist"), Style = (Style)res["FieldLabel"], Margin = new Thickness(2, 12, 0, 6) });
-        const string NewOne = "\0new";
-        var choices = new List<Choice> { new(L.T("Nessuna (solo in «Tutti i brani»)"), null), new(L.T("Nuova playlist…"), NewOne) };
-        choices.AddRange(Main.Playlists.Select(p => new Choice(p.Name, p.P)));
-        var playlist = new ComboBox { ItemsSource = choices, SelectedIndex = 0 };
-        body.Children.Add(playlist);
-        // Name of the new playlist, shown when "New playlist…" is picked.
-        var newName = new TextBox { Text = Main.NewPlaylistName(), Style = (Style)res["BoxTextBox"], Margin = new Thickness(0, 8, 0, 0), Visibility = Visibility.Collapsed };
-        body.Children.Add(newName);
-        bool IsNew() => Equals((playlist.SelectedItem as Choice)?.Value, NewOne);
-        playlist.SelectionChanged += (_, _) =>
-        {
-            newName.Visibility = IsNew() ? Visibility.Visible : Visibility.Collapsed;
-            if (IsNew()) { newName.Focus(); newName.SelectAll(); }
-        };
-
-        var ok = Dialogs.Button(L.T("Salva"), "PrimaryButton", isDefault: true);
-        var win = Dialogs.Frame(L.T("Salva la registrazione"), body, 420, Dialogs.Button(L.T("Scarta"), "GhostButton", isCancel: true), ok);
-        ok.Click += (_, _) => { if (title.Text.Trim().Length > 0 && (!IsNew() || newName.Text.Trim().Length > 0)) win.DialogResult = true; };
-        if (win.ShowDialog() != true)
+        if (Views.DjDialogs.SaveRecording(this, decks) is not { } choice)
         {
             try { File.Delete(wav); } catch { }
             return;
@@ -964,7 +923,7 @@ public sealed class DjViewModel : Observable
         Status = L.T("Salvataggio del mix…");
         try
         {
-            string name = string.Join("_", $"{artist.Text.Trim()} - {title.Text.Trim()}".Trim(' ', '-').Split(Path.GetInvalidFileNameChars()));
+            string name = string.Join("_", $"{choice.Artist} - {choice.Title}".Trim(' ', '-').Split(Path.GetInvalidFileNameChars()));
             var dir = Main.Host.Settings.MusicDir;
             Directory.CreateDirectory(dir);
             var file = Path.Combine(dir, name + ".mp3");
@@ -972,19 +931,19 @@ public sealed class DjViewModel : Observable
             var r = await ProcRunner.RunAsync(Engines.Ffmpeg, new[]
             {
                 "-v", "error", "-y", "-i", wav, "-c:a", "libmp3lame", "-b:a", "320k", "-id3v2_version", "3",
-                "-metadata", "title=" + title.Text.Trim(), "-metadata", "artist=" + artist.Text.Trim(), file,
+                "-metadata", "title=" + choice.Title, "-metadata", "artist=" + choice.Artist, file,
             }, captureOut: false);
             if (r.ExitCode != 0) throw new EngineException(r.StdErr.Trim().Split('\n').LastOrDefault() ?? "ffmpeg");
             var t = await Task.Run(() => Importer.ImportAsync(Main.Library, file, CancellationToken.None));
             // Made here: the app owns the file (deleting the song deletes it).
             t.Site = "DJ";
-            if (cover != null && await AudioAnalysis.MakeCoverFromImageAsync(cover, AppPaths.TrackCover(t.Id)))
+            if (choice.Cover != null && await AudioAnalysis.MakeCoverFromImageAsync(choice.Cover, AppPaths.TrackCover(t.Id)))
             {
                 t.HasCover = true;
                 t.CoverVersion++;
             }
             Main.Library.Changed(t);
-            var target = IsNew() ? Main.Profile.CreatePlaylist(newName.Text.Trim()) : (playlist.SelectedItem as Choice)?.Value as Playlist;
+            var target = choice.NewPlaylist != null ? Main.Profile.CreatePlaylist(choice.NewPlaylist) : choice.Playlist;
             if (target != null) Main.Profile.AddTrack(target, t.Id);
             Status = null;
             Main.Toast(L.F("Mix «{0}» salvato nella libreria", t.Title));

@@ -58,7 +58,7 @@
                 <TextBlock Style="{StaticResource Hint}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0">
                     <Run Text="{Binding SinceText, Mode=OneWay}"/>
                     <Run Text="·"/>
-                    <Run Text="{local:T 'solo per questo profilo; un ascolto conta dopo 30 secondi.'}"/>
+                    <Run Text="{local:T 'solo per questo profilo.'}"/>
                 </TextBlock>
             </StackPanel>
         </Grid>
@@ -70,7 +70,7 @@
                     Visibility="{Binding HasNever, Converter={StaticResource BoolVis}}"
                     ToolTip="{local:T 'Poi Canc per eliminarli, o tasto destro per le altre azioni'}">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE8B3;" Style="{StaticResource Glyph}"/>
+                    <TextBlock Text="&#xE762;" Style="{StaticResource Glyph}"/>
                     <TextBlock Text="{Binding NeverText}" Margin="8,0,0,0"/>
                 </StackPanel>
             </Button>

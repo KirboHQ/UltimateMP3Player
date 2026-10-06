@@ -78,8 +78,9 @@ Root: HKCU; Subkey: "Software\Classes\UltimateMP3Player.Pack\DefaultIcon"; Value
 Root: HKCU; Subkey: "Software\Classes\UltimateMP3Player.Pack\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 
 [Icons]
-Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+; The id the app gives itself (Services\AppIdentity.cs): Windows' media controls take name and icon from this shortcut.
+Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"; AppUserModelID: "KirboHQ.UltimateMP3Player"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; AppUserModelID: "KirboHQ.UltimateMP3Player"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent

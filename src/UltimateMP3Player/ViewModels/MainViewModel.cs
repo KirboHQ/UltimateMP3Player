@@ -4,8 +4,8 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
-using Microsoft.Win32;
 using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.ViewModels;
@@ -66,7 +66,7 @@ public sealed class MainViewModel : Observable
         });
         SubmitSearchCommand = new RelayCommand(SubmitSearch);
         ClearSearchCommand = new RelayCommand(() => SearchText = "");
-        PasteLinkCommand = new RelayCommand(PasteLink);
+        PasteLinkCommand = new RelayCommand(() => _ = PasteLink());
         SwitchProfileCommand = new RelayCommand(() => Host.SwitchProfile());
         ImportCommand = new RelayCommand(() => ImportDialog(false));
         NewTagCommand = new RelayCommand(() => NewTag());
@@ -166,8 +166,8 @@ public sealed class MainViewModel : Observable
 
     public string ProfileName => Profile.Info.Name;
     public string ProfileInitial => Profile.Info.Initial;
-    public System.Windows.Media.Brush ProfileBrush => Ui.BrushFrom(Profile.Info.Color);
-    public System.Windows.Media.ImageSource? ProfileAvatar =>
+    public Brush ProfileBrush => Ui.BrushFrom(Profile.Info.Color);
+    public ImageSource? ProfileAvatar =>
         Profile.Info.HasAvatar ? Images.Decode(Profile.Info.AvatarPath, 96) : null;
     public bool MultipleProfiles => Host.Profiles.Profiles.Count > 1;
 
@@ -400,16 +400,12 @@ public sealed class MainViewModel : Observable
         OnChanged(nameof(SearchText), nameof(IsLink), nameof(HasSearchText));
     }
 
-    private void PasteLink()
+    private async Task PasteLink()
     {
-        try
-        {
-            if (!Clipboard.ContainsText()) return;
-            var text = Clipboard.GetText().Trim();
-            if (LooksLikeLink(text)) StartDownload(text);
-            else SearchText = text;
-        }
-        catch { }
+        var text = (await Ui.ClipboardTextAsync())?.Trim();
+        if (string.IsNullOrEmpty(text)) return;
+        if (LooksLikeLink(text)) StartDownload(text);
+        else SearchText = text;
     }
 
     // ------------------------------------------------------------------ toast
@@ -546,7 +542,7 @@ public sealed class MainViewModel : Observable
 
     public void ChangePlaylistCover(PlaylistViewModel vm)
     {
-        var file = PickImage();
+        var file = Dialogs.PickImage();
         if (file == null) return;
         _ = SetCover(file, Profile.PlaylistCover(vm.P), () => Profile.SetPlaylistCover(vm.P, true));
     }
@@ -555,16 +551,6 @@ public sealed class MainViewModel : Observable
     {
         try { File.Delete(Profile.PlaylistCover(vm.P)); } catch { }
         Profile.SetPlaylistCover(vm.P, false);
-    }
-
-    private static string? PickImage()
-    {
-        var dlg = new OpenFileDialog
-        {
-            Title = L.T("Scegli un'immagine"),
-            Filter = L.T("Immagini") + "|*.jpg;*.jpeg;*.png;*.webp;*.bmp;*.gif;*.jfif;*.avif|" + L.T("Tutti i file") + "|*.*",
-        };
-        return dlg.ShowDialog() == true ? dlg.FileName : null;
     }
 
     private async Task SetCover(string image, string target, Action done)
@@ -693,7 +679,7 @@ public sealed class MainViewModel : Observable
 
     public void ChangeTrackCover(TrackViewModel t)
     {
-        var file = PickImage();
+        var file = Dialogs.PickImage();
         if (file == null) return;
         _ = SetCover(file, AppPaths.TrackCover(t.Id), () =>
         {
@@ -706,7 +692,7 @@ public sealed class MainViewModel : Observable
     public void ShowInFolder(TrackViewModel t)
     {
         if (!File.Exists(t.T.Path)) { Toast(L.T("Il file non esiste più.")); return; }
-        try { Process.Start("explorer.exe", $"/select,\"{t.T.Path}\""); } catch { }
+        Ui.ShowInFolder(t.T.Path);
     }
 
     public void DeleteTrack(TrackViewModel t) => DeleteTracks(new[] { t });
@@ -742,6 +728,9 @@ public sealed class MainViewModel : Observable
     // Removes the song everywhere: files, cover, playlists, history, queue.
     private async Task Delete(List<TrackViewModel> tracks)
     {
+        // A song suggested online, saved and deleted while it plays: this listen goes on (from the cache) instead of
+        // jumping to the next song.
+        if (Player.Current is { } playing && tracks.Contains(playing)) await Player.KeepAsSuggestion(playing.T);
         await Player.RemoveTracks(tracks.Select(t => t.Id).ToHashSet());
         var files = new List<string>();
         foreach (var t in tracks)
@@ -798,7 +787,7 @@ public sealed class MainViewModel : Observable
             Tags.Add(vm);
         }
         // The "Tag" column of the song lists only exists once there are tags.
-        Application.Current.Resources["TagColumnWidth"] = new GridLength(Tags.Count > 0 ? 1.3 : 0, GridUnitType.Star);
+        Ui.SetTagColumn(Tags.Count > 0);
         OnChanged(nameof(HasTags));
     }
 
@@ -932,6 +921,15 @@ public sealed class MainViewModel : Observable
         if (Page == Home) Home.Refresh();
     }
 
+    // Another second of a song heard: the statistics on screen follow it (sorted again only when the order can change:
+    // a play counted, another song started).
+    public void OnListened(string id, bool reorder)
+    {
+        if (_vms.TryGetValue(id, out var vm)) vm.RefreshStats();
+        if (_stats != null && Page == _stats) _stats.OnListened(reorder);
+        if (_settings != null && Page == _settings) _settings.OnListened(reorder);
+    }
+
     public void OnCurrentChanged()
     {
         foreach (var p in Playlists) p.IsPlayingFrom = Player?.ContextId == "playlist:" + p.Id;
@@ -990,20 +988,13 @@ public sealed class MainViewModel : Observable
         List<string> paths;
         if (folder)
         {
-            var dlg = new OpenFolderDialog { Title = L.T("Scegli una cartella con la tua musica") };
-            if (dlg.ShowDialog() != true) return;
-            paths = new List<string> { dlg.FolderName };
+            if (Dialogs.PickFolder(L.T("Scegli una cartella con la tua musica")) is not { } dir) return;
+            paths = new List<string> { dir };
         }
         else
         {
-            var dlg = new OpenFileDialog
-            {
-                Title = L.T("Aggiungi brani dal computer"),
-                Multiselect = true,
-                Filter = L.T("Audio e video") + "|" + string.Join(";", Importer.Extensions.Select(e => "*" + e)) + "|" + L.T("Tutti i file") + "|*.*",
-            };
-            if (dlg.ShowDialog() != true) return;
-            paths = dlg.FileNames.ToList();
+            if (Dialogs.PickFiles(L.T("Aggiungi brani dal computer"), true, (L.T("Audio e video"), Importer.Extensions)) is not { Length: > 0 } files) return;
+            paths = files.ToList();
         }
         _ = Import(paths, false);
     }
@@ -1023,7 +1014,7 @@ public sealed class MainViewModel : Observable
         {
             try
             {
-                if (Engines.Missing().Contains("ffmpeg.exe")) await Host.EnsureEnginesAsync();
+                if (Engines.Missing().Contains(Path.GetFileName(Engines.Ffmpeg))) await Host.EnsureEnginesAsync();
                 var t = await Task.Run(() => Importer.ImportAsync(Library, f, CancellationToken.None));
                 first ??= t;
                 ok++;
@@ -1058,12 +1049,8 @@ public sealed class MainViewModel : Observable
 
     public void PickPack()
     {
-        var dlg = new OpenFileDialog
-        {
-            Title = L.T("Importa un pacchetto"),
-            Filter = L.T("Pacchetto di Ultimate MP3 Player") + " (*" + Pack.Extension + ")|*" + Pack.Extension + "|" + L.T("Tutti i file") + "|*.*",
-        };
-        if (dlg.ShowDialog() == true) OpenPack(dlg.FileName);
+        if (Dialogs.PickFile(L.T("Importa un pacchetto"), (L.T("Pacchetto di Ultimate MP3 Player") + " (*" + Pack.Extension + ")", new[] { Pack.Extension })) is { } file)
+            OpenPack(file);
     }
 
     public void ExportPack(PlaylistViewModel? playlist = null, TagViewModel? tag = null) => Views.PackDialogs.Export(this, playlist, tag);
@@ -1086,15 +1073,7 @@ public sealed class MainViewModel : Observable
         Queue.Add(batch, r.Downloads.Select((d, i) => (PackImporter.ToMediaItem(d.Track), i)), false);
     }
 
-    public static void OpenFolder(string dir)
-    {
-        try
-        {
-            Directory.CreateDirectory(dir);
-            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{dir}\"") { UseShellExecute = true });
-        }
-        catch { }
-    }
+    public static void OpenFolder(string dir) => Ui.OpenFolder(dir);
 
     // A web page in the default browser.
     public static void OpenUrl(string url)

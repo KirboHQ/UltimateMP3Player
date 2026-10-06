@@ -130,6 +130,12 @@ public sealed class RadioFetcher : IDisposable
         }
     }
 
+    // A file that's already in the cache (a saved song deleted while it played).
+    public void Have(RadioSong s, string path)
+    {
+        if (!_disposed) MarkReady(s, path);
+    }
+
     private void MarkReady(RadioSong s, string path)
     {
         _paths[s.Id] = path;

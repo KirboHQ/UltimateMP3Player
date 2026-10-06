@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ultimate MP3 Player for Linux and macOS: the same app as the Windows one (src\UltimateMP3Player), drawn with Avalonia.
+       The view models, the audio engine and the services that don't depend on the system are the Windows project's own
+       files (linked below); only the views and what talks to the system are here. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>UltimateMP3Player</AssemblyName>
+    <RootNamespace>UltimateMP3Player</RootNamespace>
+    <Version>3.4.0</Version>
+    <Product>Ultimate MP3 Player</Product>
+    <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
+    <Description>Offline music player that downloads songs and playlists from almost any site</Description>
+    <ApplicationIcon>..\UltimateMP3Player\app.ico</ApplicationIcon>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- CS0618: Avalonia 11.3 marks the drag & drop and clipboard API used here obsolete (still supported in 11.x). -->
+    <NoWarn>$(NoWarn);CA1416;AVLN3001;CS0618</NoWarn>
+    <DefineConstants>$(DefineConstants);AVALONIA</DefineConstants>
+    <ApplicationManifest>..\UltimateMP3Player\app.manifest</ApplicationManifest>
+
+    <!-- Same as the Windows project. -->
+    <GitHubRepo>KirboHQ/UltimateMP3Player</GitHubRepo>
+    <DiscordAppId>1553571296665804911</DiscordAppId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="GitHubRepo" Value="$(GitHubRepo)" />
+    <AssemblyMetadata Include="DiscordAppId" Value="$(DiscordAppId)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+    <PackageReference Include="NAudio.Core" Version="2.2.1" />
+    <PackageReference Include="NLayer.NAudioSupport" Version="2.0.1" />
+    <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
+    <PackageReference Include="ppy.SDL3-CS" Version="2026.1002.1" />
+    <!-- The version Avalonia.FreeDesktop is built against: a newer one renames its types and Avalonia crashes at start on Linux. -->
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UltimateMP3Player.Core\UltimateMP3Player.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Shared with the Windows app. -->
+  <ItemGroup>
+    <Compile Include="..\UltimateMP3Player\ViewModels\*.cs" Link="Shared\ViewModels\%(Filename)%(Extension)" />
+    <Compile Include="..\UltimateMP3Player\Audio\Mixer.cs" Link="Shared\Audio\Mixer.cs" />
+    <Compile Include="..\UltimateMP3Player\Audio\Sources.cs" Link="Shared\Audio\Sources.cs" />
+    <Compile Include="..\UltimateMP3Player\Audio\AudioEngine.cs" Link="Shared\Audio\AudioEngine.cs" />
+    <Compile Include="..\UltimateMP3Player\Audio\DjEngine.cs" Link="Shared\Audio\DjEngine.cs" />
+    <Compile Include="..\UltimateMP3Player\Services\AppInfo.cs" Link="Shared\Services\AppInfo.cs" />
+    <Compile Include="..\UltimateMP3Player\Services\DiscordPresence.cs" Link="Shared\Services\DiscordPresence.cs" />
+    <Compile Include="..\UltimateMP3Player\Services\LyricsService.cs" Link="Shared\Services\LyricsService.cs" />
+    <Compile Include="..\UltimateMP3Player\Services\SingleInstance.cs" Link="Shared\Services\SingleInstance.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The .icns go only into the macOS .app (build-unix.ps1). -->
+    <AvaloniaResource Include="Assets\**" Exclude="Assets\*.icns" />
+    <AvaloniaResource Include="..\UltimateMP3Player\app.ico" Link="Assets\app.ico" />
+    <AvaloniaResource Include="..\UltimateMP3Player\pack.ico" Link="Assets\pack.ico" />
+  </ItemGroup>
+
+</Project>

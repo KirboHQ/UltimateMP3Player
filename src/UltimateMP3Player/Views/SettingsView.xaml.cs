@@ -72,6 +72,8 @@ public partial class SettingsView : UserControl
                 foreach (var el in u) Show(el, false);
         }
         NoResults.Visibility = shown == 0 ? Visibility.Visible : Visibility.Collapsed;
+        // Searched from further down: what's found starts from the top.
+        Scroller.ScrollToTop();
     }
 
     private static bool Matches(string text, string[] words)

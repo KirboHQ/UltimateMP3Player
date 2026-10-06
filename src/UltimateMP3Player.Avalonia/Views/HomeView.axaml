@@ -1,0 +1,85 @@
+<UserControl x:Class="UltimateMP3Player.Views.HomeView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <UserControl.Styles>
+        <Style Selector="Border.newcard">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.newcard:pointerover">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+        </Style>
+    </UserControl.Styles>
+    <Panel>
+        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="28,12,20,28">
+                <TextBlock Text="{Binding Greeting}" FontSize="30" FontWeight="Bold" Margin="0,4,0,22"/>
+
+                <!-- first run -->
+                <Border Theme="{StaticResource Card}" Padding="28" Margin="0,0,8,24" IsVisible="{Binding IsEmpty}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Image Source="/Assets/app-256.png" Width="96" Height="96" VerticalAlignment="Top" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                        <StackPanel Grid.Column="1" Margin="24,0,0,0">
+                            <TextBlock Text="{local:T 'La tua musica, offline e senza pubblicità'}" FontSize="22" FontWeight="Bold"/>
+                            <TextBlock Classes="hint" FontSize="14" LineHeight="21" Margin="0,8,0,16"
+                                       Text="{local:T 'Incolla nella barra in alto il link di un brano o di una playlist (YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram e quasi ogni altro sito): viene scaricato e salvato qui. Puoi anche aggiungere la musica che hai già sul computer, o trascinare i file nella finestra.'}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Theme="{StaticResource PrimaryButton}" Padding="18,10"
+                                        Command="{Binding $parent[Window].DataContext.PasteLinkCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E77F}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Incolla un link'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Theme="{StaticResource GhostButton}" Padding="18,10" Margin="10,0,0,0"
+                                        Command="{Binding $parent[Window].DataContext.ImportCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Aggiungi file dal computer'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- card grids end 8 px before the right margin, level with the welcome card: same space left and right -->
+                <StackPanel IsVisible="{Binding HasRecent}">
+                    <TextBlock Text="{local:T 'Ascoltati di recente'}" Classes="section-title"/>
+                    <ItemsControl ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource CardGridTemplate}"
+                                  Margin="0,0,8,30"/>
+                </StackPanel>
+
+                <TextBlock Text="{local:T 'Le tue playlist'}" Classes="section-title"/>
+                <ItemsControl ItemsSource="{Binding PlaylistCards}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30">
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="vm:PlaylistViewModel">
+                            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
+                        </DataTemplate>
+                        <DataTemplate DataType="vm:NewPlaylistCard">
+                            <Border Classes="newcard" CornerRadius="12" Cursor="Hand" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1.5"
+                                    views:Click.Command="{Binding $parent[Window].DataContext.NewPlaylistCommand}">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <TextBlock Text="{local:Icon E710}" Classes="glyph" FontSize="26" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                                    <TextBlock Text="{local:T 'Nuova playlist'}" Margin="0,10,0,0" Foreground="{StaticResource SubTextBrush}" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+
+                <StackPanel IsVisible="{Binding HasRecentlyAdded}">
+                    <DockPanel LastChildFill="False" Margin="0,0,8,0">
+                        <TextBlock Text="{local:T 'Aggiunti di recente'}" Classes="section-title"/>
+                        <Button DockPanel.Dock="Right" Theme="{StaticResource LinkButton}" Content="{local:T 'Mostra tutti'}" VerticalAlignment="Center"
+                                Command="{Binding $parent[Window].DataContext.GoLibraryCommand}"/>
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource TrackRowTemplate}" Margin="0,0,8,0"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Panel>
+</UserControl>

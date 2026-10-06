@@ -123,6 +123,9 @@
     </Style>
 
     <!-- ============================================================ buttons -->
+    <!-- The hover colour (Ui.HoverBrush) goes in with {local:HoverBrushBinding}: a {Binding (local:Ui.HoverBrush)} path is
+         resolved through the XAML namespaces of the window, and the dialogs built in code have none (their buttons lost
+         the background under the mouse and flickered). -->
     <Style x:Key="BaseButton" TargetType="Button">
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
         <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
@@ -145,7 +148,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{Binding (local:Ui.HoverBrush), RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{local:HoverBrushBinding}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Bd" Property="Opacity" Value="0.82"/>
@@ -171,7 +174,7 @@
         </Border>
         <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="Bd" Property="Background" Value="{Binding (local:Ui.HoverBrush), RelativeSource={RelativeSource TemplatedParent}}"/>
+                <Setter TargetName="Bd" Property="Background" Value="{local:HoverBrushBinding}"/>
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
                 <Setter TargetName="Bd" Property="Opacity" Value="0.82"/>
@@ -209,7 +212,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{Binding (local:Ui.HoverBrush), RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{local:HoverBrushBinding}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Bd" Property="Opacity" Value="0.82"/>
@@ -370,11 +373,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{Binding (local:Ui.HoverBrush), RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{local:HoverBrushBinding}"/>
                             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                         </Trigger>
                         <Trigger Property="local:Ui.IsHot" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="{Binding (local:Ui.HoverBrush), RelativeSource={RelativeSource TemplatedParent}}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{local:HoverBrushBinding}"/>
                             <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">

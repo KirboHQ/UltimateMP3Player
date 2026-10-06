@@ -56,6 +56,8 @@ public sealed class RadioViewModel : Observable
     private readonly RadioFetcher _fetcher;
     // Lists that found nothing more: not asked again.
     private readonly HashSet<string> _exhausted = new();
+    // Songs of the library that were suggestions saved in this session (library id → the suggestion).
+    private readonly Dictionary<string, RadioSong> _saved = new();
     private CancellationTokenSource? _cts;
 
     public RadioViewModel(MainViewModel main)
@@ -338,6 +340,7 @@ public sealed class RadioViewModel : Observable
             }
             _main.Library.Add(t);
             if (playlist != null) _main.Profile.AddTrack(playlist, t.Id);
+            _saved[t.Id] = s;
             _fetcher.Forget(item.Id);
             _main.Player.ReplaceRadio(item.Id, t);
             // It plays on from the cache copy; that goes once it's no longer open.
@@ -350,5 +353,55 @@ public sealed class RadioViewModel : Observable
             _main.Toast(L.T("Salvataggio non riuscito:") + " " + ex.Message);
             return null;
         }
+    }
+
+    // ------------------------------------------------------------------ deleted while it plays
+
+    // A suggestion saved to the library in this session.
+    public bool WasSaved(string libraryId) => _saved.ContainsKey(libraryId);
+
+    // A saved suggestion deleted from the library while it plays: it goes back to being a suggestion, with its file in
+    // the cache (the copy it was playing from, still there, or a copy of the library file), so this listen goes on.
+    // Afterwards the cache keeps or drops it like any other. playing: the file the player has open.
+    public RadioItemViewModel? Unsave(Track saved, string? playing)
+    {
+        if (!_saved.Remove(saved.Id, out var song)) return null;
+        var cache = _main.Host.SongCache;
+        var s = new RadioSong
+        {
+            Id = RadioSong.Prefix + Ids.New(), Title = saved.Title, Artist = saved.Artist, Album = saved.Album, Duration = saved.Duration,
+            Url = song.Url, Service = song.Service, Thumb = song.Thumb, Keys = song.Keys.ToList(),
+        };
+        string? path = null;
+        try
+        {
+            if (playing != null && File.Exists(playing) && cache.IsInside(playing)) path = cache.Keep(s.Keys, s.Title, s.Artist, playing);
+            else if (File.Exists(saved.Path))
+            {
+                var tmp = Path.Combine(cache.TempDir, Ids.New() + Path.GetExtension(saved.Path));
+                File.Copy(saved.Path, tmp);
+                path = cache.Adopt(s.Keys, s.Title, s.Artist, tmp);
+            }
+        }
+        catch { }
+        if (path == null) return null;
+        try
+        {
+            if (saved.HasCover) File.Copy(AppPaths.TrackCover(saved.Id), AppPaths.TrackCover(s.Id), true);
+        }
+        catch { }
+        var item = Add(s);
+        var t = item.T;
+        t.Path = path;
+        t.HasCover = File.Exists(AppPaths.TrackCover(s.Id));
+        t.ArtUrl = saved.ArtUrl ?? t.ArtUrl;
+        t.Wave = saved.Wave;
+        t.Loudness = saved.Loudness;
+        t.Peak = saved.Peak;
+        t.Bpm = saved.Bpm;
+        LyricsStore.Copy(saved.Id, t, saved.Lyrics);
+        _fetcher.Have(s, path);
+        item.Refresh(_fetcher.StatusOf(s.Id));
+        return item;
     }
 }

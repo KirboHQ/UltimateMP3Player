@@ -1,0 +1,72 @@
+<UserControl x:Class="UltimateMP3Player.Views.PlaylistView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <Grid RowDefinitions="Auto,Auto,*">
+        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+
+        <Grid Margin="28,8,28,18" ColumnDefinitions="Auto,*">
+            <Border Width="172" Height="172" CornerRadius="8" BoxShadow="0 6 24 0 #80000000">
+                <Panel>
+                    <ContentControl Content="{Binding Vm}" ContentTemplate="{StaticResource PlaylistCover}"/>
+                    <Button x:Name="CoverButton" Theme="{StaticResource SubtleButton}" Padding="0" Command="{Binding CoverCommand}" Opacity="0"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            ToolTip.Tip="{local:T 'Cambia immagine'}" Background="#99000000" Foreground="White">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="{local:Icon EB9F}" Classes="glyph" FontSize="30" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{local:T 'Cambia immagine'}" Margin="0,8,0,0" FontSize="12.5"/>
+                        </StackPanel>
+                    </Button>
+                </Panel>
+            </Border>
+            <StackPanel Grid.Column="1" Margin="24,0,0,0" VerticalAlignment="Bottom">
+                <TextBlock Text="PLAYLIST" Classes="small-caps" Foreground="{StaticResource SubTextBrush}"/>
+                <TextBlock x:Name="NameText" Text="{Binding Vm.Name}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" Cursor="Hand"
+                           ToolTip.Tip="{local:T 'Clicca per rinominare'}"/>
+                <TextBlock Text="{Binding Vm.TotalText}" Foreground="{StaticResource SubTextBrush}"/>
+                <!-- the playlist's own tags -->
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <ItemsControl ItemsSource="{Binding Vm.Tags}" ItemTemplate="{StaticResource TagChip}" VerticalAlignment="Center">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                    <Button x:Name="TagsButton" Theme="{StaticResource SubtleButton}" Padding="9,3" FontSize="12.5" VerticalAlignment="Center"
+                            ToolTip.Tip="{local:T 'Tag della playlist, e come metterli sui suoi brani'}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E8EC}" Classes="glyph" FontSize="12"/>
+                            <TextBlock Text="{local:T 'Tag…'}" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+
+        <DockPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
+            <Button x:Name="TagFilterButton" DockPanel.Dock="Right" Theme="{StaticResource TagFilterButton}" Margin="10,0,0,0"/>
+            <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Theme="{StaticResource FilterBox}" Width="260" VerticalAlignment="Center"
+                     Text="{Binding Filter}" Watermark="{local:T 'Cerca nella playlist'}"/>
+            <Button Theme="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
+            <Button Theme="{StaticResource HeaderShuffleButton}" Margin="12,0,0,0" Command="{Binding ShuffleCommand}"/>
+            <Button x:Name="MoreButton" Theme="{StaticResource ControlButton}" Content="{local:Icon E712}" Margin="10,0,0,0" ToolTip.Tip="{local:T 'Altre opzioni'}"
+                    IsVisible="{Binding !Vm.IsFavorites}"/>
+        </DockPanel>
+
+        <Grid Grid.Row="2" Margin="20,0,12,0" RowDefinitions="Auto,*">
+            <ContentControl ContentTemplate="{StaticResource TrackHeader}" Content="{Binding}" Margin="0,0,10,0"/>
+            <ListBox x:Name="List" Grid.Row="1" Theme="{StaticResource PlainList}" ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource TrackRowTemplate}"
+                     DragDrop.AllowDrop="True"/>
+            <views:SelectionBar Grid.Row="1" List="{Binding #List}" ZIndex="1"/>
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0" MaxWidth="460"
+                        IsVisible="{Binding IsEmpty}">
+                <TextBlock Text="{local:T 'La playlist è vuota'}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding EmptyText}" Classes="hint" Margin="0,8,0,0" TextAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Grid.Row="1" Text="{local:T 'Nessun brano della playlist corrisponde alla ricerca.'}" Classes="hint" FontSize="14"
+                       HorizontalAlignment="Center" Margin="0,40,0,0" IsVisible="{Binding NoMatches}"/>
+        </Grid>
+    </Grid>
+</UserControl>

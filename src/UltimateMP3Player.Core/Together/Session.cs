@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 
@@ -215,7 +215,9 @@ public sealed class TogetherSession : IDisposable
         try { c = await Connection.ConnectAsync(ip, port, TimeSpan.FromSeconds(rejoin ? 1.5 : 4)); }
         catch
         {
-            return new JoinResult { Error = L.T("Nessuna risposta: la stanza potrebbe essere chiusa, oppure il firewall di Windows blocca la connessione.") };
+            return new JoinResult { Error = OperatingSystem.IsWindows()
+                ? L.T("Nessuna risposta: la stanza potrebbe essere chiusa, oppure il firewall di Windows blocca la connessione.")
+                : L.T("Nessuna risposta: la stanza potrebbe essere chiusa, oppure il firewall blocca la connessione.") };
         }
         if (_disposed)
         {

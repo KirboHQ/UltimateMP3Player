@@ -1,0 +1,461 @@
+<!-- The Windows app's Views\MainWindow.xaml: title bar, sidebar, search, page, player bar. -->
+<Window x:Class="UltimateMP3Player.Views.MainWindow"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:UltimateMP3Player"
+        xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+        xmlns:views="clr-namespace:UltimateMP3Player.Views"
+        Title="Ultimate MP3 Player" Width="1280" Height="820" MinWidth="980" MinHeight="640"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource TitleBarBrush}"
+        Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource UiFont}" FontSize="14"
+        DragDrop.AllowDrop="True" UseLayoutRounding="True">
+
+    <Window.DataTemplates>
+        <DataTemplate DataType="vm:HomeViewModel"><views:HomeView/></DataTemplate>
+        <DataTemplate DataType="vm:LibraryViewModel"><views:LibraryView/></DataTemplate>
+        <DataTemplate DataType="vm:PlaylistPageViewModel"><views:PlaylistView/></DataTemplate>
+        <DataTemplate DataType="vm:SearchViewModel"><views:SearchView/></DataTemplate>
+        <DataTemplate DataType="vm:DownloadsPageViewModel"><views:DownloadsView/></DataTemplate>
+        <DataTemplate DataType="vm:NowPlayingViewModel"><views:NowPlayingView/></DataTemplate>
+        <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView/></DataTemplate>
+        <DataTemplate DataType="vm:DjViewModel"><views:DjView/></DataTemplate>
+        <DataTemplate DataType="vm:TogetherViewModel"><views:TogetherView/></DataTemplate>
+        <DataTemplate DataType="vm:StatsViewModel"><views:StatsView/></DataTemplate>
+    </Window.DataTemplates>
+
+    <Window.Resources>
+        <local:BoolChoice x:Key="HeartGlyph" True="{local:Icon EB52}" False="{local:Icon EB51}"/>
+
+        <!-- the speed in the player bar ("1×"): a small outlined pill, coloured when it isn't the normal speed -->
+        <ControlTheme x:Key="SpeedToggle" TargetType="ToggleButton">
+            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="MinWidth" Value="40"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Bd" CornerRadius="14" Background="Transparent" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1.5"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^.changed /template/ Border#Bd">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Style>
+            <Style Selector="^.changed">
+                <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+            </Style>
+            <Style Selector="^:pointerover /template/ Border#Bd">
+                <Setter Property="Background" Value="{StaticResource Surface3Brush}"/>
+            </Style>
+            <Style Selector="^:pointerover">
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            </Style>
+            <Style Selector="^:checked /template/ Border#Bd">
+                <Setter Property="Background" Value="{StaticResource Surface3Brush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Style>
+        </ControlTheme>
+
+        <!-- a preset of the speed panel: lit when it's the speed playing -->
+        <ControlTheme x:Key="SpeedPresetButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="Padding" Value="0,6"/>
+            <Setter Property="Margin" Value="3,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Style Selector="^.current">
+                <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+            </Style>
+        </ControlTheme>
+    </Window.Resources>
+
+    <Window.Styles>
+        <!-- sidebar entries (playlists and tags): hover, open, playing from -->
+        <Style Selector="Border.side">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.side:pointerover">
+            <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
+        </Style>
+        <Style Selector="Border.side.selected">
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+        </Style>
+        <Style Selector="Border.side.from TextBlock.name">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.heart.fav">
+            <Setter Property="Foreground" Value="{DynamicResource PinkBrush}"/>
+            <Setter Property="FontFamily" Value="{StaticResource IconFontFilled}"/>
+        </Style>
+    </Window.Styles>
+
+    <Panel x:Name="Root">
+        <Grid RowDefinitions="32,*,Auto">
+
+            <!-- ============================================================ title bar -->
+            <Grid x:Name="TitleBar" Background="{StaticResource TitleBarBrush}">
+                <StackPanel x:Name="TitleText" Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                    <Image Source="/Assets/app-256.png" Width="16" Height="16" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                    <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}" Margin="9,0,0,1"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel x:Name="WindowButtons" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="MinButton" Theme="{StaticResource TitleBarButton}" Content="{local:Icon E921}" ToolTip.Tip="{local:T 'Riduci a icona'}"/>
+                    <Button x:Name="MaxButton" Theme="{StaticResource TitleBarButton}" Content="{local:Icon E922}"/>
+                    <Button x:Name="CloseButton" Theme="{StaticResource TitleBarCloseButton}" Content="{local:Icon E8BB}" ToolTip.Tip="{local:T Chiudi}"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="1" Background="{StaticResource BgBrush}" ColumnDefinitions="248,*">
+
+                <!-- ======================================================== sidebar -->
+                <Border Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                    <!-- the menu keeps its size; below it the playlists get 2/3 of what is left and the tags 1/3, so both shrink with the window -->
+                    <Grid Margin="14,14,14,12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="2*" MinHeight="60"/>
+                            <RowDefinition Height="*" MinHeight="44"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE80F;" Content="{local:T Home}" IsChecked="{Binding IsHome}"/>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE8F1;" Content="{local:T 'Tutti i brani'}" IsChecked="{Binding IsLibrary}"/>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE8B7;" Content="{local:T 'Senza playlist'}" IsChecked="{Binding IsUnsorted}"
+                                         ToolTip.Tip="{local:T 'Brani che non sono in nessuna playlist'}"/>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE896;" IsChecked="{Binding IsDownloads}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:T Download}"/>
+                                    <Border Margin="8,0,0,0" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Background="{DynamicResource AccentGradient}"
+                                            IsVisible="{Binding Queue.HasActive}">
+                                        <TextBlock Text="{Binding Queue.ActiveCount}" FontSize="11" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE8D6;" Content="DJ" IsChecked="{Binding IsDj}"
+                                         ToolTip.Tip="{local:T 'Mixa due brani: tempo, pitch, taglio e volume'}"/>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE716;" IsChecked="{Binding IsTogether}"
+                                         ToolTip.Tip="{local:T 'Ascolta la stessa musica con gli amici, sulla stessa rete'}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:T 'Ascolta insieme'}"/>
+                                    <!-- in a room: how many are listening -->
+                                    <Border Margin="8,0,0,0" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Background="{StaticResource SuccessBrush}"
+                                            IsVisible="{Binding Together.InRoom}">
+                                        <TextBlock Text="{Binding Together.MemberCount}" FontSize="11" FontWeight="Bold" Foreground="#0E1014" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE713;" Content="{local:T Impostazioni}" IsChecked="{Binding IsSettings}"/>
+                        </StackPanel>
+
+                        <!-- profile -->
+                        <Button Grid.Row="3" Theme="{StaticResource SubtleButton}" Padding="8,8" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                Command="{Binding SwitchProfileCommand}" ToolTip.Tip="{local:T 'Cambia o gestisci i profili'}" Margin="0,10,0,0">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Panel Width="32" Height="32">
+                                    <Ellipse Fill="{Binding ProfileBrush}"/>
+                                    <TextBlock Text="{Binding ProfileInitial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Ellipse Margin="2.5" IsVisible="{Binding ProfileAvatar, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <Ellipse.Fill>
+                                            <ImageBrush Source="{Binding ProfileAvatar}" Stretch="UniformToFill"/>
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                </Panel>
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding ProfileName}" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{local:T 'Cambia profilo'}" FontSize="11.5" FontWeight="Normal" Foreground="{StaticResource MutedBrush}"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="2" Text="{local:Icon E748}" Classes="glyph" Foreground="{StaticResource MutedBrush}"/>
+                            </Grid>
+                        </Button>
+
+                        <!-- tags: each one opens the page of its songs; songs can be dropped on them -->
+                        <DockPanel Grid.Row="2" Margin="0,6,0,0">
+                            <DockPanel DockPanel.Dock="Top" Margin="8,6,0,4">
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
+                                        Command="{Binding NewTagCommand}" ToolTip.Tip="{local:T 'Nuovo tag'}"/>
+                                <TextBlock Text="{local:T TAG}" Classes="small-caps" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="{local:T 'Etichette colorate per raggruppare brani e playlist a modo tuo.'}" Classes="hint"
+                                       FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" IsVisible="{Binding !HasTags}"/>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+                                <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Classes="side" Classes.selected="{Binding IsSelected}" CornerRadius="8" Padding="10,7" Cursor="Hand"
+                                                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0"
+                                                    views:Drops.Target="tag" views:Rows.Menu="tag" ToolTip.Tip="{Binding CountText}" local:Marquee.Host="True"
+                                                    views:Click.Command="{Binding $parent[Window].DataContext.OpenTagCommand}">
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                                                    <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                                    <TextBlock Classes="name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                               local:Marquee.IsEnabled="True"/>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+
+                        <DockPanel Grid.Row="1">
+                            <DockPanel DockPanel.Dock="Top" Margin="8,22,0,8">
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
+                                        Command="{Binding NewPlaylistCommand}" ToolTip.Tip="{local:T 'Nuova playlist'}"/>
+                                <TextBlock Text="{local:T 'LE TUE PLAYLIST'}" Classes="small-caps" VerticalAlignment="Center"/>
+                            </DockPanel>
+
+                            <ListBox x:Name="PlaylistList" Theme="{StaticResource PlainList}" ItemsSource="{Binding Playlists}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="side" Classes.selected="{Binding IsSelected}" Classes.from="{Binding IsPlayingFrom}" CornerRadius="8" Padding="6" Cursor="Hand"
+                                                BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0"
+                                                views:Drops.Target="playlist" views:Rows.Menu="playlist" local:Marquee.Host="True">
+                                            <Grid ColumnDefinitions="42,*,Auto">
+                                                <ContentControl Width="42" Height="42" Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
+                                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock Classes="name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
+                                                    <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="{local:Icon E995}" Classes="glyph" Foreground="{DynamicResource AccentTextBrush}"
+                                                           FontSize="12" Margin="6,0,2,0" IsVisible="{Binding IsPlayingFrom}"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </Grid>
+                </Border>
+
+                <!-- ======================================================== content -->
+                <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*">
+                    <Grid Margin="20,12,20,10" ColumnDefinitions="Auto,*,Auto">
+                        <Button Theme="{StaticResource ControlButton}" Content="{local:Icon E72B}" Command="{Binding BackCommand}"
+                                ToolTip.Tip="{local:T Indietro}" Margin="0,0,10,0"/>
+
+                        <Border x:Name="SearchPill" Grid.Column="1" Height="44" CornerRadius="22" Background="{StaticResource SurfaceBrush}"
+                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="16,0,4,0">
+                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                <TextBlock x:Name="SearchIcon" Text="{local:Icon E721}" Classes="glyph" Foreground="{StaticResource SubTextBrush}" FontSize="15"/>
+                                <TextBox x:Name="SearchBox" Grid.Column="1" Theme="{StaticResource BareTextBox}" Margin="12,0,6,0"
+                                         Watermark="{local:T 'Cerca nei tuoi brani e online, oppure incolla un link da scaricare (YouTube, Spotify, SoundCloud, TikTok…)'}"
+                                         Text="{Binding SearchText}"/>
+                                <Button Grid.Column="2" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="11" Content="{local:Icon E711}"
+                                        Command="{Binding ClearSearchCommand}" ToolTip.Tip="{local:T Cancella}" IsVisible="{Binding HasSearchText}"/>
+                                <Button Grid.Column="3" Theme="{StaticResource PillPrimaryButton}" Margin="4,0,0,0"
+                                        Command="{Binding SubmitSearchCommand}" IsVisible="{Binding IsLink}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="13"/>
+                                        <TextBlock Text="{local:T Scarica}" Margin="7,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <Button Grid.Column="2" Theme="{StaticResource GhostButton}" Margin="10,0,0,0" Height="44" Padding="18,0"
+                                Command="{Binding PasteLinkCommand}" ToolTip.Tip="{local:T 'Incolla un link dagli appunti e scaricalo'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E77F}" Classes="glyph" FontSize="14"/>
+                                <TextBlock Text="{local:T 'Incolla link'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                    <StackPanel Grid.Row="1" Margin="20,0,20,0">
+                        <Border Margin="0,0,0,8" CornerRadius="10" Padding="14,8" Background="{StaticResource WarningSoftBrush}"
+                                IsVisible="{Binding Host.EngineStatus, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E896}" Classes="glyph" Foreground="{StaticResource WarningBrush}"/>
+                                <TextBlock Text="{Binding Host.EngineStatus}" Margin="10,0,0,0" Foreground="{StaticResource WarningBrush}" FontSize="13"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="0,0,0,8" CornerRadius="10" Padding="14,6,6,6" Background="{DynamicResource AccentSoftBrush}"
+                                IsVisible="{Binding Host.Updates.IsReady, FallbackValue=False}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource PrimaryButton}" Padding="12,5" Content="{local:T 'Riavvia ora'}"
+                                        Command="{Binding Host.RestartToUpdateCommand}"/>
+                                <TextBlock Text="{local:Icon E777}" Classes="glyph" Foreground="{DynamicResource AccentTextBrush}"/>
+                                <TextBlock Text="{Binding Host.Updates.ReadyText}" Margin="10,0,10,0" VerticalAlignment="Center" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <views:AnimatedContent Grid.Row="2" Content="{Binding Page}"/>
+
+                    <!-- toast -->
+                    <Border x:Name="ToastBox" Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18" CornerRadius="10"
+                            Padding="16,10" Background="{StaticResource Surface3Brush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1"
+                            IsVisible="{Binding ToastText, Converter={x:Static ObjectConverters.IsNotNull}}" IsHitTestVisible="False" MaxWidth="640"
+                            BoxShadow="0 3 16 0 #73000000">
+                        <TextBlock Text="{Binding ToastText}" TextWrapping="Wrap"/>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ============================================================ player bar -->
+            <Border Grid.Row="2" Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+                    Padding="14,10" IsVisible="{Binding ShowPlayerBar}">
+                <Grid x:Name="PlayerGrid" DataContext="{Binding Player}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*" MinWidth="220" MaxWidth="360"/>
+                        <ColumnDefinition Width="5*"/>
+                        <ColumnDefinition Width="3*" MinWidth="220" MaxWidth="340"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- now playing -->
+                    <Grid VerticalAlignment="Center" IsVisible="{Binding ShowNowPlaying}" ColumnDefinitions="Auto,*,Auto"
+                          views:Rows.Menu="current" Background="Transparent" local:Marquee.Host="True">
+                        <Button Theme="{StaticResource SubtleButton}" Padding="0" Width="58" Height="58"
+                                Command="{Binding $parent[Window].DataContext.GoNowPlayingCommand}" ToolTip.Tip="{local:T 'Apri la schermata del brano'}">
+                            <ContentControl Width="58" Height="58" Content="{Binding Current}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                        </Button>
+                        <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Current.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                            <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" local:Marquee.IsEnabled="True"/>
+                            <!-- a suggested song still downloading (it starts by itself), or more of them on their way -->
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0" IsVisible="{Binding IsWaiting}">
+                                <Ellipse Classes="spinner" Width="12" Height="12" StrokeThickness="1.5"/>
+                                <TextBlock Text="{Binding WaitText}" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" Margin="7,0,0,0" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                            <!-- in a room: which one (green dot), a click opens it -->
+                            <Button Theme="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="0,3,0,0" FontSize="11.5" Command="{Binding OpenRoomCommand}"
+                                    IsVisible="{Binding InRoom}" ToolTip.Tip="{local:T 'Sei in una stanza di Ascolta insieme: aprila'}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="7" Height="7" Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding RoomName}" Margin="6,0,0,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <Button Theme="{StaticResource ControlButton}" Command="{Binding FavoriteCommand}" ToolTip.Tip="{local:T Preferiti}">
+                                <TextBlock Classes="heart" Classes.fav="{Binding Current.IsFavorite}" FontSize="15"
+                                           Text="{Binding Current.IsFavorite, Converter={StaticResource HeartGlyph}, FallbackValue={local:Icon EB51}}"/>
+                            </Button>
+                            <Button x:Name="AddToPlaylistButton" Theme="{StaticResource ControlButton}" Content="{local:Icon E710}" ToolTip.Tip="{local:T 'Aggiungi a una playlist'}"/>
+                            <!-- automatic queue: lit = "next up" refills itself at every song (in a room the room's queue rules) -->
+                            <ToggleButton Theme="{StaticResource ToggleIcon}" Content="{local:Icon E90B}" IsChecked="{Binding AutoQueue}"
+                                          ToolTip.Tip="{Binding AutoQueueTip}" IsVisible="{Binding !InRoom}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- transport + waveform -->
+                    <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <!-- in a room shuffle and repeat don't apply (dimmed); prev/play/next need the host's permission (greyed out, the tooltip says why) -->
+                            <ToggleButton Theme="{StaticResource ToggleIcon}" Content="{local:Icon E8B1}" IsChecked="{Binding Shuffle}"
+                                          ToolTip.Tip="{local:T 'Riproduzione casuale'}" IsEnabled="{Binding NotInRoom}"/>
+                            <Button Theme="{StaticResource ControlButton}" Content="{local:Icon E892}" Command="{Binding PreviousCommand}"
+                                    Margin="8,0,0,0" ToolTip.Tip="{Binding PreviousTip}" ToolTip.ShowOnDisabled="True"/>
+                            <Button Theme="{StaticResource PlayButton}" Content="{Binding PlayGlyph, Converter={StaticResource Icon}}" Command="{Binding PlayPauseCommand}"
+                                    Margin="12,0" ToolTip.Tip="{Binding PlayTip}" ToolTip.ShowOnDisabled="True"/>
+                            <Button Theme="{StaticResource ControlButton}" Content="{local:Icon E893}" Command="{Binding NextCommand}"
+                                    Margin="0,0,8,0" ToolTip.Tip="{Binding NextTip}" ToolTip.ShowOnDisabled="True"/>
+                            <ToggleButton Theme="{StaticResource ToggleIcon}" Content="{Binding RepeatGlyph, Converter={StaticResource Icon}}"
+                                          IsChecked="{Binding RepeatOn, Mode=OneWay}" Command="{Binding CycleRepeatCommand}" ToolTip.Tip="{Binding RepeatTip}"/>
+                        </StackPanel>
+                        <Grid Margin="0,6,0,0" ColumnDefinitions="44,*,44">
+                            <TextBlock Text="{Binding PositionText}" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <views:WaveformBar Grid.Column="1" Height="30" Peaks="{Binding Current.Wave}" Progress="{Binding Progress}"
+                                               IsPlaying="{Binding IsPlaying}" Duration="{Binding Duration}" Rate="{Binding Speed}"
+                                               PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{StaticResource WaveBrush}"
+                                               SeekCommand="{Binding SeekCommand}" ToolTip.Tip="{Binding SeekTip}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- right side (the volume slider narrows on small windows: MainWindow.FitRightBlock) -->
+                    <StackPanel x:Name="RightBlock" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <ToggleButton Theme="{StaticResource PillToggle}" IsChecked="{Binding $parent[Window].DataContext.IsNowPlaying, Mode=OneWay}"
+                                      Command="{Binding $parent[Window].DataContext.GoNowPlayingCommand}"
+                                      ToolTip.Tip="{local:T 'Video e successivi'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E714}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{local:Icon E8FD}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                            </StackPanel>
+                        </ToggleButton>
+                        <!-- playback speed: a panel like YouTube's (in a room: the room's speed, with the permission) -->
+                        <Panel Margin="6,0,2,0" VerticalAlignment="Center">
+                            <ToggleButton x:Name="SpeedButton" Theme="{StaticResource SpeedToggle}" Classes.changed="{Binding IsSpeedChanged}"
+                                          Content="{Binding SpeedText}" ToolTip.Tip="{Binding SpeedTip}"
+                                          IsChecked="{Binding #SpeedPopup.IsOpen, Mode=TwoWay}"
+                                          IsHitTestVisible="{Binding !#SpeedPopup.IsOpen}"/>
+                            <Popup x:Name="SpeedPopup" PlacementTarget="{Binding #SpeedButton}" Placement="Top" IsLightDismissEnabled="True"
+                                   VerticalOffset="-4">
+                                <Border Margin="10" Width="312" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderStrongBrush}"
+                                        BorderThickness="1" CornerRadius="16" Padding="18,14,18,16" BoxShadow="0 4 20 0 #80000000">
+                                    <StackPanel>
+                                        <TextBlock Text="{local:T 'Velocità di riproduzione'}" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}" FontSize="12.5"/>
+                                        <TextBlock Text="{Binding SpeedValueText}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,4,0,8"/>
+                                        <StackPanel IsEnabled="{Binding CanSetSpeed}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <Button Theme="{StaticResource ControlButton}" Width="32" Height="32" FontSize="12" Content="{local:Icon E738}"
+                                                        Command="{Binding SpeedStepCommand}" CommandParameter="-0.05" ToolTip.Tip="{local:T 'Più lento'}"/>
+                                                <Slider x:Name="SpeedSlider" Grid.Column="1" Theme="{StaticResource KnobSlider}" Margin="6,0" Minimum="0.5" Maximum="2" Value="{Binding Speed}"
+                                                        SmallChange="0.05" LargeChange="0.25" IsSnapToTickEnabled="True" TickFrequency="0.05" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Theme="{StaticResource ControlButton}" Width="32" Height="32" FontSize="12" Content="{local:Icon E710}"
+                                                        Command="{Binding SpeedStepCommand}" CommandParameter="0.05" ToolTip.Tip="{local:T 'Più veloce'}"/>
+                                            </Grid>
+                                            <ItemsControl ItemsSource="{Binding SpeedPresets}" Margin="-3,12,-3,0" Focusable="False">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <UniformGrid Rows="1"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Button Theme="{StaticResource SpeedPresetButton}" Classes.current="{Binding IsCurrent}" Content="{Binding Label}" Command="{Binding Command}"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <CheckBox Margin="0,16,0,0" IsChecked="{Binding SpeedPitch}" VerticalContentAlignment="Top">
+                                                <StackPanel>
+                                                    <TextBlock Text="{local:T 'Cambia anche il tono'}"/>
+                                                    <TextBlock Text="{local:T 'Più veloce = più acuto, come un disco girato più in fretta.'}" Classes="hint" FontSize="12"/>
+                                                </StackPanel>
+                                            </CheckBox>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding SpeedHint}" Classes="hint" FontSize="12" Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
+                        </Panel>
+                        <Button Theme="{StaticResource ControlButton}" Content="{local:Icon E9E9}" ToolTip.Tip="{local:T Equalizzatore}"
+                                Command="{Binding $parent[Window].DataContext.GoSettingsCommand}" Margin="2,0,0,0"/>
+                        <Button Theme="{StaticResource ControlButton}" Content="{Binding VolumeGlyph, Converter={StaticResource Icon}}" Command="{Binding ToggleMuteCommand}"
+                                Margin="2,0,0,0" ToolTip.Tip="{local:T Muto}"/>
+                        <Slider x:Name="VolumeSlider" Width="110" Minimum="0" Maximum="1" Value="{Binding Volume}" Margin="4,0,0,0" VerticalAlignment="Center"
+                                SmallChange="0.02" LargeChange="0.1" ToolTip.Tip="{local:T Volume}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ============================================================ a .ump pack dragged over the window -->
+            <Border x:Name="PackDrop" Grid.Row="1" Grid.RowSpan="2" Background="#C40A0C0F" IsHitTestVisible="False" IsVisible="False">
+                <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border CornerRadius="24" Background="{StaticResource SurfaceBrush}" Padding="48,32,48,30" MinWidth="360" BoxShadow="0 8 34 0 #99000000">
+                        <StackPanel>
+                            <Image Source="/Assets/pack-256.png" Width="104" Height="104" HorizontalAlignment="Center" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                            <TextBlock Text="{local:T 'Rilascia per importare'}" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,18,0,4"/>
+                            <TextBlock x:Name="PackDropName" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Center" MaxWidth="420"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Border>
+                    <Rectangle RadiusX="24" RadiusY="24" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" StrokeDashArray="5,3" Margin="8"/>
+                </Panel>
+            </Border>
+        </Grid>
+
+        <!-- Linux: the window has no frame of its own, these edges resize it (WindowFrame) -->
+        <Panel x:Name="ResizeEdges" IsVisible="False"/>
+    </Panel>
+</Window>

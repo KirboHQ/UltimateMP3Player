@@ -73,7 +73,7 @@
             <Button Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Click="SelectAll_Click"
                     Visibility="{Binding IsEmpty, Converter={StaticResource InvBoolVis}}" ToolTip="Ctrl+A">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE8B3;" Style="{StaticResource Glyph}"/>
+                    <TextBlock Text="&#xE762;" Style="{StaticResource Glyph}"/>
                     <TextBlock Text="{local:T 'Seleziona tutti'}" Margin="8,0,0,0"/>
                 </StackPanel>
             </Button>

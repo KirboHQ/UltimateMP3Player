@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.Services;
 
@@ -8,6 +9,8 @@ namespace UltimateMP3Player.Services;
 // this replaces whatever rules the app has with one that lets it in on every network (asks for administrator rights).
 public static class Firewall
 {
+    public static string DoneMessage => L.T("Fatto: Windows ora lascia entrare le connessioni degli altri su ogni rete.");
+
     public static bool Allow()
     {
         var exe = Environment.ProcessPath;
