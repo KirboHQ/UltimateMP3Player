@@ -86,17 +86,45 @@ public sealed class LyricsCaptions : Grid
     private void UpdateTicking()
     {
         bool want = IsVisible && VisualRoot != null && _lyrics != null && _clock.Playing;
+        // Shown but on a hidden page (the song's page closed): no frames, looked at again in a while.
+        if (want && !IsEffectivelyVisible)
+        {
+            _ticking = false;
+            if (!_waitShown)
+            {
+                _waitShown = true;
+                Ui.Later(() =>
+                {
+                    _waitShown = false;
+                    UpdateTicking();
+                });
+            }
+            return;
+        }
         if (want == _ticking) return;
         _ticking = want;
         if (want) RequestFrame();
     }
 
-    private void RequestFrame() => TopLevel.GetTopLevel(this)?.RequestAnimationFrame(_ =>
+    private bool _waitShown, _frameAsked;
+
+    private void RequestFrame()
     {
-        if (!_ticking) return;
-        Tick();
-        RequestFrame();
-    });
+        if (_frameAsked || TopLevel.GetTopLevel(this) is not { } top) return;
+        _frameAsked = true;
+        top.RequestAnimationFrame(_ =>
+        {
+            _frameAsked = false;
+            if (!_ticking) return;
+            if (!IsEffectivelyVisible)
+            {
+                UpdateTicking();
+                return;
+            }
+            Tick();
+            RequestFrame();
+        });
+    }
 
     private void Tick()
     {

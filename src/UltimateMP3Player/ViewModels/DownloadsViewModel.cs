@@ -194,7 +194,7 @@ public sealed class DownloadJobViewModel : Observable
         {
             if (Set(ref _state, value))
                 OnChanged(nameof(IsActive), nameof(IsFinished), nameof(IsFailed), nameof(CanRetry), nameof(CanRetryYouTube), nameof(IsRunning),
-                    nameof(StatusBrush), nameof(CanPlay));
+                    nameof(StatusBrush), nameof(CanPlay), nameof(Indeterminate));
         }
     }
 
@@ -223,8 +223,19 @@ public sealed class DownloadJobViewModel : Observable
     private double _percent;
     public double Percent { get => _percent; private set => Set(ref _percent, value); }
 
+    // Only a running download's bar goes back and forth: the bar of one waiting or finished is hidden, but its animation
+    // would still run (a frame every few milliseconds for each row, the app never idle while the list is full).
     private bool _indeterminate = true;
-    public bool Indeterminate { get => _indeterminate; private set => Set(ref _indeterminate, value); }
+    public bool Indeterminate
+    {
+        get => _indeterminate && IsRunning;
+        private set
+        {
+            if (_indeterminate == value) return;
+            _indeterminate = value;
+            OnChanged(nameof(Indeterminate));
+        }
+    }
 
     public void Start()
     {
@@ -282,7 +293,11 @@ public sealed class DownloadJobViewModel : Observable
         catch (EngineException ex)
         {
             State = JobState.Failed;
+#if ANDROID_APP
+            StatusText = ex.Message;
+#else
             StatusText = ex.Message + (ex.NeedsLogin && req.Cookies == null ? " " + L.T("Attiva i cookie del browser nelle impostazioni.") : "");
+#endif
             Details = string.IsNullOrWhiteSpace(ex.Details) ? ex.Message : ex.Details.Trim();
         }
         catch (Exception ex)
@@ -385,7 +400,7 @@ public sealed class DownloadQueue : Observable
             _throttles.Clear();
             Pump();
         });
-        Jobs.CollectionChanged += (_, _) => Notify();
+        Jobs.CollectionChanged += (_, _) => { if (!_adding) Notify(); };
         _tick.Tick += (_, _) => Pump();
     }
 
@@ -402,10 +417,18 @@ public sealed class DownloadQueue : Observable
 
     public void Add(DownloadBatch batch, IEnumerable<(MediaItem Item, int Index)> items, bool video)
     {
-        foreach (var (item, index) in items)
-            Jobs.Add(new DownloadJobViewModel(item, batch, index, video, this));
+        // A whole playlist: the counts are told once at the end (Pump), not once per song.
+        _adding = true;
+        try
+        {
+            foreach (var (item, index) in items)
+                Jobs.Add(new DownloadJobViewModel(item, batch, index, video, this));
+        }
+        finally { _adding = false; }
         Pump();
     }
+
+    private bool _adding;
 
     // ------------------------------------------------------------------ pacing
 
@@ -482,7 +505,14 @@ public sealed class DownloadQueue : Observable
 
     private void RemoveWhere(Func<DownloadJobViewModel, bool> which)
     {
-        foreach (var j in Jobs.Where(which).ToList()) Jobs.Remove(j);
+        _adding = true;
+        try
+        {
+            foreach (var j in Jobs.Where(which).ToList()) Jobs.Remove(j);
+        }
+        finally { _adding = false; }
+        Notify();
+        CommandManager.InvalidateRequerySuggested();
     }
 
     public void CancelAll()
@@ -509,7 +539,7 @@ public sealed class DownloadQueue : Observable
             var parts = new List<string>();
             if (running > 0) parts.Add(L.F("{0} in corso", running));
             if (queued > 0) parts.Add(L.F("{0} in coda", queued));
-            parts.Add(L.Count(done, "1 completato", "{0} completati"));
+            if (done > 0 || (parts.Count == 0 && failed == 0)) parts.Add(L.Count(done, "1 completato", "{0} completati"));
             if (failed > 0) parts.Add(L.Count(failed, "1 non riuscito", "{0} non riusciti"));
             return string.Join(" · ", parts);
         }
@@ -610,10 +640,20 @@ public sealed class LinkViewModel : Observable
 
         ToggleAllCommand = new RelayCommand(ToggleAll);
         DownloadCommand = new RelayCommand(Download, () => SelectedCount > 0 && (!ShowNewName || !string.IsNullOrWhiteSpace(NewName)));
+        ListenCommand = new RelayCommand(Listen, () => SelectedCount > 0);
     }
 
     public ICommand ToggleAllCommand { get; }
     public ICommand DownloadCommand { get; }
+    // Heard without downloading into the library: kept in the cache for a while, saved with "Save to library". In a room
+    // of Listen together: into the room's queue, the same way (everyone gets it from its link).
+    public ICommand ListenCommand { get; }
+    private bool InRoom => _main.InRoom;
+    public string ListenLabel => InRoom ? L.T("Aggiungi alla stanza") : L.T("Ascolta senza scaricare");
+    public string ListenGlyph => InRoom ? "" : "";
+    public string ListenTip => InRoom
+        ? L.T("Va nella coda della stanza senza scaricarlo nella libreria: ognuno lo prende dal link, come i brani consigliati.")
+        : L.T("Lo ascolti subito senza metterlo nella libreria: resta per un po' nella memoria temporanea, e se ti piace lo salvi dal menu del brano.");
 
     public string Title { get; }
     public string SiteName => R.Site;
@@ -725,6 +765,25 @@ public sealed class LinkViewModel : Observable
         var what = selected.Count == 1 ? L.F("«{0}» in download", selected[0].Title) : L.F("{0} brani in download", selected.Count);
         _main.Downloads.Queued(what + (target != null ? " " + L.F("nella playlist «{0}»", target) : "") + " ✓");
     }
+
+    private void Listen()
+    {
+        var selected = Items.Where(i => i.IsSelected).ToList();
+        if (selected.Count == 0) return;
+        if (InRoom)
+        {
+            _main.Together.AddFromLink(selected.Select(i => i.Item).ToList());
+            _main.Downloads.Queued(selected.Count == 1
+                ? L.F("«{0}» va nella coda della stanza", selected[0].Title)
+                : L.F("{0} brani vanno nella coda della stanza", selected.Count));
+            return;
+        }
+        var ids = _main.Radio.AddFromLink(selected.Select(i => i.Item));
+        _main.Player.PlayStream(ids, Title);
+        _main.Downloads.Queued(selected.Count == 1
+            ? L.F("«{0}» in ascolto, senza salvarlo nella libreria", selected[0].Title)
+            : L.F("{0} brani in ascolto, senza salvarli nella libreria", selected.Count));
+    }
 }
 
 // Download page: link analysis on top, the app-wide queue below.
@@ -830,6 +889,15 @@ public sealed class DownloadsPageViewModel : Observable
         catch (OperationCanceledException) { }
         catch (EngineException ex) when (!cts.IsCancellationRequested)
         {
+#if ANDROID_APP
+            // A phone has no browser cookies to lend.
+            SuggestCookies = false;
+            ErrorHint = ex.RateLimited
+                ? L.T("Aspetta qualche minuto e riprova: il blocco si toglie da solo. Scaricare meno brani insieme aiuta.")
+                : ex.NeedsLogin
+                    ? L.T("Sul telefono l'app non usa il tuo accesso ai siti: i contenuti privati, per abbonati o con limite d'età non si possono scaricare. Se è il controllo anti-bot di YouTube, riprova più tardi o con un'altra connessione.")
+                    : null;
+#else
             SuggestCookies = ex.NeedsLogin && !s.UseCookies;
             ErrorHint = ex.RateLimited
                 ? L.T("Aspetta qualche minuto e riprova: il blocco si toglie da solo. Scaricare meno brani insieme aiuta.")
@@ -838,6 +906,7 @@ public sealed class DownloadsPageViewModel : Observable
                         ? "I cookie del browser sono attivi: controlla di aver fatto l'accesso al sito in quel browser."
                         : "Attiva «Usa i cookie del browser» nelle impostazioni: il programma userà l'accesso che hai già fatto nel browser.")
                     : null;
+#endif
             Error = ex.Message;
         }
         catch (Exception ex) when (!cts.IsCancellationRequested)

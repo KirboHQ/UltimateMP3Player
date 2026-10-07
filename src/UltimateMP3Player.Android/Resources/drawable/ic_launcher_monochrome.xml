@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13 themed icons: the logo's shapes in one colour, on the 108 dp grid of the adaptive icons (the logo's 256 units
+     over the 72 dp in the middle, as in the foreground layer). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="384" android:viewportHeight="384">
+  <group android:translateX="64" android:translateY="64">
+    <group android:translateY="-11">
+      <path android:strokeColor="#FFFFFFFF" android:strokeWidth="17" android:strokeLineCap="round"
+          android:pathData="M58,150 A70,70 0 0 1 198,150" />
+      <path android:fillColor="#FFFFFFFF"
+          android:pathData="M59,134 h4 a19,19 0 0 1 19,19 v34 a19,19 0 0 1 -19,19 h-4 a19,19 0 0 1 -19,-19 v-34 a19,19 0 0 1 19,-19 z
+              M193,134 h4 a19,19 0 0 1 19,19 v34 a19,19 0 0 1 -19,19 h-4 a19,19 0 0 1 -19,-19 v-34 a19,19 0 0 1 19,-19 z
+              M105.5,154 a7.5,7.5 0 0 1 7.5,7.5 v17 a7.5,7.5 0 0 1 -15,0 v-17 a7.5,7.5 0 0 1 7.5,-7.5 z
+              M128,138 a7.5,7.5 0 0 1 7.5,7.5 v49 a7.5,7.5 0 0 1 -15,0 v-49 a7.5,7.5 0 0 1 7.5,-7.5 z
+              M150.5,154 a7.5,7.5 0 0 1 7.5,7.5 v17 a7.5,7.5 0 0 1 -15,0 v-17 a7.5,7.5 0 0 1 7.5,-7.5 z" />
+    </group>
+  </group>
+</vector>

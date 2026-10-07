@@ -171,6 +171,17 @@ public static class Dialogs
         return r == null ? null : (r[0], r[1], r[2], r[3]);
     }
 
+    // The same dialogs for the view models shared with the Android app, which wait for them with await (there a dialog
+    // can't hold the code up). Here they're the ones above.
+    public static Task<bool> ConfirmAsync(string title, string message, string ok, bool danger = false) => Task.FromResult(Confirm(title, message, ok, danger));
+    public static Task<string?> PromptAsync(string title, string label, string initial) => Task.FromResult(Prompt(title, label, initial));
+    public static Task<(string Title, string Artist, string Album, string Bpm)?> EditTrackAsync(Track t) => Task.FromResult(EditTrack(t));
+    public static Task<string?> PickImageAsync() => Task.FromResult(PickImage());
+    public static Task<string?> PickFolderAsync(string title, string? initial = null) => Task.FromResult(PickFolder(title, initial));
+    public static Task<string[]?> PickFilesAsync(string title, bool multiple, params (string Name, IEnumerable<string> Extensions)[] filters)
+        => Task.FromResult(PickFiles(title, multiple, filters));
+    public static Task<string?> PickFileAsync(string title, params (string Name, IEnumerable<string> Extensions)[] filters) => Task.FromResult(PickFile(title, filters));
+
     private static string[]? Show(string title, string? message, (string Label, string Value)[] fields, string ok, bool danger)
     {
         var stack = new StackPanel();

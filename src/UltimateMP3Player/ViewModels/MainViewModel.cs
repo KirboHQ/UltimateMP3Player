@@ -53,7 +53,7 @@ public sealed class MainViewModel : Observable
         GoTogetherCommand = new RelayCommand(() => Navigate(Together));
         GoNowPlayingCommand = new RelayCommand(() => { if (Page == NowPlaying) GoBack(); else Navigate(NowPlaying); });
         BackCommand = new RelayCommand(GoBack, () => _back.Count > 0);
-        NewPlaylistCommand = new RelayCommand(() => NewPlaylist(null));
+        NewPlaylistCommand = new RelayCommand(() => _ = NewPlaylist(null));
         OpenPlaylistCommand = new RelayCommand(p => { if (p is PlaylistViewModel vm) OpenPlaylist(vm); });
         PlayPlaylistCommand = new RelayCommand(p => { if (p is PlaylistViewModel vm) PlayPlaylist(vm); });
         // A song card: the one already playing pauses and resumes. In a room: into the room's queue.
@@ -68,11 +68,11 @@ public sealed class MainViewModel : Observable
         ClearSearchCommand = new RelayCommand(() => SearchText = "");
         PasteLinkCommand = new RelayCommand(() => _ = PasteLink());
         SwitchProfileCommand = new RelayCommand(() => Host.SwitchProfile());
-        ImportCommand = new RelayCommand(() => ImportDialog(false));
-        NewTagCommand = new RelayCommand(() => NewTag());
+        ImportCommand = new RelayCommand(() => _ = ImportDialog(false));
+        NewTagCommand = new RelayCommand(() => _ = NewTag());
         OpenTagCommand = new RelayCommand(t => { if (t is TagViewModel tag) OpenTag(tag); });
-        EditTagCommand = new RelayCommand(t => { if (t is TagViewModel tag) EditTag(tag); });
-        DeleteTagCommand = new RelayCommand(t => { if (t is TagViewModel tag) DeleteTag(tag); });
+        EditTagCommand = new RelayCommand(t => { if (t is TagViewModel tag) _ = EditTag(tag); });
+        DeleteTagCommand = new RelayCommand(t => { if (t is TagViewModel tag) _ = DeleteTag(tag); });
 
         _added = t => _ui.BeginInvoke(() => OnTrackAdded(t));
         _changed = t => _ui.BeginInvoke(() => OnTrackChanged(t));
@@ -511,9 +511,10 @@ public sealed class MainViewModel : Observable
 
     public string NewPlaylistName() => L.F("La mia playlist n. {0}", Playlists.Count);
 
-    public Playlist? NewPlaylist(TrackViewModel? with)
+    // The dialogs are awaited: on Android they can't hold the code up (on Windows they're the usual modal ones).
+    public async Task<Playlist?> NewPlaylist(TrackViewModel? with)
     {
-        var name = Dialogs.Prompt(L.T("Nuova playlist"), L.T("Nome della playlist"), NewPlaylistName());
+        var name = await Dialogs.PromptAsync(L.T("Nuova playlist"), L.T("Nome della playlist"), NewPlaylistName());
         if (string.IsNullOrWhiteSpace(name)) return null;
         var p = Profile.CreatePlaylist(name);
         if (with != null && SaveRoomSong(with, p)) return p;
@@ -526,25 +527,25 @@ public sealed class MainViewModel : Observable
         return p;
     }
 
-    public void RenamePlaylist(PlaylistViewModel vm)
+    public async Task RenamePlaylist(PlaylistViewModel vm)
     {
-        var name = Dialogs.Prompt(L.T("Rinomina playlist"), L.T("Nuovo nome"), vm.Name);
+        var name = await Dialogs.PromptAsync(L.T("Rinomina playlist"), L.T("Nuovo nome"), vm.Name);
         if (string.IsNullOrWhiteSpace(name)) return;
         Profile.Rename(vm.P, name);
     }
 
-    public void DeletePlaylist(PlaylistViewModel vm)
+    public async Task DeletePlaylist(PlaylistViewModel vm)
     {
         if (vm.IsFavorites) return;
-        if (!Dialogs.Confirm(L.T("Eliminare la playlist?"), L.F("La playlist «{0}» verrà eliminata. I brani restano nella libreria.", vm.Name), L.T("Elimina"), true)) return;
+        if (!await Dialogs.ConfirmAsync(L.T("Eliminare la playlist?"), L.F("La playlist «{0}» verrà eliminata. I brani restano nella libreria.", vm.Name), L.T("Elimina"), true)) return;
         Profile.DeletePlaylist(vm.P);
     }
 
-    public void ChangePlaylistCover(PlaylistViewModel vm)
+    public async Task ChangePlaylistCover(PlaylistViewModel vm)
     {
-        var file = Dialogs.PickImage();
+        var file = await Dialogs.PickImageAsync();
         if (file == null) return;
-        _ = SetCover(file, Profile.PlaylistCover(vm.P), () => Profile.SetPlaylistCover(vm.P, true));
+        await SetCover(file, Profile.PlaylistCover(vm.P), () => Profile.SetPlaylistCover(vm.P, true));
     }
 
     public void RemovePlaylistCover(PlaylistViewModel vm)
@@ -626,9 +627,9 @@ public sealed class MainViewModel : Observable
         Toast(added == 0 ? L.F("Erano già tutti in «{0}»", name) : added == 1 ? L.F("1 brano aggiunto a «{0}»", name) : L.F("{0} brani aggiunti a «{1}»", added, name));
     }
 
-    public void NewPlaylistWith(IReadOnlyList<TrackViewModel> tracks)
+    public async Task NewPlaylistWith(IReadOnlyList<TrackViewModel> tracks)
     {
-        var name = Dialogs.Prompt(L.T("Nuova playlist"), L.T("Nome della playlist"), NewPlaylistName());
+        var name = await Dialogs.PromptAsync(L.T("Nuova playlist"), L.T("Nome della playlist"), NewPlaylistName());
         if (string.IsNullOrWhiteSpace(name)) return;
         var p = Profile.CreatePlaylist(name);
         AddToPlaylist(tracks, p);
@@ -665,9 +666,9 @@ public sealed class MainViewModel : Observable
         Player.PlayFrom(new TrackListSource("selection", L.T("Brani selezionati"), tracks), tracks[0], alwaysQueue: true);
     }
 
-    public void EditTrack(TrackViewModel t)
+    public async Task EditTrack(TrackViewModel t)
     {
-        var r = Dialogs.EditTrack(t.T);
+        var r = await Dialogs.EditTrackAsync(t.T);
         if (r == null) return;
         t.T.Title = string.IsNullOrWhiteSpace(r.Value.Title) ? t.T.Title : r.Value.Title.Trim();
         t.T.Artist = string.IsNullOrWhiteSpace(r.Value.Artist) ? null : r.Value.Artist.Trim();
@@ -677,11 +678,11 @@ public sealed class MainViewModel : Observable
         Library.Changed(t.T);
     }
 
-    public void ChangeTrackCover(TrackViewModel t)
+    public async Task ChangeTrackCover(TrackViewModel t)
     {
-        var file = Dialogs.PickImage();
+        var file = await Dialogs.PickImageAsync();
         if (file == null) return;
-        _ = SetCover(file, AppPaths.TrackCover(t.Id), () =>
+        await SetCover(file, AppPaths.TrackCover(t.Id), () =>
         {
             t.T.HasCover = true;
             t.T.CoverVersion++;
@@ -695,9 +696,9 @@ public sealed class MainViewModel : Observable
         Ui.ShowInFolder(t.T.Path);
     }
 
-    public void DeleteTrack(TrackViewModel t) => DeleteTracks(new[] { t });
+    public Task DeleteTrack(TrackViewModel t) => DeleteTracks(new[] { t });
 
-    public void DeleteTracks(IReadOnlyList<TrackViewModel> tracks)
+    public async Task DeleteTracks(IReadOnlyList<TrackViewModel> tracks)
     {
         // The song the room is playing stays until it's over (its file is open).
         if (InRoom && Player.Current is { } playing && tracks.Contains(playing))
@@ -721,8 +722,8 @@ public sealed class MainViewModel : Observable
             msg = L.F("{0} brani verranno eliminati dal computer e tolti dalle playlist di tutti i profili.", tracks.Count) +
                   (local > 0 ? "\n\n" + L.F("{0} di questi erano già sul computer prima: vengono solo tolti dalla libreria, i file restano.", local) : "");
         }
-        if (!Dialogs.Confirm(tracks.Count == 1 ? L.T("Eliminare il brano?") : L.F("Eliminare {0} brani?", tracks.Count), msg, L.T("Elimina"), true)) return;
-        _ = Delete(tracks.ToList());
+        if (!await Dialogs.ConfirmAsync(tracks.Count == 1 ? L.T("Eliminare il brano?") : L.F("Eliminare {0} brani?", tracks.Count), msg, L.T("Elimina"), true)) return;
+        await Delete(tracks.ToList());
     }
 
     // Removes the song everywhere: files, cover, playlists, history, queue.
@@ -840,9 +841,9 @@ public sealed class MainViewModel : Observable
     }
 
     // Creates a tag (and puts it on these songs or this playlist, if given).
-    public TagViewModel? NewTag(IReadOnlyList<TrackViewModel>? songs = null, PlaylistViewModel? playlist = null)
+    public async Task<TagViewModel?> NewTag(IReadOnlyList<TrackViewModel>? songs = null, PlaylistViewModel? playlist = null)
     {
-        var r = Views.TagDialogs.Edit(null, Tag.Palette[Tags.Count % Tag.Palette.Length]);
+        var r = await Views.TagDialogs.EditAsync(null, Tag.Palette[Tags.Count % Tag.Palette.Length]);
         if (r == null) return null;
         var tag = Profile.CreateTag(r.Value.Name, r.Value.Color);
         var vm = Tags.FirstOrDefault(t => t.Id == tag.Id);
@@ -853,19 +854,19 @@ public sealed class MainViewModel : Observable
         return vm;
     }
 
-    public void EditTag(TagViewModel t)
+    public async Task EditTag(TagViewModel t)
     {
-        var r = Views.TagDialogs.Edit(t.Name, t.Color);
+        var r = await Views.TagDialogs.EditAsync(t.Name, t.Color);
         if (r != null) Profile.UpdateTag(t.T, r.Value.Name, r.Value.Color);
     }
 
-    public void DeleteTag(TagViewModel t)
+    public async Task DeleteTag(TagViewModel t)
     {
         int songs = t.Count, lists = Profile.PlaylistsSnapshot().Count(p => p.Tags.Contains(t.Id));
         var used = songs == 0 && lists == 0
             ? L.T("Non è usato da nessun brano.")
             : L.F("Verrà tolto da {0} e da {1}.", L.Count(songs, "1 brano", "{0} brani"), L.Count(lists, "1 playlist", "{0} playlist"));
-        if (!Dialogs.Confirm(L.T("Eliminare il tag?"), L.F("Il tag «{0}» verrà eliminato.", t.Name) + " " + used, L.T("Elimina"), true)) return;
+        if (!await Dialogs.ConfirmAsync(L.T("Eliminare il tag?"), L.F("Il tag «{0}» verrà eliminato.", t.Name) + " " + used, L.T("Elimina"), true)) return;
         Profile.DeleteTag(t.T);
     }
 
@@ -880,12 +881,12 @@ public sealed class MainViewModel : Observable
     public void SetPlaylistTag(PlaylistViewModel p, TagViewModel tag, bool on) => Profile.SetPlaylistTag(p.P, tag.Id, on);
 
     // A playlist's tags onto its songs (all, or the ones left ticked).
-    public void TagPlaylistSongs(PlaylistViewModel p)
+    public async Task TagPlaylistSongs(PlaylistViewModel p)
     {
         var songs = p.P.Tracks.Select(id => Library.Get(id)).Where(t => t != null).Select(t => Vm(t!)).ToList();
         if (songs.Count == 0) { Toast(L.T("La playlist è vuota.")); return; }
-        if (!HasTags && NewTag() == null) return;
-        var r = Views.TagDialogs.ApplyToSongs(p, songs);
+        if (!HasTags && await NewTag() == null) return;
+        var r = await Views.TagDialogs.ApplyToSongsAsync(p, songs);
         if (r == null) return;
         int changed = 0;
         foreach (var tag in r.Value.Tags) changed += Profile.SetTag(r.Value.Songs.Select(t => t.Id), tag.Id, r.Value.Add);
@@ -983,20 +984,20 @@ public sealed class MainViewModel : Observable
 
     // ------------------------------------------------------------------ import
 
-    public void ImportDialog(bool folder)
+    public async Task ImportDialog(bool folder)
     {
         List<string> paths;
         if (folder)
         {
-            if (Dialogs.PickFolder(L.T("Scegli una cartella con la tua musica")) is not { } dir) return;
+            if (await Dialogs.PickFolderAsync(L.T("Scegli una cartella con la tua musica")) is not { } dir) return;
             paths = new List<string> { dir };
         }
         else
         {
-            if (Dialogs.PickFiles(L.T("Aggiungi brani dal computer"), true, (L.T("Audio e video"), Importer.Extensions)) is not { Length: > 0 } files) return;
+            if (await Dialogs.PickFilesAsync(L.T("Aggiungi brani dal computer"), true, (L.T("Audio e video"), Importer.Extensions)) is not { Length: > 0 } files) return;
             paths = files.ToList();
         }
-        _ = Import(paths, false);
+        await Import(paths, false);
     }
 
     public async Task Import(IEnumerable<string> paths, bool playFirst)
@@ -1047,9 +1048,9 @@ public sealed class MainViewModel : Observable
         finally { _packOpen = false; }
     }
 
-    public void PickPack()
+    public async Task PickPack()
     {
-        if (Dialogs.PickFile(L.T("Importa un pacchetto"), (L.T("Pacchetto di Ultimate MP3 Player") + " (*" + Pack.Extension + ")", new[] { Pack.Extension })) is { } file)
+        if (await Dialogs.PickFileAsync(L.T("Importa un pacchetto"), (L.T("Pacchetto di Ultimate MP3 Player") + " (*" + Pack.Extension + ")", new[] { Pack.Extension })) is { } file)
             OpenPack(file);
     }
 
@@ -1078,7 +1079,11 @@ public sealed class MainViewModel : Observable
     // A web page in the default browser.
     public static void OpenUrl(string url)
     {
+#if ANDROID_APP
+        Platform.Files.OpenUrl(url);
+#else
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
         catch { }
+#endif
     }
 }

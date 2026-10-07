@@ -32,6 +32,7 @@ public partial class MainWindow : Window
         PropertyChanged += (_, e) =>
         {
             if (e.Property != WindowStateProperty) return;
+            Ui.Hidden = WindowState == WindowState.Minimized || !IsVisible;
             Vm?.Player.SetVisible(WindowState != WindowState.Minimized);
             if (WindowState != WindowState.Minimized) s.WindowMaximized = WindowState == WindowState.Maximized;
         };

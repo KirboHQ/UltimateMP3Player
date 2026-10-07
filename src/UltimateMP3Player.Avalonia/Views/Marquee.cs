@@ -22,6 +22,12 @@ public static class Marquee
     public static bool GetHost(Control o) => o.GetValue(HostProperty);
     public static void SetHost(Control o, bool value) => o.SetValue(HostProperty, value);
 
+    // It goes by itself, without a mouse over it (the phone: the song playing, its row in a list), as long as it's shown
+    // and doesn't fit; a new text or width starts it over.
+    public static readonly AttachedProperty<bool> AutoProperty = AvaloniaProperty.RegisterAttached<Control, bool>("Auto", typeof(Marquee));
+    public static bool GetAuto(Control o) => o.GetValue(AutoProperty);
+    public static void SetAuto(Control o, bool value) => o.SetValue(AutoProperty, value);
+
     private const double Speed = 40, Edge = 14;
 
     private sealed class State
@@ -32,8 +38,14 @@ public static class Marquee
         public TextTrimming? Trimming;
         public Control? MaskHost;
         public double Width, Travel, RightFade;
+        public double OldWidth = double.NaN;
+        public bool Pending;
+        public Avalonia.Layout.HorizontalAlignment OldAlignment;
         public double Go, Back;
         public DateTime Started;
+        // Where it was drawn last (the pauses draw nothing again) and its fades, changed in place frame by frame.
+        public double LastX = double.NaN;
+        public LinearGradientBrush? Mask;
     }
 
     private static readonly AttachedProperty<State?> StateProperty = AvaloniaProperty.RegisterAttached<Control, State?>("State", typeof(Marquee));
@@ -54,6 +66,12 @@ public static class Marquee
             }
             else Detach(c);
         });
+        AutoProperty.Changed.AddClassHandler<Control>((c, e) =>
+        {
+            if (c.GetValue(StateProperty) is not State st) return;
+            if (e.NewValue is true) Later(st);
+            else Stop(st);
+        });
     }
 
     private static void OnAttached(object? sender, VisualTreeAttachmentEventArgs e) => Attach((Control)sender!);
@@ -70,10 +88,45 @@ public static class Marquee
         }
         var st = new State { Element = el, Host = host };
         el.SetValue(StateProperty, st);
-        host.PointerEntered += (_, _) => Start(st);
-        host.PointerExited += (_, _) => Stop(st);
+        host.PointerEntered += (_, _) => { if (!GetAuto(el)) Start(st); };
+        host.PointerExited += (_, _) => { if (!GetAuto(el)) Stop(st); };
         // The same element may show another song after recycling: start over.
-        el.DataContextChanged += (_, _) => Stop(st);
+        el.DataContextChanged += (_, _) =>
+        {
+            Stop(st);
+            if (GetAuto(el)) Later(st);
+        };
+        el.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == TextBlock.TextProperty && GetAuto(el)) Later(st);
+        };
+        // A new width (laid out the first time, a rotation) starts it over; not its own widening while it moves, nor
+        // the narrowing back when it stops.
+        el.SizeChanged += (_, e) =>
+        {
+            if (GetAuto(el) && st.Shift == null && Math.Abs(e.NewSize.Width - e.PreviousSize.Width) > 1 && Math.Abs(e.NewSize.Width - st.Width) > 1) Later(st);
+        };
+        if (GetAuto(el)) Later(st);
+    }
+
+    // Once the layout has settled (the new text measured). Several asks at once count as one; one that's moving stops
+    // first and starts again after the layout has narrowed it back.
+    private static void Later(State st)
+    {
+        if (st.Pending) return;
+        st.Pending = true;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            st.Pending = false;
+            if (!GetAuto(st.Element) || !st.Element.IsAttachedToVisualTree()) return;
+            if (st.Shift != null)
+            {
+                Stop(st);
+                Later(st);
+                return;
+            }
+            Start(st);
+        }, Avalonia.Threading.DispatcherPriority.Background);
     }
 
     private static void Detach(Control el)
@@ -92,8 +145,12 @@ public static class Marquee
         st.Go = Math.Max(0.8, st.Travel / Speed);
         st.Back = Math.Max(0.35, st.Go * 0.3);
         st.Started = DateTime.Now;
+        st.LastX = double.NaN;
         Running.Add(st);
         Apply(st, 0);
+        // A pause of the others planned without this one: planned again.
+        _still?.Dispose();
+        _still = null;
         Request();
     }
 
@@ -106,6 +163,12 @@ public static class Marquee
         if (overflow <= 1) return null;
         st.Trimming = tb.TextTrimming;
         tb.TextTrimming = TextTrimming.None;
+        // As wide as all its text while it moves (its window stays as wide as before: the clip and the fades). Moved
+        // further than its own width, a narrower element would count as off screen and not be drawn at all.
+        st.OldWidth = tb.Width;
+        st.OldAlignment = tb.HorizontalAlignment;
+        tb.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+        tb.Width = Math.Ceiling(ft.WidthIncludingTrailingWhitespace) + 1;
         st.Shift = new TranslateTransform();
         tb.RenderTransform = st.Shift;
         tb.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute);
@@ -128,14 +191,66 @@ public static class Marquee
 
     private static void Request()
     {
-        if (_frame || Running.Count == 0 || App.Host?.Window is not { } w) return;
+        if (Running.Count == 0 || _still != null || App.Host?.Window is not { } w) return;
+        // A frame asked to a screen that's gone (the phone's app closed and opened again) never comes.
+        if (_frame && _frameOn == w) return;
+        // Only what's on screen moves (a hidden page's text doesn't keep the screen redrawing); looked at again in a while.
+        var now = DateTime.Now;
+        double still = double.MaxValue;
+        foreach (var s in Running)
+            if (s.Element.IsEffectivelyVisible) still = Math.Min(still, StillFor(s, (now - s.Started).TotalSeconds));
+        if (still == double.MaxValue)
+        {
+            if (!_idle)
+            {
+                _idle = true;
+                Ui.Later(() =>
+                {
+                    _idle = false;
+                    Request();
+                });
+            }
+            return;
+        }
+        // All of them resting at an end: no frames until the first one moves again.
+        if (still > 0.05)
+        {
+            _still = Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+            {
+                _still = null;
+                Request();
+            }, TimeSpan.FromSeconds(still - 0.02));
+            return;
+        }
         _frame = true;
+        _frameOn = w;
         w.RequestAnimationFrame(_ =>
         {
             _frame = false;
-            foreach (var st in Running.ToList()) Apply(st, (DateTime.Now - st.Started).TotalSeconds);
+            var at = DateTime.Now;
+            foreach (var st in Running.ToList())
+                if (st.Element.IsEffectivelyVisible) Apply(st, (at - st.Started).TotalSeconds);
             Request();
         });
+    }
+
+    private static bool _idle;
+    private static TopLevel? _frameOn;
+    private static IDisposable? _still;
+
+    // How long it stays where it is from t on (0 while it moves).
+    private static double StillFor(State st, double t)
+    {
+        double cycle = 0.6 + st.Go + 1.3 + st.Back + 0.9;
+        t %= cycle;
+        if (t < 0.6) return 0.6 - t;
+        t -= 0.6 + st.Go;
+        if (t < 0) return 0;
+        if (t < 1.3) return 1.3 - t;
+        t -= 1.3 + st.Back;
+        if (t < 0) return 0;
+        // The pause at the start, then the next turn's.
+        return 0.9 - t + 0.6;
     }
 
     // Pause, glide to the end, pause, back quickly, pause, again.
@@ -160,6 +275,9 @@ public static class Marquee
     {
         if (st.Shift == null || st.MaskHost == null) return;
         double x = Position(st, t);
+        // Resting at an end: drawn already.
+        if (x == st.LastX) return;
+        st.LastX = x;
         st.Shift.X = x;
         double w = st.Width;
         if (w <= 0) return;
@@ -167,18 +285,24 @@ public static class Marquee
         double origin = ReferenceEquals(st.MaskHost, st.Element) ? -x : 0;
         if (ReferenceEquals(st.MaskHost, st.Element)) st.Element.Clip = new RectangleGeometry(new Rect(origin, -4, w, st.Element.Bounds.Height + 8));
         double left = Math.Min(Edge, Math.Max(0, -x));
-        st.MaskHost.OpacityMask = new LinearGradientBrush
+        if (st.Mask == null)
         {
-            StartPoint = new RelativePoint(origin, 0, RelativeUnit.Absolute),
-            EndPoint = new RelativePoint(origin + w, 0, RelativeUnit.Absolute),
-            GradientStops =
+            st.Mask = new LinearGradientBrush
             {
-                new GradientStop(left > 0.5 ? Colors.Transparent : Colors.Black, 0),
-                new GradientStop(Colors.Black, left / w),
-                new GradientStop(Colors.Black, Math.Max(0, (w - st.RightFade) / w)),
-                new GradientStop(Colors.Transparent, 1),
-            },
-        };
+                GradientStops =
+                {
+                    new GradientStop(Colors.Black, 0), new GradientStop(Colors.Black, 0),
+                    new GradientStop(Colors.Black, 1), new GradientStop(Colors.Transparent, 1),
+                },
+            };
+        }
+        var mask = st.Mask;
+        mask.StartPoint = new RelativePoint(origin, 0, RelativeUnit.Absolute);
+        mask.EndPoint = new RelativePoint(origin + w, 0, RelativeUnit.Absolute);
+        mask.GradientStops[0].Color = left > 0.5 ? Colors.Transparent : Colors.Black;
+        mask.GradientStops[1].Offset = left / w;
+        mask.GradientStops[2].Offset = Math.Max(0, (w - st.RightFade) / w);
+        if (!ReferenceEquals(st.MaskHost.OpacityMask, mask)) st.MaskHost.OpacityMask = mask;
     }
 
     private static void Stop(State st)
@@ -186,6 +310,7 @@ public static class Marquee
         if (st.Shift == null) return;
         Running.Remove(st);
         st.Shift = null;
+        st.Mask = null;
         if (st.MaskHost != null)
         {
             st.MaskHost.OpacityMask = null;
@@ -198,6 +323,8 @@ public static class Marquee
             tb.Clip = null;
             tb.RenderTransform = null;
             tb.TextTrimming = st.Trimming ?? TextTrimming.CharacterEllipsis;
+            tb.Width = st.OldWidth;
+            tb.HorizontalAlignment = st.OldAlignment;
         }
         else st.Element.RenderTransform = null;
     }

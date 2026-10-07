@@ -10,6 +10,12 @@ installer/Output/
 # external programs (downloaded, too big for git: see README)
 engines/*
 !engines/README.md
+# the Android app's engines (tools\android-deps.ps1)
+src/UltimateMP3Player.Android/Engines/
+
+# the key that signs the Android app: NEVER in git (kept outside the repository, see build-android.ps1)
+*.keystore
+*.jks
 
 # editors
 .vs/

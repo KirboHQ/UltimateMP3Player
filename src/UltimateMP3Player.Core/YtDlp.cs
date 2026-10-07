@@ -18,7 +18,7 @@ public static class YtDlp
         var a = new List<string>
         {
             "--ignore-config", "--no-colors",
-            "--js-runtimes", "deno:" + Engines.Deno,
+            "--js-runtimes", Engines.JsRuntime,
             "--ffmpeg-location", Engines.Dir,
         };
         if (Gentle) a.AddRange(new[] { "--sleep-requests", "1.5" });

@@ -1,0 +1,73 @@
+<!-- "La tua libreria": the songs, the playlists (Preferiti first, the songs in no playlist), the tags. -->
+<UserControl x:Class="UltimateMP3Player.Views.LibraryPage"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="0,8,0,4">
+            <Grid ColumnDefinitions="*,Auto" Margin="18,6,10,10">
+                <TextBlock Text="{local:T 'La tua libreria'}" Classes="page-title"/>
+                <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Content="{local:Icon E710}" Click="Add_Click" VerticalAlignment="Center"/>
+            </Grid>
+            <Border CornerRadius="22" Padding="4" Background="{StaticResource SurfaceBrush}" Margin="16,0" MaxWidth="560">
+                <UniformGrid Rows="1">
+                    <RadioButton x:Name="TabSongs" Theme="{StaticResource TouchSegment}" GroupName="lib" local:Ui.Glyph="&#xEC4F;" Content="{local:T Brani}"/>
+                    <RadioButton x:Name="TabLists" Theme="{StaticResource TouchSegment}" GroupName="lib" local:Ui.Glyph="&#xE8F1;" Content="{local:T Playlist}" Margin="4,0"/>
+                    <RadioButton x:Name="TabTags" Theme="{StaticResource TouchSegment}" GroupName="lib" local:Ui.Glyph="&#xE8EC;" Content="{local:T Tag}"/>
+                </UniformGrid>
+            </Border>
+        </StackPanel>
+
+        <Panel>
+            <!-- the songs: the library's list itself -->
+            <views:SongsPage x:Name="Songs" Embedded="True" IsVisible="False"/>
+
+            <!-- the playlists -->
+            <ScrollViewer x:Name="ListsPane">
+                <StackPanel Margin="0,6,0,20">
+                    <Border Classes="row" Padding="16,7,16,7" views:Touch.Tap="{Binding Main.NewPlaylistCommand}">
+                        <Grid ColumnDefinitions="56,*">
+                            <Border Width="56" Height="56" CornerRadius="8" Background="{StaticResource Surface2Brush}">
+                                <TextBlock Text="{local:Icon E710}" Classes="glyph" FontSize="24" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T 'Nuova playlist'}" FontSize="15.5" FontWeight="SemiBold" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <ItemsControl ItemsSource="{Binding Main.Playlists}" ItemTemplate="{StaticResource PlaylistRowTemplate}"/>
+                    <!-- songs that aren't in any playlist (to tidy up) -->
+                    <Border Classes="row" Padding="16,7,16,7" Margin="0,4,0,0" Tapped="Unsorted_Tapped">
+                        <Grid ColumnDefinitions="56,*">
+                            <Border Width="56" Height="56" CornerRadius="8" Background="{StaticResource Surface2Brush}">
+                                <TextBlock Text="{local:Icon E8B7}" Classes="glyph" FontSize="22" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{local:T 'Senza playlist'}" FontSize="15.5" FontWeight="SemiBold"/>
+                                <TextBlock Text="{local:T 'Brani che non sono in nessuna playlist'}" FontSize="13.5" Foreground="{StaticResource SubTextBrush}" Margin="0,3,0,0"
+                                           TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- the tags -->
+            <ScrollViewer x:Name="TagsPane" IsVisible="False">
+                <StackPanel Margin="0,6,0,20">
+                    <Border Classes="row" Padding="16,7,16,7" views:Touch.Tap="{Binding Main.NewTagCommand}">
+                        <Grid ColumnDefinitions="56,*">
+                            <Border Width="56" Height="56" CornerRadius="8" Background="{StaticResource Surface2Brush}">
+                                <TextBlock Text="{local:Icon E710}" Classes="glyph" FontSize="24" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T 'Nuovo tag'}" FontSize="15.5" FontWeight="SemiBold" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="{local:T 'Etichette colorate per raggruppare brani e playlist a modo tuo: tieni premuto un brano o una playlist per mettergliele.'}"
+                               Classes="hint" Margin="20,12,20,0" IsVisible="{Binding !Main.HasTags}"/>
+                    <ItemsControl ItemsSource="{Binding Main.Tags}" ItemTemplate="{StaticResource TagRowTemplate}"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Panel>
+    </DockPanel>
+</UserControl>

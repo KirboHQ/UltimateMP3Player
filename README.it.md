@@ -16,6 +16,7 @@
   <img alt="Windows 10 e 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows&logoColor=white">
   <img alt="Linux" src="https://img.shields.io/badge/Linux-x64%20%7C%20arm64-FCC624?style=flat-square&logo=linux&logoColor=black">
   <img alt="macOS 12 o successivo" src="https://img.shields.io/badge/macOS-12%2B-000000?style=flat-square&logo=apple&logoColor=white">
+  <img alt="Android 8 o successivo" src="https://img.shields.io/badge/Android-8%2B-3DDC84?style=flat-square&logo=android&logoColor=white">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white">
 </p>
 
@@ -28,6 +29,9 @@
   </a>
   <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
     <img alt="Scarica per macOS" src="https://img.shields.io/badge/macOS-7C5CFF?style=for-the-badge&logo=apple&logoColor=white" height="42">
+  </a>
+  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
+    <img alt="Scarica per Android" src="https://img.shields.io/badge/Android-7C5CFF?style=for-the-badge&logo=android&logoColor=white" height="42">
   </a>
 </p>
 
@@ -42,7 +46,33 @@
   <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · un lettore come Spotify · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · profili e temi · ascolta insieme">
 </picture>
 
-## 🆕 Novità della 3.4.0
+## 🆕 Novità della 3.5.0
+
+- **Android**: la stessa app su telefoni e tablet (Android 8 o successivo), con lo stesso aspetto e le stesse funzioni,
+  tranne la modalità DJ e Ascolta insieme. Una barra in basso con Home, Cerca, Libreria, Download e Impostazioni; il
+  brano in riproduzione subito sopra, che si apre a tutto schermo con la copertina (che si inclina sotto il dito), il
+  video, i testi sincronizzati e la coda. In orizzontale o su un tablet le schede passano in una colonna a sinistra (come
+  la barra laterale del computer) e la pagina del brano mette la copertina accanto al titolo e ai pulsanti. Lo schermo va
+  alla sua frequenza massima (90, 120 Hz e oltre).
+- **Condividi per scaricare**: in YouTube, Spotify, SoundCloud e quasi ogni altra app premi *Condividi → Scarica con
+  Ultimate MP3 Player*: l'app si apre sulla pagina dei download con il link già inserito.
+- **Ascolta senza scaricare** (su tutte le piattaforme): accanto a *Scarica*, un link si può anche solo ascoltare. I suoi
+  brani arrivano nella memoria temporanea poco prima del loro turno, come i consigliati, e restano fuori dalla libreria;
+  per tenerne uno c'è *Salva nella libreria* (su Android anche dalla notifica). In una stanza di *Ascolta insieme* lo
+  stesso pulsante è *Aggiungi alla stanza*: i brani vanno nella coda della stanza senza essere scaricati nella libreria.
+- **Schermata di blocco e notifica**: copertina, precedente / pausa / successivo e il cuore dei Preferiti (e *Salva
+  nella libreria* per un brano che stai solo ascoltando), anche dalle cuffie Bluetooth e in auto. Musica e download vanno
+  avanti anche a schermo spento.
+- **Più leggera per il processore e la batteria** (su tutte le piattaforme): i download in attesa o finiti non tengono
+  più un'animazione accesa dietro le quinte (una lista lunga poteva tenere occupato un core del processore), e mentre
+  l'app non è a schermo (in background, ridotta a icona, la pagina del brano chiusa) titoli che scorrono, rotelline di
+  caricamento, testi e video si fermano.
+- Linux e macOS: cambiare lingua dalle impostazioni funziona di nuovo.
+- La pressione prolungata è il tasto destro; ci sono i profili (comodi sul tablet di famiglia), le statistiche, i tag,
+  i pacchetti `.ump` e gli aggiornamenti automatici dalle release di GitHub.
+
+<details>
+<summary>3.4.0</summary>
 
 - **Linux e macOS**: la stessa app, con lo stesso aspetto e le stesse funzioni, su Linux (x64 e arm64) e macOS (Intel
   e Apple Silicon). Con i controlli multimediali del sistema, l'icona vicino all'orologio, i pacchetti `.ump` e gli
@@ -54,6 +84,8 @@
 - Un brano consigliato salvato e poi eliminato mentre suona non salta più: finisce dalla memoria
 - La ricerca delle impostazioni resta sempre in alto
 - Finestre di dialogo (come i termini d'uso): i pulsanti non sfarfallano più sotto il mouse
+
+</details>
 
 ## 📥 Installazione
 
@@ -97,6 +129,21 @@
 > [!NOTE]
 > Se macOS dice che l'app "è danneggiata", esegui una volta nel Terminale:
 > `xattr -dr com.apple.quarantine "/Applications/Ultimate MP3 Player.app"`
+
+**Android** (8 o successivo; non è sul Play Store)
+
+1. Dal telefono apri l'[ultima release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest) e scarica
+   **`UltimateMP3Player-android-arm64-v8a.apk`** (quasi tutti i telefoni degli ultimi anni; `-armeabi-v7a` è per i
+   vecchi telefoni a 32 bit, `-x86_64` per emulatori e Chromebook).
+2. Apri il file scaricato. La prima volta Android chiede di consentire l'installazione di app dal browser (o dal
+   gestore file): consentila, torna indietro e premi **Installa**.
+3. Fatto. Al primo avvio l'app prepara i suoi motori (pochi secondi), poi si aggiorna da sola: le nuove versioni si
+   scaricano con il Wi-Fi e Android chiede prima di installarle.
+
+> [!NOTE]
+> Play Protect può dire che l'app è sconosciuta, perché non arriva dal Play Store: premi **Altri dettagli → Installa
+> comunque**. La musica resta nella cartella dell'app (*Android › data*, visibile dal computer); se disinstalli l'app,
+> Android chiede se tenerla. Per spostare la musica su un altro telefono o computer usa un pacchetto `.ump`.
 
 ## 🎵 Funzioni
 
@@ -182,13 +229,21 @@ Serve il .NET 8 SDK, e per l'installer Inno Setup 6. I programmi esterni vanno i
 |---|---|
 | `.\build.ps1` | App portatile in `app\` e collegamento sul Desktop |
 | `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-Setup-<versione>.exe` |
-| `.\build.ps1 -Release` | `dist\`: i file da allegare a una release di GitHub: il setup (più `UltimateMP3Player.exe`, facoltativo, per aggiornamenti più leggeri) e i pacchetti per Linux e macOS (`-WindowsOnly` li salta) |
+| `.\build.ps1 -Release` | `dist\`: i file da allegare a una release di GitHub: il setup (più `UltimateMP3Player.exe`, facoltativo, per aggiornamenti più leggeri), i pacchetti per Linux e macOS e gli APK per Android (`-WindowsOnly` salta entrambi, `-NoAndroid` solo gli APK) |
 | `.\build-unix.ps1` | Solo i pacchetti per Linux e macOS in `dist\`: `UltimateMP3Player-linux-x64.tar.gz`, `-linux-arm64.tar.gz`, `UltimateMP3Player-macos-x64.zip`, `-macos-arm64.zip` (`-Targets linux-x64,…` per farne solo alcuni) |
+| `.\build-android.ps1` | Solo gli APK per Android in `dist\android\`: `UltimateMP3Player-android-arm64-v8a.apk`, `-armeabi-v7a.apk`, `-x86_64.apk` (`-Out <cartella>` per metterli altrove) |
+
+L'app Android richiede il .NET 10 SDK con il workload Android (`dotnet workload install android`), l'Android SDK e un
+JDK (`ANDROID_HOME` / `JAVA_HOME`, oppure `%LOCALAPPDATA%\Android\Sdk` e `\Android\jdk`). I suoi motori (Python con
+yt-dlp, ffmpeg e QuickJS di [youtubedl-android](https://github.com/JunkFood02/youtubedl-android)) li scarica
+`tools\android-deps.ps1`, con versione e SHA-256 fissati. La prima compilazione crea la chiave di firma in
+`%USERPROFILE%\.ultimatemp3player-android`, fuori dal repository: **tienine una copia** — Android installa un
+aggiornamento solo se è firmato con la stessa chiave.
 
 Anche i pacchetti per Linux e macOS si fanno da Windows. L'app per macOS è firmata "ad hoc" (senza un certificato
 Apple) con [rcodesign](https://github.com/indygreg/apple-platform-rs), scaricato una volta in `tools\bin`: i Mac Apple
 Silicon non avviano app senza nessuna firma. La versione in `src\UltimateMP3Player.Avalonia\UltimateMP3Player.Avalonia.csproj`
-va tenuta uguale a quella di Windows.
+va tenuta uguale a quella di Windows (e di Android, in `src\UltimateMP3Player.Android\UltimateMP3Player.Android.csproj`).
 
 Due impostazioni in `src\UltimateMP3Player\UltimateMP3Player.csproj` (e le stesse due nel progetto Avalonia):
 
@@ -205,6 +260,7 @@ da riga di comando per provare il core (download, import, coda, casuale).
 | `src\UltimateMP3Player.Core` | Download (yt-dlp, gallery-dl, ffmpeg), libreria, profili, coda, analisi, traduzioni |
 | `src\UltimateMP3Player` | Interfaccia WPF, motore audio (NAudio/WASAPI), motore DJ (SoundTouch), icona, tasti multimediali, aggiornamenti, Discord |
 | `src\UltimateMP3Player.Avalonia` | Linux e macOS: la stessa interfaccia disegnata con Avalonia; usa i view model, i motori audio e DJ e gran parte dei servizi di `src\UltimateMP3Player` (uscita audio con SDL3, MPRIS, "In riproduzione" di macOS, aggiornamenti) |
+| `src\UltimateMP3Player.Android` | Android: le pagine per il telefono (Avalonia), con i view model, il motore audio e i pezzi delle viste di Linux/macOS in comune; il servizio del lettore con i controlli nella notifica e nella schermata di blocco (MediaSession), l'uscita audio con AudioTrack, i motori dentro l'app, la condivisione, gli aggiornamenti |
 | `installer` | Script di Inno Setup e immagini dell'installazione (`tools\make-images.ps1` le crea da `Logo.xaml`, insieme alle icone per macOS) |
 
 </details>
@@ -218,7 +274,9 @@ da riga di comando per provare il core (download, import, coda, casuale).
 | `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Brani delle stanze di *Ascolta insieme* e consigliati tenuti per la prossima volta |
 
 Su Linux i dati sono in `~/.local/share/Ultimate MP3 Player` e su macOS in `~/Library/Application Support/Ultimate MP3 Player`
-(lì ci sono anche i motori, in `engines`); i brani vanno in `~/Music/Ultimate MP3 Player`.
+(lì ci sono anche i motori, in `engines`); i brani vanno in `~/Music/Ultimate MP3 Player`. Su Android i brani sono nella
+cartella dell'app `Android/data/com.kirbohq.ultimatemp3player/files/Music` (visibile dal computer), il resto dentro
+l'app.
 
 ## 🙏 Software di terze parti
 
@@ -231,5 +289,8 @@ Linux e macOS: [Avalonia](https://avaloniaui.net) (MIT), [SDL3](https://www.libs
 [SDL3-CS](https://github.com/ppy/SDL3-CS) (MIT), [Tmds.DBus](https://github.com/tmds/Tmds.DBus) (MIT),
 [Fluent System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT) e
 [Selawik](https://github.com/microsoft/Selawik) (OFL-1.1), al posto di Segoe UI e delle sue icone.
+Android: gli stessi, più [youtubedl-android](https://github.com/JunkFood02/youtubedl-android) (GPL-3.0) per Python,
+FFmpeg e [QuickJS](https://bellard.org/quickjs/) (MIT) compilati per Android, e
+[NLayer](https://github.com/naudio/NLayer) (MIT).
 
 <sub>Scarica solo contenuti che hai il diritto di scaricare.</sub>

@@ -252,6 +252,10 @@ public static class Importer
 
     public static readonly HashSet<string> VideoExtensions = new(StringComparer.OrdinalIgnoreCase) { ".mp4", ".m4v", ".mkv", ".webm", ".mov" };
 
+    // Android: songs picked on the phone are copied into this folder (the app's): they're the app's files from then on,
+    // deleting the song deletes them. Elsewhere songs added from the computer stay where they are.
+    public static string? OwnedDir { get; set; }
+
     public static List<string> Expand(IEnumerable<string> paths)
     {
         var list = new List<string>();
@@ -291,7 +295,8 @@ public static class Importer
             Duration = tags.Duration ?? 0,
             Path = file,
             VideoPath = tags.HasVideo && VideoExtensions.Contains(Path.GetExtension(file)) ? file : null,
-            Site = "File locale", // stored value, not shown
+            // stored values, not shown
+            Site = OwnedDir != null && file.StartsWith(Path.GetFullPath(OwnedDir), StringComparison.Ordinal) ? "Importato" : "File locale",
             Keys = new List<string> { key },
         };
         if (tags.HasCover)

@@ -66,6 +66,8 @@ public sealed class LyricsView : Grid
         SetFade(0, 0.1);
         Children.Add(_scroll);
         AddHandler(PointerWheelChangedEvent, (_, _) => UserScrolled(), RoutingStrategies.Tunnel, true);
+        // A finger dragging the lyrics (the phone) is a scroll by hand too.
+        AddHandler(Gestures.ScrollGestureEvent, (_, _) => UserScrolled(), RoutingStrategies.Bubble, true);
         SizeChanged += (_, _) => Relayout(false);
         AttachedToVisualTree += (_, _) => UpdateTicking();
         DetachedFromVisualTree += (_, _) => UpdateTicking();
@@ -152,9 +154,10 @@ public sealed class LyricsView : Grid
             box.Cursor = Ui.Hand;
             box.PointerEntered += (_, _) => Paint(row, _rows.IndexOf(row), true);
             box.PointerExited += (_, _) => Paint(row, _rows.IndexOf(row), true);
-            box.PointerReleased += (_, e) =>
+            // A tap (not the end of a drag that scrolled the lyrics).
+            box.Tapped += (_, e) =>
             {
-                if (e.InitialPressMouseButton != MouseButton.Left || CanSeek?.Invoke() == false) return;
+                if (CanSeek?.Invoke() == false) return;
                 e.Handled = true;
                 SetFollowing(true);
                 SeekRequested?.Invoke(row.Time);
@@ -270,17 +273,49 @@ public sealed class LyricsView : Grid
     private void UpdateTicking()
     {
         bool want = VisualRoot != null && IsSynced && _clock.Playing;
+        // Hidden (the song's page closed, another tab): no frames, looked at again in a while (Ui.Later).
+        if (want && !IsEffectivelyVisible)
+        {
+            _ticking = false;
+            if (!_waitShown)
+            {
+                _waitShown = true;
+                Ui.Later(() =>
+                {
+                    _waitShown = false;
+                    UpdateTicking();
+                });
+            }
+            return;
+        }
         if (want == _ticking) return;
         _ticking = want;
-        if (want) RequestFrame();
+        if (want)
+        {
+            Tick();
+            RequestFrame();
+        }
     }
 
-    private void RequestFrame() => TopLevel.GetTopLevel(this)?.RequestAnimationFrame(_ =>
+    private bool _waitShown, _frameAsked;
+
+    private void RequestFrame()
     {
-        if (!_ticking) return;
-        if (IsEffectivelyVisible) Tick();
-        RequestFrame();
-    });
+        if (_frameAsked || TopLevel.GetTopLevel(this) is not { } top) return;
+        _frameAsked = true;
+        top.RequestAnimationFrame(_ =>
+        {
+            _frameAsked = false;
+            if (!_ticking) return;
+            if (!IsEffectivelyVisible)
+            {
+                UpdateTicking();
+                return;
+            }
+            Tick();
+            RequestFrame();
+        });
+    }
 
     private void Tick()
     {

@@ -1,0 +1,102 @@
+<!-- The text styles of the computer apps (glyph, field-label, hint...) and the ones of the phone's rows and headers. -->
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:UltimateMP3Player">
+
+    <Style Selector="TextBlock.glyph">
+        <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
+        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="local:Ui.GrayText" Value="True"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBlock.glyph.filled">
+        <Setter Property="FontFamily" Value="{StaticResource IconFontFilled}"/>
+    </Style>
+    <Style Selector="TextBlock.field-label">
+        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="4,0,0,8"/>
+    </Style>
+    <Style Selector="TextBlock.section-title">
+        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+    <Style Selector="TextBlock.page-title">
+        <Setter Property="FontSize" Value="28"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.small-caps">
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="LineHeight" Value="20"/>
+    </Style>
+    <Style Selector="TextBlock.setting">
+        <Setter Property="FontSize" Value="15.5"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style Selector="TextBlock.setting-hint">
+        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="LineHeight" Value="18"/>
+        <Setter Property="Margin" Value="0,3,0,0"/>
+    </Style>
+
+    <!-- The rotating arc while something is on its way (Views.Spinners turns it). -->
+    <Style Selector="Ellipse.spinner">
+        <Setter Property="Stroke" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="StrokeThickness" Value="4"/>
+        <Setter Property="StrokeDashArray" Value="9,24"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
+    </Style>
+
+    <Style Selector="TextBox">
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+
+    <!-- A card of the settings and of the downloads. -->
+    <Style Selector="Border.card">
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+        <Setter Property="CornerRadius" Value="18"/>
+        <Setter Property="Padding" Value="18,8"/>
+        <Setter Property="Margin" Value="0,0,0,14"/>
+    </Style>
+
+    <!-- Song rows: the one playing in the accent colour, pressed ones a little lighter. -->
+    <Style Selector="Border.row">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Border.row:pressed">
+        <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+    </Style>
+    <Style Selector="Border.row.selected">
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+    </Style>
+    <Style Selector="Border.row.current TextBlock.title">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.heart">
+        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.heart.fav">
+        <Setter Property="Foreground" Value="{DynamicResource PinkBrush}"/>
+        <Setter Property="FontFamily" Value="{StaticResource IconFontFilled}"/>
+    </Style>
+
+    <Style Selector="Border.tile">
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+    </Style>
+    <Style Selector="Border.tile:pressed">
+        <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+    </Style>
+</Styles>

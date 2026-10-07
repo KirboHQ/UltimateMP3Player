@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.VisualTree;
 using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.Views;
@@ -15,7 +16,12 @@ namespace UltimateMP3Player.Views;
 // decoding again from there.
 public sealed class VideoView : Control
 {
-    private const int FrameMaxWidth = 1280, FrameMaxHeight = 720, MaxFps = 30, Ahead = 6;
+    private const int Ahead = 6;
+
+    // The frames' size and rate at most (the phone decodes smaller ones: its processor and its battery).
+    public static int FrameMaxWidth { get; set; } = 1280;
+    public static int FrameMaxHeight { get; set; } = 720;
+    public static int FrameMaxFps { get; set; } = 30;
 
     private sealed record Frame(double Time, byte[] Pixels);
 
@@ -62,7 +68,7 @@ public sealed class VideoView : Control
         double scale = Math.Min(1, Math.Min((double)FrameMaxWidth / NaturalVideoWidth, (double)FrameMaxHeight / NaturalVideoHeight));
         _width = Math.Max(2, (int)Math.Round(NaturalVideoWidth * scale / 2) * 2);
         _height = Math.Max(2, (int)Math.Round(NaturalVideoHeight * scale / 2) * 2);
-        _fps = Math.Clamp(fps, 1, MaxFps);
+        _fps = Math.Clamp(fps, 1, FrameMaxFps);
         _bitmap = new WriteableBitmap(new PixelSize(_width, _height), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
         _shownTime = double.NaN;
         MediaOpened?.Invoke();
@@ -134,7 +140,17 @@ public sealed class VideoView : Control
         top.RequestAnimationFrame(_ =>
         {
             if (!_ticking || _bitmap == null) return;
-            if (IsEffectivelyVisible) Step();
+            // Hidden (the song's page closed): no frame asked for until it's shown again.
+            if (!IsEffectivelyVisible)
+            {
+                _ticking = false;
+                Ui.Later(() =>
+                {
+                    if (_bitmap != null && this.GetVisualRoot() != null) StartTicking();
+                });
+                return;
+            }
+            Step();
             RequestFrame();
         });
     }
@@ -151,10 +167,27 @@ public sealed class VideoView : Control
         _ticking = false;
     }
 
+    // The audio's position moves in steps (the blocks the sound is written in, 10-20 ms): in between, the time since the
+    // last step, so each frame comes out when it's due and not a screen refresh later now and then.
+    private double _clockValue = double.NaN;
+    private long _clockAt;
+
+    private double SmoothClock(double raw)
+    {
+        long now = Stopwatch.GetTimestamp();
+        if (raw != _clockValue)
+        {
+            _clockValue = raw;
+            _clockAt = now;
+            return raw;
+        }
+        return raw + Math.Min(0.05, (now - _clockAt) / (double)Stopwatch.Frequency);
+    }
+
     private void Step()
     {
         if (_path == null || Clock == null) return;
-        double target = Math.Max(0, Clock().TotalSeconds);
+        double target = SmoothClock(Math.Max(0, Clock().TotalSeconds));
         var d = _decoder;
         // Back in time, or far ahead of what's being decoded: decode again from there.
         double ahead = d == null ? double.NaN : (_next?.Time ?? d.Position);

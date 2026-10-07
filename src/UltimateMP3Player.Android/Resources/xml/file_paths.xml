@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files the app hands to other apps: an exported .ump pack shared from the cache. -->
+<paths>
+  <cache-path name="share" path="share/" />
+</paths>

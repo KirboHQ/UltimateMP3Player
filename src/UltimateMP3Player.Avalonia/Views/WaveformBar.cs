@@ -77,7 +77,21 @@ public sealed class WaveformBar : Control
 
     private void UpdateClock()
     {
-        bool want = IsPlaying && Duration > 0 && IsEffectivelyVisible && VisualRoot != null;
+        bool want = IsPlaying && Duration > 0 && VisualRoot != null;
+        // On a hidden page: still, and looked at again in a while (Ui.Later) to move on once it's shown.
+        if (want && !IsEffectivelyVisible)
+        {
+            want = false;
+            if (!_waitShown)
+            {
+                _waitShown = true;
+                Ui.Later(() =>
+                {
+                    _waitShown = false;
+                    UpdateClock();
+                });
+            }
+        }
         if (want == _ticking) return;
         _ticking = want;
         if (want)
@@ -100,10 +114,17 @@ public sealed class WaveformBar : Control
         {
             _frameRequested = false;
             if (!_ticking) return;
+            if (!IsEffectivelyVisible)
+            {
+                UpdateClock();
+                return;
+            }
             OnFrame();
             RequestFrame();
         });
     }
+
+    private bool _waitShown;
 
     private void OnFrame()
     {
@@ -216,7 +237,8 @@ public sealed class WaveformBar : Control
         e.Pointer.Capture(null);
         var f = Fraction(e);
         if (SeekCommand?.CanExecute(f) == true) SeekCommand.Execute(f);
-        _hoverAt = IsPointerOver ? f : null;
+        // A finger has no hover: nothing stays lit once it's lifted.
+        _hoverAt = IsPointerOver && e.Pointer.Type == PointerType.Mouse ? f : null;
         InvalidateVisual();
         e.Handled = true;
     }

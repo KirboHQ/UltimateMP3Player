@@ -16,7 +16,7 @@ public static class Keys
 }
 
 // The spinning arcs (Ellipse.spinner, the Windows app's Spinner style): a turn every 0.9 s while on screen; hidden ones
-// only look every 300 ms whether they're back (no frames drawn for nothing).
+// only look every 300 ms whether they're back (no frames drawn for nothing), and not at all while the app is hidden.
 public static class Spinners
 {
     public static void Register()
@@ -37,7 +37,7 @@ public static class Spinners
             if (!e.IsLoaded) return;
             if (!e.IsEffectivelyVisible)
             {
-                Avalonia.Threading.DispatcherTimer.RunOnce(Next, TimeSpan.FromMilliseconds(300));
+                Ui.Later(Next);
                 return;
             }
             TopLevel.GetTopLevel(e)?.RequestAnimationFrame(_ =>
@@ -61,7 +61,7 @@ public static class Spinners
             if (!e.IsLoaded) return;
             if (!e.IsEffectivelyVisible)
             {
-                Avalonia.Threading.DispatcherTimer.RunOnce(Next, TimeSpan.FromMilliseconds(300));
+                Ui.Later(Next);
                 return;
             }
             TopLevel.GetTopLevel(e)?.RequestAnimationFrame(_ =>
@@ -134,10 +134,13 @@ public sealed class CardGrid : Panel
     public static readonly StyledProperty<double> GapProperty = AvaloniaProperty.Register<CardGrid, double>(nameof(Gap), 12);
     // 0 = all rows; otherwise the cards that don't fit are left out.
     public static readonly StyledProperty<int> MaxRowsProperty = AvaloniaProperty.Register<CardGrid, int>(nameof(MaxRows));
+    // From 560 wide on (a phone turned, a tablet), cards at least this wide instead (0 = MinItemWidth everywhere).
+    public static readonly StyledProperty<double> WideItemWidthProperty = AvaloniaProperty.Register<CardGrid, double>(nameof(WideItemWidth));
 
-    static CardGrid() => AffectsMeasure<CardGrid>(MinItemWidthProperty, GapProperty, MaxRowsProperty);
+    static CardGrid() => AffectsMeasure<CardGrid>(MinItemWidthProperty, GapProperty, MaxRowsProperty, WideItemWidthProperty);
 
     public double MinItemWidth { get => GetValue(MinItemWidthProperty); set => SetValue(MinItemWidthProperty, value); }
+    public double WideItemWidth { get => GetValue(WideItemWidthProperty); set => SetValue(WideItemWidthProperty, value); }
     public double Gap { get => GetValue(GapProperty); set => SetValue(GapProperty, value); }
     public int MaxRows { get => GetValue(MaxRowsProperty); set => SetValue(MaxRowsProperty, value); }
 
@@ -148,7 +151,8 @@ public sealed class CardGrid : Panel
     private (int Cols, double ItemWidth) Columns(double width)
     {
         if (double.IsInfinity(width)) return (Math.Max(1, Children.Count), MinItemWidth);
-        int cols = Math.Max(1, (int)((width + Gap) / (MinItemWidth + Gap)));
+        double min = WideItemWidth > 0 && width >= 560 ? WideItemWidth : MinItemWidth;
+        int cols = Math.Max(1, (int)((width + Gap) / (min + Gap)));
         return (cols, Math.Max(0, (width - Gap * (cols - 1)) / cols));
     }
 

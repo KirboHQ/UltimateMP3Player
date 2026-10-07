@@ -112,6 +112,14 @@
                                 <TextBlock Text="{Binding DownloadLabel}" Margin="8,0,0,0"/>
                             </StackPanel>
                         </Button>
+                        <!-- heard now, only in the cache (saved later from the song's menu); in a room: into the room's queue the same way -->
+                        <Button Style="{StaticResource GhostButton}" Padding="18,10" Margin="10,24,0,0" VerticalAlignment="Center" Command="{Binding ListenCommand}"
+                                ToolTip="{Binding ListenTip}" ToolTipService.ShowOnDisabled="True">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding ListenGlyph}" Style="{StaticResource Glyph}"/>
+                                <TextBlock Text="{Binding ListenLabel}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
                     </WrapPanel>
 
                     <!-- entries of a playlist / album -->

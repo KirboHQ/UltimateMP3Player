@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The logo's headphones and bars (src\UltimateMP3Player\Logo.xaml), white: the small icon of the notifications. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="256" android:viewportHeight="256">
+  <group android:translateY="-9.5">
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="17" android:strokeLineCap="round"
+        android:pathData="M58,139 A70,70 0 0 1 198,139" />
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M59,123 h4 a19,19 0 0 1 19,19 v34 a19,19 0 0 1 -19,19 h-4 a19,19 0 0 1 -19,-19 v-34 a19,19 0 0 1 19,-19 z
+            M193,123 h4 a19,19 0 0 1 19,19 v34 a19,19 0 0 1 -19,19 h-4 a19,19 0 0 1 -19,-19 v-34 a19,19 0 0 1 19,-19 z
+            M105.5,143 a7.5,7.5 0 0 1 7.5,7.5 v17 a7.5,7.5 0 0 1 -15,0 v-17 a7.5,7.5 0 0 1 7.5,-7.5 z
+            M128,127 a7.5,7.5 0 0 1 7.5,7.5 v49 a7.5,7.5 0 0 1 -15,0 v-49 a7.5,7.5 0 0 1 7.5,-7.5 z
+            M150.5,143 a7.5,7.5 0 0 1 7.5,7.5 v17 a7.5,7.5 0 0 1 -15,0 v-17 a7.5,7.5 0 0 1 7.5,-7.5 z" />
+  </group>
+</vector>

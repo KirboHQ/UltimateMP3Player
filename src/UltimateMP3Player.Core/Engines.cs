@@ -4,6 +4,17 @@ using System.Text;
 
 namespace UltimateMP3Player.Core;
 
+// Android: the programs come inside the app (Python with yt-dlp, ffmpeg, QuickJS), prepared by the app at its first start.
+// Dir holds ffmpeg and ffprobe (links to them) and yt-dlp (a Python program, run by Python).
+public sealed class EngineHost
+{
+    public required string Dir { get; init; }
+    public required string Python { get; init; }
+    // YouTube's JavaScript, for yt-dlp ("quickjs:<path>").
+    public required string JsRuntime { get; init; }
+    public required Func<Action<string, double?>, CancellationToken, Task> Install { get; init; }
+}
+
 // External programs, kept in "engines" next to the exe (on Linux and macOS next to the data: the app's own folder,
 // an AppImage or a .app, can't be written to).
 public static class Engines
@@ -11,13 +22,20 @@ public static class Engines
     // ".exe" on Windows, nothing elsewhere.
     private static readonly string Ext = OperatingSystem.IsWindows() ? ".exe" : "";
 
-    public static string Dir { get; private set; } = Locate();
+    private static string _dir = Locate();
+    public static string Dir => Host?.Dir ?? _dir;
+
+    // Set by the Android app before anything runs.
+    public static EngineHost? Host { get; set; }
 
     public static string YtDlp => Path.Combine(Dir, "yt-dlp" + Ext);
     public static string GalleryDl => Path.Combine(Dir, "gallery-dl" + Ext);
     public static string Ffmpeg => Path.Combine(Dir, "ffmpeg" + Ext);
     public static string Ffprobe => Path.Combine(Dir, "ffprobe" + Ext);
     public static string Deno => Path.Combine(Dir, "deno" + Ext);
+
+    // The JavaScript runtime yt-dlp needs for YouTube.
+    public static string JsRuntime => Host?.JsRuntime ?? "deno:" + Deno;
 
     private static string Locate()
     {
@@ -32,11 +50,12 @@ public static class Engines
         return OperatingSystem.IsWindows() ? Path.Combine(AppContext.BaseDirectory, "engines") : Path.Combine(AppPaths.DataDir, "engines");
     }
 
-    // gallery-dl (picture galleries) has no build for macOS: there it's used only if installed by hand.
-    private static bool GalleryDlNeeded => !OperatingSystem.IsMacOS();
+    // gallery-dl (picture galleries) has no build for macOS and Android: there it's used only if installed by hand.
+    private static bool GalleryDlNeeded => !OperatingSystem.IsMacOS() && Host == null;
 
     public static IReadOnlyList<string> Missing()
-        => new[] { YtDlp, GalleryDlNeeded ? GalleryDl : null, Ffmpeg, Ffprobe, Deno }.OfType<string>().Where(p => !File.Exists(p)).Select(Path.GetFileName).ToList()!;
+        => new[] { YtDlp, GalleryDlNeeded ? GalleryDl : null, Ffmpeg, Ffprobe, Host == null ? Deno : null }.OfType<string>()
+            .Where(p => !File.Exists(p)).Select(Path.GetFileName).ToList()!;
 
     public static async Task<string> VersionAsync(string exe, CancellationToken ct = default)
     {
@@ -90,6 +109,11 @@ public static class Engines
     // Downloads missing engines (e.g. only the exe was copied).
     public static async Task InstallMissingAsync(Action<string, double?> progress, CancellationToken ct)
     {
+        if (Host != null)
+        {
+            await Host.Install(progress, ct);
+            return;
+        }
         Directory.CreateDirectory(Dir);
         var tmp = Path.Combine(Path.GetTempPath(), "UltimateMP3Player", "engines-" + Guid.NewGuid().ToString("N")[..8]);
         Directory.CreateDirectory(tmp);
@@ -182,6 +206,17 @@ public static class ProcRunner
         Action<string>? onOut = null, Action<string>? onErr = null, CancellationToken ct = default,
         bool captureOut = true, TimeSpan? timeout = null, string? workDir = null)
     {
+        // Android: yt-dlp is a Python program, Python runs it.
+        string name = exe;
+        if (Engines.Host is { } host && exe == Engines.YtDlp)
+        {
+            args = args.Prepend(exe).ToList();
+            exe = host.Python;
+        }
+        // gallery-dl isn't there: picture galleries are left out, the link goes on to the next way of reading it.
+        if (Engines.Host != null && !File.Exists(exe))
+            throw name == Engines.GalleryDl ? new EngineException(L.T("Questo link non è supportato.")) { Unsupported = true }
+                : new EngineException(L.F("Impossibile avviare {0}.", Path.GetFileName(name)));
         var psi = new ProcessStartInfo(exe)
         {
             UseShellExecute = false,

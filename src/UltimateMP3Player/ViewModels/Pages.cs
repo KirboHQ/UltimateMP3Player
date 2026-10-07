@@ -219,10 +219,10 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
         _main = main;
         PlayCommand = new RelayCommand(() => _main.Player.PlayAll(this, false), () => _order.Count > 0);
         ShuffleCommand = new RelayCommand(() => _main.Player.PlayAll(this, true), () => _order.Count > 0);
-        RenameCommand = new RelayCommand(() => _main.RenamePlaylist(Vm), () => !Vm.IsFavorites);
-        CoverCommand = new RelayCommand(() => _main.ChangePlaylistCover(Vm), () => !Vm.IsFavorites);
+        RenameCommand = new RelayCommand(() => _ = _main.RenamePlaylist(Vm), () => !Vm.IsFavorites);
+        CoverCommand = new RelayCommand(() => _ = _main.ChangePlaylistCover(Vm), () => !Vm.IsFavorites);
         RemoveCoverCommand = new RelayCommand(() => _main.RemovePlaylistCover(Vm), () => Vm.HasCustomCover);
-        DeleteCommand = new RelayCommand(() => _main.DeletePlaylist(Vm), () => !Vm.IsFavorites);
+        DeleteCommand = new RelayCommand(() => _ = _main.DeletePlaylist(Vm), () => !Vm.IsFavorites);
         TagFilter.Changed += ApplyFilter;
         Rebuild();
     }

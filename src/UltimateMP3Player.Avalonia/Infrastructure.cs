@@ -236,6 +236,44 @@ public static class Ui
 
     public static readonly Cursor Hand = new(StandardCursorType.Hand);
 
+    // The app isn't on screen (another app in front on the phone, the window minimized): what waits to be shown (Later)
+    // isn't looked at again until it's back, so the app really rests.
+    private static bool _hidden;
+    public static bool Hidden
+    {
+        get => _hidden;
+        set
+        {
+            if (_hidden == value) return;
+            _hidden = value;
+            if (!value && Waiting.Count > 0 && _poll == null) _poll = Avalonia.Threading.DispatcherTimer.RunOnce(Poll, TimeSpan.FromMilliseconds(30));
+        }
+    }
+
+    private static readonly List<Action> Waiting = new();
+    private static IDisposable? _poll;
+
+    // Something hidden that moves once it's shown (a spinner, a scrolling title): asked again in a while. One timer for
+    // all of them, none while the app is hidden.
+    public static void Later(Action check)
+    {
+        Waiting.Add(check);
+        if (!_hidden && _poll == null) _poll = Avalonia.Threading.DispatcherTimer.RunOnce(Poll, TimeSpan.FromMilliseconds(300));
+    }
+
+    private static void Poll()
+    {
+        _poll = null;
+        if (_hidden) return;
+        var due = Waiting.ToList();
+        Waiting.Clear();
+        foreach (var check in due)
+        {
+            try { check(); }
+            catch { }
+        }
+    }
+
     // A short animation on the render clock (Avalonia's Animation objects get in the way of the property changes they
     // happen next to): apply(eased progress 0..1) every frame for ms milliseconds.
     public static void Tween(Visual owner, double ms, Func<double, double> ease, Action<double> apply)
@@ -358,12 +396,16 @@ public static class Ui
         {
             try
             {
+#if ANDROID_APP
+                return $"Android {Android.OS.Build.VERSION.Release} ({Android.OS.Build.Manufacturer} {Android.OS.Build.Model})";
+#else
                 if (OperatingSystem.IsMacOS()) return "macOS " + Environment.OSVersion.Version.ToString(3);
                 if (OperatingSystem.IsLinux() && File.Exists("/etc/os-release"))
                 {
                     var line = File.ReadAllLines("/etc/os-release").FirstOrDefault(l => l.StartsWith("PRETTY_NAME="));
                     if (line != null) return line[12..].Trim('"') + " (Linux)";
                 }
+#endif
             }
             catch { }
             return System.Runtime.InteropServices.RuntimeInformation.OSDescription;
@@ -431,6 +473,25 @@ public static class Icons
     public static FontFamily FontFor(string? segoe) => segoe is { Length: > 0 } && FilledCodes.Contains(segoe[0]) ? Filled : Regular;
 
     public static bool IsFilled(string? segoe) => segoe is { Length: > 0 } && FilledCodes.Contains(segoe[0]);
+}
+
+// The app's resources and styles read again from their files (a language change: the texts in them follow it). The
+// XAML compiler turns App.axaml's ResourceInclude/StyleInclude into the dictionaries themselves, so the files are named
+// here. Everything is loaded first: if a file fails, the resources in use stay as they are.
+public static class AppResources
+{
+    public static void Reload(IReadOnlyList<string> resources, IReadOnlyList<string> styles)
+    {
+        if (Application.Current is not { } app) return;
+        var freshResources = resources.Select(s => (IResourceProvider)AvaloniaXamlLoader.Load(new Uri(s))).ToList();
+        var freshStyles = styles.Select(s => (Avalonia.Styling.IStyle)AvaloniaXamlLoader.Load(new Uri(s))).ToList();
+        var merged = app.Resources.MergedDictionaries;
+        merged.Clear();
+        foreach (var r in freshResources) merged.Add(r);
+        // The Fluent theme comes first, the app's own styles last: those are replaced where they are.
+        int start = app.Styles.Count - freshStyles.Count;
+        for (int i = 0; i < freshStyles.Count && start >= 0; i++) app.Styles[start + i] = freshStyles[i];
+    }
 }
 
 // Called once per frame while subscribed (the waveforms of the DJ).

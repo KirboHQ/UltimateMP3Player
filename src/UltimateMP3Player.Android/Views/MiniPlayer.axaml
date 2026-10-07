@@ -1,0 +1,36 @@
+<!-- The song playing, over the bottom bar: a tap (or a swipe up) opens its page, a swipe sideways goes to the next or the
+     previous song. The line at the bottom is how far it is. -->
+<UserControl x:Class="UltimateMP3Player.Views.MiniPlayer"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <Border x:Name="Card" Margin="8,0,8,6" CornerRadius="14" Background="{StaticResource MiniPlayerBrush}" ClipToBounds="True"
+            BoxShadow="0 2 12 0 #59000000" views:Touch.Menu="current">
+        <Grid RowDefinitions="*,Auto">
+            <Grid x:Name="Row" ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,8,4,6" Background="Transparent">
+                <ContentControl Width="46" Height="46" Content="{Binding Current}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
+                    <!-- too long: it scrolls by itself, with the fades (the computer's marquee) -->
+                    <TextBlock Text="{Binding Current.Title}" FontWeight="SemiBold" FontSize="14.5" TextTrimming="CharacterEllipsis"
+                               local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
+                    <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                               Margin="0,2,0,0" IsVisible="{Binding !IsWaiting}" local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
+                    <!-- a suggested song still downloading (it starts by itself) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0" IsVisible="{Binding IsWaiting}">
+                        <Ellipse Classes="spinner" Width="11" Height="11" StrokeThickness="1.5"/>
+                        <TextBlock Text="{Binding WaitText}" FontSize="12" Foreground="{StaticResource SubTextBrush}" Margin="6,0,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </StackPanel>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Command="{Binding FavoriteCommand}">
+                    <TextBlock Classes="heart" Classes.fav="{Binding Current.IsFavorite}" FontSize="19"
+                               Text="{Binding Current.IsFavorite, Converter={StaticResource HeartGlyph}, FallbackValue={local:Icon EB51}}"/>
+                </Button>
+                <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Foreground="{StaticResource TextBrush}" FontSize="24"
+                        Content="{Binding PlayGlyph, Converter={StaticResource Icon}}" Command="{Binding PlayPauseCommand}"/>
+            </Grid>
+            <views:ProgressLine Grid.Row="1" Height="2.5" Margin="10,0,10,0" Progress="{Binding Progress}" IsPlaying="{Binding IsPlaying}"
+                                Duration="{Binding Duration}" Rate="{Binding Speed}" Fill="{DynamicResource ProgressGradient}" Track="{StaticResource Surface3Brush}"/>
+        </Grid>
+    </Border>
+</UserControl>

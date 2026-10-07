@@ -1,0 +1,97 @@
+<!-- Listening statistics: time, plays, songs heard; every song with how many times and how long, the most listened first or
+     the forgotten ones (chosen, they're deleted like anywhere else). -->
+<UserControl x:Class="UltimateMP3Player.Views.StatsPage"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <DockPanel>
+        <Panel DockPanel.Dock="Top" Height="56">
+            <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto" Margin="4,0,6,0">
+                <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E72B}" Click="Back_Click"/>
+                <TextBlock Grid.Column="1" Text="{local:T 'Statistiche di ascolto'}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"
+                           TextTrimming="CharacterEllipsis"/>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Click="Select_Click"/>
+            </Grid>
+            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="{StaticResource BgBrush}">
+                <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" Command="{Binding #List.Picks.CancelCommand}"/>
+                <TextBlock Grid.Column="1" Text="{Binding #List.Picks.CountText}" FontSize="16.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"/>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Command="{Binding #List.Picks.AllCommand}"/>
+                <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Command="{Binding #List.Picks.MoreCommand}"/>
+            </Grid>
+        </Panel>
+        <Border x:Name="SelectActions" DockPanel.Dock="Bottom" IsVisible="False" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0" Padding="8,4">
+            <UniformGrid Rows="1">
+                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.PlayCommand}" local:Ui.Glyph="&#xE768;" Content="{local:T Riproduci}" FontSize="13"/>
+                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.PlaylistCommand}" local:Ui.Glyph="&#xE710;" Content="{local:T Playlist}" FontSize="13"/>
+                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.DeleteCommand}" local:Ui.Glyph="&#xE74D;" Content="{local:T Elimina}" FontSize="13"
+                        Classes="danger"/>
+            </UniformGrid>
+        </Border>
+
+        <views:SongList x:Name="List" Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}">
+            <views:SongList.DataTemplates>
+                <DataTemplate DataType="views:ListHeader">
+                    <StackPanel Margin="18,0,16,6" DataContext="{Binding Page}">
+                        <WrapPanel Margin="0,6,0,4">
+                            <Border CornerRadius="16" Padding="14,10" Margin="0,0,10,10" Background="{StaticResource SurfaceBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding TimeTotal}" FontSize="20" FontWeight="Bold"/>
+                                    <TextBlock Text="{local:T 'di ascolto'}" Classes="hint" FontSize="12.5"/>
+                                </StackPanel>
+                            </Border>
+                            <Border CornerRadius="16" Padding="14,10" Margin="0,0,10,10" Background="{StaticResource SurfaceBrush}">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding PlaysTotal}" FontSize="20" FontWeight="Bold"/>
+                                    <TextBlock Text="{Binding HeardTotal}" Classes="hint" FontSize="12.5"/>
+                                </StackPanel>
+                            </Border>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding SinceText}" Classes="hint" FontSize="12.5" Margin="2,0,0,8"/>
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Button Theme="{StaticResource SmallGhost}" Click="Sort_Click">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E74B}" Classes="glyph" FontSize="14"/>
+                                    <TextBlock Text="{Binding Sort.Label}" Margin="7,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="2" Theme="{StaticResource BigPlayButton}" Content="{local:Icon E768}" Command="{Binding PlayCommand}"/>
+                        </Grid>
+                        <Button Theme="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="2,10,0,0" Padding="0,6" Content="{Binding NeverText}"
+                                IsVisible="{Binding HasNever}" Click="Never_Click"/>
+                    </StackPanel>
+                </DataTemplate>
+                <DataTemplate DataType="views:SongItem">
+                    <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Classes.selected="{Binding IsChecked}" Padding="16,7,4,7"
+                            views:Touch.Menu="track" views:Touch.Tap="{Binding PlayCommand}">
+                        <Grid ColumnDefinitions="Auto,52,*,Auto">
+                            <CheckBox IsChecked="{Binding IsChecked}" IsHitTestVisible="False" Margin="0,0,14,0" VerticalAlignment="Center"
+                                      IsVisible="{Binding $parent[views:SongList].Picks.IsActive, FallbackValue=False}"/>
+                            <ContentControl Grid.Column="1" Width="52" Height="52" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                            <StackPanel Grid.Column="2" Margin="14,0,8,0" VerticalAlignment="Center">
+                                <TextBlock Classes="title" Text="{Binding Track.Title}" FontSize="15.5" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Track.Artist}" FontSize="13" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                    <TextBlock Text="{Binding Track.PlaysText}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
+                                    <TextBlock Text="{Binding Track.ListenedText, StringFormat=' · {0}'}" FontSize="12.5" Foreground="{StaticResource MutedBrush}"/>
+                                    <TextBlock Text="{Binding Track.LastPlayedText, StringFormat=' · {0}'}" FontSize="12.5" Foreground="{StaticResource MutedBrush}"
+                                               IsVisible="{Binding Track.LastPlayedText, Converter={StaticResource HasValue}}"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" FontSize="18"
+                                    Command="{x:Static views:Commands.MoreCommand}" CommandParameter="{Binding $parent[Border]}"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+                <DataTemplate DataType="views:ListNote">
+                    <StackPanel Margin="32,40,32,24" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Text}" Classes="hint" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </DataTemplate>
+            </views:SongList.DataTemplates>
+        </views:SongList>
+    </DockPanel>
+</UserControl>

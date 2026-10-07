@@ -1,0 +1,148 @@
+<!-- A list of songs: all of them, a playlist, a tag, the ones in no playlist. The header scrolls with the songs; the bar on
+     top stays (back, search in the list, choose songs), and while songs are chosen it says how many and what to do. -->
+<UserControl x:Class="UltimateMP3Player.Views.SongsPage"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <UserControl.Resources>
+        <!-- The header of a playlist: its cover, name, how long, the big play button. -->
+        <DataTemplate x:Key="PlaylistHeader" DataType="vm:PlaylistPageViewModel">
+            <StackPanel Margin="0,0,0,8">
+                <ContentControl Width="200" Height="200" HorizontalAlignment="Center" Content="{Binding Vm}" ContentTemplate="{StaticResource PlaylistCover}"
+                                Margin="0,4,0,18"/>
+                <TextBlock Text="{Binding Vm.Name}" FontSize="25" FontWeight="Bold" TextWrapping="Wrap" Margin="18,0,18,4"/>
+                <TextBlock Text="{Binding Vm.TotalText}" FontSize="13.5" Foreground="{StaticResource SubTextBrush}" Margin="18,0,18,0"/>
+                <ItemsControl ItemsSource="{Binding Vm.Tags}" Margin="18,10,18,0" IsVisible="{Binding Vm.HasTags}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="12" Padding="9,3,11,4" Margin="0,0,6,6" Background="{StaticResource Surface3Brush}"
+                                    views:Touch.Tap="{Binding $parent[views:MainView].DataContext.OpenTagCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Name}" FontSize="12.5" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="10,10,16,4">
+                    <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E8EC}" Click="PlaylistTags_Click"/>
+                    <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Click="PlaylistMenu_Click"/>
+                    <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8B1}" Command="{Binding ShuffleCommand}" Margin="0,0,6,0"/>
+                    <Button Grid.Column="4" Theme="{StaticResource BigPlayButton}" Content="{local:Icon E768}" Command="{Binding PlayCommand}"/>
+                </Grid>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- All songs, a tag, the songs in no playlist: what it is, how many, play, the order and the tags to show. -->
+        <DataTemplate x:Key="LibraryHeader" DataType="vm:LibraryViewModel">
+            <StackPanel Margin="0,0,0,6">
+                <StackPanel IsVisible="{Binding !$parent[views:SongsPage].Embedded}">
+                    <TextBlock Text="{Binding Kicker}" Classes="small-caps" Margin="18,4,18,4"/>
+                    <StackPanel Orientation="Horizontal" Margin="18,0,18,4">
+                        <Ellipse Width="16" Height="16" Fill="{Binding Tag.Brush}" VerticalAlignment="Center" Margin="0,0,10,0" IsVisible="{Binding IsTagPage}"/>
+                        <TextBlock Text="{Binding Title}" FontSize="26" FontWeight="Bold" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </StackPanel>
+                <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="18,2,16,4">
+                    <TextBlock Text="{Binding CountText}" FontSize="13.5" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"/>
+                    <!-- inside the Library tab there's no bar on top: search and choose are here -->
+                    <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Content="{local:Icon E721}" Click="Search_Click"
+                            IsVisible="{Binding $parent[views:SongsPage].InlineTools}"/>
+                    <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Click="Select_Click"
+                            IsVisible="{Binding $parent[views:SongsPage].InlineTools}"/>
+                    <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8B1}" Command="{Binding ShuffleCommand}" Margin="0,0,6,0"/>
+                    <Button Grid.Column="4" Theme="{StaticResource BigPlayButton}" Content="{local:Icon E768}" Command="{Binding PlayCommand}"/>
+                </Grid>
+                <!-- the playlists with this tag -->
+                <ItemsControl ItemsSource="{Binding TaggedPlaylists}" ItemTemplate="{StaticResource PlaylistRowTemplate}" IsVisible="{Binding HasTaggedPlaylists}"
+                              Margin="0,4,0,4"/>
+                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,6,0,6" IsScrollChainingEnabled="False">
+                    <StackPanel Orientation="Horizontal" Margin="16,0">
+                        <Button Theme="{StaticResource SmallGhost}" Click="Sort_Click" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E74B}" Classes="glyph" FontSize="14"/>
+                                <TextBlock Text="{Binding Sort.Label}" Margin="7,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Theme="{StaticResource SmallGhost}" Click="TagFilter_Click" IsVisible="{Binding $parent[views:MainView].DataContext.HasTags}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E71C}" Classes="glyph" FontSize="14"/>
+                                <TextBlock Text="{Binding TagFilter.Label}" Margin="7,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </ScrollViewer>
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- the bar on top -->
+        <Panel x:Name="TopPanel" DockPanel.Dock="Top" Height="56">
+            <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0">
+                <Button x:Name="BackButton" Theme="{StaticResource TouchIcon}" Content="{local:Icon E72B}" Click="Back_Click"/>
+                <TextBlock x:Name="BarTitle" Grid.Column="1" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0" Opacity="0"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBox x:Name="FilterBox" Grid.Column="1" Theme="{StaticResource FilterBox}" Margin="6,0" IsVisible="False"
+                         Watermark="{local:T 'Cerca in questa lista'}"/>
+                <Button x:Name="SearchButton" Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E721}" Click="Search_Click"/>
+                <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Click="Select_Click"/>
+            </Grid>
+            <!-- choosing songs -->
+            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="{StaticResource BgBrush}">
+                <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" Command="{Binding #List.Picks.CancelCommand}"/>
+                <TextBlock Grid.Column="1" Text="{Binding #List.Picks.CountText}" FontSize="16.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"/>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Command="{Binding #List.Picks.AllCommand}"/>
+                <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Command="{Binding #List.Picks.MoreCommand}"/>
+            </Grid>
+        </Panel>
+
+        <!-- what to do with the chosen songs -->
+        <Border x:Name="SelectActions" DockPanel.Dock="Bottom" IsVisible="False" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0" Padding="8,4">
+            <UniformGrid Rows="1">
+                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.PlayCommand}" local:Ui.Glyph="&#xE768;" Content="{local:T Riproduci}" FontSize="13"/>
+                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.QueueCommand}" local:Ui.Glyph="&#xE8FD;" Content="{local:T Coda}" FontSize="13"/>
+                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.PlaylistCommand}" local:Ui.Glyph="&#xE710;" Content="{local:T Playlist}" FontSize="13"/>
+                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.DeleteCommand}" local:Ui.Glyph="&#xE74D;" Content="{local:T Elimina}" FontSize="13"
+                        Classes="danger"/>
+            </UniformGrid>
+        </Border>
+
+        <Panel>
+            <views:SongList x:Name="List" Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}">
+                <views:SongList.DataTemplates>
+                    <DataTemplate DataType="views:SongItem">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource SongRowTemplate}"/>
+                    </DataTemplate>
+                    <DataTemplate DataType="views:ListHeader">
+                        <ContentControl Content="{Binding Page}">
+                            <ContentControl.DataTemplates>
+                                <DataTemplate DataType="vm:PlaylistPageViewModel">
+                                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistHeader}"/>
+                                </DataTemplate>
+                                <DataTemplate DataType="vm:LibraryViewModel">
+                                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource LibraryHeader}"/>
+                                </DataTemplate>
+                            </ContentControl.DataTemplates>
+                        </ContentControl>
+                    </DataTemplate>
+                    <DataTemplate DataType="views:ListNote">
+                        <StackPanel Margin="32,40,32,24" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Text}" Classes="hint" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </views:SongList.DataTemplates>
+            </views:SongList>
+        </Panel>
+    </DockPanel>
+</UserControl>

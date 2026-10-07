@@ -1,0 +1,105 @@
+<!-- Home: good evening and the profile's avatar, the playlists two by two, what you listened to recently, your statistics,
+     the songs added recently. The first time: how to get music in. -->
+<UserControl x:Class="UltimateMP3Player.Views.HomePage"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <Panel>
+        <!-- its colour on top is MainView's Backdrop, which goes up behind the status bar -->
+        <ScrollViewer x:Name="Scroller">
+            <StackPanel Margin="0,10,0,24">
+                <Grid ColumnDefinitions="*,Auto" Margin="18,6,14,18">
+                    <TextBlock Text="{Binding Greeting}" FontSize="26" FontWeight="Bold" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    <!-- the profile: who's listening (tablets shared by a family, like Netflix) -->
+                    <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="46" Height="46" Margin="10,0,0,0"
+                            Command="{Binding $parent[views:MainView].DataContext.SwitchProfileCommand}">
+                        <Panel Width="38" Height="38">
+                            <Ellipse Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
+                            <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileInitial}" Foreground="White" FontWeight="Bold" FontSize="16"
+                                       FontFamily="{StaticResource UiFont}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Ellipse Margin="2" IsVisible="{Binding $parent[views:MainView].DataContext.ProfileAvatar, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Ellipse.Fill>
+                                    <ImageBrush Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}" Stretch="UniformToFill"/>
+                                </Ellipse.Fill>
+                            </Ellipse>
+                        </Panel>
+                    </Button>
+                </Grid>
+
+                <!-- first run -->
+                <Border Classes="card" Margin="16,0,16,22" Padding="22" IsVisible="{Binding IsEmpty}">
+                    <StackPanel>
+                        <Image Source="/Assets/app-256.png" Width="84" Height="84" HorizontalAlignment="Left" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                        <TextBlock Text="{local:T 'La tua musica, offline e senza pubblicità'}" FontSize="21" FontWeight="Bold" TextWrapping="Wrap" Margin="0,16,0,0"/>
+                        <TextBlock Classes="hint" FontSize="14.5" LineHeight="21" Margin="0,8,0,18"
+                                   Text="{local:T 'Condividi un brano o una playlist da YouTube, Spotify, SoundCloud o quasi ogni altra app con «Scarica con Ultimate MP3 Player», oppure incolla il suo link: viene scaricato e salvato qui. Puoi anche aggiungere la musica che hai già sul telefono.'}"/>
+                        <Button Theme="{StaticResource TouchPrimary}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Command="{Binding $parent[views:MainView].DataContext.PasteLinkCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E77F}" Classes="glyph"/>
+                                <TextBlock Text="{local:T 'Incolla un link'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,10,0,0"
+                                Command="{Binding $parent[views:MainView].DataContext.ImportCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
+                                <TextBlock Text="{local:T 'Aggiungi brani dal telefono'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- the playlists, two by two -->
+                <ItemsControl ItemsSource="{Binding $parent[views:MainView].DataContext.Playlists}" ItemTemplate="{StaticResource PlaylistTileTemplate}"
+                              Margin="16,0,16,26" IsVisible="{Binding !IsEmpty}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <views:CardGrid MinItemWidth="150" WideItemWidth="215" Gap="10" MaxRows="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                </ItemsControl>
+
+                <StackPanel IsVisible="{Binding HasRecent}">
+                    <TextBlock Text="{local:T 'Ascoltati di recente'}" Classes="section-title" Margin="18,0,18,12"/>
+                    <!-- sideways only: at its ends a swipe stops there, it doesn't go on moving the page up or down -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,26" IsScrollChainingEnabled="False">
+                        <ItemsControl ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCardTemplate}" Margin="18,0,4,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- statistics -->
+                <Border Classes="tile" CornerRadius="16" Margin="16,0,16,26" Padding="16,14" IsVisible="{Binding !IsEmpty}"
+                        views:Touch.Tap="{Binding $parent[views:MainView].DataContext.Settings.OpenStatsCommand}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Width="44" Height="44" CornerRadius="22" Background="{DynamicResource AccentSoftBrush}">
+                            <TextBlock Text="{local:Icon E9D2}" Classes="glyph" FontSize="20" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
+                            <TextBlock Text="{local:T 'Le tue statistiche'}" FontWeight="SemiBold" FontSize="15.5"/>
+                            <TextBlock Text="{Binding $parent[views:MainView].DataContext.Settings.StatsSummary}" Classes="hint" FontSize="13" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="{local:Icon E76C}" Classes="glyph" FontSize="14" Foreground="{StaticResource MutedBrush}"/>
+                    </Grid>
+                </Border>
+
+                <StackPanel IsVisible="{Binding HasRecentlyAdded}">
+                    <Grid ColumnDefinitions="*,Auto" Margin="18,0,12,4">
+                        <TextBlock Text="{local:T 'Aggiunti di recente'}" Classes="section-title" Margin="0"/>
+                        <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="{local:T 'Mostra tutti'}" VerticalAlignment="Center" Padding="8"
+                                Click="ShowAll_Click"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource TrackRowTemplate}"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Panel>
+</UserControl>

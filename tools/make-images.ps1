@@ -1,7 +1,8 @@
 # Renders src\UltimateMP3Player\Logo.xaml into app.ico, pack.ico (icon of the .ump files), assets\logo.png, the
-# installer wizard images and the macOS icons (app.icns, pack.icns in src\UltimateMP3Player.Avalonia\Assets).
-# Run: powershell -Sta -File .\tools\make-images.ps1            (-PackOnly: only pack.ico, -MacOnly: only the .icns)
-param([switch]$PackOnly, [switch]$MacOnly)
+# installer wizard images, the macOS icons (app.icns, pack.icns in src\UltimateMP3Player.Avalonia\Assets) and the Android
+# launcher icons (src\UltimateMP3Player.Android\Resources\mipmap-*).
+# Run: powershell -Sta -File .\tools\make-images.ps1   (-PackOnly: only pack.ico, -MacOnly: only the .icns, -AndroidOnly: only Android)
+param([switch]$PackOnly, [switch]$MacOnly, [switch]$AndroidOnly)
 Add-Type -AssemblyName PresentationCore, PresentationFramework, WindowsBase
 $root = Split-Path $PSScriptRoot -Parent
 $imgDir = Join-Path $root 'installer\images'
@@ -77,6 +78,57 @@ function Icns($drawing, [double]$margin, [string]$path) {
     $out.Write($len, 0, 4)
     $body.WriteTo($out)
     [IO.File]::WriteAllBytes($path, $out.ToArray())
+}
+
+# ---- Android: the old square icon, a round one, and the two layers of the adaptive icon (108 dp: the logo's gradient
+# behind, its headphones in front over the 72 dp in the middle, where every launcher's mask leaves them whole)
+$androidRes = Join-Path $root 'src\UltimateMP3Player.Android\Resources'
+$gradient = $logo.Children[0].Brush
+$shine = $logo.Children[1].Brush
+$shapes = $logo.Children[2]
+function Android {
+    foreach ($d in @(('mdpi', 1), ('hdpi', 1.5), ('xhdpi', 2), ('xxhdpi', 3), ('xxxhdpi', 4))) {
+        $dir = Join-Path $androidRes "mipmap-$($d[0])"
+        New-Item -ItemType Directory -Force $dir | Out-Null
+        $k = $d[1]
+        $s = [int](48 * $k)
+        [IO.File]::WriteAllBytes((Join-Path $dir 'ic_launcher.png'), (Png (Logo $s 0.04)))
+        $round = Render $s $s {
+            param($dc)
+            $r = $s / 2
+            $dc.PushClip((New-Object Windows.Media.EllipseGeometry (New-Object Windows.Point $r, $r), ($r * 0.96), ($r * 0.96)))
+            $full = New-Object Windows.Rect 0, 0, $s, $s
+            $dc.DrawRectangle($gradient, $null, $full)
+            $dc.DrawRectangle($shine, $null, $full)
+            $m = $s * 0.06
+            $dc.PushTransform((New-Object Windows.Media.TranslateTransform $m, $m))
+            $dc.PushTransform((New-Object Windows.Media.ScaleTransform (($s - 2 * $m) / 256), (($s - 2 * $m) / 256)))
+            $dc.DrawDrawing($shapes)
+            $dc.Pop(); $dc.Pop(); $dc.Pop()
+        }
+        [IO.File]::WriteAllBytes((Join-Path $dir 'ic_launcher_round.png'), (Png $round))
+        $a = [int](108 * $k)
+        $bg = Render $a $a {
+            param($dc)
+            $full = New-Object Windows.Rect 0, 0, $a, $a
+            $dc.DrawRectangle($gradient, $null, $full)
+            $dc.DrawRectangle($shine, $null, $full)
+        }
+        [IO.File]::WriteAllBytes((Join-Path $dir 'ic_launcher_background.png'), (Png $bg))
+        $fg = Render $a $a {
+            param($dc)
+            $dc.PushTransform((New-Object Windows.Media.TranslateTransform (18 * $k), (18 * $k)))
+            $dc.PushTransform((New-Object Windows.Media.ScaleTransform (72 * $k / 256), (72 * $k / 256)))
+            $dc.DrawDrawing($shapes)
+            $dc.Pop(); $dc.Pop()
+        }
+        [IO.File]::WriteAllBytes((Join-Path $dir 'ic_launcher_foreground.png'), (Png $fg))
+    }
+}
+if ($AndroidOnly) {
+    Android
+    Get-ChildItem $androidRes -Recurse -Filter 'ic_launcher*.png' | Select-Object @{ n = 'File'; e = { $_.FullName.Substring($androidRes.Length + 1) } }, Length
+    return
 }
 
 # ---- macOS: the app sits on the same grid as the system's icons (about a tenth of room around it)

@@ -111,7 +111,7 @@ public partial class SelectionBar : UserControl
         switch (e.Key)
         {
             case Key.Delete when rows.Count > 0:
-                rows[0].Track.Main.DeleteTracks(rows.Select(r => r.Track).ToList());
+                _ = rows[0].Track.Main.DeleteTracks(rows.Select(r => r.Track).ToList());
                 e.Handled = true;
                 break;
             case Key.Enter when rows.Count > 0:

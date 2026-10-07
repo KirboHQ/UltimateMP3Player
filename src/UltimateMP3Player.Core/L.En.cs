@@ -1406,5 +1406,154 @@ public static partial class L
             "From any song: right-click → Play similar songs. They're downloaded shortly before their turn, as in Listen together and into the same storage, and don't go into your library: to keep one, right-click → Save to library.",
         ["consigliati consigli simili radio coda automatica online scopri brani nuovi anticipo"] =
             "suggested suggestions similar radio automatic queue online discover new songs ahead",
+
+        // Android
+        ["Libreria"] = "Library",
+        ["La tua libreria"] = "Your library",
+        ["Installa"] = "Install",
+        ["Controlla"] = "Check",
+        ["Incolla"] = "Paste",
+        ["Leggi"] = "Go",
+        ["Coda"] = "Queue",
+        ["Modifica"] = "Edit",
+        ["Ancora niente"] = "Nothing yet",
+        ["IN RIPRODUZIONE DA"] = "PLAYING FROM",
+        ["Già tuo"] = "Already yours",
+        ["1 brano selezionato"] = "1 song selected",
+        ["Seleziona più brani"] = "Select several songs",
+        ["Apri il link originale"] = "Open the original link",
+        ["Tag dei brani scaricati"] = "Tags for the downloaded songs",
+        ["Brani con tutti i tag scelti"] = "Songs with all the chosen tags",
+        ["Brani con almeno uno dei tag scelti"] = "Songs with at least one of the chosen tags",
+        ["Copia dei brani della cartella…"] = "Copying the folder's songs…",
+        ["Nessun brano dopo questo."] = "No songs after this one.",
+        ["Le tue statistiche"] = "Your statistics",
+        ["Aggiungi brani dal telefono"] = "Add songs from your phone",
+        ["Condividi un brano o una playlist da YouTube, Spotify, SoundCloud o quasi ogni altra app con «Scarica con Ultimate MP3 Player», oppure incolla il suo link: viene scaricato e salvato qui. Puoi anche aggiungere la musica che hai già sul telefono."] =
+            "Share a song or a playlist from YouTube, Spotify, SoundCloud or almost any other app with “Download with Ultimate MP3 Player”, or paste its link: it's downloaded and saved here. You can also add the music already on your phone.",
+        ["Etichette colorate per raggruppare brani e playlist a modo tuo: tieni premuto un brano o una playlist per mettergliele."] =
+            "Colored labels to group songs and playlists your own way: press and hold a song or a playlist to give it some.",
+        ["Brani dal telefono…"] = "Songs from your phone…",
+        ["Una cartella di musica…"] = "A music folder…",
+        ["Importa un pacchetto .ump…"] = "Import a .ump pack…",
+        ["Cerca in questa lista"] = "Search in this list",
+        ["Prova con altre parole o togli il filtro dei tag."] = "Try other words or remove the tag filter.",
+        ["Aggiungi brani dal menu ⋮ di un brano, oppure scegli questa playlist quando scarichi un link."] =
+            "Add songs from a song's ⋮ menu, or choose this playlist when you download a link.",
+        ["Condividi un link da un'altra app (YouTube, Spotify…) oppure incollalo nella scheda Download."] =
+            "Share a link from another app (YouTube, Spotify…) or paste it in the Download tab.",
+
+        ["Brani, artisti, oppure un link"] = "Songs, artists, or a link",
+        ["Scarica questo link"] = "Download this link",
+        ["Cerca nei tuoi brani e online"] = "Search your songs and online",
+        ["Scrivi il titolo o l'artista: trovi i brani che hai già e quelli dei siti di musica, da scaricare con un tocco. Puoi anche incollare il link di un brano o di una playlist."] =
+            "Type the title or the artist: you find the songs you already have and those on music sites, to download with a tap. You can also paste the link of a song or a playlist.",
+        ["Da YouTube, Spotify, SoundCloud e quasi ogni altra app: premi Condividi e scegli «Scarica con Ultimate MP3 Player»."] =
+            "From YouTube, Spotify, SoundCloud and almost any other app: tap Share and choose “Download with Ultimate MP3 Player”.",
+        ["Con #nome trovi i brani con quel tag."] = "With #name you find the songs with that tag.",
+
+        ["Incolla il link di un brano o di una playlist"] = "Paste the link of a song or a playlist",
+        ["Condividi o incolla un link"] = "Share or paste a link",
+        ["Da YouTube, Spotify, SoundCloud e quasi ogni altra app premi Condividi e scegli «Scarica con Ultimate MP3 Player». Brani, album e playlist intere: scegli in quale playlist salvarli. I brani che hai già non vengono riscaricati."] =
+            "From YouTube, Spotify, SoundCloud and almost any other app tap Share and choose “Download with Ultimate MP3 Player”. Songs, albums and whole playlists: choose which playlist to save them in. Songs you already have aren't downloaded again.",
+        ["Fa parte di una playlist: scarica tutta la playlist"] = "It's part of a playlist: download the whole playlist",
+        ["Lo vedrai nella schermata del brano (occupa più spazio)"] = "You'll see it on the song's screen (takes more space)",
+        ["Negli appunti non c'è nessun link: copialo dall'app o dal sito e riprova."] = "There's no link in the clipboard: copy it from the app or the site and try again.",
+
+        ["Ognuno ha le sue playlist, i preferiti, la cronologia e l'equalizzatore; i brani sono di tutti."] =
+            "Everyone has their own playlists, favorites, history and equalizer; the songs belong to everyone.",
+        ["Apri sempre questo profilo all'avvio"] = "Always open this profile at startup",
+        ["Togli la foto"] = "Remove the picture",
+        ["Il tuo nome"] = "Your name",
+        ["Come ti chiami?"] = "What's your name?",
+        ["Elimina il profilo"] = "Delete profile",
+
+        ["ASPETTO"] = "APPEARANCE",
+        ["RIPRODUZIONE"] = "PLAYBACK",
+        ["TESTI"] = "LYRICS",
+        ["DOWNLOAD"] = "DOWNLOADS",
+        ["RICERCA ONLINE"] = "ONLINE SEARCH",
+        ["AGGIORNAMENTI"] = "UPDATES",
+        ["MEMORIA"] = "STORAGE",
+        ["AIUTO E SUPPORTO"] = "HELP AND SUPPORT",
+        ["Pagine e fogli che scorrono, copertina che si muove"] = "Sliding pages and sheets, moving cover",
+        ["Nella schermata del brano si inclina sotto il dito, con un riflesso di luce"] = "On the song's screen it tilts under your finger, with a glint of light",
+        ["Volume uniforme"] = "Even volume",
+        ["Tutti i brani allo stesso volume, anche se scaricati da siti diversi"] = "All songs at the same volume, even if downloaded from different sites",
+        ["Il brano dopo comincia mentre questo sfuma"] = "The next song starts while this one fades out",
+        ["Dopo un brano da solo, brani simili"] = "After a single song, similar songs",
+        ["Un brano suonato fuori da una lista (ricerca, download) continua con brani come lui trovati online, invece che con tutti i tuoi"] =
+            "A song played outside a list (search, downloads) goes on with songs like it found online, instead of with all of yours",
+        ["Da dove arrivano i brani simili"] = "Where similar songs come from",
+        ["Brani simili preparati in anticipo"] = "Similar songs prepared ahead",
+        ["Cerca i testi che mancano"] = "Look for missing lyrics",
+        ["Per i brani nuovi e per quello che ascolti, su LRCLIB (con i tempi quando ci sono)"] = "For new songs and for the one you're listening to, on LRCLIB (synced when available)",
+        ["Cerca anche online"] = "Search online too",
+        ["La pagina Cerca trova anche i brani dei siti di musica, da scaricare con un tocco"] = "The Search page also finds songs on music sites, to download with a tap",
+        ["Formato dell'audio"] = "Audio format",
+        ["Solo audio di solito"] = "Usually audio only",
+        ["Il video si scarica solo se lo scegli (risparmi spazio e dati)"] = "The video is downloaded only if you choose it (saves space and data)",
+        ["Download insieme"] = "Downloads at once",
+        ["Dove è salvata la musica"] = "Where the music is saved",
+        ["Nella memoria del telefono, nella cartella dell'app: la vedi collegando il telefono al computer (Android › data). Se disinstalli l'app, Android chiede se tenerla."] =
+            "In the phone's storage, in the app's folder: you can see it by connecting the phone to a computer (Android › data). If you uninstall the app, Android asks whether to keep it.",
+        ["MP3, M4A, FLAC, video... vengono copiati nell'app"] = "MP3, M4A, FLAC, video... are copied into the app",
+        ["Aggiungi una cartella di musica"] = "Add a music folder",
+        ["Esporta in un pacchetto .ump"] = "Export to a .ump pack",
+        ["Playlist, tag o tutta la libreria in un file: da tenere come copia o da mandare a un amico"] = "Playlists, tags or the whole library in one file: to keep as a backup or to send to a friend",
+        ["Importa un pacchetto .ump"] = "Import a .ump pack",
+        ["Rinomina un artista"] = "Rename an artist",
+        ["Lo stesso nome su tutti i suoi brani in una volta"] = "The same name on all their songs at once",
+        ["Scegli l'artista, scrivi il nome giusto: cambia su tutti i suoi brani."] = "Choose the artist, type the right name: it changes on all their songs.",
+        ["Aggiorna l'app da sola"] = "Update the app automatically",
+        ["Le nuove versioni da GitHub si scaricano con il Wi-Fi; Android chiede prima di installarle"] = "New versions from GitHub are downloaded on Wi-Fi; Android asks before installing them",
+        ["yt-dlp cambia spesso, per stare dietro ai siti: si aggiorna una volta al giorno"] = "yt-dlp changes often to keep up with the sites: it's updated once a day",
+        ["Brani suggeriti tenuti in memoria"] = "Suggested songs kept in storage",
+        ["Svuota la memoria"] = "Clear storage",
+        ["Pagina del progetto su GitHub"] = "Project page on GitHub",
+        ["Salva come preset…"] = "Save as preset…",
+
+        ["Scegli cosa mettere nel pacchetto: un file .ump da tenere come copia o da mandare a un amico, che lo apre con Ultimate MP3 Player e ritrova tutto, senza doppioni."] =
+            "Choose what to put in the pack: a .ump file to keep as a backup or to send to a friend, who opens it with Ultimate MP3 Player and finds everything, without duplicates.",
+        ["Anche i brani che non sono in nessuna playlist o tag ({0} in tutto): comodo per spostare tutto su un altro telefono o computer."] =
+            "Also the songs that aren't in any playlist or tag ({0} in all): handy to move everything to another phone or computer.",
+        ["Crea il pacchetto"] = "Create the pack",
+        ["Condividi…"] = "Share…",
+        ["Salva in…"] = "Save to…",
+        ["Condividi il pacchetto"] = "Share the pack",
+        ["Pacchetto salvato"] = "Pack saved",
+
+        ["Preparazione di Python"] = "Preparing Python",
+        ["Preparazione di ffmpeg"] = "Preparing ffmpeg",
+        ["Preparazione di yt-dlp"] = "Preparing yt-dlp",
+        ["Motori di download non disponibili: {0}"] = "Download engines not available: {0}",
+        ["Riproduzione"] = "Playback",
+        ["Il brano in riproduzione, con i pulsanti per controllarlo"] = "The song playing, with the buttons to control it",
+        ["I brani che si stanno scaricando"] = "The songs being downloaded",
+        ["Download in corso"] = "Downloading",
+        ["Annulla tutti"] = "Cancel all",
+        ["Versione {0} pronta da installare."] = "Version {0} ready to install.",
+        ["È uscita la versione {0}: si scarica da sola con il Wi-Fi, oppure controlla gli aggiornamenti."] = "Version {0} is out: it downloads by itself on Wi-Fi, or check for updates.",
+        ["Permetti a Ultimate MP3 Player di installare app, poi torna qui e premi di nuovo Installa."] = "Allow Ultimate MP3 Player to install apps, then come back here and tap Install again.",
+        ["Installazione dell'aggiornamento…"] = "Installing the update…",
+        ["Aggiornamento non installato."] = "Update not installed.",
+
+        // Listen without downloading
+        ["Ascolta senza scaricare"] = "Listen without downloading",
+        ["Da {0}, non salvato"] = "From {0}, not saved",
+        ["Va nella coda della stanza senza scaricarlo nella libreria: ognuno lo prende dal link, come i brani consigliati."] =
+            "It goes into the room's queue without being downloaded to your library: everyone gets it from the link, like the suggested songs.",
+        ["«{0}» va nella coda della stanza"] = "“{0}” goes into the room's queue",
+        ["{0} brani vanno nella coda della stanza"] = "{0} songs go into the room's queue",
+        ["Lo ascolti subito senza metterlo nella libreria: resta per un po' nella memoria temporanea, e se ti piace lo salvi dal menu del brano."] =
+            "You hear it right away without putting it in your library: it stays in the temporary storage for a while, and if you like it you save it from the song's menu.",
+        ["Resta per un po' nella memoria temporanea, senza entrare nella libreria: se ti piace lo salvi quando vuoi."] =
+            "It stays in the temporary storage for a while, outside your library: if you like it, save it whenever you want.",
+        ["«{0}» in ascolto, senza salvarlo nella libreria"] = "Playing “{0}” without saving it to your library",
+        ["{0} brani in ascolto, senza salvarli nella libreria"] = "Playing {0} songs without saving them to your library",
+        ["sei l'unico responsabile di cosa scarichi, di come lo usi e di cosa condividi con gli altri (anche con i pacchetti .ump), nel rispetto delle leggi sul diritto d'autore del tuo paese e delle condizioni dei siti da cui scarichi;"] =
+            "you alone are responsible for what you download, how you use it and what you share with others (.ump packs included), in compliance with the copyright laws of your country and the terms of the sites you download from;",
+        ["Sul telefono l'app non usa il tuo accesso ai siti: i contenuti privati, per abbonati o con limite d'età non si possono scaricare. Se è il controllo anti-bot di YouTube, riprova più tardi o con un'altra connessione."] =
+            "On the phone the app doesn't use your sign-in to the sites: private, members-only or age-restricted content can't be downloaded. If it's YouTube's bot check, try again later or on another connection.",
     };
 }

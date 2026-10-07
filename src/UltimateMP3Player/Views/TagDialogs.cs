@@ -15,6 +15,11 @@ public static class TagDialogs
     private static ResourceDictionary Res => Application.Current.Resources;
     private static Brush B(string key) => (Brush)Res[key];
 
+    // For the view models shared with the Android app (Dialogs.ConfirmAsync).
+    public static Task<(string Name, string Color)?> EditAsync(string? name, string color) => Task.FromResult(Edit(name, color));
+    public static Task<(List<TrackViewModel> Songs, List<TagViewModel> Tags, bool Add)?> ApplyToSongsAsync(PlaylistViewModel p, List<TrackViewModel> songs)
+        => Task.FromResult(ApplyToSongs(p, songs));
+
     // Name and colour (one of the palette or any #RRGGBB), with a live preview of the chip.
     public static (string Name, string Color)? Edit(string? name, string color)
     {

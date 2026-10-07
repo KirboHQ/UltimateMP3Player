@@ -107,6 +107,7 @@ public sealed class PlayerViewModel : Observable
             _ => CanSetSpeed);
         ClearQueueCommand = new RelayCommand(ClearQueue, () => _room == null && _queue.UpcomingCount > 0);
         GenerateQueueCommand = new RelayCommand(GenerateQueue, () => _room == null && Current != null);
+        SaveCurrentCommand = new RelayCommand(SaveCurrent, () => IsTemporary);
 
         Restore(adopt);
         _queue.Changed += () =>
@@ -187,6 +188,8 @@ public sealed class PlayerViewModel : Observable
     public ICommand GenerateQueueCommand { get; }
     public ICommand SpeedStepCommand { get; }
     public ICommand SetSpeedCommand { get; }
+    // The song playing, only in the cache, into the library (no playlist).
+    public ICommand SaveCurrentCommand { get; }
 
     // ------------------------------------------------------------------ speed
 
@@ -337,11 +340,13 @@ public sealed class PlayerViewModel : Observable
             if (!Set(ref _current, value)) return;
             if (old != null) old.IsCurrent = false;
             if (value != null) value.IsCurrent = true;
-            OnChanged(nameof(HasTrack), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(ContextName));
+            OnChanged(nameof(HasTrack), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(ContextName), nameof(IsTemporary));
         }
     }
 
     public bool HasTrack => Current != null;
+    // The song playing isn't in the library: a suggested one, or one of a link heard without downloading it.
+    public bool IsTemporary => Current != null && _main.Radio.Has(Current.Id);
     // The song block of the player bar: also in a room with nothing playing (it shows the room's name).
     public bool ShowNowPlaying => Current != null || _room != null;
     // "Generate queue" (the song page): your own queue only.
@@ -583,6 +588,30 @@ public sealed class PlayerViewModel : Observable
         _queue.Play(new[] { t.Id }, 0, contextId, t.Title, radio: true);
         if (!playing) _ = Load(t, true);
         if (announce) _main.Toast(L.F("Cerco brani simili a «{0}»…", t.Title));
+    }
+
+    // The songs of a link heard without downloading them into the library (RadioViewModel.AddFromLink): each comes into
+    // the cache just before its turn, like the suggested songs, and "Save" keeps one. A single song is followed by songs
+    // like it (Settings), a playlist plays as a list of its own.
+    public void PlayStream(IReadOnlyList<string> ids, string name)
+    {
+        if (_room != null || ids.Count == 0 || TrackOf(ids[0]) is not { } first) return;
+        if (ids.Count == 1)
+        {
+            if (RadioAfterSingle)
+            {
+                PlayRadio(_main.Vm(first), false);
+                return;
+            }
+            _queue.Play(ids.ToList(), 0, null, null);
+        }
+        else _queue.Play(ids.ToList(), 0, "link:" + Ids.New(), name, true);
+        _ = Load(first, true);
+    }
+
+    private void SaveCurrent()
+    {
+        if (Current != null && _main.Radio.Item(Current.Id) is { } item) _ = _main.Radio.Save(item, null);
     }
 
     public void Enqueue(TrackViewModel t, bool quiet = false)

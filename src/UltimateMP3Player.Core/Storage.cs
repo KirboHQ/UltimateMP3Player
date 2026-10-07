@@ -5,7 +5,10 @@ namespace UltimateMP3Player.Core;
 
 public static class AppPaths
 {
-    public static string DataDir { get; } = Init();
+    private static string? _dataDir;
+    // Decided the first time it's needed, not when the class is loaded: the Android app sets UMP_DATA as it starts, and
+    // its compiled code may load this class before that.
+    public static string DataDir => _dataDir ??= Init();
 
     private static string Init()
     {
@@ -25,8 +28,11 @@ public static class AppPaths
     // Not created here, so deleted profiles stay deleted.
     public static string ProfileDir(string id) => Path.Combine(DataDir, "profiles", id);
     public static string TempDir => Dir(Path.Combine(Path.GetTempPath(), "UltimateMP3Player"));
-    public static string DefaultMusicDir =>
+    public static string DefaultMusicDir => MusicDirOverride ??
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "Ultimate MP3 Player");
+
+    // Android: the app's own music folder (set by the app before the settings are read).
+    public static string? MusicDirOverride { get; set; }
 
     public static string TrackCover(string trackId) => Path.Combine(CoversDir, trackId + ".jpg");
 

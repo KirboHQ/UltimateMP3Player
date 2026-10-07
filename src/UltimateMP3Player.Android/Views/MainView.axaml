@@ -1,0 +1,70 @@
+<!-- The phone's screen: the pages, the song playing over the bottom bar (a tap opens it full screen), the bottom bar with
+     Home · Cerca · Libreria · Download · Impostazioni. On top: the song's page, the sheets, the profiles' page. -->
+<UserControl x:Class="UltimateMP3Player.Views.MainView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views"
+             Background="{StaticResource BgBrush}" Foreground="{StaticResource TextBrush}"
+             FontFamily="{StaticResource UiFont}" FontSize="14" TopLevel.AutoSafeAreaPadding="False">
+    <Panel x:Name="Root">
+        <!-- Home's colour, up behind the status bar -->
+        <Border x:Name="Backdrop" Height="280" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0" IsHitTestVisible="False"/>
+
+        <Grid x:Name="Shell" RowDefinitions="Auto,*,Auto,Auto" IsVisible="False">
+
+            <!-- the engines being prepared, an update ready -->
+            <StackPanel x:Name="Banners" Margin="12,6,12,0">
+                <Border CornerRadius="14" Padding="14,10" Margin="0,0,0,6" Background="{StaticResource WarningSoftBrush}"
+                        IsVisible="{Binding Host.EngineStatus, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Ellipse Classes="spinner" Width="16" Height="16" StrokeThickness="2" Stroke="{StaticResource WarningBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Host.EngineStatus}" Margin="10,0,0,0" Foreground="{StaticResource WarningBrush}" FontSize="13.5"
+                                   TextWrapping="Wrap" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+                <Border CornerRadius="14" Padding="14,8,8,8" Margin="0,0,0,6" Background="{DynamicResource AccentSoftBrush}"
+                        IsVisible="{Binding Host.Updates.IsReady, FallbackValue=False}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Text="{local:Icon E777}" Classes="glyph" Foreground="{DynamicResource AccentTextBrush}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Host.Updates.ReadyText}" Margin="10,0,10,0" VerticalAlignment="Center" FontSize="13.5" TextWrapping="Wrap"/>
+                        <Button Grid.Column="2" Theme="{StaticResource PrimaryButton}" Height="38" Padding="16,0" Content="{local:T Installa}"
+                                Command="{Binding Host.RestartToUpdateCommand}"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <!-- the pages (kept while they're in the history: coming back finds them where they were) -->
+            <Panel x:Name="PageHost" Grid.Row="1" ClipToBounds="True"/>
+
+            <!-- toast -->
+            <Border x:Name="ToastBox" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20,0,20,12" CornerRadius="14"
+                    Padding="18,12" Background="{StaticResource Surface3Brush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1"
+                    IsHitTestVisible="False" MaxWidth="560" Opacity="0" BoxShadow="0 4 18 0 #80000000">
+                <TextBlock x:Name="ToastText" TextWrapping="Wrap" FontSize="14"/>
+            </Border>
+
+            <!-- the song playing -->
+            <views:MiniPlayer x:Name="Mini" Grid.Row="2" DataContext="{Binding Player}" IsVisible="{Binding HasTrack, FallbackValue=False}"/>
+
+            <!-- the bottom bar (turned or on a tablet: a column on the left, like the computer's side bar) -->
+            <Border x:Name="NavBar" Grid.Row="3" Background="{StaticResource NavBarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0">
+                <UniformGrid x:Name="Tabs" Rows="1" Margin="4,2,4,0">
+                    <RadioButton x:Name="TabHome" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE80F;" Content="{local:T Home}"/>
+                    <RadioButton x:Name="TabSearch" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE721;" Content="{local:T Cerca}"/>
+                    <RadioButton x:Name="TabLibrary" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE8F1;" Content="{local:T Libreria}"/>
+                    <RadioButton x:Name="TabDownloads" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE896;" Content="{local:T Download}"/>
+                    <RadioButton x:Name="TabSettings" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE713;" Content="{local:T Impostazioni}"/>
+                </UniformGrid>
+            </Border>
+        </Grid>
+
+        <!-- the song's page, full screen -->
+        <views:PlayerPage x:Name="FullPlayer" IsVisible="False"/>
+
+        <!-- before a profile is open: "who's listening?" -->
+        <ContentControl x:Name="Gate" IsVisible="False" Background="{StaticResource BgBrush}"/>
+
+        <views:SheetHost x:Name="SheetLayer"/>
+    </Panel>
+</UserControl>

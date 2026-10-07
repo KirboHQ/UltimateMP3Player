@@ -1,0 +1,317 @@
+<!-- Download: a link (pasted here, or shared from another app) is read, then you choose what to download and where; below,
+     the downloads of the whole app. -->
+<UserControl x:Class="UltimateMP3Player.Views.DownloadsPage"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <UserControl.Styles>
+        <Style Selector="Border.item.off">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+    </UserControl.Styles>
+    <UserControl.DataTemplates>
+        <!-- ============================================================ the link read -->
+        <DataTemplate DataType="vm:LinkViewModel">
+            <Border Classes="card" Padding="18,18,18,16">
+                <StackPanel>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Panel Width="96" Height="96" VerticalAlignment="Top">
+                            <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}">
+                                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="30" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                            </Border>
+                            <Border CornerRadius="10" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Border.Background>
+                                    <ImageBrush Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                                </Border.Background>
+                            </Border>
+                        </Panel>
+                        <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                            <Border HorizontalAlignment="Left" CornerRadius="7" Padding="9,3" Background="{StaticResource Surface2Brush}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding SiteBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SiteName}" FontSize="12" FontWeight="SemiBold" Margin="7,0,0,0" Foreground="{StaticResource SubTextBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="Bold" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" Margin="0,8,0,4"/>
+                            <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{StaticResource SubTextBrush}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Grid>
+                    <Button Theme="{StaticResource LinkButton}" Margin="0,12,0,0" HorizontalAlignment="Left" Padding="0,6"
+                            IsVisible="{Binding PartOfPlaylist}" Command="{Binding $parent[views:DownloadsPage].DataContext.WholePlaylistCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="14"/>
+                            <TextBlock Text="{local:T 'Fa parte di una playlist: scarica tutta la playlist'}" Margin="8,0,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Button>
+                    <ItemsControl ItemsSource="{Binding Notes}" Margin="0,8,0,0" IsVisible="{Binding HasNotes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" FontSize="13" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- where it goes -->
+                    <TextBlock Text="{local:T 'Salva nella playlist'}" Classes="field-label" Margin="4,18,0,8"/>
+                    <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="Playlist_Click">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Playlist.Label}" FontWeight="Normal" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                        </Grid>
+                    </Button>
+                    <StackPanel IsVisible="{Binding ShowNewName}">
+                        <TextBlock Text="{local:T 'Nome della nuova playlist'}" Classes="field-label" Margin="4,14,0,8"/>
+                        <TextBox Theme="{StaticResource TouchBox}" Text="{Binding NewName}" Watermark="{local:T 'Nome della playlist'}"/>
+                    </StackPanel>
+                    <TextBlock Text="{local:T 'Tag dei brani'}" Classes="field-label" Margin="4,14,0,8" IsVisible="{Binding $parent[views:MainView].DataContext.HasTags}"/>
+                    <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="Tags_Click"
+                            IsVisible="{Binding $parent[views:MainView].DataContext.HasTags}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{local:T 'Nessuno'}" FontWeight="Normal" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                                       IsVisible="{Binding !HasChosenTags}"/>
+                            <ItemsControl ItemsSource="{Binding ChosenTags}" VerticalAlignment="Center" ClipToBounds="True" IsVisible="{Binding HasChosenTags}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,12,0">
+                                            <Ellipse Width="9" Height="9" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Name}" FontWeight="Normal" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Grid.Column="1" Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                        </Grid>
+                    </Button>
+                    <CheckBox Theme="{StaticResource Switch}" Margin="4,16,2,0" IsChecked="{Binding WithVideo}" IsVisible="{Binding HasVideo}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Scarica anche il video'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Lo vedrai nella schermata del brano (occupa più spazio)'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
+
+                    <Button Theme="{StaticResource TouchPrimary}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,18,0,4"
+                            Command="{Binding DownloadCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E896}" Classes="glyph"/>
+                            <TextBlock Text="{Binding DownloadLabel}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <!-- heard now, only in the cache (saved later from the notification or the song's menu) -->
+                    <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0"
+                            Command="{Binding ListenCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E768}" Classes="glyph"/>
+                            <TextBlock Text="{local:T 'Ascolta senza scaricare'}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="{local:T 'Resta per un po\' nella memoria temporanea, senza entrare nella libreria: se ti piace lo salvi quando vuoi.'}"
+                               Classes="hint" FontSize="12.5" TextWrapping="Wrap" TextAlignment="Center" Margin="12,8,12,0"/>
+
+                    <!-- the songs of a playlist / album: last, so the buttons above are at hand however long it is -->
+                    <StackPanel IsVisible="{Binding IsCollection}" Margin="0,20,0,0">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding SelectionText}" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}" FontSize="13.5" Margin="4,0,0,0"/>
+                            <Button Grid.Column="1" Theme="{StaticResource SmallGhost}" Command="{Binding ToggleAllCommand}" Content="{Binding ToggleAllLabel}"/>
+                        </Grid>
+                        <Border Margin="0,10,0,0" CornerRadius="12" Background="{StaticResource BgBrush}" Padding="4" MaxHeight="520">
+                            <ListBox Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}" ItemsSource="{Binding Items}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="item" Classes.off="{Binding !IsSelected}" Padding="8,6" Background="Transparent" Tapped="Item_Tapped">
+                                            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                                <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
+                                                <Panel Grid.Column="1" Width="42" Height="42" Margin="8,0,0,0">
+                                                    <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}"/>
+                                                    <Border CornerRadius="6" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                        <Border.Background>
+                                                            <ImageBrush Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                                                        </Border.Background>
+                                                    </Border>
+                                                </Panel>
+                                                <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="14"/>
+                                                    <TextBlock Text="{Binding Meta}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}" Margin="0,2,0,0"
+                                                               IsVisible="{Binding Meta, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                                </StackPanel>
+                                                <Border Grid.Column="3" CornerRadius="7" Padding="7,2" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
+                                                        IsVisible="{Binding InLibrary}">
+                                                    <TextBlock Text="{local:T 'Già tuo'}" FontSize="11.5" Foreground="{StaticResource SuccessBrush}"/>
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <ScrollViewer x:Name="Scroller">
+        <StackPanel Margin="16,12,16,24">
+            <TextBlock Text="{local:T 'Scarica musica'}" Classes="page-title" Margin="2,0,0,12"/>
+
+            <!-- the link -->
+            <Border Height="50" CornerRadius="25" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                    Padding="16,0,4,0" Margin="0,0,0,14">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="{local:Icon E71B}" Classes="glyph" Foreground="{StaticResource SubTextBrush}" FontSize="17"/>
+                    <TextBox x:Name="LinkBox" Grid.Column="1" Theme="{StaticResource BareTextBox}" FontSize="15" Margin="12,0,4,0"
+                             Watermark="{local:T 'Incolla il link di un brano o di una playlist'}"/>
+                    <Button x:Name="GoButton" Grid.Column="2" Theme="{StaticResource PillPrimaryButton}" Height="40" Padding="16,0" Click="Go_Click">
+                        <TextBlock x:Name="GoText" Text="{local:T Incolla}"/>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <Panel Margin="0,0,0,8">
+                <Border Classes="card" Padding="18" IsVisible="{Binding ShowIntro}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Condividi o incolla un link'}" FontSize="17" FontWeight="SemiBold"/>
+                        <TextBlock Classes="hint" Margin="0,6,0,14" FontSize="14" LineHeight="20"
+                                   Text="{local:T 'Da YouTube, Spotify, SoundCloud e quasi ogni altra app premi Condividi e scegli «Scarica con Ultimate MP3 Player». Brani, album e playlist intere: scegli in quale playlist salvarli. I brani che hai già non vengono riscaricati.'}"/>
+                        <ItemsControl ItemsSource="{Binding FeaturedSites}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="12" Padding="10,4" Margin="0,0,6,6" Background="{StaticResource Surface2Brush}">
+                                        <TextBlock Text="{Binding}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}"/>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{local:T '…e centinaia di altri siti.'}" FontSize="12.5" Foreground="{StaticResource MutedBrush}" Margin="2,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Classes="card" Padding="18" IsVisible="{Binding IsAnalyzing}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Ellipse Classes="spinner" Width="30" Height="30"/>
+                        <TextBlock Grid.Column="1" Text="{Binding AnalyzingText}" FontSize="15" VerticalAlignment="Center" Margin="14,0,8,0" TextWrapping="Wrap"/>
+                        <Button Grid.Column="2" Theme="{StaticResource SmallGhost}" Content="{local:T Annulla}" Command="{Binding CancelCommand}"/>
+                    </Grid>
+                </Border>
+
+                <Border CornerRadius="16" Padding="16" Background="{StaticResource ErrorSoftBrush}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Text="{local:Icon EA39}" Classes="glyph" FontSize="22" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Top"/>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock Text="{Binding Error}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding ErrorHint}" Classes="hint" Margin="0,6,0,0" IsVisible="{Binding ErrorHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        </StackPanel>
+                        <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Width="38" Height="38" FontSize="13" Content="{local:Icon E711}" Command="{Binding DismissCommand}"
+                                VerticalAlignment="Top"/>
+                    </Grid>
+                </Border>
+
+                <ContentControl Content="{Binding Link}"/>
+
+                <Border CornerRadius="14" Padding="16,12" Background="#1A3A2E" IsVisible="{Binding Feedback, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Top">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <TextBlock Text="{local:Icon E73E}" Classes="glyph" Foreground="{StaticResource SuccessBrush}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Feedback}" Margin="10,0,0,0" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    </Grid>
+                </Border>
+            </Panel>
+
+            <!-- the downloads -->
+            <StackPanel IsVisible="{Binding Queue.HasJobs}" Margin="0,8,0,0">
+                <TextBlock Text="{local:T Download}" Classes="section-title" Margin="2,0,0,2"/>
+                <TextBlock Text="{Binding Queue.Summary}" Foreground="{StaticResource SubTextBrush}" Margin="2,0,0,10" FontSize="13.5" TextWrapping="Wrap"/>
+                <Border CornerRadius="14" Padding="14,10,8,10" Margin="0,0,0,10" Background="{StaticResource WarningSoftBrush}" IsVisible="{Binding Queue.IsThrottled}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Queue.ThrottleText}" Foreground="{StaticResource WarningBrush}" FontSize="13.5" TextWrapping="Wrap"/>
+                        <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,8,0,0" Content="{local:T 'Velocità normale'}"
+                                Command="{Binding Queue.NormalSpeedCommand}"/>
+                    </StackPanel>
+                </Border>
+                <WrapPanel Margin="0,0,0,8">
+                    <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.RetryFailedCommand}" IsVisible="{Binding Queue.HasFailed}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="13"/>
+                            <TextBlock Text="{local:T 'Riprova non riusciti'}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.RetryFailedOnYouTubeCommand}" IsVisible="{Binding Queue.HasFailedForYouTube}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E721}" Classes="glyph" FontSize="13"/>
+                            <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.DiscardFailedCommand}" IsVisible="{Binding Queue.HasFailed}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E74D}" Classes="glyph" FontSize="13"/>
+                            <TextBlock Text="{local:T 'Scarta errori'}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.ClearFinishedCommand}" IsVisible="{Binding Queue.HasDone}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="13"/>
+                            <TextBlock Text="{local:T 'Pulisci completati'}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.CancelAllCommand}" IsVisible="{Binding Queue.HasActive}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E711}" Classes="glyph" FontSize="13"/>
+                            <TextBlock Text="{local:T 'Annulla tutti'}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+                <ItemsControl ItemsSource="{Binding Queue.Jobs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:DownloadJobViewModel">
+                            <!-- finished: a long press opens the song's menu (similar songs, playlists…) -->
+                            <Border Padding="2,8" Background="Transparent" views:Touch.Menu="download">
+
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Panel Width="48" Height="48" VerticalAlignment="Top">
+                                        <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
+                                            <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                                        </Border>
+                                        <Border CornerRadius="6" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <Border.Background>
+                                                <ImageBrush Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                                            </Border.Background>
+                                        </Border>
+                                    </Panel>
+                                    <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" FontSize="14.5"/>
+                                        <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12.5" Foreground="{StaticResource MutedBrush}" Margin="0,1,0,0"/>
+                                        <ProgressBar Margin="0,6,0,2" Value="{Binding Percent, Mode=OneWay}" IsIndeterminate="{Binding Indeterminate}" IsVisible="{Binding IsRunning}"/>
+                                        <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}" FontSize="12.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                        <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding RetryYouTubeCommand}"
+                                                IsVisible="{Binding CanRetryYouTube}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="12"/>
+                                                <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E768}" Command="{Binding PlayCommand}" IsVisible="{Binding CanPlay}"/>
+                                        <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E72C}" Command="{Binding RetryCommand}" IsVisible="{Binding CanRetry}"/>
+                                        <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" FontSize="15" Command="{Binding CancelCommand}" IsVisible="{Binding IsActive}"/>
+                                        <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E74D}" FontSize="17" Command="{Binding RemoveCommand}" IsVisible="{Binding IsFinished}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

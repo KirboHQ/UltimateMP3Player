@@ -1,0 +1,348 @@
+<!-- What a phone does differently from the computer apps' Theme.axaml (loaded after it): bigger things to touch (about
+     44 px), scroll bars that only show while scrolling, the bottom bar's tabs, the sheets. -->
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:UltimateMP3Player">
+
+    <SolidColorBrush x:Key="NavBarBrush" Color="#F20A0C0F"/>
+    <SolidColorBrush x:Key="MiniPlayerBrush" Color="#FF1A1D25"/>
+    <SolidColorBrush x:Key="ScrimBrush" Color="#99000000"/>
+    <SolidColorBrush x:Key="SheetBrush" Color="#FF161920"/>
+    <SolidColorBrush x:Key="PressedBrush" Color="#1FFFFFFF"/>
+
+    <!-- A round icon button the size of a finger (the computer's ControlButton is 36). -->
+    <ControlTheme x:Key="TouchIcon" TargetType="Button">
+        <Setter Property="local:Ui.GrayText" Value="True"/>
+        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="44"/>
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
+        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Background="Transparent">
+                    <Ellipse Name="Bg" Fill="{StaticResource PressedBrush}" Opacity="0"/>
+                    <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pressed /template/ Ellipse#Bg">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="TouchToggle" TargetType="ToggleButton">
+        <Setter Property="local:Ui.GrayText" Value="True"/>
+        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="44"/>
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>
+        <Setter Property="FontSize" Value="20"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Background="Transparent">
+                    <Ellipse Name="Bg" Fill="{StaticResource PressedBrush}" Opacity="0"/>
+                    <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Ellipse Name="Dot" Width="4" Height="4" Fill="{DynamicResource AccentTextBrush}" VerticalAlignment="Bottom" Margin="0,0,0,4" IsVisible="False"/>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pressed /template/ Ellipse#Bg">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="^:checked">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ Ellipse#Dot">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.35"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- A tab of the bottom bar: the icon (filled when it's the open one) and its name. -->
+    <ControlTheme x:Key="TabButton" TargetType="RadioButton">
+        <Setter Property="local:Ui.GrayText" Value="True"/>
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Background="Transparent" Height="66">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <Border Name="Pill" Width="60" Height="32" CornerRadius="16" Background="Transparent" HorizontalAlignment="Center">
+                            <Panel>
+                                <TextBlock Name="Ico" Text="{Binding $parent[RadioButton].(local:Ui.Glyph), Converter={StaticResource Icon}}"
+                                           FontFamily="{StaticResource IconFont}" FontSize="21" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <Border Name="Badge" CornerRadius="8" MinWidth="16" Height="16" Padding="4,0" Background="{DynamicResource AccentGradient}"
+                                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,6,0"
+                                        IsVisible="{Binding $parent[RadioButton].Tag, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                    <TextBlock Text="{Binding $parent[RadioButton].Tag}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </Panel>
+                        </Border>
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" Margin="0,4,0,0"
+                                          TextElement.FontSize="11.5" TextElement.FontWeight="SemiBold"/>
+                    </StackPanel>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:checked">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ Border#Pill">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ TextBlock#Ico">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- A part of a segmented choice (Songs · Playlists · Tags): parts of the same width, the content centred, no hover. -->
+    <ControlTheme x:Key="TouchSegment" TargetType="RadioButton">
+        <Setter Property="local:Ui.GrayText" Value="True"/>
+        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" CornerRadius="18" Height="40" Background="Transparent">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Name="Ico" Text="{Binding $parent[RadioButton].(local:Ui.Glyph), Converter={StaticResource Icon}}" FontFamily="{StaticResource IconFont}"
+                                   FontSize="14" FontWeight="Normal" VerticalAlignment="Center"/>
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:checked">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ Border#Bd">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ TextBlock#Ico">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- A row of a sheet's menu: icon and text, the whole width. -->
+    <ControlTheme x:Key="SheetItem" TargetType="Button">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="FontSize" Value="15.5"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" Background="Transparent" CornerRadius="12" Padding="14,0" MinHeight="52">
+                    <Grid ColumnDefinitions="34,*,Auto">
+                        <TextBlock Name="Ico" Text="{Binding $parent[Button].(local:Ui.Glyph), Converter={StaticResource Icon}}"
+                                   FontFamily="{Binding $parent[Button].(local:Ui.Glyph), Converter={x:Static local:IconFontConverter.Instance}}"
+                                   FontSize="19" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                        <ContentPresenter Grid.Column="1" Name="PART_ContentPresenter" Content="{TemplateBinding Content}" VerticalAlignment="Center"
+                                          Margin="4,0,0,0"/>
+                        <TextBlock Name="Arrow" Grid.Column="2" Text="{local:Icon E76C}" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                   VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" IsVisible="False"/>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pressed /template/ Border#Bd">
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+        </Style>
+        <Style Selector="^.sub /template/ TextBlock#Arrow">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="^.danger">
+            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+        </Style>
+        <Style Selector="^.danger /template/ TextBlock#Ico">
+            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+        </Style>
+        <Style Selector="^.checked /template/ TextBlock#Ico">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- A setting's row that opens something (a page, a sheet of choices): text, value, arrow. -->
+    <ControlTheme x:Key="SettingRow" TargetType="Button">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Padding" Value="0,12"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}" CornerRadius="10">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{local:Icon E76C}" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="12,0,0,0"
+                                   VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pressed /template/ Border#Bd">
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.45"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- A chip (filters, sites, tags): a small pill, tinted when chosen. -->
+    <ControlTheme x:Key="Chip" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" CornerRadius="18" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:checked">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ Border#Bd">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="^:pressed /template/ Border#Bd">
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- The scroll bar shows while scrolling, thin, over the content (a phone's). -->
+    <ControlTheme x:Key="ThinScrollBar" TargetType="ScrollBar">
+        <Setter Property="Width" Value="4"/>
+        <Setter Property="MinWidth" Value="4"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Track Name="PART_Track" Orientation="Vertical" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" IsDirectionReversed="True"
+                       Value="{TemplateBinding Value, Mode=TwoWay}" ViewportSize="{TemplateBinding ViewportSize}" Margin="0,4,2,4" IsHitTestVisible="False">
+                    <Thumb>
+                        <Thumb.Template>
+                            <ControlTemplate>
+                                <Border CornerRadius="2" Background="#55FFFFFF" Width="3"/>
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+                </Track>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:horizontal">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="{x:Type ScrollViewer}" TargetType="ScrollViewer">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="IsScrollInertiaEnabled" Value="True"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Panel>
+                    <ScrollContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}"
+                                            HorizontalSnapPointsType="{TemplateBinding HorizontalSnapPointsType}"
+                                            VerticalSnapPointsType="{TemplateBinding VerticalSnapPointsType}"
+                                            HorizontalSnapPointsAlignment="{TemplateBinding HorizontalSnapPointsAlignment}"
+                                            VerticalSnapPointsAlignment="{TemplateBinding VerticalSnapPointsAlignment}"
+                                            Padding="{TemplateBinding Padding}" ScrollViewer.IsScrollInertiaEnabled="{TemplateBinding IsScrollInertiaEnabled}">
+                        <!-- the finger drags the content (without it only a mouse wheel would scroll) -->
+                        <ScrollContentPresenter.GestureRecognizers>
+                            <ScrollGestureRecognizer CanHorizontallyScroll="{Binding CanHorizontallyScroll, ElementName=PART_ContentPresenter}"
+                                                     CanVerticallyScroll="{Binding CanVerticallyScroll, ElementName=PART_ContentPresenter}"
+                                                     IsScrollInertiaEnabled="{Binding (ScrollViewer.IsScrollInertiaEnabled), ElementName=PART_ContentPresenter}"/>
+                        </ScrollContentPresenter.GestureRecognizers>
+                    </ScrollContentPresenter>
+                    <ScrollBar Name="PART_VerticalScrollBar" Theme="{StaticResource ThinScrollBar}" Orientation="Vertical" HorizontalAlignment="Right"
+                               local:Ui.IsHot="False" Opacity="0"/>
+                    <ScrollBar Name="PART_HorizontalScrollBar" Theme="{StaticResource ThinScrollBar}" Orientation="Horizontal" IsVisible="False"/>
+                </Panel>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <!-- Text fields as tall as a finger. -->
+    <ControlTheme x:Key="TouchBox" TargetType="TextBox" BasedOn="{StaticResource BareTextBox}">
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="24" Padding="18,0" Height="48">
+                    <Panel>
+                        <TextBlock Name="Placeholder" Text="{TemplateBinding Watermark}" Foreground="{StaticResource MutedBrush}"
+                                   VerticalAlignment="Center" Margin="3,0,0,0" IsHitTestVisible="False" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                        <ScrollViewer Name="PART_ScrollViewer" VerticalAlignment="Center" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"
+                                      AllowAutoHide="False">
+                            <TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}" CaretIndex="{TemplateBinding CaretIndex}"
+                                           SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+                                           TextAlignment="{TemplateBinding TextAlignment}" PasswordChar="{TemplateBinding PasswordChar}"
+                                           RevealPassword="{TemplateBinding RevealPassword}" SelectionBrush="{TemplateBinding SelectionBrush}"
+                                           SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}" CaretBrush="{TemplateBinding CaretBrush}"
+                                           HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </ScrollViewer>
+                    </Panel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:focus-within /template/ Border#Bd">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="TouchPrimary" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="Height" Value="48"/>
+        <Setter Property="Padding" Value="22,0"/>
+        <Setter Property="FontSize" Value="15"/>
+    </ControlTheme>
+
+    <ControlTheme x:Key="TouchGhost" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Height" Value="48"/>
+        <Setter Property="Padding" Value="20,0"/>
+        <Setter Property="FontSize" Value="15"/>
+    </ControlTheme>
+
+    <ControlTheme x:Key="TouchDanger" TargetType="Button" BasedOn="{StaticResource DangerButton}">
+        <Setter Property="Height" Value="48"/>
+        <Setter Property="Padding" Value="20,0"/>
+        <Setter Property="FontSize" Value="15"/>
+    </ControlTheme>
+
+    <ControlTheme x:Key="SmallGhost" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="FontSize" Value="13.5"/>
+    </ControlTheme>
+</ResourceDictionary>

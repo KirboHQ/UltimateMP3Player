@@ -16,6 +16,7 @@
   <img alt="Windows 10 and 11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows&logoColor=white">
   <img alt="Linux" src="https://img.shields.io/badge/Linux-x64%20%7C%20arm64-FCC624?style=flat-square&logo=linux&logoColor=black">
   <img alt="macOS 12 or later" src="https://img.shields.io/badge/macOS-12%2B-000000?style=flat-square&logo=apple&logoColor=white">
+  <img alt="Android 8 or later" src="https://img.shields.io/badge/Android-8%2B-3DDC84?style=flat-square&logo=android&logoColor=white">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white">
 </p>
 
@@ -28,6 +29,9 @@
   </a>
   <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
     <img alt="Download for macOS" src="https://img.shields.io/badge/macOS-7C5CFF?style=for-the-badge&logo=apple&logoColor=white" height="42">
+  </a>
+  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
+    <img alt="Download for Android" src="https://img.shields.io/badge/Android-7C5CFF?style=for-the-badge&logo=android&logoColor=white" height="42">
   </a>
 </p>
 
@@ -42,7 +46,31 @@
   <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · a player that feels like Spotify · a queue that fills itself · DJ mode · playlists, favorites and tags · profiles and themes · listen together">
 </picture>
 
-## 🆕 What's new in 3.4.0
+## 🆕 What's new in 3.5.0
+
+- **Android**: the same app on phones and tablets (Android 8 or later), with the same look and features, except DJ
+  mode and Listen together. A bottom bar with Home, Search, Library, Downloads and Settings; the song playing just
+  above it, opening into its full screen with the cover (tilting under your finger), video, synced lyrics and the queue.
+  Turned sideways or on a tablet, the tabs move to a column on the left (like the computer's side bar) and the song's
+  page shows the cover next to the title and the buttons. The screen runs at its full refresh rate (90, 120 Hz and more).
+- **Share to download**: in YouTube, Spotify, SoundCloud and almost any other app tap *Share → Download with Ultimate
+  MP3 Player*: the app opens on the download page with the link already there.
+- **Listen without downloading** (every platform): next to *Download*, a link can just be played. Its songs come into
+  the temporary storage shortly before their turn, like the suggested ones, and stay out of your library; keep one with
+  *Save to library* (on Android also from the notification). In a *Listen together* room the same button is *Add to
+  the room*: the songs go into the room's queue without being downloaded to your library.
+- **Lock screen and notification**: cover, previous / pause / next and the heart for Favorites (and *Save to library*
+  for a song you're only listening to), also from Bluetooth headphones and the car. Music and downloads keep going with
+  the screen off.
+- **Lighter on the processor and the battery** (every platform): downloads that are waiting or finished no longer keep
+  an animation running behind the scenes (a long list could keep a processor core busy), and while the app isn't on
+  screen (in the background, minimized, the song's page closed) scrolling titles, spinners, lyrics and video rest.
+- Linux and macOS: changing the language in Settings works again.
+- Long press is the right click; profiles (handy on a family tablet), statistics, tags, `.ump` packs and automatic
+  updates from the GitHub releases are all there.
+
+<details>
+<summary>3.4.0</summary>
 
 - **Linux and macOS**: the same app, with the same look and the same features, on Linux (x64 and arm64) and macOS
   (Intel and Apple Silicon). Media controls of the system, tray icon, `.ump` packs, automatic updates included.
@@ -53,6 +81,8 @@
 - A suggested song saved and then deleted while it plays doesn't skip any more: it finishes from the cache
 - The Settings search box always stays at the top
 - Dialogs (like the terms of use): the buttons no longer flicker under the mouse
+
+</details>
 
 ## 📥 Install
 
@@ -95,6 +125,21 @@
 > [!NOTE]
 > If macOS says the app "is damaged", run once in the Terminal:
 > `xattr -dr com.apple.quarantine "/Applications/Ultimate MP3 Player.app"`
+
+**Android** (8 or later; not on the Play Store)
+
+1. On the phone, open the [latest release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest) and download
+   **`UltimateMP3Player-android-arm64-v8a.apk`** (almost every phone of the last years; `-armeabi-v7a` is for old
+   32-bit phones, `-x86_64` for emulators and Chromebooks).
+2. Open the downloaded file. The first time Android asks to allow installing apps from your browser (or file manager):
+   allow it, go back and tap **Install**.
+3. That's it. On the first start the app prepares its engines (a few seconds), then keeps itself up to date: new
+   versions download on Wi-Fi and Android asks before installing them.
+
+> [!NOTE]
+> Play Protect may say the app is unknown, because it doesn't come from the Play Store: tap **More details → Install
+> anyway**. The music stays in the app's own folder (*Android › data*, visible from a computer); if you uninstall the
+> app, Android asks whether to keep it. To move your music to another phone or computer, use a `.ump` pack.
 
 ## 🎵 Features
 
@@ -178,13 +223,21 @@ Requirements: .NET 8 SDK, and for the installer Inno Setup 6. Put the external p
 |---|---|
 | `.\build.ps1` | Portable app in `app\` and a Desktop shortcut |
 | `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-Setup-<version>.exe` |
-| `.\build.ps1 -Release` | `dist\`: the files to attach to a GitHub release: the setup (plus `UltimateMP3Player.exe`, optional, for lighter updates) and the Linux and macOS packages (`-WindowsOnly` skips them) |
+| `.\build.ps1 -Release` | `dist\`: the files to attach to a GitHub release: the setup (plus `UltimateMP3Player.exe`, optional, for lighter updates), the Linux and macOS packages and the Android APKs (`-WindowsOnly` skips both, `-NoAndroid` only the APKs) |
 | `.\build-unix.ps1` | Only the Linux and macOS packages in `dist\`: `UltimateMP3Player-linux-x64.tar.gz`, `-linux-arm64.tar.gz`, `UltimateMP3Player-macos-x64.zip`, `-macos-arm64.zip` (`-Targets linux-x64,…` for some of them) |
+| `.\build-android.ps1` | Only the Android APKs in `dist\android\`: `UltimateMP3Player-android-arm64-v8a.apk`, `-armeabi-v7a.apk`, `-x86_64.apk` (`-Out <folder>` elsewhere) |
+
+The Android app needs the .NET 10 SDK with the Android workload (`dotnet workload install android`), the Android SDK
+and a JDK (`ANDROID_HOME` / `JAVA_HOME`, or `%LOCALAPPDATA%\Android\Sdk` and `\Android\jdk`). Its engines (Python with
+yt-dlp, ffmpeg and QuickJS from [youtubedl-android](https://github.com/JunkFood02/youtubedl-android)) are fetched by
+`tools\android-deps.ps1`, pinned by version and SHA-256. The first build creates the signing key in
+`%USERPROFILE%\.ultimatemp3player-android`, outside the repository: **keep a copy of that folder** — Android installs an
+update only if it's signed with the same key.
 
 The Linux and macOS packages are made on Windows too. The macOS app is signed "ad hoc" (without an Apple certificate)
 with [rcodesign](https://github.com/indygreg/apple-platform-rs), downloaded once into `tools\bin`: Apple Silicon Macs
 don't run apps without any signature. Keep the version in `src\UltimateMP3Player.Avalonia\UltimateMP3Player.Avalonia.csproj`
-the same as the Windows one.
+the same as the Windows one (and the Android one, in `src\UltimateMP3Player.Android\UltimateMP3Player.Android.csproj`).
 
 Two settings in `src\UltimateMP3Player\UltimateMP3Player.csproj` (and the same two in the Avalonia project):
 
@@ -201,6 +254,7 @@ for the core (downloads, import, queue, shuffle).
 | `src\UltimateMP3Player.Core` | Downloads (yt-dlp, gallery-dl, ffmpeg), library, profiles, queue, analysis, translations |
 | `src\UltimateMP3Player` | WPF interface, audio engine (NAudio/WASAPI), DJ engine (SoundTouch), tray, media keys, updater, Discord |
 | `src\UltimateMP3Player.Avalonia` | Linux and macOS: the same interface drawn with Avalonia; it shares the view models, the audio and DJ engines and most services with `src\UltimateMP3Player` (audio out through SDL3, MPRIS, macOS Now Playing, updater) |
+| `src\UltimateMP3Player.Android` | Android: the phone's pages (Avalonia), sharing the view models, the audio engine and the Linux/macOS views' building blocks; the player's service with the notification and lock screen controls (MediaSession), audio out through AudioTrack, the engines inside the app, sharing, updates |
 | `installer` | Inno Setup script and wizard images (`tools\make-images.ps1` renders them, and the macOS icons, from `Logo.xaml`) |
 
 </details>
@@ -214,7 +268,9 @@ for the core (downloads, import, queue, shuffle).
 | `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Songs of *Listen together* rooms and suggested songs kept for next time |
 
 On Linux the data is in `~/.local/share/Ultimate MP3 Player` and on macOS in `~/Library/Application Support/Ultimate MP3 Player`
-(there also the engines, in `engines`); the songs go to `~/Music/Ultimate MP3 Player`.
+(there also the engines, in `engines`); the songs go to `~/Music/Ultimate MP3 Player`. On Android the songs are in the
+app's folder `Android/data/com.kirbohq.ultimatemp3player/files/Music` (visible from a computer), the rest inside the
+app.
 
 ## 🙏 Third-party software
 
@@ -227,5 +283,8 @@ Linux and macOS: [Avalonia](https://avaloniaui.net) (MIT), [SDL3](https://www.li
 [SDL3-CS](https://github.com/ppy/SDL3-CS) (MIT), [Tmds.DBus](https://github.com/tmds/Tmds.DBus) (MIT),
 [Fluent System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT) and
 [Selawik](https://github.com/microsoft/Selawik) (OFL-1.1), in place of Segoe UI and its icons.
+Android: the same, plus [youtubedl-android](https://github.com/JunkFood02/youtubedl-android) (GPL-3.0) for Python,
+FFmpeg and [QuickJS](https://bellard.org/quickjs/) (MIT) built for Android, and
+[NLayer](https://github.com/naudio/NLayer) (MIT).
 
 <sub>Download only content you have the right to download.</sub>

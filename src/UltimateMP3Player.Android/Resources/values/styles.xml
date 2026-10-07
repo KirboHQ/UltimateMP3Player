@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- Dark like the app (#0E1014): no white flash while it starts, light status bar icons. -->
+  <style name="UmpTheme" parent="Theme.AppCompat.NoActionBar">
+    <item name="android:windowBackground">@color/ump_bg</item>
+    <item name="android:statusBarColor">@android:color/transparent</item>
+    <item name="android:navigationBarColor">@android:color/transparent</item>
+    <item name="android:windowLightStatusBar">false</item>
+    <item name="colorPrimary">@color/ump_accent</item>
+    <item name="colorAccent">@color/ump_accent</item>
+  </style>
+</resources>

@@ -1,0 +1,136 @@
+<!-- The song's page, full screen (it slides up from the mini player, a drag down closes it): the cover that tilts under the
+     finger (or the video, or the lyrics), the title and the heart, the waveform to seek, the buttons; at the bottom the
+     speed, the lyrics, the video, the automatic queue, "add to a playlist" and "next up". -->
+<UserControl x:Class="UltimateMP3Player.Views.PlayerPage"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <UserControl.Styles>
+        <Style Selector="ToggleButton.pill">
+            <Setter Property="Theme" Value="{StaticResource PillToggle}"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="FontSize" Value="18"/>
+        </Style>
+    </UserControl.Styles>
+    <Panel x:Name="Root" Background="{StaticResource BgBrush}">
+        <!-- the cover's colours behind the page -->
+        <Border x:Name="Glow" Opacity="0.9"/>
+        <Border IsHitTestVisible="False">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                    <GradientStop Color="#330E1014" Offset="0"/>
+                    <GradientStop Color="#990E1014" Offset="0.55"/>
+                    <GradientStop Color="#F20E1014" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+        </Border>
+
+        <Grid x:Name="Body" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto">
+            <!-- top: close, where it plays from, the song's menu -->
+            <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto" Margin="6,4,6,0" Background="Transparent">
+                <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E70D}" FontSize="20" Foreground="{StaticResource TextBrush}" Click="Close_Click"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="8,0">
+                    <TextBlock Text="{local:T 'IN RIPRODUZIONE DA'}" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Center"
+                               IsVisible="{Binding Player.ContextName, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    <TextBlock Text="{Binding Player.ContextName}" FontSize="13.5" FontWeight="SemiBold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"
+                               local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
+                </StackPanel>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Foreground="{StaticResource TextBrush}" Click="More_Click"/>
+            </Grid>
+
+            <!-- the stage: cover, video or lyrics -->
+            <Panel x:Name="Stage" Grid.Row="1" Margin="24,8,24,8" Background="Transparent">
+                <Panel x:Name="CoverArea" IsVisible="{Binding ShowCover}">
+                    <!-- a long press: the song's menu (similar songs, playlists…), like the title's -->
+                    <Panel x:Name="CoverBox" HorizontalAlignment="Center" VerticalAlignment="Center" Background="Transparent" views:Touch.Menu="current">
+                        <!-- the shadow tilts with the cover (left flat behind it, its edges would show around the tilted picture) -->
+                        <Panel x:Name="Tilt">
+                            <Border x:Name="CoverShadow" CornerRadius="18" BoxShadow="0 14 40 0 #99000000" Margin="6"/>
+                            <Image x:Name="CoverImage" Stretch="Uniform"/>
+                            <views:CoverSheen x:Name="Sheen" Opacity="0"/>
+                        </Panel>
+                    </Panel>
+                </Panel>
+                <Panel x:Name="VideoArea" IsVisible="{Binding ShowVideoFrame}">
+                    <Border x:Name="VideoFrame" CornerRadius="14" ClipToBounds="True" Background="Black" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Panel>
+                            <views:VideoView x:Name="Video"/>
+                            <views:LyricsCaptions x:Name="Captions" IsVisible="{Binding Subtitles}"/>
+                        </Panel>
+                    </Border>
+                </Panel>
+                <Panel x:Name="LyricsHost" IsVisible="{Binding LyricsPage}">
+                    <views:LyricsView x:Name="LyricsPane"/>
+                    <Button x:Name="FollowBtn" Theme="{StaticResource PrimaryButton}" Padding="16,8" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                            Margin="0,0,0,8" IsVisible="False" Opacity="0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E8D6}" Classes="glyph" FontSize="13"/>
+                            <TextBlock Text="{local:T 'Torna alla riga cantata'}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </Panel>
+            </Panel>
+
+            <!-- title, artist, heart -->
+            <Grid x:Name="TitleBlock" Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="24,4,14,6" Background="Transparent" views:Touch.Menu="current">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Player.Current.Title}" FontSize="21" FontWeight="Bold" TextTrimming="CharacterEllipsis"
+                               local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
+                    <TextBlock Text="{Binding Player.Current.Artist}" FontSize="15" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                               Margin="0,3,0,0" IsVisible="{Binding !Player.IsWaiting}" local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0" IsVisible="{Binding Player.IsWaiting}">
+                        <Ellipse Classes="spinner" Width="13" Height="13" StrokeThickness="1.8"/>
+                        <TextBlock Text="{Binding Player.WaitText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" Margin="8,0,0,0"/>
+                    </StackPanel>
+                </StackPanel>
+                <!-- only in the cache (heard without downloading it, or suggested): into the library -->
+                <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="50" Height="50" Command="{Binding Player.SaveCurrentCommand}"
+                        IsVisible="{Binding Player.IsTemporary, FallbackValue=False}">
+                    <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="23"/>
+                </Button>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Width="50" Height="50" Command="{Binding Player.FavoriteCommand}">
+                    <TextBlock Classes="heart" Classes.fav="{Binding Player.Current.IsFavorite}" FontSize="25"
+                               Text="{Binding Player.Current.IsFavorite, Converter={StaticResource HeartGlyph}, FallbackValue={local:Icon EB51}}"/>
+                </Button>
+            </Grid>
+
+            <!-- where it is: the waveform -->
+            <StackPanel x:Name="SeekBlock" Grid.Row="3" Margin="24,2,24,0">
+                <views:WaveformBar Height="46" Peaks="{Binding Player.Current.Wave}" Progress="{Binding Player.Progress}" IsPlaying="{Binding Player.IsPlaying}"
+                                   Duration="{Binding Player.Duration}" Rate="{Binding Player.Speed}" BarWidth="3"
+                                   PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="#4DFFFFFF" SeekCommand="{Binding Player.SeekCommand}"/>
+                <Grid ColumnDefinitions="*,*" Margin="0,6,0,0">
+                    <TextBlock Text="{Binding Player.PositionText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Player.DurationText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Right"/>
+                </Grid>
+            </StackPanel>
+
+            <!-- the buttons -->
+            <Grid x:Name="Buttons" Grid.Row="4" ColumnDefinitions="*,*,Auto,*,*" Margin="12,10,12,4">
+                <ToggleButton Theme="{StaticResource TouchToggle}" Content="{local:Icon E8B1}" IsChecked="{Binding Player.Shuffle}" HorizontalAlignment="Center"/>
+                <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="58" Height="58" FontSize="30" Foreground="{StaticResource TextBrush}"
+                        Content="{local:Icon E892}" Command="{Binding Player.PreviousCommand}" HorizontalAlignment="Center"/>
+                <Button Grid.Column="2" Theme="{StaticResource PlayButton}" Width="74" Height="74" FontSize="30"
+                        Content="{Binding Player.PlayGlyph, Converter={StaticResource Icon}}" Command="{Binding Player.PlayPauseCommand}"/>
+                <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Width="58" Height="58" FontSize="30" Foreground="{StaticResource TextBrush}"
+                        Content="{local:Icon E893}" Command="{Binding Player.NextCommand}" HorizontalAlignment="Center"/>
+                <ToggleButton Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{Binding Player.RepeatGlyph, Converter={StaticResource Icon}}"
+                              IsChecked="{Binding Player.RepeatOn, Mode=OneWay}" Command="{Binding Player.CycleRepeatCommand}" HorizontalAlignment="Center"/>
+            </Grid>
+
+            <!-- what else: speed, lyrics, video, automatic queue, add to a playlist, next up -->
+            <Grid x:Name="Extras" Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="14,4,14,10">
+                <Button x:Name="SpeedButton" Theme="{StaticResource PillButton}" Height="36" MinWidth="50" Padding="10,0" FontSize="13.5"
+                        Background="Transparent" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1.5" Content="{Binding Player.SpeedText}" Click="Speed_Click"/>
+                <ToggleButton Grid.Column="2" Theme="{StaticResource TouchToggle}" Content="{local:Icon E8D6}" IsChecked="{Binding ShowLyrics}"
+                              IsVisible="{Binding HasLyrics}"/>
+                <ToggleButton Grid.Column="3" Theme="{StaticResource TouchToggle}" Content="{local:Icon E714}" IsChecked="{Binding ShowVideo}" IsVisible="{Binding HasVideo}"/>
+                <ToggleButton Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{local:Icon E90B}" IsChecked="{Binding Player.AutoQueue}"/>
+                <Button Grid.Column="5" Theme="{StaticResource TouchIcon}" Content="{local:Icon E710}" Click="AddToPlaylist_Click"/>
+                <Button Grid.Column="6" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8FD}" Click="Queue_Click"/>
+            </Grid>
+        </Grid>
+    </Panel>
+</UserControl>

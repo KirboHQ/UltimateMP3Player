@@ -50,8 +50,8 @@ public sealed class EqualizerViewModel : Observable
     {
         _main = main;
         Bands = Enumerable.Range(0, Equalizer.BandCount).Select(i => new EqBandViewModel(i, this)).ToList();
-        SaveCommand = new RelayCommand(SavePreset, () => Enabled);
-        DeleteCommand = new RelayCommand(DeletePreset, () => Enabled && IsCustomPreset);
+        SaveCommand = new RelayCommand(() => _ = SavePreset(), () => Enabled);
+        DeleteCommand = new RelayCommand(() => _ = DeletePreset(), () => Enabled && IsCustomPreset);
         ResetCommand = new RelayCommand(() => Apply(Equalizer.BuiltIn[0]), () => Enabled);
         BuildPresets();
     }
@@ -135,9 +135,9 @@ public sealed class EqualizerViewModel : Observable
         CurveVersion++;
     }
 
-    private void SavePreset()
+    private async Task SavePreset()
     {
-        var name = Dialogs.Prompt(L.T("Salva preset dell'equalizzatore"), L.T("Nome del preset"),
+        var name = await Dialogs.PromptAsync(L.T("Salva preset dell'equalizzatore"), L.T("Nome del preset"),
             Eq.Preset == Custom ? L.T("Il mio preset") : L.T(Eq.Preset) + " " + L.T("(mio)"));
         if (string.IsNullOrWhiteSpace(name)) return;
         name = name.Trim();
@@ -151,10 +151,10 @@ public sealed class EqualizerViewModel : Observable
         _main.Toast(L.F("Preset «{0}» salvato", name));
     }
 
-    private void DeletePreset()
+    private async Task DeletePreset()
     {
         if (_preset?.Value is not EqPreset p || !Eq.Custom.Contains(p)) return;
-        if (!Dialogs.Confirm(L.T("Eliminare il preset?"), L.F("Il preset «{0}» verrà eliminato.", p.Name), L.T("Elimina"), true)) return;
+        if (!await Dialogs.ConfirmAsync(L.T("Eliminare il preset?"), L.F("Il preset «{0}» verrà eliminato.", p.Name), L.T("Elimina"), true)) return;
         Eq.Custom.Remove(p);
         Eq.Preset = Custom;
         _main.Profile.Save();
@@ -237,18 +237,18 @@ public sealed class SettingsViewModel : Observable
         };
         ParallelChoices = Enumerable.Range(1, 6).Select(n => new Choice(L.F("{0} alla volta", n), n)).ToList();
         Languages = new List<Choice> { new("English", "en"), new("Italiano", "it") };
-        BrowseCommand = new RelayCommand(Browse);
+        BrowseCommand = new RelayCommand(() => _ = Browse());
         OpenMusicDirCommand = new RelayCommand(() => MainViewModel.OpenFolder(S.MusicDir));
         OpenDataDirCommand = new RelayCommand(() => MainViewModel.OpenFolder(AppPaths.DataDir));
         UpdateEnginesCommand = new RelayCommand(() => _ = UpdateEngines(), () => !_updating);
         CheckAppUpdateCommand = new RelayCommand(() => _ = _main.Host.CheckAppUpdateNow(), () => !Host.Updates.IsBusy);
         ManageProfilesCommand = new RelayCommand(() => _main.Host.SwitchProfile());
-        ImportFilesCommand = new RelayCommand(() => _main.ImportDialog(false));
-        ImportFolderCommand = new RelayCommand(() => _main.ImportDialog(true));
+        ImportFilesCommand = new RelayCommand(() => _ = _main.ImportDialog(false));
+        ImportFolderCommand = new RelayCommand(() => _ = _main.ImportDialog(true));
         ExportPackCommand = new RelayCommand(() => _main.ExportPack());
-        ImportPackCommand = new RelayCommand(_main.PickPack);
+        ImportPackCommand = new RelayCommand(() => _ = _main.PickPack());
         SelectThemeCommand = new RelayCommand(p => { if (p is string id) SelectTheme(id); });
-        RenameArtistCommand = new RelayCommand(RenameArtist, () => SelectedArtist != null && !string.IsNullOrWhiteSpace(NewArtistName));
+        RenameArtistCommand = new RelayCommand(() => _ = RenameArtist(), () => SelectedArtist != null && !string.IsNullOrWhiteSpace(NewArtistName));
         bool hasRepo = AppInfo.RepoUrl != null;
         ReportProblemCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Problema] "), BugTemplate())!), () => hasRepo);
         SuggestIdeaCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Idea] "), IdeaTemplate())!), () => hasRepo);
@@ -487,9 +487,9 @@ public sealed class SettingsViewModel : Observable
         }
     }
 
-    private void Browse()
+    private async Task Browse()
     {
-        if (Dialogs.PickFolder(L.T("Dove salvare la musica scaricata"), S.MusicDir) is { } dir) MusicDir = dir;
+        if (await Dialogs.PickFolderAsync(L.T("Dove salvare la musica scaricata"), S.MusicDir) is { } dir) MusicDir = dir;
     }
 
     public List<Choice> AudioFormats { get; }
@@ -602,12 +602,12 @@ public sealed class SettingsViewModel : Observable
     private string _newArtistName = "";
     public string NewArtistName { get => _newArtistName; set { if (Set(ref _newArtistName, value)) CommandManager.InvalidateRequerySuggested(); } }
 
-    private void RenameArtist()
+    private async Task RenameArtist()
     {
         if (SelectedArtist?.Value is not string from || string.IsNullOrWhiteSpace(NewArtistName)) return;
         var to = NewArtistName.Trim();
         if (to == from) return;
-        if (!Dialogs.Confirm(L.T("Rinominare l'artista?"), L.F("«{0}» diventerà «{1}» su {2}.", from, to, SelectedArtist.Hint), L.T("Rinomina"), false)) return;
+        if (!await Dialogs.ConfirmAsync(L.T("Rinominare l'artista?"), L.F("«{0}» diventerà «{1}» su {2}.", from, to, SelectedArtist.Hint), L.T("Rinomina"), false)) return;
         _main.RenameArtist(from, to);
         _selectedArtist = null;
         NewArtistName = "";

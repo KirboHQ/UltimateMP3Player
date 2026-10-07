@@ -287,7 +287,7 @@ public static class Menus
             yield return item;
         }
         if (main.Tags.Count > 0) yield return new Separator();
-        yield return Item(L.T("Nuovo tag…"), "", () => main.NewTag(tracks));
+        yield return Item(L.T("Nuovo tag…"), "", () => _ = main.NewTag(tracks));
     }
 
     private static string? StateOf(IReadOnlyList<TrackViewModel> tracks, TagViewModel tag)
@@ -349,7 +349,7 @@ public static class Menus
             yield return item;
         }
         if (main.Tags.Count > 0) yield return new Separator();
-        yield return Item(L.T("Nuovo tag…"), "", () => main.NewTag(playlist: p));
+        yield return Item(L.T("Nuovo tag…"), "", () => _ = main.NewTag(playlist: p));
     }
 
     private static MenuItem PlaylistTagSubmenu(PlaylistViewModel p)
@@ -365,7 +365,7 @@ public static class Menus
     {
         var menu = new ContextMenu();
         foreach (var i in PlaylistTagItems(p)) menu.Items.Add(i);
-        menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "", () => App.Host.Session!.TagPlaylistSongs(p), p.Count > 0));
+        menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "", () => _ = App.Host.Session!.TagPlaylistSongs(p), p.Count > 0));
         return menu;
     }
 
@@ -387,9 +387,9 @@ public static class Menus
             menu.Items.Add(item);
         }
         if (main.Tags.Count > 0) menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Nuovo tag…"), "", () =>
+        menu.Items.Add(Item(L.T("Nuovo tag…"), "", async () =>
         {
-            if (main.NewTag() is { } t)
+            if (await main.NewTag() is { } t)
             {
                 chosen.Add(t.Id);
                 changed();
@@ -433,10 +433,10 @@ public static class Menus
         var main = App.Host.Session!;
         var menu = new ContextMenu();
         menu.Items.Add(Item(L.T("Apri"), "", () => main.OpenTag(t)));
-        menu.Items.Add(Item(L.T("Modifica…"), "", () => main.EditTag(t)));
+        menu.Items.Add(Item(L.T("Modifica…"), "", () => _ = main.EditTag(t)));
         menu.Items.Add(Item(L.T("Esporta in un file .ump…"), "", () => main.ExportPack(tag: t)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Elimina tag…"), "", () => main.DeleteTag(t)));
+        menu.Items.Add(Item(L.T("Elimina tag…"), "", () => _ = main.DeleteTag(t)));
         return menu;
     }
 
@@ -448,8 +448,8 @@ public static class Menus
     private static void AddEditItems(ContextMenu menu, TrackViewModel t)
     {
         var main = t.Main;
-        menu.Items.Add(Item(L.T("Modifica informazioni…"), "", () => main.EditTrack(t)));
-        menu.Items.Add(Item(L.T("Cambia copertina…"), "", () => main.ChangeTrackCover(t)));
+        menu.Items.Add(Item(L.T("Modifica informazioni…"), "", () => _ = main.EditTrack(t)));
+        menu.Items.Add(Item(L.T("Cambia copertina…"), "", () => _ = main.ChangeTrackCover(t)));
         menu.Items.Add(Item(L.T("Mostra nella cartella"), "", () => main.ShowInFolder(t)));
         if (t.T.SourceUrl is { } url && url.StartsWith("http"))
             menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copiato")); } catch { } }));
@@ -480,7 +480,7 @@ public static class Menus
         menu.Items.Add(TagSubmenu(tracks));
         menu.Items.Add(Item(L.F("Cerca i testi online ({0})", tracks.Count), LyricsGlyph, () => main.SearchLyrics(tracks)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.F("Elimina {0} brani…", tracks.Count), "", () => main.DeleteTracks(tracks)));
+        menu.Items.Add(Item(L.F("Elimina {0} brani…", tracks.Count), "", () => _ = main.DeleteTracks(tracks)));
         return menu;
     }
 
@@ -494,7 +494,7 @@ public static class Menus
     private static IEnumerable<object> PlaylistItems(IReadOnlyList<TrackViewModel> tracks)
     {
         var main = tracks[0].Main;
-        yield return Item(L.T("Nuova playlist…"), "", () => main.NewPlaylistWith(tracks));
+        yield return Item(L.T("Nuova playlist…"), "", () => _ = main.NewPlaylistWith(tracks));
         yield return new Separator();
         foreach (var p in main.Playlists)
         {
@@ -532,7 +532,7 @@ public static class Menus
         var main = t.Main;
         var sub = new MenuItem { Header = L.T("Aggiungi a playlist") };
         Ui.SetGlyph(sub, "");
-        sub.Items.Add(Item(L.T("Nuova playlist…"), "", () => main.NewPlaylist(t)));
+        sub.Items.Add(Item(L.T("Nuova playlist…"), "", () => _ = main.NewPlaylist(t)));
         sub.Items.Add(new Separator());
         foreach (var p in main.Playlists)
         {
@@ -561,16 +561,16 @@ public static class Menus
         menu.Items.Add(Item(L.T("Apri"), "", () => main.OpenPlaylist(p)));
         menu.Items.Add(new Separator());
         menu.Items.Add(PlaylistTagSubmenu(p));
-        menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "\uE8B3", () => main.TagPlaylistSongs(p), p.Count > 0));
+        menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "\uE8B3", () => _ = main.TagPlaylistSongs(p), p.Count > 0));
         menu.Items.Add(Item(L.T("Esporta in un file .ump…"), "", () => main.ExportPack(p)));
         if (!p.IsFavorites)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item(L.T("Rinomina…"), "", () => main.RenamePlaylist(p)));
-            menu.Items.Add(Item(L.T("Cambia immagine…"), "", () => main.ChangePlaylistCover(p)));
+            menu.Items.Add(Item(L.T("Rinomina…"), "", () => _ = main.RenamePlaylist(p)));
+            menu.Items.Add(Item(L.T("Cambia immagine…"), "", () => _ = main.ChangePlaylistCover(p)));
             if (p.HasCustomCover) menu.Items.Add(Item(L.T("Rimuovi immagine"), "", () => main.RemovePlaylistCover(p)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item(L.T("Elimina playlist…"), "", () => main.DeletePlaylist(p)));
+            menu.Items.Add(Item(L.T("Elimina playlist…"), "", () => _ = main.DeletePlaylist(p)));
         }
         return menu;
     }

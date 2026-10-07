@@ -17,8 +17,27 @@ public sealed class RadioSong
     public string Service { get; set; } = "";
     public string? Thumb { get; set; }
     public List<string> Keys { get; set; } = new();
+    // Not suggested: a song of a link you chose to hear without downloading it into the library.
+    public bool FromLink { get; set; }
 
     public static bool IsRadio(string id) => id.StartsWith(Prefix, StringComparison.Ordinal);
+
+    // A song of an analyzed link (its page is what gets downloaded into the cache, found again from there), with the
+    // title and artist a download would give it ("Janji - Heroes Tonight" on a channel: artist Janji).
+    public static RadioSong FromItem(MediaItem item)
+    {
+        var meta = SongMeta.From(item);
+        return new RadioSong
+        {
+            Id = Prefix + Ids.New(), Title = meta.Title, Artist = meta.Artist, Album = meta.Album, Duration = item.Duration ?? 0,
+            Url = item.PageUrl ?? item.Url, Service = Sites.ServiceOf(item), Thumb = Pictures(item).FirstOrDefault(),
+            Keys = SourceKeys.ForItem(item), FromLink = true,
+        };
+    }
+
+    // Its pictures, the best first (the biggest one of a video isn't always there).
+    public static List<string> Pictures(MediaItem item) =>
+        (item.CoverUrl != null ? new[] { item.CoverUrl } : Array.Empty<string>()).Concat(item.Thumbnails).Distinct().ToList();
 
     public static RadioSong From(SearchHit h) => new()
     {

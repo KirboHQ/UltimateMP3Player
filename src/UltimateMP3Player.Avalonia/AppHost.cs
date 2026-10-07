@@ -209,16 +209,15 @@ public sealed class AppHost : Observable
         OnPlaybackChanged();
     }
 
-    // Fresh styles and templates so their texts follow the language.
+    // Fresh styles and templates so their texts follow the language (the files of App.axaml).
     private static void ReloadResources()
     {
-        if (Application.Current is not { } app) return;
-        var merged = app.Resources.MergedDictionaries;
-        var sources = merged.OfType<ResourceInclude>().Select(r => r.Source).OfType<Uri>().ToList();
-        merged.Clear();
-        foreach (var s in sources) merged.Add(new ResourceInclude(s) { Source = s });
-        for (int i = 0; i < app.Styles.Count; i++)
-            if (app.Styles[i] is StyleInclude { Source: { } src }) app.Styles[i] = new StyleInclude(src) { Source = src };
+        try
+        {
+            AppResources.Reload(new[] { "avares://UltimateMP3Player/Theme.axaml", "avares://UltimateMP3Player/Views/Templates.axaml" },
+                new[] { "avares://UltimateMP3Player/Views/TemplateStyles.axaml" });
+        }
+        catch (Exception ex) { App.Log(ex); }
     }
 
     // ------------------------------------------------------------------ window
@@ -243,6 +242,7 @@ public sealed class AppHost : Observable
         Window.Activate();
         Window.Topmost = true;
         Window.Topmost = false;
+        Ui.Hidden = false;
         Session.Player.SetVisible(true);
     }
 
@@ -252,6 +252,7 @@ public sealed class AppHost : Observable
         if (_exiting) return true;
         if (Settings.CloseToTray && Tray.Available)
         {
+            Ui.Hidden = true;
             Session?.Player.SetVisible(false);
             Session?.Player.SaveState();
             Tray.ShowBackgroundHint();

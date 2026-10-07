@@ -1166,6 +1166,77 @@ public sealed class TogetherViewModel : Observable
         finally { RandomBusy = false; }
     }
 
+    // ------------------------------------------------------------------ a link, without downloading it
+
+    // The songs of a pasted link straight into the room's queue, not into your library: everyone gets them from their
+    // link into the room's cache, like the suggested songs (one you already have plays from your library).
+    public void AddFromLink(IReadOnlyList<MediaItem> items)
+    {
+        if (_s == null || items.Count == 0) return;
+        if (!CanAdd)
+        {
+            Deny(Denied(Perm.Add));
+            return;
+        }
+        var list = items.Take(Math.Max(0, TogetherSession.MaxQueue - _s.Queue.Count)).ToList();
+        if (list.Count == 0)
+        {
+            _main.Toast(L.T("La coda della stanza è piena."));
+            return;
+        }
+        _ = AddLinkAsync(list);
+    }
+
+    private async Task AddLinkAsync(List<MediaItem> items)
+    {
+        var lib = _main.Library;
+        var picks = items.Select(it =>
+        {
+            var have = lib.FindByKeys(SourceKeys.ForItem(it)) ?? (it.Source == SourceKind.Search ? lib.FindSimilar(it.Title, it.Artist, it.Duration) : null);
+            return (Item: it, Have: have != null && File.Exists(have.Path) ? have : null);
+        }).ToList();
+        var tracks = picks.Select(p => p.Have != null ? RoomTrackFor(_main.Vm(p.Have)) : LinkTrack(p.Item)).ToList();
+        var covers = await Task.Run(async () =>
+        {
+            var list = new List<byte[]?>();
+            foreach (var p in picks)
+            {
+                if (p.Have != null)
+                {
+                    list.Add(p.Have.HasCover ? JpegOf(AppPaths.TrackCover(p.Have.Id), 300) : null);
+                    continue;
+                }
+                byte[]? cover = null;
+                foreach (var url in RadioSong.Pictures(p.Item).Take(3))
+                {
+                    try
+                    {
+                        cover = SquareJpeg(await Http.GetBytesAsync(url), 300);
+                        if (cover != null) break;
+                    }
+                    catch { }
+                }
+                list.Add(cover);
+            }
+            return list;
+        });
+        if (_s == null) return;
+        for (int i = 0; i < tracks.Count; i++) _s.Add(tracks[i], covers[i], false);
+        _main.Toast(tracks.Count == 1 ? L.F("«{0}» aggiunto alla coda della stanza", tracks[0].Title) : L.F("{0} brani aggiunti alla coda della stanza", tracks.Count));
+    }
+
+    // As a download would name it ("Janji - Heroes Tonight" on a channel: artist Janji), found again from its page.
+    private static RoomTrack LinkTrack(MediaItem it)
+    {
+        var meta = SongMeta.From(it);
+        return new RoomTrack
+        {
+            Title = meta.Title, Artist = meta.Artist, Album = meta.Album, Duration = it.Duration ?? 0, SourceUrl = it.PageUrl ?? it.Url, Site = Sites.ServiceOf(it),
+            Keys = SourceKeys.ForItem(it),
+            ArtUrl = RadioSong.Pictures(it).FirstOrDefault(u => u.Length <= 250 && u.StartsWith("https://") && !u.Contains("webp")),
+        };
+    }
+
     private static RoomTrack SuggestedTrack(SearchHit h) => new()
     {
         Title = h.Title, Artist = h.Artist, Album = h.Album, Duration = h.Duration ?? 0, SourceUrl = h.Url, Site = h.Service,

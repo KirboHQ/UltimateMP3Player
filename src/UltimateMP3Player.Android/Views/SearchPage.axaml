@@ -1,0 +1,162 @@
+<!-- Cerca: your songs and the music sites (YouTube Music, SoundCloud, YouTube, Deezer); a link written or pasted here is
+     downloaded. A song found online opens on the download page, as a pasted link. -->
+<UserControl x:Class="UltimateMP3Player.Views.SearchPage"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Margin="16,12,16,8">
+            <TextBlock Text="{local:T Cerca}" Classes="page-title" Margin="2,0,0,12"/>
+            <Border Height="50" CornerRadius="25" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                    Padding="16,0,4,0">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <TextBlock Text="{local:Icon E721}" Classes="glyph" Foreground="{StaticResource SubTextBrush}" FontSize="17"/>
+                    <TextBox x:Name="Box" Grid.Column="1" Theme="{StaticResource BareTextBox}" FontSize="15.5" Margin="12,0,4,0"
+                             Watermark="{local:T 'Brani, artisti, oppure un link'}"/>
+                    <Button x:Name="ClearButton" Grid.Column="2" Theme="{StaticResource TouchIcon}" Width="40" Height="40" FontSize="13" Content="{local:Icon E711}"
+                            Click="Clear_Click" IsVisible="False"/>
+                    <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Width="42" Height="42" FontSize="17" Content="{local:Icon E77F}" Click="Paste_Click"/>
+                </Grid>
+            </Border>
+            <!-- a link: download it -->
+            <Button x:Name="DownloadLink" Theme="{StaticResource TouchPrimary}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,12,0,0"
+                    IsVisible="False" Click="Download_Click">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E896}" Classes="glyph"/>
+                    <TextBlock Text="{local:T 'Scarica questo link'}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <!-- your songs / the music sites -->
+            <Border x:Name="Tabs" Margin="0,12,0,0" CornerRadius="22" Padding="4" Background="{StaticResource SurfaceBrush}" MaxWidth="560"
+                    IsVisible="False">
+                <UniformGrid Rows="1">
+                    <RadioButton Theme="{StaticResource TouchSegment}" GroupName="SearchTabs" local:Ui.Glyph="&#xE8F1;" Content="{Binding LocalTabText}"
+                                 IsChecked="{Binding LocalMode, Mode=OneWay}" Command="{Binding ShowLocalCommand}"/>
+                    <RadioButton Theme="{StaticResource TouchSegment}" GroupName="SearchTabs" local:Ui.Glyph="&#xE774;" Content="{Binding OnlineTabText}" Margin="4,0,0,0"
+                                 IsChecked="{Binding OnlineMode, Mode=OneWay}" Command="{Binding ShowOnlineCommand}" IsVisible="{Binding OnlineEnabled}"/>
+                </UniformGrid>
+            </Border>
+        </StackPanel>
+
+        <Panel>
+            <!-- nothing written yet -->
+            <ScrollViewer x:Name="Intro">
+                <StackPanel Margin="20,20,20,24">
+                    <TextBlock Text="{local:T 'Cerca nei tuoi brani e online'}" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Classes="hint" Margin="0,8,0,0" FontSize="14"
+                               Text="{local:T 'Scrivi il titolo o l\'artista: trovi i brani che hai già e quelli dei siti di musica, da scaricare con un tocco. Puoi anche incollare il link di un brano o di una playlist.'}"/>
+                    <TextBlock Classes="hint" Margin="0,14,0,0" FontSize="14"
+                               Text="{local:T 'Da YouTube, Spotify, SoundCloud e quasi ogni altra app: premi Condividi e scegli «Scarica con Ultimate MP3 Player».'}"/>
+                    <TextBlock Classes="hint" Margin="0,14,0,0" FontSize="14" Text="{local:T 'Con #nome trovi i brani con quel tag.'}"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- your songs -->
+            <ListBox x:Name="LocalList" Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}" IsVisible="False">
+                <ListBox.DataTemplates>
+                    <DataTemplate DataType="vm:TrackRow">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TrackRowTemplate}"/>
+                    </DataTemplate>
+                    <DataTemplate DataType="vm:PlaylistViewModel">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistRowTemplate}"/>
+                    </DataTemplate>
+                    <DataTemplate DataType="views:ListNote">
+                        <StackPanel Margin="32,40,32,24" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding Title}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Text}" Classes="hint" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.DataTemplates>
+            </ListBox>
+
+            <!-- the music sites -->
+            <DockPanel x:Name="OnlinePane" IsVisible="False">
+                <StackPanel DockPanel.Dock="Top" Margin="16,0,16,6">
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="{Binding HasServiceTabs}"
+                                  IsScrollChainingEnabled="False">
+                        <ItemsControl ItemsSource="{Binding ServiceTabs}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <ToggleButton Theme="{StaticResource Chip}" IsChecked="{Binding IsSelected, Mode=OneWay}" CommandParameter="{Binding}"
+                                                  Command="{Binding $parent[views:SearchPage].DataContext.SelectServiceCommand}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="8" Height="8" Fill="{Binding Brush}" Margin="0,0,7,0" VerticalAlignment="Center" IsVisible="{Binding HasDot}"/>
+                                            <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Count}" Foreground="{StaticResource MutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <StackPanel Orientation="Horizontal" Margin="2,8,0,0" IsVisible="{Binding OnlineStatus, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Ellipse Classes="spinner" Width="14" Height="14" StrokeThickness="2.5" Margin="0,0,8,0" VerticalAlignment="Center" IsVisible="{Binding OnlineBusy}"/>
+                        <TextBlock Text="{Binding OnlineStatus}" Classes="hint" FontSize="12.5" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+                <Panel>
+                    <ListBox Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}" ItemsSource="{Binding OnlineHits}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="vm:OnlineHitViewModel">
+                                <Border Classes="row" Padding="16,7,12,7" views:Touch.Tap="{Binding DownloadCommand}">
+                                    <Grid ColumnDefinitions="52,*,Auto">
+                                        <Panel Width="52" Height="52">
+                                            <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
+                                                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="18" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                                            </Border>
+                                            <Border CornerRadius="6" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                                <Border.Background>
+                                                    <ImageBrush Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                                                </Border.Background>
+                                            </Border>
+                                        </Panel>
+                                        <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Service}" FontSize="12" Margin="6,0,10,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding DurationText}" FontSize="12" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <Border CornerRadius="7" Padding="6,0" Margin="10,0,0,0" Background="#1E3A2F" VerticalAlignment="Center" IsVisible="{Binding InLibrary}">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="9" Foreground="{StaticResource SuccessBrush}"/>
+                                                        <TextBlock Text="{local:T 'nella libreria'}" FontSize="11" FontWeight="SemiBold" Margin="4,0,0,1" Foreground="{StaticResource SuccessBrush}"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <Border Grid.Column="2" Width="40" Height="40" CornerRadius="20" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
+                                            <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="16" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center"/>
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="28,40,28,0" IsVisible="{Binding NoOnlineResults}">
+                        <TextBlock Text="{Binding NoOnlineText}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                        <TextBlock Text="{local:T 'Prova con il titolo e l\'artista, oppure incolla direttamente il link del brano.'}" Classes="hint"
+                                   Margin="0,8,0,0" TextAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,48,0,0" Orientation="Horizontal">
+                        <StackPanel.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                <Binding Path="OnlineBusy"/>
+                                <Binding Path="OnlineHits.Count" Converter="{StaticResource IsZero}"/>
+                            </MultiBinding>
+                        </StackPanel.IsVisible>
+                        <Ellipse Classes="spinner" Width="20" Height="20" StrokeThickness="3"/>
+                        <TextBlock Text="{local:T 'Cerco online…'}" FontSize="14" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                    </StackPanel>
+                </Panel>
+            </DockPanel>
+        </Panel>
+    </DockPanel>
+</UserControl>

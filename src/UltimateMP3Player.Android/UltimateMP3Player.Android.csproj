@@ -1,0 +1,130 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Ultimate MP3 Player for Android: the same app as the Windows, Linux and macOS ones, drawn with Avalonia for a phone.
+       The view models, the audio engine and the services that don't depend on the system are the Windows project's own
+       files, the views' building blocks (theme, waveform, lyrics, video...) the Linux/macOS project's (linked below); here
+       only the phone's pages and what talks to Android (the player's service with the notification and the lock screen,
+       AudioTrack, the engines that come inside the app, sharing, updates).
+       Built with .NET 10 (build-android.ps1): the native engines come from the youtubedl-android libraries, fetched by
+       tools\android-deps.ps1 into Engines\ (not in git, too big). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>UltimateMP3Player</AssemblyName>
+    <RootNamespace>UltimateMP3Player</RootNamespace>
+    <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
+    <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
+    <!-- Keep equal to the other projects; the version code is 3.5.0 → 30500 (per-ABI packages add a digit in front). -->
+    <Version>3.5.0</Version>
+    <ApplicationDisplayVersion>3.5.0</ApplicationDisplayVersion>
+    <ApplicationVersion>30500</ApplicationVersion>
+    <Product>Ultimate MP3 Player</Product>
+    <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
+    <Description>Offline music player that downloads songs and playlists from almost any site</Description>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- CA1416: Android APIs newer than the minimum are guarded by version checks. CS0618: Avalonia/Android obsolete APIs still
+         in use (the same as the Linux/macOS app). The DJ and Listen together view models come along but aren't used. -->
+    <NoWarn>$(NoWarn);CA1416;CA1422;AVLN3001;CS0618;XA0141;XA4211</NoWarn>
+    <DefineConstants>$(DefineConstants);AVALONIA;ANDROID_APP</DefineConstants>
+    <RuntimeIdentifiers>android-arm64;android-arm;android-x64</RuntimeIdentifiers>
+    <!-- One processor at a time (build-android.ps1: -p:AndroidRid=android-arm…). Set here and not as RuntimeIdentifier on
+         the command line, which would reach the Core library too: its restore would look for a runtime that doesn't exist
+         for 32-bit ARM. -->
+    <RuntimeIdentifiers Condition="'$(AndroidRid)' != ''">$(AndroidRid)</RuntimeIdentifiers>
+    <RuntimeIdentifier Condition="'$(AndroidRid)' != ''">$(AndroidRid)</RuntimeIdentifier>
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <!-- One package per processor (arm64 phones, older 32-bit ones, x86_64 emulators), each with only its engines:
+         build-android.ps1 builds once per RuntimeIdentifier (AndroidCreatePackagePerAbi no longer works with .NET 10). -->
+    <AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">true</AndroidEnableProfiledAot>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+    <AndroidLinkMode Condition="'$(Configuration)' == 'Release'">SdkOnly</AndroidLinkMode>
+
+    <!-- Same as the Windows project. -->
+    <GitHubRepo>KirboHQ/UltimateMP3Player</GitHubRepo>
+    <DiscordAppId>1553571296665804911</DiscordAppId>
+    <EnginesDir>$(MSBuildThisFileDirectory)Engines\</EnginesDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="GitHubRepo" Value="$(GitHubRepo)" />
+    <AssemblyMetadata Include="DiscordAppId" Value="$(DiscordAppId)" />
+  </ItemGroup>
+
+  <!-- Android's own Application, Button, ScrollView... would clash with Avalonia's: Android types are written in full. -->
+  <ItemGroup>
+    <Using Remove="Android.App" />
+    <Using Remove="Android.Widget" />
+    <Using Remove="Android.OS.Bundle" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Android" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+    <PackageReference Include="NAudio.Core" Version="2.2.1" />
+    <PackageReference Include="NLayer.NAudioSupport" Version="2.0.1" />
+    <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UltimateMP3Player.Core\UltimateMP3Player.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Shared with the Windows app. -->
+  <ItemGroup>
+    <Compile Include="..\UltimateMP3Player\ViewModels\*.cs" Link="Shared\ViewModels\%(Filename)%(Extension)" />
+    <Compile Include="..\UltimateMP3Player\Audio\Mixer.cs" Link="Shared\Audio\Mixer.cs" />
+    <Compile Include="..\UltimateMP3Player\Audio\Sources.cs" Link="Shared\Audio\Sources.cs" />
+    <Compile Include="..\UltimateMP3Player\Audio\AudioEngine.cs" Link="Shared\Audio\AudioEngine.cs" />
+    <Compile Include="..\UltimateMP3Player\Audio\DjEngine.cs" Link="Shared\Audio\DjEngine.cs" />
+    <Compile Include="..\UltimateMP3Player\Services\AppInfo.cs" Link="Shared\Services\AppInfo.cs" />
+    <Compile Include="..\UltimateMP3Player\Services\LyricsService.cs" Link="Shared\Services\LyricsService.cs" />
+  </ItemGroup>
+
+  <!-- Shared with the Linux/macOS app. -->
+  <ItemGroup>
+    <Compile Include="..\UltimateMP3Player.Avalonia\Shims\WpfShims.cs" Link="Shared\Avalonia\WpfShims.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Infrastructure.cs" Link="Shared\Avalonia\Infrastructure.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Themes.cs" Link="Shared\Avalonia\Themes.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Audio\Decoders.cs" Link="Shared\Avalonia\Decoders.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\Controls.cs" Link="Shared\Avalonia\Controls.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\Marquee.cs" Link="Shared\Avalonia\Marquee.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\Tweener.cs" Link="Shared\Avalonia\Tweener.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\WaveformBar.cs" Link="Shared\Avalonia\WaveformBar.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\LyricsView.cs" Link="Shared\Avalonia\LyricsView.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\LyricsCaptions.cs" Link="Shared\Avalonia\LyricsCaptions.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\VideoView.cs" Link="Shared\Avalonia\VideoView.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\CoverSheen.cs" Link="Shared\Avalonia\CoverSheen.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\EqCurve.cs" Link="Shared\Avalonia\EqCurve.cs" />
+    <AvaloniaXaml Include="..\UltimateMP3Player.Avalonia\Theme.axaml" Link="Theme.axaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="..\UltimateMP3Player.Avalonia\Assets\Fonts\**" Link="Assets\Fonts\%(RecursiveDir)%(Filename)%(Extension)" />
+    <AvaloniaResource Include="..\UltimateMP3Player.Avalonia\Assets\app-256.png" Link="Assets\app-256.png" />
+    <AvaloniaResource Include="..\UltimateMP3Player.Avalonia\Assets\pack-256.png" Link="Assets\pack-256.png" />
+  </ItemGroup>
+
+  <!-- The engines: Python (with yt-dlp), ffmpeg and QuickJS for each processor, and the yt-dlp program itself. -->
+  <ItemGroup>
+    <!-- (the SDK would also pick them up by itself from the folders named like the processors: once, explicitly, only for the
+         processors being built) -->
+    <AndroidNativeLibrary Remove="$(EnginesDir)**" />
+    <AndroidNativeLibrary Include="$(EnginesDir)arm64-v8a\*.so" Abi="arm64-v8a" Condition="'$(RuntimeIdentifier)' == '' or '$(RuntimeIdentifier)' == 'android-arm64'" />
+    <AndroidNativeLibrary Include="$(EnginesDir)armeabi-v7a\*.so" Abi="armeabi-v7a" Condition="'$(RuntimeIdentifier)' == '' or '$(RuntimeIdentifier)' == 'android-arm'" />
+    <AndroidNativeLibrary Include="$(EnginesDir)x86_64\*.so" Abi="x86_64" Condition="'$(RuntimeIdentifier)' == '' or '$(RuntimeIdentifier)' == 'android-x64'" />
+    <AndroidAsset Include="$(EnginesDir)yt-dlp" Link="Assets\yt-dlp" Condition="Exists('$(EnginesDir)yt-dlp')" />
+  </ItemGroup>
+
+  <Target Name="CheckEngines" BeforeTargets="Build">
+    <Error Condition="!Exists('$(EnginesDir)arm64-v8a\libpython.so')" Text="The Android engines are missing: run tools\android-deps.ps1 (build-android.ps1 does it)." />
+  </Target>
+
+</Project>

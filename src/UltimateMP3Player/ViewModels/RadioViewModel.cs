@@ -25,7 +25,7 @@ public sealed class RadioItemViewModel : Observable
     public bool IsBusy => State == FileState.Downloading;
     public bool IsFailed => State == FileState.Failed;
     public string PctText => IsBusy ? $"{Pct:0}%" : "";
-    public string FromText => L.F("Consigliato da {0}", Song.Service);
+    public string FromText => Song.FromLink ? L.F("Da {0}, non salvato", Song.Service) : L.F("Consigliato da {0}", Song.Service);
     public string StateTip => State switch
     {
         FileState.Ready => FromText + " · " + L.T("pronto"),
@@ -94,7 +94,8 @@ public sealed class RadioViewModel : Observable
 
     public static RadioSeed SeedOf(Track t) => new(t.Title, t.Artist, t.Keys.ToList());
 
-    private RadioItemViewModel Add(RadioSong s)
+    // pictures: where its cover may be, in order (otherwise its Thumb).
+    private RadioItemViewModel Add(RadioSong s, IReadOnlyList<string>? pictures = null)
     {
         var t = new Track
         {
@@ -104,8 +105,33 @@ public sealed class RadioViewModel : Observable
         };
         var item = new RadioItemViewModel(s, t);
         _items[s.Id] = item;
-        if (!t.HasCover && s.Thumb != null) _ = LoadCover(item);
+        if (!t.HasCover && s.Thumb != null) _ = LoadCover(item, pictures ?? new[] { s.Thumb });
         return item;
+    }
+
+    // ------------------------------------------------------------------ a link heard without downloading it
+
+    // The songs of a link to hear without saving them ("Listen without downloading"): in the queue like the suggested
+    // ones, each downloaded into the cache just before its turn. One you already have plays from the library, one already
+    // in the queue keeps its id. The ids to play, in order.
+    public List<string> AddFromLink(IEnumerable<MediaItem> items)
+    {
+        var lib = _main.Library;
+        var ids = new List<string>();
+        foreach (var it in items)
+        {
+            var song = RadioSong.FromItem(it);
+            var have = lib.FindByKeys(song.Keys) ?? (it.Source == SourceKind.Search ? lib.FindSimilar(song.Title, song.Artist, song.Duration) : null);
+            if (have != null && File.Exists(have.Path)) ids.Add(have.Id);
+            else if (_items.Values.FirstOrDefault(i => i.Song.Keys.Intersect(song.Keys, StringComparer.OrdinalIgnoreCase).Any()) is { } same) ids.Add(same.Id);
+            else
+            {
+                // (a file already in the cache, heard in a room or as a suggestion, is found when its turn comes)
+                Add(song, RadioSong.Pictures(it));
+                ids.Add(song.Id);
+            }
+        }
+        return ids;
     }
 
     // ------------------------------------------------------------------ asking for suggestions
@@ -245,30 +271,35 @@ public sealed class RadioViewModel : Observable
 
     // ------------------------------------------------------------------ covers
 
-    // The site's picture, made square like the covers of the library.
-    private async Task LoadCover(RadioItemViewModel item)
+    // The site's picture, made square like the covers of the library: the first of these that can be had.
+    private async Task LoadCover(RadioItemViewModel item, IReadOnlyList<string> pictures)
     {
         await CoverGate.WaitAsync();
         try
         {
             if (!_items.ContainsKey(item.Id)) return;
             var path = AppPaths.TrackCover(item.Id);
-            var url = item.Song.Thumb!;
-            bool ok = await Task.Run(async () =>
+            string? got = await Task.Run(async () =>
             {
                 var tmp = Path.Combine(AppPaths.TempDir, item.Id + ".thumb");
-                try
+                foreach (var url in pictures.Take(4))
                 {
-                    await File.WriteAllBytesAsync(tmp, await Http.GetBytesAsync(url));
-                    return await AudioAnalysis.MakeCoverFromImageAsync(tmp, path);
+                    try
+                    {
+                        await File.WriteAllBytesAsync(tmp, await Http.GetBytesAsync(url));
+                        if (await AudioAnalysis.MakeCoverFromImageAsync(tmp, path)) return url;
+                    }
+                    catch { }
+                    finally
+                    {
+                        try { File.Delete(tmp); } catch { }
+                    }
                 }
-                catch { return false; }
-                finally
-                {
-                    try { File.Delete(tmp); } catch { }
-                }
+                return null;
             });
-            if (!ok) return;
+            if (got == null) return;
+            // The one that worked, for the next time.
+            item.Song.Thumb = got;
             if (!_items.ContainsKey(item.Id))
             {
                 try { File.Delete(path); } catch { }
