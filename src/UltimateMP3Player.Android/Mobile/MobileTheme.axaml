@@ -322,6 +322,41 @@
         </Style>
     </ControlTheme>
 
+    <!-- A search field as tall as a finger: the magnifier in front, an × to empty it once something is written. -->
+    <ControlTheme x:Key="TouchSearchBox" TargetType="TextBox" BasedOn="{StaticResource BareTextBox}">
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="24" Padding="16,0,4,0" Height="48">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Name="Ico" Text="{local:Icon E721}" FontFamily="{StaticResource IconFont}" FontSize="17"
+                                   VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                        <TextBlock Name="Placeholder" Grid.Column="1" Text="{TemplateBinding Watermark}" Foreground="{StaticResource MutedBrush}"
+                                   VerticalAlignment="Center" Margin="13,0,0,0" IsHitTestVisible="False" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                        <ScrollViewer Name="PART_ScrollViewer" Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden" AllowAutoHide="False">
+                            <TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}" CaretIndex="{TemplateBinding CaretIndex}"
+                                           SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+                                           SelectionBrush="{TemplateBinding SelectionBrush}" SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                                           CaretBrush="{TemplateBinding CaretBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </ScrollViewer>
+                        <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Width="40" Height="40" FontSize="13" Content="{local:Icon E711}"
+                                Command="{Binding $parent[TextBox].Clear}" Focusable="False"
+                                IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:focus-within /template/ Border#Bd">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="^:focus-within /template/ TextBlock#Ico">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        </Style>
+    </ControlTheme>
+
     <ControlTheme x:Key="TouchPrimary" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
         <Setter Property="Height" Value="48"/>
         <Setter Property="Padding" Value="22,0"/>

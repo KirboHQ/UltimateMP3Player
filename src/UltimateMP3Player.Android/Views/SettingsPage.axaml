@@ -1,5 +1,7 @@
 <!-- The settings that make sense on a phone (the computer apps' ones, without the window, the tray, Discord, the smooth
-     scrolling, the cookies of the browsers, the DJ and Listen together). A row with an arrow opens its choices. -->
+     scrolling, the DJ and Listen together; instead of a browser's cookies, the logins made inside the app). A row with an
+     arrow opens its choices. The search box under the title keeps only the cards and the rows that match (Keywords: more
+     words that find a card). -->
 <UserControl x:Class="UltimateMP3Player.Views.SettingsPage"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -31,10 +33,12 @@
 
     <ScrollViewer x:Name="Scroller">
         <StackPanel Margin="16,12,16,28">
-            <TextBlock Text="{local:T Impostazioni}" Classes="page-title" Margin="2,0,0,16"/>
+            <TextBlock Text="{local:T Impostazioni}" Classes="page-title" Margin="2,0,0,14"/>
+            <TextBox x:Name="SearchBox" Theme="{StaticResource TouchSearchBox}" Watermark="{local:T 'Cerca nelle impostazioni'}" Margin="0,0,0,16"/>
 
+            <StackPanel x:Name="Cards">
             <!-- ============================================================ profile -->
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'profilo profili utente nome foto avatar chi ascolta avvio'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding ManageProfilesCommand}">
                         <Grid ColumnDefinitions="Auto,*">
@@ -42,11 +46,7 @@
                                 <Ellipse Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
                                 <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileInitial}" Foreground="White" FontWeight="Bold" FontSize="18"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Ellipse Margin="2" IsVisible="{Binding $parent[views:MainView].DataContext.ProfileAvatar, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                    <Ellipse.Fill>
-                                        <ImageBrush Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}" Stretch="UniformToFill"/>
-                                    </Ellipse.Fill>
-                                </Ellipse>
+                                <views:CoverImage Margin="2" CornerRadius="21" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
                             </Panel>
                             <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileName}" FontSize="16.5" FontWeight="SemiBold"/>
@@ -68,7 +68,7 @@
 
             <!-- ============================================================ appearance -->
             <TextBlock Text="{local:T ASPETTO}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'aspetto tema colori lingua inglese italiano animazioni movimento copertina 3d'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Tag="Language" Click="Choose_Click">
                         <StackPanel>
@@ -113,7 +113,7 @@
 
             <!-- ============================================================ playback -->
             <TextBlock Text="{local:T RIPRODUZIONE}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'riproduzione audio suono equalizzatore eq bassi alti volume normalizza crossfade sfumatura radio suggeriti'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Click="Equalizer_Click">
                         <StackPanel>
@@ -168,7 +168,7 @@
 
             <!-- ============================================================ lyrics -->
             <TextBlock Text="{local:T TESTI}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'testi parole lyrics karaoke lrclib sincronizzati'}">
                 <StackPanel>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoLyrics}">
                         <StackPanel>
@@ -185,7 +185,7 @@
 
             <!-- ============================================================ online search -->
             <TextBlock Text="{local:T 'RICERCA ONLINE'}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'ricerca cerca online internet siti youtube music soundcloud deezer ordine'}">
                 <StackPanel>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding OnlineSearch}">
                         <StackPanel>
@@ -225,8 +225,16 @@
 
             <!-- ============================================================ downloads -->
             <TextBlock Text="{local:T DOWNLOAD}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'download scaricare formato mp3 m4a opus flac qualità video cartella musica memoria'}">
                 <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Click="Logins_Click" views:SettingsPage.Keywords="{local:T 'accesso accedi account login password cookie privati abbonati età youtube soundcloud instagram'}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Accessi ai siti'}" Classes="setting"/>
+                            <TextBlock x:Name="LoginsValue" Classes="value"/>
+                            <TextBlock Text="{local:T 'Per scaricare i contenuti privati, per abbonati o con limite d\'età: accedi al sito dall\'app'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
                     <Button Theme="{StaticResource SettingRow}" Tag="AudioFormat" Click="Choose_Click">
                         <StackPanel>
                             <TextBlock Text="{local:T 'Formato dell\'audio'}" Classes="setting"/>
@@ -266,7 +274,7 @@
 
             <!-- ============================================================ library -->
             <TextBlock Text="{local:T LIBRERIA}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'libreria brani importa esporta pacchetto ump file cartella copia backup amico artista nome'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportFilesCommand}">
                         <StackPanel>
@@ -301,7 +309,7 @@
 
             <!-- ============================================================ statistics -->
             <TextBlock Text="{local:T STATISTICHE}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'statistiche ascolti tempo più ascoltati'}">
                 <Button Theme="{StaticResource SettingRow}" Command="{Binding OpenStatsCommand}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Statistiche di ascolto'}" Classes="setting"/>
@@ -312,7 +320,7 @@
 
             <!-- ============================================================ updates -->
             <TextBlock Text="{local:T AGGIORNAMENTI}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'aggiornamenti versione nuova github motori yt-dlp ffmpeg'}">
                 <StackPanel>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoUpdateApp}">
                         <StackPanel>
@@ -343,7 +351,7 @@
 
             <!-- ============================================================ storage -->
             <TextBlock Text="{local:T MEMORIA}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'memoria spazio cache suggeriti svuota'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Tag="TogetherCacheSize" Click="Choose_Click">
                         <StackPanel>
@@ -359,7 +367,7 @@
 
             <!-- ============================================================ help -->
             <TextBlock Text="{local:T 'AIUTO E SUPPORTO'}" Classes="card-title"/>
-            <Border Classes="card">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'aiuto supporto problema errore bug idea github termini'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding ReportProblemCommand}">
                         <TextBlock Text="{local:T 'Segnala un problema'}" Classes="setting"/>
@@ -378,7 +386,12 @@
                     </Button>
                 </StackPanel>
             </Border>
-            <TextBlock Text="Ultimate MP3 Player" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}" FontSize="12.5" Margin="0,8,0,0"/>
+            </StackPanel>
+            <StackPanel x:Name="NoResults" IsVisible="False" Margin="12,36,12,24" HorizontalAlignment="Center">
+                <TextBlock Text="{local:T 'Nessuna impostazione trovata'}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center"/>
+                <TextBlock Text="{local:T 'Prova con altre parole.'}" Classes="hint" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0"/>
+            </StackPanel>
+            <TextBlock x:Name="Footer" Text="Ultimate MP3 Player" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}" FontSize="12.5" Margin="0,8,0,0"/>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

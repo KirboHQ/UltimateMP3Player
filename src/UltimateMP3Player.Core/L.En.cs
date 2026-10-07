@@ -1565,5 +1565,60 @@ public static partial class L
             "you alone are responsible for what you download, how you use it and what you share with others (.ump packs included), in compliance with the copyright laws of your country and the terms of the sites you download from;",
         ["Sul telefono l'app non usa il tuo accesso ai siti: i contenuti privati, per abbonati o con limite d'età non si possono scaricare. Se è il controllo anti-bot di YouTube, riprova più tardi o con un'altra connessione."] =
             "On the phone the app doesn't use your sign-in to the sites: private, members-only or age-restricted content can't be downloaded. If it's YouTube's bot check, try again later or on another connection.",
+
+        // 3.5.2: the phone's logins to the sites, the search in the settings
+        ["Accessi ai siti"] = "Sign in to sites",
+        ["Accedi a un sito nella sua pagina, dentro l'app, come fai di solito: i download useranno il tuo account, per i contenuti privati, per abbonati o con limite d'età. La password la vede solo il sito."] =
+            "Sign in to a site on its own page, inside the app, as you always do: downloads will use your account, for private, members-only or age-restricted content. Only the site sees your password.",
+        ["Usa i miei accessi per scaricare"] = "Use my sign-ins for downloads",
+        ["Spento, i download vanno senza account anche se hai fatto l'accesso"] = "Off, downloads go without an account even if you're signed in",
+        ["Per YouTube meglio un account secondario: Google può limitare gli account usati per scaricare."] =
+            "For YouTube, a secondary account is better: Google may restrict accounts used for downloading.",
+        ["Un altro sito…"] = "Another site…",
+        ["Un altro sito"] = "Another site",
+        ["Indirizzo della pagina in cui accedere"] = "Address of the sign-in page",
+        ["Indirizzo non valido."] = "Not a valid address.",
+        ["Esci da tutti i siti"] = "Sign out of all sites",
+        ["Esci da tutti i siti?"] = "Sign out of all sites?",
+        ["L'app dimentica gli accessi fatti nelle pagine dei siti; i download andranno senza account."] =
+            "The app forgets the sign-ins made on the sites' pages; downloads will go without an account.",
+        ["Accesso fatto"] = "Signed in",
+        ["Accesso non fatto"] = "Not signed in",
+        ["Accedi"] = "Sign in",
+        ["Disconnetti"] = "Sign out",
+        ["Esci da {0}?"] = "Sign out of {0}?",
+        ["I download da questo sito andranno senza il tuo account."] = "Downloads from this site will go without your account.",
+        ["Accedi a {0}"] = "Sign in to {0}",
+        ["Accedi al sito"] = "Sign in to the site",
+        ["Accedi come fai di solito, poi tocca Fatto"] = "Sign in as you always do, then tap Done",
+        ["Fatto"] = "Done",
+        ["Accesso fatto: tocca Fatto per tornare all'app"] = "Signed in: tap Done to go back to the app",
+        ["Nessun sito della lista (forse un altro)"] = "None of the listed sites (maybe another one)",
+        ["non usati (spento)"] = "not used (off)",
+        ["Per scaricare i contenuti privati, per abbonati o con limite d'età: accedi al sito dall'app"] =
+            "To download private, members-only or age-restricted content: sign in to the site from the app",
+        ["Accedi al sito nelle impostazioni (Download › Accessi ai siti)."] = "Sign in to the site in Settings (Downloads › Sign in to sites).",
+        ["L'app usa già i tuoi accessi: controlla di aver fatto l'accesso a questo sito. Se è il controllo anti-bot di YouTube, riprova più tardi o con un'altra connessione."] =
+            "The app already uses your sign-ins: check that you're signed in to this site. If it's YouTube's bot check, try again later or on another connection.",
+        ["Per i contenuti privati, per abbonati o con limite d'età accedi al sito dall'app: i download useranno il tuo account."] =
+            "For private, members-only or age-restricted content, sign in to the site from the app: downloads will use your account.",
+        ["Nessuna impostazione trovata"] = "No settings found",
+        ["Prova con altre parole."] = "Try other words.",
+        ["profilo profili utente nome foto avatar chi ascolta avvio"] = "profile profiles user name photo picture avatar who's listening startup",
+        ["aspetto tema colori lingua inglese italiano animazioni movimento copertina 3d"] = "appearance theme colours colors language english italian animations motion cover 3d",
+        ["riproduzione audio suono equalizzatore eq bassi alti volume normalizza crossfade sfumatura radio suggeriti"] =
+            "playback audio sound equalizer eq bass treble volume normalize crossfade fade radio suggested",
+        ["testi parole lyrics karaoke lrclib sincronizzati"] = "lyrics words karaoke lrclib synced",
+        ["ricerca cerca online internet siti youtube music soundcloud deezer ordine"] = "search online internet sites youtube music soundcloud deezer order",
+        ["download scaricare formato mp3 m4a opus flac qualità video cartella musica memoria"] =
+            "downloads download format mp3 m4a opus flac quality video folder music storage",
+        ["accesso accedi account login password cookie privati abbonati età youtube soundcloud instagram"] =
+            "sign in signed account login password cookies private members age youtube soundcloud instagram",
+        ["libreria brani importa esporta pacchetto ump file cartella copia backup amico artista nome"] =
+            "library songs import export pack ump file folder copy backup friend artist name",
+        ["statistiche ascolti tempo più ascoltati"] = "statistics plays listening time most played",
+        ["aggiornamenti versione nuova github motori yt-dlp ffmpeg"] = "updates version new github engines yt-dlp ffmpeg",
+        ["memoria spazio cache suggeriti svuota"] = "storage space cache suggested clear empty",
+        ["aiuto supporto problema errore bug idea github termini"] = "help support problem error bug idea github terms",
     };
 }

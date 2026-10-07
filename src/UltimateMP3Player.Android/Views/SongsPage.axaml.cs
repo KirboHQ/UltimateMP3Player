@@ -190,12 +190,15 @@ public partial class SongsPage : UserControl, IPage
         }
     }
 
-    // The title in the bar shows once the big one has scrolled away.
+    // The title in the bar shows once the big one has scrolled away (at every frame of a scroll: the list's own scroller,
+    // found once).
+    private ScrollViewer? _scroller;
+
     private void OnScrolled()
     {
         if (Embedded || FilterBox.IsVisible) return;
-        var sv = List.FindDescendantOfType<ScrollViewer>();
-        double y = sv?.Offset.Y ?? 0;
+        if (_scroller?.GetVisualRoot() == null) _scroller = List.FindDescendantOfType<ScrollViewer>();
+        double y = _scroller?.Offset.Y ?? 0;
         BarTitle.Opacity = Math.Clamp((y - 120) / 80, 0, 1);
     }
 

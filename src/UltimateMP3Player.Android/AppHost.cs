@@ -206,24 +206,33 @@ public sealed class AppHost : Observable
 
     private bool _visible = true;
 
+    private IDisposable? _awayTimer;
+
     public void SetVisible(bool visible)
     {
         if (_visible == visible) return;
         _visible = visible;
+        // Away, the sound waits in a much bigger buffer (first of all: it fills while the rest happens).
+        TrackOut.Background = !visible;
         Ui.Hidden = !visible;
         Session?.Player.SetVisible(visible);
-        if (!visible)
+        _awayTimer?.Dispose();
+        _awayTimer = null;
+        if (visible) return;
+        // Saved a moment later, once the bigger buffer is full: writing the library makes garbage, and the collector
+        // stops every thread of the app for a while, the sound's too.
+        _awayTimer = DispatcherTimer.RunOnce(() =>
         {
+            _awayTimer = null;
+            if (_visible) return;
             Session?.Player.SaveState();
             Settings.Save();
             try { Library.Flush(); } catch { }
             Profile.FlushAll();
-            Dispatcher.UIThread.Post(() =>
-            {
-                Images.Release();
-                GC.Collect(2, GCCollectionMode.Optimized, false);
-            }, DispatcherPriority.ApplicationIdle);
-        }
+            Images.Release();
+            // Memory given back while nothing plays (playing, it would stop the sound for as long as it takes).
+            if (Session?.Player.IsPlaying != true) GC.Collect(2, GCCollectionMode.Optimized, false);
+        }, TimeSpan.FromMilliseconds(400));
     }
 
     // A link shared from another app (YouTube, Spotify...), a .ump pack opened, the notification tapped.

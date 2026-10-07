@@ -42,16 +42,30 @@ public static class AudioPlatform
 }
 
 // A NAudio wave player on an AudioTrack: a thread of its own reads the mix and writes it, blocking while the track's
-// buffer (about latencyMs, what AudioEngine.LatencyMs assumes the output holds) is full or the track is paused.
-public sealed class TrackOut : IWavePlayer
+// buffer is full or the track is paused. The buffer holds latencyMs of sound while the app is on screen (a tap on pause
+// or on the seek bar is heard quickly); while it's away (the screen off, another app in front) it grows to BackgroundMs:
+// a stop of the app's code (the garbage collector, a phone slowed down with the screen off) no longer reaches the speaker,
+// and the phone wakes up less often. A jump, another song or a pause throw away what's waiting (IOutputLatency), so they
+// are heard at once all the same; what it holds is measured, so the position stays the one heard.
+public sealed class TrackOut : IWavePlayer, IOutputLatency
 {
+    private const int BackgroundMs = 1000;
+    private static readonly List<TrackOut> Live = new();
+    private static bool _background;
+
     private readonly int _latencyMs;
     private readonly ManualResetEventSlim _go = new(false);
+    private readonly object _sync = new();
     private IWaveProvider? _source;
     private AudioTrack? _track;
     private Thread? _thread;
     private volatile bool _closed;
     private volatile bool _paused = true;
+    private int _rate = 48000;
+    // Frames written since the last flush (the head of the track counts from there too) and how many flushes so far: a
+    // write that a flush overtook doesn't count.
+    private uint _written;
+    private int _flushes;
 
     public TrackOut(int latencyMs) => _latencyMs = latencyMs;
 
@@ -64,25 +78,54 @@ public sealed class TrackOut : IWavePlayer
     // The audio focus asks to talk over something (a navigation voice): quieter for a while.
     public static float Duck { get; set; } = 1f;
 
+    // The app is away (AppHost.SetVisible): every output keeps more sound ready.
+    public static bool Background
+    {
+        get => _background;
+        set
+        {
+            lock (Live)
+            {
+                if (_background == value) return;
+                _background = value;
+                foreach (var o in Live) o.ApplySize();
+            }
+        }
+    }
+
     public void Init(IWaveProvider waveProvider)
     {
         var wf = waveProvider.WaveFormat;
         if (wf.Encoding != WaveFormatEncoding.IeeeFloat || wf.BitsPerSample != 32 || wf.Channels != 2)
             throw new ArgumentException("TrackOut plays 32-bit float stereo");
         _source = waveProvider;
+        _rate = wf.SampleRate;
         int min = AudioTrack.GetMinBufferSize(wf.SampleRate, ChannelOut.Stereo, Encoding.PcmFloat);
-        int wanted = wf.AverageBytesPerSecond / 1000 * _latencyMs;
+        // Room for the big buffer; how much of it is used is set by ApplySize.
+        int room = wf.AverageBytesPerSecond / 1000 * Math.Max(_latencyMs, BackgroundMs);
         var attrs = new AudioAttributes.Builder()!.SetUsage(AudioUsageKind.Media)!.SetContentType(AudioContentType.Music)!.Build()!;
         var format = new AudioFormat.Builder()!.SetEncoding(Encoding.PcmFloat)!.SetSampleRate(wf.SampleRate)!.SetChannelMask(ChannelOut.Stereo)!.Build()!;
         _track = new AudioTrack.Builder()
             .SetAudioAttributes(attrs)
             .SetAudioFormat(format)
-            .SetBufferSizeInBytes(Math.Max(min, wanted))
+            .SetBufferSizeInBytes(Math.Max(min, room))
             .SetTransferMode(AudioTrackMode.Stream)
             .Build();
         if (_track.State != AudioTrackState.Initialized) throw new InvalidOperationException("AudioTrack");
+        lock (Live)
+        {
+            Live.Add(this);
+            ApplySize();
+        }
         _thread = new Thread(Run) { IsBackground = true, Name = "Audio out", Priority = ThreadPriority.Highest };
         _thread.Start();
+    }
+
+    // How much of the track's buffer the writer fills (the rest stays empty): little on screen, a lot while away.
+    private void ApplySize()
+    {
+        try { _track?.SetBufferSizeInFrames((int)((long)_rate * (_background ? BackgroundMs : _latencyMs) / 1000)); }
+        catch (Exception ex) { App.Log(ex); }
     }
 
     private void Run()
@@ -90,10 +133,11 @@ public sealed class TrackOut : IWavePlayer
         try { Android.OS.Process.SetThreadPriority(Android.OS.ThreadPriority.UrgentAudio); } catch { }
         var src = _source!;
         int frame = src.WaveFormat.BlockAlign;
-        // 20 ms at a time: the mix still answers quickly to a pause or a seek, and the phone is woken half as often as with
-        // 10 (each write is a trip into Java with a copy of the samples).
-        int chunk = Math.Max(frame, src.WaveFormat.AverageBytesPerSecond / 50 / frame * frame);
-        var bytes = new byte[chunk];
+        // 20 ms at a time on screen: the mix still answers quickly to a pause or a seek, and the phone is woken half as
+        // often as with 10 (each write is a trip into Java with a copy of the samples). Away, 100 ms: 10 wake-ups a second.
+        int small = Math.Max(frame, src.WaveFormat.AverageBytesPerSecond / 50 / frame * frame);
+        int big = Math.Max(frame, src.WaveFormat.AverageBytesPerSecond / 10 / frame * frame);
+        var bytes = new byte[big];
         float[]? floats = null;
         // The samples reach Android through one buffer outside .NET's memory, filled in place: no array made in Java and
         // copied there and back at every write (50 times a second, for as long as the music plays).
@@ -101,12 +145,12 @@ public sealed class TrackOut : IWavePlayer
         IntPtr address = IntPtr.Zero;
         try
         {
-            direct = Java.Nio.ByteBuffer.AllocateDirect(chunk);
+            direct = Java.Nio.ByteBuffer.AllocateDirect(big);
             direct?.Order(Java.Nio.ByteOrder.NativeOrder()!);
             if (direct != null) address = Android.Runtime.JNIEnv.GetDirectBufferAddress(direct.Handle);
         }
         catch { address = IntPtr.Zero; }
-        if (address == IntPtr.Zero) floats = new float[chunk / 4];
+        if (address == IntPtr.Zero) floats = new float[big / 4];
         while (!_closed)
         {
             // Paused: asleep until Play (or closing) wakes it; the long timeout only in case a wake-up got lost.
@@ -115,11 +159,12 @@ public sealed class TrackOut : IWavePlayer
                 _go.Wait(5000);
                 continue;
             }
+            int chunk = _background ? big : small;
             int got;
             try { got = src.Read(bytes, 0, chunk); }
             catch { got = 0; }
             if (got < chunk) Array.Clear(bytes, got, chunk - got);
-            var f = MemoryMarshal.Cast<byte, float>(bytes.AsSpan());
+            var f = MemoryMarshal.Cast<byte, float>(bytes.AsSpan(0, chunk));
             float gain = Volume * Duck;
             if (gain < 0.999f)
                 for (int i = 0; i < f.Length; i++) f[i] *= gain;
@@ -127,6 +172,7 @@ public sealed class TrackOut : IWavePlayer
             {
                 var t = _track;
                 if (t == null || _closed) break;
+                int flushes = Volatile.Read(ref _flushes);
                 int written;
                 if (direct != null && address != IntPtr.Zero)
                 {
@@ -137,9 +183,11 @@ public sealed class TrackOut : IWavePlayer
                 else
                 {
                     f.CopyTo(floats!);
-                    written = t.Write(floats!, 0, floats!.Length, WriteMode.Blocking);
+                    written = t.Write(floats!, 0, f.Length, WriteMode.Blocking) * 4;
                 }
                 if (written < 0) throw new InvalidOperationException("AudioTrack " + written);
+                lock (_sync)
+                    if (flushes == _flushes) _written += (uint)(written / frame);
             }
             catch (Exception ex)
             {
@@ -149,6 +197,59 @@ public sealed class TrackOut : IWavePlayer
             }
         }
         try { direct?.Dispose(); } catch { }
+    }
+
+    // Written and not played yet.
+    public int LatencyMs
+    {
+        get
+        {
+            lock (_sync)
+            {
+                var t = _track;
+                if (t == null || _closed) return 0;
+                int frames;
+                try { frames = (int)(_written - (uint)t.PlaybackHeadPosition); }
+                catch { return 0; }
+                return frames <= 0 ? 0 : (int)Math.Min(5000, (long)frames * 1000 / _rate);
+            }
+        }
+    }
+
+    public void Drop()
+    {
+        lock (_sync)
+        {
+            var t = _track;
+            if (t == null || _closed || _paused) return;
+            try
+            {
+                // (a paused track can be emptied; the writer's Write returns early and its sound is dropped too)
+                t.Pause();
+                t.Flush();
+                _written = 0;
+                _flushes++;
+                t.Play();
+            }
+            catch (Exception ex) { App.Log(ex); }
+        }
+    }
+
+    public int Flush()
+    {
+        lock (_sync)
+        {
+            var t = _track;
+            if (t == null || _closed || !_paused) return 0;
+            int ms;
+            try { ms = (int)Math.Max(0, (long)(int)(_written - (uint)t.PlaybackHeadPosition) * 1000 / _rate); }
+            catch { ms = 0; }
+            try { t.Flush(); }
+            catch { return 0; }
+            _written = 0;
+            _flushes++;
+            return ms;
+        }
     }
 
     public void Play()
@@ -173,7 +274,12 @@ public sealed class TrackOut : IWavePlayer
     {
         if (_track == null) return;
         Pause();
-        try { _track.Flush(); } catch { }
+        lock (_sync)
+        {
+            try { _track?.Flush(); } catch { }
+            _written = 0;
+            _flushes++;
+        }
         PlaybackState = PlaybackState.Stopped;
         PlaybackStopped?.Invoke(this, new StoppedEventArgs());
     }
@@ -181,10 +287,15 @@ public sealed class TrackOut : IWavePlayer
     public void Dispose()
     {
         if (_closed) return;
+        lock (Live) Live.Remove(this);
         _closed = true;
         _go.Set();
-        var t = _track;
-        _track = null;
+        AudioTrack? t;
+        lock (_sync)
+        {
+            t = _track;
+            _track = null;
+        }
         if (t == null) return;
         try { t.Pause(); t.Flush(); } catch { }
         // The writer thread may be inside Write: released once it's out.

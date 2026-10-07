@@ -13,7 +13,7 @@
         </Style>
     </UserControl.Styles>
     <Panel>
-        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False"/>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
             <StackPanel Margin="28,12,20,28">
                 <TextBlock Text="{Binding Greeting}" FontSize="30" FontWeight="Bold" Margin="0,4,0,22"/>

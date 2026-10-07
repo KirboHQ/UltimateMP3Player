@@ -5,17 +5,194 @@ using Avalonia.Controls.Templates;
 using Avalonia.Data;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Avalonia.Threading;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Platform;
 using UltimateMP3Player.ViewModels;
+using Text = UltimateMP3Player.Core.Text;
 
 namespace UltimateMP3Player.Views;
 
 public partial class SettingsPage : UserControl, IPage
 {
-    public SettingsPage() => InitializeComponent();
+    private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(120) };
+
+    public SettingsPage()
+    {
+        InitializeComponent();
+        // A short pause after the last letter: the cards are walked once per word, not at every key.
+        _searchTimer.Tick += (_, _) =>
+        {
+            _searchTimer.Stop();
+            Search();
+        };
+        SearchBox.TextChanged += (_, _) =>
+        {
+            _searchTimer.Stop();
+            if (string.IsNullOrWhiteSpace(SearchBox.Text)) Search();
+            else _searchTimer.Start();
+        };
+    }
+
+    // The logins' row follows them (only while the page is in the window: a page let go of isn't kept alive by them).
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        SiteLogins.Changed -= ShowLogins;
+        SiteLogins.Changed += ShowLogins;
+        ShowLogins();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        SiteLogins.Changed -= ShowLogins;
+    }
 
     private SettingsViewModel? Vm => DataContext as SettingsViewModel;
+
+    // ------------------------------------------------------------------ search
+
+    // More words (in the app's language) that find a card, or a setting inside it.
+    public static readonly AttachedProperty<string> KeywordsProperty = AvaloniaProperty.RegisterAttached<SettingsPage, Control, string>("Keywords", "");
+    public static string GetKeywords(Control o) => o.GetValue(KeywordsProperty);
+    public static void SetKeywords(Control o, string value) => o.SetValue(KeywordsProperty, value);
+
+    // What the search hid, each with what gives it back its own visibility.
+    private readonly Dictionary<Control, IDisposable?> _hidden = new();
+
+    // The cards whose words match, and inside them only the settings that match: a match in the card's title keeps the
+    // whole card, its keywords find it but matching settings still narrow it down. The thin lines between the settings
+    // stay only between the ones left.
+    private void Search()
+    {
+        var words = Text.Normalize(SearchBox.Text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var el in _hidden.Keys.ToList()) Show(el, true);
+        int shown = 0;
+        var children = Cards.Children.ToList();
+        for (int i = 0; i < children.Count; i++)
+        {
+            if (children[i] is not Border { Classes: var cls } card || !cls.Contains("card")) continue;
+            var title = i > 0 && children[i - 1] is TextBlock { Classes: var tc } t && tc.Contains("card-title") ? t : null;
+            if (words.Length == 0 || title != null && Matches(TextOf(title), words))
+            {
+                shown++;
+                continue;
+            }
+            var (units, lines) = Units(card);
+            var matching = units.Where(u => Matches(string.Join(" ", u.Select(c => TextOf(c) + " " + GetKeywords(c))), words)).ToList();
+            if (matching.Count == 0)
+            {
+                if (Matches(GetKeywords(card), words))
+                {
+                    shown++;
+                    continue;
+                }
+                Show(card, false);
+                if (title != null) Show(title, false);
+                continue;
+            }
+            shown++;
+            foreach (var u in units.Except(matching))
+                foreach (var el in u) Show(el, false);
+            // A line before every setting left but the first.
+            var keep = new HashSet<Control>();
+            bool before = false;
+            Control? line = null;
+            if ((card.Child as Panel)?.Children is { } row)
+                foreach (var c in row)
+                {
+                    if (lines.Contains(c))
+                    {
+                        if (before) line ??= c;
+                        continue;
+                    }
+                    if (_hidden.ContainsKey(c)) continue;
+                    if (line != null) keep.Add(line);
+                    line = null;
+                    before = true;
+                }
+            foreach (var l in lines.Where(l => !keep.Contains(l))) Show(l, false);
+        }
+        NoResults.IsVisible = shown == 0;
+        Footer.IsVisible = words.Length == 0;
+        Scroller.Offset = default;
+    }
+
+    private static bool Matches(string text, string[] words)
+    {
+        var t = Text.Normalize(text);
+        return words.All(t.Contains);
+    }
+
+    // The settings of a card: what's between two thin lines is one (a label with its choices, a switch with its slider).
+    private static (List<List<Control>> Units, List<Control> Lines) Units(Border card)
+    {
+        var units = new List<List<Control>>();
+        var lines = new List<Control>();
+        if (card.Child is not Panel root)
+        {
+            if (card.Child is { } only) units.Add(new List<Control> { only });
+            return (units, lines);
+        }
+        List<Control>? unit = null;
+        foreach (var c in root.Children)
+        {
+            if (c is Border { Classes: var cls } && cls.Contains("line"))
+            {
+                lines.Add(c);
+                unit = null;
+                continue;
+            }
+            if (unit == null) units.Add(unit = new List<Control>());
+            unit.Add(c);
+        }
+        return (units, lines);
+    }
+
+    // Every text inside: names, values, hints, captions.
+    private static string TextOf(ILogical? d)
+    {
+        if (d == null) return "";
+        var parts = new List<string>();
+        void Walk(ILogical x)
+        {
+            switch (x)
+            {
+                case TextBlock tb when !string.IsNullOrEmpty(tb.Text):
+                    parts.Add(tb.Text);
+                    break;
+                case ContentControl { Content: string s }:
+                    parts.Add(s);
+                    break;
+            }
+            foreach (var child in x.LogicalChildren) Walk(child);
+        }
+        Walk(d);
+        return string.Join(" ", parts);
+    }
+
+    // Hidden over whatever it is (a visibility that has a binding keeps it, and comes back as it was): a value above the
+    // others, taken away again by the handle SetValue gives (setting UnsetValue there would only add another layer on top,
+    // and the "hidden" one under it would stay).
+    private void Show(Control el, bool visible)
+    {
+        if (visible)
+        {
+            if (_hidden.Remove(el, out var undo)) undo?.Dispose();
+            return;
+        }
+        if (_hidden.ContainsKey(el)) return;
+        _hidden[el] = el.SetValue(IsVisibleProperty, false, BindingPriority.Animation);
+    }
+
+    // ------------------------------------------------------------------ logins
+
+    private void ShowLogins() => LoginsValue.Text = SiteLogins.Summary();
+
+    private void Logins_Click(object? sender, RoutedEventArgs e) => LoginsSheet.Show();
 
     // A row with an arrow: its choices in a sheet (the computer's drop-down).
     private void Choose_Click(object? sender, RoutedEventArgs e)
@@ -173,7 +350,13 @@ public partial class SettingsPage : UserControl, IPage
         _ = sheets.Show(body, maxHeightShare: 0.92);
     }
 
-    public bool Back() => false;
+    // Back with a search written: the whole page again.
+    public bool Back()
+    {
+        if (string.IsNullOrEmpty(SearchBox.Text)) return false;
+        SearchBox.Text = "";
+        return true;
+    }
 
     public void ScrollToTop() => Scroller.Offset = default;
 }

@@ -81,6 +81,9 @@ public static class CoverArt
                 new[] { new SkiaSharp.SKColor(0x2A, 0x2F, 0x3A), new SkiaSharp.SKColor(0x1B, 0x1E, 0x25) }, SkiaSharp.SKShaderTileMode.Clamp);
             canvas.DrawRect(dest, paint);
         }
+        // Over the page's background at 90 % (what the element's opacity did, without a layer at every frame).
+        using (var bg = new SkiaSharp.SKPaint { Color = new SkiaSharp.SKColor(0x0E, 0x10, 0x14, 26) })
+            canvas.DrawRect(new SkiaSharp.SKRect(0, 0, size, size), bg);
         using var image = surface.Snapshot();
         using var data = image.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
         using var stream = data.AsStream();

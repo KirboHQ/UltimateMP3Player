@@ -206,7 +206,12 @@ public sealed class RadioViewModel : Observable
             return;
         }
         int ahead = Math.Clamp(_main.Host.Settings.RadioAhead, 1, TogetherSession.MaxAhead);
-        _fetcher.Want(p.Window(ahead).Select(Item).OfType<RadioItemViewModel>().Select(i => i.Song).ToList());
+        var window = p.Window(ahead).Select(Item).OfType<RadioItemViewModel>().ToList();
+        _fetcher.Want(window.Select(i => i.Song).ToList());
+        // The ones of the last session found in the cache: their waveform and loudness again (they aren't kept with them),
+        // only for these few, not for every song remembered.
+        foreach (var item in window)
+            if (item.T.Wave == null && item.T.Path.Length > 0 && File.Exists(item.T.Path)) _ = Analyze(item);
         var used = p.Referenced();
         foreach (var id in _items.Keys.Where(id => !used.Contains(id)).ToList()) Drop(id);
         if (!Busy && p.RadioRunningLow(Low) is { } contextId && !_exhausted.Contains(contextId) && p.RadioSeed() is { } seed)
@@ -251,10 +256,13 @@ public sealed class RadioViewModel : Observable
         }
     }
 
-    // Waveform and loudness, as for the songs of the library (the volume is normalized the same way).
+    // Waveform and loudness, as for the songs of the library (the volume is normalized the same way). Once per song and
+    // session (a file that can't be read isn't tried again at every change of the queue).
+    private readonly HashSet<string> _analyzing = new();
+
     private async Task Analyze(RadioItemViewModel item)
     {
-        if (item.T.Wave != null || item.T.Path.Length == 0) return;
+        if (item.T.Wave != null || item.T.Path.Length == 0 || !_analyzing.Add(item.Id)) return;
         try
         {
             var path = item.T.Path;

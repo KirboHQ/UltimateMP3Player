@@ -327,6 +327,32 @@ public sealed class MasterProvider : ISampleProvider
         }
     }
 
+    // The song has been read to its end (what's left of it may still be waiting in the output).
+    public bool ReadToEnd
+    {
+        get { lock (_lock) return _current is { Ended: true }; }
+    }
+
+    // Paused, and the output threw away what it still held: the song goes back to the point heard last, right away (a
+    // song through ffmpeg restarts it there during the pause), and fades in when it plays again.
+    public void Rewind(TimeSpan t)
+    {
+        lock (_lock)
+        {
+            if (_current is not { } cur) return;
+            if (t < TimeSpan.Zero) t = TimeSpan.Zero;
+            try { cur.Source.Seek(t); } catch { }
+            cur.PendingSeek = null;
+            cur.Rebuild(_rate);
+            cur.Fade = 0f;
+            cur.FadeTo(1, MicroFade, _rate);
+            cur.Ended = false;
+            cur.NearEndRaised = cur.CrossfadeAt <= t.TotalSeconds;
+            // What SoundTouch still held came after that point.
+            if (_stretching) _st.Clear();
+        }
+    }
+
     public float Volume
     {
         set { lock (_lock) _volume = value; }

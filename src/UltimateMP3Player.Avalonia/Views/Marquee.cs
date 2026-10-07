@@ -46,6 +46,10 @@ public static class Marquee
         // Where it was drawn last (the pauses draw nothing again) and its fades, changed in place frame by frame.
         public double LastX = double.NaN;
         public LinearGradientBrush? Mask;
+        // A text fades through its own colour (a gradient as its foreground while it moves): an OpacityMask costs an
+        // offscreen layer at every frame. Ink = that colour; InkSet gives the text its own foreground back.
+        public Color? Ink;
+        public IDisposable? InkSet;
     }
 
     private static readonly AttachedProperty<State?> StateProperty = AvaloniaProperty.RegisterAttached<Control, State?>("State", typeof(Marquee));
@@ -173,6 +177,7 @@ public static class Marquee
         tb.RenderTransform = st.Shift;
         tb.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute);
         st.MaskHost = tb;
+        st.Ink = tb.Foreground is ISolidColorBrush ink ? Color.FromArgb((byte)Math.Round(ink.Color.A * ink.Opacity), ink.Color.R, ink.Color.G, ink.Color.B) : null;
         return (overflow + Edge, Edge);
     }
 
@@ -284,8 +289,14 @@ public static class Marquee
         double w = st.Width;
         if (w <= 0) return;
         // The window that shows the content stays where it was: for a text it moves back by as much as the text moved.
-        double origin = ReferenceEquals(st.MaskHost, st.Element) ? -x : 0;
-        if (ReferenceEquals(st.MaskHost, st.Element)) st.Element.Clip = new RectangleGeometry(new Rect(origin, -4, w, st.Element.Bounds.Height + 8));
+        bool text = ReferenceEquals(st.MaskHost, st.Element);
+        double origin = text ? -x : 0;
+        if (text)
+        {
+            var window = new Rect(origin, -4, w, st.Element.Bounds.Height + 8);
+            if (st.Element.Clip is RectangleGeometry clip) clip.Rect = window;
+            else st.Element.Clip = new RectangleGeometry(window);
+        }
         double left = Math.Min(Edge, Math.Max(0, -x));
         if (st.Mask == null)
         {
@@ -299,12 +310,23 @@ public static class Marquee
             };
         }
         var mask = st.Mask;
+        // A text: the gradient is its colour (to transparent at the edges); anything else: a mask over it.
+        var ink = text && st.Element is TextBlock ? st.Ink : null;
+        Color solid = ink ?? Colors.Black, clear = ink is { } c ? Color.FromArgb(0, c.R, c.G, c.B) : Colors.Transparent;
         mask.StartPoint = new RelativePoint(origin, 0, RelativeUnit.Absolute);
         mask.EndPoint = new RelativePoint(origin + w, 0, RelativeUnit.Absolute);
-        mask.GradientStops[0].Color = left > 0.5 ? Colors.Transparent : Colors.Black;
+        mask.GradientStops[0].Color = left > 0.5 ? clear : solid;
+        mask.GradientStops[1].Color = solid;
         mask.GradientStops[1].Offset = left / w;
+        mask.GradientStops[2].Color = solid;
         mask.GradientStops[2].Offset = Math.Max(0, (w - st.RightFade) / w);
-        if (!ReferenceEquals(st.MaskHost.OpacityMask, mask)) st.MaskHost.OpacityMask = mask;
+        mask.GradientStops[3].Color = clear;
+        if (ink != null)
+        {
+            // Over its own (styled or local) foreground, given back by Stop.
+            st.InkSet ??= st.Element.SetValue(TextBlock.ForegroundProperty, mask, Avalonia.Data.BindingPriority.Animation);
+        }
+        else if (!ReferenceEquals(st.MaskHost.OpacityMask, mask)) st.MaskHost.OpacityMask = mask;
     }
 
     private static void Stop(State st)
@@ -313,6 +335,9 @@ public static class Marquee
         Running.Remove(st);
         st.Shift = null;
         st.Mask = null;
+        st.InkSet?.Dispose();
+        st.InkSet = null;
+        st.Ink = null;
         if (st.MaskHost != null)
         {
             st.MaskHost.OpacityMask = null;

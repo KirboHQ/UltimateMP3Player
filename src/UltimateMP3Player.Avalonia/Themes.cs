@@ -57,13 +57,17 @@ public static class Themes
         r["AccentGradientHover"] = Gradient(Mix(a, white, 0.12), Mix(b, white, 0.12));
         r["ProgressGradient"] = Linear(a, b, new RelativePoint(0, 0, RelativeUnit.Relative), new RelativePoint(1, 0, RelativeUnit.Relative));
         r["FavoritesGradient"] = Gradient(Mix(a, black, 0.25), Mix(a, white, 0.45));
-        r["HeaderGradient"] = Linear(Mix(a, Bg, 0.27), Bg, new RelativePoint(0, 0, RelativeUnit.Relative), new RelativePoint(0, 1, RelativeUnit.Relative));
+        RelativePoint top = new(0, 0, RelativeUnit.Relative), bottom = new(0, 1, RelativeUnit.Relative);
+        r["HeaderGradient"] = Linear(Mix(a, Bg, 0.27), Bg, top, bottom);
+        // (see Theme.axaml: the opacity inside the brush, no layer)
+        r["HeaderGlow"] = Linear(Mix(a, Bg, 0.27), Bg, top, bottom, 0.55);
+        r["HeaderGlowStrong"] = Linear(Mix(a, Bg, 0.27), Bg, top, bottom, 0.6);
     }
 
     public static IBrush Gradient(Color a, Color b) => Linear(a, b, new RelativePoint(0, 0, RelativeUnit.Relative), new RelativePoint(1, 1, RelativeUnit.Relative));
 
-    private static IBrush Linear(Color a, Color b, RelativePoint from, RelativePoint to)
-        => new LinearGradientBrush { StartPoint = from, EndPoint = to, GradientStops = { new GradientStop(a, 0), new GradientStop(b, 1) } }.ToImmutable();
+    private static IBrush Linear(Color a, Color b, RelativePoint from, RelativePoint to, double opacity = 1)
+        => new LinearGradientBrush { StartPoint = from, EndPoint = to, Opacity = opacity, GradientStops = { new GradientStop(a, 0), new GradientStop(b, 1) } }.ToImmutable();
 
     public static Color Parse(string hex)
     {

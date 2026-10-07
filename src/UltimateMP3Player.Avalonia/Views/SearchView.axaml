@@ -54,16 +54,20 @@
                 <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
             </Style>
             <Style Selector="^:pressed /template/ Border#Bd">
-                <Setter Property="Opacity" Value="0.85"/>
-            </Style>
-            <Style Selector="^:pointerover Border.get">
-                <Setter Property="Background" Value="{DynamicResource AccentGradient}"/>
-            </Style>
-            <Style Selector="^:pointerover Border.get TextBlock">
-                <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}"/>
+                <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
             </Style>
         </ControlTheme>
     </UserControl.Resources>
+    <!-- The "Scarica" pill lit under the mouse: outside the ControlTheme, which may not style its content (Avalonia threw
+         "ControlTheme style may not directly contain a child or descendent selector" when the online results appeared). -->
+    <UserControl.Styles>
+        <Style Selector="Button.hit:pointerover Border.get">
+            <Setter Property="Background" Value="{DynamicResource AccentGradient}"/>
+        </Style>
+        <Style Selector="Button.hit:pointerover Border.get TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}"/>
+        </Style>
+    </UserControl.Styles>
 
     <Grid Margin="20,6,12,0" RowDefinitions="Auto,*">
         <DockPanel Margin="8,0,10,14">
@@ -138,18 +142,14 @@
             <ListBox Grid.Row="1" Theme="{StaticResource PlainList}" ItemsSource="{Binding OnlineHits}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Button Theme="{StaticResource HitRow}" Command="{Binding DownloadCommand}"
+                        <Button Theme="{StaticResource HitRow}" Classes="hit" Command="{Binding DownloadCommand}"
                                 ToolTip.Tip="{local:T 'Aprilo per scaricarlo: scegli la playlist e premi Scarica'}" ToolTip.ShowDelay="1200">
                             <Grid local:Marquee.Host="True" ColumnDefinitions="Auto,*,Auto,56,Auto">
                                 <Panel Width="48" Height="48">
-                                    <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
+                                    <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNull}}">
                                         <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="17" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
                                     </Border>
-                                    <Border CornerRadius="6" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                        <Border.Background>
-                                            <ImageBrush Source="{Binding Thumb}" Stretch="UniformToFill"/>
-                                        </Border.Background>
-                                    </Border>
+                                    <views:CoverImage CornerRadius="6" Source="{Binding Thumb}"/>
                                 </Panel>
                                 <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>

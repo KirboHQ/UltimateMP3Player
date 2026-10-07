@@ -4,7 +4,7 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
     <Grid RowDefinitions="Auto,Auto,*">
-        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False"/>
 
         <Grid Margin="28,8,28,18" ColumnDefinitions="Auto,*">
             <Border Width="172" Height="172" CornerRadius="8" BoxShadow="0 6 24 0 #80000000">

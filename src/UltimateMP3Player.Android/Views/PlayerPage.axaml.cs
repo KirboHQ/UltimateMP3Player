@@ -203,7 +203,7 @@ public partial class PlayerPage : UserControl
         if (!_open) return;
         var img = _coverTrack?.Cover300 as Bitmap;
         CoverImage.Source = CoverArt.Bake(img);
-        Glow.Background = new ImageBrush(CoverArt.Glow(img)) { Stretch = Stretch.UniformToFill };
+        Glow.Source = CoverArt.Glow(img);
     }
 
     // The cover as big as the stage allows, square.
@@ -380,7 +380,8 @@ public partial class PlayerPage : UserControl
                 if (Math.Abs(dx) > 90 || Math.Abs(dx) / ms > 0.6)
                 {
                     if (dx < 0) _vm?.Player.NextCommand.Execute(null);
-                    else _vm?.Player.PreviousCommand.Execute(null);
+                    // The song before itself, wherever this one is (the button starts it over first).
+                    else if (_vm?.Player is { } player && player.PreviousCommand.CanExecute(null)) _ = player.Previous(false);
                     Haptics.Tick();
                 }
                 SettleSwipe();

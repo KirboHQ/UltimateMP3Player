@@ -10,29 +10,24 @@
 
     <!-- ============================================================ covers -->
 
-    <DataTemplate x:Key="TrackCoverSmall">
+    <!-- (the templates of the long lists' rows have compiled bindings: no reflection for each row that scrolls in) -->
+    <!-- (the placeholder only while there's no picture: not drawn under every cover at every frame of a scroll; the pictures
+         are CoverImage, drawn straight: an ImageBrush costs an offscreen surface per frame) -->
+    <DataTemplate x:Key="TrackCoverSmall" x:DataType="vm:TrackViewModel" x:CompileBindings="True">
         <Panel>
-            <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
+            <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}" IsVisible="{Binding Cover48, Converter={x:Static ObjectConverters.IsNull}}">
                 <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="18" Foreground="{StaticResource MutedBrush}"/>
             </Border>
-            <Border CornerRadius="6" IsVisible="{Binding Cover48, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <Border.Background>
-                    <ImageBrush Source="{Binding Cover48}" Stretch="UniformToFill"/>
-                </Border.Background>
-            </Border>
+            <views:CoverImage CornerRadius="6" Source="{Binding Cover48}"/>
         </Panel>
     </DataTemplate>
 
-    <DataTemplate x:Key="TrackCoverMedium">
+    <DataTemplate x:Key="TrackCoverMedium" x:DataType="vm:TrackViewModel" x:CompileBindings="True">
         <Panel>
-            <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}">
+            <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}" IsVisible="{Binding Cover160, Converter={x:Static ObjectConverters.IsNull}}">
                 <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="40" Foreground="{StaticResource MutedBrush}"/>
             </Border>
-            <Border CornerRadius="10" IsVisible="{Binding Cover160, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <Border.Background>
-                    <ImageBrush Source="{Binding Cover160}" Stretch="UniformToFill"/>
-                </Border.Background>
-            </Border>
+            <views:CoverImage CornerRadius="10" Source="{Binding Cover160}"/>
         </Panel>
     </DataTemplate>
 
@@ -73,28 +68,20 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Rectangle>
-                                <Rectangle.Fill>
-                                    <ImageBrush Source="{Binding Cover160}" Stretch="UniformToFill"/>
-                                </Rectangle.Fill>
-                            </Rectangle>
+                        <DataTemplate x:DataType="vm:TrackViewModel" x:CompileBindings="True">
+                            <views:CoverImage Source="{Binding Cover160}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </Border>
-            <Border CornerRadius="8" IsVisible="{Binding HasCustomCover}">
-                <Border.Background>
-                    <ImageBrush Source="{Binding CustomCover}" Stretch="UniformToFill"/>
-                </Border.Background>
-            </Border>
+            <views:CoverImage CornerRadius="8" Source="{Binding CustomCover}" IsVisible="{Binding HasCustomCover}"/>
         </Panel>
     </DataTemplate>
 
     <!-- ============================================================ song rows -->
 
     <!-- A song of a list (SongItem): while choosing songs a tick in front (Selection), the one playing in the accent colour. -->
-    <DataTemplate x:Key="SongRowTemplate" DataType="views:SongItem">
+    <DataTemplate x:Key="SongRowTemplate" DataType="views:SongItem" x:DataType="views:SongItem" x:CompileBindings="True">
         <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Classes.selected="{Binding IsChecked}" Padding="16,7,4,7"
                 views:Touch.Menu="track" views:Touch.Tap="{Binding PlayCommand}">
             <Grid ColumnDefinitions="Auto,52,*,Auto,Auto">
@@ -126,7 +113,7 @@
     </DataTemplate>
 
     <!-- The same row for a plain TrackRow (the home's "added recently", the search). -->
-    <DataTemplate x:Key="TrackRowTemplate" DataType="vm:TrackRow">
+    <DataTemplate x:Key="TrackRowTemplate" DataType="vm:TrackRow" x:DataType="vm:TrackRow" x:CompileBindings="True">
         <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Padding="16,7,4,7"
                 views:Touch.Menu="track" views:Touch.Tap="{Binding PlayCommand}">
             <Grid ColumnDefinitions="52,*,Auto,Auto">
@@ -148,7 +135,7 @@
     </DataTemplate>
 
     <!-- A song in "next up" (QueueRow): the handle on the right drags it to another place. -->
-    <DataTemplate x:Key="QueueRowTemplate" DataType="vm:QueueRow">
+    <DataTemplate x:Key="QueueRowTemplate" DataType="vm:QueueRow" x:DataType="vm:QueueRow" x:CompileBindings="True">
         <Border Classes="row qrow" Padding="12,6,4,6" views:Touch.Menu="queue" views:Touch.Tap="{Binding PlayCommand}">
             <Grid ColumnDefinitions="46,*,Auto,Auto">
                 <ContentControl Width="46" Height="46" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
@@ -269,11 +256,7 @@
                     <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
                         <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="15" Foreground="{StaticResource MutedBrush}"/>
                     </Border>
-                    <Border CornerRadius="6" IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <Border.Background>
-                            <ImageBrush Source="{Binding Cover}" Stretch="UniformToFill"/>
-                        </Border.Background>
-                    </Border>
+                    <views:CoverImage CornerRadius="6" Source="{Binding Cover}"/>
                 </Panel>
                 <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="14.5"/>

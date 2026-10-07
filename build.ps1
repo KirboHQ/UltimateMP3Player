@@ -13,8 +13,9 @@ $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $app = Join-Path $root 'app'
 $csproj = "$root\src\UltimateMP3Player\UltimateMP3Player.csproj"
+# ReadyToRun: the code comes already compiled, so the start and the first pages don't wait for the JIT.
 $publishArgs = @('-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=true',
-    '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:EnableCompressionInSingleFile=true', '-p:DebugType=none', '--nologo', '-v', 'q')
+    '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:EnableCompressionInSingleFile=true', '-p:PublishReadyToRun=true', '-p:DebugType=none', '--nologo', '-v', 'q')
 
 # A .NET 8 SDK from PATH, otherwise the local copy in %LOCALAPPDATA%\dotnet-sdk.
 $dotnet = 'dotnet'

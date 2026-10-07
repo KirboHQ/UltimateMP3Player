@@ -36,7 +36,9 @@ function Write-TarGz([string]$path, $entries) {
     $mtime = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
     foreach ($e in $entries) {
         $isDir = $e.Name.EndsWith('/')
-        $data = if ($isDir) { New-Object byte[] 0 } else { [IO.File]::ReadAllBytes($e.Source) }
+        # (the comma keeps the byte[] whole: an "if" as a value would unroll it into one object per byte, minutes of
+        # work and gigabytes of memory for the program)
+        $data = if ($isDir) { , (New-Object byte[] 0) } else { , [IO.File]::ReadAllBytes($e.Source) }
         $h = New-Object byte[] 512
         $put = {
             param([int]$at, [string]$text)
@@ -133,8 +135,12 @@ function Get-RCodesign {
 
 # ------------------------------------------------------------------ builds
 
+# ReadyToRun: the code comes already compiled for the processor, so the first pages, menus and scrolls don't wait for the
+# JIT (measured in a Linux VM: up to a second of CPU at the first interactions without it). The program isn't compressed
+# inside: the .tar.gz / .zip around it already is (same download size), and uncompressed it starts faster and uses ~45 MB
+# less memory (measured: start 2.9 → 2.6 s, 294 → 247 MB), the assemblies read from the file instead of unpacked in memory.
 $publishArgs = @('-c', 'Release', '--self-contained', 'true', '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true',
-    '-p:EnableCompressionInSingleFile=true', '-p:DebugType=none', '--nologo', '-v', 'q')
+    '-p:EnableCompressionInSingleFile=false', '-p:PublishReadyToRun=true', '-p:DebugType=none', '--nologo', '-v', 'q')
 $staging = Join-Path $root 'installer\staging-unix'
 New-Item -ItemType Directory -Force $Out | Out-Null
 

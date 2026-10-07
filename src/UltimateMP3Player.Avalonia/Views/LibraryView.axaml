@@ -4,7 +4,7 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
     <Grid RowDefinitions="Auto,Auto,*">
-        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False"/>
 
         <Grid Margin="28,8,28,18" ColumnDefinitions="Auto,*">
             <Panel Width="148" Height="148">
@@ -41,7 +41,8 @@
             </StackPanel>
         </Grid>
 
-        <DockPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
+        <!-- (a narrow window: the buttons keep only their icons rather than running under the search box) -->
+        <local:ToolbarPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
             <Button Theme="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
             <Button Theme="{StaticResource HeaderShuffleButton}" Margin="12,0,0,0" Command="{Binding ShuffleCommand}"/>
             <Button Theme="{StaticResource GhostButton}" Margin="14,0,0,0" Padding="16,9"
@@ -50,21 +51,21 @@
                     IsVisible="{Binding CanImport}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
-                    <TextBlock Text="{local:T 'Aggiungi file'}" Margin="8,0,0,0"/>
+                    <TextBlock Text="{local:T 'Aggiungi file'}" Margin="8,0,0,0" Classes="label"/>
                 </StackPanel>
             </Button>
             <Button x:Name="SelectAllButton" Theme="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9"
                     IsVisible="{Binding !IsEmpty}" ToolTip.Tip="{x:Static views:Keys.SelectAll}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{local:Icon E762}" Classes="glyph"/>
-                    <TextBlock Text="{local:T 'Seleziona tutti'}" Margin="8,0,0,0"/>
+                    <TextBlock Text="{local:T 'Seleziona tutti'}" Margin="8,0,0,0" Classes="label"/>
                 </StackPanel>
             </Button>
             <Button Theme="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Command="{Binding $parent[Window].DataContext.EditTagCommand}"
-                    CommandParameter="{Binding Tag}" IsVisible="{Binding IsTagPage}">
+                    CommandParameter="{Binding Tag}" IsVisible="{Binding IsTagPage}" ToolTip.Tip="{local:T 'Modifica tag'}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{local:Icon E70F}" Classes="glyph"/>
-                    <TextBlock Text="{local:T 'Modifica tag'}" Margin="8,0,0,0"/>
+                    <TextBlock Text="{local:T 'Modifica tag'}" Margin="8,0,0,0" Classes="label"/>
                 </StackPanel>
             </Button>
             <ComboBox DockPanel.Dock="Right" Width="180" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
@@ -72,7 +73,7 @@
             <Button x:Name="TagFilterButton" DockPanel.Dock="Right" Theme="{StaticResource TagFilterButton}" Margin="0,0,10,0"/>
             <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Theme="{StaticResource FilterBox}" Width="210" Margin="0,0,10,0" VerticalAlignment="Center"
                      Text="{Binding Filter}" Watermark="{local:T 'Cerca nei brani'}"/>
-        </DockPanel>
+        </local:ToolbarPanel>
 
         <Grid Grid.Row="2" Margin="20,0,12,0" RowDefinitions="Auto,*">
             <ContentControl ContentTemplate="{StaticResource TrackHeader}" Content="{Binding}" Margin="0,0,10,0"/>

@@ -26,6 +26,8 @@ public sealed class LyricsView : Grid
     private const double IntroGap = 4;
     private const double Past = 0.5, Future = 0.3, Hover = 0.82, Plain = 0.92;
 
+    // A row is dimmed through the alpha of its own brushes, not the element's opacity: an opacity below 1 costs an
+    // offscreen layer per element at every frame (a dozen lines on screen: a dozen layers, heavy on a phone's GPU).
     private sealed class Row
     {
         public Control Element = null!;
@@ -36,6 +38,26 @@ public sealed class LyricsView : Grid
         public Ellipse[]? Dots;
         public ScaleTransform? Scale;
         public double Shown = -1;
+        // The line's text colour, or each dot's, and how lit each dot is (times the row's level).
+        public SolidColorBrush? Ink;
+        public SolidColorBrush[]? DotInks;
+        public double[]? DotLevels;
+        public double Level = 1;
+
+        public void SetLevel(double v)
+        {
+            Level = v;
+            if (Ink != null) Ink.Opacity = v;
+            if (DotInks != null)
+                for (int k = 0; k < DotInks.Length; k++) DotInks[k].Opacity = v * DotLevels![k];
+        }
+
+        public void SetDot(int k, double v)
+        {
+            if (DotLevels![k] == v) return;
+            DotLevels[k] = v;
+            DotInks![k].Opacity = Level * v;
+        }
     }
 
     private readonly ScrollViewer _scroll;
@@ -132,12 +154,13 @@ public sealed class LyricsView : Grid
 
     private void AddLine(LyricLine l, bool synced)
     {
+        var ink = new SolidColorBrush(Colors.White, synced ? Future : Plain);
         var text = new TextBlock
         {
             Text = l.Text.Length == 0 ? " " : l.Text,
             FontFamily = Display,
             FontWeight = FontWeight.Bold,
-            Foreground = Brushes.White,
+            Foreground = ink,
             TextWrapping = TextWrapping.Wrap,
         };
         var box = new Border
@@ -145,10 +168,9 @@ public sealed class LyricsView : Grid
             Child = text,
             Background = Brushes.Transparent,
             HorizontalAlignment = HorizontalAlignment.Left,
-            Opacity = synced ? Future : Plain,
         };
-        var row = new Row { Element = box, Time = synced ? l.Time : -1 };
-        row.Fade = new Tweener(box, v => box.Opacity = v, box.Opacity);
+        var row = new Row { Element = box, Time = synced ? l.Time : -1, Ink = ink, Level = ink.Opacity };
+        row.Fade = new Tweener(box, row.SetLevel, row.Level);
         if (synced)
         {
             box.Cursor = Ui.Hand;
@@ -170,15 +192,19 @@ public sealed class LyricsView : Grid
     // A pause in the singing: three dots that fill up while it lasts.
     private void AddGap(double from, double to)
     {
-        var dots = Enumerable.Range(0, 3).Select(_ => new Ellipse { Fill = Brushes.White, Opacity = 0.35 }).ToArray();
+        var inks = Enumerable.Range(0, 3).Select(_ => new SolidColorBrush(Colors.White, Future * 0.35)).ToArray();
+        var dots = inks.Select(ink => new Ellipse { Fill = ink }).ToArray();
         var strip = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.Transparent };
         foreach (var d in dots) strip.Children.Add(d);
         var scale = new ScaleTransform(1, 1);
         strip.RenderTransformOrigin = new RelativePoint(0, 0.5, RelativeUnit.Relative);
         strip.RenderTransform = scale;
-        strip.Opacity = Future;
-        var row = new Row { Element = strip, Time = from, End = to, IsGap = true, Dots = dots, Scale = scale };
-        row.Fade = new Tweener(strip, v => strip.Opacity = v, strip.Opacity);
+        var row = new Row
+        {
+            Element = strip, Time = from, End = to, IsGap = true, Dots = dots, Scale = scale,
+            DotInks = inks, DotLevels = new[] { 0.35, 0.35, 0.35 }, Level = Future,
+        };
+        row.Fade = new Tweener(strip, row.SetLevel, row.Level);
         _rows.Add(row);
         _panel.Children.Add(strip);
     }
@@ -350,7 +376,7 @@ public sealed class LyricsView : Grid
         if (!r.IsGap && index != _active && r.Element.IsPointerOver && CanSeek?.Invoke() != false) target = Hover;
         if (r.IsGap && index != _active)
         {
-            foreach (var d in r.Dots!) d.Opacity = 0.35;
+            for (int k = 0; k < 3; k++) r.SetDot(k, 0.35);
             r.Scale!.ScaleX = r.Scale.ScaleY = 1;
         }
         if (Math.Abs(r.Shown - target) < 0.001) return;
@@ -362,7 +388,7 @@ public sealed class LyricsView : Grid
     {
         double span = gap.End == double.MaxValue ? 4 : Math.Max(0.5, gap.End - gap.Time);
         double p = Math.Clamp((pos - gap.Time) / span, 0, 1);
-        for (int k = 0; k < 3; k++) gap.Dots![k].Opacity = 0.35 + 0.65 * Math.Clamp(p * 3 - k, 0, 1);
+        for (int k = 0; k < 3; k++) gap.SetDot(k, 0.35 + 0.65 * Math.Clamp(p * 3 - k, 0, 1));
         // A slow breath while waiting, a small pop just before the words come back.
         double breath = 1 + 0.06 * Math.Sin(p * span * Math.PI * 1.2);
         double end = p > 0.94 ? 1 + (p - 0.94) / 0.06 * 0.12 : 1;

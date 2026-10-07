@@ -301,7 +301,7 @@ public sealed class DownloadJobViewModel : Observable
             ForbiddenAt = ex.Forbidden ? DateTime.Now : null;
             State = JobState.Failed;
 #if ANDROID_APP
-            StatusText = ex.Message;
+            StatusText = ex.Message + (ex.NeedsLogin && req.Cookies == null ? " " + L.T("Accedi al sito nelle impostazioni (Download › Accessi ai siti).") : "");
 #else
             StatusText = ex.Message + (ex.NeedsLogin && req.Cookies == null ? " " + L.T("Attiva i cookie del browser nelle impostazioni.") : "");
 #endif
@@ -865,6 +865,8 @@ public sealed class DownloadsPageViewModel : Observable
 
     public MainViewModel Main => _main;
     public DownloadQueue Queue => _main.Host.Downloads;
+    // The link read last (the phone signs in to its site, then reads it again).
+    public string LastUrl => _lastUrl;
     public ICommand CancelCommand { get; }
     public ICommand DismissCommand { get; }
     public ICommand WholePlaylistCommand { get; }
@@ -939,12 +941,15 @@ public sealed class DownloadsPageViewModel : Observable
         catch (EngineException ex) when (!cts.IsCancellationRequested)
         {
 #if ANDROID_APP
-            // A phone has no browser cookies to lend.
-            SuggestCookies = false;
+            // The phone has no browser to lend its cookies: the logins made inside the app (Settings › Download).
+            bool logins = s.CookiesBrowserOrNull != null;
+            SuggestCookies = ex.NeedsLogin && !logins;
             ErrorHint = ex.RateLimited
                 ? L.T("Aspetta qualche minuto e riprova: il blocco si toglie da solo. Scaricare meno brani insieme aiuta.")
                 : ex.NeedsLogin
-                    ? L.T("Sul telefono l'app non usa il tuo accesso ai siti: i contenuti privati, per abbonati o con limite d'età non si possono scaricare. Se è il controllo anti-bot di YouTube, riprova più tardi o con un'altra connessione.")
+                    ? L.T(logins
+                        ? "L'app usa già i tuoi accessi: controlla di aver fatto l'accesso a questo sito. Se è il controllo anti-bot di YouTube, riprova più tardi o con un'altra connessione."
+                        : "Per i contenuti privati, per abbonati o con limite d'età accedi al sito dall'app: i download useranno il tuo account.")
                     : null;
 #else
             SuggestCookies = ex.NeedsLogin && !s.UseCookies;

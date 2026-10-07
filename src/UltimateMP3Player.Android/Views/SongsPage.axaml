@@ -120,9 +120,8 @@
         <Panel>
             <views:SongList x:Name="List" Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}">
                 <views:SongList.DataTemplates>
-                    <DataTemplate DataType="views:SongItem">
-                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource SongRowTemplate}"/>
-                    </DataTemplate>
+                    <!-- the row itself (no ContentControl around it: fewer elements for each row that scrolls in) -->
+                    <StaticResource ResourceKey="SongRowTemplate"/>
                     <DataTemplate DataType="views:ListHeader">
                         <ContentControl Content="{Binding Page}">
                             <ContentControl.DataTemplates>

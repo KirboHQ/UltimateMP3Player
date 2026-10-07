@@ -1032,7 +1032,9 @@ public sealed class PlayerViewModel : Observable
         await Load(t, true);
     }
 
-    public async Task Previous()
+    // restart: past the first 3 seconds the song starts over (the buttons); false = straight to the song before (the
+    // phone's swipe on the cover).
+    public async Task Previous(bool restart = true)
     {
         // In a room there's no going back to an earlier song: back to the start of this one.
         if (_room != null)
@@ -1040,7 +1042,7 @@ public sealed class PlayerViewModel : Observable
             _room.Restart();
             return;
         }
-        if (Position > 3 || Current == null)
+        if (restart && Position > 3 || Current == null)
         {
             Seek(0);
             return;

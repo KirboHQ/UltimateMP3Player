@@ -46,7 +46,14 @@ public partial class NowPlayingView : UserControl
         DataContextChanged += (_, _) => Attach(DataContext as NowPlayingViewModel);
         Video.Clock = () => _vm?.Player.EnginePosition ?? TimeSpan.Zero;
         Video.MediaOpened += FitVideo;
-        Video.FrameChanged += () => BackdropVideo.Source = Video.Picture;
+        // The backdrop: the video's small blurred copy (the same picture refreshed in place: drawn again by hand).
+        Video.MakeBackdrop = true;
+        Video.FrameChanged += () =>
+        {
+            BackdropVideo.Source = Video.Backdrop;
+            BackdropVideo.InvalidateVisual();
+        };
+        CoverShadow.Source = MakeCoverShadow();
         LyricsPane.CanSeek = () => _vm?.Player.SeekCommand.CanExecute(null) == true;
         LyricsPane.SeekRequested += t => _vm?.Player.Seek(t);
         LyricsPane.FollowingChanged += ShowFollowButton;
@@ -380,7 +387,54 @@ public partial class NowPlayingView : UserControl
             dc.DrawRectangle(null, new Pen(new SolidColorBrush(Color.FromArgb(0x22, 255, 255, 255)), 1.5), new Rect(0.75, 0.75, size - 1.5, size - 1.5), radius, radius);
         }
         CoverImage.Source = bmp;
-        LyricsGlow.Background = new ImageBrush(BakeGlow(img)) { Stretch = Stretch.UniformToFill };
+        LyricsGlow.Source = BakeGlow(img);
+        CoverBackdrop.Source = BakeBackdrop(img);
+    }
+
+    // The cover behind the stage at 22 %, the opacity in the picture (small: it's only a tint).
+    private static Bitmap? BakeBackdrop(Bitmap? img)
+    {
+        if (img is not { PixelSize.Width: > 0, PixelSize.Height: > 0 }) return null;
+        const int size = 160;
+        var bmp = new RenderTargetBitmap(new PixelSize(size, size), new Vector(96, 96));
+        using (var dc = bmp.CreateDrawingContext())
+        using (dc.PushOpacity(0.22))
+        {
+            double scale = Math.Max(size / img.Size.Width, size / img.Size.Height);
+            double w = img.Size.Width * scale, h = img.Size.Height * scale;
+            dc.DrawImage(img, new Rect(0, 0, img.Size.Width, img.Size.Height), new Rect((size - w) / 2, (size - h) / 2, w, h));
+        }
+        return bmp;
+    }
+
+    // The shadow under the cover, made once: a black rounded square (330, corners 30, 80 %) blurred like Avalonia's
+    // blur(70), in a 460 picture with the cover's centre. As an effect on the element it was a layer and a blur at every
+    // frame of the page.
+    private static Bitmap? _shadow;
+
+    private static Bitmap? MakeCoverShadow()
+    {
+        if (_shadow != null) return _shadow;
+        const int size = 460;
+        try
+        {
+            using var bitmap = new SkiaSharp.SKBitmap(new SkiaSharp.SKImageInfo(size, size, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul));
+            using (var canvas = new SkiaSharp.SKCanvas(bitmap))
+            using (var paint = new SkiaSharp.SKPaint
+            {
+                Color = new SkiaSharp.SKColor(0, 0, 0, 204),
+                IsAntialias = true,
+                MaskFilter = SkiaSharp.SKMaskFilter.CreateBlur(SkiaSharp.SKBlurStyle.Normal, 0.288675f * 70 + 0.5f),
+            })
+            {
+                canvas.Clear(SkiaSharp.SKColors.Transparent);
+                canvas.DrawRoundRect(new SkiaSharp.SKRect(65, 65, 395, 395), 30, 30, paint);
+            }
+            _shadow = new Bitmap(Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul, bitmap.GetPixels(),
+                new PixelSize(size, size), new Vector(96, 96), bitmap.RowBytes);
+        }
+        catch { _shadow = null; }
+        return _shadow;
     }
 
     // Behind the lyrics, like Spotify: the cover's strongest colour, with a very blurred copy of the cover over it.

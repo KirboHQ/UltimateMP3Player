@@ -69,7 +69,7 @@
             </Grid>
 
             <Panel Grid.Row="1" Background="{StaticResource BgBrush}">
-                <Border Height="300" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.6"/>
+                <Border Height="300" VerticalAlignment="Top" Background="{DynamicResource HeaderGlowStrong}"/>
 
                 <!-- ======================================================== picker -->
                 <Grid x:Name="PickerPanel" Margin="40,28,40,28" RowDefinitions="Auto,*,Auto">
@@ -98,11 +98,7 @@
                                                 <TextBlock Text="{local:Icon E710}" FontFamily="{StaticResource IconFont}" FontSize="34" Foreground="{StaticResource SubTextBrush}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsAdd}"/>
                                                 <!-- the photo sits inside a ring of the profile colour -->
-                                                <Ellipse Margin="5" IsVisible="{Binding Avatar, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                                    <Ellipse.Fill>
-                                                        <ImageBrush Source="{Binding Avatar}" Stretch="UniformToFill"/>
-                                                    </Ellipse.Fill>
-                                                </Ellipse>
+                                                <views:CoverImage Margin="5" IsCircle="True" Source="{Binding Avatar}"/>
                                                 <Ellipse Classes="ring" Stroke="White" StrokeThickness="3" Margin="-5"/>
                                                 <Button Classes="edit" Theme="{StaticResource PlayButton}" Width="34" Height="34" FontSize="13" Content="{local:Icon E70F}"
                                                         HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="Edit_Click"

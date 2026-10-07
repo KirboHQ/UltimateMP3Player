@@ -33,6 +33,10 @@ public sealed class MainApplication : Android.App.Application
         System.Environment.SetEnvironmentVariable("XDG_CACHE_HOME", CacheDir!.AbsolutePath);
         var music = GetExternalFilesDir(Android.OS.Environment.DirectoryMusic)?.AbsolutePath ?? Path.Combine(files, "Music");
         AppPaths.MusicDirOverride = music;
+        // The logins made inside the app, for the downloads (there's no browser to read them from).
+        SiteLogins.Configure(data);
+        // The small copies of the covers, where Android may clean up when space runs low.
+        Images.ThumbDir = Path.Combine(CacheDir!.AbsolutePath, "thumbs");
         AndroidEngines.Configure();
         AppDomain.CurrentDomain.UnhandledException += (_, e) => { if (e.ExceptionObject is Exception ex) App.Log(ex); };
         TaskScheduler.UnobservedTaskException += (_, e) =>

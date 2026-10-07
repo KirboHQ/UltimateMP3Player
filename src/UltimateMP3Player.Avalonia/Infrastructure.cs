@@ -190,20 +190,41 @@ public static class Ui
         FadeRightProperty.Changed.AddClassHandler<Control>((c, _) =>
         {
             c.SizeChanged -= OnFadeSize;
-            if (GetFadeRight(c) > 0) c.SizeChanged += OnFadeSize;
+            if (GetFadeRight(c) > 0)
+            {
+                c.SizeChanged += OnFadeSize;
+                // A panel's content growing or shrinking (the tags of a row) decides it too.
+                if (c is Panel p && !FadeWatched.TryGetValue(p, out var watched))
+                {
+                    FadeWatched.Add(p, p);
+                    foreach (var child in p.Children) child.SizeChanged += (_, _) => ApplyFade(p);
+                    p.Children.CollectionChanged += (_, e) =>
+                    {
+                        if (e.NewItems != null)
+                            foreach (var child in e.NewItems.OfType<Control>()) child.SizeChanged += (_, _) => ApplyFade(p);
+                        ApplyFade(p);
+                    };
+                }
+            }
             ApplyFade(c);
         });
     }
+
+    // The panels whose children are watched already (weak: rows let go of aren't kept).
+    private static readonly ConditionalWeakTable<Panel, Panel> FadeWatched = new();
 
     private static void OnFadeSize(object? sender, SizeChangedEventArgs e)
     {
         if (sender is Control c) ApplyFade(c);
     }
 
+    // The mask is an offscreen layer at every frame (for each row of a list that has one): only while something really runs
+    // past the edge (a panel's children wider than it).
     private static void ApplyFade(Control c)
     {
         double w = c.Bounds.Width, fade = GetFadeRight(c);
-        if (fade <= 0 || w <= fade)
+        bool overflows = c is not Panel p || p.Children.Any(ch => ch.IsVisible && ch.Bounds.Right > w + 0.5);
+        if (fade <= 0 || w <= fade || !overflows)
         {
             c.OpacityMask = null;
             return;
@@ -426,6 +447,57 @@ public static class Ui
 // The bundled icon font (Fluent System Icons, MIT) in place of Windows' Segoe Fluent Icons: the app keeps the Segoe
 // codes everywhere (shared code, XAML written like the Windows one) and they're translated here, one by one, to the
 // same icon of the Fluent set (Segoe Fluent Icons is drawn from it). Filled icons are in a second font.
+// A toolbar (a DockPanel of buttons on both sides) whose buttons drop their texts (TextBlocks with the class "label": the
+// icon and the tooltip stay) when they don't all fit, instead of running under the search box; back when there's room
+// again. A DockPanel hands each child only the room left, so their natural width is measured here, with no limit.
+public sealed class ToolbarPanel : DockPanel
+{
+    private double _full;  // the width they need with their texts while those are hidden (0: shown)
+    private int _shown;    // the buttons visible then (another page of the view: decided again)
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        double room = availableSize.Width;
+        if (!double.IsInfinity(room))
+        {
+            int shown = Children.Count(c => c.IsVisible);
+            if (_full > 0 && (room >= _full || shown != _shown))
+            {
+                _full = 0;
+                SetLabels(true);
+            }
+            if (_full == 0)
+            {
+                double need = 0;
+                foreach (var c in Children)
+                {
+                    if (!c.IsVisible) continue;
+                    c.Measure(new Size(double.PositiveInfinity, availableSize.Height));
+                    need += c.DesiredSize.Width;
+                }
+                if (need > room + 0.5 && SetLabels(false))
+                {
+                    _full = need;
+                    _shown = shown;
+                }
+            }
+        }
+        return base.MeasureOverride(availableSize);
+    }
+
+    private bool SetLabels(bool visible)
+    {
+        bool any = false;
+        foreach (var t in this.GetVisualDescendants().OfType<TextBlock>())
+            if (t.Classes.Contains("label"))
+            {
+                t.IsVisible = visible;
+                any = true;
+            }
+        return any;
+    }
+}
+
 public static class Icons
 {
     public static readonly FontFamily Regular = new("avares://UltimateMP3Player/Assets/Fonts#FluentSystemIcons-Regular");
@@ -524,37 +596,100 @@ public static class FrameClock
     }
 }
 
-// Covers from disk at display size, cached while in use.
+// Covers from disk at display size, cached while in use: the ones used last stay in memory (up to KeepBytes), the others
+// as long as something shows them. A small size of a big picture (a row's cover of a 3000-pixel original) is also kept on
+// disk as a small file (ThumbDir): scrolling a long list decodes a few kilobytes per row instead of the whole original
+// again, which on a phone made the list stutter.
 public static class Images
 {
+    private sealed class Entry
+    {
+        public required string Key;
+        public required Bitmap Image;
+        public long Bytes;
+    }
+
     private static readonly Dictionary<string, WeakReference<Bitmap>> Cache = new();
-    private static readonly LinkedList<Bitmap> Recent = new();
-    private const int KeepStrong = 120;
+    private static readonly Dictionary<string, LinkedListNode<Entry>> Strong = new();
+    private static readonly LinkedList<Entry> Recent = new();
+    private const long KeepBytes = 40L << 20;
+    private const int ThumbMax = 400;
+    private static long _bytes;
+
+    // Where the small copies go: a cache folder the system may empty (Android's, ~/.cache, ~/Library/Caches).
+    public static string? ThumbDir { get; set; } = DefaultThumbDir();
+
+    private static string? DefaultThumbDir()
+    {
+        try
+        {
+            var xdg = Environment.GetEnvironmentVariable("XDG_CACHE_HOME");
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string root = !string.IsNullOrEmpty(xdg) ? xdg
+                : OperatingSystem.IsMacOS() ? Path.Combine(home, "Library", "Caches")
+                : OperatingSystem.IsWindows() ? Path.GetTempPath()
+                : Path.Combine(home, ".cache");
+            return Path.Combine(root, "UltimateMP3Player", "thumbs");
+        }
+        catch { return null; }
+    }
+
+    private static string Key(string path, int size, int version) => string.Concat(path, "|", size.ToString(CultureInfo.InvariantCulture), "|", version.ToString(CultureInfo.InvariantCulture));
 
     public static Bitmap? TryGet(string path, int size, int version)
     {
-        var key = $"{path}|{size}|{version}";
+        var key = Key(path, size, version);
         lock (Cache)
-            if (Cache.TryGetValue(key, out var w) && w.TryGetTarget(out var img)) return img;
+        {
+            if (Strong.TryGetValue(key, out var node))
+            {
+                Recent.Remove(node);
+                Recent.AddFirst(node);
+                return node.Value.Image;
+            }
+            if (Cache.TryGetValue(key, out var w) && w.TryGetTarget(out var img))
+            {
+                Keep(key, img);
+                return img;
+            }
+        }
         return null;
     }
 
     public static async Task<Bitmap?> LoadAsync(string path, int size, int version)
     {
-        var key = $"{path}|{size}|{version}";
         var hit = TryGet(path, size, version);
         if (hit != null) return hit;
         var img = await Task.Run(() => Decode(path, size));
         if (img == null) return null;
+        var key = Key(path, size, version);
         lock (Cache)
         {
             Cache[key] = new WeakReference<Bitmap>(img);
-            Recent.AddFirst(img);
-            while (Recent.Count > KeepStrong) Recent.RemoveLast();
+            Keep(key, img);
             if (Cache.Count > 4000)
                 foreach (var k in Cache.Where(kv => !kv.Value.TryGetTarget(out _)).Select(kv => kv.Key).ToList()) Cache.Remove(k);
         }
         return img;
+    }
+
+    // (under the lock) Among the ones kept, first; the oldest go beyond the budget.
+    private static void Keep(string key, Bitmap img)
+    {
+        if (Strong.TryGetValue(key, out var old))
+        {
+            Recent.Remove(old);
+            _bytes -= old.Value.Bytes;
+        }
+        var e = new Entry { Key = key, Image = img, Bytes = Math.Max(1L, (long)img.PixelSize.Width * img.PixelSize.Height * 4) };
+        Strong[key] = Recent.AddFirst(e);
+        _bytes += e.Bytes;
+        while (_bytes > KeepBytes && Recent.Count > 1 && Recent.Last is { } last)
+        {
+            Recent.RemoveLast();
+            Strong.Remove(last.Value.Key);
+            _bytes -= last.Value.Bytes;
+        }
     }
 
     public static Bitmap? Decode(string path, int size)
@@ -562,10 +697,76 @@ public static class Images
         try
         {
             if (!File.Exists(path)) return null;
+            if (size > 0 && size <= ThumbMax && ThumbDir != null && Thumbnail(path, size) is { } small) return small;
             using var s = File.OpenRead(path);
             return size > 0 ? Bitmap.DecodeToWidth(s, size, BitmapInterpolationMode.HighQuality) : new Bitmap(s);
         }
         catch { return null; }
+    }
+
+    // The small copy of a big picture: read if it's newer than the picture, otherwise made (decoded at a fraction of its
+    // size, as JPEG allows, then scaled with care) and saved for the next time. Null: the picture is small already.
+    private static Bitmap? Thumbnail(string path, int size)
+    {
+        var thumbs = ThumbDir!;
+        string thumb = Path.Combine(thumbs, $"{Hash(path):x16}-{size}");
+        try
+        {
+            var srcTime = File.GetLastWriteTimeUtc(path);
+            foreach (var ext in new[] { ".jpg", ".png" })
+            {
+                var f = thumb + ext;
+                if (File.Exists(f) && File.GetLastWriteTimeUtc(f) >= srcTime)
+                {
+                    using var ts = File.OpenRead(f);
+                    return new Bitmap(ts);
+                }
+            }
+        }
+        catch { }
+
+        using var codec = SKCodec.Create(path);
+        if (codec == null) return null;
+        var info = codec.Info;
+        if (info.Width <= size * 1.25 || info.Width <= 0 || info.Height <= 0) return null;
+        int h = Math.Max(1, (int)Math.Round(info.Height * (size / (double)info.Width)));
+        var near = codec.GetScaledDimensions(size / (float)info.Width);
+        using var decoded = SKBitmap.Decode(codec, new SKImageInfo(near.Width, near.Height, SKColorType.Rgba8888, SKAlphaType.Premul));
+        if (decoded == null) return null;
+#pragma warning disable CS0618
+        using var scaled = decoded.Width == size && decoded.Height == h ? decoded.Copy() : decoded.Resize(new SKImageInfo(size, h, SKColorType.Rgba8888, SKAlphaType.Premul), SKFilterQuality.High);
+#pragma warning restore CS0618
+        if (scaled == null) return null;
+        bool alpha = info.AlphaType != SKAlphaType.Opaque;
+        try
+        {
+            Directory.CreateDirectory(thumbs);
+            using var img = SKImage.FromBitmap(scaled);
+            using var data = alpha ? img.Encode(SKEncodedImageFormat.Png, 100) : img.Encode(SKEncodedImageFormat.Jpeg, 90);
+            if (data != null)
+            {
+                // Written aside, then put in place: another list asking for the same cover meanwhile reads a whole file.
+                var target = thumb + (alpha ? ".png" : ".jpg");
+                var part = $"{target}.{Environment.CurrentManagedThreadId}.part";
+                using (var fs = File.Create(part)) data.SaveTo(fs);
+                File.Move(part, target, true);
+            }
+        }
+        catch { }
+        return new Bitmap(Avalonia.Platform.PixelFormat.Rgba8888, Avalonia.Platform.AlphaFormat.Premul, scaled.GetPixels(),
+            new PixelSize(scaled.Width, scaled.Height), new Vector(96, 96), scaled.RowBytes);
+    }
+
+    // FNV-1a over the path: the same name for the same file at every start.
+    private static ulong Hash(string s)
+    {
+        ulong h = 14695981039346656037;
+        foreach (char c in s)
+        {
+            h ^= c;
+            h *= 1099511628211;
+        }
+        return h;
     }
 
     // Drops strong references when closed to the tray.
@@ -574,7 +775,9 @@ public static class Images
         lock (Cache)
         {
             Recent.Clear();
+            Strong.Clear();
             Cache.Clear();
+            _bytes = 0;
         }
     }
 

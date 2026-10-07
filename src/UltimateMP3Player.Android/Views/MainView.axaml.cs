@@ -474,7 +474,8 @@ public partial class MainView : UserControl
 
     private void ShowBackdrop(bool show, bool animate)
     {
-        double from = Backdrop.Opacity, to = show ? 0.6 : 0;
+        // (its 60 % is inside the brush, HeaderGlowStrong: at rest the element is at 0 or 1, no layer at every frame)
+        double from = Backdrop.Opacity, to = show ? 1 : 0;
         int run = ++_backdropRun;
         if (Math.Abs(from - to) < 0.01) return;
         if (!animate || !Ui.Animations) { Backdrop.Opacity = to; return; }

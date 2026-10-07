@@ -9,7 +9,7 @@
              FontFamily="{StaticResource UiFont}" FontSize="14" TopLevel.AutoSafeAreaPadding="False">
     <Panel x:Name="Root">
         <!-- Home's colour, up behind the status bar -->
-        <Border x:Name="Backdrop" Height="280" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0" IsHitTestVisible="False"/>
+        <Border x:Name="Backdrop" Height="280" VerticalAlignment="Top" Background="{DynamicResource HeaderGlowStrong}" Opacity="0" IsHitTestVisible="False"/>
 
         <Grid x:Name="Shell" RowDefinitions="Auto,*,Auto,Auto" IsVisible="False">
 

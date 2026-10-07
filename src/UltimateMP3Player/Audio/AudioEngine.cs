@@ -42,10 +42,20 @@ public sealed class AudioEngine : IDisposable
         get
         {
             var p = _master.Position;
-            // The output buffer holds LatencyMs of sound, that is more of the song when it plays faster.
-            if (_playing) p -= TimeSpan.FromMilliseconds(LatencyMs * _master.Speed);
+            // The output buffer holds LatencyMs of sound, that is more of the song when it plays faster. An output that
+            // measures what it holds (the phone's) is asked, playing or not: emptied at a pause, it holds nothing.
+            if (_out is IOutputLatency o) p -= TimeSpan.FromMilliseconds(o.LatencyMs * _master.Speed);
+            else if (_playing) p -= TimeSpan.FromMilliseconds(LatencyMs * _master.Speed);
             return p < TimeSpan.Zero ? TimeSpan.Zero : p;
         }
+    }
+
+    // A jump or another song asked while the output holds a lot (the phone with the screen off): what's waiting is
+    // thrown away, so it's heard at once and not after all of it. Not at the end of a song (the next one, repeat): the
+    // end of this one is still waiting there to be heard.
+    private void Cut(bool ended)
+    {
+        if (!ended && _playing && _out is IOutputLatency { LatencyMs: > 200 } o) o.Drop();
     }
 
     public TimeSpan Duration => _master.Duration;
@@ -89,8 +99,10 @@ public sealed class AudioEngine : IDisposable
             source.Dispose();
             return;
         }
+        bool ended = _master.ReadToEnd;
         _master.SetSource(source, trackGainDb, durationHint, _crossfade, Smooth);
         SourcePath = path;
+        Cut(ended);
     }
 
     public async Task CrossfadeToAsync(string path, double durationHint, double trackGainDb)
@@ -127,7 +139,12 @@ public sealed class AudioEngine : IDisposable
         SourcePath = null;
     }
 
-    public void Seek(TimeSpan t) => _master.Seek(t);
+    public void Seek(TimeSpan t)
+    {
+        bool ended = _master.ReadToEnd;
+        _master.Seek(t);
+        Cut(ended);
+    }
 
     public void Play()
     {
@@ -160,7 +177,19 @@ public sealed class AudioEngine : IDisposable
         _ = Task.Delay(TimeSpan.FromSeconds(PauseFade + 0.05)).ContinueWith(_ => _ui.BeginInvoke(() =>
         {
             if (version != _pauseVersion || _playing) return;
-            try { _out?.Pause(); } catch { }
+            // An output that can throw away what it still holds (the fade and the silence after it, and a little of the
+            // song before them, not heard yet): emptied, and the song goes back to the point heard last, so playing
+            // again goes on from there, without the dip of the fade in the middle.
+            if (_out is IOutputLatency o)
+            {
+                var heard = Position;
+                try { _out.Pause(); } catch { }
+                if (o.Flush() > 0) _master.Rewind(heard);
+            }
+            else
+            {
+                try { _out?.Pause(); } catch { }
+            }
             _outRunning = false;
         }));
     }
@@ -210,4 +239,17 @@ public sealed class AudioEngine : IDisposable
         ResetOutput();
         _master.SetSource(null, 0, 0, 0, false);
     }
+}
+
+// An output that knows how much sound it holds, not heard yet (the phone's AudioTrack, whose buffer grows while the app is
+// away), and can throw it away.
+public interface IOutputLatency
+{
+    int LatencyMs { get; }
+
+    // Playing: what's waiting goes, the sound mixed from now on comes at once.
+    void Drop();
+
+    // Paused: what's waiting goes; how many milliseconds it was.
+    int Flush();
 }

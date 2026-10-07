@@ -19,11 +19,7 @@
                             <Ellipse Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
                             <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileInitial}" Foreground="White" FontWeight="Bold" FontSize="16"
                                        FontFamily="{StaticResource UiFont}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <Ellipse Margin="2" IsVisible="{Binding $parent[views:MainView].DataContext.ProfileAvatar, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                <Ellipse.Fill>
-                                    <ImageBrush Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}" Stretch="UniformToFill"/>
-                                </Ellipse.Fill>
-                            </Ellipse>
+                            <views:CoverImage Margin="2" CornerRadius="17" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
                         </Panel>
                     </Button>
                 </Grid>

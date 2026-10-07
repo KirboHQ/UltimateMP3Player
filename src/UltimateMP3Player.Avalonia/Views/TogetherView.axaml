@@ -10,11 +10,7 @@
             <Panel>
                 <Ellipse Fill="{Binding Brush}"/>
                 <TextBlock Text="{Binding Initial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Ellipse Margin="2" IsVisible="{Binding Avatar, Converter={x:Static ObjectConverters.IsNotNull}}">
-                    <Ellipse.Fill>
-                        <ImageBrush Source="{Binding Avatar}" Stretch="UniformToFill"/>
-                    </Ellipse.Fill>
-                </Ellipse>
+                <views:CoverImage Margin="2" IsCircle="True" Source="{Binding Avatar}"/>
             </Panel>
         </DataTemplate>
 
@@ -293,7 +289,7 @@
     </UserControl.Styles>
 
     <Grid>
-        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False"/>
 
         <!-- ============================================================ lobby: create a room or join one -->
         <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False" IsVisible="{Binding !InRoom}">

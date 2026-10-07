@@ -56,9 +56,7 @@
             <!-- your songs -->
             <ListBox x:Name="LocalList" Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}" IsVisible="False">
                 <ListBox.DataTemplates>
-                    <DataTemplate DataType="vm:TrackRow">
-                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TrackRowTemplate}"/>
-                    </DataTemplate>
+                    <StaticResource ResourceKey="TrackRowTemplate"/>
                     <DataTemplate DataType="vm:PlaylistViewModel">
                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistRowTemplate}"/>
                     </DataTemplate>
@@ -111,11 +109,7 @@
                                             <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
                                                 <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="18" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
                                             </Border>
-                                            <Border CornerRadius="6" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                                <Border.Background>
-                                                    <ImageBrush Source="{Binding Thumb}" Stretch="UniformToFill"/>
-                                                </Border.Background>
-                                            </Border>
+                                            <views:CoverImage CornerRadius="6" Source="{Binding Thumb}"/>
                                         </Panel>
                                         <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>

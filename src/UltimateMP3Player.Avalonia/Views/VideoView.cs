@@ -47,6 +47,45 @@ public sealed class VideoView : Control
     public event Action? FrameChanged;
     public event Action? MediaOpened;
 
+    // A small copy of each frame, blurred and faded (MakeBackdrop): the backdrop behind the video. Made by the CPU at a few
+    // dozen pixels and stretched on screen, instead of a blur effect over the whole stage at every frame of the video (an
+    // offscreen layer and a big blur each time: without a GPU it alone took the computer's time).
+    public bool MakeBackdrop { get; set; }
+    public double BackdropOpacity { get; set; } = 0.6;
+    public IImage? Backdrop => _backdrop;
+    private WriteableBitmap? _backdrop;
+
+    private unsafe void UpdateBackdrop(byte[] pixels)
+    {
+        const int w = 64;
+        int h = Math.Max(1, (int)Math.Round(w * _height / (double)_width));
+        if (_backdrop == null || _backdrop.PixelSize.Width != w || _backdrop.PixelSize.Height != h)
+            _backdrop = new WriteableBitmap(new PixelSize(w, h), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+        try
+        {
+            using var fb = _backdrop.Lock();
+            using var surface = SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(w, h, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul), fb.Address, fb.RowBytes);
+            if (surface == null) return;
+            fixed (byte* src = pixels)
+            {
+                using var frame = SkiaSharp.SKImage.FromPixels(new SkiaSharp.SKImageInfo(_width, _height, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul), (IntPtr)src, _width * 4);
+                using var blur = SkiaSharp.SKImageFilter.CreateBlur(1.6f, 1.6f, SkiaSharp.SKShaderTileMode.Clamp);
+                using var paint = new SkiaSharp.SKPaint
+                {
+                    Color = new SkiaSharp.SKColor(255, 255, 255, (byte)Math.Round(Math.Clamp(BackdropOpacity, 0, 1) * 255)),
+#pragma warning disable CS0618
+                    FilterQuality = SkiaSharp.SKFilterQuality.Medium,
+#pragma warning restore CS0618
+                    ImageFilter = blur,
+                };
+                surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);
+                if (frame != null) surface.Canvas.DrawImage(frame, new SkiaSharp.SKRect(0, 0, w, h), paint);
+                surface.Canvas.Flush();
+            }
+        }
+        catch { }
+    }
+
     public string? Source
     {
         get => _path;
@@ -113,6 +152,7 @@ public sealed class VideoView : Control
         _path = null;
         StopDecoder();
         _bitmap = null;
+        _backdrop = null;
         _next = null;
         _shownTime = double.NaN;
         _ticking = false;
@@ -224,6 +264,7 @@ public sealed class VideoView : Control
                     Buffer.MemoryCopy(src + y * row, (byte*)fb.Address + y * fb.RowBytes, fb.RowBytes, row);
         }
         _shownTime = f.Time;
+        if (MakeBackdrop) UpdateBackdrop(f.Pixels);
         InvalidateVisual();
         FrameChanged?.Invoke();
     }

@@ -87,16 +87,14 @@
         <!-- ======================================================== stage -->
         <Panel x:Name="Stage" Margin="20,0,0,16" ClipToBounds="True">
             <Border CornerRadius="16" Background="{StaticResource SurfaceBrush}"/>
-            <!-- backdrop: the cover, or the video itself blurred -->
-            <Border CornerRadius="16" Opacity="0.22" IsVisible="{Binding !IsVideo}">
-                <Border.Background>
-                    <ImageBrush Source="{Binding Player.Current.Cover160}" Stretch="UniformToFill"/>
-                </Border.Background>
-            </Border>
+            <!-- backdrop: the cover, or the video itself blurred. All drawn straight (CoverImage), their opacity and blur baked
+                 into the pictures (NowPlayingView.BakeCover, VideoView.Backdrop): an ImageBrush, an opacity or a blur effect
+                 here cost an offscreen surface as big as the stage at every frame. -->
+            <views:CoverImage x:Name="CoverBackdrop" CornerRadius="16" IsVisible="{Binding !IsVideo}"/>
             <!-- behind the lyrics: the cover's colours, blurred (baked in NowPlayingView.BakeCover) -->
-            <Border x:Name="LyricsGlow" CornerRadius="16" Opacity="0" IsVisible="{Binding LyricsOverCover}"/>
-            <Border x:Name="StageVideo" CornerRadius="16" ClipToBounds="True" Opacity="0.6" IsVisible="{Binding IsVideo}">
-                <Image x:Name="BackdropVideo" Margin="-80" Stretch="UniformToFill" Effect="blur(60)"/>
+            <views:CoverImage x:Name="LyricsGlow" CornerRadius="16" Opacity="0" IsVisible="{Binding LyricsOverCover}"/>
+            <Border x:Name="StageVideo" CornerRadius="16" ClipToBounds="True" IsVisible="{Binding IsVideo}">
+                <views:CoverImage x:Name="BackdropVideo" Margin="-80"/>
             </Border>
             <Border CornerRadius="16" IsVisible="{Binding !LyricsOverCover}">
                 <Border.Background>
@@ -125,11 +123,12 @@
                 <Panel x:Name="CoverArea" IsVisible="{Binding ShowCover}">
                     <Viewbox MaxWidth="460" MaxHeight="460" Stretch="Uniform">
                         <Panel Width="460" Height="460">
-                            <!-- shadow under the tilting cover -->
-                            <Border Width="330" Height="330" CornerRadius="30" Background="Black" Opacity="0.8" IsHitTestVisible="False"
-                                    RenderTransform="translateY(18px)" Effect="blur(70)"/>
+                            <!-- shadow under the tilting cover (a picture made once: NowPlayingView.CoverShadow) -->
+                            <Image x:Name="CoverShadow" Width="460" Height="460" IsHitTestVisible="False" RenderTransform="translateY(18px)"/>
                             <Panel x:Name="Tilt" Width="400" Height="400" IsHitTestVisible="False" RenderTransformOrigin="50%,50%">
-                                <Image x:Name="CoverImage" Width="400" Height="400" Stretch="Fill" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                <!-- (the picture is baked at twice the size: linear with mipmaps is as sharp, and much cheaper than
+                                     the cubic HighQuality at every frame of a tilt when there's no GPU) -->
+                                <Image x:Name="CoverImage" Width="400" Height="400" Stretch="Fill" RenderOptions.BitmapInterpolationMode="MediumQuality"/>
                                 <views:CoverSheen x:Name="Sheen" Width="400" Height="400" Opacity="0"/>
                             </Panel>
                             <Border x:Name="CoverHit" Width="400" Height="400" Background="Transparent" Cursor="Hand"/>

@@ -168,7 +168,15 @@ public sealed class AppSettings
     public double WindowHeight { get; set; } = 820;
     public bool WindowMaximized { get; set; }
 
-    [JsonIgnore] public string? CookiesBrowserOrNull => UseCookies ? CookiesBrowser : null;
+    // The logins made inside the app (the phone's: a cookies.txt written from its web page) instead of a browser's; set at
+    // start by the Android app, null on the computers.
+    public static string? CookieFile { get; set; }
+
+    // What the engines get: "file:<cookies.txt>" or a browser spec.
+    [JsonIgnore] public string? CookiesBrowserOrNull =>
+        !UseCookies ? null
+        : CookieFile != null ? (File.Exists(CookieFile) ? "file:" + CookieFile : null)
+        : CookiesBrowser;
 
     // True when settings.json did not exist yet.
     [JsonIgnore] public bool IsNew { get; private set; }

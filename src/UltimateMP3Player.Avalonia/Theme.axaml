@@ -71,6 +71,16 @@
         <GradientStop Color="#2A2358" Offset="0"/>
         <GradientStop Color="#0E1014" Offset="1"/>
     </LinearGradientBrush>
+    <!-- The pages' glow on top: HeaderGradient at 55 % (60 % the profiles' page), the opacity in the brush itself. On the
+         element (Opacity="0.55") it cost an offscreen layer as big as the header at every frame. -->
+    <LinearGradientBrush x:Key="HeaderGlow" StartPoint="0%,0%" EndPoint="0%,100%" Opacity="0.55">
+        <GradientStop Color="#2A2358" Offset="0"/>
+        <GradientStop Color="#0E1014" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="HeaderGlowStrong" StartPoint="0%,0%" EndPoint="0%,100%" Opacity="0.6">
+        <GradientStop Color="#2A2358" Offset="0"/>
+        <GradientStop Color="#0E1014" Offset="1"/>
+    </LinearGradientBrush>
 
     <!-- width of the "Tag" column in song lists: 0 until the profile has tags (MainViewModel.SyncTags) -->
     <GridLength x:Key="TagColumnWidth">0</GridLength>
@@ -817,11 +827,8 @@
                         <Thumb Width="18" Height="18">
                             <Thumb.Template>
                                 <ControlTemplate>
-                                    <Ellipse Name="K" Width="16" Height="16" Fill="White">
-                                        <Ellipse.Effect>
-                                            <DropShadowEffect BlurRadius="6" OffsetY="1" OffsetX="0" Opacity="0.5" Color="Black"/>
-                                        </Ellipse.Effect>
-                                    </Ellipse>
+                                    <!-- (a BoxShadow, drawn directly: an Effect costs an offscreen layer and a blur at every frame) -->
+                                    <Border Name="K" Width="16" Height="16" CornerRadius="8" Background="White" BoxShadow="0 1 6 0 #80000000"/>
                                 </ControlTemplate>
                             </Thumb.Template>
                         </Thumb>

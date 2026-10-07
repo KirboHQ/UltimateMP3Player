@@ -162,11 +162,7 @@
                                 <Panel Width="32" Height="32">
                                     <Ellipse Fill="{Binding ProfileBrush}"/>
                                     <TextBlock Text="{Binding ProfileInitial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <Ellipse Margin="2.5" IsVisible="{Binding ProfileAvatar, Converter={x:Static ObjectConverters.IsNotNull}}">
-                                        <Ellipse.Fill>
-                                            <ImageBrush Source="{Binding ProfileAvatar}" Stretch="UniformToFill"/>
-                                        </Ellipse.Fill>
-                                    </Ellipse>
+                                    <views:CoverImage Margin="2.5" IsCircle="True" Source="{Binding ProfileAvatar}"/>
                                 </Panel>
                                 <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                                     <TextBlock Text="{Binding ProfileName}" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis"/>

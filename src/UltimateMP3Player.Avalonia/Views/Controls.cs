@@ -247,6 +247,62 @@ public sealed class InlinePanel : Panel
     }
 }
 
+// A picture filling its box like an ImageBrush with UniformToFill (the middle of it), the corners rounded, drawn straight
+// onto the screen. Avalonia's Skia renderer draws every ImageBrush through an offscreen surface made again at every frame:
+// a list of covers that scrolls made 10-15 of them per frame (the phone's playlists stuttered), the song page's blurred
+// background one as big as the screen.
+public sealed class CoverImage : Control
+{
+    public static readonly StyledProperty<IImage?> SourceProperty = AvaloniaProperty.Register<CoverImage, IImage?>(nameof(Source));
+    public static readonly StyledProperty<CornerRadius> CornerRadiusProperty = AvaloniaProperty.Register<CoverImage, CornerRadius>(nameof(CornerRadius));
+    // Round (an avatar), whatever its size.
+    public static readonly StyledProperty<bool> IsCircleProperty = AvaloniaProperty.Register<CoverImage, bool>(nameof(IsCircle));
+
+    static CoverImage()
+    {
+        AffectsRender<CoverImage>(SourceProperty, CornerRadiusProperty, IsCircleProperty);
+        // (nothing to touch: the element around it gets the finger)
+        IsHitTestVisibleProperty.OverrideDefaultValue<CoverImage>(false);
+    }
+
+    public IImage? Source
+    {
+        get => GetValue(SourceProperty);
+        set => SetValue(SourceProperty, value);
+    }
+
+    public CornerRadius CornerRadius
+    {
+        get => GetValue(CornerRadiusProperty);
+        set => SetValue(CornerRadiusProperty, value);
+    }
+
+    public bool IsCircle
+    {
+        get => GetValue(IsCircleProperty);
+        set => SetValue(IsCircleProperty, value);
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        if (Source is not { } img) return;
+        var box = new Rect(Bounds.Size);
+        var size = img.Size;
+        if (box.Width <= 0 || box.Height <= 0 || size.Width <= 0 || size.Height <= 0) return;
+        double scale = Math.Max(box.Width / size.Width, box.Height / size.Height);
+        double w = box.Width / scale, h = box.Height / scale;
+        var source = new Rect((size.Width - w) / 2, (size.Height - h) / 2, w, h);
+        var radius = IsCircle ? new CornerRadius(Math.Min(box.Width, box.Height) / 2) : CornerRadius;
+        if (radius == default)
+        {
+            context.DrawImage(img, source, box);
+            return;
+        }
+        using (context.PushClip(new RoundedRect(box, radius)))
+            context.DrawImage(img, source, box);
+    }
+}
+
 // As tall as it is wide: card covers that grow with the grid.
 public sealed class SquareBox : Decorator
 {

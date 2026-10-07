@@ -15,8 +15,9 @@
         </Style>
     </UserControl.Styles>
     <Panel x:Name="Root" Background="{StaticResource BgBrush}">
-        <!-- the cover's colours behind the page -->
-        <Border x:Name="Glow" Opacity="0.9"/>
+        <!-- the cover's colours behind the page (drawn straight, its 90 % already in the picture: an ImageBrush or an opacity
+             would cost a surface as big as the screen at every frame) -->
+        <views:CoverImage x:Name="Glow"/>
         <Border IsHitTestVisible="False">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">

@@ -13,7 +13,7 @@ public static class YtDlp
     private static readonly AsyncLocal<bool> GentleFlow = new();
     public static bool Gentle { get => GentleFlow.Value; set => GentleFlow.Value = value; }
 
-    private static List<string> BaseArgs(string? cookiesBrowser)
+    private static List<string> BaseArgs(string? cookiesBrowser, string? cookieCopy)
     {
         var a = new List<string>
         {
@@ -22,7 +22,8 @@ public static class YtDlp
             "--ffmpeg-location", Engines.Dir,
         };
         if (Gentle) a.AddRange(new[] { "--sleep-requests", "1.5" });
-        if (!string.IsNullOrEmpty(cookiesBrowser)) { a.Add("--cookies-from-browser"); a.Add(cookiesBrowser); }
+        if (cookieCopy != null) { a.Add("--cookies"); a.Add(cookieCopy); }
+        else if (!string.IsNullOrEmpty(cookiesBrowser) && !CookieFile.IsFile(cookiesBrowser)) { a.Add("--cookies-from-browser"); a.Add(cookiesBrowser); }
         return a;
     }
 
@@ -30,7 +31,8 @@ public static class YtDlp
     public static async Task<JsonDocument> DumpAsync(string url, string? cookies, CancellationToken ct,
         bool flat = true, bool noPlaylist = true, IEnumerable<string>? extra = null)
     {
-        var args = BaseArgs(cookies);
+        var copy = CookieFile.Copy(cookies);
+        var args = BaseArgs(cookies, copy);
         args.Add("-J");
         if (flat) args.Add("--flat-playlist");
         args.Add(noPlaylist ? "--no-playlist" : "--yes-playlist");
@@ -38,7 +40,9 @@ public static class YtDlp
         args.Add("--");
         args.Add(url);
 
-        var r = await ProcRunner.RunAsync(Engines.YtDlp, args, ct: ct, timeout: TimeSpan.FromMinutes(5));
+        ProcResult r;
+        try { r = await ProcRunner.RunAsync(Engines.YtDlp, args, ct: ct, timeout: TimeSpan.FromMinutes(5)); }
+        finally { CookieFile.Delete(copy); }
         var json = r.StdOut.Trim();
         int start = json.IndexOf('{');
         if (start >= 0)
@@ -66,7 +70,8 @@ public static class YtDlp
     public static async Task<string> DownloadAsync(string url, string spec, bool merge, string dir, string? cookies,
         Action<DlProgress> progress, CancellationToken ct, IEnumerable<string>? extra = null)
     {
-        var args = BaseArgs(cookies);
+        var copy = CookieFile.Copy(cookies);
+        var args = BaseArgs(cookies, copy);
         args.AddRange(new[]
         {
             "-f", spec,
@@ -81,13 +86,18 @@ public static class YtDlp
         args.Add("--");
         args.Add(url);
 
-        var r = await ProcRunner.RunAsync(Engines.YtDlp, args, onOut: line =>
+        ProcResult r;
+        try
         {
-            if (!line.StartsWith(Marker, StringComparison.Ordinal)) return;
-            var p = line[Marker.Length..].Split('|');
-            if (p.Length < 7) return;
-            progress(new DlProgress(p[0], p[1], ParseL(p[2]) ?? 0, ParseL(p[3]) ?? ParseL(p[4]), ParseD(p[5]), ParseD(p[6])));
-        }, ct: ct, captureOut: false);
+            r = await ProcRunner.RunAsync(Engines.YtDlp, args, onOut: line =>
+            {
+                if (!line.StartsWith(Marker, StringComparison.Ordinal)) return;
+                var p = line[Marker.Length..].Split('|');
+                if (p.Length < 7) return;
+                progress(new DlProgress(p[0], p[1], ParseL(p[2]) ?? 0, ParseL(p[3]) ?? ParseL(p[4]), ParseD(p[5]), ParseD(p[6])));
+            }, ct: ct, captureOut: false);
+        }
+        finally { CookieFile.Delete(copy); }
 
         if (r.ExitCode != 0) throw ErrorText.FromEngine("yt-dlp", r.StdErr, r.ExitCode);
         return FindOutput(dir, "media.") ?? throw new EngineException(L.T("yt-dlp non ha prodotto alcun file."), r.StdErr);
@@ -130,6 +140,45 @@ public static class YtDlp
     }
 }
 
+// The cookies as "file:<cookies.txt>" (the phone's logins made in the app) rather than a browser to read them from. The
+// engines write the cookies back into the file when they end: each run gets a copy of its own (several at once would write
+// over each other, and a half-written file would be read by the next), thrown away afterwards.
+public static class CookieFile
+{
+    private const string Prefix = "file:";
+    private static bool _cleaned;
+
+    public static bool IsFile(string? cookies) => cookies != null && cookies.StartsWith(Prefix, StringComparison.Ordinal);
+
+    public static string? Copy(string? cookies)
+    {
+        if (!IsFile(cookies)) return null;
+        var src = cookies![Prefix.Length..];
+        try
+        {
+            if (!File.Exists(src)) return null;
+            var tmp = Path.GetTempPath();
+            if (!_cleaned)
+            {
+                // Copies left behind by an app closed in the middle of a download.
+                _cleaned = true;
+                foreach (var old in Directory.EnumerateFiles(tmp, "ump-cookies-*.txt"))
+                    try { if (DateTime.UtcNow - File.GetLastWriteTimeUtc(old) > TimeSpan.FromHours(6)) File.Delete(old); } catch { }
+            }
+            var copy = Path.Combine(tmp, $"ump-cookies-{Guid.NewGuid():N}.txt");
+            File.Copy(src, copy);
+            return copy;
+        }
+        catch { return null; }
+    }
+
+    public static void Delete(string? copy)
+    {
+        if (copy == null) return;
+        try { File.Delete(copy); } catch { }
+    }
+}
+
 public sealed class GalleryEntry
 {
     public string Url { get; init; } = "";
@@ -138,10 +187,11 @@ public sealed class GalleryEntry
 
 public static class GalleryDl
 {
-    private static List<string> BaseArgs(string? cookiesBrowser)
+    private static List<string> BaseArgs(string? cookiesBrowser, string? cookieCopy)
     {
         var a = new List<string> { "--config-ignore", "--no-colors" };
-        if (!string.IsNullOrEmpty(cookiesBrowser)) { a.Add("--cookies-from-browser"); a.Add(cookiesBrowser); }
+        if (cookieCopy != null) { a.Add("--cookies"); a.Add(cookieCopy); }
+        else if (!string.IsNullOrEmpty(cookiesBrowser) && !CookieFile.IsFile(cookiesBrowser)) { a.Add("--cookies-from-browser"); a.Add(cookiesBrowser); }
         return a;
     }
 
@@ -149,9 +199,12 @@ public static class GalleryDl
     public static async Task<(JsonElement? Dir, List<GalleryEntry> Files, JsonDocument Doc)> ListAsync(
         string url, string? cookies, CancellationToken ct, int max = 1000)
     {
-        var args = BaseArgs(cookies);
+        var copy = CookieFile.Copy(cookies);
+        var args = BaseArgs(cookies, copy);
         args.AddRange(new[] { "-J", "--range", $"1-{max}", "--", url });
-        var r = await ProcRunner.RunAsync(Engines.GalleryDl, args, ct: ct, timeout: TimeSpan.FromMinutes(5));
+        ProcResult r;
+        try { r = await ProcRunner.RunAsync(Engines.GalleryDl, args, ct: ct, timeout: TimeSpan.FromMinutes(5)); }
+        finally { CookieFile.Delete(copy); }
         var json = r.StdOut.Trim();
         int start = json.IndexOf('[');
         JsonDocument? doc = null;
@@ -190,9 +243,12 @@ public static class GalleryDl
     // Downloads one file of a gallery into dir.
     public static async Task<string> DownloadOneAsync(string url, int index, string dir, string? cookies, CancellationToken ct)
     {
-        var args = BaseArgs(cookies);
+        var copy = CookieFile.Copy(cookies);
+        var args = BaseArgs(cookies, copy);
         args.AddRange(new[] { "--range", index.ToString(CultureInfo.InvariantCulture), "-D", dir, "-f", "gdl_{num}.{extension}", "--no-mtime", "--", url });
-        var r = await ProcRunner.RunAsync(Engines.GalleryDl, args, ct: ct);
+        ProcResult r;
+        try { r = await ProcRunner.RunAsync(Engines.GalleryDl, args, ct: ct); }
+        finally { CookieFile.Delete(copy); }
         var file = Directory.EnumerateFiles(dir, "gdl_*").Where(f => !f.EndsWith(".part")).OrderByDescending(f => new FileInfo(f).Length).FirstOrDefault();
         if (file == null) throw ErrorText.FromEngine("gallery-dl", r.StdErr, r.ExitCode);
         return file;

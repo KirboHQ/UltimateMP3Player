@@ -62,6 +62,23 @@ public partial class DownloadsPage : UserControl, IPage
             item.IsSelected = !item.IsSelected;
     }
 
+    // The link needs a login: the page of its site to sign in (then the link is read again), or the list of the sites.
+    private async void Logins_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Vm is not { } vm) return;
+        var url = vm.LastUrl;
+        var host = Uri.TryCreate(url, UriKind.Absolute, out var u) ? u.Host.ToLowerInvariant() : "";
+        var site = Platform.SiteLogins.Sites.FirstOrDefault(s => s.Domains.Any(d => host == d || host.EndsWith("." + d, StringComparison.Ordinal)));
+        if (site == null)
+        {
+            LoginsSheet.Show();
+            return;
+        }
+        await Platform.SiteLogins.OpenAsync(site.Url, site.Name);
+        if (Platform.SiteLogins.SignedIn().Contains(site.Name) && App.Host.Settings.CookiesBrowserOrNull != null && url.Length > 0)
+            await vm.AnalyzeAsync(url);
+    }
+
     public bool Back() => false;
 
     public void ScrollToTop() => Scroller.Offset = default;

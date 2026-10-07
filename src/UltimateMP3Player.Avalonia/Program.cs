@@ -22,7 +22,11 @@ internal static class Program
             {
                 DefaultFamilyName = OperatingSystem.IsWindows() ? "Segoe UI" : "avares://UltimateMP3Player/Assets/Fonts#Selawik",
             })
-            .With(new X11PlatformOptions { WmClass = "ultimate-mp3-player" })
+            // Without a usable GPU (virtual machines: Avalonia refuses VMware's and llvmpipe's OpenGL; computers without the
+            // drivers) the window is drawn by the CPU. Retained: one buffer kept for the window, only what changed drawn
+            // again; otherwise a new window-sized buffer at every frame, each announced to the garbage collector, which then
+            // ran a full collection every few frames (measured in a Mint VM: 170 in 49 s).
+            .With(new X11PlatformOptions { WmClass = "ultimate-mp3-player", UseRetainedFramebuffer = true })
             .With(new MacOSPlatformOptions { ShowInDock = true })
             .LogToTrace();
         // UMP_LOG=<file>: Avalonia's warnings (bindings, layout) go there, for debugging.

@@ -45,7 +45,8 @@ public partial class SettingsView : UserControl
     public static string GetKeywords(Control o) => o.GetValue(KeywordsProperty);
     public static void SetKeywords(Control o, string value) => o.SetValue(KeywordsProperty, value);
 
-    private readonly HashSet<Control> _hidden = new();
+    // What the search hid, each with what gives it back its own visibility.
+    private readonly Dictionary<Control, IDisposable?> _hidden = new();
 
     // Only the cards, and inside them the settings, whose words match. A match in a card's title keeps
     // the whole card; its hidden keywords find the card but matching rows still narrow it down;
@@ -53,7 +54,7 @@ public partial class SettingsView : UserControl
     private void Search()
     {
         var words = Text.Normalize(SearchBox.Text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        foreach (var el in _hidden.ToList()) Show(el, true);
+        foreach (var el in _hidden.Keys.ToList()) Show(el, true);
         int shown = 0;
         foreach (var card in Cards.Children.OfType<Control>())
         {
@@ -141,16 +142,17 @@ public partial class SettingsView : UserControl
         return string.Join(" ", parts);
     }
 
-    // Hidden over whatever it is (a bound visibility keeps its binding and comes back as it was).
+    // Hidden over whatever it is (a bound visibility keeps its binding and comes back as it was): a value above the others,
+    // taken away again by the handle SetValue gives (setting UnsetValue there would only add another layer on top, and the
+    // "hidden" one under it would stay: a card hidden once never came back).
     private void Show(Control el, bool visible)
     {
         if (visible)
         {
-            if (!_hidden.Remove(el)) return;
-            el.SetValue(IsVisibleProperty, AvaloniaProperty.UnsetValue, BindingPriority.Animation);
+            if (_hidden.Remove(el, out var undo)) undo?.Dispose();
             return;
         }
-        if (!_hidden.Add(el)) return;
-        el.SetValue(IsVisibleProperty, false, BindingPriority.Animation);
+        if (_hidden.ContainsKey(el)) return;
+        _hidden[el] = el.SetValue(IsVisibleProperty, false, BindingPriority.Animation);
     }
 }
