@@ -20,57 +20,71 @@ public static class Keys
 public static class Spinners
 {
     public static void Register()
-        => Control.LoadedEvent.AddClassHandler<Avalonia.Controls.Shapes.Ellipse>((e, _) =>
+    {
+        Control.LoadedEvent.AddClassHandler<Avalonia.Controls.Shapes.Ellipse>((e, _) =>
         {
             if (e.Classes.Contains("spinner")) Spin(e);
             else if (e.Classes.Contains("pulse")) Pulse(e);
         });
+        Control.LoadedEvent.AddClassHandler<Border>((e, _) => { if (e.Classes.Contains("runner")) Run(e); });
+    }
 
-    // The ring going out behind "searching" (the Windows app's Pulse style): 0.6 → 1.5 and fading, every 2.2 s.
-    private static void Pulse(Control e)
+    // 40 steps a second (a spinner doesn't need the 120 of a phone's screen).
+    private const double StepMs = 25;
+
+    // While it's loaded: step(seconds since the start) at each of its frames, while it's shown.
+    private static void Animate(Control e, Action<double> step)
     {
-        var scale = new ScaleTransform(0.6, 0.6);
-        e.RenderTransform = scale;
         var started = System.Diagnostics.Stopwatch.StartNew();
+        var pacer = new FramePacer(StepMs);
         void Next()
         {
             if (!e.IsLoaded) return;
-            if (!e.IsEffectivelyVisible)
+            if (!e.IsEffectivelyVisible || TopLevel.GetTopLevel(e) is not { } top)
             {
                 Ui.Later(Next);
                 return;
             }
-            TopLevel.GetTopLevel(e)?.RequestAnimationFrame(_ =>
+            pacer.Request(top, _ =>
             {
-                double t = started.Elapsed.TotalSeconds % 2.2 / 2.2;
-                scale.ScaleX = scale.ScaleY = 0.6 + 0.9 * t;
-                e.Opacity = 0.7 * (1 - t);
+                step(started.Elapsed.TotalSeconds);
                 Next();
             });
         }
         Next();
     }
 
+    // The ring going out behind "searching" (the Windows app's Pulse style): 0.6 → 1.5 and fading, every 2.2 s.
+    private static void Pulse(Control e)
+    {
+        var scale = new ScaleTransform(0.6, 0.6);
+        e.RenderTransform = scale;
+        Animate(e, s =>
+        {
+            double t = s % 2.2 / 2.2;
+            scale.ScaleX = scale.ScaleY = 0.6 + 0.9 * t;
+            e.Opacity = 0.7 * (1 - t);
+        });
+    }
+
     private static void Spin(Control e)
     {
         var rotate = e.RenderTransform as RotateTransform ?? new RotateTransform();
         e.RenderTransform = rotate;
-        var started = System.Diagnostics.Stopwatch.StartNew();
-        void Next()
+        Animate(e, s => rotate.Angle = s / 0.9 * 360 % 360);
+    }
+
+    // The block running along a progress bar that can't tell how far it is (ProgressBar's "Runner"): from just before its
+    // left end to past its right one every 1.4 s, only while it's shown (it's hidden when the bar knows its value).
+    private static void Run(Border e)
+    {
+        var shift = e.RenderTransform as TranslateTransform ?? new TranslateTransform();
+        e.RenderTransform = shift;
+        Animate(e, s =>
         {
-            if (!e.IsLoaded) return;
-            if (!e.IsEffectivelyVisible)
-            {
-                Ui.Later(Next);
-                return;
-            }
-            TopLevel.GetTopLevel(e)?.RequestAnimationFrame(_ =>
-            {
-                rotate.Angle = started.Elapsed.TotalSeconds / 0.9 * 360 % 360;
-                Next();
-            });
-        }
-        Next();
+            double w = (e.Parent as Control)?.Bounds.Width ?? 420;
+            shift.X = -e.Bounds.Width + (w + e.Bounds.Width) * (s % 1.4 / 1.4);
+        });
     }
 }
 

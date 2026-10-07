@@ -106,11 +106,17 @@ public sealed class WaveformBar : Control
         }
     }
 
+    // As often as the played part grows by about half a pixel of the screen (a few times a second for a song of minutes),
+    // not at every frame of the screen.
+    private readonly FramePacer _pacer = new(16);
+
     private void RequestFrame()
     {
         if (_frameRequested || TopLevel.GetTopLevel(this) is not { } top) return;
         _frameRequested = true;
-        top.RequestAnimationFrame(_ =>
+        double pixelsPerSecond = Bounds.Width * top.RenderScaling * (Rate > 0 ? Rate : 1) / Math.Max(1, Duration);
+        _pacer.MinMs = Math.Clamp(500 / Math.Max(0.01, pixelsPerSecond), 16, 250);
+        _pacer.Request(top, _ =>
         {
             _frameRequested = false;
             if (!_ticking) return;

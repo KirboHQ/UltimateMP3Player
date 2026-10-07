@@ -3,6 +3,47 @@ using Avalonia.Controls;
 
 namespace UltimateMP3Player.Views;
 
+// The frames of something small that keeps moving (a scrolling title, a spinner, a waveform's progress): at most one every
+// MinMs, in step with the screen. The screen's own rate (120 Hz on many phones) is for the finger and the pages; these look
+// the same at a fraction of it, and every frame redraws the picture (the battery, the phone's warmth).
+public sealed class FramePacer
+{
+    private TimeSpan _last = TimeSpan.MinValue;
+    private TopLevel? _waitingOn;
+    private int _ask;
+
+    public FramePacer(double minMs) => MinMs = minMs;
+
+    public double MinMs { get; set; }
+
+    // apply(time) in the first frame of the screen at least MinMs after the last one; asks already pending count once
+    // (unless they were made to a screen that's gone: its frames never come).
+    public void Request(TopLevel top, Action<TimeSpan> apply)
+    {
+        if (_waitingOn == top) return;
+        _waitingOn = top;
+        int ask = ++_ask;
+        top.RequestAnimationFrame(now => OnFrame(top, now, apply, ask));
+    }
+
+    private void OnFrame(TopLevel top, TimeSpan now, Action<TimeSpan> apply, int ask)
+    {
+        if (ask != _ask) return;
+        double wait = _last == TimeSpan.MinValue || now < _last ? 0 : MinMs - (now - _last).TotalMilliseconds;
+        if (wait > 1.5)
+        {
+            // Too soon: back in a while (a timer for the long part, so the frames in between don't wake the app).
+            if (wait > 8)
+                Avalonia.Threading.DispatcherTimer.RunOnce(() => top.RequestAnimationFrame(t => OnFrame(top, t, apply, ask)), TimeSpan.FromMilliseconds(wait - 5));
+            else top.RequestAnimationFrame(t => OnFrame(top, t, apply, ask));
+            return;
+        }
+        _waitingOn = null;
+        _last = now;
+        apply(now);
+    }
+}
+
 // One animated value (what WPF's BeginAnimation did on a property): To() glides it from where it is to a target on the
 // render clock, a new To() or Set() replaces the running one, Completed runs only if it got there.
 public sealed class Tweener

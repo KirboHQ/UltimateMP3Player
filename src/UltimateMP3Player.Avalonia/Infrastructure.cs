@@ -350,6 +350,8 @@ public static class Ui
     // The file selected in the file manager where the system can (macOS: Finder; Linux: the file manager over D-Bus, or its folder).
     public static void ShowInFolder(string file)
     {
+        // (a phone has no file manager to open; and the Android app never starts programs through .NET, see ChildProcess)
+        if (OperatingSystem.IsAndroid()) return;
         try
         {
             if (OperatingSystem.IsMacOS()) Process.Start("open", new[] { "-R", file });
@@ -380,6 +382,7 @@ public static class Ui
     // A folder, a file or a link with the system's default program.
     public static void Open(string target)
     {
+        if (OperatingSystem.IsAndroid()) return;
         try
         {
             if (OperatingSystem.IsWindows()) Process.Start(new ProcessStartInfo(target) { UseShellExecute = true });

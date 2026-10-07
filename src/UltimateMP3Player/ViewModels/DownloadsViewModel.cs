@@ -144,7 +144,16 @@ public sealed class DownloadJobViewModel : Observable
     public ICommand PlayCommand { get; }
 
     public bool ViaYouTube => _originalKeys != null;
-    public string Title => Result?.Title ?? Item.Title;
+    public string Title => Result?.Title is { Length: > 0 } t ? t : !string.IsNullOrWhiteSpace(Item.Title) ? Item.Title : TitleFromLink(Item.PageUrl ?? Item.Url);
+
+    // A song the list gave without a name (SoundCloud's Go+ ones): the last part of its link, "hide-n-seek" → "hide n seek".
+    private static string TitleFromLink(string? url)
+    {
+        if (string.IsNullOrEmpty(url) || !Uri.TryCreate(url, UriKind.Absolute, out var u)) return L.T("Brano senza titolo");
+        var last = u.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+        if (string.IsNullOrEmpty(last) || last is "watch" or "track" or "tracks") return L.T("Brano senza titolo");
+        return Uri.UnescapeDataString(last).Replace('-', ' ').Replace('_', ' ').Trim();
+    }
     public string Subtitle => string.Join(" · ", new[] { Result?.Artist ?? Item.Artist, Item.SiteName, WantVideo ? L.T("con video") : null,
             ViaYouTube ? L.T("cercato su YouTube") : null }
         .Where(s => !string.IsNullOrWhiteSpace(s)));
@@ -281,17 +290,15 @@ public sealed class DownloadJobViewModel : Observable
             State = JobState.Canceled;
             StatusText = L.T("Annullato");
         }
-        catch (EngineException ex) when (ex.RateLimited && ++_rateLimits <= 6)
+        catch (EngineException ex) when ((ex.RateLimited || (ex.Forbidden && _queue.OnForbidden(service))) && ++_rateLimits <= 6)
         {
             // Back in the queue: it restarts on its own when the site allows it.
-            State = JobState.Queued;
-            Indeterminate = true;
-            StatusText = L.F("In attesa: {0} sta limitando i download", service);
-            Details = ex.Details.Trim();
+            WaitForSite(ex.Details);
             _queue.OnRateLimited(service);
         }
         catch (EngineException ex)
         {
+            ForbiddenAt = ex.Forbidden ? DateTime.Now : null;
             State = JobState.Failed;
 #if ANDROID_APP
             StatusText = ex.Message;
@@ -310,6 +317,25 @@ public sealed class DownloadJobViewModel : Observable
         {
             _queue.Pump();
         }
+    }
+
+    private void WaitForSite(string? details)
+    {
+        State = JobState.Queued;
+        Indeterminate = true;
+        StatusText = L.F("In attesa: {0} sta limitando i download", Service);
+        Details = details?.Trim();
+    }
+
+    // When it failed with a 403 (null: not that way).
+    internal DateTime? ForbiddenAt { get; private set; }
+
+    // It failed with a 403 just before the site turned out to be refusing everything: it waits with the others.
+    internal void WaitAgain()
+    {
+        if (State != JobState.Failed || ++_rateLimits > 6) return;
+        ForbiddenAt = null;
+        WaitForSite(Details);
     }
 
     private bool _refreshed;
@@ -352,6 +378,7 @@ public sealed class DownloadJobViewModel : Observable
         Details = null;
         Percent = 0;
         _rateLimits = 0;
+        ForbiddenAt = null;
         _queue.Pump();
     }
 
@@ -464,6 +491,26 @@ public sealed class DownloadQueue : Observable
     internal void OnSucceeded(string service)
     {
         if (_throttles.TryGetValue(service, out var t)) t.Strikes = 0;
+    }
+
+    private readonly Dictionary<string, List<DateTime>> _forbidden = new(StringComparer.OrdinalIgnoreCase);
+
+    // A song refused with "403": one closed to us, unless the same site refuses several in a row, or is already slowing
+    // us down (SoundCloud answers 403 instead of "too many requests" when it has had enough). Then it's a limit like the
+    // others: true, and the songs it just refused that way go back to waiting too.
+    internal bool OnForbidden(string service)
+    {
+        if (_throttles.ContainsKey(service)) return true;
+        if (!_forbidden.TryGetValue(service, out var times)) _forbidden[service] = times = new();
+        var now = DateTime.Now;
+        times.RemoveAll(t => now - t > TimeSpan.FromSeconds(90));
+        times.Add(now);
+        if (times.Count < 3) return false;
+        times.Clear();
+        foreach (var j in Jobs.Where(j => j.ForbiddenAt is { } at && now - at < TimeSpan.FromSeconds(120) &&
+                                          j.Service.Equals(service, StringComparison.OrdinalIgnoreCase)).ToList())
+            j.WaitAgain();
+        return true;
     }
 
     public void Pump()
@@ -634,8 +681,10 @@ public sealed class LinkViewModel : Observable
 
         PlaylistChoices = new List<Choice> { new(L.T("Nessuna (solo in «Tutti i brani»)"), NoPlaylist), new(L.T("Nuova playlist…"), NewPlaylist) };
         PlaylistChoices.AddRange(main.Playlists.Select(p => new Choice(p.Name, p.Id, p.IsFavorites ? "♥" : null)));
-        _playlist = IsCollection ? PlaylistChoices[1] : PlaylistChoices[0];
         Title = System.Text.RegularExpressions.Regex.Replace(r.Title, @"^(Album|EP|Single|Playlist)\s+-\s+", "");
+        // The same playlist downloaded again (the songs added since): into the one already made from it, not a copy.
+        _playlist = !IsCollection ? PlaylistChoices[0]
+            : PlaylistChoices.Skip(2).FirstOrDefault(c => string.Equals(c.Label, Title, StringComparison.CurrentCultureIgnoreCase)) ?? PlaylistChoices[1];
         _newName = IsCollection ? Title : "";
 
         ToggleAllCommand = new RelayCommand(ToggleAll);

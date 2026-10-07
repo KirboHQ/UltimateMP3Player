@@ -35,6 +35,12 @@ public sealed class Updater : Observable
 
     public static string AssetName => $"UltimateMP3Player-android-{Abi}.apk";
 
+    // The package for phones (ARM) installed on an x86 device (an emulator, a Chromebook): Android runs all of it through a
+    // translator, slowly, and the download engines crash there. The package of the same version for this device replaces it.
+    public static bool WrongPackage =>
+        System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture is System.Runtime.InteropServices.Architecture.Arm64 or System.Runtime.InteropServices.Architecture.Arm
+        && Abi == "x86_64";
+
     // A build from the sources (debuggable) doesn't update itself.
     public static bool CanUpdate => AppInfo.GitHubRepo.Length > 0 && (Ctx.ApplicationInfo!.Flags & ApplicationInfoFlags.Debuggable) == 0;
 
@@ -44,7 +50,11 @@ public sealed class Updater : Observable
     private ReleaseInfo? _ready;
     public ReleaseInfo? Ready { get => _ready; private set { if (Set(ref _ready, value)) OnChanged(nameof(IsReady), nameof(ReadyText)); } }
     public bool IsReady => Ready != null;
-    public string ReadyText => Ready == null ? "" : L.F("Versione {0} pronta da installare.", Ready.Version.ToString(3));
+    public string ReadyText => Ready == null ? "" : Norm(Ready.Version) <= Norm(AppInfo.Version) ? L.T("La versione giusta per questo dispositivo è pronta da installare.")
+        : L.F("Versione {0} pronta da installare.", Ready.Version.ToString(3));
+
+    // 3.5 = 3.5.0 = 3.5.0.0 (a tag against the assembly's version).
+    private static Version Norm(Version v) => new(v.Major, v.Minor, Math.Max(0, v.Build));
 
     public bool IsBusy => _running is { IsCompleted: false };
 
@@ -79,7 +89,8 @@ public sealed class Updater : Observable
         {
             if (manual) Status = L.T("Controllo degli aggiornamenti…");
             var release = await LatestAsync();
-            if (release == null || release.Version <= AppInfo.Version)
+            // (the same version too, when it's the package for this device instead of the wrong one)
+            if (release == null || Norm(release.Version) < Norm(AppInfo.Version) || (Norm(release.Version) == Norm(AppInfo.Version) && !WrongPackage))
             {
                 Status = manual ? L.F("Hai già l'ultima versione ({0}).", AppInfo.VersionText) : null;
                 return false;

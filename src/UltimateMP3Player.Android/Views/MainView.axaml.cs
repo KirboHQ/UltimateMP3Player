@@ -266,6 +266,23 @@ public partial class MainView : UserControl
         App.DeliverPending();
         _ = _host.EnsureEnginesAsync();
         _ = AskNotifications();
+        _ = OfferRightPackage();
+    }
+
+    // The phones' package (ARM) on an x86 device, an emulator: everything runs through a translator and downloads fail.
+    // Said at every start until the right one is installed (the updater fetches it: same version, this device's package).
+    private async Task OfferRightPackage()
+    {
+        if (!Services.Updater.WrongPackage) return;
+        await Task.Delay(1200);
+        if (await Dialogs.ConfirmAsync(L.T("Versione per un altro processore"),
+                L.T("Hai installato la versione per telefoni (ARM), ma questo dispositivo è x86_64 (un emulatore o un Chromebook): l'app va molto più lenta e i download non funzionano. Scarica e installa quella giusta (UltimateMP3Player-android-x86_64.apk): musica e impostazioni restano."),
+                L.T("Installa quella giusta")))
+        {
+            _session?.Toast(L.T("Download della versione giusta per questo dispositivo…"));
+            await _host.CheckAppUpdateNow();
+            if (!_host.Updates.IsReady && _host.Updates.Status is { } status) _session?.Toast(status);
+        }
     }
 
     // Android 13+: the notifications are allowed by the user (the player's one is shown anyway, the downloads' isn't).

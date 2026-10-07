@@ -36,6 +36,8 @@ public static partial class L
         ["{0} di {1} selezionati"] = "{0} of {1} selected",
         ["{0} di questi erano già sul computer prima: vengono solo tolti dalla libreria, i file restano."] = "{0} of these were already on your computer: they're only removed from the library, the files stay.",
         ["{0} è terminato con codice {1}"] = "{0} exited with code {1}",
+        ["{0} si è chiuso per un errore (codice {1})."] = "{0} crashed (code {1}).",
+        ["Brano senza titolo"] = "Untitled song",
         ["{0} già nella libreria"] = "{0} already in your library",
         ["{0} h {1} min"] = "{0} h {1} min",
         ["{0} in coda"] = "{0} queued",
@@ -1537,6 +1539,14 @@ public static partial class L
         ["Permetti a Ultimate MP3 Player di installare app, poi torna qui e premi di nuovo Installa."] = "Allow Ultimate MP3 Player to install apps, then come back here and tap Install again.",
         ["Installazione dell'aggiornamento…"] = "Installing the update…",
         ["Aggiornamento non installato."] = "Update not installed.",
+        ["La versione giusta per questo dispositivo è pronta da installare."] = "The right version for this device is ready to install.",
+        ["Versione per un altro processore"] = "Version for another processor",
+        ["Hai installato la versione per telefoni (ARM), ma questo dispositivo è x86_64 (un emulatore o un Chromebook): l'app va molto più lenta e i download non funzionano. Scarica e installa quella giusta (UltimateMP3Player-android-x86_64.apk): musica e impostazioni restano."] =
+            "You installed the version for phones (ARM), but this device is x86_64 (an emulator or a Chromebook): the app runs much slower and downloads don't work. Download and install the right one (UltimateMP3Player-android-x86_64.apk): your music and settings stay.",
+        ["Installa quella giusta"] = "Install the right one",
+        ["Download della versione giusta per questo dispositivo…"] = "Downloading the right version for this device…",
+        ["Questa è la versione dell'app per telefoni (ARM): su questo dispositivo x86_64 i motori non partono. Installa quella giusta da Impostazioni › Aggiornamenti › Controlla."] =
+            "This is the app's version for phones (ARM): on this x86_64 device the engines can't start. Install the right one from Settings › Updates › Check.",
 
         // Listen without downloading
         ["Ascolta senza scaricare"] = "Listen without downloading",

@@ -32,7 +32,12 @@ public static class AndroidEngines
             Python = Path.Combine(NativeDir, "libpython.so"),
             JsRuntime = "quickjs:" + Path.Combine(NativeDir, "libqjs.so"),
             Install = InstallAsync,
+            CrashHint = () => Services.Updater.WrongPackage
+                ? L.T("Questa è la versione dell'app per telefoni (ARM): su questo dispositivo x86_64 i motori non partono. Installa quella giusta da Impostazioni › Aggiornamenti › Controlla.")
+                : null,
         };
+        // Programs started the way Android does it (see JavaProcess).
+        JavaProcess.Install();
         // The folder of the native libraries changes with every update of the app: the links follow it. An update that
         // brings other packages takes the links away, so Engines.Missing() asks for them to be unpacked again.
         try

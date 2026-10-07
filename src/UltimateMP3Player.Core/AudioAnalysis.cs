@@ -25,23 +25,13 @@ public static class AudioAnalysis
             "-map", "[lo]", "-f", "null", "-",
             "-map", "[wo]", "-f", "s16le", "pipe:1",
         };
-        var psi = new ProcessStartInfo(Engines.Ffmpeg)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-            StandardErrorEncoding = Encoding.UTF8,
-        };
-        foreach (var a in args) psi.ArgumentList.Add(a);
-
-        using var p = Process.Start(psi) ?? throw new EngineException(L.T("Impossibile avviare ffmpeg."));
-        try { p.PriorityClass = ProcessPriorityClass.BelowNormal; } catch { }
-        using var reg = ct.Register(() => { try { p.Kill(true); } catch { } });
-        var errTask = p.StandardError.ReadToEndAsync();
+        using var p = ChildProcess.Start(Engines.Ffmpeg, args);
+        p.LowerPriority();
+        using var reg = ct.Register(p.Kill);
+        var errTask = new StreamReader(p.StandardError, Encoding.UTF8).ReadToEndAsync();
 
         var squares = new List<double>(4096);
-        var stream = p.StandardOutput.BaseStream;
+        var stream = p.StandardOutput;
         var buf = new byte[1 << 16];
         int carry = 0;
         long samples = 0;

@@ -278,11 +278,11 @@
                                             HorizontalSnapPointsAlignment="{TemplateBinding HorizontalSnapPointsAlignment}"
                                             VerticalSnapPointsAlignment="{TemplateBinding VerticalSnapPointsAlignment}"
                                             Padding="{TemplateBinding Padding}" ScrollViewer.IsScrollInertiaEnabled="{TemplateBinding IsScrollInertiaEnabled}">
-                        <!-- the finger drags the content (without it only a mouse wheel would scroll) -->
+                        <!-- the finger drags the content (without it only a mouse wheel would scroll), a fling goes on frame by frame -->
                         <ScrollContentPresenter.GestureRecognizers>
-                            <ScrollGestureRecognizer CanHorizontallyScroll="{Binding CanHorizontallyScroll, ElementName=PART_ContentPresenter}"
-                                                     CanVerticallyScroll="{Binding CanVerticallyScroll, ElementName=PART_ContentPresenter}"
-                                                     IsScrollInertiaEnabled="{Binding (ScrollViewer.IsScrollInertiaEnabled), ElementName=PART_ContentPresenter}"/>
+                            <local:FlingScroll CanHorizontallyScroll="{Binding CanHorizontallyScroll, ElementName=PART_ContentPresenter}"
+                                               CanVerticallyScroll="{Binding CanVerticallyScroll, ElementName=PART_ContentPresenter}"
+                                               IsScrollInertiaEnabled="{Binding (ScrollViewer.IsScrollInertiaEnabled), ElementName=PART_ContentPresenter}"/>
                         </ScrollContentPresenter.GestureRecognizers>
                     </ScrollContentPresenter>
                     <ScrollBar Name="PART_VerticalScrollBar" Theme="{StaticResource ThinScrollBar}" Orientation="Vertical" HorizontalAlignment="Right"

@@ -882,7 +882,8 @@
                 <Panel Name="TemplateRoot" ClipToBounds="True">
                     <Border Background="{TemplateBinding Background}" CornerRadius="2"/>
                     <Border Name="PART_Indicator" HorizontalAlignment="Left" Background="{TemplateBinding Foreground}" CornerRadius="2"/>
-                    <Border Name="Runner" Width="90" HorizontalAlignment="Left" Background="{TemplateBinding Foreground}" CornerRadius="2" IsVisible="False">
+                    <!-- (it runs along while shown: Spinners, class "runner") -->
+                    <Border Name="Runner" Classes="runner" Width="90" HorizontalAlignment="Left" Background="{TemplateBinding Foreground}" CornerRadius="2" IsVisible="False">
                         <Border.RenderTransform>
                             <TranslateTransform X="-90"/>
                         </Border.RenderTransform>
@@ -895,16 +896,6 @@
         </Style>
         <Style Selector="^:indeterminate /template/ Border#Runner">
             <Setter Property="IsVisible" Value="True"/>
-            <Style.Animations>
-                <Animation Duration="0:0:1.4" IterationCount="Infinite">
-                    <KeyFrame Cue="0%">
-                        <Setter Property="TranslateTransform.X" Value="-90"/>
-                    </KeyFrame>
-                    <KeyFrame Cue="100%">
-                        <Setter Property="TranslateTransform.X" Value="420"/>
-                    </KeyFrame>
-                </Animation>
-            </Style.Animations>
         </Style>
     </ControlTheme>
 

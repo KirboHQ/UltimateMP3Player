@@ -224,7 +224,7 @@ public static class Marquee
         }
         _frame = true;
         _frameOn = w;
-        w.RequestAnimationFrame(_ =>
+        Pacer.Request(w, _ =>
         {
             _frame = false;
             var at = DateTime.Now;
@@ -234,6 +234,8 @@ public static class Marquee
         });
     }
 
+    // 60 steps a second at most: smooth for a text at this speed, half the frames of a 120 Hz phone.
+    private static readonly Views.FramePacer Pacer = new(1000 / 61.0);
     private static bool _idle;
     private static TopLevel? _frameOn;
     private static IDisposable? _still;

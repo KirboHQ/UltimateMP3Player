@@ -64,6 +64,12 @@ public static class Touch
     private static void OnTapped(object? sender, TappedEventArgs e)
     {
         if (sender is not Control c || e.Handled || OnInnerButton(c, e.Source)) return;
+        // The finger only stopped a moving list.
+        if (FlingScroll.Caught)
+        {
+            e.Handled = true;
+            return;
+        }
         if (OpenedMenu(c))
         {
             _menuFrom = null;
@@ -86,7 +92,7 @@ public static class Touch
 
     private static void OnMenu(object? sender, ContextRequestedEventArgs e)
     {
-        if (sender is not Control c || e.Handled || OnInnerButton(c, e.Source)) return;
+        if (sender is not Control c || e.Handled || OnInnerButton(c, e.Source) || FlingScroll.Caught) return;
         e.Handled = true;
         _menuFrom = c;
         // While songs are being chosen: the menu of the chosen ones (with this one among them).

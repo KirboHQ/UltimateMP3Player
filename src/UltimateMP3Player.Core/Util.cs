@@ -163,6 +163,8 @@ public sealed class EngineException : Exception
     public bool FormatUnavailable { get; init; }
     // The site refuses because of too many requests.
     public bool RateLimited { get; init; }
+    // "403 Forbidden": one song closed to us, or (several in a row) a site that has had enough (SoundCloud's way of saying it).
+    public bool Forbidden { get; init; }
 
     public EngineException(string message, string? details = null) : base(message) => Details = details ?? "";
 }
@@ -173,6 +175,13 @@ public static class ErrorText
     public static EngineException FromEngine(string engine, string stderr, int exitCode)
     {
         var lines = stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // Killed by the system without a word (139 = it crashed, 137 = killed, 134 = aborted): not the site's fault.
+        if (exitCode is 134 or 137 or 139 or < 0 && !lines.Any(l => l.StartsWith("ERROR:", StringComparison.Ordinal)))
+        {
+            var text = L.F("{0} si è chiuso per un errore (codice {1}).", engine, exitCode);
+            if (Engines.Host?.CrashHint?.Invoke() is { } hint) text += " " + hint;
+            return new EngineException(text, stderr);
+        }
         string raw =
             lines.LastOrDefault(l => l.StartsWith("ERROR:", StringComparison.Ordinal)) ??
             lines.LastOrDefault(l => l.Contains("[error]", StringComparison.Ordinal)) ??
@@ -213,7 +222,7 @@ public static class ErrorText
                 "could not be found", "not found", "404"))
             return new EngineException(L.T("Il contenuto non è disponibile (rimosso o inesistente)."), stderr);
         if (Has("403", "forbidden"))
-            return new EngineException(L.T("Il sito ha negato l'accesso (errore 403)."), stderr);
+            return new EngineException(L.T("Il sito ha negato l'accesso (errore 403)."), stderr) { Forbidden = true };
         if (Has("getaddrinfo", "failed to resolve", "name or service not known", "timed out", "connection refused", "network is unreachable", "no connection"))
             return new EngineException(L.T("Impossibile contattare il sito: controlla la connessione a Internet."), stderr);
         if (Has("is not a valid url", "invalid url"))

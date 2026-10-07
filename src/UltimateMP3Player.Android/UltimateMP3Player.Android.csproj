@@ -19,10 +19,10 @@
     <RootNamespace>UltimateMP3Player</RootNamespace>
     <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
     <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
-    <!-- Keep equal to the other projects; the version code is 3.5.0 → 30500 (per-ABI packages add a digit in front). -->
-    <Version>3.5.0</Version>
-    <ApplicationDisplayVersion>3.5.0</ApplicationDisplayVersion>
-    <ApplicationVersion>30500</ApplicationVersion>
+    <!-- Keep equal to the other projects; the version code is 3.5.1 → 30501, the same in every processor's package. -->
+    <Version>3.5.1</Version>
+    <ApplicationDisplayVersion>3.5.1</ApplicationDisplayVersion>
+    <ApplicationVersion>30501</ApplicationVersion>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -42,7 +42,11 @@
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <!-- One package per processor (arm64 phones, older 32-bit ones, x86_64 emulators), each with only its engines:
          build-android.ps1 builds once per RuntimeIdentifier (AndroidCreatePackagePerAbi no longer works with .NET 10). -->
-    <AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">true</AndroidEnableProfiledAot>
+    <!-- All the code compiled ahead (not only what .NET's own startup profile lists, a MAUI app's): pages and menus opened
+         the first time don't wait for the JIT. Measured on the x86_64 emulator: start 1.29 → 1.09 s, CPU in the first
+         12 s 1.95 → 1.55 s, for 7 MB more per package. -->
+    <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
+    <AndroidEnableProfiledAot Condition="'$(Configuration)' == 'Release'">false</AndroidEnableProfiledAot>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
     <AndroidLinkMode Condition="'$(Configuration)' == 'Release'">SdkOnly</AndroidLinkMode>
 

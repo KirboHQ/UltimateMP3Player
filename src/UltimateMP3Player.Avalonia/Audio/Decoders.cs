@@ -55,13 +55,13 @@ public sealed class StreamingFfmpegSource : ITrackSource, ISampleProvider
     private const int Rate = 48000;
     private readonly string _path;
     private readonly object _lock = new();
-    private Process? _proc;
+    private ChildProcess? _proc;
     private Stream? _out;
     private TimeSpan _start;
     private long _frames;
     private byte[] _bytes = Array.Empty<byte>();
     private int _leftover;
-    private Task<(Process?, Stream?)>? _pending;
+    private Task<(ChildProcess?, Stream?)>? _pending;
     private TimeSpan _pendingAt;
 
     public StreamingFfmpegSource(string path, TimeSpan duration)
@@ -83,20 +83,11 @@ public sealed class StreamingFfmpegSource : ITrackSource, ISampleProvider
         }
     }
 
-    private (Process?, Stream?) StartAt(TimeSpan at)
+    private (ChildProcess?, Stream?) StartAt(TimeSpan at)
     {
-        var psi = new ProcessStartInfo(Engines.Ffmpeg)
-        {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = false,
-            CreateNoWindow = true,
-        };
-        foreach (var a in new[] { "-nostdin", "-loglevel", "quiet", "-ss", at.TotalSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
-                     "-i", _path, "-vn", "-f", "f32le", "-ac", "2", "-ar", Rate.ToString(), "pipe:1" })
-            psi.ArgumentList.Add(a);
-        var p = Process.Start(psi);
-        return (p, p?.StandardOutput.BaseStream);
+        var p = ChildProcess.Start(Engines.Ffmpeg, new[] { "-nostdin", "-loglevel", "quiet", "-ss", at.TotalSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
+            "-i", _path, "-vn", "-f", "f32le", "-ac", "2", "-ar", Rate.ToString(), "pipe:1" }, errors: false);
+        return (p, p.StandardOutput);
     }
 
     public int Read(float[] buffer, int offset, int count)
@@ -156,7 +147,7 @@ public sealed class StreamingFfmpegSource : ITrackSource, ISampleProvider
 
     private void Kill()
     {
-        try { if (_proc is { HasExited: false }) _proc.Kill(); } catch { }
+        try { _proc?.Kill(); } catch { }
         _proc?.Dispose();
         _proc = null;
         _out = null;
@@ -170,7 +161,15 @@ public sealed class StreamingFfmpegSource : ITrackSource, ISampleProvider
             if (_pending is { } p)
                 _ = p.ContinueWith(t =>
                 {
-                    try { if (t.IsCompletedSuccessfully && t.Result.Item1 is { HasExited: false } pr) pr.Kill(); } catch { }
+                    try
+                    {
+                        if (t.IsCompletedSuccessfully && t.Result.Item1 is { } pr)
+                        {
+                            pr.Kill();
+                            pr.Dispose();
+                        }
+                    }
+                    catch { }
                 });
         }
     }

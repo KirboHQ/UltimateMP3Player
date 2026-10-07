@@ -13,6 +13,8 @@ public sealed class EngineHost
     // YouTube's JavaScript, for yt-dlp ("quickjs:<path>").
     public required string JsRuntime { get; init; }
     public required Func<Action<string, double?>, CancellationToken, Task> Install { get; init; }
+    // Why a program could crash here (the app built for another processor), shown with the error; null when nothing's known.
+    public Func<string?>? CrashHint { get; init; }
 }
 
 // External programs, kept in "engines" next to the exe (on Linux and macOS next to the data: the app's own folder,
@@ -217,6 +219,7 @@ public static class ProcRunner
         if (Engines.Host != null && !File.Exists(exe))
             throw name == Engines.GalleryDl ? new EngineException(L.T("Questo link non è supportato.")) { Unsupported = true }
                 : new EngineException(L.F("Impossibile avviare {0}.", Path.GetFileName(name)));
+        if (ChildProcess.Starter != null) return await RunChildAsync(exe, args, onOut, onErr, ct, captureOut, timeout, workDir).ConfigureAwait(false);
         var psi = new ProcessStartInfo(exe)
         {
             UseShellExecute = false,
@@ -273,4 +276,79 @@ public static class ProcRunner
             throw new EngineException(L.F("{0} non ha risposto in tempo.", Path.GetFileNameWithoutExtension(exe)));
         return new ProcResult(p.ExitCode, so.ToString(), se.ToString());
     }
+
+    // The same through ChildProcess (the Android app's way of starting programs), in the background of the phone.
+    private static async Task<ProcResult> RunChildAsync(string exe, IEnumerable<string> args, Action<string>? onOut, Action<string>? onErr,
+        CancellationToken ct, bool captureOut, TimeSpan? timeout, string? workDir)
+    {
+        var env = new Dictionary<string, string> { ["PYTHONIOENCODING"] = "utf-8", ["PYTHONUTF8"] = "1", ["NO_COLOR"] = "1" };
+        ChildProcess p;
+        try { p = ChildProcess.Start(exe, args, workDir ?? Path.GetTempPath(), env); }
+        catch (EngineException) { throw; }
+        catch (Exception ex) { throw new EngineException(L.F("Impossibile avviare {0}.", Path.GetFileName(exe)), ex.Message); }
+        using (p)
+        {
+            p.LowerPriority();
+            var so = new StringBuilder();
+            var se = new StringBuilder();
+            var outDone = Lines(p.StandardOutput, line =>
+            {
+                if (captureOut) lock (so) so.AppendLine(line);
+                try { onOut?.Invoke(line); } catch { }
+            });
+            var errDone = Lines(p.StandardError, line =>
+            {
+                lock (se)
+                {
+                    se.AppendLine(line);
+                    if (se.Length > 200_000) se.Remove(0, se.Length - 100_000);
+                }
+                try { onErr?.Invoke(line); } catch { }
+            });
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            if (timeout is { } t) cts.CancelAfter(t);
+            using (cts.Token.Register(p.Kill))
+            {
+                await p.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+                await Task.WhenAny(Task.WhenAll(outDone, errDone), Task.Delay(5000)).ConfigureAwait(false);
+            }
+            ct.ThrowIfCancellationRequested();
+            if (cts.IsCancellationRequested)
+                throw new EngineException(L.F("{0} non ha risposto in tempo.", Path.GetFileNameWithoutExtension(exe)));
+            lock (so) lock (se) return new ProcResult(p.ExitCode, so.ToString(), se.ToString());
+        }
+    }
+
+    // The lines a program writes, as it writes them (a "\r" ends one too: yt-dlp's progress), on a thread of their own (the
+    // read waits for the program).
+    private static Task Lines(Stream stream, Action<string> line) => Task.Factory.StartNew(() =>
+    {
+        try
+        {
+            using var reader = new StreamReader(stream, Encoding.UTF8, false, 8192);
+            var buf = new char[4096];
+            var sb = new StringBuilder();
+            bool afterCr = false;
+            int n;
+            while ((n = reader.Read(buf, 0, buf.Length)) > 0)
+                for (int i = 0; i < n; i++)
+                {
+                    char c = buf[i];
+                    if (c == '\n' && afterCr)
+                    {
+                        afterCr = false;
+                        continue;
+                    }
+                    afterCr = c == '\r';
+                    if (c is '\r' or '\n')
+                    {
+                        line(sb.ToString());
+                        sb.Clear();
+                    }
+                    else sb.Append(c);
+                }
+            if (sb.Length > 0) line(sb.ToString());
+        }
+        catch { }
+    }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 }

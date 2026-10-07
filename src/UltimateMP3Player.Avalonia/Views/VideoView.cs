@@ -80,13 +80,12 @@ public sealed class VideoView : Control
     {
         try
         {
-            using var p = Process.Start(new ProcessStartInfo(Engines.Ffprobe, new[]
+            using var p = ChildProcess.Start(Engines.Ffprobe, new[]
             {
                 "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height,r_frame_rate", "-of", "default=nw=1", path,
-            }) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true });
-            if (p == null) return null;
-            var output = p.StandardOutput.ReadToEnd();
-            p.WaitForExit(5000);
+            }, errors: false);
+            var output = new StreamReader(p.StandardOutput).ReadToEnd();
+            p.WaitForExitAsync().Wait(5000);
             int w = 0, h = 0;
             double fps = 25;
             foreach (var line in output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
@@ -130,6 +129,9 @@ public sealed class VideoView : Control
         RequestFrame();
     }
 
+    // Looked at twice per frame of the video (a 30 fps video on a 120 Hz screen: every other frame of the screen).
+    private readonly FramePacer _pacer = new(15);
+
     private void RequestFrame()
     {
         if (TopLevel.GetTopLevel(this) is not { } top)
@@ -137,7 +139,8 @@ public sealed class VideoView : Control
             _ticking = false;
             return;
         }
-        top.RequestAnimationFrame(_ =>
+        _pacer.MinMs = Math.Max(4, 500 / _fps - 1);
+        _pacer.Request(top, _ =>
         {
             if (!_ticking || _bitmap == null) return;
             // Hidden (the song's page closed): no frame asked for until it's shown again.
@@ -250,7 +253,7 @@ public sealed class VideoView : Control
 
     private sealed class Decoder : IDisposable
     {
-        private readonly Process? _process;
+        private readonly ChildProcess? _process;
         private readonly BlockingCollection<Frame> _frames = new(Ahead);
         private readonly CancellationTokenSource _cts = new();
         private readonly double _start, _fps;
@@ -262,20 +265,15 @@ public sealed class VideoView : Control
             _fps = fps;
             try
             {
-                _process = Process.Start(new ProcessStartInfo(Engines.Ffmpeg, new[]
+                // (its few error lines go nowhere)
+                _process = ChildProcess.Start(Engines.Ffmpeg, new[]
                 {
                     "-nostdin", "-hide_banner", "-loglevel", "error",
                     "-ss", at.ToString("0.###", CultureInfo.InvariantCulture), "-i", path,
                     "-an", "-sn", "-dn",
                     "-vf", $"fps={fps.ToString("0.###", CultureInfo.InvariantCulture)},scale={w}:{h}:flags=bilinear",
                     "-pix_fmt", "bgra", "-f", "rawvideo", "pipe:1",
-                })
-                {
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                });
+                }, errors: false);
             }
             catch { _process = null; }
             if (_process == null)
@@ -283,9 +281,7 @@ public sealed class VideoView : Control
                 Finished = true;
                 return;
             }
-            _process.ErrorDataReceived += (_, _) => { };
-            _process.BeginErrorReadLine();
-            var stream = _process.StandardOutput.BaseStream;
+            var stream = _process.StandardOutput;
             int size = w * h * 4;
             var token = _cts.Token;
             new Thread(() =>
@@ -323,10 +319,7 @@ public sealed class VideoView : Control
         public void Dispose()
         {
             _cts.Cancel();
-            try
-            {
-                if (_process is { HasExited: false }) _process.Kill();
-            }
+            try { _process?.Kill(); }
             catch { }
             _process?.Dispose();
         }

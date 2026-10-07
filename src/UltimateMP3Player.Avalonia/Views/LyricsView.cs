@@ -298,12 +298,14 @@ public sealed class LyricsView : Grid
     }
 
     private bool _waitShown, _frameAsked;
+    // The sung line and the dots of a pause checked 33 times a second, not at every frame of the screen.
+    private readonly FramePacer _pacer = new(30);
 
     private void RequestFrame()
     {
         if (_frameAsked || TopLevel.GetTopLevel(this) is not { } top) return;
         _frameAsked = true;
-        top.RequestAnimationFrame(_ =>
+        _pacer.Request(top, _ =>
         {
             _frameAsked = false;
             if (!_ticking) return;

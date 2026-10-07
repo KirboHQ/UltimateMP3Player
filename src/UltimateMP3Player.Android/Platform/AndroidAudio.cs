@@ -94,7 +94,19 @@ public sealed class TrackOut : IWavePlayer
         // 10 (each write is a trip into Java with a copy of the samples).
         int chunk = Math.Max(frame, src.WaveFormat.AverageBytesPerSecond / 50 / frame * frame);
         var bytes = new byte[chunk];
-        var floats = new float[chunk / 4];
+        float[]? floats = null;
+        // The samples reach Android through one buffer outside .NET's memory, filled in place: no array made in Java and
+        // copied there and back at every write (50 times a second, for as long as the music plays).
+        Java.Nio.ByteBuffer? direct = null;
+        IntPtr address = IntPtr.Zero;
+        try
+        {
+            direct = Java.Nio.ByteBuffer.AllocateDirect(chunk);
+            direct?.Order(Java.Nio.ByteOrder.NativeOrder()!);
+            if (direct != null) address = Android.Runtime.JNIEnv.GetDirectBufferAddress(direct.Handle);
+        }
+        catch { address = IntPtr.Zero; }
+        if (address == IntPtr.Zero) floats = new float[chunk / 4];
         while (!_closed)
         {
             // Paused: asleep until Play (or closing) wakes it; the long timeout only in case a wake-up got lost.
@@ -111,12 +123,22 @@ public sealed class TrackOut : IWavePlayer
             float gain = Volume * Duck;
             if (gain < 0.999f)
                 for (int i = 0; i < f.Length; i++) f[i] *= gain;
-            f.CopyTo(floats);
             try
             {
                 var t = _track;
                 if (t == null || _closed) break;
-                int written = t.Write(floats, 0, floats.Length, WriteMode.Blocking);
+                int written;
+                if (direct != null && address != IntPtr.Zero)
+                {
+                    Marshal.Copy(bytes, 0, address, chunk);
+                    direct.Clear();
+                    written = t.Write(direct, chunk, WriteMode.Blocking);
+                }
+                else
+                {
+                    f.CopyTo(floats!);
+                    written = t.Write(floats!, 0, floats!.Length, WriteMode.Blocking);
+                }
                 if (written < 0) throw new InvalidOperationException("AudioTrack " + written);
             }
             catch (Exception ex)
@@ -126,6 +148,7 @@ public sealed class TrackOut : IWavePlayer
                 break;
             }
         }
+        try { direct?.Dispose(); } catch { }
     }
 
     public void Play()

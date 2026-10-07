@@ -12,7 +12,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>3.5.0</Version>
+    <Version>3.5.1</Version>
     <Product>Ultimate MP3 Player</Product>
     <!-- File description: the name Windows shows in the volume mixer and the Task Manager. -->
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
