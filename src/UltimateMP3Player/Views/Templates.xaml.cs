@@ -136,7 +136,7 @@ public static class Menus
         return menu;
     }
 
-    private const string SaveGlyph = "", VideoGlyph = "", DeleteGlyph = "", SelectGlyph = "", AddGlyph = "";
+    private const string SaveGlyph = "", VideoGlyph = "", DeleteGlyph = "", SelectGlyph = "", LibraryGlyph = "";
 
     // "Save on the device" for the songs not saved (or how far their save is).
     private static void AddSaveItems(ContextMenu menu, IReadOnlyList<TrackViewModel> tracks)
@@ -262,7 +262,7 @@ public static class Menus
         if (item.IsFailed) menu.Items.Add(Item(L.T("Riprova a scaricarlo"), "", () => main.Radio.Prepare(item.Id)));
         menu.Items.Add(new Separator());
         // Only into the library (in the cloud, nothing downloaded: also a playlist, the favourites), or saved on the device too.
-        menu.Items.Add(Item(L.T("Aggiungi alla libreria"), AddGlyph, () => main.AddToLibrary(t)));
+        menu.Items.Add(Item(L.T("Aggiungi alla libreria"), LibraryGlyph, () => main.AddToLibrary(t)));
         menu.Items.Add(Item(L.T("Salva sul dispositivo"), SaveGlyph, () => _ = main.Radio.Save(item, null)));
         menu.Items.Add(AddToPlaylist(t));
         menu.Items.Add(FavoriteItem(t));

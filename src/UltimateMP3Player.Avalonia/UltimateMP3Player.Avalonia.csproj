@@ -12,7 +12,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>3.6.0</Version>
+    <Version>3.6.1</Version>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>

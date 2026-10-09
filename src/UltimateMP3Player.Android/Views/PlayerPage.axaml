@@ -92,8 +92,8 @@
                         <TextBlock Text="{Binding Player.WaitText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" Margin="8,0,0,0"/>
                     </StackPanel>
                 </StackPanel>
-                <!-- not saved on the phone: "+" puts a suggested song (or one heard from a link) into the library, in the cloud; the
-                     download arrow saves a song of the library on the phone; a ring while it's saved -->
+                <!-- not saved on the phone: the library icon puts a suggested song (or one heard from a link) into the library, in
+                     the cloud; the download arrow saves a song of the library on the phone; a ring while it's saved -->
                 <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="50" Height="50" Command="{Binding Player.SaveCurrentCommand}"
                         IsVisible="{Binding Player.IsTemporary, FallbackValue=False}">
                     <Panel>

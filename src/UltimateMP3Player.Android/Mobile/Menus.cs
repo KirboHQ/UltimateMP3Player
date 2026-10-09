@@ -62,7 +62,7 @@ public static class Menus
     private const string GPlay = "", GNext = "", GQueue = "", GRadio = "", GAdd = "", GRemove = "",
         GHeart = "", GHeartFill = "", GTag = "", GLyrics = "", GEdit = "", GPicture = "", GLink = "",
         GDelete = "", GOpen = "", GExport = "", GRename = "", GCheck = "", GSelect = "", GSearch = "",
-        GInfo = "", GUp = "", GDown = "", GList = "", GRefresh = "", GSave = "", GVideo = "", GClose = "";
+        GInfo = "", GUp = "", GDown = "", GList = "", GRefresh = "", GSave = "", GVideo = "", GClose = "", GLibrary = "";
 
     public static void Open(SheetMenu menu) => App.Host.View?.Sheets.ShowMenu(menu);
 
@@ -219,7 +219,7 @@ public static class Menus
         if (item.IsFailed) menu.Add(new(L.T("Riprova a scaricarlo"), GRefresh, () => main.Radio.Prepare(item.Id)));
         menu.Line();
         // Saved on the device, or only kept in the library (a playlist, the favourites: in the cloud, nothing downloaded).
-        menu.Add(new(L.T("Aggiungi alla libreria"), GAdd, () => main.AddToLibrary(t)));
+        menu.Add(new(L.T("Aggiungi alla libreria"), GLibrary, () => main.AddToLibrary(t)));
         menu.Add(new(L.T("Salva sul dispositivo"), GSave, () => _ = main.Radio.Save(item, null)));
         menu.Add(AddToPlaylist(t));
         menu.Add(FavoriteItem(t));

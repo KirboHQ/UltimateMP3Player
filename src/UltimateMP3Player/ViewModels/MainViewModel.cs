@@ -592,7 +592,7 @@ public sealed class MainViewModel : Observable
     private List<TrackViewModel> KeepInLibrary(IReadOnlyList<TrackViewModel> tracks)
         => tracks.Where(t => _together == null || !_together.IsStandIn(t)).Select(KeepInLibrary).Distinct().ToList();
 
-    // The "+" of a song not in the library (next to the heart, in its menu): into it, in the cloud, and said so.
+    // The library icon of a song not in the library (next to the heart, in its menu): into it, in the cloud, and said so.
     public TrackViewModel AddToLibrary(TrackViewModel t)
     {
         var kept = KeepInLibrary(t);

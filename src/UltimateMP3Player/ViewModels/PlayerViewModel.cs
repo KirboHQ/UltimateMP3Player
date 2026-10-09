@@ -629,7 +629,7 @@ public sealed class PlayerViewModel : Observable
     }
 
     // The button next to the heart: a song not in the library (suggested, heard from a link) goes into it first, in the
-    // cloud ("+": nothing downloaded); one of the library in the cloud is saved on the device (the download arrow).
+    // cloud (the library icon: nothing downloaded); one of the library in the cloud is saved on the device (the download arrow).
     private void SaveCurrent()
     {
         if (Current == null) return;

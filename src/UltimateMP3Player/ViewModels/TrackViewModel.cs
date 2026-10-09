@@ -109,9 +109,9 @@ public sealed class TrackViewModel : Observable
     // In the library (false: a suggested song, one heard from a link).
     public bool InLibrary => !Main.Radio.Has(Id);
 
-    // The button next to the heart in the player: "+" into the library (in the cloud, nothing downloaded) for a song not in
-    // it, the download arrow for one of the library in the cloud.
-    public string SaveGlyph => InLibrary ? "" : "";
+    // The button next to the heart in the player: the library icon into the library (in the cloud, nothing downloaded) for a
+    // song not in it, the download arrow for one of the library in the cloud ("+" stays "add to a playlist").
+    public string SaveGlyph => InLibrary ? "" : "";
     public string SaveTip => SavingTip ?? (!InLibrary ? L.T("Aggiungi alla libreria (senza scaricarlo)")
         : IsUnavailable ? L.T("Riprova a salvarlo sul dispositivo") : L.T("Salva sul dispositivo"));
 

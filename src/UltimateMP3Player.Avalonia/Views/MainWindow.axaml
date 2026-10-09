@@ -339,8 +339,8 @@
                             </Button>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
-                            <!-- not saved on the device: "+" puts a suggested song (or one heard from a link) into the library, in the cloud;
-                                 the download arrow saves a song of the library on the device; a ring while it's saved -->
+                            <!-- not saved on the device: the library icon puts a suggested song (or one heard from a link) into the library,
+                                 in the cloud; the download arrow saves a song of the library on the device; a ring while it's saved -->
                             <Button Theme="{StaticResource ControlButton}" Command="{Binding SaveCurrentCommand}" ToolTip.Tip="{Binding Current.SaveTip}"
                                     IsVisible="{Binding IsTemporary}">
                                 <Panel>

@@ -891,8 +891,8 @@ public sealed class LinkViewModel : Observable
     public string SaveAudioHint => SaveAudio
         ? L.T("L'audio viene scaricato e salvato sul dispositivo: lo ascolti anche senza connessione.")
         : L.T("Niente download adesso: i brani vanno subito nella libreria (e nella playlist) con la nuvola. Li ascolti dal loro link e li salvi quando vuoi.");
-    // Download arrow, or "+" (only added: the cloud is just the sign on the songs).
-    public string DownloadGlyph => SaveAudio ? "" : "";
+    // Download arrow, or the library icon (only added: the cloud is just the sign on the songs).
+    public string DownloadGlyph => SaveAudio ? "" : "";
     // "With video" only means something when the songs are saved.
     public bool ShowVideoChoice => HasVideo && SaveAudio;
 

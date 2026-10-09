@@ -49,11 +49,11 @@ public sealed class MediaControls : IDisposable
     public bool HasTrack => Title != null;
     public bool IsPlaying { get; private set; }
     public bool IsFavorite { get; private set; }
-    // Not saved on the phone: the notification offers "+" (into the library, in the cloud) for a song not in the library,
-    // the download arrow (saved on the phone) for one of the library in the cloud.
+    // Not saved on the phone: the notification offers the library icon (into the library, in the cloud) for a song not in the
+    // library, the download arrow (saved on the phone) for one of the library in the cloud.
     public bool IsTemporary { get; private set; }
     public bool InLibrary { get; private set; }
-    public int SaveIcon => InLibrary ? Resource.Drawable.ic_download : Resource.Drawable.ic_add;
+    public int SaveIcon => InLibrary ? Resource.Drawable.ic_download : Resource.Drawable.ic_library;
     public string SaveLabel => L.T(InLibrary ? "Salva sul dispositivo" : "Aggiungi alla libreria");
 
     public void SetTrack(string? title, string? artist, string? album, string? coverPath, double duration)
