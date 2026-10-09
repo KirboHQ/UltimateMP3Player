@@ -18,6 +18,7 @@
   <img alt="macOS 12 o successivo" src="https://img.shields.io/badge/macOS-12%2B-000000?style=flat-square&logo=apple&logoColor=white">
   <img alt="Android 8 o successivo" src="https://img.shields.io/badge/Android-8%2B-3DDC84?style=flat-square&logo=android&logoColor=white">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white">
+  <a href="LICENSE"><img alt="Licenza GPL-3.0" src="https://img.shields.io/badge/licenza-GPL--3.0-6E7781?style=flat-square"></a>
 </p>
 
 <p align="center">
@@ -345,10 +346,21 @@ e macOS da [martin-riedl.de](https://ffmpeg.martin-riedl.de)),
 [SoundTouch.Net](https://github.com/owoudenberg/soundtouch.net) (LGPL-2.1).
 Linux e macOS: [Avalonia](https://avaloniaui.net) (MIT), [SDL3](https://www.libsdl.org) (zlib) tramite
 [SDL3-CS](https://github.com/ppy/SDL3-CS) (MIT), [Tmds.DBus](https://github.com/tmds/Tmds.DBus) (MIT),
+[NLayer](https://github.com/naudio/NLayer) (MIT),
 [Fluent System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT) e
 [Selawik](https://github.com/microsoft/Selawik) (OFL-1.1), al posto di Segoe UI e delle sue icone.
 Android: gli stessi, più [youtubedl-android](https://github.com/JunkFood02/youtubedl-android) (GPL-3.0) per Python,
-FFmpeg e [QuickJS](https://bellard.org/quickjs/) (MIT) compilati per Android, e
-[NLayer](https://github.com/naudio/NLayer) (MIT).
+FFmpeg e [QuickJS](https://bellard.org/quickjs/) (MIT) compilati per Android.
+
+Le loro licenze, gli avvisi di copyright e dove trovare il codice sorgente di ciascuno sono in
+[licenses/THIRD-PARTY-NOTICES.txt](licenses/THIRD-PARTY-NOTICES.txt), che arriva anche insieme all'app (la cartella
+`licenses`).
+
+## 📄 Licenza
+
+Ultimate MP3 Player è software libero, distribuito con la [GNU General Public License v3.0](LICENSE) o qualsiasi
+versione successiva: puoi usarlo, studiarlo, condividerlo e modificarlo, e se condividi una versione modificata deve
+restare con la stessa licenza, insieme al suo codice sorgente. Vale anche per le versioni uscite prima che la licenza
+venisse aggiunta.
 
 <sub>Scarica solo contenuti che hai il diritto di scaricare.</sub>

@@ -66,6 +66,9 @@ Source: "..\src\UltimateMP3Player\pack.ico"; DestDir: "{app}"; Flags: ignorevers
 ; yt-dlp is compared by version: a newer one updated by the app is kept.
 Source: "staging\engines\yt-dlp.exe"; DestDir: "{app}\engines"
 Source: "staging\engines\*"; DestDir: "{app}\engines"; Excludes: "yt-dlp.exe"; Flags: ignoreversion
+; Licenses: the app's own (GPL-3.0) and the third-party ones (licenses\THIRD-PARTY-NOTICES.txt).
+Source: "..\LICENSE"; DestDir: "{app}\licenses"; DestName: "LICENSE.txt"; Flags: ignoreversion
+Source: "..\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion
 
 [Registry]
 ; Read by the app on its first start ("en" or "it").

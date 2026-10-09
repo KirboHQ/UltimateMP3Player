@@ -18,6 +18,7 @@
   <img alt="macOS 12 or later" src="https://img.shields.io/badge/macOS-12%2B-000000?style=flat-square&logo=apple&logoColor=white">
   <img alt="Android 8 or later" src="https://img.shields.io/badge/Android-8%2B-3DDC84?style=flat-square&logo=android&logoColor=white">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white">
+  <a href="LICENSE"><img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-6E7781?style=flat-square"></a>
 </p>
 
 <p align="center">
@@ -337,10 +338,20 @@ Linux and macOS from [martin-riedl.de](https://ffmpeg.martin-riedl.de)),
 [SoundTouch.Net](https://github.com/owoudenberg/soundtouch.net) (LGPL-2.1).
 Linux and macOS: [Avalonia](https://avaloniaui.net) (MIT), [SDL3](https://www.libsdl.org) (zlib) through
 [SDL3-CS](https://github.com/ppy/SDL3-CS) (MIT), [Tmds.DBus](https://github.com/tmds/Tmds.DBus) (MIT),
+[NLayer](https://github.com/naudio/NLayer) (MIT),
 [Fluent System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT) and
 [Selawik](https://github.com/microsoft/Selawik) (OFL-1.1), in place of Segoe UI and its icons.
 Android: the same, plus [youtubedl-android](https://github.com/JunkFood02/youtubedl-android) (GPL-3.0) for Python,
-FFmpeg and [QuickJS](https://bellard.org/quickjs/) (MIT) built for Android, and
-[NLayer](https://github.com/naudio/NLayer) (MIT).
+FFmpeg and [QuickJS](https://bellard.org/quickjs/) (MIT) built for Android.
+
+Their licenses, copyright notices and where to find each one's source code are in
+[licenses/THIRD-PARTY-NOTICES.txt](licenses/THIRD-PARTY-NOTICES.txt), which also comes with the app (the `licenses`
+folder).
+
+## 📄 License
+
+Ultimate MP3 Player is free software, released under the [GNU General Public License v3.0](LICENSE) or any later
+version: you can use it, study it, share it and change it, and if you share a changed version it must stay under the
+same license, with its source code. This also covers the versions released before the license was added.
 
 <sub>Download only content you have the right to download.</sub>

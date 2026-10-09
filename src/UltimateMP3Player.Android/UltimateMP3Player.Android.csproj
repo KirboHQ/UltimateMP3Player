@@ -127,6 +127,12 @@
     <AndroidAsset Include="$(EnginesDir)yt-dlp" Link="Assets\yt-dlp" Condition="Exists('$(EnginesDir)yt-dlp')" />
   </ItemGroup>
 
+  <!-- The licenses (the app's own GPL-3.0 and the third-party ones), in the package's assets\licenses. -->
+  <ItemGroup>
+    <AndroidAsset Include="..\..\LICENSE" Link="Assets\licenses\LICENSE.txt" />
+    <AndroidAsset Include="..\..\licenses\*" Link="Assets\licenses\%(Filename)%(Extension)" />
+  </ItemGroup>
+
   <Target Name="CheckEngines" BeforeTargets="Build">
     <Error Condition="!Exists('$(EnginesDir)arm64-v8a\libpython.so')" Text="The Android engines are missing: run tools\android-deps.ps1 (build-android.ps1 does it)." />
   </Target>

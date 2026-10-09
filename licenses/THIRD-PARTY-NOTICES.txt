@@ -1,0 +1,181 @@
+Ultimate MP3 Player - licenses and third-party notices
+======================================================
+
+Ultimate MP3 Player
+Copyright (C) 2026 Davide (KirboHQ)
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY; see the license for details: LICENSE.txt in this folder (LICENSE in
+the source code). Source code: https://github.com/KirboHQ/UltimateMP3Player
+
+The app contains or comes with the software below. Each keeps its own license: the short ones are at the end of this
+file, the long ones are the files of this folder named next to each entry.
+
+
+ENGINES (separate programs the app starts)
+------------------------------------------
+
+They aren't part of Ultimate MP3 Player's code: the app runs them as programs of their own. Windows: in the "engines"
+folder of the installation. Linux and macOS: not in the package, the app downloads them from their projects on its
+first start. Android: inside the app (see "Android" below).
+
+yt-dlp (Windows, Android)
+  License: Unlicense (public domain), text at the end.
+  Source: https://github.com/yt-dlp/yt-dlp (each version is a tag there; "yt-dlp --version" shows the one you have).
+  yt-dlp.exe contains Python and other libraries:
+  https://github.com/yt-dlp/yt-dlp/blob/master/THIRD_PARTY_LICENSES.txt
+
+gallery-dl (Windows)
+  License: GNU General Public License version 2, GPL-2.0.txt. Copyright (C) Mike Fährmann.
+  Source: https://github.com/mikf/gallery-dl (each version is a tag there; "gallery-dl --version" shows the one you
+  have). gallery-dl.exe contains Python and the libraries listed in its source.
+
+FFmpeg: ffmpeg.exe, ffprobe.exe and their DLLs (Windows)
+  License: GNU General Public License version 3 (these builds include GPL libraries), LICENSE.txt.
+  Built by https://github.com/yt-dlp/FFmpeg-Builds ("ffmpeg-master-latest-win64-gpl-shared").
+  Source: the FFmpeg commit named by "ffmpeg -version" (N-...-g<commit>) at https://git.ffmpeg.org/ffmpeg.git
+  (mirror: https://github.com/FFmpeg/FFmpeg); the build scripts, with the exact versions of the libraries built into
+  it, at https://github.com/yt-dlp/FFmpeg-Builds.
+
+Deno (Windows)
+  License: MIT, text at the end. Copyright 2018-2026 the Deno authors.
+  Source: https://github.com/denoland/deno
+
+
+LIBRARIES INSIDE THE APP
+------------------------
+
+.NET (.NET 8 on Windows, Linux and macOS, .NET 10 on Android), WPF, Windows Forms, the Windows SDK projection,
+System.IO.Pipelines
+  License: MIT, text at the end. Copyright (c) .NET Foundation and Contributors.
+  Source: https://github.com/dotnet/runtime, https://github.com/dotnet/wpf, https://github.com/dotnet/winforms,
+  https://github.com/dotnet/android. Their own third-party notices:
+  https://github.com/dotnet/runtime/blob/main/THIRD-PARTY-NOTICES.TXT
+
+NAudio 2.2.1 (all)
+  License: MIT, text at the end. Copyright 2020 Mark Heath.
+  Source: https://github.com/naudio/NAudio
+
+SoundTouch.Net 2.3.2 (all)
+  License: GNU Lesser General Public License version 2.1 or later, LGPL-2.1.txt.
+  Copyright (c) Olaf Woudenberg 2011-2019. A C# port of the SoundTouch library by Olli Parviainen.
+  Source: https://github.com/owoudenberg/soundtouch.net
+  It's a separate library inside the program: you can build Ultimate MP3 Player from its source code with a modified
+  version of it (see "Build from source" in the README).
+
+NLayer 2.0.1 (Linux, macOS, Android)
+  License: MIT, text at the end. Copyright (c) 2018 Mark Heath, Andrew Ward & Contributors.
+  Source: https://github.com/naudio/NLayer
+
+Avalonia 11.3.22 (Linux, macOS, Android)
+  License: MIT, text at the end. Copyright (c) AvaloniaUI OÜ.
+  Source: https://github.com/AvaloniaUI/Avalonia
+
+MicroCom.Runtime 0.11.0 (Linux, macOS, Android)
+  License: MIT, text at the end. Copyright (c) 2021 Nikita Tsukanov.
+  Source: https://github.com/kekekeks/MicroCom
+
+SkiaSharp 2.88.9 and HarfBuzzSharp 8.3.1.1, with the native Skia and HarfBuzz libraries (Linux, macOS, Android)
+  License: MIT, text at the end. Copyright (c) 2015-2016 Xamarin, Inc. Copyright (c) 2017-2018 Microsoft Corporation.
+  Skia, HarfBuzz and the libraries built with them: SkiaSharp-THIRD-PARTY-NOTICES.txt.
+  Source: https://github.com/mono/SkiaSharp
+
+SDL3 (Linux, macOS)
+  License: zlib, text at the end. Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>.
+  Source: https://github.com/libsdl-org/SDL
+
+SDL3-CS 2026.1002.1 (Linux, macOS)
+  License: MIT, text at the end. Copyright (c) 2024 ppy Pty Ltd <contact@ppy.sh>.
+  Source: https://github.com/ppy/SDL3-CS
+
+Tmds.DBus.Protocol 0.21.3 (Linux)
+  License: MIT, text at the end. Copyright 2006 Alp Toker <alp@atoker.com>. Copyright 2010 Other Contributors.
+  Copyright 2016 Tom Deseyn <tom.deseyn@gmail.com>.
+  Source: https://github.com/tmds/Tmds.DBus
+
+Fluent System Icons (font; Linux, macOS, Android)
+  License: MIT, text at the end. Copyright (c) 2020 Microsoft Corporation.
+  Source: https://github.com/microsoft/fluentui-system-icons
+
+Selawik (font; Linux, macOS, Android)
+  License: SIL Open Font License 1.1, OFL-1.1-Selawik.txt. Copyright 2015, Microsoft Corporation, with Reserved Font
+  Name Selawik.
+  Source: https://github.com/microsoft/Selawik
+
+
+ANDROID
+-------
+
+Python 3.12, FFmpeg, QuickJS and the libraries they use (lib*.so inside the app)
+  From youtubedl-android 0.18.1 (https://github.com/JunkFood02/youtubedl-android, GNU General Public License version 3,
+  LICENSE.txt), which packages the Termux builds of Python, FFmpeg, QuickJS and the libraries they need (OpenSSL,
+  SQLite, zlib, x264, LAME, libvpx, dav1d and others).
+  Licenses: Python: PSF License, Python-LICENSE.txt. FFmpeg: GNU General Public License version 3, LICENSE.txt.
+  QuickJS: MIT, Copyright (c) 2017-2021 Fabrice Bellard, Copyright (c) 2017-2021 Charlie Gordon, text at the end.
+  The other libraries: each its own (GPL, LGPL, MIT, BSD, Apache-2.0, zlib...).
+  Source: youtubedl-android version 0.18.1 at https://github.com/JunkFood02/youtubedl-android/releases; every Termux
+  package, with its exact source and license, at https://github.com/termux/termux-packages (packages/<name>/build.sh).
+
+AndroidX, Kotlin, kotlinx.coroutines, Guava ListenableFuture and JetBrains annotations, with their .NET bindings
+  License: Apache License 2.0, Apache-2.0.txt. Copyright The Android Open Source Project; JetBrains s.r.o. and Kotlin
+  Programming Language contributors; The Guava Authors; JetBrains s.r.o.
+  The .NET bindings: MIT, text at the end, Copyright (c) Microsoft Corporation.
+  Source: https://android.googlesource.com/platform/frameworks/support, https://github.com/JetBrains/kotlin,
+  https://github.com/Kotlin/kotlinx.coroutines, https://github.com/google/guava,
+  https://github.com/JetBrains/java-annotations, https://github.com/dotnet/android-libraries
+
+
+LICENSE TEXTS
+-------------
+
+MIT License (every entry above marked MIT, each with its own copyright lines)
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+  documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+  the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+zlib License (SDL3)
+
+  Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
+
+  This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held
+  liable for any damages arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose, including commercial applications, and to
+  alter it and redistribute it freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software.
+     If you use this software in a product, an acknowledgment in the product documentation would be appreciated but
+     is not required.
+  2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original
+     software.
+  3. This notice may not be removed or altered from any source distribution.
+
+Unlicense (yt-dlp)
+
+  This is free and unencumbered software released into the public domain.
+
+  Anyone is free to copy, modify, publish, use, compile, sell, or distribute this software, either in source code form
+  or as a compiled binary, for any purpose, commercial or non-commercial, and by any means.
+
+  In jurisdictions that recognize copyright laws, the author or authors of this software dedicate any and all
+  copyright interest in the software to the public domain. We make this dedication for the benefit of the public at
+  large and to the detriment of our heirs and successors. We intend this dedication to be an overt act of
+  relinquishment in perpetuity of all present and future rights to this software under copyright law.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+  WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS BE
+  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+  For more information, please refer to <http://unlicense.org/>

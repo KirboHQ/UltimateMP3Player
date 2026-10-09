@@ -143,6 +143,9 @@ $publishArgs = @('-c', 'Release', '--self-contained', 'true', '-p:PublishSingleF
     '-p:EnableCompressionInSingleFile=false', '-p:PublishReadyToRun=true', '-p:DebugType=none', '--nologo', '-v', 'q')
 $staging = Join-Path $root 'installer\staging-unix'
 New-Item -ItemType Directory -Force $Out | Out-Null
+# The licenses (the app's own GPL-3.0 and the third-party ones) go into every package, in a "licenses" folder.
+$licenses = @(@{ Name = 'LICENSE.txt'; Source = "$root\LICENSE" }) +
+    @(Get-ChildItem "$root\licenses" -File | Sort-Object Name | ForEach-Object { @{ Name = $_.Name; Source = $_.FullName } })
 
 foreach ($target in $Targets) {
     $os, $arch = $target -split '-'
@@ -165,6 +168,8 @@ foreach ($target in $Targets) {
             $mode = if ($f.Name -eq 'UltimateMP3Player' -or $f.Extension -eq '.so') { 493 } else { 420 }
             [void]$entries.Add(@{ Name = "UltimateMP3Player/$($f.Name)"; Source = $f.FullName; Mode = $mode })
         }
+        [void]$entries.Add(@{ Name = 'UltimateMP3Player/licenses/'; Mode = 493 })
+        foreach ($l in $licenses) { [void]$entries.Add(@{ Name = "UltimateMP3Player/licenses/$($l.Name)"; Source = $l.Source; Mode = 420 }) }
         $archive = Join-Path $Out "UltimateMP3Player-linux-$arch.tar.gz"
         Write-TarGz $archive $entries
     }
@@ -174,6 +179,8 @@ foreach ($target in $Targets) {
         New-Item -ItemType Directory -Force (Join-Path $contents 'MacOS'), (Join-Path $contents 'Resources') | Out-Null
         foreach ($f in $files) { Copy-Item $f.FullName (Join-Path $contents "MacOS\$($f.Name)") }
         Copy-Item "$assets\app.icns", "$assets\pack.icns" (Join-Path $contents 'Resources')
+        $licenseDir = New-Item -ItemType Directory -Force (Join-Path $contents 'Resources\licenses')
+        foreach ($l in $licenses) { Copy-Item $l.Source (Join-Path $licenseDir.FullName $l.Name) }
         $plist = @"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
