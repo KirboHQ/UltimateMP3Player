@@ -19,6 +19,10 @@ public sealed class SongItem : Observable
 
     private bool _checked;
     public bool IsChecked { get => _checked; set => Set(ref _checked, value); }
+
+    // Dragged by its handle right now (arranging a playlist).
+    private bool _moving;
+    public bool IsMoving { get => _moving; set => Set(ref _moving, value); }
 }
 
 // One button of the bar at the bottom while choosing.
@@ -219,6 +223,15 @@ public sealed class Selection : Observable
         Haptics.Tick();
         Update();
         ActiveChanged?.Invoke();
+    }
+
+    // "Move" (a playlist's songs): the choosing ends and the list shows the handles to drag the songs (SongsPage).
+    public event Action? ReorderRequested;
+
+    public void RequestReorder()
+    {
+        Stop();
+        ReorderRequested?.Invoke();
     }
 
     public void Stop()

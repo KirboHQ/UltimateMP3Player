@@ -15,16 +15,9 @@
             <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
                 <TextBlock Text="{Binding Kicker}" Classes="small-caps" Foreground="{StaticResource SubTextBrush}"/>
                 <TextBlock Text="{Binding Title}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"/>
-                <!-- the count, and while some songs are in the cloud: only the device's, or save them all -->
+                <!-- the count, and while some songs are in the cloud: save them all (the filter is next to "Tag") -->
                 <WrapPanel>
                     <TextBlock Text="{Binding CountText}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
-                    <Button Theme="{StaticResource LinkButton}" Command="{Binding ToggleOnDeviceCommand}" ToolTip.Tip="{Binding OnDeviceTip}" Margin="0,0,14,0"
-                            IsVisible="{Binding ShowOnDeviceToggle}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{local:Icon E71C}" Classes="glyph" FontSize="12" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding OnDeviceLabel}" Margin="6,0,0,0"/>
-                        </StackPanel>
-                    </Button>
                     <Button Theme="{StaticResource LinkButton}" Command="{Binding SaveAllCommand}" IsVisible="{Binding ShowSaveAll}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="12" VerticalAlignment="Center"/>
@@ -87,7 +80,10 @@
             <ComboBox DockPanel.Dock="Right" Width="180" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
                       ToolTip.Tip="{local:T 'Ordina per'}"/>
             <Button x:Name="TagFilterButton" DockPanel.Dock="Right" Theme="{StaticResource TagFilterButton}" Margin="0,0,10,0"/>
-            <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Theme="{StaticResource FilterBox}" Width="210" Margin="0,0,10,0" VerticalAlignment="Center"
+            <Button x:Name="StorageFilterButton" DockPanel.Dock="Right" Theme="{StaticResource StorageFilterButton}" Margin="0,0,10,0"
+                    Classes.on="{Binding Storage.IsActive}"/>
+            <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Theme="{StaticResource FilterBox}" Width="210" MinWidth="120" local:ToolbarPanel.Shrink="True"
+                     Margin="0,0,10,0" VerticalAlignment="Center"
                      Text="{Binding Filter}" Watermark="{local:T 'Cerca nei brani'}"/>
         </local:ToolbarPanel>
 

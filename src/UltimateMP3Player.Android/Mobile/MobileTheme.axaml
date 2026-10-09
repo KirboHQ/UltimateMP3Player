@@ -414,5 +414,10 @@
         <Setter Property="Height" Value="38"/>
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="FontSize" Value="13.5"/>
+        <!-- a filter chip while it filters -->
+        <Style Selector="^.on">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
     </ControlTheme>
 </ResourceDictionary>

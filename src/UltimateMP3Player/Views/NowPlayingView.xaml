@@ -454,9 +454,12 @@
                                                     <TextBlock Text="{Binding Radio.PctText}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                 </Grid>
                                             </Grid>
-                                            <!-- a song of the library in the cloud (a click on it saves it) -->
-                                            <ContentPresenter x:Name="CloudState" Grid.Column="2" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"
-                                                              Visibility="{Binding ShowCloud, Converter={StaticResource BoolVis}}"/>
+                                            <!-- a song of the library in the cloud (a ring while it's being saved). The row's ShowCloud is read
+                                                 on a Grid: a ContentPresenter's own DataContext is its Content (the song, always "in the cloud"
+                                                 for a suggested one too), so the cloud ended up over the suggestion's percentage and tick. -->
+                                            <Grid x:Name="CloudState" Grid.Column="2" Visibility="{Binding ShowCloud, Converter={StaticResource BoolVis}}">
+                                                <ContentPresenter Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
+                                            </Grid>
                                             <Button x:Name="RemoveBtn" Grid.Column="2" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="11"
                                                     Content="&#xE711;" Command="{Binding RemoveCommand}" Visibility="Hidden" ToolTip="{local:T 'Togli dai successivi'}"
                                                     AutomationProperties.Name="{local:T 'Togli dai successivi'}"/>

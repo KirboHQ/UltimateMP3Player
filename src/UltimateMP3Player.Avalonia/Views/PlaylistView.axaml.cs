@@ -32,6 +32,10 @@ public partial class PlaylistView : UserControl
         {
             if (Vm != null && App.Host.Session is { } main) Menus.Open(Menus.TagFilterMenu(Vm.TagFilter, main), TagFilterButton, true);
         };
+        StorageFilterButton.Click += (_, _) =>
+        {
+            if (Vm != null) Menus.Open(Menus.StorageFilterMenu(Vm.Storage), StorageFilterButton, true);
+        };
         TagsButton.Click += (_, _) =>
         {
             if (Vm != null) Menus.Open(Menus.PlaylistTagMenu(Vm.Vm), TagsButton, true);
@@ -71,6 +75,13 @@ public partial class PlaylistView : UserControl
         int from = p.Tracks.IndexOf(row.Track.Id);
         if (from >= 0)
         {
+            // (sorted by title, artist…: moving a song is arranging its own order, so that's shown again, the song next to
+            // the one it was dropped on)
+            if (!Vm.IsCustomOrder)
+            {
+                Vm.UseCustomOrder();
+                row.Track.Main.Toast(L.T("Ordine personalizzato della playlist"));
+            }
             int to = t < 0 ? p.Tracks.Count - 1 : DragVisuals.MoveIndex(from, t, after);
             profile.MoveTrack(p, from, Math.Clamp(to, 0, p.Tracks.Count - 1));
         }

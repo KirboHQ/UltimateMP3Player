@@ -444,60 +444,110 @@ public static class Ui
     }
 }
 
-// The bundled icon font (Fluent System Icons, MIT) in place of Windows' Segoe Fluent Icons: the app keeps the Segoe
-// codes everywhere (shared code, XAML written like the Windows one) and they're translated here, one by one, to the
-// same icon of the Fluent set (Segoe Fluent Icons is drawn from it). Filled icons are in a second font.
-// A toolbar (a DockPanel of buttons on both sides) whose buttons drop their texts (TextBlocks with the class "label": the
-// icon and the tooltip stay) when they don't all fit, instead of running under the search box; back when there's room
-// again. A DockPanel hands each child only the room left, so their natural width is measured here, with no limit.
+// A toolbar (a DockPanel of buttons on both sides) that fits its room instead of running its buttons under each other:
+// the texts of its buttons (TextBlocks with the class "label"; the icon and the tooltip stay) go one at a time, lowest
+// ToolbarPanel.Priority first (the same: the last one first), and if that's not enough an element with ToolbarPanel.Shrink
+// (the search box) gets narrower, down to its MinWidth; all back when there's room again. A DockPanel hands each child only
+// the room left, so their natural width is measured here, with no limit; the texts' width is worked out from the text,
+// shown or not, so the choice doesn't depend on what's hidden now (no back and forth). (The same as the Windows app's.)
 public sealed class ToolbarPanel : DockPanel
 {
-    private double _full;  // the width they need with their texts while those are hidden (0: shown)
-    private int _shown;    // the buttons visible then (another page of the view: decided again)
+    public static readonly AttachedProperty<int> PriorityProperty = AvaloniaProperty.RegisterAttached<ToolbarPanel, Control, int>("Priority");
+    public static int GetPriority(Control c) => c.GetValue(PriorityProperty);
+    public static void SetPriority(Control c, int value) => c.SetValue(PriorityProperty, value);
+
+    public static readonly AttachedProperty<bool> ShrinkProperty = AvaloniaProperty.RegisterAttached<ToolbarPanel, Control, bool>("Shrink");
+    public static bool GetShrink(Control c) => c.GetValue(ShrinkProperty);
+    public static void SetShrink(Control c, bool value) => c.SetValue(ShrinkProperty, value);
+
+    // A filter's name: the first text to go, the last one while it filters.
+    public static readonly IValueConverter KeepWhen = new FuncValueConverter<bool, int>(on => on ? 2 : -1);
+
+    // The width of each shrinkable element as written (its Width is lowered while there's no room).
+    private readonly Dictionary<Control, double> _widths = new();
+
+    static ToolbarPanel()
+    {
+        // A text's priority changed (a filter turned on keeps its name longer): the toolbar decides again.
+        PriorityProperty.Changed.AddClassHandler<Control>((c, _) => c.FindAncestorOfType<ToolbarPanel>()?.InvalidateMeasure());
+    }
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        double room = availableSize.Width;
-        if (!double.IsInfinity(room))
-        {
-            int shown = Children.Count(c => c.IsVisible);
-            if (_full > 0 && (room >= _full || shown != _shown))
-            {
-                _full = 0;
-                SetLabels(true);
-            }
-            if (_full == 0)
-            {
-                double need = 0;
-                foreach (var c in Children)
-                {
-                    if (!c.IsVisible) continue;
-                    c.Measure(new Size(double.PositiveInfinity, availableSize.Height));
-                    need += c.DesiredSize.Width;
-                }
-                if (need > room + 0.5 && SetLabels(false))
-                {
-                    _full = need;
-                    _shown = shown;
-                }
-            }
-        }
+        if (!double.IsInfinity(availableSize.Width)) Fit(availableSize.Width, availableSize.Height);
         return base.MeasureOverride(availableSize);
     }
 
-    private bool SetLabels(bool visible)
+    private void Fit(double room, double height)
     {
-        bool any = false;
-        foreach (var t in this.GetVisualDescendants().OfType<TextBlock>())
-            if (t.Classes.Contains("label"))
-            {
-                t.IsVisible = visible;
-                any = true;
-            }
-        return any;
+        var children = Children.Where(c => c.IsVisible).ToList();
+        double need = 0;
+        foreach (var c in children)
+        {
+            c.Measure(new Size(double.PositiveInfinity, height));
+            need += c.DesiredSize.Width;
+        }
+        // The width with every text shown and nothing narrowed.
+        var labels = new List<(TextBlock T, double W, int Order)>();
+        double full = need;
+        foreach (var c in children)
+            foreach (var t in c.GetVisualDescendants().OfType<TextBlock>())
+                if (t.Classes.Contains("label") && InShownPart(t, c))
+                {
+                    if (t.IsVisible) full -= t.DesiredSize.Width;
+                    double w = TextWidth(t);
+                    full += w;
+                    labels.Add((t, w, labels.Count));
+                }
+        var shrink = children.Where(GetShrink).ToList();
+        foreach (var e in shrink)
+        {
+            if (!_widths.ContainsKey(e) && !double.IsNaN(e.Width)) _widths[e] = e.Width;
+            if (_widths.TryGetValue(e, out var own)) full += own - e.Width;
+        }
+
+        // What goes: texts first (lowest priority, the last first), then the shrinkable ones.
+        double over = full - room;
+        var hide = new HashSet<TextBlock>();
+        foreach (var l in labels.OrderBy(l => GetPriority(l.T)).ThenByDescending(l => l.Order))
+        {
+            if (over <= 0.5) break;
+            hide.Add(l.T);
+            over -= l.W;
+        }
+        foreach (var l in labels)
+        {
+            bool visible = !hide.Contains(l.T);
+            if (l.T.IsVisible != visible) l.T.IsVisible = visible;
+        }
+        foreach (var e in shrink)
+        {
+            if (!_widths.TryGetValue(e, out var own)) continue;
+            double w = over > 0.5 ? Math.Max(e.MinWidth, own - over) : own;
+            over -= own - w;
+            if (Math.Abs(e.Width - w) > 0.5) e.Width = w;
+        }
+    }
+
+    // Not inside a part of the button that's hidden anyway.
+    private static bool InShownPart(Visual t, Visual child)
+    {
+        for (var p = t.GetVisualParent(); p != null && p != child; p = p.GetVisualParent())
+            if (!p.IsVisible) return false;
+        return true;
+    }
+
+    private static double TextWidth(TextBlock t)
+    {
+        var text = new FormattedText(t.Text ?? "", CultureInfo.CurrentUICulture, t.FlowDirection,
+            new Typeface(t.FontFamily, t.FontStyle, t.FontWeight, t.FontStretch), t.FontSize, Brushes.Black);
+        return Math.Ceiling(text.WidthIncludingTrailingWhitespace) + t.Margin.Left + t.Margin.Right;
     }
 }
 
+// The bundled icon font (Fluent System Icons, MIT) in place of Windows' Segoe Fluent Icons: the app keeps the Segoe
+// codes everywhere (shared code, XAML written like the Windows one) and they're translated here, one by one, to the
+// same icon of the Fluent set (Segoe Fluent Icons is drawn from it). Filled icons are in a second font.
 public static class Icons
 {
     public static readonly FontFamily Regular = new("avares://UltimateMP3Player/Assets/Fonts#FluentSystemIcons-Regular");

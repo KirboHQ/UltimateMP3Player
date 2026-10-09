@@ -32,16 +32,9 @@
             <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
                 <TextBlock Text="{Binding Kicker}" Style="{StaticResource SmallCaps}" Foreground="{StaticResource SubTextBrush}"/>
                 <TextBlock Text="{Binding Title}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"/>
-                <!-- the count, and while some songs are in the cloud: only the device's, or save them all -->
+                <!-- the count, and while some songs are in the cloud: save them all (the filter is next to "Tag") -->
                 <WrapPanel>
                     <TextBlock Text="{Binding CountText}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
-                    <Button Style="{StaticResource LinkButton}" Command="{Binding ToggleOnDeviceCommand}" ToolTip="{Binding OnDeviceTip}" Margin="0,0,14,0"
-                            Visibility="{Binding ShowOnDeviceToggle, Converter={StaticResource BoolVis}}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE71C;" Style="{StaticResource Glyph}" FontSize="12"/>
-                            <TextBlock Text="{Binding OnDeviceLabel}" Margin="6,0,0,0"/>
-                        </StackPanel>
-                    </Button>
                     <Button Style="{StaticResource LinkButton}" Command="{Binding SaveAllCommand}"
                             Visibility="{Binding ShowSaveAll, Converter={StaticResource BoolVis}}">
                         <StackPanel Orientation="Horizontal">
@@ -75,7 +68,8 @@
             </StackPanel>
         </Grid>
 
-        <DockPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
+        <!-- (a narrow window: the buttons keep only their icons rather than running under the search box) -->
+        <local:ToolbarPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
             <Button Style="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
             <Button Style="{StaticResource HeaderShuffleButton}" Margin="12,0,0,0" Command="{Binding ShuffleCommand}"/>
             <Button Style="{StaticResource GhostButton}" Margin="14,0,0,0" Padding="16,9"
@@ -84,30 +78,31 @@
                     Visibility="{Binding CanImport, Converter={StaticResource BoolVis}}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE8E5;" Style="{StaticResource Glyph}"/>
-                    <TextBlock Text="{local:T 'Aggiungi file'}" Margin="8,0,0,0"/>
+                    <TextBlock Text="{local:T 'Aggiungi file'}" Margin="8,0,0,0" local:ToolbarPanel.Label="True"/>
                 </StackPanel>
             </Button>
             <Button Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Click="SelectAll_Click"
-                    Visibility="{Binding IsEmpty, Converter={StaticResource InvBoolVis}}" ToolTip="Ctrl+A">
+                    Visibility="{Binding IsEmpty, Converter={StaticResource InvBoolVis}}" ToolTip="{local:T 'Seleziona tutti (Ctrl+A)'}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE762;" Style="{StaticResource Glyph}"/>
-                    <TextBlock Text="{local:T 'Seleziona tutti'}" Margin="8,0,0,0"/>
+                    <TextBlock Text="{local:T 'Seleziona tutti'}" Margin="8,0,0,0" local:ToolbarPanel.Label="True"/>
                 </StackPanel>
             </Button>
             <Button Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Command="{Binding DataContext.EditTagCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                    CommandParameter="{Binding Tag}" Visibility="{Binding IsTagPage, Converter={StaticResource BoolVis}}">
+                    CommandParameter="{Binding Tag}" Visibility="{Binding IsTagPage, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Modifica tag'}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE70F;" Style="{StaticResource Glyph}"/>
-                    <TextBlock Text="{local:T 'Modifica tag'}" Margin="8,0,0,0"/>
+                    <TextBlock Text="{local:T 'Modifica tag'}" Margin="8,0,0,0" local:ToolbarPanel.Label="True"/>
                 </StackPanel>
             </Button>
             <ComboBox DockPanel.Dock="Right" Width="180" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
                       ToolTip="{local:T 'Ordina per'}"/>
             <Button DockPanel.Dock="Right" Style="{StaticResource TagFilterButton}" Margin="0,0,10,0" Click="TagFilter_Click"/>
-            <TextBox DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="210" Margin="0,0,10,0" VerticalAlignment="Center"
+            <Button DockPanel.Dock="Right" Style="{StaticResource StorageFilterButton}" Margin="0,0,10,0" Click="StorageFilter_Click"/>
+            <TextBox DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="210" MinWidth="120" local:ToolbarPanel.Shrink="True" Margin="0,0,10,0" VerticalAlignment="Center"
                      Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" Tag="{local:T 'Cerca nei brani'}" KeyDown="Filter_KeyDown"
                      AutomationProperties.Name="{local:T 'Cerca nei brani'}"/>
-        </DockPanel>
+        </local:ToolbarPanel>
 
         <Grid Grid.Row="2" Margin="20,0,12,0">
             <Grid.RowDefinitions>

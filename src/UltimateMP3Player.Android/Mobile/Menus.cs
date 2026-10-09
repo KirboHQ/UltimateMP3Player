@@ -87,12 +87,22 @@ public static class Menus
         if (menu != null && dataContext != null && Selection.Of(source) is { IsActive: false } sel && sel.Contains(dataContext))
         {
             menu.Items.Insert(0, new SheetEntry(L.T("Seleziona"), GSelect, () => sel.Start(dataContext)));
-            menu.Items.Insert(1, new SheetLine());
+            // a playlist's song: its rows get the handle (≡) to drag them to another place
+            if (sel.Owner is PlaylistPageViewModel)
+            {
+                menu.Items.Insert(1, new SheetEntry(L.T("Sposta"), GMove, sel.RequestReorder));
+                menu.Items.Insert(2, new SheetLine());
+            }
+            else menu.Items.Insert(1, new SheetLine());
         }
         return menu;
     }
 
+    // The drag handle (three lines) drawn as an icon: "Move".
+    private const string GMove = "";
+
     private static string Short(string s) => s.Length > 48 ? s[..48] + "…" : s;
+
 
     public static SheetMenu ForTrack(TrackViewModel t, ITrackList? owner)
     {
@@ -417,6 +427,8 @@ public static class Menus
             {
                 var tracks = sel.Tracks;
                 list.Add(new(GPlay, L.T("Riproduci"), () => { if (tracks.Count > 0) { main.PlaySelection(tracks); sel.Stop(); } }));
+                // a playlist: its rows get the handle (≡) to drag them to another place
+                if (sel.Owner is PlaylistPageViewModel) list.Add(new(GMove, L.T("Sposta"), sel.RequestReorder));
                 list.Add(new(GQueue, L.T("Coda"), () => { if (tracks.Count > 0) { main.Enqueue(tracks); sel.Stop(); } }));
                 list.Add(new(GAdd, "Playlist", () => { if (tracks.Count > 0) Open(AddManyToPlaylist(tracks, sel)); }));
                 var cloud = tracks.Where(t => t.IsCloud && !t.IsSaving).ToList();
@@ -551,6 +563,19 @@ public static class Menus
         }
         menu.Line();
         menu.Add(new(L.T("Togli il filtro"), GRemove, filter.Clear, filter.IsActive));
+        return menu;
+    }
+
+    // Which songs the lists show: all of them, only the ones saved on the phone, only the ones in the cloud (one choice for
+    // every library page and playlist).
+    public static SheetMenu StorageFilterMenu(StorageFilterViewModel filter)
+    {
+        var menu = new SheetMenu { Title = L.T("Mostra") };
+        foreach (var choice in StorageFilterViewModel.Choices)
+        {
+            var c = choice;
+            menu.Add(new SheetEntry(filter.NameOf(c), filter.Value == c ? GCheck : "", () => filter.Value = c));
+        }
         return menu;
     }
 

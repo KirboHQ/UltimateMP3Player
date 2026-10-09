@@ -140,6 +140,129 @@ public sealed class NotConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => value is not true;
 }
 
+// A toolbar (a DockPanel of buttons on both sides) that fits its room instead of running its buttons under each other:
+// the texts of its buttons (TextBlocks with ToolbarPanel.Label; the icon and the tooltip stay) go one at a time, lowest
+// ToolbarPanel.Priority first (the same: the last one first), and if that's not enough an element with ToolbarPanel.Shrink
+// (the search box) gets narrower, down to its MinWidth; all back when there's room again. A DockPanel hands each child only
+// the room left, so their natural width is measured here, with no limit; the texts' width is worked out from the text,
+// shown or not, so the choice doesn't depend on what's hidden now (no back and forth). (The same as the Linux/macOS app's.)
+public sealed class ToolbarPanel : System.Windows.Controls.DockPanel
+{
+    public static readonly DependencyProperty LabelProperty = DependencyProperty.RegisterAttached(
+        "Label", typeof(bool), typeof(ToolbarPanel), new PropertyMetadata(false, (d, _) => Remeasure(d)));
+
+    public static bool GetLabel(DependencyObject o) => (bool)o.GetValue(LabelProperty);
+    public static void SetLabel(DependencyObject o, bool value) => o.SetValue(LabelProperty, value);
+
+    public static readonly DependencyProperty PriorityProperty = DependencyProperty.RegisterAttached(
+        "Priority", typeof(int), typeof(ToolbarPanel), new PropertyMetadata(0, (d, _) => Remeasure(d)));
+
+    public static int GetPriority(DependencyObject o) => (int)o.GetValue(PriorityProperty);
+    public static void SetPriority(DependencyObject o, int value) => o.SetValue(PriorityProperty, value);
+
+    public static readonly DependencyProperty ShrinkProperty = DependencyProperty.RegisterAttached(
+        "Shrink", typeof(bool), typeof(ToolbarPanel), new PropertyMetadata(false));
+
+    public static bool GetShrink(DependencyObject o) => (bool)o.GetValue(ShrinkProperty);
+    public static void SetShrink(DependencyObject o, bool value) => o.SetValue(ShrinkProperty, value);
+
+    // The width of each shrinkable element as written (its Width is lowered while there's no room).
+    private readonly Dictionary<FrameworkElement, double> _widths = new();
+
+    // A text's priority changed (a filter turned on keeps its name longer): the toolbar decides again.
+    private static void Remeasure(DependencyObject d)
+    {
+        for (var p = d; p != null; p = VisualTreeHelper.GetParent(p))
+            if (p is ToolbarPanel bar)
+            {
+                bar.InvalidateMeasure();
+                return;
+            }
+    }
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        if (!double.IsInfinity(availableSize.Width)) Fit(availableSize.Width, availableSize.Height);
+        return base.MeasureOverride(availableSize);
+    }
+
+    private void Fit(double room, double height)
+    {
+        var children = InternalChildren.Cast<UIElement>().Where(c => c.Visibility != Visibility.Collapsed).ToList();
+        double need = 0;
+        foreach (var c in children)
+        {
+            c.Measure(new Size(double.PositiveInfinity, height));
+            need += c.DesiredSize.Width;
+        }
+        // The width with every text shown and nothing narrowed.
+        var labels = new List<(System.Windows.Controls.TextBlock T, double W, int Order)>();
+        double full = need;
+        foreach (var c in children)
+            foreach (var t in Descendants(c).OfType<System.Windows.Controls.TextBlock>())
+                if (GetLabel(t) && InShownPart(t, c))
+                {
+                    if (t.Visibility == Visibility.Visible) full -= t.DesiredSize.Width;
+                    double w = TextWidth(t);
+                    full += w;
+                    labels.Add((t, w, labels.Count));
+                }
+        var shrink = children.OfType<FrameworkElement>().Where(GetShrink).ToList();
+        foreach (var e in shrink)
+        {
+            if (!_widths.ContainsKey(e) && !double.IsNaN(e.Width)) _widths[e] = e.Width;
+            if (_widths.TryGetValue(e, out var own)) full += own - e.Width;
+        }
+
+        // What goes: texts first (lowest priority, the last first), then the shrinkable ones.
+        double over = full - room;
+        var hide = new HashSet<System.Windows.Controls.TextBlock>();
+        foreach (var l in labels.OrderBy(l => GetPriority(l.T)).ThenByDescending(l => l.Order))
+        {
+            if (over <= 0.5) break;
+            hide.Add(l.T);
+            over -= l.W;
+        }
+        foreach (var l in labels)
+        {
+            var v = hide.Contains(l.T) ? Visibility.Collapsed : Visibility.Visible;
+            if (l.T.Visibility != v) l.T.Visibility = v;
+        }
+        foreach (var e in shrink)
+        {
+            if (!_widths.TryGetValue(e, out var own)) continue;
+            double w = over > 0.5 ? Math.Max(e.MinWidth, own - over) : own;
+            over -= own - w;
+            if (Math.Abs(e.Width - w) > 0.5) e.Width = w;
+        }
+    }
+
+    // Not inside a part of the button that's hidden anyway.
+    private static bool InShownPart(DependencyObject t, DependencyObject child)
+    {
+        for (var p = VisualTreeHelper.GetParent(t); p != null && p != child; p = VisualTreeHelper.GetParent(p))
+            if (p is UIElement u && u.Visibility == Visibility.Collapsed) return false;
+        return true;
+    }
+
+    private double TextWidth(System.Windows.Controls.TextBlock t)
+    {
+        var text = new FormattedText(t.Text ?? "", CultureInfo.CurrentUICulture, t.FlowDirection,
+            new Typeface(t.FontFamily, t.FontStyle, t.FontWeight, t.FontStretch), t.FontSize, Brushes.Black, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        return Math.Ceiling(text.WidthIncludingTrailingWhitespace) + t.Margin.Left + t.Margin.Right;
+    }
+
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject d)
+    {
+        for (int i = 0, n = VisualTreeHelper.GetChildrenCount(d); i < n; i++)
+        {
+            var c = VisualTreeHelper.GetChild(d, i);
+            yield return c;
+            foreach (var g in Descendants(c)) yield return g;
+        }
+    }
+}
+
 // Attached properties and helpers used by styles and views.
 public static class Ui
 {

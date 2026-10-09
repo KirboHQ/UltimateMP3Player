@@ -53,8 +53,9 @@
 
 - **Songs in the cloud** ☁: a song doesn't need its audio on your device any more. In the cloud it keeps its cover,
   lyrics, statistics and its place in your playlists and Favorites, and plays from its link; the ones you've played
-  stay ready for next time. Saved songs play offline as always, a small cloud marks the others, and *All songs* has an
-  *On device only* filter.
+  stay ready for next time. Saved songs play offline as always and a small cloud marks the others. The filter next to
+  *Tag* (3.6.2), on your library and on every playlist, shows *All songs*, only the ones *On device* or *Cloud only*;
+  *Play* and *Shuffle* play what it shows, handy offline.
 - **Add now, save later**: the *Save the audio on your device* switch on the link card decides. On, the usual
   download; off, songs and whole playlists go into your library (and the playlist) in a few seconds, in the cloud. The
   app remembers your choice, also for links-only `.ump` packs. *Save to device* a song, a selection or a playlist, or

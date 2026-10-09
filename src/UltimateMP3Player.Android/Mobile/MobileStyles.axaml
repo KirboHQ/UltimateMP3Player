@@ -132,6 +132,11 @@
     <Style Selector="Border.row.picked, Border.tile.picked">
         <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
     </Style>
+    <!-- arranging a playlist: the song in the finger (its copy follows it) -->
+    <Style Selector="Border.row.moving">
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
 
     <!-- A song not saved on the device: a quiet cloud (only a sign), a warning sign when it's no longer online. -->
     <Style Selector="TextBlock.cloud">

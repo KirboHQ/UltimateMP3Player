@@ -469,10 +469,35 @@
             <DataTemplate>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{local:Icon E71C}" Classes="glyph" FontSize="14"/>
-                    <TextBlock Text="{Binding Label}" Margin="8,0,0,0"/>
+                    <TextBlock Text="{Binding Label}" Margin="8,0,0,0" Classes="label" local:ToolbarPanel.Priority="1"/>
                 </StackPanel>
             </DataTemplate>
         </Setter>
+    </ControlTheme>
+
+    <!-- "On the device / in the cloud" filter pill above a song list (while the page has songs in the cloud, or it filters):
+         its icon and name say what it shows; highlighted (class "on") while it hides some. -->
+    <ControlTheme x:Key="StorageFilterButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="ToolTip.Tip" Value="{Binding Storage.Tip}"/>
+        <Setter Property="IsVisible" Value="{Binding Storage.IsVisible}"/>
+        <Setter Property="Content" Value="{Binding Storage}"/>
+        <Setter Property="ContentTemplate">
+            <DataTemplate>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Glyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="14"/>
+                    <!-- (a narrow window: its name is the first text to go, the last one while it filters) -->
+                    <TextBlock Text="{Binding Label}" Margin="8,0,0,0" Classes="label"
+                               local:ToolbarPanel.Priority="{Binding IsActive, Converter={x:Static local:ToolbarPanel.KeepWhen}}"/>
+                </StackPanel>
+            </DataTemplate>
+        </Setter>
+        <Style Selector="^.on">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
     </ControlTheme>
 
     <ItemsPanelTemplate x:Key="CardGridTemplate">

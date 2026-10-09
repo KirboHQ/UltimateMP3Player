@@ -34,7 +34,7 @@
                 <TextBlock Text="{Binding Vm.Name}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" Cursor="Hand"
                            MouseLeftButtonUp="Name_Click" ToolTip="{local:T 'Clicca per rinominare'}"/>
                 <WrapPanel>
-                    <TextBlock Text="{Binding Vm.TotalText}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <TextBlock Text="{Binding TotalText}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
                     <!-- some of its songs are in the cloud: all of them saved at once -->
                     <Button Style="{StaticResource LinkButton}" Command="{Binding SaveAllCommand}"
                             Visibility="{Binding ShowSaveAll, Converter={StaticResource BoolVis}}">
@@ -64,16 +64,21 @@
             </StackPanel>
         </Grid>
 
-        <DockPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
+        <!-- (a narrow window: the filter pills keep only their icons) -->
+        <local:ToolbarPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
+            <!-- its own order (saved, arranged by dragging), or sorted; choosing it again brings its own order back -->
+            <ComboBox DockPanel.Dock="Right" Width="200" Margin="10,0,0,0" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
+                      ToolTip="{local:T 'Ordina per (l\'ordine personalizzato resta salvato)'}"/>
             <Button DockPanel.Dock="Right" Style="{StaticResource TagFilterButton}" Margin="10,0,0,0" Click="TagFilter_Click"/>
-            <TextBox DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="260" VerticalAlignment="Center"
+            <Button DockPanel.Dock="Right" Style="{StaticResource StorageFilterButton}" Margin="10,0,0,0" Click="StorageFilter_Click"/>
+            <TextBox DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="260" MinWidth="140" local:ToolbarPanel.Shrink="True" VerticalAlignment="Center"
                      Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" Tag="{local:T 'Cerca nella playlist'}" KeyDown="Filter_KeyDown"
                      AutomationProperties.Name="{local:T 'Cerca nella playlist'}"/>
             <Button Style="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
             <Button Style="{StaticResource HeaderShuffleButton}" Margin="12,0,0,0" Command="{Binding ShuffleCommand}"/>
             <Button Style="{StaticResource ControlButton}" Content="&#xE712;" Margin="10,0,0,0" Click="More_Click" ToolTip="{local:T 'Altre opzioni'}"
                     Visibility="{Binding Vm.IsFavorites, Converter={StaticResource InvBoolVis}}"/>
-        </DockPanel>
+        </local:ToolbarPanel>
 
         <Grid Grid.Row="2" Margin="20,0,12,0">
             <Grid.RowDefinitions>
@@ -86,7 +91,7 @@
             <views:SelectionBar Grid.Row="1" List="{Binding ElementName=List}" Panel.ZIndex="1"/>
             <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0" MaxWidth="460"
                         Visibility="{Binding IsEmpty, Converter={StaticResource BoolVis}}">
-                <TextBlock Text="{local:T 'La playlist è vuota'}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding EmptyTitle}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 <TextBlock Text="{Binding EmptyText}" Style="{StaticResource Hint}" Margin="0,8,0,0" TextAlignment="Center"/>
             </StackPanel>
             <TextBlock Grid.Row="1" Text="{local:T 'Nessun brano della playlist corrisponde alla ricerca.'}" Style="{StaticResource Hint}" FontSize="14"

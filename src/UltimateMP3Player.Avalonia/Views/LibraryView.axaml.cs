@@ -21,6 +21,10 @@ public partial class LibraryView : UserControl
             if (DataContext is LibraryViewModel vm && App.Host.Session is { } main)
                 Menus.Open(Menus.TagFilterMenu(vm.TagFilter, main), TagFilterButton, true);
         };
+        StorageFilterButton.Click += (_, _) =>
+        {
+            if (DataContext is LibraryViewModel vm) Menus.Open(Menus.StorageFilterMenu(vm.Storage), StorageFilterButton, true);
+        };
         SelectAllButton.Click += (_, _) =>
         {
             List.SelectAll();

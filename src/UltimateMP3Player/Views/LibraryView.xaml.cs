@@ -22,6 +22,11 @@ public partial class LibraryView : UserControl
             Menus.Open(Menus.TagFilterMenu(vm.TagFilter, main), (UIElement)sender, true);
     }
 
+    private void StorageFilter_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is LibraryViewModel vm) Menus.Open(Menus.StorageFilterMenu(vm.Storage), (UIElement)sender, true);
+    }
+
     private void SelectAll_Click(object sender, RoutedEventArgs e)
     {
         List.SelectAll();

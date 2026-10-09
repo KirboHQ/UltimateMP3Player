@@ -53,8 +53,9 @@
 
 - **Brani nel cloud** ☁: un brano non ha più bisogno del suo audio sul dispositivo. Nel cloud tiene copertina, testo,
   statistiche e il suo posto nelle playlist e nei Preferiti, e si ascolta dal suo link; quelli che hai ascoltato restano
-  pronti per la prossima volta. I brani salvati si ascoltano offline come sempre, una piccola nuvola segna gli altri e
-  *Tutti i brani* ha il filtro *Solo sul dispositivo*.
+  pronti per la prossima volta. I brani salvati si ascoltano offline come sempre e una piccola nuvola segna gli altri.
+  Il filtro accanto a *Tag* (3.6.2), nella libreria e in ogni playlist, mostra *Tutti i brani*, solo quelli *Sul
+  dispositivo* o *Solo nel cloud*; *Riproduci* e *Casuale* suonano quelli che mostra, comodo offline.
 - **Aggiungi ora, salva dopo**: decide l'interruttore *Salva l'audio sul dispositivo* nella card del link. Acceso, il
   solito download; spento, brani e playlist intere finiscono nella libreria (e nella playlist) in pochi secondi, nel
   cloud. L'app si ricorda la tua scelta, anche per i pacchetti `.ump` con i soli link. *Salva sul dispositivo* un brano,

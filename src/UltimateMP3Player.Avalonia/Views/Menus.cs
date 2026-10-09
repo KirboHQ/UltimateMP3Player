@@ -438,6 +438,19 @@ public static class Menus
         return menu;
     }
 
+    // Which songs the lists show: all of them, only the ones saved on the device, only the ones in the cloud (one choice for
+    // every library page and playlist).
+    public static ContextMenu StorageFilterMenu(StorageFilterViewModel filter)
+    {
+        var menu = new ContextMenu();
+        foreach (var choice in StorageFilterViewModel.Choices)
+        {
+            var c = choice;
+            menu.Items.Add(Item(filter.NameOf(c), filter.Value == c ? Check : "", () => filter.Value = c));
+        }
+        return menu;
+    }
+
     public static ContextMenu ForTag(TagViewModel t)
     {
         var main = App.Host.Session!;

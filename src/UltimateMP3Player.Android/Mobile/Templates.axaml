@@ -96,6 +96,7 @@
     <!-- A song of a list (SongItem): while choosing songs a tick in front (Selection), the one playing in the accent colour. -->
     <DataTemplate x:Key="SongRowTemplate" DataType="views:SongItem" x:DataType="views:SongItem" x:CompileBindings="True">
         <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Classes.picked="{Binding IsChecked}" Classes.gone="{Binding Track.IsUnavailable}"
+                Classes.moving="{Binding IsMoving}"
                 Classes.picking="{Binding $parent[views:SongList].Picks.IsActive, FallbackValue=False}"
                 Padding="16,7,4,7" views:Touch.Menu="track" views:Touch.Tap="{Binding PlayCommand}">
             <Grid ColumnDefinitions="Auto,52,*,Auto,Auto,Auto">
@@ -123,7 +124,17 @@
                 <TextBlock Grid.Column="3" Classes="glyph heart fav" Text="{local:Icon EB52}" FontSize="14" Margin="0,0,4,0" IsVisible="{Binding Track.IsFavorite}"/>
                 <ContentControl Grid.Column="4" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
                 <Button Grid.Column="5" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" FontSize="18"
-                        Command="{x:Static views:Commands.MoreCommand}" CommandParameter="{Binding $parent[Border]}"/>
+                        Command="{x:Static views:Commands.MoreCommand}" CommandParameter="{Binding $parent[Border]}"
+                        IsVisible="{Binding !$parent[views:SongList].Reordering, FallbackValue=True}"/>
+                <!-- arranging a playlist: the handle drags the song (like "Up next") -->
+                <Border Grid.Column="5" Classes="handle" Width="44" Height="46" Background="Transparent"
+                        IsVisible="{Binding $parent[views:SongList].Reordering, FallbackValue=False}">
+                    <StackPanel Width="18" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="4">
+                        <Border Height="2" CornerRadius="1" Background="{StaticResource SubTextBrush}"/>
+                        <Border Height="2" CornerRadius="1" Background="{StaticResource SubTextBrush}"/>
+                        <Border Height="2" CornerRadius="1" Background="{StaticResource SubTextBrush}"/>
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
     </DataTemplate>

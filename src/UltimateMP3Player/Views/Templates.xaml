@@ -645,13 +645,47 @@
                 <DataTemplate DataType="{x:Type vm:TagFilter}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="&#xE71C;" Style="{StaticResource Glyph}" FontSize="13"/>
-                        <TextBlock Text="{Binding Label}" Margin="8,0,0,0"/>
+                        <TextBlock Text="{Binding Label}" Margin="8,0,0,0" local:ToolbarPanel.Label="True" local:ToolbarPanel.Priority="1"/>
                     </StackPanel>
                 </DataTemplate>
             </Setter.Value>
         </Setter>
         <Style.Triggers>
             <DataTrigger Binding="{Binding TagFilter.IsActive}" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- "On the device / in the cloud" filter pill above a song list (while the page has songs in the cloud, or it filters):
+         its icon and name say what it shows; highlighted while it hides some. -->
+    <Style x:Key="StorageFilterButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="ToolTip" Value="{Binding Storage.Tip}"/>
+        <Setter Property="AutomationProperties.Name" Value="{Binding Storage.Tip}"/>
+        <Setter Property="Visibility" Value="{Binding Storage.IsVisible, Converter={StaticResource BoolVis}}"/>
+        <Setter Property="Content" Value="{Binding Storage}"/>
+        <Setter Property="ContentTemplate">
+            <Setter.Value>
+                <!-- (a narrow window: its name is the first text to go, the last one while it filters) -->
+                <DataTemplate DataType="{x:Type vm:StorageFilterViewModel}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Glyph}" Style="{StaticResource Glyph}" FontSize="13"/>
+                        <TextBlock x:Name="FilterName" Text="{Binding Label}" Margin="8,0,0,0" local:ToolbarPanel.Label="True" local:ToolbarPanel.Priority="-1"/>
+                    </StackPanel>
+                    <DataTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                            <Setter TargetName="FilterName" Property="local:ToolbarPanel.Priority" Value="2"/>
+                        </DataTrigger>
+                    </DataTemplate.Triggers>
+                </DataTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Storage.IsActive}" Value="True">
                 <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                 <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
             </DataTrigger>

@@ -50,6 +50,15 @@ public sealed class SongList : ListBox
     // The songs being chosen (not the ListBox's own selection, which the rows don't use: a tap plays or ticks).
     public Selection Picks { get; } = new();
 
+    // Arranging a playlist ("Move"): the rows show the handle (≡) instead of "⋮", a tap or a long press does nothing.
+    public static readonly Avalonia.StyledProperty<bool> ReorderingProperty = Avalonia.AvaloniaProperty.Register<SongList, bool>(nameof(Reordering));
+
+    public bool Reordering
+    {
+        get => GetValue(ReorderingProperty);
+        set => SetValue(ReorderingProperty, value);
+    }
+
     // The header (and the notes) keep rows of their own when scrolled away: a song's row taking the header's place, and
     // back, would build both from nothing each time around the top of the list.
     protected override bool NeedsContainerOverride(object? item, int index, out object? recycleKey)

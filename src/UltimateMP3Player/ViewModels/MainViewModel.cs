@@ -324,6 +324,9 @@ public sealed class MainViewModel : Observable
             var p = _back.Pop();
             if (p is PlaylistPageViewModel pp && Profile.GetPlaylist(pp.Vm.Id) == null) continue;
             if (p is HomeViewModel) Home.Refresh();
+            // (a filter changed meanwhile)
+            if (p is PlaylistPageViewModel playlist) playlist.EnsureFresh();
+            else if (p is LibraryViewModel lib) lib.EnsureFresh();
             Page = p;
             break;
         }
@@ -519,7 +522,13 @@ public sealed class MainViewModel : Observable
         Navigate(new PlaylistPageViewModel(vm, this));
     }
 
-    private void PlayPlaylist(PlaylistViewModel vm) => Player.PlayAll(new PlaylistPageViewModel(vm, this), Player.Shuffle);
+    // Its songs the "on the device / in the cloud" filter shows (the same as on its page).
+    private void PlayPlaylist(PlaylistViewModel vm)
+    {
+        var page = new PlaylistPageViewModel(vm, this);
+        if (page.Storage.HidesAll) Toast(page.Storage.EmptyTitle);
+        else Player.PlayAll(page, Player.Shuffle);
+    }
 
     public string NewPlaylistName() => L.F("La mia playlist n. {0}", Playlists.Count);
 
@@ -1071,8 +1080,8 @@ public sealed class MainViewModel : Observable
         if (Page == Search && Search.Query.Contains('#')) Search.Run(Search.Query);
     }
 
-    // "Only on the device" turned on or off: every library page follows (the hidden ones when shown).
-    public void OnDeviceFilterChanged()
+    // The "on the device / in the cloud" filter changed: every library page and playlist follows (the hidden ones when shown).
+    public void OnStorageFilterChanged()
     {
         LibraryPage.Rebuild();
         if (Page == UnsortedPage) UnsortedPage.Rebuild();
@@ -1080,6 +1089,8 @@ public sealed class MainViewModel : Observable
         foreach (var page in _tagPages.Values)
             if (page == Page) page.Rebuild();
             else page.MarkDirty();
+        if (Page is PlaylistPageViewModel current) current.Rebuild();
+        foreach (var behind in _back.OfType<PlaylistPageViewModel>()) behind.MarkDirty();
     }
 
     public void OpenTag(TagViewModel t)

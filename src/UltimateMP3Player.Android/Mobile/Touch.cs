@@ -66,9 +66,17 @@ public static class Touch
     private static Control? _lastTapOn;
     private static ulong _lastTapAt;
 
+    // A list being arranged (dragging its songs by the handle): its rows don't play nor open menus.
+    private static bool Arranging(Control c) => c.FindAncestorOfType<SongList>() is { Reordering: true };
+
     private static void OnTapped(object? sender, TappedEventArgs e)
     {
         if (sender is not Control c || e.Handled || OnInnerButton(c, e.Source)) return;
+        if (Arranging(c))
+        {
+            e.Handled = true;
+            return;
+        }
         if (c == _lastTapOn && e.Timestamp == _lastTapAt)
         {
             e.Handled = true;
@@ -106,6 +114,7 @@ public static class Touch
     {
         if (sender is not Control c || e.Handled || OnInnerButton(c, e.Source) || FlingScroll.Caught) return;
         e.Handled = true;
+        if (Arranging(c)) return;
         _menuFrom = c;
         // While choosing: the menu of the chosen ones (with this one among them).
         if (Selection.Of(c) is { IsActive: true } sel && c.DataContext is { } item && Selection.KindOf(item) == sel.Kind && sel.Contains(item))

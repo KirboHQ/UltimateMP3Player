@@ -40,6 +40,9 @@ public sealed class Playlist
     public DateTime Created { get; set; } = DateTime.Now;
     // Ids of the profile's tags put on the playlist itself.
     public List<string> Tags { get; set; } = new();
+    // How its page shows it ("title", "artist"…); null = its own order (Tracks, arranged by dragging the songs), which the
+    // other orders never change: choosing it again brings it back.
+    public string? Sort { get; set; }
 
     public bool IsFavorites => Id == FavoritesId;
 }
@@ -88,6 +91,9 @@ public sealed class EqSettings
 }
 
 public enum RepeatMode { Off, All, One }
+
+// Which songs the library pages and the playlists show: all of them, only the ones saved on the device, only the ones in the cloud.
+public enum StorageFilter { All, Device, Cloud }
 
 // What was playing, saved so it survives a restart.
 public sealed class QueueState
@@ -148,7 +154,10 @@ public sealed class ProfileData
     public string? LastTrack { get; set; }
     public QueueState? Queue { get; set; }
     public string LibrarySort { get; set; } = "added";
-    // The library pages show only the songs saved on the device (not the ones in the cloud).
+    // The library pages and the playlists show all the songs, only the ones saved on the device or only the ones in the cloud.
+    public StorageFilter StorageFilter { get; set; }
+    // Before 3.6.2 the only filter was "on the device" (read once into StorageFilter, then no longer written).
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool LibraryOnDevice { get; set; }
     // Theme id ("ultimate", "pink"...) or "profile".
     public string Theme { get; set; } = "ultimate";
@@ -188,6 +197,11 @@ public sealed class Profile
         if (Data.Playlists.All(p => !p.IsFavorites))
             Data.Playlists.Insert(0, new Playlist { Id = Playlist.FavoritesId, Name = "Preferiti" });
         if (Data.Eq.Gains.Length != Equalizer.BandCount) Data.Eq.Gains = new double[Equalizer.BandCount];
+        if (Data.LibraryOnDevice)
+        {
+            Data.StorageFilter = StorageFilter.Device;
+            Data.LibraryOnDevice = false;
+        }
         DropUnknownTags();
         SeedStats();
     }
