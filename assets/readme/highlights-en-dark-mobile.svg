@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="1879" viewBox="0 0 380 1879" role="img" aria-label="Paste a link, get the music · Songs in the cloud · A player that feels like Spotify · Synced lyrics · A queue that fills itself · DJ mode · Playlists, favorites and tags · On all your devices · Listen together">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#FF4FA3"/>
+    </linearGradient>
+  </defs>
+  <style>
+    .title { font: 600 17px 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; fill: #f0f6fc; }
+    .body { font: 400 14.5px 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; fill: #9198a1; }
+  </style>
+  <g transform="translate(0 0)">
+    <rect x="0.5" y="0.5" width="379" height="191" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="22" y="22" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(32 32)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></g>
+    <text class="title" x="82" y="50">Paste a link, get the music</text>
+    <text class="body" x="22" y="95"><tspan x="22" dy="0">Songs, albums and whole playlists from</tspan><tspan x="22" dy="23">hundreds of sites, in their original order into a</tspan><tspan x="22" dy="23">playlist of yours, or found with the online search.</tspan><tspan x="22" dy="23">Songs you already have are never added twice.</tspan></text>
+  </g>
+  <g transform="translate(0 208)">
+    <rect x="0.5" y="0.5" width="379" height="191" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="22" y="22" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(32 32)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.75 20a5 5 0 0 1-.63-9.96A7.5 7.5 0 0 1 18.88 8.75a5.63 5.63 0 0 1-.63 11.25z"/></g>
+    <text class="title" x="82" y="50">Songs in the cloud</text>
+    <text class="body" x="22" y="95"><tspan x="22" dy="0">Add a whole playlist in seconds without</tspan><tspan x="22" dy="23">downloading it: the songs keep cover, lyrics and</tspan><tspan x="22" dy="23">statistics and play from their link. Save on your</tspan><tspan x="22" dy="23">device the ones you want offline.</tspan></text>
+  </g>
+  <g transform="translate(0 416)">
+    <rect x="0.5" y="0.5" width="379" height="191" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="22" y="22" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(32 32)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="7" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="7" rx="1.5"/></g>
+    <text class="title" x="82" y="50">A player that feels like Spotify</text>
+    <text class="body" x="22" y="95"><tspan x="22" dy="0">Waveform seek bar, fair shuffle, crossfade, speed</tspan><tspan x="22" dy="23">from 0.5× to 2×, loudness normalization, a</tspan><tspan x="22" dy="23">10-band equalizer, media keys and the system&apos;s</tspan><tspan x="22" dy="23">media controls.</tspan></text>
+  </g>
+  <g transform="translate(0 624)">
+    <rect x="0.5" y="0.5" width="379" height="191" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="22" y="22" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(32 32)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/></g>
+    <text class="title" x="82" y="50">Synced lyrics</text>
+    <text class="body" x="22" y="95"><tspan x="22" dy="0">Found by themselves for your songs: the line</tspan><tspan x="22" dy="23">being sung lights up over the blurred cover, a</tspan><tspan x="22" dy="23">click jumps there, and over a music video they</tspan><tspan x="22" dy="23">turn into subtitles.</tspan></text>
+  </g>
+  <g transform="translate(0 832)">
+    <rect x="0.5" y="0.5" width="379" height="191" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="22" y="22" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(32 32)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 11h12M4 16h7"/><path d="M15 14.5v6l5-3z" fill="#fff"/></g>
+    <text class="title" x="82" y="50">A queue that fills itself</text>
+    <text class="body" x="22" y="95"><tspan x="22" dy="0">Start a song and the next ones from its playlist</tspan><tspan x="22" dy="23">line up by themselves, topped up after every</tspan><tspan x="22" dy="23">song. Or play similar songs found online, ready</tspan><tspan x="22" dy="23">just before their turn.</tspan></text>
+  </g>
+  <g transform="translate(0 1040)">
+    <rect x="0.5" y="0.5" width="379" height="191" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="22" y="22" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(32 32)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="13" r="7.5"/><circle cx="10.5" cy="13" r="2" fill="#fff"/><path d="M20.5 3v7.5l-3.5 3.5"/></g>
+    <text class="title" x="82" y="50">DJ mode</text>
+    <text class="body" x="22" y="95"><tspan x="22" dy="0">Two decks with scrolling waveforms, BPM</tspan><tspan x="22" dy="23">detection, sync, key lock, a 3-band EQ with kills</tspan><tspan x="22" dy="23">and a crossfader. Record your mix straight</tspan><tspan x="22" dy="23">into the library.</tspan></text>
+  </g>
+  <g transform="translate(0 1248)">
+    <rect x="0.5" y="0.5" width="379" height="168" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="22" y="22" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(32 32)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5v6.8a1.5 1.5 0 0 0 .44 1.06l8.2 8.2a1.5 1.5 0 0 0 2.12 0l6.8-6.8a1.5 1.5 0 0 0 0-2.12l-8.2-8.2A1.5 1.5 0 0 0 11.3 3H4.5A1.5 1.5 0 0 0 3 4.5z"/><circle cx="8" cy="8" r="1.4" fill="#fff"/></g>
+    <text class="title" x="82" y="50">Playlists, favorites and tags</text>
+    <text class="body" x="22" y="95"><tspan x="22" dy="0">Colored tags like Discord roles, filters,</tspan><tspan x="22" dy="23">multi-select in every list, listening statistics, and</tspan><tspan x="22" dy="23">.ump packs to share your playlists with friends.</tspan></text>
+  </g>
+  <g transform="translate(0 1433)">
+    <rect x="0.5" y="0.5" width="379" height="191" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="22" y="22" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(32 32)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="11" height="8.5" rx="1.5"/><path d="M1 17h13"/><rect x="16.5" y="8" width="6" height="12" rx="1.5"/></g>
+    <text class="title" x="82" y="50">On all your devices</text>
+    <text class="body" x="22" y="95"><tspan x="22" dy="0">Windows, Linux, macOS and Android, with the</tspan><tspan x="22" dy="23">same look. A profile for each person, themes,</tspan><tspan x="22" dy="23">English and Italian, a 3D tilting cover and</tspan><tspan x="22" dy="23">Discord Rich Presence.</tspan></text>
+  </g>
+  <g transform="translate(0 1641)">
+    <rect x="0.5" y="0.5" width="379" height="237" rx="16" fill="#151b23" stroke="#30363d"/>
+    <rect x="0.5" y="0.5" width="379" height="237" rx="16" fill="url(#accent)" fill-opacity="0.1" stroke="url(#accent)" stroke-opacity="0.7"/>
+    <rect x="22" y="22" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(32 32)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2" fill="#fff"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.4 5.4a9.3 9.3 0 0 0 0 13.2M18.6 5.4a9.3 9.3 0 0 1 0 13.2"/></g>
+    <text class="title" x="82" y="50">Listen together</text>
+    <text class="body" x="22" y="95"><tspan x="22" dy="0">Rooms on your network (or over Radmin VPN):</tspan><tspan x="22" dy="23">everyone hears the same song at the same</tspan><tspan x="22" dy="23">moment, with a chat, a shared queue and</tspan><tspan x="22" dy="23">permissions decided by the host. Songs are</tspan><tspan x="22" dy="23">downloaded by each computer from their link,</tspan><tspan x="22" dy="23">or sent over by someone in the room.</tspan></text>
+  </g>
+</svg>

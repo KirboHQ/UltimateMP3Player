@@ -42,12 +42,49 @@
 ## ✨ Highlights
 
 <picture>
+  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/readme/highlights-en-dark-mobile.svg">
+  <source media="(max-width: 640px)" srcset="assets/readme/highlights-en-light-mobile.svg">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/highlights-en-dark.svg">
-  <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · a player that feels like Spotify · a queue that fills itself · DJ mode · playlists, favorites and tags · profiles and themes · listen together">
+  <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · songs in the cloud · a player that feels like Spotify · synced lyrics · a queue that fills itself · DJ mode · playlists, favorites and tags · on all your devices · listen together">
 </picture>
 
-## 🆕 What's new in 3.5.0
+## 🆕 What's new in 3.6
 
+- **Songs in the cloud** ☁: a song doesn't need its audio on your device any more. In the cloud it keeps its cover,
+  lyrics, statistics and its place in your playlists and Favorites, and plays from its link; the ones you've played
+  stay ready for next time. Saved songs play offline as always, a small cloud marks the others, and *All songs* has an
+  *On device only* filter.
+- **Add now, save later**: the *Save the audio on your device* switch on the link card decides. On, the usual
+  download; off, songs and whole playlists go into your library (and the playlist) in a few seconds, in the cloud. The
+  app remembers your choice, also for links-only `.ump` packs. *Save to device* a song, a selection or a playlist, or
+  *Save all those in the cloud*, whenever you want them offline.
+- **Clear buttons** (3.6.1): **+** adds to a playlist, the **library icon** adds a suggested song (or one heard from a
+  link) to your library in the cloud, the **download arrow** saves it on your device. The heart only keeps a song, it
+  never downloads it.
+- **One *Delete…* for everything**: *Video only*, *Lyrics only*, *From the device* (it stays in your library, in the
+  cloud) or *Completely*, with the space it frees, for one song or a hundred. *Free up space…* on playlists.
+- **Links that fix themselves**: when a cloud song's link dies (removed, DMCA, made private) the app finds the same
+  song on YouTube Music, plays it and keeps the new link. A link that can't be read at all (SoundCloud Go+, removed)
+  offers *Retry with YouTube*, and failed downloads *Retry on YouTube*.
+- **Find the video…**: a saved song from SoundCloud, Spotify & co. gets its music video from YouTube. You pick it among
+  the results: the best match is already chosen, with a warning when the length differs, because the video plays in
+  time with the audio. Songs from YouTube take it straight from their link.
+- **Select several, everywhere**: in every song list (search and Home too), *Up next*, downloads and playlists, on
+  every platform. On Android a long press opens the menu with *Select* first, like the gallery.
+- Cloud songs work in DJ mode too (they're downloaded when you load them on a deck), and the temporary storage can now
+  keep up to 200 songs.
+
+<details>
+<summary>3.5</summary>
+
+**3.5.1 – 3.5.2**
+- Android: no more crashes during long downloads, scrolling at the screen's full refresh rate, about a third of the
+  processor while on screen, faster start, settings search, *Sign in to sites* inside the app (for private playlists
+  and age-restricted content), no audio hiccups with the screen off
+- Linux: much smoother (especially in virtual machines and without graphics acceleration), cleaner text, no more crash
+  on the online search results
+
+**3.5.0**
 - **Android**: the same app on phones and tablets (Android 8 or later), with the same look and features, except DJ
   mode and Listen together. A bottom bar with Home, Search, Library, Downloads and Settings; the song playing just
   above it, opening into its full screen with the cover (tilting under your finger), video, synced lyrics and the queue.
@@ -68,6 +105,8 @@
 - Linux and macOS: changing the language in Settings works again.
 - Long press is the right click; profiles (handy on a family tablet), statistics, tags, `.ump` packs and automatic
   updates from the GitHub releases are all there.
+
+</details>
 
 <details>
 <summary>3.4.0</summary>
@@ -146,18 +185,27 @@
 **Downloads**
 - Links from YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp and
   hundreds of other sites, powered by yt-dlp and gallery-dl
+- **Online search** inside the app: YouTube Music, YouTube, SoundCloud and Deezer next to your own songs; a click opens
+  the download
+- Save the audio on your device, or just add the songs to your library in the cloud and save them later
 - MP3 at 320 kbps or the original format, videos up to 4K, several downloads at a time
 - Duplicates are recognized (same source or same song), and site rate limits are handled by themselves: downloads
   pause, then resume more gently
-- Optional browser cookies for private playlists and age-restricted content
+- A link that can't be read, and failed downloads, can be retried on YouTube Music
+- Optional browser cookies for private playlists and age-restricted content (on Android you sign in to the sites inside
+  the app)
 - Music you already have: drag files or folders into the window
 
 **Player**
 - Waveform seek bar, fair shuffle, repeat all / repeat one, crossfade from 1 to 12 seconds
+- Speed from 0.5× to 2×, with or without changing the pitch
 - Loudness normalization (−14 LUFS) and a 10-band equalizer with presets and a live response curve
-- Media keys, the system's media controls (Windows, MPRIS on Linux, Now Playing on macOS) and the tray: close the
-  window and the music keeps playing with very little memory
-- Songs with a video show it in the song screen, framed on a blurred copy of itself
+- **Synced lyrics**, found by themselves: the line being sung lights up over the cover's colors, click a line to jump
+  there; over a video they become subtitles
+- Media keys, the system's media controls (Windows, MPRIS on Linux, Now Playing on macOS, the lock screen on Android)
+  and the tray: close the window and the music keeps playing with very little memory
+- Songs with a video show it in the song screen, framed on a blurred copy of itself; *Find the video…* gets one from
+  YouTube for the others
 
 **Up next**
 - Drag to reorder, double-click to jump, drop on the bin to remove
@@ -167,8 +215,15 @@
 - Restored exactly where you left it when you reopen the app
 
 **Library**
+- **Songs in the cloud** next to the saved ones: a big library without filling the disk, saved on the device only where
+  you want it (*On device only*, *Save all those in the cloud*)
 - Playlists with custom covers, Favorites, recently played, and a *Not in a playlist* view to tidy up
 - Tags with colors, multi-tag filters (all / any) and `#tag` in the search box
+- Select several songs, playlists or downloads in any list and act on all of them at once
+- *Delete…* takes away only the video, only the lyrics, the audio from the device or the whole song, and shows the
+  space freed
+- **`.ump` packs**: a playlist, a tag, several of them or everything in one file, with the audio or as links only
+  (small enough for Discord); open it or drop it on the app to import it, without doubling the songs you already have
 - Rename an artist on all their songs at once; edit title, artist, album, BPM and cover
 - Listening statistics per profile: plays, time listened and last played of every song, the least played to clean up
 
@@ -201,6 +256,7 @@
 > Linux or macOS use ZeroTier or Tailscale, which work everywhere (also on Windows).
 
 **And also**
+- The same app on Windows, Linux, macOS and Android
 - Profiles like in Chrome, themes, English and Italian, smooth animations and scrolling
 - Discord Rich Presence with song, artist, cover and progress bar
 - Automatic updates from the GitHub releases
@@ -263,9 +319,9 @@ for the core (downloads, import, queue, shuffle).
 
 | Path | Content |
 |---|---|
-| `Music\Ultimate MP3 Player` | Downloaded songs (MP3/M4A with tags and cover) and videos |
-| `%LOCALAPPDATA%\Ultimate MP3 Player` | Library, covers, profiles, settings, `errori.log` |
-| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Songs of *Listen together* rooms and suggested songs kept for next time |
+| `Music\Ultimate MP3 Player` | Songs saved on the device (MP3/M4A with tags and cover) and videos |
+| `%LOCALAPPDATA%\Ultimate MP3 Player` | Library, covers, lyrics, profiles, settings, `errori.log` |
+| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Temporary storage: cloud songs, suggested songs and songs of *Listen together* rooms you've played, kept for next time |
 
 On Linux the data is in `~/.local/share/Ultimate MP3 Player` and on macOS in `~/Library/Application Support/Ultimate MP3 Player`
 (there also the engines, in `engines`); the songs go to `~/Music/Ultimate MP3 Player`. On Android the songs are in the

@@ -42,12 +42,50 @@
 ## ✨ In breve
 
 <picture>
+  <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/readme/highlights-it-dark-mobile.svg">
+  <source media="(max-width: 640px)" srcset="assets/readme/highlights-it-light-mobile.svg">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/highlights-it-dark.svg">
-  <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · un lettore come Spotify · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · profili e temi · ascolta insieme">
+  <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · brani nel cloud · un lettore come Spotify · testi sincronizzati · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · su tutti i tuoi dispositivi · ascolta insieme">
 </picture>
 
-## 🆕 Novità della 3.5.0
+## 🆕 Novità della 3.6
 
+- **Brani nel cloud** ☁: un brano non ha più bisogno del suo audio sul dispositivo. Nel cloud tiene copertina, testo,
+  statistiche e il suo posto nelle playlist e nei Preferiti, e si ascolta dal suo link; quelli che hai ascoltato restano
+  pronti per la prossima volta. I brani salvati si ascoltano offline come sempre, una piccola nuvola segna gli altri e
+  *Tutti i brani* ha il filtro *Solo sul dispositivo*.
+- **Aggiungi ora, salva dopo**: decide l'interruttore *Salva l'audio sul dispositivo* nella card del link. Acceso, il
+  solito download; spento, brani e playlist intere finiscono nella libreria (e nella playlist) in pochi secondi, nel
+  cloud. L'app si ricorda la tua scelta, anche per i pacchetti `.ump` con i soli link. *Salva sul dispositivo* un brano,
+  una selezione o una playlist, oppure *Salva tutti quelli nel cloud*, quando li vuoi offline.
+- **Pulsanti chiari** (3.6.1): il **+** aggiunge a una playlist, l'**icona della libreria** mette nella libreria (nel
+  cloud) un brano consigliato o ascoltato da un link, la **freccia** lo salva sul dispositivo. Il cuore tiene solo il
+  brano, non lo scarica mai.
+- **Un solo *Elimina…* per tutto**: *Solo il video*, *Solo il testo*, *Dal dispositivo* (resta nella libreria, nel
+  cloud) o *Completamente*, con lo spazio che liberi, per un brano o per cento. *Libera spazio…* sulle playlist.
+- **Link che si aggiustano da soli**: quando il link di un brano nel cloud non va più (rimosso, DMCA, reso privato)
+  l'app trova lo stesso brano su YouTube Music, lo fa partire e tiene il nuovo link. Un link che non si riesce proprio a
+  leggere (SoundCloud Go+, rimosso) propone *Riprova con YouTube*, e i download non riusciti *Riprova su YouTube*.
+- **Cerca il video…**: un brano salvato da SoundCloud, Spotify e simili prende il suo video da YouTube. Lo scegli tra i
+  risultati: il più adatto è già selezionato, con un avviso se la durata è diversa, perché il video va a tempo con
+  l'audio. I brani di YouTube lo prendono direttamente dal loro link.
+- **Selezione multipla ovunque**: in ogni lista di brani (anche ricerca e Home), nei *Successivi*, nei download e nelle
+  playlist, su tutte le piattaforme. Su Android la pressione prolungata apre il menu con *Seleziona* per primo, come
+  nella galleria.
+- I brani nel cloud funzionano anche nella modalità DJ (si scaricano quando li carichi su una traccia), e la memoria
+  temporanea ora può tenere fino a 200 brani.
+
+<details>
+<summary>3.5</summary>
+
+**3.5.1 – 3.5.2**
+- Android: niente più chiusure durante i download lunghi, scorrimento alla frequenza piena dello schermo, circa un terzo
+  del processore mentre è a schermo, avvio più veloce, ricerca nelle impostazioni, *Accessi ai siti* dentro l'app (per
+  playlist private e contenuti con limite d'età), niente scatti dell'audio a schermo spento
+- Linux: molto più fluida (soprattutto nelle macchine virtuali e senza accelerazione grafica), testo più pulito, niente
+  più chiusura sui risultati della ricerca online
+
+**3.5.0**
 - **Android**: la stessa app su telefoni e tablet (Android 8 o successivo), con lo stesso aspetto e le stesse funzioni,
   tranne la modalità DJ e Ascolta insieme. Una barra in basso con Home, Cerca, Libreria, Download e Impostazioni; il
   brano in riproduzione subito sopra, che si apre a tutto schermo con la copertina (che si inclina sotto il dito), il
@@ -70,6 +108,8 @@
 - Linux e macOS: cambiare lingua dalle impostazioni funziona di nuovo.
 - La pressione prolungata è il tasto destro; ci sono i profili (comodi sul tablet di famiglia), le statistiche, i tag,
   i pacchetti `.ump` e gli aggiornamenti automatici dalle release di GitHub.
+
+</details>
 
 <details>
 <summary>3.4.0</summary>
@@ -150,18 +190,28 @@
 **Download**
 - Link da YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp e centinaia
   di altri siti, grazie a yt-dlp e gallery-dl
+- **Ricerca online** dentro l'app: YouTube Music, YouTube, SoundCloud e Deezer accanto ai tuoi brani; un clic apre il
+  download
+- Salvi l'audio sul dispositivo, oppure aggiungi solo i brani alla libreria nel cloud e li salvi dopo
 - MP3 a 320 kbps o formato originale, video fino al 4K, più download insieme
 - Riconosce i doppioni (stessa fonte o stesso brano) e gestisce da solo i limiti dei siti: i download si mettono in
   pausa e riprendono più piano
-- Cookie del browser (facoltativi) per playlist private e contenuti con limite d'età
+- Un link che non si riesce a leggere, e i download non riusciti, si possono riprovare su YouTube Music
+- Cookie del browser (facoltativi) per playlist private e contenuti con limite d'età (su Android accedi ai siti
+  direttamente dall'app)
 - La musica che hai già: trascina file o cartelle nella finestra
 
 **Lettore**
 - Forma d'onda, casuale vero, ripeti tutto / ripeti brano, dissolvenza da 1 a 12 secondi
+- Velocità da 0,5× a 2×, cambiando o no anche il tono
 - Volume normalizzato (−14 LUFS) ed equalizzatore a 10 bande con preset e curva di risposta
-- Tasti multimediali, controlli multimediali del sistema (Windows, MPRIS su Linux, "In riproduzione" su macOS) e
-  icona vicino all'orologio: chiudi la finestra e la musica continua usando pochissima memoria
-- I brani con video lo mostrano nella schermata del brano, su uno sfondo sfocato di sé stesso
+- **Testi sincronizzati**, trovati da soli: la riga cantata si illumina sui colori della copertina, un clic su una riga
+  ci salta; sopra un video diventano sottotitoli
+- Tasti multimediali, controlli multimediali del sistema (Windows, MPRIS su Linux, "In riproduzione" su macOS, la
+  schermata di blocco su Android) e icona vicino all'orologio: chiudi la finestra e la musica continua usando
+  pochissima memoria
+- I brani con video lo mostrano nella schermata del brano, su uno sfondo sfocato di sé stesso; *Cerca il video…* ne
+  trova uno su YouTube per gli altri
 
 **Successivi**
 - Trascina per riordinare, doppio clic per saltare, lascia sul cestino per togliere
@@ -171,8 +221,15 @@
 - Ritrovi tutto com'era quando riapri l'app
 
 **Libreria**
+- **Brani nel cloud** accanto a quelli salvati: una libreria grande senza riempire il disco, salvata sul dispositivo
+  solo dove vuoi tu (*Solo sul dispositivo*, *Salva tutti quelli nel cloud*)
 - Playlist con copertina personalizzata, Preferiti, ascoltati di recente e la vista *Senza playlist* per fare ordine
 - Tag colorati, filtri con più tag (tutti / almeno uno) e `#tag` nella ricerca
+- Selezioni più brani, playlist o download in qualsiasi lista e agisci su tutti insieme
+- *Elimina…* toglie solo il video, solo il testo, l'audio dal dispositivo o il brano intero, e mostra lo spazio
+  liberato
+- **Pacchetti `.ump`**: una playlist, un tag, più di uno o tutto in un solo file, con l'audio o con i soli link
+  (abbastanza piccolo per Discord); lo apri o lo trascini sull'app per importarlo, senza doppioni dei brani che hai già
 - Rinomina un artista su tutti i suoi brani in un colpo; modifica titolo, artista, album, BPM e copertina
 - Statistiche di ascolto per profilo: ascolti, tempo e ultimo ascolto di ogni brano, i meno ascoltati per fare pulizia
 
@@ -207,6 +264,7 @@
 > macOS usate ZeroTier o Tailscale, che vanno ovunque (anche su Windows).
 
 **E poi**
+- La stessa app su Windows, Linux, macOS e Android
 - Profili come in Chrome, temi, italiano e inglese, animazioni e scorrimento fluidi
 - Stato su Discord con brano, artista, copertina e barra di avanzamento
 - Aggiornamenti automatici dalle release di GitHub
@@ -269,9 +327,9 @@ da riga di comando per provare il core (download, import, coda, casuale).
 
 | Percorso | Contenuto |
 |---|---|
-| `Musica\Ultimate MP3 Player` | Brani scaricati (MP3/M4A con tag e copertina) e video |
-| `%LOCALAPPDATA%\Ultimate MP3 Player` | Libreria, copertine, profili, impostazioni, `errori.log` |
-| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Brani delle stanze di *Ascolta insieme* e consigliati tenuti per la prossima volta |
+| `Musica\Ultimate MP3 Player` | Brani salvati sul dispositivo (MP3/M4A con tag e copertina) e video |
+| `%LOCALAPPDATA%\Ultimate MP3 Player` | Libreria, copertine, testi, profili, impostazioni, `errori.log` |
+| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Memoria temporanea: brani nel cloud, consigliati e delle stanze di *Ascolta insieme* che hai ascoltato, tenuti per la prossima volta |
 
 Su Linux i dati sono in `~/.local/share/Ultimate MP3 Player` e su macOS in `~/Library/Application Support/Ultimate MP3 Player`
 (lì ci sono anche i motori, in `engines`); i brani vanno in `~/Music/Ultimate MP3 Player`. Su Android i brani sono nella
