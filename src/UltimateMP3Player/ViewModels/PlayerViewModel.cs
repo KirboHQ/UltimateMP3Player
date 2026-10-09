@@ -27,6 +27,8 @@ public sealed class QueueRow
     public PlayerViewModel Player { get; }
     public RadioItemViewModel? Radio { get; }
     public bool IsRadio => Radio != null;
+    // A song of the library in the cloud (a suggested one shows its own state instead).
+    public bool ShowCloud => Radio == null && Track.IsCloud;
 
     public ICommand PlayCommand => new RelayCommand(() => _ = Player.JumpTo(Index));
     public ICommand RemoveCommand => new RelayCommand(() => Player.RemoveUpcoming(Index));
@@ -118,9 +120,17 @@ public sealed class PlayerViewModel : Observable
         };
     }
 
-    // A song of the library, or a suggested one still in the queue.
+    // A song of the library, or one not in it still in the queue or among the recently played.
     private Track? TrackOf(string id) => _main.Library.Get(id) ?? _main.Radio.Track(id);
     private bool Exists(string id) => TrackOf(id) != null;
+
+    // Among the recently played: a song of the library, and one heard without saving it (suggested, from a link, or a
+    // room's own, kept from now on like those).
+    private void AddHistory(Track t)
+    {
+        if (_main.Library.Get(t.Id) != null || _main.Radio.Has(t.Id)) _main.Profile.AddHistory(t.Id);
+        else if (_main.Radio.KeepHeard(t) is { } id) _main.Profile.AddHistory(id);
+    }
 
     // Brings back the song, the list and "next up" of the last session.
     private void Restore(bool adopt)
@@ -138,7 +148,7 @@ public sealed class PlayerViewModel : Observable
         if (_queue.Current == null || TrackOf(_queue.Current) is not { } track) return;
         Current = _main.Vm(track);
         Duration = track.Duration;
-        if (adopt && _audio.HasSource && _audio.SourcePath == track.Path)
+        if (adopt && _audio.HasSource && _audio.SourcePath is { } open && (open == track.Path || open == track.CachePath || open == _main.Radio.PathFor(track.Id)))
         {
             // The window was rebuilt: the engine is still playing this song.
             _opened = true;
@@ -345,8 +355,17 @@ public sealed class PlayerViewModel : Observable
     }
 
     public bool HasTrack => Current != null;
-    // The song playing isn't in the library: a suggested one, or one of a link heard without downloading it.
-    public bool IsTemporary => Current != null && _main.Radio.Has(Current.Id);
+    // The song playing isn't saved on the device: a suggested one, one of a link heard without saving it, or a song of the
+    // library in the cloud (the "Save" button next to the heart).
+    public bool IsTemporary => Current != null && _room == null && (_main.Radio.Has(Current.Id) || !Current.IsSaved);
+
+    // The song playing was saved, or its audio removed from the device.
+    public void RefreshSaved()
+    {
+        OnChanged(nameof(IsTemporary));
+        CommandManager.InvalidateRequerySuggested();
+        _main.Host.OnTrackChanged();
+    }
     // The song block of the player bar: also in a room with nothing playing (it shows the room's name).
     public bool ShowNowPlaying => Current != null || _room != null;
     // "Generate queue" (the song page): your own queue only.
@@ -609,9 +628,13 @@ public sealed class PlayerViewModel : Observable
         _ = Load(first, true);
     }
 
+    // The button next to the heart: a song not in the library (suggested, heard from a link) goes into it first, in the
+    // cloud ("+": nothing downloaded); one of the library in the cloud is saved on the device (the download arrow).
     private void SaveCurrent()
     {
-        if (Current != null && _main.Radio.Item(Current.Id) is { } item) _ = _main.Radio.Save(item, null);
+        if (Current == null) return;
+        if (!Current.InLibrary) _main.AddToLibrary(Current);
+        else _ = _main.SaveToDevice(new[] { Current });
     }
 
     public void Enqueue(TrackViewModel t, bool quiet = false)
@@ -684,11 +707,21 @@ public sealed class PlayerViewModel : Observable
 
     private async Task Load(Track t, bool play, bool crossfade = false)
     {
-        if (_main.Radio.Has(t.Id) && _main.Radio.PathFor(t.Id) == null)
+        // A saved song whose file is gone, with a link: it goes back to the cloud (heard from its link) instead of failing.
+        if (t.IsSaved && !t.HasSavedFile && t.HasLink && _main.Library.Get(t.Id) == t)
+        {
+            t.Path = "";
+            t.VideoPath = t.HasVideo && File.Exists(t.VideoPath) ? t.VideoPath : null;
+            _main.Library.Changed(t);
+            _main.Toast(L.F("Il file di «{0}» non c'è più: lo ascolti dal suo link, e puoi salvarlo di nuovo", t.Title));
+        }
+        var path = t.AudioPath ?? _main.Radio.PathFor(t.Id);
+        if (path == null && _main.Radio.Streams(t))
         {
             Wait(t, play);
             return;
         }
+        path ??= t.Path;
         int version = ++_loadVersion;
         double resume = Current?.Id == t.Id ? _resumeAt : 0;
         _resumeAt = 0;
@@ -702,8 +735,8 @@ public sealed class PlayerViewModel : Observable
         _opened = false;
         try
         {
-            if (crossfade) await _audio.CrossfadeToAsync(t.Path, t.Duration, TrackGain(t));
-            else await _audio.OpenAsync(t.Path, t.Duration, TrackGain(t));
+            if (crossfade) await _audio.CrossfadeToAsync(path, t.Duration, TrackGain(t));
+            else await _audio.OpenAsync(path, t.Duration, TrackGain(t));
             if (version != _loadVersion) return;
             _opened = true;
             Duration = _audio.Duration.TotalSeconds > 0 ? _audio.Duration.TotalSeconds : t.Duration;
@@ -716,7 +749,7 @@ public sealed class PlayerViewModel : Observable
             {
                 if (!_audio.IsPlaying) _audio.Play();
                 IsPlaying = _audio.IsPlaying;
-                if (_main.Library.Get(t.Id) != null) _main.Profile.AddHistory(t.Id);
+                AddHistory(t);
                 _main.OnPlayed();
             }
             else
@@ -758,7 +791,7 @@ public sealed class PlayerViewModel : Observable
     public bool IsWaiting => _waiting != null || _waitMore;
     public string? WaitText => _waitMore ? L.T("Cerco altri brani simili…")
         : _waiting is not { } id ? null
-        : _main.Radio.Item(id) is { IsBusy: true } item ? L.F("Lo sto scaricando · {0:0}%", item.Pct)
+        : _main.Radio.StatusOf(id) is { State: Core.Together.FileState.Downloading } st ? L.F("Lo sto scaricando · {0:0}%", st.Pct)
         : L.T("In arrivo…");
 
     private void OnWaitChanged() => OnChanged(nameof(IsWaiting), nameof(WaitText), nameof(PlayGlyph));
@@ -800,7 +833,11 @@ public sealed class PlayerViewModel : Observable
         if (_waiting != id) return;
         _waiting = null;
         OnWaitChanged();
-        _main.Toast(L.F("Non si riesce a scaricare «{0}»: passo al successivo.", Current?.Title));
+        var title = Current?.Title;
+        _main.Toast(_main.Radio.IsGone(id) ? L.F("«{0}» non è più disponibile online e non l'ho trovato altrove: passo al successivo.", title)
+            : _main.Radio.IsOffline(id)
+                ? L.F("«{0}» non è salvato sul dispositivo e non riesco a scaricarlo: controlla la connessione. Passo al successivo.", title)
+            : L.F("Non si riesce a scaricare «{0}»: passo al successivo.", title));
         _queue.Forget(id);
         _ = Next(false);
     }
@@ -845,8 +882,8 @@ public sealed class PlayerViewModel : Observable
         var item = _main.Radio.Unsave(saved, _opened ? _audio.SourcePath : null);
         if (item == null) return false;
         // Still playing the library copy (it's about to be deleted): on from the cache one, at the same point.
-        if (_opened && string.Equals(_audio.SourcePath, saved.Path, StringComparison.OrdinalIgnoreCase))
-            await _audio.SwapAsync(item.T.Path, item.T.Duration > 0 ? item.T.Duration : Duration);
+        if (_opened && string.Equals(_audio.SourcePath, saved.Path, StringComparison.OrdinalIgnoreCase) && item.T.CachePath is { } cached)
+            await _audio.SwapAsync(cached, item.T.Duration > 0 ? item.T.Duration : Duration);
         _queue.Replace(saved.Id, item.Id);
         if (Current?.Id == saved.Id)
         {
@@ -857,6 +894,17 @@ public sealed class PlayerViewModel : Observable
         }
         return true;
     }
+
+    // The song playing had its audio removed from the device (it stays in the library, in the cloud): it goes on from the
+    // copy moved into the cache, at the same point.
+    internal async Task SwapToCache(Track t, string cached)
+    {
+        if (_room != null || Current?.Id != t.Id || !_opened) return;
+        await _audio.SwapAsync(cached, t.Duration > 0 ? t.Duration : Duration);
+    }
+
+    // The file the player has open right now (null: nothing open).
+    internal string? OpenPath => _opened ? _audio.SourcePath : null;
 
     // The song playing and the next ones: the suggested ones among them get ready.
     internal List<string> Window(int ahead)
@@ -941,9 +989,11 @@ public sealed class PlayerViewModel : Observable
         _main.Profile.Save();
     }
 
-    // The library song sounding here right now.
+    // The song sounding here right now: one of the library (saved or in the cloud), or one heard without keeping it
+    // (suggested, from a link: it stays in the statistics once a play of it counts).
     private string? HeardId()
-        => Current is { } c && _opened && (_room == null || _roomLoaded == _room.Session?.Current?.Id) && _main.Library.Get(c.Id) != null ? c.Id : null;
+        => Current is { } c && _opened && (_room == null || _roomLoaded == _room.Session?.Current?.Id) &&
+           (_main.Library.Get(c.Id) != null || _main.Radio.Has(c.Id)) ? c.Id : null;
 
     public void PlayPause()
     {
@@ -992,15 +1042,22 @@ public sealed class PlayerViewModel : Observable
         else if (IsPlaying) PlayPause();
     }
 
-    // First song whose file still exists (a suggested song may still be on its way: it's waited for).
-    private Track? NextPlayable(Func<string?> next)
+    // First song that can play: its file is here, or it can be fetched from its link (a song in the cloud, a suggested one:
+    // it's waited for). Songs that failed or are no longer available online are skipped; picked: the first one was chosen
+    // by hand (tried anyway).
+    private Track? NextPlayable(Func<string?> next, bool picked = false)
     {
         for (int guard = 0; guard < 50; guard++)
         {
             var id = next();
             if (id == null) return null;
-            if (_main.Library.Get(id) is { } t && File.Exists(t.Path)) return t;
-            if (_main.Radio.Track(id) is { } s && !_main.Radio.IsFailed(id)) return s;
+            bool tryAnyway = picked && guard == 0;
+            if (_main.Library.Get(id) is { } t)
+            {
+                if (t.HasSavedFile) return t;
+                if (t.HasLink && (tryAnyway || !t.Unavailable && !_main.Radio.IsFailed(id))) return t;
+            }
+            else if (_main.Radio.Track(id) is { } s && (tryAnyway || !_main.Radio.IsFailed(id))) return s;
             _queue.Forget(id);
         }
         return null;
@@ -1065,7 +1122,7 @@ public sealed class PlayerViewModel : Observable
             CountListening();
             NewListen();
             Seek(0);
-            if (_main.Library.Get(Current.Id) != null) _main.Profile.AddHistory(Current.Id);
+            AddHistory(Current.T);
             return;
         }
         _ = Next(true);
@@ -1075,7 +1132,8 @@ public sealed class PlayerViewModel : Observable
     private void OnNearEnd()
     {
         if (_room != null || !IsPlaying || Repeat == RepeatMode.One || _audio.CrossfadeSeconds <= 0) return;
-        if (_queue.PeekNext() is { } next && _main.Radio.Has(next) && _main.Radio.PathFor(next) == null) return;
+        if (_queue.PeekNext() is { } next && TrackOf(next) is { } coming && _main.Radio.Streams(coming) && coming.AudioPath == null &&
+            _main.Radio.PathFor(next) == null) return;
         var t = NextPlayable(() => _queue.Next(true));
         if (t != null) _ = Load(t, true, crossfade: true);
     }
@@ -1087,8 +1145,12 @@ public sealed class PlayerViewModel : Observable
             _room.PlayNowAt(index);
             return;
         }
-        var t = NextPlayable(() => _queue.JumpTo(index));
-        if (t != null) await Load(t, true);
+        var t = NextPlayable(() => _queue.JumpTo(index), picked: true);
+        if (t != null)
+        {
+            if (_main.Radio.IsFailed(t.Id)) _main.Radio.Prepare(t.Id);
+            await Load(t, true);
+        }
     }
 
     public void RemoveUpcoming(int index)
@@ -1101,6 +1163,24 @@ public sealed class PlayerViewModel : Observable
     {
         if (_room != null) _room.MoveAt(from, to);
         else _queue.Move(from, to);
+    }
+
+    // Several songs of "next up" at once (their places in it): out of it, or to its top or bottom keeping their order.
+    public void RemoveUpcoming(IReadOnlyCollection<int> indexes)
+    {
+        foreach (var i in indexes.Distinct().OrderByDescending(i => i)) RemoveUpcoming(i);
+    }
+
+    public void MoveUpcomingToTop(IReadOnlyCollection<int> indexes)
+    {
+        int to = 0;
+        foreach (var i in indexes.Distinct().OrderBy(i => i)) MoveUpcoming(i, to++);
+    }
+
+    public void MoveUpcomingToBottom(IReadOnlyCollection<int> indexes)
+    {
+        int to = (_room?.RoomQueue.Count ?? _queue.UpcomingCount) - 1;
+        foreach (var i in indexes.Distinct().OrderByDescending(i => i)) MoveUpcoming(i, to--);
     }
 
     public void Seek(double seconds)
@@ -1302,7 +1382,7 @@ public sealed class PlayerViewModel : Observable
             if (version != _loadVersion) return true;
             _opened = true;
             Duration = _audio.Duration.TotalSeconds > 0 ? _audio.Duration.TotalSeconds : vm.T.Duration;
-            if (_main.Library.Get(vm.Id) != null) _main.Profile.AddHistory(vm.Id);
+            AddHistory(vm.T);
             return true;
         }
         catch (Exception ex)

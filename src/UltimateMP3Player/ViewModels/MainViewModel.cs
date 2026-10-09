@@ -91,6 +91,7 @@ public sealed class MainViewModel : Observable
         profile.TrackTagsChanged += _trackTagsChanged;
         host.Lyrics.TrackDone += OnLyricsDone;
         host.Lyrics.BatchDone += OnLyricsBatchDone;
+        host.Downloads.SavingChanged += OnSaving;
         if (Player.Current is { } playing) host.Lyrics.Auto(playing.T, true);
         Radio.Refresh();
     }
@@ -224,6 +225,7 @@ public sealed class MainViewModel : Observable
         Profile.TrackTagsChanged -= _trackTagsChanged;
         Host.Lyrics.TrackDone -= OnLyricsDone;
         Host.Lyrics.BatchDone -= OnLyricsBatchDone;
+        Host.Downloads.SavingChanged -= OnSaving;
     }
 
     // Songs deleted by another profile leave this one too.
@@ -233,10 +235,13 @@ public sealed class MainViewModel : Observable
         foreach (var p in Profile.PlaylistsSnapshot())
             foreach (var id in p.Tracks)
                 if (Library.Get(id) == null) gone.Add(id);
+        // (the songs heard without saving them stay in the history and in the statistics: RadioViewModel keeps the recent
+        // ones and the ones heard enough)
+        var heard = Profile.Data.Radio.Select(s => s.Id).ToHashSet();
         foreach (var h in Profile.Data.History.ToList())
-            if (Library.Get(h.TrackId) == null) gone.Add(h.TrackId);
+            if (!RadioSong.IsRadio(h.TrackId) && Library.Get(h.TrackId) == null) gone.Add(h.TrackId);
         foreach (var id in Profile.StatsSnapshot().Keys)
-            if (Library.Get(id) == null) gone.Add(id);
+            if (Library.Get(id) == null && !heard.Contains(id)) gone.Add(id);
         if (gone.Count > 0) Profile.ForgetTracks(gone);
     }
 
@@ -329,6 +334,13 @@ public sealed class MainViewModel : Observable
     {
         Settings.Refresh();
         Navigate(Settings);
+    }
+
+    // The settings showing only what these words find (a download that needs a login: "cookie", the browser's cookies).
+    public void SearchSettings(string words)
+    {
+        Settings.StartSearch = words;
+        GoSettings();
     }
 
     // ------------------------------------------------------------------ search box
@@ -520,7 +532,7 @@ public sealed class MainViewModel : Observable
         if (with != null && SaveRoomSong(with, p)) return p;
         if (with != null)
         {
-            Profile.AddTrack(p, with.Id);
+            Profile.AddTrack(p, KeepInLibrary(with).Id);
             Toast(L.F("Aggiunto a «{0}»", p.Name));
         }
         else if (Playlists.FirstOrDefault(x => x.Id == p.Id) is { } vm) OpenPlaylist(vm);
@@ -534,11 +546,13 @@ public sealed class MainViewModel : Observable
         Profile.Rename(vm.P, name);
     }
 
-    public async Task DeletePlaylist(PlaylistViewModel vm)
+    // True once deleted (false: cancelled).
+    public async Task<bool> DeletePlaylist(PlaylistViewModel vm)
     {
-        if (vm.IsFavorites) return;
-        if (!await Dialogs.ConfirmAsync(L.T("Eliminare la playlist?"), L.F("La playlist «{0}» verrà eliminata. I brani restano nella libreria.", vm.Name), L.T("Elimina"), true)) return;
+        if (vm.IsFavorites) return false;
+        if (!await Dialogs.ConfirmAsync(L.T("Eliminare la playlist?"), L.F("La playlist «{0}» verrà eliminata. I brani restano nella libreria.", vm.Name), L.T("Elimina"), true)) return false;
         Profile.DeletePlaylist(vm.P);
+        return true;
     }
 
     public async Task ChangePlaylistCover(PlaylistViewModel vm)
@@ -563,22 +577,33 @@ public sealed class MainViewModel : Observable
 
     // ------------------------------------------------------------------ track actions
 
-    // A song heard in a room or suggested online that isn't in the library yet: saved there first, then used as asked.
+    // A song of a room that isn't in the library: saved there first (its file is already here), then used as asked.
     private bool SaveRoomSong(TrackViewModel t, Playlist? p)
     {
-        if (Radio.Item(t.Id) is { } suggested)
-        {
-            _ = Radio.Save(suggested, p);
-            return true;
-        }
         if (_together == null || !_together.IsStandIn(t)) return false;
         if (_together.ItemFor(t) is { } item) _ = _together.Save(item, p);
         return true;
     }
 
+    // A suggested song (or one of a link heard without saving it) goes into the library before going into a playlist, the
+    // favourites or getting a tag: in the cloud, nothing downloaded. The library song (the same one for the others).
+    public TrackViewModel KeepInLibrary(TrackViewModel t) => Radio.Item(t.Id) is { } suggested ? Vm(Radio.Keep(suggested, null)) : t;
+
+    private List<TrackViewModel> KeepInLibrary(IReadOnlyList<TrackViewModel> tracks)
+        => tracks.Where(t => _together == null || !_together.IsStandIn(t)).Select(KeepInLibrary).Distinct().ToList();
+
+    // The "+" of a song not in the library (next to the heart, in its menu): into it, in the cloud, and said so.
+    public TrackViewModel AddToLibrary(TrackViewModel t)
+    {
+        var kept = KeepInLibrary(t);
+        if (kept != t) Toast(L.F("«{0}» aggiunto alla libreria, nel cloud: salvalo sul dispositivo quando vuoi", kept.Title));
+        return kept;
+    }
+
     public void ToggleFavorite(TrackViewModel t)
     {
         if (SaveRoomSong(t, Profile.Favorites)) return;
+        t = KeepInLibrary(t);
         var fav = Profile.Favorites;
         if (Profile.Contains(fav, t.Id))
         {
@@ -596,6 +621,7 @@ public sealed class MainViewModel : Observable
     public void AddToPlaylist(TrackViewModel t, Playlist p)
     {
         if (SaveRoomSong(t, p)) return;
+        t = KeepInLibrary(t);
         var name = PlaylistViewModel.DisplayName(p);
         Toast(Profile.AddTrack(p, t.Id) ? L.F("Aggiunto a «{0}»", name) : L.F("È già in «{0}»", name));
     }
@@ -622,17 +648,20 @@ public sealed class MainViewModel : Observable
 
     public void AddToPlaylist(IReadOnlyList<TrackViewModel> tracks, Playlist p)
     {
+        tracks = KeepInLibrary(tracks);
         int added = Profile.AddTracks(p, tracks.Select(t => t.Id));
         var name = PlaylistViewModel.DisplayName(p);
         Toast(added == 0 ? L.F("Erano già tutti in «{0}»", name) : added == 1 ? L.F("1 brano aggiunto a «{0}»", name) : L.F("{0} brani aggiunti a «{1}»", added, name));
     }
 
-    public async Task NewPlaylistWith(IReadOnlyList<TrackViewModel> tracks)
+    // True once made (false: cancelled).
+    public async Task<bool> NewPlaylistWith(IReadOnlyList<TrackViewModel> tracks)
     {
         var name = await Dialogs.PromptAsync(L.T("Nuova playlist"), L.T("Nome della playlist"), NewPlaylistName());
-        if (string.IsNullOrWhiteSpace(name)) return;
+        if (string.IsNullOrWhiteSpace(name)) return false;
         var p = Profile.CreatePlaylist(name);
         AddToPlaylist(tracks, p);
+        return true;
     }
 
     public void RemoveFromPlaylist(IReadOnlyList<TrackViewModel> tracks, Playlist p)
@@ -692,41 +721,260 @@ public sealed class MainViewModel : Observable
 
     public void ShowInFolder(TrackViewModel t)
     {
+        if (!t.T.IsSaved) { Toast(L.F("«{0}» non è salvato sul dispositivo: lo ascolti dal suo link.", t.Title)); return; }
         if (!File.Exists(t.T.Path)) { Toast(L.T("Il file non esiste più.")); return; }
         Ui.ShowInFolder(t.T.Path);
     }
 
+    // ------------------------------------------------------------------ saved on the device or in the cloud
+
+    // The cover of a song added to the cloud, from the site's pictures (in the background).
+    public async Task FetchCover(Track t, IReadOnlyList<string> pictures)
+    {
+        if (t.HasCover || pictures.Count == 0) return;
+        if (await CloudSongs.MakeCoverAsync(t.Id, pictures) == null || Library.Get(t.Id) != t) return;
+        t.HasCover = true;
+        t.CoverVersion++;
+        Library.Changed(t);
+    }
+
+    // Saves the songs on the device: a suggested one goes into the library first; one just heard is copied from the
+    // cache at once; the others are downloaded (their rows show how far). quiet: no message when there's nothing to do.
+    public async Task SaveToDevice(IReadOnlyList<TrackViewModel> tracks, bool quiet = false)
+    {
+        var todo = new List<Track>();
+        foreach (var vm in tracks)
+        {
+            if (SaveRoomSong(vm, null)) continue;
+            var t = KeepInLibrary(vm).T;
+            if (Library.Get(t.Id) == t && !t.HasSavedFile && t.HasLink && !todo.Contains(t)) todo.Add(t);
+        }
+        if (todo.Count == 0)
+        {
+            if (!quiet && tracks.Count > 0)
+                Toast(tracks.Count == 1 ? L.F("«{0}» è già salvato sul dispositivo", tracks[0].Title) : L.T("Sono già tutti salvati sul dispositivo"));
+            return;
+        }
+        int copied = 0;
+        var download = new List<Track>();
+        foreach (var t in todo)
+        {
+            var cached = t.CachePath is { } c && File.Exists(c) ? c : Host.SongCache.Find(t.Keys);
+            if (cached != null && await SaveFromCache(t, cached)) copied++;
+            else download.Add(t);
+        }
+        int queued = download.Count > 0 ? Queue.Save(Profile, download) : 0;
+        if (quiet && queued == 0) return;
+        if (todo.Count == 1)
+            Toast(copied == 1 ? L.F("«{0}» salvato sul dispositivo", todo[0].Title) : L.F("Salvo «{0}» sul dispositivo…", todo[0].Title));
+        else if (queued == 0) Toast(L.F("{0} brani salvati sul dispositivo", copied));
+        else Toast(copied > 0 ? L.F("{0} brani salvati, {1} in download", copied, queued) : L.F("Salvo {0} brani sul dispositivo…", queued));
+    }
+
+    // The copy heard from the cache becomes the song's saved file (cover and analysis only if it lacks them).
+    private async Task<bool> SaveFromCache(Track t, string cached)
+    {
+        try
+        {
+            var dir = Host.Settings.MusicDir;
+            Directory.CreateDirectory(dir);
+            var name = Text.SafeFileName(string.IsNullOrWhiteSpace(t.Artist) ? t.Title : $"{t.Artist.Split(',')[0].Trim()} - {t.Title}");
+            var target = Text.UniquePath(dir, name, Path.GetExtension(cached).TrimStart('.'));
+            await Task.Run(() => File.Copy(cached, target));
+            if (!t.HasCover && await AudioAnalysis.ExtractCoverAsync(target, AppPaths.TrackCover(t.Id), false, CancellationToken.None))
+            {
+                t.HasCover = true;
+                t.CoverVersion++;
+            }
+            if (t.Wave == null || t.Loudness == null)
+            {
+                try
+                {
+                    var a = await AudioAnalysis.AnalyzeAsync(target, CancellationToken.None);
+                    t.Wave = a.Wave;
+                    t.Loudness = a.Loudness;
+                    t.Peak = a.Peak;
+                    if (a.Duration > 0) t.Duration = a.Duration;
+                }
+                catch { }
+            }
+            t.Path = target;
+            t.Unavailable = false;
+            Library.Changed(t);
+            // (it plays on from the cache's copy if it's playing: that one goes once it's no longer open)
+            if (Host.SongCache.Contains(cached)) Host.SongCache.Forget(cached);
+            t.CachePath = null;
+            return true;
+        }
+        catch { return false; }
+    }
+
+    // The audio (and video) of the songs leaves the device: they stay in the library, the playlists and the statistics, in
+    // the cloud, heard from their link. Songs without a link, or files of the computer's own, aren't touched. The song
+    // playing goes on from a copy in the cache.
+    public async Task RemoveFromDevice(IReadOnlyList<TrackViewModel> tracks)
+    {
+        var files = new List<string>();
+        long bytes = 0;
+        var done = new List<TrackViewModel>();
+        foreach (var vm in tracks)
+        {
+            var t = vm.T;
+            if (Library.Get(t.Id) != t || !t.CanUnsave) continue;
+            if (Player.OpenPath is { } open && string.Equals(open, t.Path, StringComparison.OrdinalIgnoreCase) && File.Exists(t.Path))
+            {
+                try
+                {
+                    var tmp = Path.Combine(Host.SongCache.TempDir, Ids.New() + Path.GetExtension(t.Path));
+                    await Task.Run(() => File.Copy(t.Path, tmp));
+                    var cached = Host.SongCache.Adopt(t.Keys, t.Title, t.Artist, tmp);
+                    t.CachePath = cached;
+                    await Player.SwapToCache(t, cached);
+                }
+                catch { }
+            }
+            bytes += SizeOf(t.Path);
+            files.Add(t.Path);
+            if (t.HasOwnVideo)
+            {
+                bytes += SizeOf(t.VideoPath);
+                files.Add(t.VideoPath!);
+            }
+            t.Path = "";
+            t.VideoPath = null;
+            Library.Changed(t);
+            done.Add(vm);
+        }
+        if (done.Count == 0) return;
+        Toast(done.Count == 1
+            ? L.F("«{0}» tolto dal dispositivo: resta nella libreria, nel cloud", done[0].Title)
+            : L.F("{0} brani tolti dal dispositivo ({1} liberati): restano nella libreria, nel cloud", done.Count, Text.Size(bytes)));
+        await DeleteFiles(files);
+    }
+
+    // Only the videos: the songs stay saved, with their audio.
+    public async Task RemoveVideos(IReadOnlyList<TrackViewModel> tracks)
+    {
+        var files = new List<string>();
+        int n = 0;
+        foreach (var vm in tracks)
+        {
+            var t = vm.T;
+            if (Library.Get(t.Id) != t || !t.HasOwnVideo) continue;
+            if (!t.IsLocal) files.Add(t.VideoPath!);
+            t.VideoPath = null;
+            Library.Changed(t);
+            n++;
+        }
+        if (n == 0) return;
+        NowPlaying.Refresh();
+        Toast(n == 1 ? L.T("Video eliminato: resta l'audio") : L.F("Video di {0} brani eliminati: resta l'audio", n));
+        await DeleteFiles(files);
+    }
+
+    public void DeleteLyrics(IReadOnlyList<TrackViewModel> tracks)
+    {
+        var with = tracks.Where(t => t.HasLyrics).ToList();
+        if (with.Count == 1) DeleteLyrics(with[0]);
+        else if (with.Count > 1)
+        {
+            foreach (var t in with) Host.Lyrics.Delete(t.T);
+            Toast(L.F("Testi di {0} brani eliminati", with.Count));
+        }
+    }
+
+    // A video for a song saved without one: from its own link when that's a YouTube video, otherwise chosen among the
+    // videos found on YouTube.
+    public async Task FindVideo(TrackViewModel vm)
+    {
+        var t = vm.T;
+        if (Library.Get(t.Id) != t || t.HasVideo) return;
+        if (!t.IsSaved)
+        {
+            Toast(L.F("Salva prima «{0}» sul dispositivo: il video va accanto all'audio.", t.Title));
+            return;
+        }
+        if (VideoFinder.OwnVideo(t) is { } own)
+        {
+            Queue.AddVideo(Profile, t, new MediaItem { Url = own, PageUrl = own, Title = t.Title, Artist = t.Artist, Duration = t.Duration, Source = SourceKind.YtDlp, SiteName = Sites.NameFor(own) });
+            Toast(L.F("Scarico il video di «{0}» dal suo link…", t.Title));
+            return;
+        }
+        if (await Dialogs.PickVideoAsync(this, vm) is not { } pick) return;
+        Queue.AddVideo(Profile, t, new MediaItem
+        {
+            Url = pick.Url, PageUrl = pick.Url, Title = t.Title, Artist = t.Artist, Duration = pick.Duration, Thumbnails = pick.Thumb != null ? new() { pick.Thumb } : new(),
+            Source = SourceKind.YtDlp, SiteName = Sites.NameFor(pick.Url),
+        });
+        Toast(L.F("Scarico il video per «{0}»…", t.Title));
+    }
+
+    private static long SizeOf(string? path)
+    {
+        try { return path != null && File.Exists(path) ? new FileInfo(path).Length : 0; }
+        catch { return 0; }
+    }
+
+    // The player may still hold a file: tried again for a few seconds.
+    private static Task DeleteFiles(List<string> files) => Task.Run(async () =>
+    {
+        for (int attempt = 0; attempt < 20 && files.Count > 0; attempt++)
+        {
+            foreach (var f in files.ToList())
+            {
+                try
+                {
+                    if (File.Exists(f)) File.Delete(f);
+                    files.Remove(f);
+                }
+                catch { }
+            }
+            if (files.Count > 0) await Task.Delay(150);
+        }
+    });
+
+    // ------------------------------------------------------------------ "Delete…"
+
     public Task DeleteTrack(TrackViewModel t) => DeleteTracks(new[] { t });
 
-    public async Task DeleteTracks(IReadOnlyList<TrackViewModel> tracks)
+    // What to delete of these songs: only the video, only the lyrics, the audio from the device (they stay in the cloud),
+    // or everything (out of playlists and statistics too). Chosen in one window. True once done (false: the window was
+    // closed without choosing, so a selection on the phone stays as it was).
+    public async Task<bool> DeleteTracks(IReadOnlyList<TrackViewModel> tracks)
     {
-        // The song the room is playing stays until it's over (its file is open).
+        // The song the room is playing stays until it's over (its file is open); the room's own songs aren't yours.
         if (InRoom && Player.Current is { } playing && tracks.Contains(playing))
         {
             Toast(L.F("«{0}» sta suonando nella stanza: eliminalo quando è finito.", playing.Title));
             tracks = tracks.Where(t => t != playing).ToList();
         }
-        tracks = tracks.Where(t => Library.Get(t.Id) != null).ToList();
-        if (tracks.Count == 0) return;
-        string msg;
-        if (tracks.Count == 1)
+        tracks = tracks.Where(t => Library.Get(t.Id) != null || Radio.Has(t.Id)).Distinct().ToList();
+        if (tracks.Count == 0) return false;
+        var plan = new RemovePlan(tracks);
+        if (await Dialogs.RemoveAsync(plan) is not { } kind) return false;
+        switch (kind)
         {
-            var t = tracks[0];
-            msg = t.T.IsLocal
-                ? L.F("«{0}» verrà tolto dalla libreria di tutti i profili. Il file sul computer non viene toccato.", t.Title)
-                : L.F("«{0}» verrà eliminato dal computer e tolto dalle playlist di tutti i profili.", t.Title);
+            case RemoveKind.Video:
+                await RemoveVideos(tracks);
+                break;
+            case RemoveKind.Lyrics:
+                DeleteLyrics(tracks);
+                break;
+            case RemoveKind.Device:
+                await RemoveFromDevice(tracks);
+                break;
+            case RemoveKind.Everything:
+                var heard = tracks.Where(t => Radio.Has(t.Id)).Select(t => t.Id).ToList();
+                if (heard.Count > 0) await Radio.Forget(heard);
+                var lib = tracks.Where(t => Library.Get(t.Id) != null).ToList();
+                if (lib.Count > 0) await Delete(lib);
+                else Toast(heard.Count == 1 ? L.F("«{0}» tolto dai brani ascoltati", tracks[0].Title) : L.F("{0} brani tolti dai brani ascoltati", heard.Count));
+                break;
         }
-        else
-        {
-            int local = tracks.Count(t => t.T.IsLocal);
-            msg = L.F("{0} brani verranno eliminati dal computer e tolti dalle playlist di tutti i profili.", tracks.Count) +
-                  (local > 0 ? "\n\n" + L.F("{0} di questi erano già sul computer prima: vengono solo tolti dalla libreria, i file restano.", local) : "");
-        }
-        if (!await Dialogs.ConfirmAsync(tracks.Count == 1 ? L.T("Eliminare il brano?") : L.F("Eliminare {0} brani?", tracks.Count), msg, L.T("Elimina"), true)) return;
-        await Delete(tracks.ToList());
+        return true;
     }
 
-    // Removes the song everywhere: files, cover, playlists, history, queue.
+    // Removes the song everywhere: files, cover, playlists, history, statistics, queue.
     private async Task Delete(List<TrackViewModel> tracks)
     {
         // A song suggested online, saved and deleted while it plays: this listen goes on (from the cache) instead of
@@ -740,26 +988,15 @@ public sealed class MainViewModel : Observable
             files.Add(AppPaths.TrackCover(t.Id));
             files.Add(LyricsStore.PathFor(t.Id, true));
             files.Add(LyricsStore.PathFor(t.Id, false));
-            if (!t.T.IsLocal) files.AddRange(new[] { t.T.Path, t.T.VideoPath }.OfType<string>());
+            if (!t.T.IsLocal) files.AddRange(new[] { t.T.Path, t.T.VideoPath }.OfType<string>().Where(f => f.Length > 0));
         }
-        if (tracks.Count > 1) Toast(L.F("{0} brani eliminati", tracks.Count));
-        // The player may still hold the file: retry.
-        await Task.Run(async () =>
-        {
-            for (int attempt = 0; attempt < 20 && files.Count > 0; attempt++)
-            {
-                foreach (var f in files.ToList())
-                {
-                    try
-                    {
-                        if (File.Exists(f)) File.Delete(f);
-                        files.Remove(f);
-                    }
-                    catch { }
-                }
-                if (files.Count > 0) await Task.Delay(150);
-            }
-        });
+        Toast(tracks.Count == 1 ? L.F("«{0}» eliminato", tracks[0].Title) : L.F("{0} brani eliminati", tracks.Count));
+        await DeleteFiles(files);
+    }
+
+    private void OnSaving(string id)
+    {
+        if (_vms.TryGetValue(id, out var vm)) vm.RefreshSaving();
     }
 
     // Bulk edit: one artist renamed on every song.
@@ -834,6 +1071,17 @@ public sealed class MainViewModel : Observable
         if (Page == Search && Search.Query.Contains('#')) Search.Run(Search.Query);
     }
 
+    // "Only on the device" turned on or off: every library page follows (the hidden ones when shown).
+    public void OnDeviceFilterChanged()
+    {
+        LibraryPage.Rebuild();
+        if (Page == UnsortedPage) UnsortedPage.Rebuild();
+        else UnsortedPage.MarkDirty();
+        foreach (var page in _tagPages.Values)
+            if (page == Page) page.Rebuild();
+            else page.MarkDirty();
+    }
+
     public void OpenTag(TagViewModel t)
     {
         if (!_tagPages.TryGetValue(t.Id, out var page)) _tagPages[t.Id] = page = new LibraryViewModel(this, false, t);
@@ -872,6 +1120,7 @@ public sealed class MainViewModel : Observable
 
     public void SetTag(IReadOnlyList<TrackViewModel> tracks, TagViewModel tag, bool on)
     {
+        if (on) tracks = KeepInLibrary(tracks);
         int n = Profile.SetTag(tracks.Select(t => t.Id), tag.Id, on);
         if (tracks.Count == 1) Toast(on ? L.F("Tag «{0}» aggiunto", tag.Name) : L.F("Tag «{0}» tolto", tag.Name));
         else if (n == 0) Toast(on ? L.F("Avevano già tutti il tag «{0}»", tag.Name) : L.F("Nessuno aveva il tag «{0}»", tag.Name));
@@ -905,9 +1154,22 @@ public sealed class MainViewModel : Observable
 
     private void OnTrackChanged(Track t)
     {
-        Vm(t).Refresh();
-        if (Player.Current?.Id == t.Id) Host.OnTrackChanged();
+        var vm = Vm(t);
+        vm.Refresh();
+        if (Player.Current?.Id == t.Id)
+        {
+            Host.OnTrackChanged();
+            Player.RefreshSaved();
+            NowPlaying.Refresh();
+        }
         foreach (var p in Playlists) if (p.P.Tracks.Contains(t.Id)) p.Refresh();
+        // Saved, or back in the cloud: the counts of the lists and the ones showing only the device's songs follow.
+        if (vm.WasSaved != t.IsSaved && Library.Get(t.Id) == t)
+        {
+            vm.WasSaved = t.IsSaved;
+            _libraryDirty = true;
+            ScheduleRefresh();
+        }
     }
 
     private void OnTrackRemoved(Track t)
@@ -1055,6 +1317,48 @@ public sealed class MainViewModel : Observable
     }
 
     public void ExportPack(PlaylistViewModel? playlist = null, TagViewModel? tag = null) => Views.PackDialogs.Export(this, playlist, tag);
+
+    // ------------------------------------------------------------------ several playlists at once
+
+    // Their songs, in order, each once.
+    public List<TrackViewModel> SongsOf(IEnumerable<PlaylistViewModel> lists) => lists.SelectMany(p => p.Songs).Distinct().ToList();
+
+    public void PlayPlaylists(IReadOnlyList<PlaylistViewModel> lists)
+    {
+        var songs = SongsOf(lists);
+        if (songs.Count == 0) Toast(L.T("Queste playlist sono vuote."));
+        else PlaySelection(songs);
+    }
+
+    public void EnqueuePlaylists(IReadOnlyList<PlaylistViewModel> lists)
+    {
+        var songs = SongsOf(lists);
+        if (songs.Count > 0) Enqueue(songs);
+    }
+
+    public void ExportPlaylists(IReadOnlyList<PlaylistViewModel> lists) => Views.PackDialogs.Export(this, many: lists);
+
+    // Their songs in the cloud saved on the device.
+    public Task SavePlaylists(IReadOnlyList<PlaylistViewModel> lists) => SaveToDevice(SongsOf(lists).Where(t => t.IsCloud).ToList());
+
+    // True once deleted (false: cancelled).
+    public async Task<bool> DeletePlaylists(IReadOnlyList<PlaylistViewModel> lists)
+    {
+        var del = lists.Where(p => !p.IsFavorites).ToList();
+        if (del.Count == 0) return false;
+        if (del.Count == 1) return await DeletePlaylist(del[0]);
+        var names = string.Join(", ", del.Take(4).Select(p => "«" + p.Name + "»")) + (del.Count > 4 ? "…" : "");
+        if (!await Dialogs.ConfirmAsync(L.F("Eliminare {0} playlist?", del.Count), L.F("Verranno eliminate {0}. I brani restano nella libreria.", names), L.T("Elimina"), true)) return false;
+        foreach (var p in del) Profile.DeletePlaylist(p.P);
+        Toast(L.F("{0} playlist eliminate", del.Count));
+        return true;
+    }
+
+    // A tag on (or off) every one of these playlists.
+    public void SetPlaylistsTag(IReadOnlyList<PlaylistViewModel> lists, TagViewModel tag, bool on)
+    {
+        foreach (var p in lists) Profile.SetPlaylistTag(p.P, tag.Id, on);
+    }
 
     // Songs of a pack that travelled as links: downloaded like any other, then into their playlists and tags.
     public void QueuePackDownloads(PackImportResult r)

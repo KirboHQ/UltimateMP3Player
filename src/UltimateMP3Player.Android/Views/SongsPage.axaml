@@ -13,7 +13,15 @@
                 <ContentControl Width="200" Height="200" HorizontalAlignment="Center" Content="{Binding Vm}" ContentTemplate="{StaticResource PlaylistCover}"
                                 Margin="0,4,0,18"/>
                 <TextBlock Text="{Binding Vm.Name}" FontSize="25" FontWeight="Bold" TextWrapping="Wrap" Margin="18,0,18,4"/>
-                <TextBlock Text="{Binding Vm.TotalText}" FontSize="13.5" Foreground="{StaticResource SubTextBrush}" Margin="18,0,18,0"/>
+                <TextBlock Text="{Binding Vm.TotalText}" FontSize="13.5" Foreground="{StaticResource SubTextBrush}" Margin="18,0,18,0" TextWrapping="Wrap"/>
+                <!-- some of its songs are in the cloud: all of them saved at once -->
+                <Button Theme="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="14,4,18,0" Padding="4,6" Command="{Binding SaveAllCommand}"
+                        IsVisible="{Binding ShowSaveAll}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="14"/>
+                        <TextBlock Text="{Binding SaveAllLabel}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
                 <ItemsControl ItemsSource="{Binding Vm.Tags}" Margin="18,10,18,0" IsVisible="{Binding Vm.HasTags}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -61,6 +69,21 @@
                     <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8B1}" Command="{Binding ShuffleCommand}" Margin="0,0,6,0"/>
                     <Button Grid.Column="4" Theme="{StaticResource BigPlayButton}" Content="{local:Icon E768}" Command="{Binding PlayCommand}"/>
                 </Grid>
+                <!-- while some songs are in the cloud: only the phone's, or save them all -->
+                <WrapPanel Margin="14,0,16,2" IsVisible="{Binding ShowOnDeviceToggle}">
+                    <Button Theme="{StaticResource LinkButton}" Padding="4,6" Margin="0,0,14,0" Command="{Binding ToggleOnDeviceCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E71C}" Classes="glyph" FontSize="14"/>
+                            <TextBlock Text="{Binding OnDeviceLabel}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource LinkButton}" Padding="4,6" Command="{Binding SaveAllCommand}" IsVisible="{Binding ShowSaveAll}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="14"/>
+                            <TextBlock Text="{Binding SaveAllLabel}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
                 <!-- the playlists with this tag -->
                 <ItemsControl ItemsSource="{Binding TaggedPlaylists}" ItemTemplate="{StaticResource PlaylistRowTemplate}" IsVisible="{Binding HasTaggedPlaylists}"
                               Margin="0,4,0,4"/>
@@ -106,16 +129,7 @@
         </Panel>
 
         <!-- what to do with the chosen songs -->
-        <Border x:Name="SelectActions" DockPanel.Dock="Bottom" IsVisible="False" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="0,1,0,0" Padding="8,4">
-            <UniformGrid Rows="1">
-                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.PlayCommand}" local:Ui.Glyph="&#xE768;" Content="{local:T Riproduci}" FontSize="13"/>
-                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.QueueCommand}" local:Ui.Glyph="&#xE8FD;" Content="{local:T Coda}" FontSize="13"/>
-                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.PlaylistCommand}" local:Ui.Glyph="&#xE710;" Content="{local:T Playlist}" FontSize="13"/>
-                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.DeleteCommand}" local:Ui.Glyph="&#xE74D;" Content="{local:T Elimina}" FontSize="13"
-                        Classes="danger"/>
-            </UniformGrid>
-        </Border>
+        <views:PickActions x:Name="SelectActions" DockPanel.Dock="Bottom" Picks="{Binding #List.Picks}"/>
 
         <Panel>
             <views:SongList x:Name="List" Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}">

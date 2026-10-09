@@ -351,12 +351,14 @@
 
             <!-- ============================================================ storage -->
             <TextBlock Text="{local:T MEMORIA}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'memoria spazio cache suggeriti svuota'}">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'memoria spazio cache suggeriti cloud non salvati svuota'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Tag="TogetherCacheSize" Click="Choose_Click">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Brani suggeriti tenuti in memoria'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Memoria temporanea (brani non salvati)'}" Classes="setting"/>
                             <TextBlock Text="{Binding TogetherCacheSize.Label}" Classes="value"/>
+                            <TextBlock Text="{local:T 'I brani che ascolti senza averli salvati sul telefono (nel cloud, consigliati, nelle stanze) restano pronti per la prossima volta; oltre questo numero i più vecchi si cancellano.'}"
+                                       Classes="setting-hint"/>
                             <TextBlock Text="{Binding TogetherCacheText}" Classes="setting-hint"/>
                         </StackPanel>
                     </Button>

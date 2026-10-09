@@ -316,7 +316,13 @@
                         </Button>
                         <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Current.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                            <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" local:Marquee.IsEnabled="True"/>
+                            <!-- the artist; before it a small cloud when the song isn't saved on the device (only a sign) -->
+                            <DockPanel Margin="0,2,0,0">
+                                <TextBlock DockPanel.Dock="Left" Classes="glyph cloud" Classes.gone="{Binding Current.IsUnavailable, FallbackValue=False}"
+                                           Text="{Binding Current.CloudGlyph, Converter={StaticResource Icon}}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"
+                                           ToolTip.Tip="{Binding Current.CloudTip}" IsVisible="{Binding Current.IsCloud, FallbackValue=False}"/>
+                                <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                            </DockPanel>
                             <!-- a suggested song still downloading (it starts by itself), or more of them on their way -->
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0" IsVisible="{Binding IsWaiting}">
                                 <Ellipse Classes="spinner" Width="12" Height="12" StrokeThickness="1.5"/>
@@ -333,6 +339,18 @@
                             </Button>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <!-- not saved on the device: "+" puts a suggested song (or one heard from a link) into the library, in the cloud;
+                                 the download arrow saves a song of the library on the device; a ring while it's saved -->
+                            <Button Theme="{StaticResource ControlButton}" Command="{Binding SaveCurrentCommand}" ToolTip.Tip="{Binding Current.SaveTip}"
+                                    IsVisible="{Binding IsTemporary}">
+                                <Panel>
+                                    <TextBlock Text="{Binding Current.SaveGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="16"
+                                               IsVisible="{Binding Current.ShowCloud, FallbackValue=False}"/>
+                                    <views:ProgressRing Width="18" Height="18" Value="{Binding Current.SavePct}" IsIndeterminate="{Binding Current.SaveIndeterminate}"
+                                                        Stroke="{DynamicResource AccentBrush}" Track="{StaticResource Surface3Brush}"
+                                                        IsVisible="{Binding Current.IsSaving, FallbackValue=False}"/>
+                                </Panel>
+                            </Button>
                             <Button Theme="{StaticResource ControlButton}" Command="{Binding FavoriteCommand}" ToolTip.Tip="{local:T Preferiti}">
                                 <TextBlock Classes="heart" Classes.fav="{Binding Current.IsFavorite}" FontSize="15"
                                            Text="{Binding Current.IsFavorite, Converter={StaticResource HeartGlyph}, FallbackValue={local:Icon EB51}}"/>

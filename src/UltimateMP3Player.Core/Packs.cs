@@ -440,6 +440,8 @@ public sealed class PackImportPlan
     public Dictionary<string, bool> Merge { get; init; } = new();
     public HashSet<string> Tags { get; init; } = new();
     public bool OtherSongs { get; init; }
+    // The songs that travelled as links go into the library in the cloud (nothing downloaded), instead of being downloaded.
+    public bool Cloud { get; init; }
 }
 
 // A song of the pack downloaded again: where it goes once it's in the library.
@@ -463,6 +465,8 @@ public sealed class PackDownload
 public sealed class PackImportResult
 {
     public int Added { get; set; }
+    // Of the added ones, the ones in the cloud (links, not downloaded).
+    public int Cloud { get; set; }
     public int Present { get; set; }
     public int Failed { get; set; }
     public int Missing { get; set; }
@@ -642,7 +646,15 @@ public static class PackImporter
                 }
                 else if (pt.SourceUrl is { } u && u.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
-                    downloads[pt.Id] = new PackDownload(pt, pack.ReadText(Pack.LyricsEntry(pt.Id, true)), pack.ReadText(Pack.LyricsEntry(pt.Id, false)));
+                    if (plan.Cloud)
+                    {
+                        var t = await AddCloudSong(pack, pt, lib, ct);
+                        index.Add(t);
+                        res.Map[pt.Id] = t.Id;
+                        res.Added++;
+                        res.Cloud++;
+                    }
+                    else downloads[pt.Id] = new PackDownload(pt, pack.ReadText(Pack.LyricsEntry(pt.Id, true)), pack.ReadText(Pack.LyricsEntry(pt.Id, false)));
                 }
                 else res.Missing++;
             }
@@ -757,6 +769,29 @@ public static class PackImporter
             LyricsStore.Delete(t.Id);
             throw;
         }
+    }
+
+    // A song of the pack that travelled as a link, into the library without downloading it (in the cloud, heard from its
+    // link): what the pack knows of it (cover, lyrics, waveform, BPM) comes along.
+    private static async Task<Track> AddCloudSong(PackFile pack, PackTrack pt, Library lib, CancellationToken ct)
+    {
+        var t = new Track
+        {
+            Title = string.IsNullOrWhiteSpace(pt.Title) ? Sites.NameFor(pt.SourceUrl!) : pt.Title,
+            Artist = pt.Artist, Album = pt.Album, Year = pt.Year, Duration = pt.Duration,
+            SourceUrl = pt.SourceUrl, Site = pt.Site is null or "File locale" or "Pacchetto" ? Sites.NameFor(pt.SourceUrl!) : pt.Site,
+            Keys = pt.Keys.ToList(), ArtUrl = pt.ArtUrl, Wave = pt.Wave, Loudness = pt.Loudness, Peak = pt.Peak,
+            Bpm = pt.Bpm, BeatOffset = pt.BeatOffset,
+        };
+        try
+        {
+            t.HasCover = await pack.ExtractAsync(Pack.CoverEntry(pt.Id), AppPaths.TrackCover(t.Id), null, ct);
+            await CopyLyrics(pack, pt, t, ct);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch { }
+        lib.Add(t);
+        return t;
     }
 
     // A song already here: what it lacks comes from the pack (lyrics, BPM, cover, video); nothing it has is replaced.

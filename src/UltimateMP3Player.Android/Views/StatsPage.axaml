@@ -21,15 +21,7 @@
                 <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Command="{Binding #List.Picks.MoreCommand}"/>
             </Grid>
         </Panel>
-        <Border x:Name="SelectActions" DockPanel.Dock="Bottom" IsVisible="False" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="0,1,0,0" Padding="8,4">
-            <UniformGrid Rows="1">
-                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.PlayCommand}" local:Ui.Glyph="&#xE768;" Content="{local:T Riproduci}" FontSize="13"/>
-                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.PlaylistCommand}" local:Ui.Glyph="&#xE710;" Content="{local:T Playlist}" FontSize="13"/>
-                <Button Theme="{StaticResource SheetItem}" Command="{Binding #List.Picks.DeleteCommand}" local:Ui.Glyph="&#xE74D;" Content="{local:T Elimina}" FontSize="13"
-                        Classes="danger"/>
-            </UniformGrid>
-        </Border>
+        <views:PickActions x:Name="SelectActions" DockPanel.Dock="Bottom" Picks="{Binding #List.Picks}"/>
 
         <views:SongList x:Name="List" Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}">
             <views:SongList.DataTemplates>
@@ -64,11 +56,13 @@
                     </StackPanel>
                 </DataTemplate>
                 <DataTemplate DataType="views:SongItem">
-                    <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Classes.selected="{Binding IsChecked}" Padding="16,7,4,7"
+                    <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Classes.picked="{Binding IsChecked}" Padding="16,7,4,7"
+                            Classes.picking="{Binding $parent[views:SongList].Picks.IsActive, FallbackValue=False}"
                             views:Touch.Menu="track" views:Touch.Tap="{Binding PlayCommand}">
-                        <Grid ColumnDefinitions="Auto,52,*,Auto">
-                            <CheckBox IsChecked="{Binding IsChecked}" IsHitTestVisible="False" Margin="0,0,14,0" VerticalAlignment="Center"
-                                      IsVisible="{Binding $parent[views:SongList].Picks.IsActive, FallbackValue=False}"/>
+                        <Grid ColumnDefinitions="Auto,52,*,Auto,Auto">
+                            <Border Classes="tick" Margin="0,0,14,0">
+                                <TextBlock Classes="glyph" Text="{local:Icon E73E}" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                            </Border>
                             <ContentControl Grid.Column="1" Width="52" Height="52" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                             <StackPanel Grid.Column="2" Margin="14,0,8,0" VerticalAlignment="Center">
                                 <TextBlock Classes="title" Text="{Binding Track.Title}" FontSize="15.5" TextTrimming="CharacterEllipsis"/>
@@ -80,7 +74,8 @@
                                                IsVisible="{Binding Track.LastPlayedText, Converter={StaticResource HasValue}}"/>
                                 </StackPanel>
                             </StackPanel>
-                            <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" FontSize="18"
+                            <ContentControl Grid.Column="3" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
+                            <Button Grid.Column="4" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" FontSize="18"
                                     Command="{x:Static views:Commands.MoreCommand}" CommandParameter="{Binding $parent[Border]}"/>
                         </Grid>
                     </Border>

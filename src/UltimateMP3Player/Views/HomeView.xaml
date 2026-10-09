@@ -2,7 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:UltimateMP3Player"
-             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels">
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
     <Grid>
         <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
@@ -44,13 +45,14 @@
                 <!-- card grids end 8 px before the right margin, level with the welcome card: same space left and right -->
                 <StackPanel Visibility="{Binding HasRecent, Converter={StaticResource BoolVis}}">
                     <TextBlock Text="{local:T 'Ascoltati di recente'}" Style="{StaticResource SectionTitle}"/>
-                    <ItemsControl ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource CardGridTemplate}"
-                                  Margin="0,0,8,30"/>
+                    <ListBox x:Name="RecentList" Style="{StaticResource BareList}" ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}"
+                             ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"/>
                 </StackPanel>
 
                 <TextBlock Text="{local:T 'Le tue playlist'}" Style="{StaticResource SectionTitle}"/>
-                <ItemsControl ItemsSource="{Binding PlaylistCards}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30">
-                    <ItemsControl.Resources>
+                <ListBox x:Name="PlaylistList" Style="{StaticResource BareList}" ItemsSource="{Binding PlaylistCards}" ItemsPanel="{StaticResource CardGridTemplate}"
+                         Margin="0,0,8,30">
+                    <ListBox.Resources>
                         <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
                             <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
                         </DataTemplate>
@@ -75,8 +77,8 @@
                                 </Border.Style>
                             </Border>
                         </DataTemplate>
-                    </ItemsControl.Resources>
-                </ItemsControl>
+                    </ListBox.Resources>
+                </ListBox>
 
                 <StackPanel Visibility="{Binding HasRecentlyAdded, Converter={StaticResource BoolVis}}">
                     <DockPanel LastChildFill="False" Margin="0,0,8,0">
@@ -84,9 +86,14 @@
                         <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="{local:T 'Mostra tutti'}" VerticalAlignment="Center"
                                 Command="{Binding DataContext.GoLibraryCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
                     </DockPanel>
-                    <ItemsControl ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource TrackRowTemplate}" Margin="0,0,8,0"/>
+                    <ListBox x:Name="AddedList" Style="{StaticResource BareList}" ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource TrackRowTemplate}"
+                             Margin="0,0,8,0"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
+        <!-- what's selected in one of the lists (Ctrl or Shift + click): songs or playlists -->
+        <views:SelectionBar List="{Binding ElementName=RecentList}" Panel.ZIndex="1"/>
+        <views:SelectionBar List="{Binding ElementName=PlaylistList}" Panel.ZIndex="1"/>
+        <views:SelectionBar List="{Binding ElementName=AddedList}" Panel.ZIndex="1"/>
     </Grid>
 </UserControl>

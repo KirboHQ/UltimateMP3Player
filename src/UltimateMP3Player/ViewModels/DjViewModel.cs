@@ -45,7 +45,37 @@ public sealed class DjDeckViewModel : Observable
     public bool IsTapper => this == Dj.Tapper;
 
     private bool _loading;
-    public bool IsLoading { get => _loading; private set => Set(ref _loading, value); }
+    public bool IsLoading { get => _loading; private set { if (Set(ref _loading, value)) OnChanged(nameof(ShowEmptyHint)); } }
+    // "No song: press Load" (not while one is on its way).
+    public bool ShowEmptyHint => !HasTrack && !IsLoading;
+
+    // A song in the cloud downloaded for the deck before loading it: its name, and how far the download is in place of the
+    // artist. The id of this load.
+    internal int BeginFetch(TrackViewModel t)
+    {
+        Eject();
+        int id = ++_loadId;
+        Title = t.Title;
+        Artist = L.T("Lo scarico dal suo link…");
+        Song = t;
+        IsLoading = true;
+        OnChanged(nameof(Title), nameof(Artist), nameof(Song));
+        return id;
+    }
+
+    internal bool IsFetching(int id) => id == _loadId && IsLoading && !HasTrack;
+
+    internal void FetchProgress(int id, double pct)
+    {
+        if (!IsFetching(id)) return;
+        Artist = L.F("Lo scarico dal suo link… {0:0}%", pct);
+        OnChanged(nameof(Artist));
+    }
+
+    internal void FetchFailed(int id)
+    {
+        if (IsFetching(id)) Eject();
+    }
 
     // Detailed waveform and beat grid.
     public DjAnalysis? Analysis { get; private set; }
@@ -83,7 +113,7 @@ public sealed class DjDeckViewModel : Observable
             if (id != _loadId) return;
             HasTrack = true;
             Engine.Seek(startAt);
-            OnChanged(nameof(HasTrack));
+            OnChanged(nameof(HasTrack), nameof(ShowEmptyHint));
             if (play) PlayPause();
             Dj.Poll();
             var a = await DjAnalyzer.AnalyzeAsync(path);
@@ -119,7 +149,7 @@ public sealed class DjDeckViewModel : Observable
         IsLoading = false;
         ResetTaps();
         if (Dj.TapSource == this) Dj.StopTap();
-        OnChanged(nameof(HasTrack), nameof(Title), nameof(Artist), nameof(Song), nameof(Analysis), nameof(Bpm), nameof(BpmText), nameof(OriginalBpmText), nameof(BpmInput), nameof(ShowDetected), nameof(IsPlaying));
+        OnChanged(nameof(HasTrack), nameof(ShowEmptyHint), nameof(Title), nameof(Artist), nameof(Song), nameof(Analysis), nameof(Bpm), nameof(BpmText), nameof(OriginalBpmText), nameof(BpmInput), nameof(ShowDetected), nameof(IsPlaying));
         Dj.Poll();
     }
 
@@ -845,10 +875,10 @@ public sealed class DjViewModel : Observable
         _clock.Start();
         _open = true;
         var player = Main.Player;
-        if (A.HasTrack || A.IsLoading || player.Current is not { } cur || !File.Exists(cur.T.Path)) return;
+        if (A.HasTrack || A.IsLoading || player.Current is not { } cur || (player.OpenPath ?? cur.T.AudioPath) is not { } path) return;
         bool playing = player.IsPlaying;
         double at = player.Position;
-        _ = A.LoadAsync(cur.T.Path, cur.Title, cur.T.Artist, cur.T, cur, at, playing);
+        _ = A.LoadAsync(path, cur.Title, cur.T.Artist, cur.T, cur, at, playing);
     }
 
     // Leaving: the decks stop (a recording keeps its file until saved).
@@ -873,8 +903,43 @@ public sealed class DjViewModel : Observable
 
     public void Load(TrackViewModel t, DjDeckViewModel deck)
     {
-        if (!File.Exists(t.T.Path)) { Main.Toast(L.T("Il file non esiste più.")); return; }
-        _ = deck.LoadAsync(t.T.Path, t.Title, t.T.Artist, t.T, t);
+        if ((t.T.AudioPath ?? Main.Radio.PathFor(t.Id)) is { } path)
+        {
+            _ = deck.LoadAsync(path, t.Title, t.T.Artist, t.T, t);
+            return;
+        }
+        if (!t.T.HasLink) { Main.Toast(L.T("Il file non esiste più.")); return; }
+        _ = LoadFromLink(t, deck);
+    }
+
+    // A song not saved on the device: its audio downloaded into the temporary cache first (the deck shows how far), then
+    // loaded like any other.
+    private async Task LoadFromLink(TrackViewModel t, DjDeckViewModel deck)
+    {
+        int id = deck.BeginFetch(t);
+        var s = Main.Host.Settings;
+        var cache = Main.Host.SongCache;
+        var ui = System.Windows.Application.Current.Dispatcher;
+        var song = Main.Radio.Item(t.Id)?.Song ?? CloudSongs.StreamOf(t.T);
+        try
+        {
+            var file = cache.Find(song.Keys);
+            if (file == null)
+            {
+                var got = await Task.Run(() => Core.Together.TogetherCache.DownloadAsync(song.Url, s.AudioFormat, s.CookiesBrowserOrNull, cache.TempDir,
+                    pct => ui.BeginInvoke(() => deck.FetchProgress(id, pct)), CancellationToken.None));
+                file = cache.Adopt(song.Keys, song.Title, song.Artist, got);
+            }
+            if (!deck.IsFetching(id)) return;
+            t.T.CachePath = file;
+            await deck.LoadAsync(file, t.Title, t.T.Artist, t.T, t);
+        }
+        catch (Exception ex)
+        {
+            if (!deck.IsFetching(id)) return;
+            deck.FetchFailed(id);
+            Main.Toast(L.F("Non riesco a scaricare «{0}» per il DJ: {1}", t.Title, ex.Message));
+        }
     }
 
     public void LoadCurrent(DjDeckViewModel deck)

@@ -454,6 +454,9 @@
                                                     <TextBlock Text="{Binding Radio.PctText}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                 </Grid>
                                             </Grid>
+                                            <!-- a song of the library in the cloud (a click on it saves it) -->
+                                            <ContentPresenter x:Name="CloudState" Grid.Column="2" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"
+                                                              Visibility="{Binding ShowCloud, Converter={StaticResource BoolVis}}"/>
                                             <Button x:Name="RemoveBtn" Grid.Column="2" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="11"
                                                     Content="&#xE711;" Command="{Binding RemoveCommand}" Visibility="Hidden" ToolTip="{local:T 'Togli dai successivi'}"
                                                     AutomationProperties.Name="{local:T 'Togli dai successivi'}"/>
@@ -461,6 +464,9 @@
                                     </Border>
                                 </StackPanel>
                                 <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, FallbackValue=False}" Value="True">
+                                        <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding Radio.IsReady}" Value="True">
                                         <Setter TargetName="Ready" Property="Visibility" Value="Visible"/>
                                         <Setter TargetName="Online" Property="Visibility" Value="Collapsed"/>
@@ -478,11 +484,14 @@
                                         <Setter TargetName="PlayBtn" Property="Visibility" Value="Visible"/>
                                         <Setter TargetName="RemoveBtn" Property="Visibility" Value="Visible"/>
                                         <Setter TargetName="RadioState" Property="Visibility" Value="Hidden"/>
+                                        <Setter TargetName="CloudState" Property="Visibility" Value="Hidden"/>
                                     </Trigger>
                                 </DataTemplate.Triggers>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+                    <!-- several songs selected (Ctrl or Shift + click): up, down, out, saved -->
+                    <views:SelectionBar Grid.Row="1" List="{Binding ElementName=QueueList}" Compact="True" Panel.ZIndex="1" Margin="0,0,0,10"/>
                     <!-- empty queue: what happens next, and the way to fill it -->
                     <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14,0,14,40" MaxWidth="250"
                                 Visibility="{Binding Player.UpNextCount, Converter={StaticResource ZeroVis}}">

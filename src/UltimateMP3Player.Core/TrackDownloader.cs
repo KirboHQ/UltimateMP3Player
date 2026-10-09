@@ -1,10 +1,13 @@
 namespace UltimateMP3Player.Core;
 
-// ExtraKeys: the original link's identities when fetched elsewhere.
+// ExtraKeys: the original link's identities when fetched elsewhere (its link then becomes the new one). AttachTo: the
+// library song this is for (a song in the cloud saved on the device, a video found for a song), whatever the link says.
+// VideoOnly: only the video, for AttachTo.
 public sealed record TrackRequest(MediaItem Item, bool WantVideo, int? VideoMaxRes, string AudioFormat, string MusicDir, string? Cookies,
-    IReadOnlyList<string>? ExtraKeys = null);
+    IReadOnlyList<string>? ExtraKeys = null, string? AttachTo = null, bool VideoOnly = false);
 
-public enum TrackOutcome { Downloaded, AlreadyPresent, VideoAdded }
+// Saved: a song in the cloud whose audio is now on the device.
+public enum TrackOutcome { Downloaded, AlreadyPresent, VideoAdded, Saved }
 
 public sealed record TrackResult(Track Track, TrackOutcome Outcome, string? Note = null);
 
@@ -17,11 +20,15 @@ public static class TrackDownloader
     {
         var item = req.Item;
         var keys = WithExtra(SourceKeys.ForItem(item), req);
-        var known = lib.FindByKeys(keys);
+        Track? target = null;
+        if (req.AttachTo != null)
+            target = lib.Get(req.AttachTo) ?? throw new EngineException(L.T("Il brano non è più nella libreria."));
+        var known = target ?? lib.FindByKeys(keys);
         if (known == null && item.Source == SourceKind.Search) known = lib.FindSimilar(item.Title, item.Artist, item.Duration);
-        if (known != null && (!req.WantVideo || known.HasVideo))
+        // Already on the device (a song in the cloud gets its audio saved instead).
+        if (known != null && (req.VideoOnly ? known.HasVideo : known.HasSavedFile && (!req.WantVideo || known.HasVideo)))
         {
-            lib.AddKeys(known, keys);
+            if (!req.VideoOnly) lib.AddKeys(known, keys);
             return new TrackResult(known, TrackOutcome.AlreadyPresent);
         }
 
@@ -48,7 +55,7 @@ public static class TrackDownloader
             }
             try
             {
-                return await DownloadAsync(lib, req, keys, meta, duration, progress, ct);
+                return await DownloadAsync(lib, req, keys, meta, duration, target, progress, ct);
             }
             finally
             {
@@ -115,19 +122,38 @@ public static class TrackDownloader
     }
 
     private static async Task<TrackResult> DownloadAsync(Library lib, TrackRequest req, List<string> keys,
-        (string Title, string? Artist, string? Album, string? Year) meta, double? duration, Action<JobProgress> progress, CancellationToken ct)
+        (string Title, string? Artist, string? Album, string? Year) meta, double? duration, Track? target, Action<JobProgress> progress, CancellationToken ct)
     {
         var item = req.Item;
         bool videoAvailable = item.Info?.HasVideo == true || (item.Info == null && item.Kind == MediaKind.Video);
-        var existing = lib.FindByKeys(keys) ?? lib.FindSimilar(meta.Title, meta.Artist, duration);
+        var existing = target ?? lib.FindByKeys(keys) ?? lib.FindSimilar(meta.Title, meta.Artist, duration);
+        if (existing != null && req.VideoOnly)
+        {
+            // A video found for the song (from its own link, or another one chosen among the search results).
+            if (!videoAvailable) throw new EngineException(L.T("Nessun video trovato in questo link.")) { NoMedia = true };
+            existing.VideoPath = await DownloadVideoAsync(req, progress, ct);
+            lib.Changed(existing);
+            return new TrackResult(existing, TrackOutcome.VideoAdded);
+        }
         if (existing != null)
         {
             existing.ArtUrl ??= PublicArt(item);
             lib.AddKeys(existing, keys);
-            if (!req.WantVideo || existing.HasVideo || !videoAvailable) return new TrackResult(existing, TrackOutcome.AlreadyPresent);
+            if (req.ExtraKeys != null) Relink(existing, item);
+            var outcome = TrackOutcome.AlreadyPresent;
+            if (!existing.HasSavedFile)
+            {
+                await SaveAudioAsync(lib, existing, req, progress, ct);
+                outcome = TrackOutcome.Saved;
+            }
+            if (!req.WantVideo || existing.HasVideo || !videoAvailable)
+            {
+                if (outcome == TrackOutcome.Saved) lib.Changed(existing);
+                return new TrackResult(existing, outcome);
+            }
             existing.VideoPath = await DownloadVideoAsync(req, progress, ct);
             lib.Changed(existing);
-            return new TrackResult(existing, TrackOutcome.VideoAdded);
+            return new TrackResult(existing, outcome == TrackOutcome.Saved ? TrackOutcome.Saved : TrackOutcome.VideoAdded);
         }
 
         var track = new Track
@@ -142,6 +168,7 @@ public static class TrackDownloader
             Keys = keys,
             ArtUrl = PublicArt(item),
         };
+        if (req.ExtraKeys != null) Relink(track, item);
         var coverTmp = Path.Combine(AppPaths.TempDir, track.Id + ".jpg");
         var created = new List<string>();
         try
@@ -203,6 +230,75 @@ public static class TrackDownloader
             try { File.Delete(coverTmp); } catch { }
             throw;
         }
+    }
+
+    // Fetched from somewhere else than its link (the link was dead or blocked): that place is its link from now on (the
+    // old one stays among its keys, so pasting it again still finds the song).
+    private static void Relink(Track t, MediaItem item)
+    {
+        if (item.Info?.WebpageUrl is not { Length: > 0 } url) return;
+        t.SourceUrl = url;
+        t.Site = Sites.NameFor(url);
+        t.Unavailable = false;
+    }
+
+    // A song of the library in the cloud gets its audio file on the device. Its cover, lyrics and statistics stay; the
+    // cover is taken from the download only if it had none.
+    private static async Task SaveAudioAsync(Library lib, Track t, TrackRequest req, Action<JobProgress> progress, CancellationToken ct)
+    {
+        var item = req.Item;
+        var coverTmp = Path.Combine(AppPaths.TempDir, t.Id + "-" + Ids.New() + ".jpg");
+        var audio = new DownloadJob(item, new DownloadOptions
+        {
+            AudioOnly = true,
+            Audio = new AudioOptions(req.AudioFormat == "original" ? "original" : "mp3"),
+            EmbedMetadata = true,
+            CookiesBrowser = req.Cookies,
+        }, req.MusicDir) { CoverOut = t.HasCover ? null : coverTmp };
+        audio.Progress += progress;
+        await audio.RunAsync(ct);
+        var path = audio.ResultPath!;
+        try
+        {
+            progress(new JobProgress(JobPhase.Converting, null, L.T("Analisi della traccia…")));
+            double? expected = t.Duration > 0 ? t.Duration : item.Info?.Duration ?? item.Duration;
+            AnalysisOutput? a = null;
+            try { a = await AudioAnalysis.AnalyzeAsync(path, ct); }
+            catch (EngineException) { }
+            if (expected is > 60 && a?.Duration is > 0 and < 45 && a.Duration < expected * 0.6)
+                throw new EngineException(L.F("Il sito ha dato solo un'anteprima di {0:0} secondi (brano a pagamento o bloccato).", a.Duration));
+            if (!t.HasCover)
+            {
+                var coverPath = AppPaths.TrackCover(t.Id);
+                if (File.Exists(coverTmp))
+                {
+                    File.Move(coverTmp, coverPath, true);
+                    t.HasCover = true;
+                }
+                else t.HasCover = await AudioAnalysis.ExtractCoverAsync(path, coverPath, false, ct);
+                if (t.HasCover) t.CoverVersion++;
+            }
+            if (a != null)
+            {
+                t.Wave = a.Wave;
+                t.Loudness = a.Loudness;
+                t.Peak = a.Peak;
+                if (a.Duration > 0) t.Duration = a.Duration;
+            }
+        }
+        catch
+        {
+            try { File.Delete(path); } catch { }
+            throw;
+        }
+        finally
+        {
+            try { File.Delete(coverTmp); } catch { }
+        }
+        t.Path = path;
+        t.CachePath = null;
+        t.Unavailable = false;
+        progress(new JobProgress(JobPhase.Done, 100, L.T("Completato")));
     }
 
     private static async Task<string> DownloadVideoAsync(TrackRequest req, Action<JobProgress> progress, CancellationToken ct)

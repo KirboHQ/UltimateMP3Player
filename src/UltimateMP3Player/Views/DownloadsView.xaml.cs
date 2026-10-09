@@ -54,9 +54,16 @@ public partial class DownloadsView : UserControl
             Menus.Open(Menus.TagPicker(link.TagIds, main, link.OnTagsChosen), (UIElement)sender, true);
     }
 
-    // A downloaded song has the usual song menu.
+    // A downloaded song has the usual song menu; several selected downloads (Ctrl or Shift + click), theirs.
     private void Job_RightClick(object sender, MouseButtonEventArgs e)
     {
+        var many = Templates.SelectionAround(sender).OfType<DownloadJobViewModel>().ToList();
+        if (many.Count > 1)
+        {
+            Menus.Open(Menus.ForJobs(many), (UIElement)sender, false);
+            e.Handled = true;
+            return;
+        }
         if ((sender as FrameworkElement)?.DataContext is not DownloadJobViewModel { Song: { } t }) return;
         Menus.Open(Menus.ForTrack(t, t.Main.LibraryPage), (UIElement)sender, false);
         e.Handled = true;

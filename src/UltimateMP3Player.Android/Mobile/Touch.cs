@@ -61,9 +61,21 @@ public static class Touch
         return false;
     }
 
+    // The rows of a ListBox (the songs' lists) get the same touch's Tapped twice from Avalonia: the second one would untick
+    // what the first one ticked while choosing (and play the song twice). One per element and press.
+    private static Control? _lastTapOn;
+    private static ulong _lastTapAt;
+
     private static void OnTapped(object? sender, TappedEventArgs e)
     {
         if (sender is not Control c || e.Handled || OnInnerButton(c, e.Source)) return;
+        if (c == _lastTapOn && e.Timestamp == _lastTapAt)
+        {
+            e.Handled = true;
+            return;
+        }
+        _lastTapOn = c;
+        _lastTapAt = e.Timestamp;
         // The finger only stopped a moving list.
         if (FlingScroll.Caught)
         {
@@ -76,8 +88,8 @@ public static class Touch
             e.Handled = true;
             return;
         }
-        // Choosing songs (Selection.IsActive on the list): a tap ticks or unticks.
-        if (c.DataContext is SongItem item && Selection.Of(c) is { IsActive: true } sel)
+        // Choosing (Selection.IsActive on the list): a tap ticks or unticks (things of the kind being chosen).
+        if (Selection.Of(c) is { IsActive: true } sel && c.DataContext is { } item && Selection.KindOf(item) == sel.Kind && sel.Contains(item))
         {
             sel.Toggle(item);
             e.Handled = true;
@@ -95,11 +107,11 @@ public static class Touch
         if (sender is not Control c || e.Handled || OnInnerButton(c, e.Source) || FlingScroll.Caught) return;
         e.Handled = true;
         _menuFrom = c;
-        // While songs are being chosen: the menu of the chosen ones (with this one among them).
-        if (c.DataContext is SongItem item && Selection.Of(c) is { IsActive: true } sel)
+        // While choosing: the menu of the chosen ones (with this one among them).
+        if (Selection.Of(c) is { IsActive: true } sel && c.DataContext is { } item && Selection.KindOf(item) == sel.Kind && sel.Contains(item))
         {
             Haptics.LongPress();
-            if (!item.IsChecked) sel.Toggle(item);
+            if (!sel.IsChecked(item)) sel.Toggle(item);
             if (Menus.ForSelection(sel) is { } many) Menus.Open(many);
             return;
         }

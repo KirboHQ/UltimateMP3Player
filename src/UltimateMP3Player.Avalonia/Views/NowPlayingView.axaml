@@ -68,8 +68,12 @@
             <Setter Property="Opacity" Value="1"/>
             <Setter Property="IsHitTestVisible" Value="True"/>
         </Style>
-        <Style Selector="Border.qrow:pointerover Panel.radiostate">
+        <Style Selector="Border.qrow:pointerover Panel.radiostate, Border.qrow:pointerover ContentControl.cloudstate">
             <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <!-- selected with Ctrl or Shift + click -->
+        <Style Selector="ListBoxItem:selected Border.qrow">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
         </Style>
         <Style Selector="Panel.radiostate TextBlock.ready, Panel.radiostate TextBlock.failed, Panel.radiostate Panel.busy">
             <Setter Property="IsVisible" Value="False"/>
@@ -295,6 +299,9 @@
                                                     <TextBlock Text="{Binding Radio.PctText, FallbackValue={x:Null}}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                 </Panel>
                                             </Panel>
+                                            <!-- a song of the library in the cloud (a click on it saves it) -->
+                                            <ContentControl Classes="cloudstate" Grid.Column="2" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"
+                                                            IsVisible="{Binding ShowCloud}"/>
                                             <Button Classes="rowremove" Grid.Column="2" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="11"
                                                     Content="{local:Icon E711}" Command="{Binding RemoveCommand}" ToolTip.Tip="{local:T 'Togli dai successivi'}"/>
                                         </Grid>
@@ -303,6 +310,8 @@
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
+                    <!-- several songs selected (Ctrl or Shift + click): up, down, out, saved -->
+                    <views:SelectionBar Grid.Row="1" List="{Binding #QueueList}" Compact="True" ZIndex="1" Margin="0,0,0,10"/>
                     <!-- empty queue: what happens next, and the way to fill it -->
                     <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14,0,14,40" MaxWidth="250"
                                 IsVisible="{Binding Player.UpNextCount, Converter={StaticResource IsZero}}">

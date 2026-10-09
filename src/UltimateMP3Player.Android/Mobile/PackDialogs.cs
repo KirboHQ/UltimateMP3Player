@@ -31,9 +31,12 @@ public static class PackDialogs
 
     // ================================================================== export
 
-    public static void Export(MainViewModel main, PlaylistViewModel? playlist = null, TagViewModel? tag = null) => _ = ExportAsync(main, playlist, tag);
+    // many: several playlists chosen together (selected on Home or in the library); done: once the pack is made.
+    public static void Export(MainViewModel main, PlaylistViewModel? playlist = null, TagViewModel? tag = null, IReadOnlyCollection<PlaylistViewModel>? many = null,
+        Action? done = null) => _ = ExportAsync(main, playlist, tag, many, done);
 
-    private static async Task ExportAsync(MainViewModel main, PlaylistViewModel? playlist, TagViewModel? tag)
+    private static async Task ExportAsync(MainViewModel main, PlaylistViewModel? playlist, TagViewModel? tag, IReadOnlyCollection<PlaylistViewModel>? many,
+        Action? done)
     {
         var sheets = Sheets;
         if (sheets == null) return;
@@ -41,7 +44,7 @@ public static class PackDialogs
         var profile = main.Profile;
         var lists = main.Playlists.ToList();
         var tags = main.Tags.ToList();
-        var pickedLists = lists.Where(l => l == playlist).ToHashSet();
+        var pickedLists = lists.Where(l => l == playlist || many?.Contains(l) == true).ToHashSet();
         var pickedTags = tags.Where(t => t == tag).ToHashSet();
         bool whole = false;
         Action changed = () => { };
@@ -139,14 +142,14 @@ public static class PackDialogs
         var ok = Button(L.T("Crea il pacchetto"), "TouchPrimary");
         var buttons = Buttons(cancel, ok);
         body.Children.Add(buttons);
-        var done = new StackPanel { IsVisible = false, Margin = new Thickness(0, 16, 0, 0), Spacing = 10 };
+        var finished = new StackPanel { IsVisible = false, Margin = new Thickness(0, 16, 0, 0), Spacing = 10 };
         var share = Button(L.T("Condividi…"), "TouchPrimary");
         var saveAs = Button(L.T("Salva in…"), "TouchGhost");
         var close = Button(L.T("Chiudi"), "TouchGhost");
-        done.Children.Add(share);
-        done.Children.Add(saveAs);
-        done.Children.Add(close);
-        body.Children.Add(done);
+        finished.Children.Add(share);
+        finished.Children.Add(saveAs);
+        finished.Children.Add(close);
+        body.Children.Add(finished);
 
         PackExport Current() => new()
         {
@@ -213,7 +216,8 @@ public static class PackDialogs
                 line1.Text = L.Count(m.Tracks.Count, "1 brano", "{0} brani") + " · " + L.Count(m.Playlists.Count, "1 playlist", "{0} playlist") +
                              " · " + L.Count(m.Tags.Count, "1 tag", "{0} tag");
                 buttons.IsVisible = false;
-                done.IsVisible = true;
+                finished.IsVisible = true;
+                done?.Invoke();
             }
             catch (OperationCanceledException)
             {
@@ -286,13 +290,14 @@ public static class PackDialogs
                 return;
             }
             var songs = await Task.Run(() => PackImporter.Analyze(pack, main.Library));
-            result = await ImportSheet(pack, songs, main.Library, main.Profile, main.Host.Settings.MusicDir, main.Host.EnsureEnginesAsync);
+            result = await ImportSheet(pack, songs, main.Library, main.Profile, main.Host.Settings.MusicDir, main.Host.EnsureEnginesAsync, main.Host.Settings);
         }
         if (result == null) return;
 
         main.QueuePackDownloads(result);
         var parts = new List<string>();
         if (result.Added > 0) parts.Add(L.Count(result.Added, "1 brano aggiunto", "{0} brani aggiunti"));
+        if (result.Cloud > 0) parts.Add(L.F("{0} nel cloud", result.Cloud));
         if (result.Present > 0) parts.Add(L.F("{0} già nella libreria", result.Present));
         if (result.Downloads.Count > 0) parts.Add(L.F("{0} in download", result.Downloads.Count));
         if (result.Missing + result.Failed > 0) parts.Add(L.Count(result.Missing + result.Failed, "1 non disponibile", "{0} non disponibili"));
@@ -305,10 +310,13 @@ public static class PackDialogs
         if (ids.Count == 1 && main.Playlists.FirstOrDefault(p => p.Id == ids[0]) is { } pl) main.OpenPlaylist(pl);
     }
 
-    private static async Task<PackImportResult?> ImportSheet(PackFile pack, List<PackSong> songs, Library lib, Profile profile, string musicDir, Func<Task> ensureEngines)
+    private static async Task<PackImportResult?> ImportSheet(PackFile pack, List<PackSong> songs, Library lib, Profile profile, string musicDir, Func<Task> ensureEngines,
+        AppSettings settings)
     {
         var sheets = Sheets;
         if (sheets == null) return null;
+        // The songs that travelled as links: downloaded, or into the library in the cloud (the last choice, like the links).
+        bool cloud = !settings.SaveLinkAudio;
         var m = pack.Manifest;
         var rows = songs.Select(s => new PackSongRow(s, pack)).ToList();
         var pickedLists = m.Playlists.Select(p => p.Id).ToHashSet();
@@ -421,6 +429,27 @@ public static class PackDialogs
             inputs.Children.Add(othersBox);
         }
 
+        // ---- songs that are only links: their audio saved, or in the cloud
+        if (CountOf(PackSongState.Download) > 0)
+        {
+            var saveBox = new CheckBox
+            {
+                Theme = Ui.Theme("Switch"),
+                IsChecked = !cloud,
+                Margin = new Thickness(0, 14, 0, 0),
+                Content = TwoLines(L.T("Salva l'audio sul dispositivo"),
+                    L.T("Spento: i brani che nel pacchetto sono solo link vanno nella libreria nel cloud, senza scaricarli. Li ascolti dal loro link e li salvi quando vuoi.")),
+            };
+            saveBox.IsCheckedChanged += (_, _) =>
+            {
+                cloud = saveBox.IsChecked != true;
+                settings.SaveLinkAudio = !cloud;
+                settings.Save();
+                changed();
+            };
+            inputs.Children.Add(saveBox);
+        }
+
         if (rows.Count > 0)
         {
             var toggle = Link();
@@ -458,6 +487,7 @@ public static class PackDialogs
             Merge = new Dictionary<string, bool>(merge),
             Tags = pickedTags.ToHashSet(),
             OtherSongs = others,
+            Cloud = cloud,
         };
 
         void Update()
@@ -479,7 +509,7 @@ public static class PackDialogs
                 ? (chosen.Count > 0 ? L.T("Nessun brano da copiare: li hai già tutti") : L.T("Nessun brano da aggiungere"))
                 : L.Count(add + get, "Verrà aggiunto 1 brano", "Verranno aggiunti {0} brani");
             var more = new List<string>();
-            if (get > 0) more.Add(L.F("{0} da scaricare", get));
+            if (get > 0) more.Add(cloud ? L.F("{0} nel cloud, senza scaricarli", get) : L.F("{0} da scaricare", get));
             if (have > 0) more.Add(L.F("{0} già nella libreria", have));
             if (miss > 0) more.Add(L.Count(miss, "1 non disponibile", "{0} non disponibili"));
             line2.Text = string.Join(" · ", more);

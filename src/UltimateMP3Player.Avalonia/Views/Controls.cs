@@ -303,6 +303,56 @@ public sealed class CoverImage : Control
     }
 }
 
+// A small ring filling up as a download goes on (a song being saved on the device): a faint track and the part done in
+// the accent colour. Waiting (IsIndeterminate): a quarter of it, still (nothing moves, nothing costs).
+public sealed class ProgressRing : Control
+{
+    public static readonly StyledProperty<double> ValueProperty = AvaloniaProperty.Register<ProgressRing, double>(nameof(Value));
+    public static readonly StyledProperty<bool> IsIndeterminateProperty = AvaloniaProperty.Register<ProgressRing, bool>(nameof(IsIndeterminate));
+    public static readonly StyledProperty<IBrush?> StrokeProperty = AvaloniaProperty.Register<ProgressRing, IBrush?>(nameof(Stroke), Brushes.White);
+    public static readonly StyledProperty<IBrush?> TrackProperty = AvaloniaProperty.Register<ProgressRing, IBrush?>(nameof(Track), Brushes.Gray);
+    public static readonly StyledProperty<double> ThicknessProperty = AvaloniaProperty.Register<ProgressRing, double>(nameof(Thickness), 2.2);
+
+    static ProgressRing()
+    {
+        AffectsRender<ProgressRing>(ValueProperty, IsIndeterminateProperty, StrokeProperty, TrackProperty, ThicknessProperty);
+        IsHitTestVisibleProperty.OverrideDefaultValue<ProgressRing>(false);
+    }
+
+    // 0-100.
+    public double Value { get => GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
+    public bool IsIndeterminate { get => GetValue(IsIndeterminateProperty); set => SetValue(IsIndeterminateProperty, value); }
+    public IBrush? Stroke { get => GetValue(StrokeProperty); set => SetValue(StrokeProperty, value); }
+    public IBrush? Track { get => GetValue(TrackProperty); set => SetValue(TrackProperty, value); }
+    public double Thickness { get => GetValue(ThicknessProperty); set => SetValue(ThicknessProperty, value); }
+
+    public override void Render(DrawingContext context)
+    {
+        double size = Math.Min(Bounds.Width, Bounds.Height), t = Thickness;
+        if (size <= t * 2) return;
+        double r = (size - t) / 2;
+        var c = new Point(Bounds.Width / 2, Bounds.Height / 2);
+        context.DrawEllipse(null, new Pen(Track, t), c, r, r);
+        double v = IsIndeterminate ? 0.25 : Math.Clamp(Value / 100, 0, 1);
+        if (v <= 0.005) return;
+        var pen = new Pen(Stroke, t, lineCap: PenLineCap.Round);
+        if (v >= 0.999)
+        {
+            context.DrawEllipse(null, pen, c, r, r);
+            return;
+        }
+        double a = v * 2 * Math.PI;
+        var g = new StreamGeometry();
+        using (var ctx = g.Open())
+        {
+            ctx.BeginFigure(new Point(c.X, c.Y - r), false);
+            ctx.ArcTo(new Point(c.X + r * Math.Sin(a), c.Y - r * Math.Cos(a)), new Size(r, r), 0, a > Math.PI, SweepDirection.Clockwise);
+            ctx.EndFigure(false);
+        }
+        context.DrawGeometry(null, pen, g);
+    }
+}
+
 // As tall as it is wide: card covers that grow with the grid.
 public sealed class SquareBox : Decorator
 {

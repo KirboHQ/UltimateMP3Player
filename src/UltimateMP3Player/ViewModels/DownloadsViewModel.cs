@@ -113,18 +113,22 @@ public sealed class DownloadJobViewModel : Observable
     private CancellationTokenSource? _cts;
     private int _rateLimits;
 
-    public DownloadJobViewModel(MediaItem item, DownloadBatch batch, int index, bool wantVideo, DownloadQueue queue)
+    // attachTo: a library song this is for (one in the cloud saved on the device, or its video: videoOnly).
+    public DownloadJobViewModel(MediaItem item, DownloadBatch batch, int index, bool wantVideo, DownloadQueue queue, string? attachTo = null, bool videoOnly = false)
     {
         Item = item;
         Batch = batch;
         Index = index;
         WantVideo = wantVideo;
+        AttachTo = attachTo;
+        VideoOnly = videoOnly;
         _queue = queue;
         CancelCommand = new RelayCommand(Cancel);
         RetryCommand = new RelayCommand(Retry);
         RetryYouTubeCommand = new RelayCommand(RetryOnYouTube);
         RemoveCommand = new RelayCommand(() => _queue.Remove(this));
         PlayCommand = new RelayCommand(Play);
+        LoginCommand = new RelayCommand(() => _queue.Host.Session?.SearchSettings("cookie"));
         StatusText = L.T("In coda");
     }
 
@@ -134,16 +138,26 @@ public sealed class DownloadJobViewModel : Observable
     public DownloadBatch Batch { get; }
     public int Index { get; }
     public bool WantVideo { get; }
+    public string? AttachTo { get; }
+    public bool VideoOnly { get; }
+    // Saving a song of the library that's in the cloud (its audio onto the device).
+    public bool IsSave => AttachTo != null && !VideoOnly;
     public Track? Result { get; private set; }
     private IReadOnlyList<string>? _originalKeys;
+    // Its own link didn't work: the same song found on YouTube instead (once, by itself, for a song being saved).
+    private bool _foundElsewhere;
 
     public ICommand CancelCommand { get; }
     public ICommand RetryCommand { get; }
     public ICommand RetryYouTubeCommand { get; }
     public ICommand RemoveCommand { get; }
     public ICommand PlayCommand { get; }
+    // The settings on the browser's cookies (the phone opens the site's page to sign in instead: DownloadsPage).
+    public ICommand LoginCommand { get; }
 
     public bool ViaYouTube => _originalKeys != null;
+    // The page of the site that asked for a login (the one actually downloaded from, e.g. YouTube for a Spotify song).
+    public string LoginUrl => Item.Info?.WebpageUrl is { Length: > 0 } page ? page : Item.PageUrl ?? Item.Url;
     public string Title => Result?.Title is { Length: > 0 } t ? t : !string.IsNullOrWhiteSpace(Item.Title) ? Item.Title : TitleFromLink(Item.PageUrl ?? Item.Url);
 
     // A song the list gave without a name (SoundCloud's Go+ ones): the last part of its link, "hide-n-seek" → "hide n seek".
@@ -154,7 +168,8 @@ public sealed class DownloadJobViewModel : Observable
         if (string.IsNullOrEmpty(last) || last is "watch" or "track" or "tracks") return L.T("Brano senza titolo");
         return Uri.UnescapeDataString(last).Replace('-', ' ').Replace('_', ' ').Trim();
     }
-    public string Subtitle => string.Join(" · ", new[] { Result?.Artist ?? Item.Artist, Item.SiteName, WantVideo ? L.T("con video") : null,
+    public string Subtitle => string.Join(" · ", new[] { Result?.Artist ?? Item.Artist, Item.SiteName,
+            VideoOnly ? L.T("solo il video") : IsSave ? L.T("salvataggio sul dispositivo") : WantVideo ? L.T("con video") : null,
             ViaYouTube ? L.T("cercato su YouTube") : null }
         .Where(s => !string.IsNullOrWhiteSpace(s)));
 
@@ -201,9 +216,10 @@ public sealed class DownloadJobViewModel : Observable
         get => _state;
         private set
         {
-            if (Set(ref _state, value))
-                OnChanged(nameof(IsActive), nameof(IsFinished), nameof(IsFailed), nameof(CanRetry), nameof(CanRetryYouTube), nameof(IsRunning),
-                    nameof(StatusBrush), nameof(CanPlay), nameof(Indeterminate));
+            if (!Set(ref _state, value)) return;
+            OnChanged(nameof(IsActive), nameof(IsFinished), nameof(IsFailed), nameof(CanRetry), nameof(CanRetryYouTube), nameof(IsRunning),
+                nameof(StatusBrush), nameof(CanPlay), nameof(Indeterminate), nameof(NeedsLogin));
+            if (IsSave) _queue.OnSaving(this);
         }
     }
 
@@ -213,8 +229,13 @@ public sealed class DownloadJobViewModel : Observable
     public bool IsFailed => State is JobState.Failed or JobState.Canceled;
     public bool IsRunning => State == JobState.Running;
     public bool CanRetry => IsFailed;
-    public bool CanRetryYouTube => State == JobState.Failed && !ViaYouTube;
+    public bool CanRetryYouTube => State == JobState.Failed && !ViaYouTube && !VideoOnly;
     public bool CanPlay => IsDone && Result != null;
+
+    // Failed because the site wants a login (private, age-restricted, members only, YouTube's bot check) the download
+    // didn't have: a button next to the error leads to it.
+    private bool _loginFailure;
+    public bool NeedsLogin => State == JobState.Failed && _loginFailure;
 
     public Brush StatusBrush => State switch
     {
@@ -230,7 +251,14 @@ public sealed class DownloadJobViewModel : Observable
     public string? Details { get => _details; private set => Set(ref _details, value); }
 
     private double _percent;
-    public double Percent { get => _percent; private set => Set(ref _percent, value); }
+    public double Percent
+    {
+        get => _percent;
+        private set
+        {
+            if (Set(ref _percent, value) && IsSave) _queue.OnSaving(this);
+        }
+    }
 
     // Only a running download's bar goes back and forth: the bar of one waiting or finished is hidden, but its animation
     // would still run (a frame every few milliseconds for each row, the app never idle while the list is full).
@@ -249,6 +277,7 @@ public sealed class DownloadJobViewModel : Observable
     public void Start()
     {
         if (State != JobState.Queued) return;
+        _loginFailure = false;
         State = JobState.Running;
         StatusText = L.T("Avvio…");
         Indeterminate = true;
@@ -259,7 +288,7 @@ public sealed class DownloadJobViewModel : Observable
     private async Task RunAsync(CancellationToken ct)
     {
         var s = _queue.Host.Settings;
-        var req = new TrackRequest(Item, WantVideo, s.VideoMaxRes, s.AudioFormat, s.MusicDir, s.CookiesBrowserOrNull, _originalKeys);
+        var req = new TrackRequest(Item, WantVideo, s.VideoMaxRes, s.AudioFormat, s.MusicDir, s.CookiesBrowserOrNull, _originalKeys, AttachTo, VideoOnly);
         var ui = Application.Current.Dispatcher;
         var service = Service;
         bool gentle = _queue.IsGentle(service);
@@ -277,10 +306,15 @@ public sealed class DownloadJobViewModel : Observable
             State = res.Outcome == TrackOutcome.AlreadyPresent ? JobState.Present : JobState.Done;
             StatusText = res.Outcome switch
             {
+                TrackOutcome.AlreadyPresent when VideoOnly => L.T("Il brano ha già un video"),
+                TrackOutcome.AlreadyPresent when IsSave => L.T("Era già salvato sul dispositivo"),
                 TrackOutcome.AlreadyPresent => L.T("Già nella libreria: non riscaricato"),
-                TrackOutcome.VideoAdded => L.T("Video aggiunto al brano già presente"),
+                TrackOutcome.VideoAdded => VideoOnly ? L.T("Video aggiunto al brano") : L.T("Video aggiunto al brano già presente"),
+                TrackOutcome.Saved => L.T("Salvato sul dispositivo") + (_foundElsewhere ? " · " + L.F("da {0}: il link di prima non funzionava più", Sites.NameFor(res.Track.SourceUrl ?? "")) : ""),
                 _ => L.T("Completato") + (res.Note != null ? " · " + res.Note : ""),
             };
+            if (_foundElsewhere && _queue.Host.Session is { } main)
+                main.Toast(L.F("«{0}» non c'era più al suo link: salvato da {1}", res.Track.Title, Sites.NameFor(res.Track.SourceUrl ?? "")));
             _thumbRequested = false;
             OnChanged(nameof(Title), nameof(Subtitle), nameof(Thumb));
             _queue.OnSucceeded(service);
@@ -298,13 +332,39 @@ public sealed class DownloadJobViewModel : Observable
         }
         catch (EngineException ex)
         {
+            // A song of the library being saved whose link no longer works: the same song on YouTube (a close match), saved
+            // from there, and that becomes its link.
+            bool searched = false;
+            if (IsSave && ex.LinkProblem && !_foundElsewhere && !ViaYouTube && !ct.IsCancellationRequested)
+            {
+                searched = true;
+                if (await FindElsewhere(ct))
+                {
+                    await RunAsync(ct);
+                    return;
+                }
+                if (ct.IsCancellationRequested)
+                {
+                    State = JobState.Canceled;
+                    StatusText = L.T("Annullato");
+                    return;
+                }
+                if (ex.Gone && _queue.Host.Library.Get(AttachTo!) is { Unavailable: false } gone)
+                {
+                    gone.Unavailable = true;
+                    _queue.Host.Library.Changed(gone);
+                }
+            }
             ForbiddenAt = ex.Forbidden ? DateTime.Now : null;
-            State = JobState.Failed;
 #if ANDROID_APP
-            StatusText = ex.Message + (ex.NeedsLogin && req.Cookies == null ? " " + L.T("Accedi al sito nelle impostazioni (Download › Accessi ai siti).") : "");
+            // The phone's logins are per site: signed in somewhere else doesn't help this one.
+            _loginFailure = ex.NeedsLogin;
 #else
-            StatusText = ex.Message + (ex.NeedsLogin && req.Cookies == null ? " " + L.T("Attiva i cookie del browser nelle impostazioni.") : "");
+            // With the cookies already on the hint would be wrong: the login is missing in the browser itself.
+            _loginFailure = ex.NeedsLogin && req.Cookies == null;
 #endif
+            State = JobState.Failed;
+            StatusText = ex.Message + (searched ? " · " + L.T("non l'ho trovato nemmeno su YouTube") : "");
             Details = string.IsNullOrWhiteSpace(ex.Details) ? ex.Message : ex.Details.Trim();
         }
         catch (Exception ex)
@@ -317,6 +377,32 @@ public sealed class DownloadJobViewModel : Observable
         {
             _queue.Pump();
         }
+    }
+
+    // The same song on YouTube for a song being saved whose link failed: true when found (the job goes on with it).
+    private async Task<bool> FindElsewhere(CancellationToken ct)
+    {
+        StatusText = L.T("Il link non funziona più: cerco lo stesso brano su YouTube…");
+        Indeterminate = true;
+        try
+        {
+            var t = _queue.Host.Library.Get(AttachTo!);
+            string title = t?.Title ?? Item.Title;
+            string? artist = t?.Artist ?? Item.Artist;
+            double duration = t?.Duration ?? Item.Duration ?? 0;
+            var cookies = _queue.Host.Settings.CookiesBrowserOrNull;
+            var info = await Task.Run(() => CloudSongs.FindElsewhereAsync(title, artist, duration, cookies, ct), ct);
+            if (info == null) return false;
+            _originalKeys = SourceKeys.ForItem(Item);
+            var item = Analyzer.ItemFromInfo(info, Sites.NameFor(info.WebpageUrl));
+            item.Kind = MediaKind.Audio;
+            Item = item;
+            _foundElsewhere = true;
+            _refreshed = false;
+            OnChanged(nameof(Item), nameof(Title), nameof(Subtitle), nameof(ViaYouTube), nameof(Service));
+            return true;
+        }
+        catch { return false; }
     }
 
     private void WaitForSite(string? details)
@@ -457,6 +543,54 @@ public sealed class DownloadQueue : Observable
 
     private bool _adding;
 
+    // ------------------------------------------------------------------ songs of the library saved on the device
+
+    private readonly Dictionary<string, DownloadJobViewModel> _saving = new();
+
+    // A song's save is waiting, going, done or failed (its id): the song's rows show how far it is.
+    public event Action<string>? SavingChanged;
+
+    // The save still waiting or going for this song of the library, if any.
+    public DownloadJobViewModel? SavingOf(string trackId) => _saving.TryGetValue(trackId, out var j) && j.IsActive ? j : null;
+
+    internal void OnSaving(DownloadJobViewModel job)
+    {
+        if (job.AttachTo is not { } id) return;
+        if (job.IsActive) _saving[id] = job;
+        else if (_saving.TryGetValue(id, out var j) && j == job) _saving.Remove(id);
+        SavingChanged?.Invoke(id);
+    }
+
+    // Songs of the library in the cloud: their audio downloaded onto the device (the songs stay the same, in their
+    // playlists, with their statistics). One already being saved isn't added twice. How many were added.
+    public int Save(Profile profile, IReadOnlyList<Track> tracks)
+    {
+        var todo = tracks.Where(t => SavingOf(t.Id) == null).ToList();
+        if (todo.Count == 0) return 0;
+        var batch = new DownloadBatch(profile, null, todo.Count);
+        _adding = true;
+        try
+        {
+            for (int i = 0; i < todo.Count; i++)
+            {
+                var job = new DownloadJobViewModel(CloudSongs.ToMediaItem(todo[i]), batch, i, false, this, todo[i].Id);
+                Jobs.Add(job);
+                OnSaving(job);
+            }
+        }
+        finally { _adding = false; }
+        Pump();
+        return todo.Count;
+    }
+
+    // A video for a song saved without one: from this link (the song's own, or a result chosen from a search).
+    public void AddVideo(Profile profile, Track t, MediaItem video)
+    {
+        video.Kind = MediaKind.Video;
+        Jobs.Add(new DownloadJobViewModel(video, new DownloadBatch(profile, null, 1), 0, true, this, t.Id, videoOnly: true));
+        Pump();
+    }
+
     // ------------------------------------------------------------------ pacing
 
     // Slowed down (one at a time, pauses between requests) until it stays calm for a while.
@@ -565,6 +699,39 @@ public sealed class DownloadQueue : Observable
     public void CancelAll()
     {
         foreach (var j in Jobs.Where(j => j.IsActive).ToList()) j.Cancel();
+    }
+
+    // Several downloads chosen together.
+    public void Retry(IEnumerable<DownloadJobViewModel> jobs)
+    {
+        foreach (var j in jobs.Where(j => j.CanRetry).ToList()) j.Retry();
+    }
+
+    public void RetryOnYouTube(IEnumerable<DownloadJobViewModel> jobs)
+    {
+        foreach (var j in jobs.Where(j => j.CanRetryYouTube).ToList()) j.RetryOnYouTube();
+    }
+
+    public void Cancel(IEnumerable<DownloadJobViewModel> jobs)
+    {
+        foreach (var j in jobs.Where(j => j.IsActive).ToList()) j.Cancel();
+    }
+
+    public void Remove(IEnumerable<DownloadJobViewModel> jobs)
+    {
+        var list = jobs.ToList();
+        _adding = true;
+        try
+        {
+            foreach (var j in list)
+            {
+                if (j.IsActive) j.Cancel();
+                Jobs.Remove(j);
+            }
+        }
+        finally { _adding = false; }
+        Notify();
+        CommandManager.InvalidateRequerySuggested();
     }
 
     public bool HasActive => Jobs.Any(j => j.IsActive);
@@ -678,6 +845,7 @@ public sealed class LinkViewModel : Observable
         }).ToList();
         HasVideo = playable.Any(i => i.Kind == MediaKind.Video);
         _withVideo = HasVideo && !main.Host.Settings.PreferAudioOnly;
+        _saveAudio = main.Host.Settings.SaveLinkAudio;
 
         PlaylistChoices = new List<Choice> { new(L.T("Nessuna (solo in «Tutti i brani»)"), NoPlaylist), new(L.T("Nuova playlist…"), NewPlaylist) };
         PlaylistChoices.AddRange(main.Playlists.Select(p => new Choice(p.Name, p.Id, p.IsFavorites ? "♥" : null)));
@@ -694,15 +862,39 @@ public sealed class LinkViewModel : Observable
 
     public ICommand ToggleAllCommand { get; }
     public ICommand DownloadCommand { get; }
-    // Heard without downloading into the library: kept in the cache for a while, saved with "Save to library". In a room
-    // of Listen together: into the room's queue, the same way (everyone gets it from its link).
+    // Heard without saving it: kept in the cache for a while, saved (or kept in the library) from its menu. In a room of
+    // Listen together: into the room's queue, the same way (everyone gets it from its link).
     public ICommand ListenCommand { get; }
     private bool InRoom => _main.InRoom;
-    public string ListenLabel => InRoom ? L.T("Aggiungi alla stanza") : L.T("Ascolta senza scaricare");
+    public string ListenLabel => InRoom ? L.T("Aggiungi alla stanza") : L.T("Ascolta senza salvare");
     public string ListenGlyph => InRoom ? "" : "";
     public string ListenTip => InRoom
-        ? L.T("Va nella coda della stanza senza scaricarlo nella libreria: ognuno lo prende dal link, come i brani consigliati.")
-        : L.T("Lo ascolti subito senza metterlo nella libreria: resta per un po' nella memoria temporanea, e se ti piace lo salvi dal menu del brano.");
+        ? L.T("Va nella coda della stanza senza salvarlo: ognuno lo prende dal link, come i brani consigliati.")
+        : L.T("Lo ascolti subito senza metterlo nella libreria: resta per un po' nella memoria temporanea, e se ti piace lo salvi o lo aggiungi a una playlist dal menu del brano.");
+
+    // The audio saved on the device (the usual download), or the songs only added to the library and the playlist, in the
+    // cloud: nothing downloaded now, heard from their link, saved whenever wanted. The choice is remembered.
+    private bool _saveAudio;
+    public bool SaveAudio
+    {
+        get => _saveAudio;
+        set
+        {
+            if (!Set(ref _saveAudio, value)) return;
+            _main.Host.Settings.SaveLinkAudio = value;
+            _main.Host.Settings.Save();
+            OnChanged(nameof(DownloadLabel), nameof(DownloadGlyph), nameof(ShowVideoChoice), nameof(SaveAudioHint));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
+
+    public string SaveAudioHint => SaveAudio
+        ? L.T("L'audio viene scaricato e salvato sul dispositivo: lo ascolti anche senza connessione.")
+        : L.T("Niente download adesso: i brani vanno subito nella libreria (e nella playlist) con la nuvola. Li ascolti dal loro link e li salvi quando vuoi.");
+    // Download arrow, or "+" (only added: the cloud is just the sign on the songs).
+    public string DownloadGlyph => SaveAudio ? "" : "";
+    // "With video" only means something when the songs are saved.
+    public bool ShowVideoChoice => HasVideo && SaveAudio;
 
     public string Title { get; }
     public string SiteName => R.Site;
@@ -779,7 +971,9 @@ public sealed class LinkViewModel : Observable
     public string SelectionText => L.F("{0} di {1} selezionati", SelectedCount, Items.Count);
     public bool AllSelected => SelectedCount == Items.Count;
     public string ToggleAllLabel => L.T(AllSelected ? "Deseleziona tutto" : "Seleziona tutto");
-    public string DownloadLabel => !IsCollection ? L.T("Scarica") : L.Count(SelectedCount, "Scarica 1 brano", "Scarica {0} brani");
+    public string DownloadLabel => SaveAudio
+        ? !IsCollection ? L.T("Salva") : L.Count(SelectedCount, "Salva 1 brano", "Salva {0} brani")
+        : !IsCollection ? L.T("Aggiungi senza salvare") : L.Count(SelectedCount, "Aggiungi 1 brano", "Aggiungi {0} brani");
 
     internal void OnSelectionChanged()
     {
@@ -809,10 +1003,40 @@ public sealed class LinkViewModel : Observable
             playlistId = p.Id;
         }
         var batch = new DownloadBatch(_main.Profile, playlistId, Items.Count, ChosenTags.Select(t => t.Id).ToList());
-        _main.Host.Downloads.Add(batch, selected.Select(i => (i.Item, i.Number - 1)), HasVideo && WithVideo);
         var target = playlistId != null && _main.Profile.GetPlaylist(playlistId) is { } pl ? PlaylistViewModel.DisplayName(pl) : null;
+        if (!SaveAudio)
+        {
+            AddToCloud(selected, batch, target);
+            return;
+        }
+        _main.Host.Downloads.Add(batch, selected.Select(i => (i.Item, i.Number - 1)), HasVideo && WithVideo);
         var what = selected.Count == 1 ? L.F("«{0}» in download", selected[0].Title) : L.F("{0} brani in download", selected.Count);
         _main.Downloads.Queued(what + (target != null ? " " + L.F("nella playlist «{0}»", target) : "") + " ✓");
+    }
+
+    // The songs into the library (and the playlist, with the tags) without downloading them: in the cloud, at once. One the
+    // library already has (saved or not) is that one; their covers come from the site in the background.
+    private void AddToCloud(List<LinkItemViewModel> selected, DownloadBatch batch, string? target)
+    {
+        var lib = _main.Library;
+        int added = 0;
+        foreach (var it in selected)
+        {
+            var item = it.Item;
+            var t = lib.FindByKeys(SourceKeys.ForItem(item)) ?? (item.Source == SourceKind.Search ? lib.FindSimilar(item.Title, item.Artist, item.Duration) : null);
+            if (t == null)
+            {
+                t = CloudSongs.FromItem(item);
+                lib.Add(t);
+                _ = _main.FetchCover(t, CloudSongs.Pictures(item));
+                added++;
+            }
+            batch.Place(it.Number - 1, t.Id);
+        }
+        var what = selected.Count == 1 ? L.F("«{0}» aggiunto senza salvarlo", selected[0].Title)
+            : added == selected.Count ? L.F("{0} brani aggiunti senza salvarli", selected.Count)
+            : L.F("{0} brani aggiunti senza salvarli ({1} c'erano già)", selected.Count, selected.Count - added);
+        _main.Downloads.Queued(what + (target != null ? " " + L.F("nella playlist «{0}»", target) : "") + " ☁");
     }
 
     private void Listen()
@@ -846,9 +1070,11 @@ public sealed class DownloadsPageViewModel : Observable
     {
         _main = main;
         CancelCommand = new RelayCommand(() => _cts?.Cancel());
-        DismissCommand = new RelayCommand(() => { Error = null; Link = null; });
+        DismissCommand = new RelayCommand(() => { Error = null; Link = null; CanTryYouTube = false; });
         WholePlaylistCommand = new RelayCommand(() => _ = AnalyzeAsync(_lastUrl, true));
-        OpenSettingsCommand = new RelayCommand(() => _main.GoSettings());
+        TryYouTubeCommand = new RelayCommand(() => _ = AnalyzeOnYouTubeAsync(_lastUrl));
+        // (shown when the link needs a login: the settings open on the browser's cookies)
+        OpenSettingsCommand = new RelayCommand(() => _main.SearchSettings("cookie"));
         Queue.PropertyChanged += OnQueueChanged;
     }
 
@@ -871,6 +1097,11 @@ public sealed class DownloadsPageViewModel : Observable
     public ICommand DismissCommand { get; }
     public ICommand WholePlaylistCommand { get; }
     public ICommand OpenSettingsCommand { get; }
+    // The link's site won't give it (DRM, removed, private): the same song searched on YouTube Music.
+    public ICommand TryYouTubeCommand { get; }
+
+    private bool _canTryYouTube;
+    public bool CanTryYouTube { get => _canTryYouTube; private set => Set(ref _canTryYouTube, value); }
 
     private LinkViewModel? _link;
     public LinkViewModel? Link { get => _link; private set { if (Set(ref _link, value)) OnChanged(nameof(ShowIntro)); } }
@@ -921,6 +1152,7 @@ public sealed class DownloadsPageViewModel : Observable
         IsAnalyzing = true;
         AnalyzingText = L.T(wholePlaylist ? "Lettura della playlist…" : "Analisi del link…");
         Error = null;
+        CanTryYouTube = false;
         Link = null;
         var s = _main.Host.Settings;
         try
@@ -962,12 +1194,44 @@ public sealed class DownloadsPageViewModel : Observable
                     : null;
 #endif
             Error = ex.Message;
+            // Protected (DRM), removed, private: like a download that failed, it can be searched on YouTube Music.
+            CanTryYouTube = (ex.Gone || ex.NeedsLogin) && Sites.NameFor(url) is not ("YouTube" or "YouTube Music");
         }
         catch (Exception ex) when (!cts.IsCancellationRequested)
         {
             SuggestCookies = false;
             ErrorHint = null;
             Error = L.T("Errore imprevisto:") + " " + ex.Message;
+        }
+        finally
+        {
+            if (_cts == cts) IsAnalyzing = false;
+        }
+    }
+
+    // The link that failed, as the same song on YouTube Music: its card like any other (playlist, save or not).
+    private async Task AnalyzeOnYouTubeAsync(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+        _cts?.Cancel();
+        var cts = _cts = new CancellationTokenSource();
+        IsAnalyzing = true;
+        AnalyzingText = L.T("Cerco titolo e artista del brano…");
+        Error = null;
+        ErrorHint = null;
+        SuggestCookies = false;
+        CanTryYouTube = false;
+        Link = null;
+        try
+        {
+            var r = await Task.Run(() => Analyzer.OnYouTubeAsync(url, cts.Token), cts.Token);
+            if (cts.IsCancellationRequested) return;
+            Link = new LinkViewModel(r, r.Items, _main);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) when (!cts.IsCancellationRequested)
+        {
+            Error = ex is EngineException ? ex.Message : L.T("Errore imprevisto:") + " " + ex.Message;
         }
         finally
         {

@@ -76,33 +76,43 @@ public sealed class StatsViewModel : Observable, ITrackList
         OnChanged(nameof(Rows), nameof(NoMatches), nameof(NeverCount), nameof(HasNever), nameof(NeverText));
     }
 
+    // The songs of the library (saved or in the cloud) and the ones heard without keeping them whose plays counted (the
+    // suggested ones, the ones of a link): they stay here, in the cloud, even when they're no longer anywhere else.
+    private List<Track> Listed(out List<Track> library)
+    {
+        library = _main.Library.Snapshot();
+        return library.Concat(_main.Radio.HeardItems().Select(i => i.T)).ToList();
+    }
+
     public void Rebuild()
     {
         var stats = _main.Profile.StatsSnapshot();
         TrackStats? Of(Track t) => stats.GetValueOrDefault(t.Id);
-        var all = _main.Library.Snapshot();
+        var all = Listed(out var library);
         IEnumerable<Track> sorted = (string)_sort.Value! switch
         {
-            "least" => all.OrderBy(t => Of(t)?.Plays ?? 0).ThenBy(t => Of(t)?.Seconds ?? 0).ThenBy(t => t.Added),
+            "least" => library.OrderBy(t => Of(t)?.Plays ?? 0).ThenBy(t => Of(t)?.Seconds ?? 0).ThenBy(t => t.Added),
             "time" => all.Where(t => Of(t) is { Seconds: > 0 }).OrderByDescending(t => Of(t)!.Seconds).ThenByDescending(t => Of(t)!.Plays),
             "recent" => all.Where(t => Of(t)?.Last != null).OrderByDescending(t => Of(t)!.Last),
-            "never" => all.Where(t => Of(t) is not { Plays: > 0 }).OrderByDescending(t => t.Added),
+            "never" => library.Where(t => Of(t) is not { Plays: > 0 }).OrderByDescending(t => t.Added),
             _ => all.Where(t => Of(t) is { Plays: > 0 }).OrderByDescending(t => Of(t)!.Plays).ThenByDescending(t => Of(t)!.Seconds),
         };
         _order = sorted.Select(_main.Vm).ToList();
-        _never = all.Where(t => Of(t) is not { Plays: > 0 }).OrderByDescending(t => t.Added).Select(_main.Vm).ToList();
+        _never = library.Where(t => Of(t) is not { Plays: > 0 }).OrderByDescending(t => t.Added).Select(_main.Vm).ToList();
         foreach (var vm in _order) vm.RefreshStats();
-        Totals(stats, all);
+        Totals(stats, library, all.Count - library.Count);
         ApplyFilter();
         OnChanged(nameof(IsEmpty), nameof(EmptyText));
     }
 
-    private void Totals(Dictionary<string, TrackStats> stats, IReadOnlyCollection<Track> all)
+    private void Totals(Dictionary<string, TrackStats> stats, IReadOnlyCollection<Track> library, int heardElsewhere)
     {
-        var mine = all.Select(t => stats.GetValueOrDefault(t.Id)).OfType<TrackStats>().ToList();
+        var mine = stats.Values.ToList();
         TimeTotal = TimeText(mine.Sum(s => s.Seconds));
         PlaysTotal = L.Count(mine.Sum(s => s.Plays), "1 ascolto", "{0} ascolti");
-        HeardTotal = L.F("{0} brani su {1}", mine.Count(s => s.Plays > 0), all.Count);
+        int heard = library.Count(t => stats.GetValueOrDefault(t.Id) is { Plays: > 0 });
+        HeardTotal = L.F("{0} brani su {1}", heard, library.Count) +
+                     (heardElsewhere > 0 ? " · " + L.Count(heardElsewhere, "1 fuori dalla libreria", "{0} fuori dalla libreria") : "");
         SinceText = _main.Profile.Data.StatsSince is { } since ? L.F("Contati dal {0}", since.ToString("d MMMM yyyy", L.Culture)) : "";
         OnChanged(nameof(TimeTotal), nameof(PlaysTotal), nameof(HeardTotal), nameof(SinceText));
     }
@@ -113,7 +123,8 @@ public sealed class StatsViewModel : Observable, ITrackList
     {
         if (!reorder)
         {
-            Totals(_main.Profile.StatsSnapshot(), _main.Library.Snapshot());
+            var all = Listed(out var library);
+            Totals(_main.Profile.StatsSnapshot(), library, all.Count - library.Count);
             return;
         }
         _live = true;

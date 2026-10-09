@@ -58,6 +58,16 @@
             <Setter Property="Foreground" Value="{DynamicResource PinkBrush}"/>
             <Setter Property="ToolTip.Tip" Value="{local:T 'Togli dai Preferiti'}"/>
         </Style>
+        <!-- the cloud of a song not saved on the device (only a sign); a warning sign when it's no longer online -->
+        <Style Selector="TextBlock.cloud">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.cloud.gone">
+            <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+        </Style>
+        <Style Selector="Border.row.gone.cloud TextBlock.title">
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        </Style>
         <Style Selector="Border.row.never TextBlock.plays">
             <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
             <Setter Property="FontWeight" Value="Normal"/>

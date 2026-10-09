@@ -60,7 +60,7 @@ public partial class DjSongPicker : UserControl
             b.Click += (_, _) => pick();
             this.Quick.Children.Add(b);
         }
-        if (main.Player.Current is { } cur && File.Exists(cur.T.Path) && dj.Decks.All(d => d.Track != cur.T))
+        if (main.Player.Current is { } cur && (cur.T.AudioPath != null || cur.T.HasLink) && dj.Decks.All(d => d.Track != cur.T))
             Quick("", L.F("In riproduzione: {0}", cur.Title), () => Close(new Result(deck, cur)));
         var other = deck.Other;
         if (other.HasTrack && other.FilePath != null)

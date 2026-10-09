@@ -8,7 +8,7 @@ using UltimateMP3Player.Core;
 namespace UltimateMP3Player;
 
 // Small dark dialogs: confirmations and text fields.
-public static class Dialogs
+public static partial class Dialogs
 {
     public static bool Confirm(string title, string message, string ok, bool danger = false)
         => Show(title, message, Array.Empty<(string, string)>(), ok, danger) != null;

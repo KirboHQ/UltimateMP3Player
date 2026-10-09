@@ -20,6 +20,10 @@
         <Style Selector="Border.job:pointerover">
             <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
         </Style>
+        <!-- selected with Ctrl or Shift + click -->
+        <Style Selector="ListBoxItem:selected Border.job">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        </Style>
     </UserControl.Styles>
     <UserControl.DataTemplates>
         <!-- ============================================================ analyzed link -->
@@ -65,7 +69,7 @@
                     <!-- options -->
                     <WrapPanel Grid.Row="1" Margin="0,20,0,0" VerticalAlignment="Bottom">
                         <StackPanel Width="280" Margin="0,0,14,0">
-                            <TextBlock Text="{local:T 'Salva nella playlist'}" Classes="field-label"/>
+                            <TextBlock Text="{local:T 'Nella playlist'}" Classes="field-label"/>
                             <ComboBox ItemsSource="{Binding PlaylistChoices}" SelectedItem="{Binding Playlist}" HorizontalAlignment="Stretch"/>
                         </StackPanel>
                         <StackPanel Width="280" Margin="0,0,14,0" IsVisible="{Binding ShowNewName}">
@@ -100,16 +104,25 @@
                                 </DockPanel>
                             </Button>
                         </StackPanel>
-                        <CheckBox Margin="0,24,24,0" VerticalAlignment="Center" IsChecked="{Binding WithVideo}" IsVisible="{Binding HasVideo}"
+                        <!-- the audio downloaded onto the device, or the songs only added (in the cloud): the last choice is kept -->
+                        <CheckBox Theme="{StaticResource Switch}" Margin="0,24,24,0" VerticalAlignment="Center" IsChecked="{Binding SaveAudio}"
+                                  ToolTip.Tip="{Binding SaveAudioHint}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E896}" Classes="glyph" Foreground="{StaticResource SubTextBrush}"/>
+                                <TextBlock Text="{local:T 'Salva l\'audio sul dispositivo'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <CheckBox Margin="0,24,24,0" VerticalAlignment="Center" IsChecked="{Binding WithVideo}" IsVisible="{Binding ShowVideoChoice}"
                                   ToolTip.Tip="{local:T 'Salva anche il video (MP4) oltre all\'audio: lo vedrai nella schermata del brano'}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{local:Icon E714}" Classes="glyph" Foreground="{StaticResource SubTextBrush}"/>
-                                <TextBlock Text="{local:T 'Scarica anche il video'}" Margin="8,0,0,0"/>
+                                <TextBlock Text="{local:T 'Anche il video'}" Margin="8,0,0,0"/>
                             </StackPanel>
                         </CheckBox>
-                        <Button Theme="{StaticResource PrimaryButton}" Padding="22,10" Margin="0,24,0,0" VerticalAlignment="Center" Command="{Binding DownloadCommand}">
+                        <Button Theme="{StaticResource PrimaryButton}" Padding="22,10" Margin="0,24,0,0" VerticalAlignment="Center" Command="{Binding DownloadCommand}"
+                                ToolTip.Tip="{Binding SaveAudioHint}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{local:Icon E896}" Classes="glyph"/>
+                                <TextBlock Text="{Binding DownloadGlyph, Converter={StaticResource Icon}}" Classes="glyph"/>
                                 <TextBlock Text="{Binding DownloadLabel}" Margin="8,0,0,0"/>
                             </StackPanel>
                         </Button>
@@ -194,6 +207,15 @@
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Theme="{StaticResource IconButton}" Content="{local:Icon E768}" Command="{Binding PlayCommand}" ToolTip.Tip="{local:T 'Riproduci (in «Tutti i brani»)'}"
                                 IsVisible="{Binding CanPlay}"/>
+                        <!-- private, age-restricted…: the settings on the browser's cookies -->
+                        <Button Theme="{StaticResource GhostButton}" Padding="10,5" Margin="0,0,6,0" FontSize="12.5" Command="{Binding LoginCommand}"
+                                IsVisible="{Binding NeedsLogin}"
+                                ToolTip.Tip="{local:T 'Il sito chiede l\'accesso: apri le impostazioni e attiva «Usa i cookie del browser», poi riprova. Il download userà l\'accesso che hai già fatto nel browser.'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E72E}" Classes="glyph" FontSize="12"/>
+                                <TextBlock Text="{local:T 'Attiva i cookie'}" Margin="7,0,0,0"/>
+                            </StackPanel>
+                        </Button>
                         <Button Theme="{StaticResource GhostButton}" Padding="10,5" Margin="0,0,6,0" FontSize="12.5" Command="{Binding RetryYouTubeCommand}"
                                 IsVisible="{Binding CanRetryYouTube}"
                                 ToolTip.Tip="{local:T 'Cerca lo stesso brano (titolo, artista e durata) su YouTube Music e scarica quello'}">
@@ -258,8 +280,17 @@
                         <TextBlock Text="{Binding Error}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding ErrorHint}" Classes="hint" Margin="0,6,0,0"
                                    IsVisible="{Binding ErrorHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                        <Button Theme="{StaticResource GhostButton}" Content="{local:T 'Apri le impostazioni'}" HorizontalAlignment="Left" Margin="0,12,0,0"
-                                Command="{Binding OpenSettingsCommand}" IsVisible="{Binding SuggestCookies}"/>
+                        <WrapPanel Margin="0,4,0,0">
+                            <Button Theme="{StaticResource GhostButton}" Content="{local:T 'Apri le impostazioni'}" Margin="0,8,10,0"
+                                    Command="{Binding OpenSettingsCommand}" IsVisible="{Binding SuggestCookies}"/>
+                            <!-- protected (DRM), removed, private: the same song from YouTube Music -->
+                            <Button Theme="{StaticResource GhostButton}" Margin="0,8,10,0" Command="{Binding TryYouTubeCommand}" IsVisible="{Binding CanTryYouTube}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E72C}" Classes="glyph" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
                     </StackPanel>
                     <Button Grid.Column="2" Theme="{StaticResource IconButton}" Content="{local:Icon E711}" Command="{Binding DismissCommand}" VerticalAlignment="Top"/>
                 </Grid>
@@ -331,5 +362,7 @@
         </StackPanel>
 
         <ListBox x:Name="JobList" Grid.Row="3" Theme="{StaticResource PlainList}" ItemsSource="{Binding Queue.Jobs}" ItemTemplate="{StaticResource JobTemplate}"/>
+        <!-- several downloads selected (Ctrl or Shift + click): retry, cancel, take out -->
+        <views:SelectionBar Grid.Row="3" List="{Binding #JobList}" ZIndex="1"/>
     </Grid>
 </UserControl>

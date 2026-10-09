@@ -11,47 +11,10 @@
         <Border.Effect>
             <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.55" Color="Black"/>
         </Border.Effect>
+        <!-- the actions depend on what's selected (songs, songs of "next up", downloads, playlists): built in code -->
         <StackPanel Orientation="Horizontal">
             <TextBlock x:Name="CountText" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,14,0"/>
-            <Button x:Name="PlayButton" Style="{StaticResource SubtleButton}" Padding="10,6" Click="Play_Click" ToolTip="{local:T 'Riproduci i brani selezionati'}"
-                    ToolTipService.ShowOnDisabled="True">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="PlayGlyph" Text="&#xE768;" Style="{StaticResource Glyph}" FontSize="13"/>
-                    <TextBlock x:Name="PlayLabel" Text="{local:T Riproduci}" Margin="7,0,0,0"/>
-                </StackPanel>
-            </Button>
-            <Button x:Name="QueueButton" Style="{StaticResource SubtleButton}" Padding="10,6" Click="Queue_Click" ToolTip="{local:T 'Aggiungi alla coda'}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE8FD;" Style="{StaticResource Glyph}" FontSize="13"/>
-                    <TextBlock Text="{local:T 'In coda'}" Margin="7,0,0,0"/>
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource SubtleButton}" Padding="10,6" Click="Playlist_Click" ToolTip="{local:T 'Aggiungi a una playlist'}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="13"/>
-                    <TextBlock Text="Playlist" Margin="7,0,0,0"/>
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource SubtleButton}" Padding="10,6" Click="Tag_Click" ToolTip="{local:T 'Metti o togli un tag ai brani selezionati'}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE8EC;" Style="{StaticResource Glyph}" FontSize="13"/>
-                    <TextBlock Text="Tag" Margin="7,0,0,0"/>
-                </StackPanel>
-            </Button>
-            <Button x:Name="RemoveButton" Style="{StaticResource SubtleButton}" Padding="10,6" Click="Remove_Click" Visibility="Collapsed"
-                    ToolTip="{local:T 'Togli dalla playlist (i brani restano nella libreria)'}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE738;" Style="{StaticResource Glyph}" FontSize="13"/>
-                    <TextBlock Text="{local:T 'Togli dalla playlist'}" Margin="7,0,0,0"/>
-                </StackPanel>
-            </Button>
-            <Button Style="{StaticResource DangerButton}" Padding="12,6" Margin="6,0,0,0" Click="Delete_Click" ToolTip="{local:T 'Elimina dal computer (Canc)'}"
-                    AutomationProperties.Name="{local:T 'Elimina selezionati'}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="&#xE74D;" Style="{StaticResource Glyph}" FontSize="13"/>
-                    <TextBlock Text="{local:T Elimina}" Margin="7,0,0,0"/>
-                </StackPanel>
-            </Button>
+            <StackPanel x:Name="Buttons" Orientation="Horizontal"/>
             <Button Style="{StaticResource IconButton}" Content="&#xE711;" FontSize="11" Margin="6,0,0,0" Click="Clear_Click"
                     ToolTip="{local:T 'Deseleziona (Esc)'}" AutomationProperties.Name="{local:T Deseleziona}"/>
         </StackPanel>

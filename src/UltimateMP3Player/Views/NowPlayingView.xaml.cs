@@ -253,20 +253,39 @@ public partial class NowPlayingView : UserControl
         if (_source != path)
         {
             _source = path;
+            _shown = false;
             Video.Source = new Uri(path!);
         }
         Sync(true);
         _sync.Start();
     }
 
+    // A MediaElement opened while paused draws nothing until it has played once (its renderer only starts on Play): so a
+    // video opened with the song paused (shown, or just downloaded) plays for a moment and stops on the frame of the audio's
+    // position (ScrubbingEnabled draws the frame of a seek while paused).
+    private bool _shown;
+
     private void Sync(bool force)
     {
         if (_vm == null || _source == null) return;
         var player = _vm.Player;
         var target = player.EnginePosition;
-        if (force || Math.Abs((Video.Position - target).TotalSeconds) > 0.25) Video.Position = target;
-        if (player.IsPlaying) Video.Play();
+        if (player.IsPlaying)
+        {
+            if (force || Math.Abs((Video.Position - target).TotalSeconds) > 0.25) Video.Position = target;
+            Video.Play();
+            _shown = true;
+            return;
+        }
+        if (!_shown)
+        {
+            _shown = true;
+            Video.Play();
+            Video.Pause();
+            force = true;
+        }
         else Video.Pause();
+        if (force || Math.Abs((Video.Position - target).TotalSeconds) > 0.25) Video.Position = target;
     }
 
     private void CloseVideo()
@@ -274,6 +293,7 @@ public partial class NowPlayingView : UserControl
         _sync.Stop();
         if (_source == null) return;
         _source = null;
+        _shown = false;
         Video.Stop();
         Video.Close();
         Video.Source = null;
@@ -506,7 +526,9 @@ public partial class NowPlayingView : UserControl
     private void Row_RightClick(object sender, MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not QueueRow row) return;
-        Menus.Open(Menus.ForQueue(row), (UIElement)sender, false);
+        // Several selected (Ctrl or Shift + click): the menu of all of them.
+        var many = Templates.SelectionAround(sender).OfType<QueueRow>().ToList();
+        Menus.Open(many.Count > 1 ? Menus.ForQueueRows(many) : Menus.ForQueue(row), (UIElement)sender, false);
         e.Handled = true;
     }
 

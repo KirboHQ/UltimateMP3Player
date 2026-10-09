@@ -86,6 +86,35 @@
         <Setter Property="FontSize" Value="15"/>
     </ControlTheme>
 
+    <!-- A list inside a page that scrolls by itself (Home): no scroll of its own; rows or cards selectable with Ctrl or Shift + click. -->
+    <ControlTheme x:Key="BareList" TargetType="ListBox" BasedOn="{StaticResource PlainList}">
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <StackPanel/>
+            </ItemsPanelTemplate>
+        </Setter>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <!-- Only a sign, next to the heart: a cloud for a song not saved on the device, a ring while it's being saved, a warning
+         sign when it's no longer available online; nothing for a saved song. Saving is in the menu and next to the heart below. -->
+    <DataTemplate x:Key="TrackCloudCell">
+        <Panel Width="32" Height="32">
+            <Panel Background="Transparent" ToolTip.Tip="{Binding CloudTip}" IsVisible="{Binding ShowCloud}">
+                <TextBlock Classes="glyph cloud" Classes.gone="{Binding IsUnavailable}" Text="{Binding CloudGlyph, Converter={StaticResource Icon}}"
+                           FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Panel>
+            <Panel Background="Transparent" ToolTip.Tip="{Binding CloudTip}" IsVisible="{Binding IsSaving}">
+                <views:ProgressRing Width="17" Height="17" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}"
+                                    Stroke="{DynamicResource AccentBrush}" Track="{StaticResource Surface3Brush}"/>
+            </Panel>
+        </Panel>
+    </DataTemplate>
+
     <!-- A tag like a Discord role: coloured dot and name; a click opens its page. -->
     <DataTemplate x:Key="TagChip">
         <Border CornerRadius="10" Padding="7,2,9,2" Margin="0,0,5,0" Background="{StaticResource Surface3Brush}" Cursor="Hand"
@@ -166,6 +195,7 @@
         <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Classes.playing="{Binding Track.IsPlaying}" Classes.fav="{Binding Track.IsFavorite}"
                 Classes.room="{Binding $parent[Window].DataContext.InRoom, FallbackValue=False}"
                 Classes.noadd="{Binding !$parent[Window].DataContext.CanAddToRoom, FallbackValue=False}"
+                Classes.gone="{Binding Track.IsUnavailable}" Classes.cloud="{Binding Track.IsCloud}"
                 CornerRadius="8" Padding="8,5" Margin="0,0,0,1"
                 views:Rows.Menu="track" views:Rows.Drag="True" views:Click.Double="{Binding PlayCommand}"
                 ToolTip.ShowDelay="900" local:Marquee.Host="True">
@@ -175,6 +205,7 @@
                     <ColumnDefinition Width="2.6*"/>
                     <ColumnDefinition Width="1.4*"/>
                     <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
+                    <ColumnDefinition Width="32"/>
                     <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="64"/>
                     <ColumnDefinition Width="36"/>
@@ -218,12 +249,14 @@
                     </ItemsControl>
                 </Canvas>
 
-                <Button Classes="heart" Grid.Column="4" Theme="{StaticResource RowIconButton}" Command="{Binding FavoriteCommand}"/>
+                <ContentControl Grid.Column="4" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
 
-                <TextBlock Grid.Column="5" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <Button Classes="heart" Grid.Column="5" Theme="{StaticResource RowIconButton}" Command="{Binding FavoriteCommand}"/>
+
+                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
-                <Button Classes="more" Grid.Column="6" Theme="{StaticResource RowIconButton}" Content="{local:Icon E712}"
+                <Button Classes="more" Grid.Column="7" Theme="{StaticResource RowIconButton}" Content="{local:Icon E712}"
                         Command="{x:Static views:Menus.MoreCommand}" CommandParameter="{Binding $self}" ToolTip.Tip="{local:T 'Altre opzioni'}"/>
             </Grid>
         </Border>
@@ -238,6 +271,7 @@
                     <ColumnDefinition Width="2.6*"/>
                     <ColumnDefinition Width="1.4*"/>
                     <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
+                    <ColumnDefinition Width="32"/>
                     <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="64"/>
                     <ColumnDefinition Width="36"/>
@@ -246,7 +280,7 @@
                 <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Classes="small-caps" Margin="4,0,0,0"/>
                 <TextBlock Grid.Column="2" Text="ALBUM" Classes="small-caps"/>
                 <TextBlock Grid.Column="3" Text="{local:T TAG}" Classes="small-caps"/>
-                <TextBlock Grid.Column="5" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{StaticResource MutedBrush}"
+                <TextBlock Grid.Column="6" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{StaticResource MutedBrush}"
                            HorizontalAlignment="Right" Margin="0,0,12,0"/>
             </Grid>
         </Border>
@@ -257,10 +291,11 @@
         <Border Classes="row" Classes.current="{Binding Track.IsCurrent}" Classes.playing="{Binding Track.IsPlaying}" Classes.fav="{Binding Track.IsFavorite}"
                 Classes.never="{Binding Track.Plays, Converter={StaticResource IsZero}}"
                 Classes.room="{Binding $parent[Window].DataContext.InRoom, FallbackValue=False}"
+                Classes.gone="{Binding Track.IsUnavailable}" Classes.cloud="{Binding Track.IsCloud}"
                 CornerRadius="8" Padding="8,5" Margin="0,0,0,1"
                 views:Rows.Menu="track" views:Rows.Drag="True" views:Click.Double="{Binding PlayCommand}"
                 ToolTip.ShowDelay="900" local:Marquee.Host="True">
-            <Grid ColumnDefinitions="40,2.6*,0.9*,0.9*,1*,36,64,36">
+            <Grid ColumnDefinitions="40,2.6*,0.9*,0.9*,1*,32,36,64,36">
                 <Panel>
                     <TextBlock Classes="num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -283,12 +318,14 @@
                 <TextBlock Grid.Column="4" Text="{Binding Track.LastPlayedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
 
-                <Button Classes="heart" Grid.Column="5" Theme="{StaticResource RowIconButton}" Command="{Binding FavoriteCommand}"/>
+                <ContentControl Grid.Column="5" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
 
-                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <Button Classes="heart" Grid.Column="6" Theme="{StaticResource RowIconButton}" Command="{Binding FavoriteCommand}"/>
+
+                <TextBlock Grid.Column="7" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
-                <Button Classes="more" Grid.Column="7" Theme="{StaticResource RowIconButton}" Content="{local:Icon E712}"
+                <Button Classes="more" Grid.Column="8" Theme="{StaticResource RowIconButton}" Content="{local:Icon E712}"
                         Command="{x:Static views:Menus.MoreCommand}" CommandParameter="{Binding $self}" ToolTip.Tip="{local:T 'Altre opzioni'}"/>
             </Grid>
         </Border>
@@ -296,13 +333,13 @@
 
     <DataTemplate x:Key="StatsHeader">
         <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,0,18,8" Margin="0,0,0,8">
-            <Grid ColumnDefinitions="40,2.6*,0.9*,0.9*,1*,36,64,36">
+            <Grid ColumnDefinitions="40,2.6*,0.9*,0.9*,1*,32,36,64,36">
                 <TextBlock Text="#" Classes="small-caps" HorizontalAlignment="Center"/>
                 <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Classes="small-caps" Margin="4,0,0,0"/>
                 <TextBlock Grid.Column="2" Text="{local:T ASCOLTI}" Classes="small-caps"/>
                 <TextBlock Grid.Column="3" Text="{local:T TEMPO}" Classes="small-caps"/>
                 <TextBlock Grid.Column="4" Text="{local:T 'ULTIMO ASCOLTO'}" Classes="small-caps"/>
-                <TextBlock Grid.Column="6" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{StaticResource MutedBrush}"
+                <TextBlock Grid.Column="7" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{StaticResource MutedBrush}"
                            HorizontalAlignment="Right" Margin="0,0,12,0"/>
             </Grid>
         </Border>
@@ -340,6 +377,10 @@
                 <Style Selector="Border.card.room">
                     <Setter Property="ToolTip.Tip" Value="{local:T 'Aggiungi alla coda della stanza'}"/>
                 </Style>
+                <!-- selected with Ctrl or Shift + click -->
+                <Style Selector="ListBoxItem:selected Border.card">
+                    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                </Style>
             </Border.Styles>
             <StackPanel>
                 <views:SquareBox>
@@ -348,6 +389,16 @@
                         <Border Classes="disc" Width="44" Height="44" CornerRadius="22" Background="{DynamicResource AccentGradient}"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0">
                             <TextBlock Classes="glyph ico" Foreground="{DynamicResource OnAccentBrush}" FontSize="17" HorizontalAlignment="Center"/>
+                        </Border>
+                        <!-- not saved on the device: a cloud on the cover (only a sign; a ring while it's being saved) -->
+                        <Border Width="28" Height="28" CornerRadius="14" Background="#A6000000" ToolTip.Tip="{Binding CloudTip}"
+                                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="7" IsVisible="{Binding IsCloud}">
+                            <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CloudGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="14" Foreground="White"
+                                           IsVisible="{Binding ShowCloud}"/>
+                                <views:ProgressRing Width="16" Height="16" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}" Stroke="White"
+                                                    Track="#50FFFFFF" IsVisible="{Binding IsSaving}"/>
+                            </Panel>
                         </Border>
                     </Panel>
                 </views:SquareBox>
@@ -369,6 +420,10 @@
                 </Style>
                 <Style Selector="Border.card:pointerover Button.disc">
                     <Setter Property="Opacity" Value="1"/>
+                </Style>
+                <!-- selected with Ctrl or Shift + click -->
+                <Style Selector="ListBoxItem:selected Border.card">
+                    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
                 </Style>
             </Border.Styles>
             <StackPanel>

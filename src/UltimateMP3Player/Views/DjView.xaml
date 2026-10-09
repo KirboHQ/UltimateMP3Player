@@ -234,7 +234,7 @@
                             <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
                                        local:Marquee.IsEnabled="True"/>
                             <TextBlock Text="{local:T 'Nessun brano: premi Carica.'}" Style="{StaticResource Hint}"
-                                       Visibility="{Binding HasTrack, Converter={StaticResource InvBoolVis}}"/>
+                                       Visibility="{Binding ShowEmptyHint, Converter={StaticResource BoolVis}}"/>
                         </StackPanel>
                     </DockPanel>
 

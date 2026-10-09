@@ -272,7 +272,7 @@ public sealed class AppHost : Observable
         var c = Session?.Player.Current;
         Media.SetTrack(c?.Title, c?.T.DisplayArtist, c?.Album, c is { T.HasCover: true } ? AppPaths.TrackCover(c.Id) : null, c?.T.Duration ?? 0);
         Media.SetFavorite(c?.IsFavorite == true);
-        Media.SetTemporary(Session?.Player.IsTemporary == true);
+        Media.SetTemporary(Session?.Player.IsTemporary == true, c?.InLibrary == true);
         WatchFavorite(c);
         UpdateTimeline(true);
     }

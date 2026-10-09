@@ -709,6 +709,9 @@ public sealed class SettingsViewModel : Observable
     private static string SystemLine()
         => $"Ultimate MP3 Player {AppInfo.VersionText} · {Ui.SystemName} · {(L.English ? "English" : "Italiano")}";
 
+    // What the page searches as it opens (MainViewModel.SearchSettings), taken by the view.
+    public string? StartSearch { get; set; }
+
     public void Refresh()
     {
         RefreshStartupChoices();
@@ -719,7 +722,7 @@ public sealed class SettingsViewModel : Observable
     // ------------------------------------------------------------------ listen together
 
     public List<Choice> TogetherCacheChoices { get; } =
-        new[] { 3, 5, 10, 15, 20, 30, 50 }.Select(n => new Choice(L.F("{0} brani", n), n)).ToList();
+        new[] { 3, 5, 10, 15, 20, 30, 50, 100, 200 }.Select(n => new Choice(L.F("{0} brani", n), n)).ToList();
 
     public Choice TogetherCacheSize
     {

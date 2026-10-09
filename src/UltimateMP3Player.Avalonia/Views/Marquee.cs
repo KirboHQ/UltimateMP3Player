@@ -110,6 +110,14 @@ public static class Marquee
         {
             if (GetAuto(el) && st.Shift == null && Math.Abs(e.NewSize.Width - e.PreviousSize.Width) > 1 && Math.Abs(e.NewSize.Width - st.Width) > 1) Later(st);
         };
+        // While it moves its own width is fixed: when the room around it narrows (a list's row while choosing several gets
+        // a tick) its window would reach over the buttons beside it. Started over in the new room (only a narrowing: a
+        // parent that widens with it, like a row of its own, would start it over for ever).
+        if (el.GetVisualParent() is Control room)
+            room.SizeChanged += (_, e) =>
+            {
+                if (GetAuto(el) && st.Shift != null && e.NewSize.Width < st.Width - 1) Later(st);
+            };
         if (GetAuto(el)) Later(st);
     }
 

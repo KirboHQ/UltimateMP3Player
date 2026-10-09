@@ -49,13 +49,14 @@
                 <!-- card grids end 8 px before the right margin, level with the welcome card: same space left and right -->
                 <StackPanel IsVisible="{Binding HasRecent}">
                     <TextBlock Text="{local:T 'Ascoltati di recente'}" Classes="section-title"/>
-                    <ItemsControl ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource CardGridTemplate}"
-                                  Margin="0,0,8,30"/>
+                    <ListBox x:Name="RecentList" Theme="{StaticResource BareList}" ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}"
+                             ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"/>
                 </StackPanel>
 
                 <TextBlock Text="{local:T 'Le tue playlist'}" Classes="section-title"/>
-                <ItemsControl ItemsSource="{Binding PlaylistCards}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30">
-                    <ItemsControl.DataTemplates>
+                <ListBox x:Name="PlaylistList" Theme="{StaticResource BareList}" ItemsSource="{Binding PlaylistCards}" ItemsPanel="{StaticResource CardGridTemplate}"
+                         Margin="0,0,8,30">
+                    <ListBox.DataTemplates>
                         <DataTemplate DataType="vm:PlaylistViewModel">
                             <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
                         </DataTemplate>
@@ -68,8 +69,8 @@
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
-                    </ItemsControl.DataTemplates>
-                </ItemsControl>
+                    </ListBox.DataTemplates>
+                </ListBox>
 
                 <StackPanel IsVisible="{Binding HasRecentlyAdded}">
                     <DockPanel LastChildFill="False" Margin="0,0,8,0">
@@ -77,9 +78,14 @@
                         <Button DockPanel.Dock="Right" Theme="{StaticResource LinkButton}" Content="{local:T 'Mostra tutti'}" VerticalAlignment="Center"
                                 Command="{Binding $parent[Window].DataContext.GoLibraryCommand}"/>
                     </DockPanel>
-                    <ItemsControl ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource TrackRowTemplate}" Margin="0,0,8,0"/>
+                    <ListBox x:Name="AddedList" Theme="{StaticResource BareList}" ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource TrackRowTemplate}"
+                             Margin="0,0,8,0"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
+        <!-- what's selected in one of the lists (Ctrl or Shift + click): songs or playlists -->
+        <views:SelectionBar List="{Binding #RecentList}" ZIndex="1"/>
+        <views:SelectionBar List="{Binding #PlaylistList}" ZIndex="1"/>
+        <views:SelectionBar List="{Binding #AddedList}" ZIndex="1"/>
     </Panel>
 </UserControl>

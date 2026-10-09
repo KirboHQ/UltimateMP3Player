@@ -11,7 +11,17 @@ namespace UltimateMP3Player.Views;
 
 public partial class SettingsView : UserControl
 {
-    public SettingsView() => InitializeComponent();
+    public SettingsView()
+    {
+        InitializeComponent();
+        // Opened to show one setting (a download that needs the browser's cookies): it starts searched.
+        Loaded += (_, _) =>
+        {
+            if (DataContext is not SettingsViewModel { StartSearch: { } words } vm) return;
+            vm.StartSearch = null;
+            SearchBox.Text = words;
+        };
+    }
 
     // Wheel over a band changes it; when the EQ is off the page scrolls.
     private void Eq_Wheel(object sender, MouseWheelEventArgs e)

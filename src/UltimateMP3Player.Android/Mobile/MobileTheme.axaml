@@ -183,6 +183,41 @@
         </Style>
     </ControlTheme>
 
+    <!-- What to do with the things chosen (the bar at the bottom while choosing, like a gallery's): icon over a short label. -->
+    <ControlTheme x:Key="PickButton" TargetType="Button">
+        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" Background="Transparent" CornerRadius="14" Padding="2,8,2,6" MinHeight="60">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Name="Ico" Text="{Binding $parent[Button].(local:Ui.Glyph), Converter={StaticResource Icon}}"
+                                   FontFamily="{Binding $parent[Button].(local:Ui.Glyph), Converter={x:Static local:IconFontConverter.Instance}}"
+                                   FontSize="20" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" Margin="0,5,0,0"
+                                          TextElement.FontSize="11.5"/>
+                    </StackPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pressed /template/ Border#Bd">
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+        </Style>
+        <Style Selector="^.danger">
+            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+        </Style>
+        <Style Selector="^.danger /template/ TextBlock#Ico">
+            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.4"/>
+        </Style>
+    </ControlTheme>
+
     <!-- A setting's row that opens something (a page, a sheet of choices): text, value, arrow. -->
     <ControlTheme x:Key="SettingRow" TargetType="Button">
         <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>

@@ -120,6 +120,38 @@
         <Setter Property="FontSize" Value="14"/>
     </Style>
 
+    <!-- A list inside a page that scrolls by itself (Home): no scroll of its own; rows or cards selectable with Ctrl or Shift + click. -->
+    <Style x:Key="BareList" TargetType="ListBox" BasedOn="{StaticResource PlainList}">
+        <Setter Property="VirtualizingPanel.IsVirtualizing" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBox">
+                    <ItemsPresenter/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Only a sign, next to the heart: a cloud for a song not saved on the device, a ring while it's being saved, a warning
+         sign when it's no longer available online; nothing for a saved song. Saving is in the menu and next to the heart below. -->
+    <DataTemplate x:Key="TrackCloudCell" DataType="{x:Type vm:TrackViewModel}">
+        <Grid Width="32" Height="32">
+            <Grid Background="Transparent" ToolTip="{Binding CloudTip}" Visibility="{Binding ShowCloud, Converter={StaticResource BoolVis}}">
+                <TextBlock x:Name="Cloud" Text="{Binding CloudGlyph}" Style="{StaticResource Glyph}" FontSize="15" Foreground="{StaticResource MutedBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding CloudTip}"/>
+            </Grid>
+            <Grid Background="Transparent" ToolTip="{Binding CloudTip}" Visibility="{Binding IsSaving, Converter={StaticResource BoolVis}}">
+                <views:ProgressRing Width="17" Height="17" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}"
+                                    Stroke="{DynamicResource AccentBrush}" Track="{StaticResource Surface3Brush}"/>
+            </Grid>
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding IsUnavailable}" Value="True">
+                <Setter TargetName="Cloud" Property="Foreground" Value="{StaticResource WarningBrush}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
     <!-- A tag like a Discord role: coloured dot and name; a click opens its page. -->
     <DataTemplate x:Key="TagChip" DataType="{x:Type vm:TagViewModel}">
         <Border CornerRadius="10" Padding="7,2,9,2" Margin="0,0,5,0" Background="{StaticResource Surface3Brush}" Cursor="Hand"
@@ -219,6 +251,7 @@
                     <ColumnDefinition Width="2.6*"/>
                     <ColumnDefinition Width="1.4*"/>
                     <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
+                    <ColumnDefinition Width="32"/>
                     <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="64"/>
                     <ColumnDefinition Width="36"/>
@@ -268,13 +301,15 @@
                     </ItemsControl>
                 </Canvas>
 
-                <Button x:Name="Heart" Grid.Column="4" Style="{StaticResource RowIconButton}" Content="&#xEB51;" Command="{Binding FavoriteCommand}"
+                <ContentPresenter Grid.Column="4" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
+
+                <Button x:Name="Heart" Grid.Column="5" Style="{StaticResource RowIconButton}" Content="&#xEB51;" Command="{Binding FavoriteCommand}"
                         Visibility="Hidden" ToolTip="{local:T 'Aggiungi ai Preferiti'}"/>
 
-                <TextBlock Grid.Column="5" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
-                <Button x:Name="More" Grid.Column="6" Style="{StaticResource RowIconButton}" Content="&#xE712;" Click="More_Click"
+                <Button x:Name="More" Grid.Column="7" Style="{StaticResource RowIconButton}" Content="&#xE712;" Click="More_Click"
                         Visibility="Hidden" ToolTip="{local:T 'Altre opzioni'}" AutomationProperties.Name="{local:T 'Altre opzioni'}"/>
             </Grid>
         </Border>
@@ -293,6 +328,14 @@
                 <Setter TargetName="Title" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                 <Setter TargetName="Num" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
             </DataTrigger>
+            <!-- no longer available online and not saved: the title dimmed (the warning sign says why) -->
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding Track.IsUnavailable}" Value="True"/>
+                    <Condition Binding="{Binding Track.IsCloud}" Value="True"/>
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="Title" Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            </MultiDataTrigger>
             <DataTrigger Binding="{Binding Track.IsPlaying}" Value="True">
                 <Setter TargetName="PlayBtn" Property="Content" Value="&#xE769;"/>
                 <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T Pausa}"/>
@@ -329,6 +372,7 @@
                     <ColumnDefinition Width="2.6*"/>
                     <ColumnDefinition Width="1.4*"/>
                     <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
+                    <ColumnDefinition Width="32"/>
                     <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="64"/>
                     <ColumnDefinition Width="36"/>
@@ -337,7 +381,7 @@
                 <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Style="{StaticResource SmallCaps}" Margin="4,0,0,0"/>
                 <TextBlock Grid.Column="2" Text="ALBUM" Style="{StaticResource SmallCaps}"/>
                 <TextBlock Grid.Column="3" Text="{local:T TAG}" Style="{StaticResource SmallCaps}"/>
-                <TextBlock Grid.Column="5" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource MutedBrush}"
+                <TextBlock Grid.Column="6" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource MutedBrush}"
                            HorizontalAlignment="Right" Margin="0,0,12,0"/>
             </Grid>
         </Border>
@@ -358,6 +402,7 @@
                     <ColumnDefinition Width="0.9*"/>
                     <ColumnDefinition Width="0.9*"/>
                     <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="32"/>
                     <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="64"/>
                     <ColumnDefinition Width="36"/>
@@ -390,13 +435,15 @@
                 <TextBlock Grid.Column="4" Text="{Binding Track.LastPlayedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
 
-                <Button x:Name="Heart" Grid.Column="5" Style="{StaticResource RowIconButton}" Content="&#xEB51;" Command="{Binding FavoriteCommand}"
+                <ContentPresenter Grid.Column="5" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
+
+                <Button x:Name="Heart" Grid.Column="6" Style="{StaticResource RowIconButton}" Content="&#xEB51;" Command="{Binding FavoriteCommand}"
                         Visibility="Hidden" ToolTip="{local:T 'Aggiungi ai Preferiti'}"/>
 
-                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <TextBlock Grid.Column="7" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
-                <Button x:Name="More" Grid.Column="7" Style="{StaticResource RowIconButton}" Content="&#xE712;" Click="More_Click"
+                <Button x:Name="More" Grid.Column="8" Style="{StaticResource RowIconButton}" Content="&#xE712;" Click="More_Click"
                         Visibility="Hidden" ToolTip="{local:T 'Altre opzioni'}" AutomationProperties.Name="{local:T 'Altre opzioni'}"/>
             </Grid>
         </Border>
@@ -445,6 +492,7 @@
                     <ColumnDefinition Width="0.9*"/>
                     <ColumnDefinition Width="0.9*"/>
                     <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="32"/>
                     <ColumnDefinition Width="36"/>
                     <ColumnDefinition Width="64"/>
                     <ColumnDefinition Width="36"/>
@@ -454,7 +502,7 @@
                 <TextBlock Grid.Column="2" Text="{local:T ASCOLTI}" Style="{StaticResource SmallCaps}"/>
                 <TextBlock Grid.Column="3" Text="{local:T TEMPO}" Style="{StaticResource SmallCaps}"/>
                 <TextBlock Grid.Column="4" Text="{local:T 'ULTIMO ASCOLTO'}" Style="{StaticResource SmallCaps}"/>
-                <TextBlock Grid.Column="6" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource MutedBrush}"
+                <TextBlock Grid.Column="7" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource MutedBrush}"
                            HorizontalAlignment="Right" Margin="0,0,12,0"/>
             </Grid>
         </Border>
@@ -477,6 +525,16 @@
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0">
                             <TextBlock x:Name="PlayIco" Text="&#xE768;" Style="{StaticResource Glyph}" Foreground="{DynamicResource OnAccentBrush}" FontSize="16" HorizontalAlignment="Center"/>
                         </Border>
+                        <!-- not saved on the device: a cloud on the cover (only a sign; a ring while it's being saved) -->
+                        <Border Width="28" Height="28" CornerRadius="14" Background="#A6000000" ToolTip="{Binding CloudTip}" HorizontalAlignment="Left"
+                                VerticalAlignment="Top" Margin="7" Visibility="{Binding IsCloud, Converter={StaticResource BoolVis}}">
+                            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CloudGlyph}" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="White"
+                                           Visibility="{Binding ShowCloud, Converter={StaticResource BoolVis}}"/>
+                                <views:ProgressRing Width="16" Height="16" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}" Stroke="White"
+                                                    Track="#50FFFFFF" Visibility="{Binding IsSaving, Converter={StaticResource BoolVis}}"/>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </views:SquareBox>
                 <TextBlock x:Name="Title" Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
@@ -488,6 +546,10 @@
                 <Setter TargetName="Card" Property="Background" Value="{StaticResource Surface2Brush}"/>
                 <Setter TargetName="PlayDisc" Property="Opacity" Value="1"/>
             </Trigger>
+            <!-- selected with Ctrl or Shift + click -->
+            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, FallbackValue=False}" Value="True">
+                <Setter TargetName="Card" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            </DataTrigger>
             <DataTrigger Binding="{Binding IsCurrent}" Value="True">
                 <Setter TargetName="Title" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
             </DataTrigger>
@@ -529,6 +591,10 @@
                 <Setter TargetName="Card" Property="Background" Value="{StaticResource Surface2Brush}"/>
                 <Setter TargetName="PlayDisc" Property="Opacity" Value="1"/>
             </Trigger>
+            <!-- selected with Ctrl or Shift + click -->
+            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, FallbackValue=False}" Value="True">
+                <Setter TargetName="Card" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            </DataTrigger>
             <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
                 <Setter TargetName="PlayDisc" Property="Content" Value="&#xE710;"/>
                 <Setter TargetName="PlayDisc" Property="ToolTip" Value="{local:T 'Aggiungi tutti alla coda della stanza'}"/>

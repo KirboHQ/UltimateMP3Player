@@ -15,7 +15,23 @@
             <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
                 <TextBlock Text="{Binding Kicker}" Classes="small-caps" Foreground="{StaticResource SubTextBrush}"/>
                 <TextBlock Text="{Binding Title}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding CountText}" Foreground="{StaticResource SubTextBrush}"/>
+                <!-- the count, and while some songs are in the cloud: only the device's, or save them all -->
+                <WrapPanel>
+                    <TextBlock Text="{Binding CountText}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <Button Theme="{StaticResource LinkButton}" Command="{Binding ToggleOnDeviceCommand}" ToolTip.Tip="{Binding OnDeviceTip}" Margin="0,0,14,0"
+                            IsVisible="{Binding ShowOnDeviceToggle}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E71C}" Classes="glyph" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding OnDeviceLabel}" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource LinkButton}" Command="{Binding SaveAllCommand}" IsVisible="{Binding ShowSaveAll}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding SaveAllLabel}" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
                 <TextBlock Text="{Binding Hint}" Classes="hint" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
                 <!-- tag page: the playlists with this tag -->
                 <ItemsControl ItemsSource="{Binding TaggedPlaylists}" Margin="0,10,0,0" IsVisible="{Binding HasTaggedPlaylists}">

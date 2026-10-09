@@ -99,4 +99,48 @@
     <Style Selector="Border.tile:pressed">
         <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
     </Style>
+
+    <!-- Choosing several things (Selection.Tick on the row): a round tick on each, filled on the chosen ones. -->
+    <Style Selector="Border.tick">
+        <Setter Property="IsVisible" Value="False"/>
+        <Setter Property="Width" Value="24"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="BorderBrush" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="Background" Value="#66000000"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.tick > TextBlock">
+        <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector=".picking Border.tick">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+    <Style Selector=".picked Border.tick">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <Style Selector=".picked Border.tick > TextBlock">
+        <Setter Property="IsVisible" Value="True"/>
+    </Style>
+    <!-- while choosing the rows become rounded and step in from the edges, like the selection on the computer -->
+    <Style Selector="Border.row.picking">
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Margin" Value="8,1"/>
+    </Style>
+    <Style Selector="Border.row.picked, Border.tile.picked">
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+    </Style>
+
+    <!-- A song not saved on the device: a quiet cloud (only a sign), a warning sign when it's no longer online. -->
+    <Style Selector="TextBlock.cloud">
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.cloud.gone">
+        <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+    </Style>
+    <Style Selector="Border.row.gone TextBlock.title">
+        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+    </Style>
 </Styles>

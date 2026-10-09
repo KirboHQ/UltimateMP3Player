@@ -174,6 +174,65 @@ public static class Analyzer
         };
     }
 
+    // ------------------------------------------------------------------ the same song on YouTube Music
+
+    // A song its site won't give (DRM, removed, private: the reading of the link failed): its title, artist and cover from
+    // the page (SoundCloud's oEmbed, the Open Graph tags, at worst the link itself) and an item searched on YouTube Music when
+    // it's downloaded, like Spotify's songs. The original link stays its key.
+    public static async Task<AnalysisResult> OnYouTubeAsync(string url, CancellationToken ct)
+    {
+        url = NormalizeUrl(url);
+        var site = Sites.NameFor(url);
+        string? title = null, artist = null, cover = null;
+        if (site == "SoundCloud")
+        {
+            try
+            {
+                var json = await Http.GetStringAsync("https://soundcloud.com/oembed?format=json&url=" + Uri.EscapeDataString(url), ct: ct);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                artist = Text.FirstNonEmpty(root.Str("author_name"));
+                title = root.Str("title");
+                // "Song by Artist"
+                if (title != null && artist != null && title.EndsWith(" by " + artist, StringComparison.OrdinalIgnoreCase))
+                    title = title[..^(" by " + artist).Length];
+                cover = root.Str("thumbnail_url");
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or JsonException or EngineException or OperationCanceledException) { }
+        }
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            try
+            {
+                var meta = OpenGraph.MetaTags(await Http.GetStringAsync(url, ct: ct));
+                string? Get(params string[] keys) => keys.Select(k => meta.TryGetValue(k, out var v) ? v : null).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+                title = Get("og:title", "twitter:title");
+                artist ??= Get("music:musician_description", "twitter:audio:artist_name", "soundcloud:user");
+                cover ??= Get("og:image:secure_url", "og:image", "twitter:image");
+                // Bandcamp: "Song, by Artist"
+                if (artist == null && title != null && Regex.Match(title, @"^(.+), by (.+)$") is { Success: true } m)
+                {
+                    title = m.Groups[1].Value;
+                    artist = m.Groups[2].Value;
+                }
+            }
+            catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or EngineException or OperationCanceledException) { }
+        }
+        title = Text.FirstNonEmpty(title, TitleFromUrl(url));
+        if (title == null) throw new EngineException(L.T("Non trovo titolo e artista di questo link: cerca il brano dalla pagina Cerca."));
+        if (cover != null && !cover.StartsWith("http", StringComparison.OrdinalIgnoreCase)) cover = null;
+        var found = new MediaItem { Title = title, Artist = artist, CoverUrl = cover, Kind = MediaKind.Audio, Url = url, PageUrl = url, SiteName = site };
+        if (cover != null) found.Thumbnails.Add(cover);
+        var item = TrackDownloader.YouTubeFallback(found);
+        var result = new AnalysisResult
+        {
+            Site = "YouTube Music", SourceUrl = url, PreferAudio = true, Title = item.Title, Uploader = item.Artist, Thumbnails = item.Thumbnails.ToList(),
+            Notes = { L.F("Da {0} non si può scaricare: verrà cercato lo stesso brano su YouTube Music.", site) },
+        };
+        result.Items.Add(item);
+        return result;
+    }
+
     // "…/world-on-fire-1" → "World on fire 1", until the real title.
     private static string? TitleFromUrl(string url)
     {
@@ -276,7 +335,7 @@ public static class MusicMatcher
 {
     private static readonly string[] Unwanted = { "instrumental", "karaoke", "cover", "remix", "live", "acoustic", "sped", "slowed", "reverb", "nightcore", "8d", "lyrics", "tutorial", "reaction" };
 
-    private static double TitleScore(string wantedTitle, string wantedArtist, string candidate)
+    internal static double TitleScore(string wantedTitle, string wantedArtist, string candidate)
     {
         var w = Text.Normalize(wantedTitle);
         var c = Text.Normalize(candidate);
@@ -324,6 +383,34 @@ public static class MusicMatcher
         if (pick.r.Id != null && (best == null || pick.s > bestScore))
             return await YtDlp.GetInfoAsync("https://www.youtube.com/watch?v=" + pick.r.Id, cookies, ct);
         return best ?? throw new EngineException(L.T("Brano non trovato su YouTube Music."));
+    }
+
+    // Only a close match (the same title and artist, the length within a few seconds when known), or null: for a song whose
+    // own link no longer works, so a remix isn't replaced by the original. A connection that fails throws.
+    public static async Task<YtInfo?> FindCloseAsync(MediaItem item, string? cookies, CancellationToken ct)
+    {
+        var artist = item.Artist?.Split(',')[0].Trim() ?? "";
+        var query = $"{artist} {item.Title}".Trim();
+        bool Close(double? duration) => item.Duration is not > 0 || duration is not > 0 || Math.Abs(item.Duration.Value - duration.Value) <= 8;
+
+        var music = await YtDlp.SearchMusicAsync(query, 5, cookies, ct);
+        foreach (var (id, score) in music.Select((r, i) => (r.Id, TitleScore(item.Title, artist, r.Title) - i * 0.05)).OrderByDescending(c => c.Item2).Take(3))
+        {
+            if (score < 0.6) continue;
+            YtInfo info;
+            try { info = await YtDlp.GetInfoAsync("https://music.youtube.com/watch?v=" + id, cookies, ct); }
+            catch (EngineException ex) when (!ex.Offline) { continue; }
+            if (Close(info.Duration) && ArtistScore(artist, info) >= 0) return info;
+        }
+        var yt = await YtDlp.SearchYouTubeAsync($"{artist} - {item.Title}", 5, cookies, ct);
+        foreach (var (r, s) in yt.Select((r, i) => (r, s: TitleScore(item.Title, artist, r.Title) - i * 0.05)).OrderByDescending(x => x.s).Take(3))
+        {
+            if (s < 0.6 || !Close(r.Duration)) continue;
+            if (artist.Length > 0 && Text.Coverage(artist, r.Title + " " + r.Channel) < 0.5) continue;
+            try { return await YtDlp.GetInfoAsync("https://www.youtube.com/watch?v=" + r.Id, cookies, ct); }
+            catch (EngineException ex) when (!ex.Offline) { }
+        }
+        return null;
     }
 
     private static double DurationScore(double? wanted, double? got)

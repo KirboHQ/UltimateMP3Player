@@ -208,7 +208,7 @@ public partial class SettingsPage : UserControl, IPage
             "AudioFormat" => (L.T("Formato dell'audio"), vm.AudioFormats, vm.AudioFormat, x => vm.AudioFormat = x),
             "VideoQuality" => (L.T("Qualità massima dei video"), vm.VideoQualities, vm.VideoQuality, x => vm.VideoQuality = x),
             "Parallel" => (L.T("Download insieme"), vm.ParallelChoices, vm.Parallel, x => vm.Parallel = x),
-            "TogetherCacheSize" => (L.T("Brani suggeriti tenuti in memoria"), vm.TogetherCacheChoices, vm.TogetherCacheSize, x => vm.TogetherCacheSize = x),
+            "TogetherCacheSize" => (L.T("Memoria temporanea (brani non salvati)"), vm.TogetherCacheChoices, vm.TogetherCacheSize, x => vm.TogetherCacheSize = x),
             _ => null,
         };
         if (c is not { } choice) return;

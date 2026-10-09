@@ -165,8 +165,15 @@ public sealed class EngineException : Exception
     public bool RateLimited { get; init; }
     // "403 Forbidden": one song closed to us, or (several in a row) a site that has had enough (SoundCloud's way of saying it).
     public bool Forbidden { get; init; }
+    // The content is gone from the site (removed, never existed, DRM): asking again won't help.
+    public bool Gone { get; init; }
+    // The site couldn't be reached at all (no connection).
+    public bool Offline { get; init; }
 
     public EngineException(string message, string? details = null) : base(message) => Details = details ?? "";
+
+    // Worth looking for the same song elsewhere: the link itself is the problem, not the connection or a pause the site wants.
+    public bool LinkProblem => !Offline && !RateLimited;
 }
 
 public static class ErrorText
@@ -213,18 +220,18 @@ public static class ErrorText
                 "use --cookies", "cookies", "not available to you", "members-only", "subscriber"))
             return new EngineException(L.T("Il sito richiede l'accesso (login) per questo contenuto."), stderr) { NeedsLogin = true };
         if (Has("drm"))
-            return new EngineException(L.T("Il contenuto è protetto da DRM e non può essere scaricato."), stderr);
+            return new EngineException(L.T("Il contenuto è protetto da DRM e non può essere scaricato."), stderr) { Gone = true };
         if (Has("requested format is not available", "requested format not available"))
             return new EngineException(L.T("Il formato richiesto non è più disponibile."), stderr) { FormatUnavailable = true };
         if (Has("no video formats found", "no video could be found", "there's no video", "no media found", "no video in this", "does not contain any video"))
             return new EngineException(L.T("Nessun video trovato in questo link."), stderr) { NoMedia = true };
         if (Has("video unavailable", "this video is unavailable", "not available", "has been removed", "no longer available", "does not exist",
                 "could not be found", "not found", "404"))
-            return new EngineException(L.T("Il contenuto non è disponibile (rimosso o inesistente)."), stderr);
+            return new EngineException(L.T("Il contenuto non è disponibile (rimosso o inesistente)."), stderr) { Gone = true };
         if (Has("403", "forbidden"))
             return new EngineException(L.T("Il sito ha negato l'accesso (errore 403)."), stderr) { Forbidden = true };
         if (Has("getaddrinfo", "failed to resolve", "name or service not known", "timed out", "connection refused", "network is unreachable", "no connection"))
-            return new EngineException(L.T("Impossibile contattare il sito: controlla la connessione a Internet."), stderr);
+            return new EngineException(L.T("Impossibile contattare il sito: controlla la connessione a Internet."), stderr) { Offline = true };
         if (Has("is not a valid url", "invalid url"))
             return new EngineException(L.T("Il link non è valido."), stderr);
         if (Has("live event will begin", "premieres in", "this live event"))

@@ -72,11 +72,19 @@ public sealed class RadioFetcher : IDisposable
 
     // A song got ready, failed or moved on with its download.
     public event Action<string>? Changed;
+    // Its link didn't work and the same song was found elsewhere (id, the new link, its keys): heard from there from now on.
+    public event Action<string, string, List<string>>? Replaced;
+
+    private readonly HashSet<string> _gone = new(), _offline = new();
 
     public string? PathFor(string id) => _paths.TryGetValue(id, out var p) && File.Exists(p) ? p : null;
     public FileStatus? StatusOf(string id) => _status.GetValueOrDefault(id);
     public bool IsReady(string id) => PathFor(id) != null;
     public bool IsFailed(string id) => StatusOf(id)?.State == FileState.Failed;
+    // Failed because the song is gone from its site and nothing like it was found elsewhere (not a connection problem).
+    public bool IsGone(string id) => _gone.Contains(id);
+    // Failed because the site couldn't be reached (no connection).
+    public bool IsOffline(string id) => _offline.Contains(id);
 
     // The suggested songs to have ready, the one playing (or next to play) first.
     public void Want(IReadOnlyList<RadioSong> window)
@@ -96,6 +104,8 @@ public sealed class RadioFetcher : IDisposable
     {
         if (!IsFailed(id)) return;
         _status.Remove(id);
+        _gone.Remove(id);
+        _offline.Remove(id);
         Next();
     }
 
@@ -112,19 +122,45 @@ public sealed class RadioFetcher : IDisposable
         var cts = _cts = new CancellationTokenSource();
         Set(s.Id, FileState.Downloading, 0);
         var o = _options();
+        Action<double> progress = pct => _post(() =>
+        {
+            if (_busy == s.Id && Math.Abs((StatusOf(s.Id)?.Pct ?? 0) - pct) >= 2) Set(s.Id, FileState.Downloading, pct);
+        });
         try
         {
-            var file = await TogetherCache.DownloadAsync(s.Url, o.AudioFormat, o.Cookies, _cache.TempDir, pct => _post(() =>
+            var keys = s.Keys;
+            string file;
+            try
             {
-                if (_busy == s.Id && Math.Abs((StatusOf(s.Id)?.Pct ?? 0) - pct) >= 2) Set(s.Id, FileState.Downloading, pct);
-            }), cts.Token);
+                file = await TogetherCache.DownloadAsync(s.Url, o.AudioFormat, o.Cookies, _cache.TempDir, progress, cts.Token);
+            }
+            catch (EngineException ex) when (ex.LinkProblem && !cts.IsCancellationRequested)
+            {
+                // Its link no longer works (removed, private, blocked): the same song on YouTube, if there's a close match.
+                var info = await CloudSongs.FindElsewhereAsync(s.Title, s.Artist, s.Duration, o.Cookies, cts.Token);
+                if (info == null)
+                {
+                    if (ex.Gone) _gone.Add(s.Id);
+                    throw;
+                }
+                file = await TogetherCache.DownloadAsync(info.WebpageUrl, o.AudioFormat, o.Cookies, _cache.TempDir, progress, cts.Token);
+                var found = SourceKeys.ForInfo(info);
+                keys = s.Keys.Concat(found).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                if (!_disposed && !cts.IsCancellationRequested)
+                {
+                    s.Url = info.WebpageUrl;
+                    s.Service = Sites.NameFor(info.WebpageUrl);
+                    s.Keys = keys;
+                    Replaced?.Invoke(s.Id, info.WebpageUrl, found);
+                }
+            }
             if (_disposed || cts.IsCancellationRequested)
             {
                 try { File.Delete(file); } catch { }
             }
             else
             {
-                MarkReady(s, _cache.Adopt(s.Keys, s.Title, s.Artist, file));
+                MarkReady(s, _cache.Adopt(keys, s.Title, s.Artist, file));
                 try { _cache.Trim(o.CacheSize, _inUse); } catch { }
             }
         }
@@ -133,8 +169,9 @@ public sealed class RadioFetcher : IDisposable
             if (!IsReady(s.Id)) _status.Remove(s.Id);
             Changed?.Invoke(s.Id);
         }
-        catch
+        catch (Exception ex)
         {
+            if (ex is EngineException { Offline: true } or HttpRequestException) _offline.Add(s.Id);
             if (!IsReady(s.Id)) Set(s.Id, FileState.Failed, 0);
         }
         finally
@@ -172,6 +209,8 @@ public sealed class RadioFetcher : IDisposable
     public void Forget(string id)
     {
         _status.Remove(id);
+        _gone.Remove(id);
+        _offline.Remove(id);
         if (_paths.Remove(id)) _inUse = _paths.Values.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (_busy == id) _cts?.Cancel();
     }

@@ -33,7 +33,17 @@
                 <TextBlock Text="PLAYLIST" Style="{StaticResource SmallCaps}" Foreground="{StaticResource SubTextBrush}"/>
                 <TextBlock Text="{Binding Vm.Name}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" Cursor="Hand"
                            MouseLeftButtonUp="Name_Click" ToolTip="{local:T 'Clicca per rinominare'}"/>
-                <TextBlock Text="{Binding Vm.TotalText}" Foreground="{StaticResource SubTextBrush}"/>
+                <WrapPanel>
+                    <TextBlock Text="{Binding Vm.TotalText}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <!-- some of its songs are in the cloud: all of them saved at once -->
+                    <Button Style="{StaticResource LinkButton}" Command="{Binding SaveAllCommand}"
+                            Visibility="{Binding ShowSaveAll, Converter={StaticResource BoolVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" FontSize="12"/>
+                            <TextBlock Text="{Binding SaveAllLabel}" Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
                 <!-- the playlist's own tags -->
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                     <ItemsControl ItemsSource="{Binding Vm.Tags}" ItemTemplate="{StaticResource TagChip}" VerticalAlignment="Center">

@@ -8,9 +8,16 @@ namespace UltimateMP3Player.Views;
 
 public partial class DownloadsPage : UserControl, IPage
 {
+    private DownloadQueue? _queue;
+
+    // Choosing several downloads.
+    public Selection Picks { get; } = new();
+
     public DownloadsPage()
     {
         InitializeComponent();
+        Selection.SetOwner(JobList, Picks);
+        DataContextChanged += (_, _) => Attach();
         LinkBox.TextChanged += (_, _) => GoText.Text = (LinkBox.Text ?? "").Trim().Length > 0 ? L.T("Leggi") : L.T("Incolla");
         LinkBox.KeyDown += (_, e) =>
         {
@@ -21,6 +28,17 @@ public partial class DownloadsPage : UserControl, IPage
     }
 
     private DownloadsPageViewModel? Vm => DataContext as DownloadsPageViewModel;
+
+    private void Attach()
+    {
+        if (_queue != null) _queue.Jobs.CollectionChanged -= OnJobs;
+        _queue = Vm?.Queue;
+        if (_queue != null) _queue.Jobs.CollectionChanged += OnJobs;
+        OnJobs(null, null);
+    }
+
+    private void OnJobs(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs? e) =>
+        Picks.SetItems(_queue?.Jobs ?? (IEnumerable<object>)Array.Empty<object>());
 
     // Empty: what's in the clipboard; written: that link.
     private async void Go_Click(object? sender, RoutedEventArgs? e)
@@ -40,7 +58,7 @@ public partial class DownloadsPage : UserControl, IPage
     private void Playlist_Click(object? sender, RoutedEventArgs e)
     {
         if (Vm?.Link is not { } link) return;
-        var menu = new SheetMenu { Title = L.T("Salva nella playlist"), Subtitle = link.Title };
+        var menu = new SheetMenu { Title = L.T("Nella playlist"), Subtitle = link.Title };
         foreach (var c in link.PlaylistChoices)
         {
             var choice = c;
@@ -67,19 +85,36 @@ public partial class DownloadsPage : UserControl, IPage
     {
         if (Vm is not { } vm) return;
         var url = vm.LastUrl;
+        if (await SignIn(url) && url.Length > 0) await vm.AnalyzeAsync(url);
+    }
+
+    // A download that failed for the same reason: the same, then it's tried again.
+    private async void JobLogin_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Control { DataContext: DownloadJobViewModel job }) return;
+        if (await SignIn(job.LoginUrl) && job.CanRetry) job.RetryCommand.Execute(null);
+    }
+
+    // The page of the link's site to sign in, or the list of the sites when it isn't one of them. True once signed in.
+    private static async Task<bool> SignIn(string url)
+    {
         var host = Uri.TryCreate(url, UriKind.Absolute, out var u) ? u.Host.ToLowerInvariant() : "";
         var site = Platform.SiteLogins.Sites.FirstOrDefault(s => s.Domains.Any(d => host == d || host.EndsWith("." + d, StringComparison.Ordinal)));
         if (site == null)
         {
             LoginsSheet.Show();
-            return;
+            return false;
         }
         await Platform.SiteLogins.OpenAsync(site.Url, site.Name);
-        if (Platform.SiteLogins.SignedIn().Contains(site.Name) && App.Host.Settings.CookiesBrowserOrNull != null && url.Length > 0)
-            await vm.AnalyzeAsync(url);
+        return Platform.SiteLogins.SignedIn().Contains(site.Name) && App.Host.Settings.CookiesBrowserOrNull != null;
     }
 
-    public bool Back() => false;
+    public bool Back()
+    {
+        if (!Picks.IsActive) return false;
+        Picks.Stop();
+        return true;
+    }
 
     public void ScrollToTop() => Scroller.Offset = default;
 }

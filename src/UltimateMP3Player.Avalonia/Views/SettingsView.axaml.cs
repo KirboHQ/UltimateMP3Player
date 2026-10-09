@@ -33,6 +33,13 @@ public partial class SettingsView : UserControl
             SearchBox.Text = "";
             e.Handled = true;
         }, RoutingStrategies.Tunnel);
+        // Opened to show one setting (a download that needs the browser's cookies): it starts searched.
+        Loaded += (_, _) =>
+        {
+            if (DataContext is not SettingsViewModel { StartSearch: { } words } vm) return;
+            vm.StartSearch = null;
+            SearchBox.Text = words;
+        };
     }
 
     private static EqBandViewModel? Band(object? source)

@@ -10,10 +10,14 @@ public sealed class Track
     public string? Album { get; set; }
     public string? Year { get; set; }
     public double Duration { get; set; }
+    // The audio file saved on the device; "" = not saved (in the cloud: heard from its link, through the temporary
+    // cache, and saved again whenever wanted).
     public string Path { get; set; } = "";
     public string? VideoPath { get; set; }
     public string? SourceUrl { get; set; }
     public string? Site { get; set; }
+    // Its link no longer works and nothing like it was found elsewhere (shown, skipped when its turn comes).
+    public bool Unavailable { get; set; }
     // Same-song identities: "youtube:ID", "spotify:ID", "file:PATH".
     public List<string> Keys { get; set; } = new();
     public bool HasCover { get; set; }
@@ -38,6 +42,23 @@ public sealed class Track
     public bool HasVideo => !string.IsNullOrEmpty(VideoPath);
     [System.Text.Json.Serialization.JsonIgnore] public bool HasLyrics => Lyrics is LyricsKind.Synced or LyricsKind.Plain;
     public bool IsLocal => Site == "File locale";
+
+    // Saved on the device (its file may still have gone missing: AudioPath tells).
+    [System.Text.Json.Serialization.JsonIgnore] public bool IsSaved => Path.Length > 0;
+    // A copy in the temporary cache, while there is one (a song in the cloud just heard, or about to be).
+    [System.Text.Json.Serialization.JsonIgnore] public string? CachePath { get; set; }
+    // The file to play: the saved one, otherwise the cache's; null = it has to be fetched from its link first.
+    [System.Text.Json.Serialization.JsonIgnore] public string? AudioPath =>
+        IsSaved && File.Exists(Path) ? Path : CachePath is { Length: > 0 } c && File.Exists(c) ? c : null;
+    // Its saved file is really there.
+    [System.Text.Json.Serialization.JsonIgnore] public bool HasSavedFile => IsSaved && File.Exists(Path);
+    // A web page it can be heard (and saved) from again.
+    [System.Text.Json.Serialization.JsonIgnore] public bool HasLink => SourceUrl is { } u && u.StartsWith("http", StringComparison.OrdinalIgnoreCase);
+    // Its audio can go back to the cloud: a link to get it again, and a file of the app's (not one of the computer's own
+    // folders, added from there).
+    [System.Text.Json.Serialization.JsonIgnore] public bool CanUnsave => IsSaved && HasLink && !IsLocal;
+    // A separate video file (not the audio's own file, as for a video added from the computer).
+    [System.Text.Json.Serialization.JsonIgnore] public bool HasOwnVideo => HasVideo && !string.Equals(VideoPath, Path, StringComparison.OrdinalIgnoreCase);
     public string DisplayArtist => string.IsNullOrWhiteSpace(Artist) ? L.T("Artista sconosciuto") : Artist!;
 }
 
@@ -74,7 +95,9 @@ public sealed class Library
     public static Library Load()
     {
         var file = JsonStore.Load<LibraryFile>(AppPaths.LibraryFile);
-        var tracks = file.Tracks.Where(t => !string.IsNullOrEmpty(t.Id) && !string.IsNullOrEmpty(t.Path))
+        foreach (var t in file.Tracks) t.Path ??= "";
+        // A song in the cloud has no file, only its link.
+        var tracks = file.Tracks.Where(t => !string.IsNullOrEmpty(t.Id) && (t.IsSaved || t.HasLink))
             .GroupBy(t => t.Id).Select(g => g.First()).ToList();
         return new Library(tracks);
     }

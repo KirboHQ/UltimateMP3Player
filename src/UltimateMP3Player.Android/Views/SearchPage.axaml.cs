@@ -16,9 +16,13 @@ public partial class SearchPage : UserControl, IPage
     private SearchViewModel? _vm;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(220) };
 
+    // Choosing several of the songs (or playlists) found.
+    public Selection Picks { get; } = new();
+
     public SearchPage()
     {
         InitializeComponent();
+        Selection.SetOwner(LocalList, Picks);
         DataContextChanged += (_, _) => Attach();
         _timer.Tick += (_, _) =>
         {
@@ -92,10 +96,15 @@ public partial class SearchPage : UserControl, IPage
         Tabs.IsVisible = query;
         LocalList.IsVisible = query && _vm.LocalMode;
         OnlinePane.IsVisible = query && _vm.OnlineMode;
-        if (!LocalList.IsVisible) return;
+        if (!LocalList.IsVisible)
+        {
+            Picks.Stop();
+            return;
+        }
         var items = new List<object>();
         items.AddRange(_vm.PlaylistResults);
         items.AddRange(_vm.Rows);
+        Picks.SetItems(items, _vm);
         if (items.Count == 0) items.Add(new ListNote(L.T("Nessun risultato"), _vm.LocalEmptyHint));
         LocalList.ItemsSource = items;
     }
@@ -124,6 +133,11 @@ public partial class SearchPage : UserControl, IPage
 
     public bool Back()
     {
+        if (Picks.IsActive)
+        {
+            Picks.Stop();
+            return true;
+        }
         if (Text.Length == 0) return false;
         Box.Text = "";
         return true;

@@ -15,7 +15,7 @@ public sealed class RadioItemViewModel : Observable
     }
 
     public RadioSong Song { get; }
-    // Its stand-in for the rest of the app (the path is the cache file once it's here).
+    // Its stand-in for the rest of the app (its file is the cache's once it's here: T.CachePath).
     public Track T { get; }
     public string Id => Song.Id;
 
@@ -38,13 +38,16 @@ public sealed class RadioItemViewModel : Observable
     {
         State = st?.State ?? FileState.None;
         Pct = st?.Pct ?? 0;
-        OnChanged(nameof(State), nameof(Pct), nameof(IsReady), nameof(IsBusy), nameof(IsFailed), nameof(PctText), nameof(StateTip));
+        OnChanged(nameof(State), nameof(Pct), nameof(IsReady), nameof(IsBusy), nameof(IsFailed), nameof(PctText), nameof(StateTip), nameof(FromText));
     }
 }
 
-// Songs suggested online after a song ("Play similar songs", or a song played outside a list): they go into your queue
-// without being in the library, get downloaded into the cache of "Listen together" a few at a time as their turn comes
-// (the same "songs ready ahead" as the rooms), and can be kept with "Save to library". When few are left, more come.
+// The songs heard through the temporary cache instead of a file of the library: the songs suggested online after a song
+// ("Play similar songs", or a song played outside a list), the ones of a link heard without saving them, and the songs of
+// the library in the cloud (not saved on the device). They get downloaded into the cache of "Listen together" a few at a
+// time as their turn comes (the same "songs ready ahead" as the rooms). A suggested song can be kept in the library (in
+// the cloud) or saved on the device. Heard, it stays among the recently played (Home) until newer songs push it out, and
+// in the statistics once a play of it counted.
 public sealed class RadioViewModel : Observable
 {
     // Songs asked for at a time, and how many still waiting before asking again.
@@ -53,6 +56,8 @@ public sealed class RadioViewModel : Observable
 
     private readonly MainViewModel _main;
     private readonly Dictionary<string, RadioItemViewModel> _items = new();
+    // Library songs in the cloud the cache is getting (or has): what it needs to know of them, by their library id.
+    private readonly Dictionary<string, RadioSong> _streams = new();
     private readonly RadioFetcher _fetcher;
     // Lists that found nothing more: not asked again.
     private readonly HashSet<string> _exhausted = new();
@@ -68,8 +73,9 @@ public sealed class RadioViewModel : Observable
         _fetcher = new RadioFetcher(host.SongCache,
             () => (host.Settings.AudioFormat, host.Settings.CookiesBrowserOrNull, Math.Clamp(host.Settings.TogetherCacheSize, 1, 200)), a => ui.BeginInvoke(a));
         _fetcher.Changed += OnFile;
+        _fetcher.Replaced += OnReplaced;
         // The ones of the last session: their files may still be in the cache (the player may even be playing one).
-        foreach (var s in main.Profile.Data.Radio.Where(s => RadioSong.IsRadio(s.Id))) Add(s).T.Path = host.SongCache.Find(s.Keys) ?? "";
+        foreach (var s in main.Profile.Data.Radio.Where(s => RadioSong.IsRadio(s.Id))) Add(s).T.CachePath = host.SongCache.Find(s.Keys);
         var keep = _items.Keys.ToHashSet();
         _ = Task.Run(() => SweepCovers(keep));
     }
@@ -82,11 +88,29 @@ public sealed class RadioViewModel : Observable
     public Track? Track(string id) => _items.TryGetValue(id, out var i) ? i.T : null;
     public string? PathFor(string id) => _fetcher.PathFor(id);
     public bool IsFailed(string id) => _fetcher.IsFailed(id);
+    // Gone from its site, and not found anywhere else.
+    public bool IsGone(string id) => _fetcher.IsGone(id);
+    // Couldn't be fetched because there's no connection.
+    public bool IsOffline(string id) => _fetcher.IsOffline(id);
+    public FileStatus? StatusOf(string id) => _fetcher.StatusOf(id);
+
+    // A song of the library heard from its link: not saved on the device (or its file is gone), with a link to get it.
+    public bool IsCloud(Track t) => _main.Library.Get(t.Id) == t && !t.HasSavedFile && t.HasLink;
+
+    // Played from the cache, fetched first if needed: a suggested song, or a library song in the cloud.
+    public bool Streams(Track t) => _items.ContainsKey(t.Id) || IsCloud(t);
+
+    // Heard enough to stay in the statistics without being in the library (a play of it counted).
+    private bool Heard(string id) => _main.Profile.StatsOf(id) is { Plays: > 0 };
+
+    // The suggested (and heard) songs that stay in the statistics.
+    public IEnumerable<RadioItemViewModel> HeardItems() => _items.Values.Where(i => Heard(i.Id));
 
     public void Detach()
     {
         _cts?.Cancel();
         _fetcher.Changed -= OnFile;
+        _fetcher.Replaced -= OnReplaced;
         _fetcher.Dispose();
     }
 
@@ -109,20 +133,26 @@ public sealed class RadioViewModel : Observable
         return item;
     }
 
-    // ------------------------------------------------------------------ a link heard without downloading it
-
-    // The songs of a link to hear without saving them ("Listen without downloading"): in the queue like the suggested
-    // ones, each downloaded into the cache just before its turn. One you already have plays from the library, one already
-    // in the queue keeps its id. The ids to play, in order.
-    public List<string> AddFromLink(IEnumerable<MediaItem> items)
+    // A song of the library already known by these keys (one of the library heard from the cloud counts too).
+    private Track? Known(RadioSong song, bool similar)
     {
         var lib = _main.Library;
+        var have = lib.FindByKeys(song.Keys) ?? (similar ? lib.FindSimilar(song.Title, song.Artist, song.Duration) : null);
+        return have != null && (have.HasSavedFile || have.HasLink) ? have : null;
+    }
+
+    // ------------------------------------------------------------------ a link heard without saving it
+
+    // The songs of a link to hear without saving them ("Listen without saving"): in the queue like the suggested ones,
+    // each downloaded into the cache just before its turn. One you already have (saved or in the cloud) plays as the
+    // library song, one already in the queue keeps its id. The ids to play, in order.
+    public List<string> AddFromLink(IEnumerable<MediaItem> items)
+    {
         var ids = new List<string>();
         foreach (var it in items)
         {
             var song = RadioSong.FromItem(it);
-            var have = lib.FindByKeys(song.Keys) ?? (it.Source == SourceKind.Search ? lib.FindSimilar(song.Title, song.Artist, song.Duration) : null);
-            if (have != null && File.Exists(have.Path)) ids.Add(have.Id);
+            if (Known(song, it.Source == SourceKind.Search) is { } have) ids.Add(have.Id);
             else if (_items.Values.FirstOrDefault(i => i.Song.Keys.Intersect(song.Keys, StringComparer.OrdinalIgnoreCase).Any()) is { } same) ids.Add(same.Id);
             else
             {
@@ -132,6 +162,36 @@ public sealed class RadioViewModel : Observable
             }
         }
         return ids;
+    }
+
+    // ------------------------------------------------------------------ heard in a room
+
+    // A song of a room that isn't in the library, just heard: kept like the songs of a link, so it's among the recently
+    // played and plays again from there (from the cache, or its page). Its id; null for one that can't be found again
+    // (a file of the host's own, with no page).
+    public string? KeepHeard(Track t)
+    {
+        if (t.SourceUrl is not { } url || !url.StartsWith("http", StringComparison.OrdinalIgnoreCase) || t.Keys.Count == 0) return null;
+        if (_items.Values.FirstOrDefault(i => i.Song.Keys.Intersect(t.Keys, StringComparer.OrdinalIgnoreCase).Any()) is { } same) return same.Id;
+        var s = new RadioSong
+        {
+            Id = RadioSong.Prefix + Ids.New(), Title = t.Title, Artist = t.Artist, Album = t.Album, Duration = t.Duration, Url = url,
+            Service = string.IsNullOrEmpty(t.Site) ? Sites.NameFor(url) : t.Site, Thumb = t.ArtUrl, Keys = t.Keys.ToList(), FromLink = true,
+        };
+        try
+        {
+            if (t.HasCover) File.Copy(AppPaths.TrackCover(t.Id), AppPaths.TrackCover(s.Id), true);
+        }
+        catch { }
+        var copy = Add(s).T;
+        copy.CachePath = _main.Host.SongCache.Find(s.Keys);
+        copy.Wave = t.Wave;
+        copy.Loudness = t.Loudness;
+        copy.Peak = t.Peak;
+        copy.Bpm = t.Bpm;
+        LyricsStore.Copy(t.Id, copy, t.Lyrics);
+        Save();
+        return s.Id;
     }
 
     // ------------------------------------------------------------------ asking for suggestions
@@ -150,7 +210,6 @@ public sealed class RadioViewModel : Observable
         var cts = _cts = new CancellationTokenSource();
         _main.Player.OnRadioBusy();
         var source = _main.Host.Settings.RadioSource;
-        var lib = _main.Library;
         var known = _items.Values.Select(i => i.Song).ToList();
         List<(string Id, RadioSong? New)> picks = new();
         try
@@ -158,12 +217,11 @@ public sealed class RadioViewModel : Observable
             picks = await Task.Run(async () =>
             {
                 var hits = await OnlineSearchServices.SimilarAsync(seed, source, Batch, cts.Token);
-                // A song you already have plays from the library; one suggested before keeps its id.
+                // A song you already have plays from the library (saved or in the cloud); one suggested before keeps its id.
                 var list = new List<(string Id, RadioSong? New)>();
                 foreach (var song in hits.Select(RadioSong.From))
                 {
-                    var have = lib.FindByKeys(song.Keys) ?? lib.FindSimilar(song.Title, song.Artist, song.Duration);
-                    if (have != null && File.Exists(have.Path)) list.Add((have.Id, null));
+                    if (Known(song, true) is { } have) list.Add((have.Id, null));
                     else if (known.FirstOrDefault(k => k.Keys.Intersect(song.Keys, StringComparer.OrdinalIgnoreCase).Any()) is { } same) list.Add((same.Id, null));
                     else list.Add((song.Id, song));
                 }
@@ -195,8 +253,9 @@ public sealed class RadioViewModel : Observable
 
     // ------------------------------------------------------------------ the queue changed
 
-    // Which suggested songs to get ready (the one playing, then the next ones as far as the settings say), more to ask
-    // for when few are left, and the ones no longer in the queue forgotten.
+    // Which songs to get into the cache (the one playing, then the next ones as far as the settings say), more
+    // suggestions to ask for when few are left, and the suggested ones no longer in the queue forgotten (unless they're
+    // among the recently played or in the statistics).
     public void Refresh()
     {
         var p = _main.Player;
@@ -206,23 +265,60 @@ public sealed class RadioViewModel : Observable
             return;
         }
         int ahead = Math.Clamp(_main.Host.Settings.RadioAhead, 1, TogetherSession.MaxAhead);
-        var window = p.Window(ahead).Select(Item).OfType<RadioItemViewModel>().ToList();
-        _fetcher.Want(window.Select(i => i.Song).ToList());
-        // The ones of the last session found in the cache: their waveform and loudness again (they aren't kept with them),
-        // only for these few, not for every song remembered.
-        foreach (var item in window)
-            if (item.T.Wave == null && item.T.Path.Length > 0 && File.Exists(item.T.Path)) _ = Analyze(item);
+        var ids = p.Window(ahead);
+        var wanted = new List<RadioSong>();
+        var lib = _main.Library;
+        foreach (var id in ids)
+        {
+            if (_items.TryGetValue(id, out var item)) wanted.Add(item.Song);
+            else if (lib.Get(id) is { } t && IsCloud(t))
+            {
+                if (!_streams.TryGetValue(id, out var s)) _streams[id] = s = CloudSongs.StreamOf(t);
+                wanted.Add(s);
+            }
+        }
+        // Library songs out of the window: their files stay in the cache (found again by their keys).
+        foreach (var gone in _streams.Keys.Where(id => !ids.Contains(id)).ToList())
+        {
+            _streams.Remove(gone);
+            _fetcher.Forget(gone);
+        }
+        _fetcher.Want(wanted);
+        // Waveform and loudness of the ones in the window that don't have them yet (the suggestions of the last session,
+        // the library songs in the cloud heard for the first time), only for these few.
+        foreach (var id in ids)
+            if (TrackFor(id) is { Wave: null } t && t.AudioPath is { } path) _ = Analyze(t, path);
         var used = p.Referenced();
-        foreach (var id in _items.Keys.Where(id => !used.Contains(id)).ToList()) Drop(id);
+        var recent = Recent();
+        foreach (var id in _items.Keys.Where(id => !used.Contains(id)).ToList())
+        {
+            if (recent.Contains(id) || Heard(id)) Rest(id);
+            else Drop(id);
+        }
         if (!Busy && p.RadioRunningLow(Low) is { } contextId && !_exhausted.Contains(contextId) && p.RadioSeed() is { } seed)
             _ = Fetch(seed, contextId, false);
     }
+
+    private Track? TrackFor(string id) => _items.TryGetValue(id, out var i) ? i.T : _streams.ContainsKey(id) ? _main.Library.Get(id) : null;
 
     // The player waits for this song: it goes first (and is tried again if it had failed).
     public void Prepare(string id)
     {
         _fetcher.Retry(id);
         Refresh();
+    }
+
+    // The ones among the recently played (as many as Home shows).
+    private HashSet<string> Recent() =>
+        _main.Profile.RecentTracks(HomeViewModel.RecentCount, id => _items.ContainsKey(id) || _main.Library.Get(id) != null).Where(_items.ContainsKey).ToHashSet();
+
+    // Out of the queue but still among the recently played or in the statistics: kept, with its cover, to play again from
+    // there; its file in the cache is free to go (it's found again there, or downloaded, when it plays).
+    private void Rest(string id)
+    {
+        if (_fetcher.StatusOf(id) == null) return;
+        _fetcher.Forget(id);
+        _items[id].Refresh(null);
     }
 
     private void Drop(string id)
@@ -232,20 +328,51 @@ public sealed class RadioViewModel : Observable
         _main.ForgetVm(id);
         try { File.Delete(AppPaths.TrackCover(id)); } catch { }
         LyricsStore.Delete(id);
+        // Time heard without a play that counted: it doesn't stay in the statistics.
+        if (_main.Profile.StatsOf(id) != null) _main.Profile.ForgetTracks(new[] { id });
+    }
+
+    // "Remove completely" on a suggested song: out of the queue, the recently played and the statistics.
+    public async Task Forget(IReadOnlyCollection<string> ids)
+    {
+        await _main.Player.RemoveTracks(ids);
+        _main.Profile.ForgetTracks(ids);
+        foreach (var id in ids)
+            if (_items.ContainsKey(id)) Drop(id);
+        Save();
     }
 
     private void OnFile(string id)
     {
-        if (!_items.TryGetValue(id, out var item)) return;
         var st = _fetcher.StatusOf(id);
-        item.T.Path = _fetcher.PathFor(id) ?? "";
-        item.Refresh(st);
         var p = _main.Player;
+        if (_items.TryGetValue(id, out var item))
+        {
+            item.T.CachePath = _fetcher.PathFor(id) ?? item.T.CachePath;
+            item.Refresh(st);
+        }
+        else if (_streams.ContainsKey(id) && _main.Library.Get(id) is { } t)
+        {
+            t.CachePath = _fetcher.PathFor(id) ?? t.CachePath;
+            // Gone from its site and found nowhere else: shown as such, skipped when its turn comes.
+            if (st?.State == FileState.Failed && _fetcher.IsGone(id) && !t.Unavailable)
+            {
+                t.Unavailable = true;
+                _main.Library.Changed(t);
+            }
+            else if (st?.State == FileState.Ready && t.Unavailable)
+            {
+                t.Unavailable = false;
+                _main.Library.Changed(t);
+            }
+            _main.Vm(t).RefreshCloud();
+        }
+        else return;
         switch (st?.State)
         {
             case FileState.Ready:
                 p.OnRadioReady(id);
-                _ = Analyze(item);
+                if (TrackFor(id) is { Wave: null } a && a.AudioPath is { } path) _ = Analyze(a, path);
                 break;
             case FileState.Failed:
                 p.OnRadioFailed(id);
@@ -256,23 +383,52 @@ public sealed class RadioViewModel : Observable
         }
     }
 
-    // Waveform and loudness, as for the songs of the library (the volume is normalized the same way). Once per song and
-    // session (a file that can't be read isn't tried again at every change of the queue).
+    // Its link didn't work, the same song was found on YouTube: heard (and saved) from there from now on.
+    private void OnReplaced(string id, string url, List<string> keys)
+    {
+        string? title = null, from = null;
+        if (_items.TryGetValue(id, out var item))
+        {
+            from = item.T.Site;
+            title = item.T.Title;
+            item.T.SourceUrl = url;
+            item.T.Site = item.Song.Service;
+            item.T.Keys = item.Song.Keys.ToList();
+            item.Refresh(_fetcher.StatusOf(id));
+            Save();
+        }
+        else if (_main.Library.Get(id) is { } t)
+        {
+            from = t.Site;
+            title = t.Title;
+            t.SourceUrl = url;
+            t.Site = Sites.NameFor(url);
+            t.Unavailable = false;
+            _main.Library.AddKeys(t, keys);
+            _main.Library.Changed(t);
+        }
+        if (title != null)
+            _main.Toast(L.F("«{0}» non è più disponibile su {1}: lo trovi su {2}, e da ora si ascolta da lì", title, string.IsNullOrEmpty(from) ? L.T("il suo sito") : from, Sites.NameFor(url)));
+    }
+
+    // Waveform and loudness, as for the songs saved (the volume is normalized the same way). Once per song and session (a
+    // file that can't be read isn't tried again at every change of the queue). A library song keeps them.
     private readonly HashSet<string> _analyzing = new();
 
-    private async Task Analyze(RadioItemViewModel item)
+    private async Task Analyze(Track t, string path)
     {
-        if (item.T.Wave != null || item.T.Path.Length == 0 || !_analyzing.Add(item.Id)) return;
+        if (t.Wave != null || !_analyzing.Add(t.Id)) return;
         try
         {
-            var path = item.T.Path;
             var a = await Task.Run(() => AudioAnalysis.AnalyzeAsync(path, CancellationToken.None));
-            item.T.Wave = a.Wave;
-            item.T.Loudness = a.Loudness;
-            item.T.Peak = a.Peak;
-            if (a.Duration > 0) item.T.Duration = a.Duration;
-            _main.Vm(item.T).Refresh();
-            if (_main.Player.Current?.Id == item.Id) _main.Player.ApplyNormalization();
+            if (t.Wave != null) return;
+            t.Wave = a.Wave;
+            t.Loudness = a.Loudness;
+            t.Peak = a.Peak;
+            if (a.Duration > 0) t.Duration = a.Duration;
+            if (_main.Library.Get(t.Id) == t) _main.Library.Changed(t);
+            else _main.Vm(t).Refresh();
+            if (_main.Player.Current?.Id == t.Id) _main.Player.ApplyNormalization();
         }
         catch { }
     }
@@ -286,31 +442,13 @@ public sealed class RadioViewModel : Observable
         try
         {
             if (!_items.ContainsKey(item.Id)) return;
-            var path = AppPaths.TrackCover(item.Id);
-            string? got = await Task.Run(async () =>
-            {
-                var tmp = Path.Combine(AppPaths.TempDir, item.Id + ".thumb");
-                foreach (var url in pictures.Take(4))
-                {
-                    try
-                    {
-                        await File.WriteAllBytesAsync(tmp, await Http.GetBytesAsync(url));
-                        if (await AudioAnalysis.MakeCoverFromImageAsync(tmp, path)) return url;
-                    }
-                    catch { }
-                    finally
-                    {
-                        try { File.Delete(tmp); } catch { }
-                    }
-                }
-                return null;
-            });
+            var got = await CloudSongs.MakeCoverAsync(item.Id, pictures);
             if (got == null) return;
             // The one that worked, for the next time.
             item.Song.Thumb = got;
             if (!_items.ContainsKey(item.Id))
             {
-                try { File.Delete(path); } catch { }
+                try { File.Delete(AppPaths.TrackCover(item.Id)); } catch { }
                 return;
             }
             item.T.HasCover = true;
@@ -335,63 +473,51 @@ public sealed class RadioViewModel : Observable
 
     // ------------------------------------------------------------------ keeping one
 
-    // Into the library (and a playlist): the copy leaves the cache, and the queue goes on with the library song.
+    // Into the library without its audio (in the cloud), and into a playlist if given: the queue, the recently played and
+    // the statistics go on with the library song. One the library already has (the same link) is that one.
+    public Track Keep(RadioItemViewModel item, Playlist? playlist)
+    {
+        var s = item.Song;
+        var lib = _main.Library;
+        var t = lib.FindByKeys(s.Keys);
+        if (t == null)
+        {
+            t = CloudSongs.FromRadio(s, item.T.Duration);
+            t.ArtUrl = item.T.ArtUrl;
+            t.Wave = item.T.Wave;
+            t.Loudness = item.T.Loudness;
+            t.Peak = item.T.Peak;
+            t.Bpm = item.T.Bpm;
+            try
+            {
+                if (File.Exists(AppPaths.TrackCover(item.Id)))
+                {
+                    File.Copy(AppPaths.TrackCover(item.Id), AppPaths.TrackCover(t.Id), true);
+                    t.HasCover = true;
+                }
+            }
+            catch { }
+            LyricsStore.Copy(item.Id, t, item.T.Lyrics);
+            t.CachePath = _fetcher.PathFor(item.Id) ?? item.T.CachePath;
+            lib.Add(t);
+        }
+        if (playlist != null) _main.Profile.AddTrack(playlist, t.Id);
+        _saved[t.Id] = s;
+        _fetcher.Forget(item.Id);
+        // Among the recently played and in the statistics as the library song now (before the queue changes: then the
+        // suggestion goes).
+        _main.Profile.RenameHistory(item.Id, t.Id);
+        _main.Player.ReplaceRadio(item.Id, t);
+        return t;
+    }
+
+    // Kept and saved on the device: from the cache's copy at once when it's there, otherwise downloaded.
     public async Task<Track?> Save(RadioItemViewModel item, Playlist? playlist)
     {
-        var from = _fetcher.PathFor(item.Id);
-        if (from == null)
-        {
-            _main.Toast(L.T("Il brano non è ancora stato scaricato: aspetta che sia pronto."));
-            return null;
-        }
-        var s = item.Song;
-        try
-        {
-            var dir = _main.Host.Settings.MusicDir;
-            Directory.CreateDirectory(dir);
-            var name = Text.SafeFileName(string.IsNullOrWhiteSpace(s.Artist) ? s.Title : $"{s.Artist.Split(',')[0].Trim()} - {s.Title}");
-            var target = Text.UniquePath(dir, name, Path.GetExtension(from));
-            await Task.Run(() => File.Copy(from, target));
-            var t = new Track
-            {
-                Title = s.Title, Artist = s.Artist, Album = s.Album, Duration = item.T.Duration, Path = target, SourceUrl = s.Url, Site = s.Service,
-                Keys = s.Keys.ToList(), ArtUrl = item.T.ArtUrl, Wave = item.T.Wave, Loudness = item.T.Loudness, Peak = item.T.Peak,
-            };
-            var standInCover = AppPaths.TrackCover(item.Id);
-            if (File.Exists(standInCover))
-            {
-                File.Copy(standInCover, AppPaths.TrackCover(t.Id), true);
-                t.HasCover = true;
-            }
-            else t.HasCover = await AudioAnalysis.ExtractCoverAsync(target, AppPaths.TrackCover(t.Id), false, CancellationToken.None);
-            LyricsStore.Copy(item.Id, t, item.T.Lyrics);
-            if (t.Wave == null || t.Loudness == null || t.Duration <= 0)
-            {
-                try
-                {
-                    var a = await AudioAnalysis.AnalyzeAsync(target, CancellationToken.None);
-                    t.Wave ??= a.Wave;
-                    t.Loudness ??= a.Loudness;
-                    t.Peak ??= a.Peak;
-                    if (a.Duration > 0) t.Duration = a.Duration;
-                }
-                catch { }
-            }
-            _main.Library.Add(t);
-            if (playlist != null) _main.Profile.AddTrack(playlist, t.Id);
-            _saved[t.Id] = s;
-            _fetcher.Forget(item.Id);
-            _main.Player.ReplaceRadio(item.Id, t);
-            // It plays on from the cache copy; that goes once it's no longer open.
-            if (_main.Host.SongCache.Contains(from)) _main.Host.SongCache.Forget(from);
-            _main.Toast(playlist != null ? L.F("«{0}» salvato in «{1}»", t.Title, PlaylistViewModel.DisplayName(playlist)) : L.F("«{0}» salvato nella libreria", t.Title));
-            return t;
-        }
-        catch (Exception ex)
-        {
-            _main.Toast(L.T("Salvataggio non riuscito:") + " " + ex.Message);
-            return null;
-        }
+        var t = Keep(item, playlist);
+        await _main.SaveToDevice(new[] { _main.Vm(t) }, quiet: playlist != null);
+        if (playlist != null) _main.Toast(L.F("«{0}» salvato in «{1}»", t.Title, PlaylistViewModel.DisplayName(playlist)));
+        return t;
     }
 
     // ------------------------------------------------------------------ deleted while it plays
@@ -409,7 +535,7 @@ public sealed class RadioViewModel : Observable
         var s = new RadioSong
         {
             Id = RadioSong.Prefix + Ids.New(), Title = saved.Title, Artist = saved.Artist, Album = saved.Album, Duration = saved.Duration,
-            Url = song.Url, Service = song.Service, Thumb = song.Thumb, Keys = song.Keys.ToList(),
+            Url = saved.SourceUrl ?? song.Url, Service = saved.Site ?? song.Service, Thumb = song.Thumb, Keys = saved.Keys.ToList(),
         };
         string? path = null;
         try
@@ -431,7 +557,7 @@ public sealed class RadioViewModel : Observable
         catch { }
         var item = Add(s);
         var t = item.T;
-        t.Path = path;
+        t.CachePath = path;
         t.HasCover = File.Exists(AppPaths.TrackCover(s.Id));
         t.ArtUrl = saved.ArtUrl ?? t.ArtUrl;
         t.Wave = saved.Wave;

@@ -14,6 +14,7 @@ public sealed class TrackViewModel : Observable
     {
         T = track;
         Main = main;
+        WasSaved = track.IsSaved;
     }
 
     public Track T { get; }
@@ -72,7 +73,52 @@ public sealed class TrackViewModel : Observable
         UpdateSearchText();
         OnChanged(nameof(Title), nameof(Artist), nameof(Album), nameof(AlbumText), nameof(DurationText), nameof(HasVideo), nameof(HasLyrics), nameof(Wave),
             nameof(Cover48), nameof(Cover160), nameof(Cover300));
+        RefreshCloud();
     }
+
+    // ------------------------------------------------------------------ saved on the device, or in the cloud
+
+    // Its audio is on the device (false: in the cloud, a suggested song, one heard from a link).
+    public bool IsSaved => T.IsSaved;
+    public bool IsCloud => !T.IsSaved;
+    // Last known to the lists (MainViewModel rebuilds them when it changes).
+    internal bool WasSaved;
+    // Gone from its site and found nowhere else.
+    public bool IsUnavailable => T.Unavailable;
+    // A cloud on the rows of the songs not saved (a warning sign for the ones no longer available): only a sign, saving
+    // is done with the download button (next to the heart, in the menus).
+    public bool ShowCloud => IsCloud && !IsSaving;
+    public string CloudGlyph => IsUnavailable ? "" : "";
+
+    // Being saved on the device right now (its download in the queue).
+    private DownloadJobViewModel? SaveJob => Main.Queue.SavingOf(Id);
+    public bool IsSaving => SaveJob != null;
+    public double SavePct => SaveJob?.Percent ?? 0;
+    public bool SaveIndeterminate => SaveJob is { } j && (j.Indeterminate || !j.IsRunning);
+
+    private string? SavingTip => SaveJob is { } job
+        ? job.IsRunning ? L.F("Lo sto salvando sul dispositivo · {0:0}%", job.Percent) : L.T("In coda per essere salvato sul dispositivo")
+        : null;
+
+    // What the cloud sign means.
+    public string CloudTip => SavingTip
+        ?? (IsUnavailable ? L.T("Non è più disponibile online e non è salvato sul dispositivo.")
+            : Main.Radio.Has(Id) ? L.T("Non è nella libreria: lo ascolti dal suo link.")
+            : L.T("Nel cloud: non è salvato sul dispositivo, lo ascolti dal suo link."));
+
+    // In the library (false: a suggested song, one heard from a link).
+    public bool InLibrary => !Main.Radio.Has(Id);
+
+    // The button next to the heart in the player: "+" into the library (in the cloud, nothing downloaded) for a song not in
+    // it, the download arrow for one of the library in the cloud.
+    public string SaveGlyph => InLibrary ? "" : "";
+    public string SaveTip => SavingTip ?? (!InLibrary ? L.T("Aggiungi alla libreria (senza scaricarlo)")
+        : IsUnavailable ? L.T("Riprova a salvarlo sul dispositivo") : L.T("Salva sul dispositivo"));
+
+    public void RefreshCloud() => OnChanged(nameof(IsSaved), nameof(IsCloud), nameof(IsUnavailable), nameof(ShowCloud), nameof(CloudGlyph), nameof(CloudTip),
+        nameof(SaveTip), nameof(SaveGlyph), nameof(InLibrary), nameof(IsSaving), nameof(SavePct), nameof(SaveIndeterminate));
+
+    public void RefreshSaving() => OnChanged(nameof(IsSaving), nameof(SavePct), nameof(SaveIndeterminate), nameof(ShowCloud), nameof(CloudTip), nameof(SaveTip));
 
     public void RefreshTags()
     {
@@ -151,6 +197,8 @@ public sealed class PlaylistViewModel : Observable
     public int Count => P.Tracks.Count(id => _main.Library.Get(id) != null);
     public string CountText => L.Count(Count, "1 brano", "{0} brani");
     public string Subtitle => "Playlist · " + CountText;
+    // Its songs not saved on the device.
+    public int CloudCount => P.Tracks.Count(id => _main.Library.Get(id) is { IsSaved: false });
 
     public string TotalText
     {
@@ -159,9 +207,14 @@ public sealed class PlaylistViewModel : Observable
             var secs = P.Tracks.Select(id => _main.Library.Get(id)?.Duration ?? 0).Sum();
             var t = TimeSpan.FromSeconds(secs);
             var dur = t.TotalHours >= 1 ? L.F("{0} h {1} min", (int)t.TotalHours, t.Minutes) : L.F("{0} min {1} s", t.Minutes, t.Seconds);
-            return Count == 0 ? L.T("Nessun brano") : $"{CountText} · {dur}";
+            if (Count == 0) return L.T("Nessun brano");
+            int cloud = CloudCount;
+            return $"{CountText} · {dur}" + (cloud == 0 ? "" : cloud == Count ? " · " + L.T("tutti nel cloud") : " · " + L.F("{0} nel cloud", cloud));
         }
     }
+
+    // The songs of the playlist, as they're shown.
+    public List<TrackViewModel> Songs => P.Tracks.ToList().Select(id => _main.Library.Get(id)).OfType<Track>().Select(_main.Vm).ToList();
 
     public bool HasCustomCover => P.HasCover;
     public ImageSource? CustomCover => P.HasCover ? Images.TryGet(_main.Profile.PlaylistCover(P), 400, P.CoverVersion) ?? Load() : null;

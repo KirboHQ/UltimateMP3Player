@@ -6,6 +6,8 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <!-- while choosing several things: the bar with what to do sits under the page (the last rows stay reachable) -->
+    <Grid RowDefinitions="*,Auto">
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Margin="16,12,16,8">
             <TextBlock Text="{local:T Cerca}" Classes="page-title" Margin="2,0,0,12"/>
@@ -153,4 +155,8 @@
             </DockPanel>
         </Panel>
     </DockPanel>
+    <!-- choosing several of your songs or playlists (Select in a menu) -->
+    <views:PickTop Picks="{Binding $parent[views:SearchPage].Picks}"/>
+    <views:PickActions Grid.Row="1" Picks="{Binding $parent[views:SearchPage].Picks}"/>
+    </Grid>
 </UserControl>

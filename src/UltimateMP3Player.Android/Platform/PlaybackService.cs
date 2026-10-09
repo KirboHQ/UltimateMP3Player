@@ -182,8 +182,8 @@ public sealed class PlaybackService : Service
             b.AddAction(Button(Resource.Drawable.ic_next, L.T("Successivo"), ActionNext, 3));
             b.AddAction(Button(c.IsFavorite ? Resource.Drawable.ic_heart : Resource.Drawable.ic_heart_outline,
                 L.T(c.IsFavorite ? "Togli dai Preferiti" : "Aggiungi ai Preferiti"), ActionFavorite, 4));
-            // Only in the cache: saved into the library (no playlist).
-            if (c.IsTemporary) b.AddAction(Button(Resource.Drawable.ic_download, L.T("Salva nella libreria"), ActionSave, 6));
+            // Not saved on the phone: "+" into the library (in the cloud), or the download arrow for one already in it.
+            if (c.IsTemporary) b.AddAction(Button(c.SaveIcon, c.SaveLabel, ActionSave, 6));
         }
         var style = new Notification.MediaStyle();
         if (c != null) style.SetMediaSession(c.Token);

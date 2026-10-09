@@ -710,12 +710,12 @@
                                 </CheckBox>
                             </StackPanel>
                         </StackPanel>
-                        <TextBlock Text="{local:T 'Brani tenuti sul computer (stanze e consigliati)'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T 'Memoria temporanea (brani non salvati)'}" Style="{StaticResource FieldLabel}"/>
                         <StackPanel Margin="0,0,0,16">
                             <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding TogetherCacheChoices}" SelectedItem="{Binding TogetherCacheSize}"
-                                      AutomationProperties.Name="{local:T 'Brani tenuti sul computer (stanze e consigliati)'}"/>
+                                      AutomationProperties.Name="{local:T 'Memoria temporanea (brani non salvati)'}"/>
                             <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
-                                       Text="{local:T 'I brani ascoltati nelle stanze o tra i consigliati che non sono nella tua libreria restano pronti per la prossima volta; oltre questo numero i più vecchi si cancellano (mai quelli ancora in coda). Salvandone uno nella libreria esce da qui.'}"/>
+                                       Text="{local:T 'I brani che ascolti senza averli salvati sul dispositivo (nel cloud, consigliati, nelle stanze) restano pronti per la prossima volta; oltre questo numero i più vecchi si cancellano (mai quelli in coda). Salvandone uno esce da qui.'}"/>
                             <TextBlock Text="{Binding TogetherCacheText}" Style="{StaticResource Hint}" Margin="0,4,0,10"/>
                             <WrapPanel>
                                 <Button Style="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ClearTogetherCacheCommand}">

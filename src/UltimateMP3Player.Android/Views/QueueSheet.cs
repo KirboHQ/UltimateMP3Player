@@ -47,9 +47,20 @@ public static class QueueSheet
         body.Children.Add(scroll);
         var template = Ui.Find<IDataTemplate>("QueueRowTemplate");
 
+        // Choosing several songs of the queue ("Select" in a song's menu): to the top or bottom, out, saved.
+        var picks = new Selection();
+        var root = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
+        root.Children.Add(body);
+        root.Children.Add(new PickTop { Picks = picks });
+        var actions = new PickActions { Picks = picks };
+        Grid.SetRow(actions, 1);
+        root.Children.Add(actions);
+        Selection.SetOwner(root, picks);
+
         void Fill()
         {
             rows.Children.Clear();
+            picks.SetItems(player.UpNext);
             hint.Text = player.GenerateHint;
             foreach (var r in player.UpNext)
             {
@@ -82,7 +93,7 @@ public static class QueueSheet
         player.RefreshUpNext();
         Fill();
         player.PropertyChanged += OnPlayer;
-        _ = Show(sheets, body, () => player.PropertyChanged -= OnPlayer);
+        _ = Show(sheets, root, () => player.PropertyChanged -= OnPlayer);
     }
 
     private static async Task Show(SheetHost sheets, Control body, Action closed)

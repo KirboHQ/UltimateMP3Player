@@ -11,7 +11,7 @@ namespace UltimateMP3Player;
 
 // The dialogs of the shared view models, as sheets from the bottom. On a phone nothing can wait for a dialog in one line
 // (the computer apps' ShowDialog): the view models await these.
-public static class Dialogs
+public static partial class Dialogs
 {
     // Bumped when the terms of use change: they're asked again.
     public const int TermsVersion = 1;

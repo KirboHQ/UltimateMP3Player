@@ -96,13 +96,20 @@ public static class Rows
     private static void OnRightClick(object? sender, PointerReleasedEventArgs e)
     {
         if (sender is not Control c || e.InitialPressMouseButton != MouseButton.Right || e.Handled) return;
+        // On an item where several are selected (Ctrl or Shift + click): the menu of all of them.
+        var many = GetMenu(c) is "card" or "playlist" or "queue" or "download" ? Menus.SelectionAround(c) : new List<object>();
         var menu = GetMenu(c) switch
         {
             "track" when c.DataContext is TrackRow row => Menus.MenuFor(row, c),
+            "card" when many.Count > 1 => Menus.ForSelection(SelectionBar.SongsOf(many), null),
             "card" when c.DataContext is TrackViewModel t => Menus.ForTrack(t, null),
+            "playlist" when many.OfType<PlaylistViewModel>().ToList() is { Count: > 1 } lists => Menus.ForPlaylists(lists),
             "playlist" when c.DataContext is PlaylistViewModel p => Menus.ForPlaylist(p),
             "tag" when c.DataContext is TagViewModel t => Menus.ForTag(t),
+            "queue" when many.OfType<QueueRow>().ToList() is { Count: > 1 } rows => Menus.ForQueueRows(rows),
             "queue" when c.DataContext is QueueRow q => Menus.ForQueue(q),
+            "download" when many.OfType<DownloadJobViewModel>().ToList() is { Count: > 1 } jobs => Menus.ForJobs(jobs),
+            "download" when c.DataContext is DownloadJobViewModel { Song: { } song } => Menus.ForTrack(song, song.Main.LibraryPage),
             "current" when App.Host.Session?.Player.Current is { } cur => Menus.ForTrack(cur, null),
             _ => null,
         };

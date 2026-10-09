@@ -49,8 +49,12 @@ public sealed class MediaControls : IDisposable
     public bool HasTrack => Title != null;
     public bool IsPlaying { get; private set; }
     public bool IsFavorite { get; private set; }
-    // Only in the cache, not in the library: the notification offers to save it.
+    // Not saved on the phone: the notification offers "+" (into the library, in the cloud) for a song not in the library,
+    // the download arrow (saved on the phone) for one of the library in the cloud.
     public bool IsTemporary { get; private set; }
+    public bool InLibrary { get; private set; }
+    public int SaveIcon => InLibrary ? Resource.Drawable.ic_download : Resource.Drawable.ic_add;
+    public string SaveLabel => L.T(InLibrary ? "Salva sul dispositivo" : "Aggiungi alla libreria");
 
     public void SetTrack(string? title, string? artist, string? album, string? coverPath, double duration)
     {
@@ -112,16 +116,17 @@ public sealed class MediaControls : IDisposable
         if (HasTrack)
             state.AddCustomAction(new PlaybackState.CustomAction.Builder(FavoriteAction, L.T(IsFavorite ? "Togli dai Preferiti" : "Aggiungi ai Preferiti"),
                 IsFavorite ? Resource.Drawable.ic_heart : Resource.Drawable.ic_heart_outline).Build());
-        // A song only in the cache (heard without downloading it, or suggested): into the library with a tap.
+        // A song not saved on the phone: into the library, or saved on the phone, with a tap.
         if (HasTrack && IsTemporary)
-            state.AddCustomAction(new PlaybackState.CustomAction.Builder(SaveAction, L.T("Salva nella libreria"), Resource.Drawable.ic_download).Build());
+            state.AddCustomAction(new PlaybackState.CustomAction.Builder(SaveAction, SaveLabel, SaveIcon).Build());
         _session.SetPlaybackState(state.Build());
     }
 
-    public void SetTemporary(bool temporary)
+    public void SetTemporary(bool temporary, bool inLibrary)
     {
-        if (IsTemporary == temporary) return;
+        if (IsTemporary == temporary && InLibrary == inLibrary) return;
         IsTemporary = temporary;
+        InLibrary = inLibrary;
         Publish();
         PlaybackService.Refresh();
     }

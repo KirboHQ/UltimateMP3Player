@@ -5,6 +5,7 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <Panel>
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Margin="0,8,0,4">
             <Grid ColumnDefinitions="*,Auto" Margin="18,6,10,10">
@@ -20,7 +21,7 @@
             </Border>
         </StackPanel>
 
-        <Panel>
+        <Grid RowDefinitions="*,Auto">
             <!-- the songs: the library's list itself -->
             <views:SongsPage x:Name="Songs" Embedded="True" IsVisible="False"/>
 
@@ -35,7 +36,7 @@
                             <TextBlock Grid.Column="1" Text="{local:T 'Nuova playlist'}" FontSize="15.5" FontWeight="SemiBold" Margin="14,0,0,0" VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
-                    <ItemsControl ItemsSource="{Binding Main.Playlists}" ItemTemplate="{StaticResource PlaylistRowTemplate}"/>
+                    <ItemsControl x:Name="PlaylistsList" ItemsSource="{Binding Main.Playlists}" ItemTemplate="{StaticResource PlaylistRowTemplate}"/>
                     <!-- songs that aren't in any playlist (to tidy up) -->
                     <Border Classes="row" Padding="16,7,16,7" Margin="0,4,0,0" Tapped="Unsorted_Tapped">
                         <Grid ColumnDefinitions="56,*">
@@ -68,6 +69,10 @@
                     <ItemsControl ItemsSource="{Binding Main.Tags}" ItemTemplate="{StaticResource TagRowTemplate}"/>
                 </StackPanel>
             </ScrollViewer>
-        </Panel>
+            <!-- choosing several playlists (Select in a menu): what to do, under the list -->
+            <views:PickActions Grid.Row="1" Picks="{Binding $parent[views:LibraryPage].ListPicks}"/>
+        </Grid>
     </DockPanel>
+    <views:PickTop Picks="{Binding $parent[views:LibraryPage].ListPicks}"/>
+    </Panel>
 </UserControl>

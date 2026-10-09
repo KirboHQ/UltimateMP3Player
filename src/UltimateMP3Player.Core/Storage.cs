@@ -164,6 +164,9 @@ public sealed class AppSettings
     public bool SearchParallel { get; set; } = true;
     // Lyrics searched by themselves: for new songs and for the song playing, when never searched before.
     public bool AutoLyrics { get; set; } = true;
+    // The songs of a link get their audio saved on the device (the last choice of the download card); off = they go into
+    // the library and the playlist in the cloud, heard from their link.
+    public bool SaveLinkAudio { get; set; } = true;
     public double WindowWidth { get; set; } = 1280;
     public double WindowHeight { get; set; } = 820;
     public bool WindowMaximized { get; set; }

@@ -24,11 +24,14 @@ public partial class DownloadsView : UserControl
             if (e.Source is Button { Classes: var c } b && c.Contains("tags") && b.DataContext is LinkViewModel link && App.Host.Session is { } main)
                 Menus.Open(Menus.TagPicker(link.TagIds, main, link.OnTagsChosen), b, true);
         });
-        // A downloaded song has the usual song menu; a double click plays it within "All songs".
+        // A downloaded song has the usual song menu (several selected downloads, theirs); a double click plays it within "All songs".
         JobList.AddHandler(PointerReleasedEvent, (_, e) =>
         {
-            if (e.InitialPressMouseButton != MouseButton.Right || Job(e.Source) is not { Song: { } t } || Ui.FindAncestor<Border>(e.Source as Visual) is not { } row) return;
-            Menus.Open(Menus.ForTrack(t, t.Main.LibraryPage), row, false);
+            if (e.InitialPressMouseButton != MouseButton.Right || Ui.FindAncestor<Border>(e.Source as Visual) is not { } row) return;
+            var many = Menus.SelectionAround(row).OfType<DownloadJobViewModel>().ToList();
+            if (many.Count > 1) Menus.Open(Menus.ForJobs(many), row, false);
+            else if (Job(e.Source) is { Song: { } t }) Menus.Open(Menus.ForTrack(t, t.Main.LibraryPage), row, false);
+            else return;
             e.Handled = true;
         });
         JobList.DoubleTapped += (_, e) =>

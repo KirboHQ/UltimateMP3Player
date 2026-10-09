@@ -1080,7 +1080,8 @@ public sealed class TogetherViewModel : Observable
             foreach (var t in pool) _randomUsed.Remove(t.Id);
             fresh = pool.Where(t => !inRoom.Contains(t.Id)).ToList();
         }
-        var pick = fresh.OrderBy(_ => Random.Shared.Next()).Where(t => File.Exists(t.Path)).Take(want).Select(_main.Vm).ToList();
+        // (a song in the cloud too: everyone gets it from its link)
+        var pick = fresh.OrderBy(_ => Random.Shared.Next()).Where(t => t.HasSavedFile || t.HasLink).Take(want).Select(_main.Vm).ToList();
         if (pick.Count == 0)
         {
             _main.Toast(L.T("In questa lista non ci sono altri brani da aggiungere."));
@@ -1125,7 +1126,7 @@ public sealed class TogetherViewModel : Observable
                         if (list.Count >= want || inRoom.Contains(key) || _suggestedUsed.Contains(key)) continue;
                         var keys = SourceKeys.ForItem(new MediaItem { Url = h.Url, PageUrl = h.Url });
                         var have = lib.FindByKeys(keys) ?? lib.FindSimilar(h.Title, h.Artist, h.Duration);
-                        list.Add((h, have != null && File.Exists(have.Path) ? have : null));
+                        list.Add((h, have != null && (have.HasSavedFile || have.HasLink) ? have : null));
                         inRoom.Add(key);
                     }
                     if (hits.Count == 0) break;
@@ -1193,7 +1194,7 @@ public sealed class TogetherViewModel : Observable
         var picks = items.Select(it =>
         {
             var have = lib.FindByKeys(SourceKeys.ForItem(it)) ?? (it.Source == SourceKind.Search ? lib.FindSimilar(it.Title, it.Artist, it.Duration) : null);
-            return (Item: it, Have: have != null && File.Exists(have.Path) ? have : null);
+            return (Item: it, Have: have != null && (have.HasSavedFile || have.HasLink) ? have : null);
         }).ToList();
         var tracks = picks.Select(p => p.Have != null ? RoomTrackFor(_main.Vm(p.Have)) : LinkTrack(p.Item)).ToList();
         var covers = await Task.Run(async () =>
@@ -1257,7 +1258,7 @@ public sealed class TogetherViewModel : Observable
         return new RoomTrack
         {
             Title = t.Title, Artist = t.Artist, Album = t.Album, Duration = t.Duration, SourceUrl = web ? t.SourceUrl : null, Site = t.Site,
-            Keys = t.Keys.ToList(), ArtUrl = t.ArtUrl, Wave = t.Wave, Loudness = t.Loudness, Peak = t.Peak, Bpm = t.Bpm, Ext = Path.GetExtension(t.Path),
+            Keys = t.Keys.ToList(), ArtUrl = t.ArtUrl, Wave = t.Wave, Loudness = t.Loudness, Peak = t.Peak, Bpm = t.Bpm, Ext = Path.GetExtension(t.AudioPath ?? t.Path),
         };
     }
 
@@ -1597,6 +1598,22 @@ public sealed class TogetherViewModel : Observable
             var name = Text.SafeFileName(string.IsNullOrWhiteSpace(r.Artist) ? r.Title : $"{r.Artist.Split(',')[0].Trim()} - {r.Title}");
             var target = Text.UniquePath(dir, name, Path.GetExtension(from));
             await Task.Run(() => File.Copy(from, target));
+            // A song of your library in the cloud: this file becomes its saved one (no second copy of the song).
+            if (r.Keys.Count > 0 && _main.Library.FindByKeys(r.Keys) is { IsSaved: false } cloud)
+            {
+                cloud.Path = target;
+                cloud.Unavailable = false;
+                cloud.Wave ??= r.Wave;
+                cloud.Loudness ??= r.Loudness;
+                cloud.Peak ??= r.Peak;
+                _main.Library.Changed(cloud);
+                if (playlist != null) _main.Profile.AddTrack(playlist, cloud.Id);
+                _fetcher?.UseLibrary(r.Id, cloud);
+                if (Cache.Contains(from)) Cache.Forget(from);
+                item.Refresh();
+                _main.Toast(L.F("«{0}» salvato sul dispositivo", cloud.Title));
+                return cloud;
+            }
             var t = new Track
             {
                 Title = r.Title, Artist = r.Artist, Album = r.Album, Duration = r.Duration, Path = target, SourceUrl = r.SourceUrl,

@@ -79,17 +79,30 @@
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="{Binding Player.Current.Title}" FontSize="21" FontWeight="Bold" TextTrimming="CharacterEllipsis"
                                local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
-                    <TextBlock Text="{Binding Player.Current.Artist}" FontSize="15" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
-                               Margin="0,3,0,0" IsVisible="{Binding !Player.IsWaiting}" local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
+                    <!-- the artist; before it a small cloud when the song isn't saved on the phone (only a sign) -->
+                    <DockPanel Margin="0,3,0,0" IsVisible="{Binding !Player.IsWaiting}">
+                        <TextBlock DockPanel.Dock="Left" Classes="glyph cloud" Classes.gone="{Binding Player.Current.IsUnavailable, FallbackValue=False}"
+                                   Text="{Binding Player.Current.CloudGlyph, Converter={x:Static views:Converters.Glyph}}" FontSize="14" Margin="0,0,7,0"
+                                   VerticalAlignment="Center" IsVisible="{Binding Player.Current.IsCloud, FallbackValue=False}"/>
+                        <TextBlock Text="{Binding Player.Current.Artist}" FontSize="15" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                                   local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
+                    </DockPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0" IsVisible="{Binding Player.IsWaiting}">
                         <Ellipse Classes="spinner" Width="13" Height="13" StrokeThickness="1.8"/>
                         <TextBlock Text="{Binding Player.WaitText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" Margin="8,0,0,0"/>
                     </StackPanel>
                 </StackPanel>
-                <!-- only in the cache (heard without downloading it, or suggested): into the library -->
+                <!-- not saved on the phone: "+" puts a suggested song (or one heard from a link) into the library, in the cloud; the
+                     download arrow saves a song of the library on the phone; a ring while it's saved -->
                 <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="50" Height="50" Command="{Binding Player.SaveCurrentCommand}"
                         IsVisible="{Binding Player.IsTemporary, FallbackValue=False}">
-                    <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="23"/>
+                    <Panel>
+                        <TextBlock Text="{Binding Player.Current.SaveGlyph, Converter={x:Static views:Converters.Glyph}}" Classes="glyph" FontSize="23"
+                                   IsVisible="{Binding Player.Current.ShowCloud, FallbackValue=False}"/>
+                        <views:ProgressRing Width="24" Height="24" Value="{Binding Player.Current.SavePct}" IsIndeterminate="{Binding Player.Current.SaveIndeterminate}"
+                                            Stroke="{DynamicResource AccentBrush}" Track="{StaticResource Surface3Brush}"
+                                            IsVisible="{Binding Player.Current.IsSaving, FallbackValue=False}"/>
+                    </Panel>
                 </Button>
                 <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Width="50" Height="50" Command="{Binding Player.FavoriteCommand}">
                     <TextBlock Classes="heart" Classes.fav="{Binding Player.Current.IsFavorite}" FontSize="25"

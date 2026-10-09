@@ -228,7 +228,7 @@
                             <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
                                        local:Marquee.IsEnabled="True"/>
                             <TextBlock Text="{local:T 'Nessun brano: premi Carica.'}" Classes="hint"
-                                       IsVisible="{Binding !HasTrack}"/>
+                                       IsVisible="{Binding ShowEmptyHint}"/>
                         </StackPanel>
                     </DockPanel>
 

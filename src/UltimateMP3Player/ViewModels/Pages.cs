@@ -61,9 +61,15 @@ public sealed class HomeViewModel : Observable
     public bool IsEmpty => _main.Library.Count == 0;
     public TrackListSource RecentList { get; private set; } = new("recent", "", new List<TrackViewModel>());
 
+    // Songs in "Recently played".
+    public const int RecentCount = 12;
+
+    // A song of the library, or one heard without saving it (suggested, from a link, in a room: RadioViewModel keeps them).
+    private Track? Heard(string id) => _main.Library.Get(id) ?? _main.Radio.Track(id);
+
     public void Refresh()
     {
-        Recent = _main.Profile.RecentTracks(12).Select(id => _main.Library.Get(id)).Where(t => t != null).Select(t => _main.Vm(t!)).ToList();
+        Recent = _main.Profile.RecentTracks(RecentCount, id => Heard(id) != null).Select(id => _main.Vm(Heard(id)!)).ToList();
         RecentList = new TrackListSource("recent", L.T("Ascoltati di recente"), Recent);
         var added = _main.Library.Snapshot().OrderByDescending(t => t.Added).Take(8).Select(_main.Vm).ToList();
         var addedList = new TrackListSource("added", L.T("Aggiunti di recente"), added);
@@ -101,9 +107,39 @@ public sealed class LibraryViewModel : Observable, ITrackList
         _sort = Sorts.FirstOrDefault(s => (string)s.Value! == main.Profile.Data.LibrarySort) ?? Sorts[0];
         PlayCommand = new RelayCommand(() => _main.Player.PlayAll(this, false), () => _order.Count > 0);
         ShuffleCommand = new RelayCommand(() => _main.Player.PlayAll(this, true), () => _order.Count > 0);
+        ToggleOnDeviceCommand = new RelayCommand(() => OnDevice = !OnDevice);
+        SaveAllCommand = new RelayCommand(() => _ = _main.SaveToDevice(_order.Where(t => t.IsCloud).ToList()), () => CloudCount > 0);
         if (unsorted) _dirty = true;
         else Rebuild();
     }
+
+    // Only the songs saved on the device (the ones in the cloud hidden): the same for every library page of the profile.
+    public bool OnDevice
+    {
+        get => _main.Profile.Data.LibraryOnDevice;
+        set
+        {
+            if (_main.Profile.Data.LibraryOnDevice == value) return;
+            _main.Profile.Data.LibraryOnDevice = value;
+            _main.Profile.Save();
+            _main.OnDeviceFilterChanged();
+        }
+    }
+
+    public ICommand ToggleOnDeviceCommand { get; }
+    // Every song of the page in the cloud saved on the device.
+    public ICommand SaveAllCommand { get; }
+    // Songs of the page in the cloud (all of them, also when hidden).
+    public int CloudCount { get; private set; }
+    public bool HasCloud => CloudCount > 0;
+    public string OnDeviceTip => OnDevice
+        ? L.T("Mostra anche i brani nel cloud (non salvati sul dispositivo)")
+        : L.T("Mostra solo i brani salvati sul dispositivo");
+    // Next to the count of the songs, while some are in the cloud: the filter, and saving them all.
+    public bool ShowOnDeviceToggle => HasCloud || OnDevice;
+    public string OnDeviceLabel => OnDevice ? L.T("Mostra anche quelli nel cloud") : L.T("Solo sul dispositivo");
+    public bool ShowSaveAll => HasCloud && !OnDevice;
+    public string SaveAllLabel => L.Count(CloudCount, "Salva quello nel cloud", "Salva tutti quelli nel cloud");
 
     public bool Unsorted { get; }
     public TagViewModel? Tag { get; }
@@ -186,20 +222,26 @@ public sealed class LibraryViewModel : Observable, ITrackList
             TaggedPlaylists = _main.Playlists.Where(p => p.P.Tags.Contains(id)).ToList();
             OnChanged(nameof(TaggedPlaylists), nameof(HasTaggedPlaylists), nameof(Title), nameof(ContextName));
         }
+        var all = tracks.ToList();
+        CloudCount = all.Count(t => !t.IsSaved);
+        if (OnDevice) all = all.Where(t => t.IsSaved).ToList();
         IEnumerable<Track> sorted = (string)_sort.Value! switch
         {
-            "title" => tracks.OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase),
-            "artist" => tracks.OrderBy(t => t.Artist ?? "￿", StringComparer.CurrentCultureIgnoreCase).ThenBy(t => t.Album).ThenBy(t => t.Title),
-            "album" => tracks.OrderBy(t => t.Album ?? "￿", StringComparer.CurrentCultureIgnoreCase).ThenBy(t => t.Title),
-            "duration" => tracks.OrderBy(t => t.Duration),
-            _ => tracks.OrderByDescending(t => t.Added),
+            "title" => all.OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase),
+            "artist" => all.OrderBy(t => t.Artist ?? "￿", StringComparer.CurrentCultureIgnoreCase).ThenBy(t => t.Album).ThenBy(t => t.Title),
+            "album" => all.OrderBy(t => t.Album ?? "￿", StringComparer.CurrentCultureIgnoreCase).ThenBy(t => t.Title),
+            "duration" => all.OrderBy(t => t.Duration),
+            _ => all.OrderByDescending(t => t.Added),
         };
         _order = sorted.Select(_main.Vm).ToList();
         var total = TimeSpan.FromSeconds(_order.Sum(t => t.T.Duration));
         CountText = _order.Count == 0 ? "" : L.Count(_order.Count, "1 brano", "{0} brani") + " · " +
-                    (total.TotalHours >= 1 ? L.F("{0} h {1} min", (int)total.TotalHours, total.Minutes) : L.F("{0} min", total.Minutes));
+                    (total.TotalHours >= 1 ? L.F("{0} h {1} min", (int)total.TotalHours, total.Minutes) : L.F("{0} min", total.Minutes)) +
+                    (OnDevice ? CloudCount > 0 ? " · " + L.F("{0} nel cloud nascosti", CloudCount) : ""
+                        : CloudCount > 0 ? " · " + L.F("{0} nel cloud", CloudCount) : "");
         ApplyFilter();
-        OnChanged(nameof(CountText), nameof(IsEmpty));
+        OnChanged(nameof(CountText), nameof(IsEmpty), nameof(OnDevice), nameof(OnDeviceTip), nameof(CloudCount), nameof(HasCloud),
+            nameof(ShowOnDeviceToggle), nameof(OnDeviceLabel), nameof(ShowSaveAll), nameof(SaveAllLabel));
     }
 
     public void EnsureFresh()
@@ -223,9 +265,16 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
         CoverCommand = new RelayCommand(() => _ = _main.ChangePlaylistCover(Vm), () => !Vm.IsFavorites);
         RemoveCoverCommand = new RelayCommand(() => _main.RemovePlaylistCover(Vm), () => Vm.HasCustomCover);
         DeleteCommand = new RelayCommand(() => _ = _main.DeletePlaylist(Vm), () => !Vm.IsFavorites);
+        SaveAllCommand = new RelayCommand(() => _ = _main.SaveToDevice(_order.Where(t => t.IsCloud).ToList()), () => CloudCount > 0);
         TagFilter.Changed += ApplyFilter;
         Rebuild();
     }
+
+    // Its songs in the cloud, saved on the device all at once.
+    public ICommand SaveAllCommand { get; }
+    public int CloudCount { get; private set; }
+    public bool ShowSaveAll => CloudCount > 0;
+    public string SaveAllLabel => L.Count(CloudCount, "Salva quello nel cloud", "Salva tutti quelli nel cloud");
 
     public TagFilter TagFilter { get; } = new();
 
@@ -262,9 +311,10 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
     public void Rebuild()
     {
         _order = Vm.P.Tracks.ToList().Select(id => _main.Library.Get(id)).Where(t => t != null).Select(t => _main.Vm(t!)).ToList();
+        CloudCount = _order.Count(t => t.IsCloud);
         ApplyFilter();
         Vm.Refresh();
-        OnChanged(nameof(IsEmpty));
+        OnChanged(nameof(IsEmpty), nameof(CloudCount), nameof(ShowSaveAll), nameof(SaveAllLabel));
     }
 }
 

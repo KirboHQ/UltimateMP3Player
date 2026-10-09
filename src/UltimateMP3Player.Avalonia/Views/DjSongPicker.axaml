@@ -31,8 +31,14 @@
                     <ContentControl Grid.Column="1" Width="42" Height="42" Margin="8,0,0,0" Content="{Binding}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                     <StackPanel Grid.Column="2" Margin="14,0,10,0" VerticalAlignment="Center">
                         <TextBlock Classes="title" Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                        <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
-                                   Margin="0,2,0,0" local:Marquee.IsEnabled="True"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                            <!-- in the cloud: downloaded for the deck when it's loaded -->
+                            <TextBlock Text="{local:Icon E753}" Classes="glyph" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,6,0"
+                                       VerticalAlignment="Center" IsVisible="{Binding IsCloud}"
+                                       ToolTip.Tip="{local:T 'Non è salvato sul dispositivo: si scarica quando lo carichi sul deck'}"/>
+                            <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                                       local:Marquee.IsEnabled="True"/>
+                        </StackPanel>
                     </StackPanel>
                     <TextBlock Grid.Column="3" Text="{Binding BpmText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Right"
                                VerticalAlignment="Center" Margin="0,0,14,0"/>

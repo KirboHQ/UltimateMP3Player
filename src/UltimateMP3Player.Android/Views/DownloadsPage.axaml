@@ -50,7 +50,7 @@
                     </ItemsControl>
 
                     <!-- where it goes -->
-                    <TextBlock Text="{local:T 'Salva nella playlist'}" Classes="field-label" Margin="4,18,0,8"/>
+                    <TextBlock Text="{local:T 'Nella playlist'}" Classes="field-label" Margin="4,18,0,8"/>
                     <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="Playlist_Click">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="{Binding Playlist.Label}" FontWeight="Normal" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
@@ -85,9 +85,16 @@
                             <TextBlock Grid.Column="1" Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
                         </Grid>
                     </Button>
-                    <CheckBox Theme="{StaticResource Switch}" Margin="4,16,2,0" IsChecked="{Binding WithVideo}" IsVisible="{Binding HasVideo}">
+                    <!-- the audio downloaded onto the phone, or the songs only added (in the cloud): the last choice is kept -->
+                    <CheckBox Theme="{StaticResource Switch}" Margin="4,16,2,0" IsChecked="{Binding SaveAudio}">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Scarica anche il video'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Salva l\'audio sul dispositivo'}" Classes="setting"/>
+                            <TextBlock Text="{Binding SaveAudioHint}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
+                    <CheckBox Theme="{StaticResource Switch}" Margin="4,16,2,0" IsChecked="{Binding WithVideo}" IsVisible="{Binding ShowVideoChoice}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Anche il video'}" Classes="setting"/>
                             <TextBlock Text="{local:T 'Lo vedrai nella schermata del brano (occupa più spazio)'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
@@ -95,7 +102,7 @@
                     <Button Theme="{StaticResource TouchPrimary}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,18,0,4"
                             Command="{Binding DownloadCommand}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{local:Icon E896}" Classes="glyph"/>
+                            <TextBlock Text="{Binding DownloadGlyph, Converter={x:Static views:Converters.Glyph}}" Classes="glyph"/>
                             <TextBlock Text="{Binding DownloadLabel}" Margin="8,0,0,0"/>
                         </StackPanel>
                     </Button>
@@ -104,7 +111,7 @@
                             Command="{Binding ListenCommand}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E768}" Classes="glyph"/>
-                            <TextBlock Text="{local:T 'Ascolta senza scaricare'}" Margin="8,0,0,0"/>
+                            <TextBlock Text="{local:T 'Ascolta senza salvare'}" Margin="8,0,0,0"/>
                         </StackPanel>
                     </Button>
                     <TextBlock Text="{local:T 'Resta per un po\' nella memoria temporanea, senza entrare nella libreria: se ti piace lo salvi quando vuoi.'}"
@@ -148,6 +155,8 @@
         </DataTemplate>
     </UserControl.DataTemplates>
 
+    <!-- while choosing several things: the bar with what to do sits under the page (the last rows stay reachable) -->
+    <Grid RowDefinitions="*,Auto">
     <ScrollViewer x:Name="Scroller">
         <StackPanel Margin="16,12,16,24">
             <TextBlock Text="{local:T 'Scarica musica'}" Classes="page-title" Margin="2,0,0,12"/>
@@ -204,8 +213,17 @@
                             <TextBlock Text="{Binding Error}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
                             <TextBlock Text="{Binding ErrorHint}" Classes="hint" Margin="0,6,0,0" IsVisible="{Binding ErrorHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                             <!-- a login is needed: the sites' logins, right here -->
-                            <Button Theme="{StaticResource SmallGhost}" Content="{local:T 'Accedi al sito'}" HorizontalAlignment="Left" Margin="0,10,0,0"
-                                    Click="Logins_Click" IsVisible="{Binding SuggestCookies}"/>
+                            <WrapPanel Margin="0,2,0,0">
+                                <Button Theme="{StaticResource SmallGhost}" Content="{local:T 'Accedi al sito'}" Margin="0,8,8,0"
+                                        Click="Logins_Click" IsVisible="{Binding SuggestCookies}"/>
+                                <!-- protected (DRM), removed, private: the same song from YouTube Music -->
+                                <Button Theme="{StaticResource SmallGhost}" Margin="0,8,8,0" Command="{Binding TryYouTubeCommand}" IsVisible="{Binding CanTryYouTube}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="12"/>
+                                        <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
                         </StackPanel>
                         <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Width="38" Height="38" FontSize="13" Content="{local:Icon E711}" Command="{Binding DismissCommand}"
                                 VerticalAlignment="Top"/>
@@ -265,33 +283,45 @@
                         </StackPanel>
                     </Button>
                 </WrapPanel>
-                <ItemsControl ItemsSource="{Binding Queue.Jobs}">
+                <ItemsControl x:Name="JobList" ItemsSource="{Binding Queue.Jobs}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="vm:DownloadJobViewModel">
-                            <!-- finished: a long press opens the song's menu (similar songs, playlists…) -->
-                            <Border Padding="2,8" Background="Transparent" views:Touch.Menu="download">
+                            <!-- finished: a long press opens the song's menu (similar songs, playlists…); a tick while choosing several -->
+                            <Border Classes="row" CornerRadius="12" Padding="2,8" views:Touch.Menu="download" views:Selection.Tick="True">
 
-                                <Grid ColumnDefinitions="Auto,*,Auto">
-                                    <Panel Width="48" Height="48" VerticalAlignment="Top">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                    <Border Classes="tick" Margin="6,0,12,0">
+                                        <TextBlock Classes="glyph" Text="{local:Icon E73E}" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                                    </Border>
+                                    <Panel Grid.Column="1" Width="48" Height="48" VerticalAlignment="Top">
                                         <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
                                             <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
                                         </Border>
                                         <views:CoverImage CornerRadius="6" Source="{Binding Thumb}"/>
                                     </Panel>
-                                    <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" FontSize="14.5"/>
                                         <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12.5" Foreground="{StaticResource MutedBrush}" Margin="0,1,0,0"/>
                                         <ProgressBar Margin="0,6,0,2" Value="{Binding Percent, Mode=OneWay}" IsIndeterminate="{Binding Indeterminate}" IsVisible="{Binding IsRunning}"/>
                                         <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}" FontSize="12.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                        <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding RetryYouTubeCommand}"
-                                                IsVisible="{Binding CanRetryYouTube}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="12"/>
-                                                <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
-                                            </StackPanel>
-                                        </Button>
+                                        <WrapPanel>
+                                            <!-- private, age-restricted…: the site's page to sign in, then it's tried again -->
+                                            <Button Theme="{StaticResource SmallGhost}" Margin="0,8,8,0" Click="JobLogin_Click" IsVisible="{Binding NeedsLogin}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{local:Icon E72E}" Classes="glyph" FontSize="12"/>
+                                                    <TextBlock Text="{local:T 'Accedi al sito'}" Margin="7,0,0,0"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Theme="{StaticResource SmallGhost}" Margin="0,8,8,0" Command="{Binding RetryYouTubeCommand}"
+                                                    IsVisible="{Binding CanRetryYouTube}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="12"/>
+                                                    <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </WrapPanel>
                                     </StackPanel>
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E768}" Command="{Binding PlayCommand}" IsVisible="{Binding CanPlay}"/>
                                         <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E72C}" Command="{Binding RetryCommand}" IsVisible="{Binding CanRetry}"/>
                                         <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" FontSize="15" Command="{Binding CancelCommand}" IsVisible="{Binding IsActive}"/>
@@ -305,4 +335,8 @@
             </StackPanel>
         </StackPanel>
     </ScrollViewer>
+    <!-- choosing several downloads (Select in a menu) -->
+    <views:PickTop Picks="{Binding $parent[views:DownloadsPage].Picks}"/>
+    <views:PickActions Grid.Row="1" Picks="{Binding $parent[views:DownloadsPage].Picks}"/>
+    </Grid>
 </UserControl>

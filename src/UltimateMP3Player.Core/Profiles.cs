@@ -148,6 +148,8 @@ public sealed class ProfileData
     public string? LastTrack { get; set; }
     public QueueState? Queue { get; set; }
     public string LibrarySort { get; set; } = "added";
+    // The library pages show only the songs saved on the device (not the ones in the cloud).
+    public bool LibraryOnDevice { get; set; }
     // Theme id ("ultimate", "pink"...) or "profile".
     public string Theme { get; set; } = "ultimate";
     public List<Tag> Tags { get; set; } = new();
@@ -156,7 +158,7 @@ public sealed class ProfileData
     // Song id → how much it was listened to, counted since StatsSince.
     public Dictionary<string, TrackStats> Stats { get; set; } = new();
     public DateTime? StatsSince { get; set; }
-    // Suggested songs (not in the library) the saved queue refers to.
+    // Songs not in the library (suggested, heard from a link or in a room) the saved queue or the recently played refer to.
     public List<RadioSong> Radio { get; set; } = new();
 }
 
@@ -527,16 +529,40 @@ public sealed class Profile
         if (save) Save();
     }
 
-    public List<string> RecentTracks(int count)
+    // The last songs heard, newest first, each once. exists: the ones that can still be shown (songs no longer around are
+    // skipped, not counted).
+    public List<string> RecentTracks(int count, Func<string, bool>? exists = null)
     {
         lock (_lock)
         {
             var seen = new HashSet<string>();
             var list = new List<string>();
             for (int i = Data.History.Count - 1; i >= 0 && list.Count < count; i--)
-                if (seen.Add(Data.History[i].TrackId)) list.Add(Data.History[i].TrackId);
+                if (seen.Add(Data.History[i].TrackId) && (exists == null || exists(Data.History[i].TrackId))) list.Add(Data.History[i].TrackId);
             return list;
         }
+    }
+
+    // A song heard without being in the library and then kept in it: its listens (recently played, statistics) are the
+    // library song's.
+    public void RenameHistory(string oldId, string newId)
+    {
+        lock (_lock)
+        {
+            foreach (var h in Data.History)
+                if (h.TrackId == oldId) h.TrackId = newId;
+            if (Data.Stats.Remove(oldId, out var s))
+            {
+                if (Data.Stats.TryGetValue(newId, out var had))
+                {
+                    had.Plays += s.Plays;
+                    had.Seconds += s.Seconds;
+                    if (s.Last > had.Last || had.Last == null) had.Last = s.Last;
+                }
+                else Data.Stats[newId] = s;
+            }
+        }
+        Save();
     }
 
     public void Save() => _saver.Request();

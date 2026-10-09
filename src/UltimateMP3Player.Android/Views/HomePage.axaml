@@ -6,7 +6,8 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
-    <Panel>
+    <!-- while choosing several things: the bar with what to do sits under the page (the last rows stay reachable) -->
+    <Grid RowDefinitions="*,Auto">
         <!-- its colour on top is MainView's Backdrop, which goes up behind the status bar -->
         <ScrollViewer x:Name="Scroller">
             <StackPanel Margin="0,10,0,24">
@@ -97,5 +98,8 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
-    </Panel>
+        <!-- choosing several (Select in a menu): how many on top, what to do at the bottom -->
+        <views:PickTop Picks="{Binding $parent[views:HomePage].Picks}"/>
+        <views:PickActions Grid.Row="1" Picks="{Binding $parent[views:HomePage].Picks}"/>
+    </Grid>
 </UserControl>

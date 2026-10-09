@@ -11,9 +11,13 @@ public partial class LibraryPage : UserControl, IPage
     private LibraryHub? _hub;
     private bool _syncing;
 
+    // Choosing several playlists.
+    public Selection ListPicks { get; } = new();
+
     public LibraryPage()
     {
         InitializeComponent();
+        Selection.SetOwner(PlaylistsList, ListPicks);
         DataContextChanged += (_, _) => Attach();
         TabSongs.IsCheckedChanged += (_, _) => Pick(0, TabSongs);
         TabLists.IsCheckedChanged += (_, _) => Pick(1, TabLists);
@@ -27,7 +31,16 @@ public partial class LibraryPage : UserControl, IPage
         if (_hub == null) return;
         _hub.PropertyChanged += OnHub;
         Songs.DataContext = _hub.Main.LibraryPage;
+        var lists = _hub.Main.Playlists;
+        lists.CollectionChanged -= OnPlaylists;
+        lists.CollectionChanged += OnPlaylists;
+        ListPicks.SetItems(lists);
         Show();
+    }
+
+    private void OnPlaylists(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (_hub != null) ListPicks.SetItems(_hub.Main.Playlists);
     }
 
     private void OnHub(object? sender, PropertyChangedEventArgs e)
@@ -52,6 +65,7 @@ public partial class LibraryPage : UserControl, IPage
         Songs.IsVisible = tab == 0;
         ListsPane.IsVisible = tab == 1;
         TagsPane.IsVisible = tab == 2;
+        if (tab != 1) ListPicks.Stop();
         if (tab == 0)
         {
             _hub?.Main.LibraryPage.EnsureFresh();
@@ -83,7 +97,15 @@ public partial class LibraryPage : UserControl, IPage
         if (_hub?.Main is { } main) main.Navigate(main.UnsortedPage);
     }
 
-    public bool Back() => Songs.IsVisible && Songs.Back();
+    public bool Back()
+    {
+        if (ListPicks.IsActive)
+        {
+            ListPicks.Stop();
+            return true;
+        }
+        return Songs.IsVisible && Songs.Back();
+    }
 
     public void ScrollToTop()
     {

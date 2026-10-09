@@ -32,17 +32,20 @@ public static class PackDialogs
     public sealed record ExportList(Playlist P, string Name, string CountText, Func<Control> Cover);
     public sealed record ExportTag(Tag T, IBrush Brush, int Count);
 
-    public static void Export(MainViewModel main, PlaylistViewModel? playlist = null, TagViewModel? tag = null)
+    // many: several playlists chosen together (selected on Home).
+    public static void Export(MainViewModel main, PlaylistViewModel? playlist = null, TagViewModel? tag = null, IReadOnlyCollection<PlaylistViewModel>? many = null)
     {
         var lists = main.Playlists.Select(p => new ExportList(p.P, p.Name, p.CountText,
             () => new ContentControl { Content = p, ContentTemplate = Ui.Find<IDataTemplate>("PlaylistCover") })).ToList();
         var tags = main.Tags.Select(t => new ExportTag(t.T, t.Brush, t.Count)).ToList();
-        BuildExport(main.Library, main.Profile, lists, tags, playlist?.P, tag?.T).ShowDialog();
+        var chosen = (many ?? Array.Empty<PlaylistViewModel>()).Select(p => p.P).ToList();
+        if (playlist != null) chosen.Add(playlist.P);
+        BuildExport(main.Library, main.Profile, lists, tags, chosen, tag?.T).ShowDialog();
     }
 
-    public static DialogWindow BuildExport(Library lib, Profile profile, List<ExportList> lists, List<ExportTag> tags, Playlist? playlist, Tag? tag)
+    public static DialogWindow BuildExport(Library lib, Profile profile, List<ExportList> lists, List<ExportTag> tags, IReadOnlyCollection<Playlist> chosen, Tag? tag)
     {
-        var pickedLists = lists.Where(l => l.P == playlist).ToHashSet();
+        var pickedLists = lists.Where(l => chosen.Contains(l.P)).ToHashSet();
         var pickedTags = tags.Where(t => t.T == tag).ToHashSet();
         bool whole = false;
         // Every choice refreshes the summary (set once all the parts exist).
@@ -296,13 +299,14 @@ public static class PackDialogs
                 return;
             }
             var songs = await Task.Run(() => PackImporter.Analyze(pack, main.Library));
-            BuildImport(pack, songs, main.Library, main.Profile, main.Host.Settings.MusicDir, main.Host.EnsureEnginesAsync, r => result = r).ShowDialog();
+            BuildImport(pack, songs, main.Library, main.Profile, main.Host.Settings.MusicDir, main.Host.EnsureEnginesAsync, r => result = r, main.Host.Settings).ShowDialog();
         }
         if (result == null) return;
 
         main.QueuePackDownloads(result);
         var parts = new List<string>();
         if (result.Added > 0) parts.Add(L.Count(result.Added, "1 brano aggiunto", "{0} brani aggiunti"));
+        if (result.Cloud > 0) parts.Add(L.F("{0} nel cloud", result.Cloud));
         if (result.Present > 0) parts.Add(L.F("{0} già nella libreria", result.Present));
         if (result.Downloads.Count > 0) parts.Add(L.F("{0} in download", result.Downloads.Count));
         if (result.Missing + result.Failed > 0) parts.Add(L.Count(result.Missing + result.Failed, "1 non disponibile", "{0} non disponibili"));
@@ -318,8 +322,10 @@ public static class PackDialogs
 
     // done: what was imported (the dialog closes by itself right after).
     public static DialogWindow BuildImport(PackFile pack, List<PackSong> songs, Library lib, Profile profile, string musicDir, Func<Task> ensureEngines,
-        Action<PackImportResult> done)
+        Action<PackImportResult> done, AppSettings? settings = null)
     {
+        // The songs that travelled as links: downloaded, or into the library in the cloud (the last choice, like the links).
+        bool cloud = settings != null && !settings.SaveLinkAudio;
         var m = pack.Manifest;
         var rows = songs.Select(s => new PackSongRow(s, pack)).ToList();
         var pickedLists = m.Playlists.Select(p => p.Id).ToHashSet();
@@ -460,6 +466,30 @@ public static class PackDialogs
             inputs.Children.Add(othersBox);
         }
 
+        // ---- songs that are only links: their audio saved, or in the cloud
+        if (CountOf(PackSongState.Download) > 0)
+        {
+            var saveBox = new CheckBox
+            {
+                IsChecked = !cloud,
+                Margin = new Thickness(0, 12, 0, 0),
+                VerticalContentAlignment = VerticalAlignment.Top,
+                Content = TwoLines(L.T("Salva l'audio sul dispositivo"),
+                    L.T("Spento: i brani che nel pacchetto sono solo link vanno nella libreria nel cloud, senza scaricarli. Li ascolti dal loro link e li salvi quando vuoi.")),
+            };
+            saveBox.IsCheckedChanged += (_, _) =>
+            {
+                cloud = saveBox.IsChecked != true;
+                if (settings != null)
+                {
+                    settings.SaveLinkAudio = !cloud;
+                    settings.Save();
+                }
+                changed();
+            };
+            inputs.Children.Add(saveBox);
+        }
+
         // ---- every song, with what happens to it
         if (rows.Count > 0)
         {
@@ -498,6 +528,7 @@ public static class PackDialogs
             Merge = new Dictionary<string, bool>(merge),
             Tags = pickedTags.ToHashSet(),
             OtherSongs = others,
+            Cloud = cloud,
         };
 
         void Update()
@@ -520,7 +551,7 @@ public static class PackDialogs
                 ? (chosen.Count > 0 ? L.T("Nessun brano da copiare: li hai già tutti") : L.T("Nessun brano da aggiungere"))
                 : L.Count(add + get, "Verrà aggiunto 1 brano", "Verranno aggiunti {0} brani");
             var more = new List<string>();
-            if (get > 0) more.Add(L.F("{0} da scaricare", get));
+            if (get > 0) more.Add(cloud ? L.F("{0} nel cloud, senza scaricarli", get) : L.F("{0} da scaricare", get));
             if (have > 0) more.Add(L.F("{0} già nella libreria", have));
             if (miss > 0) more.Add(L.Count(miss, "1 non disponibile", "{0} non disponibili"));
             if (add > 0) more.Add(L.F("nella cartella {0}", musicDir));

@@ -30,6 +30,55 @@ public static class SliderDrag
     }
 }
 
+// A small ring filling up as a download goes on (a song being saved on the device): a faint track and the part done in
+// the accent colour. Waiting (Indeterminate): a quarter of it, still.
+public sealed class ProgressRing : FrameworkElement
+{
+    public static readonly DependencyProperty ValueProperty = DependencyProperty.Register(nameof(Value), typeof(double), typeof(ProgressRing),
+        new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty IsIndeterminateProperty = DependencyProperty.Register(nameof(IsIndeterminate), typeof(bool), typeof(ProgressRing),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty StrokeProperty = DependencyProperty.Register(nameof(Stroke), typeof(Brush), typeof(ProgressRing),
+        new FrameworkPropertyMetadata(Brushes.White, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty TrackProperty = DependencyProperty.Register(nameof(Track), typeof(Brush), typeof(ProgressRing),
+        new FrameworkPropertyMetadata(Brushes.Gray, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty ThicknessProperty = DependencyProperty.Register(nameof(Thickness), typeof(double), typeof(ProgressRing),
+        new FrameworkPropertyMetadata(2.2, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // 0-100.
+    public double Value { get => (double)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
+    public bool IsIndeterminate { get => (bool)GetValue(IsIndeterminateProperty); set => SetValue(IsIndeterminateProperty, value); }
+    public Brush Stroke { get => (Brush)GetValue(StrokeProperty); set => SetValue(StrokeProperty, value); }
+    public Brush Track { get => (Brush)GetValue(TrackProperty); set => SetValue(TrackProperty, value); }
+    public double Thickness { get => (double)GetValue(ThicknessProperty); set => SetValue(ThicknessProperty, value); }
+
+    protected override void OnRender(DrawingContext dc)
+    {
+        double size = Math.Min(ActualWidth, ActualHeight), t = Thickness;
+        if (size <= t * 2) return;
+        double r = (size - t) / 2;
+        var c = new Point(ActualWidth / 2, ActualHeight / 2);
+        dc.DrawEllipse(null, new Pen(Track, t), c, r, r);
+        double v = IsIndeterminate ? 0.25 : Math.Clamp(Value / 100, 0, 1);
+        if (v <= 0.005) return;
+        var pen = new Pen(Stroke, t) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+        if (v >= 0.999)
+        {
+            dc.DrawEllipse(null, pen, c, r, r);
+            return;
+        }
+        double a = v * 2 * Math.PI;
+        var g = new StreamGeometry();
+        using (var ctx = g.Open())
+        {
+            ctx.BeginFigure(new Point(c.X, c.Y - r), false, false);
+            ctx.ArcTo(new Point(c.X + r * Math.Sin(a), c.Y - r * Math.Cos(a)), new Size(r, r), 0, a > Math.PI, SweepDirection.Clockwise, true, false);
+        }
+        g.Freeze();
+        dc.DrawGeometry(null, pen, g);
+    }
+}
+
 // Content host that fades and slides in each new page.
 public sealed class AnimatedContent : ContentControl
 {

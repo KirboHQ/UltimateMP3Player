@@ -14,9 +14,9 @@ public static class Commands
     {
         if (p is not Control c) return;
         var kind = Touch.GetMenu(c);
-        if (c.DataContext is SongItem item && Selection.Of(c) is { IsActive: true } sel)
+        if (Selection.Of(c) is { IsActive: true } sel && c.DataContext is { } item && Selection.KindOf(item) == sel.Kind && sel.Contains(item))
         {
-            if (!item.IsChecked) sel.Toggle(item);
+            if (!sel.IsChecked(item)) sel.Toggle(item);
             if (Menus.ForSelection(sel) is { } many) Menus.Open(many);
             return;
         }
@@ -31,7 +31,10 @@ public static class Converters
 
     public static readonly IValueConverter Heart = new FuncValueConverter<bool, string>(fav => Icons.Map(fav ? "" : ""));
 
-    public static readonly IValueConverter HeartFont = new FuncValueConverter<bool, Avalonia.Media.FontFamily>(fav => fav ? Icons.Filled : Icons.Regular);
+    // A Segoe code from a view model (a cloud or a warning sign) to the bundled font's.
+    public static readonly IValueConverter Glyph = new FuncValueConverter<string?, string>(s => Icons.Map(s ?? ""));
+
+    public static readonly IValueConverter HeartFont =new FuncValueConverter<bool, Avalonia.Media.FontFamily>(fav => fav ? Icons.Filled : Icons.Regular);
 }
 
 // A list of songs (a ListBox whose rows are SongItems): with its Selection, found by the rows' ticks and long presses.

@@ -75,16 +75,33 @@ public static class Menus
             menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => main.Player.PlayRadio(t)));
         }
         menu.Items.Add(new Separator());
+        AddSaveItems(menu, new[] { t });
         menu.Items.Add(AddToPlaylist(t));
         if (owner?.Playlist is { } pl && !pl.IsFavorites)
             menu.Items.Add(Item(L.F("Rimuovi da «{0}»", Short(pl.Name)), "", () => main.RemoveFromPlaylist(t, pl)));
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(TagSubmenu(new[] { t }));
         menu.Items.Add(LyricsSubmenu(t));
+        if (t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
+            menu.Items.Add(Item(L.T("Cerca il video…"), VideoGlyph, () => _ = main.FindVideo(t)));
         if (!main.InRoom) menu.Items.Add(DjSubmenu(t));
         menu.Items.Add(new Separator());
         AddEditItems(menu, t);
         return menu;
+    }
+
+    private const string SaveGlyph = "", VideoGlyph = "", DeleteGlyph = "", SelectGlyph = "", AddGlyph = "";
+
+    // "Save on the device" for the songs not saved (or how far their save is).
+    private static void AddSaveItems(ContextMenu menu, IReadOnlyList<TrackViewModel> tracks)
+    {
+        var main = tracks[0].Main;
+        var cloud = tracks.Where(t => t.IsCloud && !t.IsSaving).ToList();
+        if (cloud.Count > 0)
+            menu.Items.Add(Item(tracks.Count == 1 ? L.T("Salva sul dispositivo") : L.F("Salva sul dispositivo ({0})", cloud.Count), SaveGlyph,
+                () => _ = main.SaveToDevice(cloud)));
+        else if (tracks.Any(t => t.IsSaving))
+            menu.Items.Add(Item(L.T("Salvataggio sul dispositivo in corso…"), SaveGlyph, () => { }, false));
     }
 
     private const string LyricsGlyph = "";
@@ -193,30 +210,23 @@ public static class Menus
             menu.Items.Add(Item(L.T("Togli dai successivi"), "", () => player.RemoveUpcoming(row.Index)));
         }
         else if (player.Current == t) menu.Items.Add(Item(L.T("Salta"), "", () => player.NextCommand.Execute(null)));
+        // (a card of the recently played, a row of the statistics)
+        else menu.Items.Add(Item(L.T("Riproduci"), "", () => player.PlaySingle(t.T)));
         if (item.IsFailed) menu.Items.Add(Item(L.T("Riprova a scaricarlo"), "", () => main.Radio.Prepare(item.Id)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Salva nella libreria"), "", () => _ = main.Radio.Save(item, null), item.IsReady));
-        var sub = new MenuItem { Header = L.T("Salva in una playlist"), IsEnabled = item.IsReady };
-        Ui.SetGlyph(sub, "");
-        sub.Items.Add(Item(L.T("Nuova playlist…"), "", () =>
-        {
-            var name = Dialogs.Prompt(L.T("Nuova playlist"), L.T("Nome della playlist"), main.NewPlaylistName());
-            if (!string.IsNullOrWhiteSpace(name)) _ = main.Radio.Save(item, main.Profile.CreatePlaylist(name));
-        }));
-        sub.Items.Add(new Separator());
-        foreach (var p in main.Playlists)
-        {
-            var pl = p.P;
-            sub.Items.Add(Item(Short(p.Name), p.IsFavorites ? "" : "", () => _ = main.Radio.Save(item, pl)));
-        }
-        menu.Items.Add(sub);
-        if (!item.IsReady)
-        {
-            Tip(sub, L.T("Si può salvare quando è stato scaricato"), true);
-        }
+        // Only into the library (in the cloud, nothing downloaded: also a playlist, the favourites), or saved on the device too.
+        menu.Items.Add(Item(L.T("Aggiungi alla libreria"), AddGlyph, () => main.AddToLibrary(t)));
+        menu.Items.Add(Item(L.T("Salva sul dispositivo"), SaveGlyph, () => _ = main.Radio.Save(item, null)));
+        menu.Items.Add(AddToPlaylist(t));
+        menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => player.PlayRadio(t)));
         menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copiato")); } catch { } }));
+        if (row == null && player.Current != t)
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Item(L.T("Elimina…"), DeleteGlyph, () => _ = main.DeleteTracks(new[] { t })));
+        }
         return menu;
     }
 
@@ -450,14 +460,122 @@ public static class Menus
         var main = t.Main;
         menu.Items.Add(Item(L.T("Modifica informazioni…"), "", () => _ = main.EditTrack(t)));
         menu.Items.Add(Item(L.T("Cambia copertina…"), "", () => _ = main.ChangeTrackCover(t)));
-        menu.Items.Add(Item(L.T("Mostra nella cartella"), "", () => main.ShowInFolder(t)));
+        if (t.IsSaved) menu.Items.Add(Item(L.T("Mostra nella cartella"), "", () => main.ShowInFolder(t)));
         if (t.T.SourceUrl is { } url && url.StartsWith("http"))
             menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copiato")); } catch { } }));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Elimina brano…"), "", () => main.DeleteTrack(t)));
+        menu.Items.Add(Item(L.T("Elimina…"), DeleteGlyph, () => _ = main.DeleteTrack(t)));
     }
 
-    public static ContextMenu ForSelection(IReadOnlyList<TrackViewModel> tracks, ITrackList owner)
+    // Right click on an item of a list where several are selected: all of them (a click on one not selected selects only it).
+    public static List<object> SelectionAround(Control c)
+    {
+        if (c.FindAncestorOfType<ListBoxItem>(true) is not { } item || item.FindAncestorOfType<ListBox>() is not { } list) return new List<object>();
+        if (item.IsSelected && list.SelectedItems?.Count > 1) return SelectionBar.SelectedItems(list);
+        if (!item.IsSelected && list.SelectedItems?.Count > 0) list.UnselectAll();
+        return new List<object>();
+    }
+
+    // Several selected playlists: what the selection bar does, from the right click.
+    public static ContextMenu ForPlaylists(IReadOnlyList<PlaylistViewModel> lists)
+    {
+        var main = App.Host.Session!;
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(L.Count(lists.Count, "1 playlist selezionata", "{0} playlist selezionate"), SelectGlyph, () => { }, false));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Riproduci"), "", () => main.PlayPlaylists(lists)));
+        menu.Items.Add(Item(L.T("Aggiungi alla coda"), "", () => main.EnqueuePlaylists(lists)));
+        menu.Items.Add(new Separator());
+        int cloud = main.SongsOf(lists).Count(t => t.IsCloud && !t.IsSaving);
+        if (cloud > 0) menu.Items.Add(Item(L.F("Salva sul dispositivo ({0})", cloud), SaveGlyph, () => _ = main.SavePlaylists(lists)));
+        var tags = new MenuItem { Header = L.T("Tag") };
+        Ui.SetGlyph(tags, TagGlyph);
+        foreach (var i in PlaylistsTagItems(lists)) tags.Items.Add(i);
+        menu.Items.Add(tags);
+        menu.Items.Add(Item(L.T("Esporta in un file .ump…"), "", () => main.ExportPlaylists(lists)));
+        if (lists.Any(p => !p.IsFavorites))
+        {
+            menu.Items.Add(new Separator());
+            menu.Items.Add(Item(L.Count(lists.Count(p => !p.IsFavorites), "Elimina la playlist…", "Elimina {0} playlist…"), DeleteGlyph, () => _ = main.DeletePlaylists(lists)));
+        }
+        return menu;
+    }
+
+    public static ContextMenu PlaylistsTagMenu(IReadOnlyList<PlaylistViewModel> lists)
+    {
+        var menu = new ContextMenu();
+        foreach (var i in PlaylistsTagItems(lists)) menu.Items.Add(i);
+        return menu;
+    }
+
+    // Tick = every selected playlist has it, dash = only some.
+    private static IEnumerable<object> PlaylistsTagItems(IReadOnlyList<PlaylistViewModel> lists)
+    {
+        var main = App.Host.Session!;
+        foreach (var tag in main.Tags)
+        {
+            var tg = tag;
+            string? State() => lists.Count(p => p.P.Tags.Contains(tg.Id)) is var n && n == 0 ? null : n == lists.Count ? Check : Some;
+            var item = TagItem(tg, State());
+            item.StaysOpenOnClick = true;
+            item.Click += (_, _) =>
+            {
+                bool on = State() != Check;
+                main.SetPlaylistsTag(lists, tg, on);
+                Ui.SetGlyph(item, on ? Check : null);
+            };
+            yield return item;
+        }
+        if (main.Tags.Count > 0) yield return new Separator();
+        yield return Item(L.T("Nuovo tag…"), "", async () =>
+        {
+            if (await main.NewTag() is { } t) main.SetPlaylistsTag(lists, t, true);
+        });
+    }
+
+    // Several selected songs of "next up".
+    public static ContextMenu ForQueueRows(IReadOnlyList<QueueRow> rows)
+    {
+        var player = rows[0].Player;
+        var main = rows[0].Track.Main;
+        var places = rows.Select(r => r.Index).ToList();
+        var songs = rows.Select(r => r.Track).Distinct().ToList();
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(L.F("{0} brani selezionati", rows.Count), SelectGlyph, () => { }, false));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Sposta in cima"), "", () => player.MoveUpcomingToTop(places)));
+        menu.Items.Add(Item(L.T("Sposta in fondo"), "", () => player.MoveUpcomingToBottom(places)));
+        menu.Items.Add(Item(L.T("Togli dai successivi"), "", () => player.RemoveUpcoming(places)));
+        if (!player.InRoom)
+        {
+            menu.Items.Add(new Separator());
+            AddSaveItems(menu, songs);
+            var sub = new MenuItem { Header = L.T("Aggiungi a playlist") };
+            Ui.SetGlyph(sub, "");
+            foreach (var i in PlaylistItems(songs)) sub.Items.Add(i);
+            menu.Items.Add(sub);
+            menu.Items.Add(Item(L.T("Aggiungi ai Preferiti"), "", () => main.AddToFavorites(songs)));
+        }
+        return menu;
+    }
+
+    // Several selected downloads.
+    public static ContextMenu ForJobs(IReadOnlyList<DownloadJobViewModel> jobs)
+    {
+        var queue = App.Host.Session!.Queue;
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(L.Count(jobs.Count, "1 download selezionato", "{0} download selezionati"), SelectGlyph, () => { }, false));
+        menu.Items.Add(new Separator());
+        int failed = jobs.Count(j => j.CanRetry), youTube = jobs.Count(j => j.CanRetryYouTube), active = jobs.Count(j => j.IsActive);
+        menu.Items.Add(Item(L.F("Riprova ({0})", failed), "", () => queue.Retry(jobs), failed > 0));
+        menu.Items.Add(Item(L.F("Riprova su YouTube ({0})", youTube), "", () => queue.RetryOnYouTube(jobs), youTube > 0));
+        menu.Items.Add(Item(L.F("Annulla ({0})", active), "", () => queue.Cancel(jobs), active > 0));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Togli dalla lista"), DeleteGlyph, () => queue.Remove(jobs)));
+        return menu;
+    }
+
+    public static ContextMenu ForSelection(IReadOnlyList<TrackViewModel> tracks, ITrackList? owner)
     {
         var main = tracks[0].Main;
         var menu = new ContextMenu();
@@ -470,17 +588,18 @@ public static class Menus
             menu.Items.Add(Item(L.T("Aggiungi alla coda"), "\uE8FD", () => main.Enqueue(tracks)));
         }
         menu.Items.Add(new Separator());
+        AddSaveItems(menu, tracks);
         var sub = new MenuItem { Header = L.T("Aggiungi a playlist") };
         Ui.SetGlyph(sub, "");
         foreach (var i in PlaylistItems(tracks)) sub.Items.Add(i);
         menu.Items.Add(sub);
-        if (owner.Playlist is { } pl)
+        if (owner?.Playlist is { } pl)
             menu.Items.Add(Item(L.F("Togli da «{0}»", Short(PlaylistViewModel.DisplayName(pl))), "", () => main.RemoveFromPlaylist(tracks, pl)));
         menu.Items.Add(Item(L.T("Aggiungi ai Preferiti"), "", () => main.AddToFavorites(tracks)));
         menu.Items.Add(TagSubmenu(tracks));
         menu.Items.Add(Item(L.F("Cerca i testi online ({0})", tracks.Count), LyricsGlyph, () => main.SearchLyrics(tracks)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.F("Elimina {0} brani…", tracks.Count), "", () => _ = main.DeleteTracks(tracks)));
+        menu.Items.Add(Item(L.F("Elimina {0} brani…", tracks.Count), DeleteGlyph, () => _ = main.DeleteTracks(tracks)));
         return menu;
     }
 
@@ -518,6 +637,7 @@ public static class Menus
         menu.Items.Add(Item(L.T("Togli dai successivi"), "", () => player.RemoveUpcoming(row.Index)));
         menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => player.PlayRadio(t)));
         menu.Items.Add(new Separator());
+        AddSaveItems(menu, new[] { t });
         menu.Items.Add(AddToPlaylist(t));
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(TagSubmenu(new[] { t }));
@@ -563,6 +683,10 @@ public static class Menus
         menu.Items.Add(PlaylistTagSubmenu(p));
         menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "\uE8B3", () => _ = main.TagPlaylistSongs(p), p.Count > 0));
         menu.Items.Add(Item(L.T("Esporta in un file .ump…"), "", () => main.ExportPack(p)));
+        // Its songs in the cloud saved on the device; or the space its songs take, freed (the window says how).
+        if (p.CloudCount > 0) menu.Items.Add(Item(L.F("Salva sul dispositivo ({0})", p.CloudCount), SaveGlyph, () => _ = main.SavePlaylists(new[] { p })));
+        if (p.Count > p.CloudCount)
+            menu.Items.Add(Item(L.T("Libera spazio…"), DeleteGlyph, () => _ = main.DeleteTracks(p.Songs.Where(t => t.IsSaved).ToList())));
         if (!p.IsFavorites)
         {
             menu.Items.Add(new Separator());
