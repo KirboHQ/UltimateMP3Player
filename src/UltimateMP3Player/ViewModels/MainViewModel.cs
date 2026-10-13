@@ -415,6 +415,61 @@ public sealed class MainViewModel : Observable
         OnChanged(nameof(SearchText), nameof(IsLink), nameof(HasSearchText));
     }
 
+    // "Download again / quality…" on songs with a link: the saved ones are downloaded again in the quality chosen (new files
+    // in place of theirs), the ones in the cloud keep it for when they're heard and saved. The choice stays theirs.
+    public async Task ChangeQuality(IReadOnlyList<TrackViewModel> songs)
+    {
+        var tracks = songs.Select(v => v.T).Where(t => t.HasLink && Library.Get(t.Id) == t).ToList();
+        if (tracks.Count == 0)
+        {
+            Toast(L.T("Questi brani non hanno un link da cui scaricarli di nuovo."));
+            return;
+        }
+        var s = Host.Settings;
+        var first = tracks[0];
+        bool saved = tracks.Any(t => t.HasSavedFile);
+        var plan = new QualityPlan(
+            saved ? L.T("Scarica di nuovo") : L.T("Qualità di ascolto"),
+            tracks.Count == 1 ? first.Title + (string.IsNullOrWhiteSpace(first.Artist) ? "" : " · " + first.Artist) : L.F("{0} brani", tracks.Count),
+            Quality.For(first, s.AudioFormat), Quality.VideoFor(first, s.VideoMaxRes),
+            canVideo: saved && tracks.Any(t => t.HasVideo || VideoFinder.OwnVideo(t) != null), withVideo: tracks.Any(t => t.HasVideo), saved);
+        if (!await Dialogs.QualityAsync(plan)) return;
+        string? audio = Equals(plan.Audio.Value, s.AudioFormat) ? null : plan.Audio.Value as string;
+        int? video = Equals(plan.Video.Value, s.VideoMaxRes) ? null : plan.Video.Value as int? ?? 0;
+        foreach (var t in tracks)
+        {
+            t.AudioQuality = audio;
+            if (plan.CanVideo && plan.WithVideo) t.VideoRes = video;
+            Library.Changed(t);
+            if (!t.HasSavedFile) Radio.Restream(t);
+        }
+        var again = tracks.Where(t => t.HasSavedFile).ToList();
+        int n = again.Count > 0 ? Host.Downloads.Redownload(Profile, again, plan.CanVideo && plan.WithVideo) : 0;
+        Toast(n > 0 ? L.Count(n, "Il brano si scarica di nuovo: lo vedi nei Download", "{0} brani si scaricano di nuovo: li vedi nei Download") : L.T("Qualità salvata"));
+    }
+
+    // A result of the online search: in a room it goes straight into the room's queue (like a double click on a song of
+    // yours there), otherwise its card on the download page, ready at once.
+    public void OpenHit(SearchHit hit)
+    {
+        if (InRoom && Together.CanAdd)
+        {
+            Together.AddFromLink(new[] { OnlineSearchServices.ToItem(hit) });
+            Toast(L.F("«{0}» va nella coda della stanza", hit.Title));
+            return;
+        }
+        // (from the search page it's like StartDownload: the search stays as it was, to go back to it)
+        if (Page == Search)
+        {
+            _back.Push(Search);
+            Page = Downloads;
+            OnNavChanged();
+            CommandManager.InvalidateRequerySuggested();
+        }
+        else Navigate(Downloads);
+        Downloads.ShowHit(hit);
+    }
+
     private async Task PasteLink()
     {
         var text = (await Ui.ClipboardTextAsync())?.Trim();

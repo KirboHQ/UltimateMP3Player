@@ -1,9 +1,11 @@
 ﻿# Build script.
 #   .\build.ps1               portable app in .\app plus a Desktop shortcut
 #   .\build.ps1 -NoShortcut   same, without touching the Desktop
-#   .\build.ps1 -Installer    only the installer: installer\Output\UltimateMP3Player-Setup-<version>.exe
-#   .\build.ps1 -Release      the files for a GitHub release in .\dist: the installer (enough on its own),
-#                             UltimateMP3Player.exe (optional: if attached, updates download 70 MB instead of the whole setup)
+#   .\build.ps1 -Installer    only the installer: installer\Output\UltimateMP3Player-windows-x64-setup.exe
+#   .\build.ps1 -Release      the files for a GitHub release in .\dist: the installer UltimateMP3Player-windows-x64-setup.exe
+#                             (enough on its own), UltimateMP3Player-windows-x64.exe (optional: if attached, updates download
+#                             70 MB instead of the whole setup) and dist\legacy\UltimateMP3Player.exe, the same exe under the
+#                             name the versions up to 3.6.x look for (attach it too for a few releases, so they update)
 #                             the Linux and macOS packages (build-unix.ps1) and the Android APKs (build-android.ps1);
 #                             -WindowsOnly skips both, -NoAndroid only the APKs
 # -Installer and -Release first update yt-dlp/gallery-dl in .\engines and need Inno Setup 6.
@@ -59,14 +61,19 @@ if ($Installer -or $Release) {
     Write-Host "Building installer $version..."
     & $iscc /Q "/DAppVersion=$version" "/O$outDir" "$root\installer\UltimateMP3Player.iss"
     if ($LASTEXITCODE -ne 0) { throw 'Installer build failed' }
-    if ($Release) { Copy-Item "$staging\UltimateMP3Player.exe" $outDir }
+    if ($Release) {
+        Copy-Item "$staging\UltimateMP3Player.exe" "$outDir\UltimateMP3Player-windows-x64.exe"
+        # Up to 3.6.x the updater only knows this name.
+        New-Item -ItemType Directory -Force "$outDir\legacy" | Out-Null
+        Copy-Item "$staging\UltimateMP3Player.exe" "$outDir\legacy\UltimateMP3Player.exe"
+    }
     Remove-Item $staging -Recurse -Force
-    Get-ChildItem "$outDir\*.exe" | ForEach-Object {
+    Get-ChildItem "$outDir\*.exe", "$outDir\legacy\*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
         Write-Host ("{0} ({1:N0} MB)  sha256 {2}" -f $_.FullName, ($_.Length / 1MB), (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())
     }
     if ($Release -and -not $WindowsOnly) { & "$root\build-unix.ps1" -Out $outDir }
     if ($Release -and -not $WindowsOnly -and -not $NoAndroid) { & "$root\build-android.ps1" -Out $outDir }
-    if ($Release) { Write-Host "`nNew GitHub release tagged v$version with the setup (optionally also UltimateMP3Player.exe for lighter updates), the Linux/macOS packages and the Android APKs." }
+    if ($Release) { Write-Host "`nNew GitHub release tagged v$version with the setup (optionally also UltimateMP3Player-windows-x64.exe for lighter updates, and legacy\UltimateMP3Player.exe so 3.6.x installs update), the Linux/macOS packages and the Android APKs." }
     return
 }
 

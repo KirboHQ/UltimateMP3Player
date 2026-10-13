@@ -495,13 +495,13 @@
                             </Grid>
                             <StackPanel Grid.Column="1" Margin="18,0,0,0" VerticalAlignment="Center">
                                 <DockPanel>
+                                    <!-- the library icon, then the download arrow, as everywhere else -->
                                     <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Padding="12,5" FontSize="12.5" VerticalAlignment="Top"
-                                            Command="{Binding CurrentItem.SaveCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Self}}"
-                                            ToolTip="{local:T 'Tienilo: nella tua libreria o in una playlist'}"
-                                            Visibility="{Binding HasCurrent, Converter={StaticResource BoolVis}}">
+                                            Command="{Binding CurrentItem.KeepCommand}" ToolTip="{Binding CurrentItem.KeepTip}"
+                                            Visibility="{Binding CurrentItem.ShowKeep, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="&#xE74E;" Style="{StaticResource Glyph}" FontSize="12"/>
-                                            <TextBlock Text="{local:T Salva}" Margin="7,0,0,0"/>
+                                            <TextBlock Text="{Binding CurrentItem.KeepGlyph}" Style="{StaticResource Glyph}" FontSize="12"/>
+                                            <TextBlock Text="{Binding CurrentItem.KeepLabel}" Margin="7,0,0,0"/>
                                         </StackPanel>
                                     </Button>
                                     <WrapPanel VerticalAlignment="Center">
@@ -602,11 +602,13 @@
                                     </DockPanel>
                                 </StackPanel>
                             </Border>
-                            <ListBox Grid.Row="2" Style="{StaticResource PlainList}" ItemsSource="{Binding Queue}" AutomationProperties.Name="{local:T 'In coda'}">
+                            <ListBox x:Name="RoomQueue" Grid.Row="2" Style="{StaticResource PlainList}" ItemsSource="{Binding Queue}" AutomationProperties.Name="{local:T 'In coda'}"
+                                     AllowDrop="True" DragOver="Queue_DragOver">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:RoomItemViewModel}">
                                         <Border x:Name="Row" CornerRadius="8" Padding="6" Margin="0,0,0,1" Background="Transparent" local:Marquee.Host="True"
-                                                MouseRightButtonUp="Item_RightClick" ToolTipService.InitialShowDelay="900">
+                                                MouseRightButtonUp="Item_RightClick" ToolTipService.InitialShowDelay="900"
+                                                PreviewMouseLeftButtonDown="Row_MouseDown" MouseMove="Row_MouseMove">
                                             <Border.InputBindings>
                                                 <MouseBinding Gesture="LeftDoubleClick" Command="{Binding PlayNowCommand}"/>
                                             </Border.InputBindings>
@@ -654,8 +656,8 @@
                                                 <TextBlock x:Name="Length" Grid.Column="5" Text="{Binding Track.DurationText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}"
                                                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                                 <StackPanel x:Name="Actions" Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Hidden">
-                                                    <Button Style="{StaticResource RowIconButton}" Content="&#xE74E;" Command="{Binding SaveCommand}"
-                                                            CommandParameter="{Binding RelativeSource={RelativeSource Self}}" ToolTip="{local:T 'Tienilo: nella tua libreria o in una playlist'}"/>
+                                                    <Button Style="{StaticResource RowIconButton}" Content="{Binding KeepGlyph}" Command="{Binding KeepCommand}"
+                                                            ToolTip="{Binding KeepTip}" Visibility="{Binding ShowKeep, Converter={StaticResource BoolVis}}"/>
                                                     <Button Style="{StaticResource RowIconButton}" Content="&#xE711;" FontSize="11" Command="{Binding RemoveCommand}"
                                                             IsEnabled="{Binding CanRemove}" ToolTip="{Binding RemoveTip}" ToolTipService.ShowOnDisabled="True"/>
                                                 </StackPanel>

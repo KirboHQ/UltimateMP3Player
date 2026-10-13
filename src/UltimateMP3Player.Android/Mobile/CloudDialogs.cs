@@ -115,6 +115,85 @@ public static partial class Dialogs
         return result;
     }
 
+    // ------------------------------------------------------------------ the quality of some songs
+
+    // "Download again / quality…": the audio quality, and the video's when the songs can have one, as rows of choices.
+    // True when confirmed (the plan holds what was chosen).
+    public static async Task<bool> QualityAsync(QualityPlan plan)
+    {
+        var sheets = Sheets;
+        if (sheets == null) return false;
+        var body = new StackPanel { Margin = new Thickness(20, 4, 20, 18) };
+        body.Children.Add(new TextBlock { Text = plan.Title, FontSize = 20, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 0, 4, 4) });
+        body.Children.Add(new TextBlock { Text = plan.Subtitle, Foreground = Ui.Res("SubTextBrush"), FontSize = 14, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(4, 0, 4, 10) });
+
+        // One choice of a row: lit when it's the chosen one.
+        WrapPanel Pills(List<Choice> choices, Func<Choice> chosen, Action<Choice> pick)
+        {
+            var panel = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
+            var all = new List<(Choice C, Button B)>();
+            void Paint()
+            {
+                foreach (var (c, b) in all)
+                {
+                    bool on = c == chosen();
+                    b.Background = Ui.Res(on ? "AccentSoftBrush" : "Surface2Brush");
+                    b.BorderBrush = Ui.Res(on ? "AccentBrush" : "BorderBrush");
+                    b.Foreground = Ui.Res(on ? "AccentTextBrush" : "TextBrush");
+                }
+            }
+            foreach (var c in choices)
+            {
+                var choice = c;
+                var b = new Button { Theme = Ui.Theme("SmallGhost"), Content = c.Label, Margin = new Thickness(0, 0, 8, 8) };
+                b.Click += (_, _) =>
+                {
+                    pick(choice);
+                    Haptics.Tick();
+                    Paint();
+                };
+                all.Add((c, b));
+                panel.Children.Add(b);
+            }
+            Paint();
+            return panel;
+        }
+
+        body.Children.Add(new TextBlock { Text = L.T("Qualità dell'audio"), FontSize = 15, FontWeight = FontWeight.SemiBold, Margin = new Thickness(4, 6, 4, 0) });
+        body.Children.Add(Pills(plan.AudioChoices, () => plan.Audio, c => plan.Audio = c));
+        if (plan.CanVideo)
+        {
+            var video = Pills(plan.VideoChoices, () => plan.Video, c => plan.Video = c);
+            video.IsVisible = plan.WithVideo;
+            var with = new CheckBox { Theme = Ui.Theme("Switch"), IsChecked = plan.WithVideo, Margin = new Thickness(4, 12, 2, 0), Content = new TextBlock { Text = L.T("Anche il video"), FontSize = 15 } };
+            with.IsCheckedChanged += (_, _) =>
+            {
+                plan.WithVideo = with.IsChecked == true;
+                video.IsVisible = plan.WithVideo;
+            };
+            body.Children.Add(with);
+            body.Children.Add(video);
+        }
+        body.Children.Add(new TextBlock { Text = plan.Hint, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Res("MutedBrush"), FontSize = 13, LineHeight = 18, Margin = new Thickness(4, 10, 4, 0) });
+
+        bool confirmed = false;
+        var no = Wide(L.T("Annulla"), "TouchGhost");
+        no.Click += (_, _) => sheets.Close(body);
+        var ok = Wide(plan.OkText, "TouchPrimary");
+        ok.Click += (_, _) =>
+        {
+            confirmed = true;
+            sheets.Close(body);
+        };
+        var buttons = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,*"), Margin = new Thickness(0, 16, 0, 0) };
+        buttons.Children.Add(no);
+        Grid.SetColumn(ok, 2);
+        buttons.Children.Add(ok);
+        body.Children.Add(buttons);
+        await sheets.Show(new ScrollViewer { Content = body }, maxHeightShare: 0.92);
+        return confirmed;
+    }
+
     // ------------------------------------------------------------------ a video for a song
 
     // The videos on YouTube that look like the song, the closest first (already chosen); the ones of another length are

@@ -112,6 +112,44 @@ public static partial class Dialogs
         return win.ShowDialog() == true ? result : null;
     }
 
+    // ------------------------------------------------------------------ the quality of some songs
+
+    // "Download again / quality…": the audio quality, and the video's when the songs can have one. True when confirmed (the
+    // plan holds what was chosen).
+    public static Task<bool> QualityAsync(QualityPlan plan) => Task.FromResult(QualityDialog(plan));
+
+    private static bool QualityDialog(QualityPlan plan)
+    {
+        var label = (Style)Application.Current.Resources["FieldLabel"];
+        var body = new StackPanel();
+        body.Children.Add(new TextBlock { Text = plan.Subtitle, Foreground = Res("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, -4, 0, 12) });
+        body.Children.Add(new TextBlock { Text = L.T("Qualità dell'audio"), Style = label, Margin = new Thickness(2, 4, 0, 6) });
+        var audio = new ComboBox { ItemsSource = plan.AudioChoices, SelectedItem = plan.Audio };
+        body.Children.Add(audio);
+        CheckBox? withVideo = null;
+        ComboBox? video = null;
+        if (plan.CanVideo)
+        {
+            withVideo = new CheckBox { Content = L.T("Anche il video"), IsChecked = plan.WithVideo, Margin = new Thickness(0, 16, 0, 0) };
+            body.Children.Add(withVideo);
+            body.Children.Add(new TextBlock { Text = L.T("Qualità massima dei video"), Style = label, Margin = new Thickness(2, 10, 0, 6) });
+            video = new ComboBox { ItemsSource = plan.VideoChoices, SelectedItem = plan.Video, IsEnabled = plan.WithVideo };
+            withVideo.Checked += (_, _) => video.IsEnabled = true;
+            withVideo.Unchecked += (_, _) => video.IsEnabled = false;
+            body.Children.Add(video);
+        }
+        body.Children.Add(new TextBlock { Text = plan.Hint, TextWrapping = TextWrapping.Wrap, Foreground = Res("MutedBrush"), FontSize = 12.5, LineHeight = 18, Margin = new Thickness(2, 14, 0, 0) });
+        var ok = Button(plan.OkText, "PrimaryButton", isDefault: true);
+        var win = Frame(plan.Title, body, 420, Button(L.T("Annulla"), "GhostButton", isCancel: true), ok);
+        ok.Click += (_, _) => win.DialogResult = true;
+        win.Loaded += (_, _) => ok.Focus();
+        if (win.ShowDialog() != true) return false;
+        plan.Audio = audio.SelectedItem as Choice ?? plan.Audio;
+        if (video != null) plan.Video = video.SelectedItem as Choice ?? plan.Video;
+        plan.WithVideo = withVideo?.IsChecked == true;
+        return true;
+    }
+
     // ------------------------------------------------------------------ a video for a song
 
     // The videos on YouTube that look like the song, the closest first (already chosen); the ones of another length are

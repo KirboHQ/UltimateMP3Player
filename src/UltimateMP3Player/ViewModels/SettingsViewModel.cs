@@ -178,7 +178,7 @@ public sealed class ThemeOption
     public bool IsSelected { get; }
 }
 
-// A site of the online search in Settings: on/off, up/down.
+// A site of the online search in Settings: on/off, dragged to another place (SettingsViewModel.MoveService).
 public sealed class SearchServiceOption : Observable
 {
     private readonly SettingsViewModel _owner;
@@ -188,8 +188,6 @@ public sealed class SearchServiceOption : Observable
         Name = name;
         Index = index;
         _owner = owner;
-        UpCommand = new RelayCommand(() => owner.MoveService(Name, -1), () => Index > 0);
-        DownCommand = new RelayCommand(() => owner.MoveService(Name, 1), () => Index < OnlineSearchServices.Default.Length - 1);
     }
 
     public string Name { get; }
@@ -203,9 +201,6 @@ public sealed class SearchServiceOption : Observable
         OnlineSearchServices.SoundCloud => "remix, mashup e artisti indipendenti",
         _ => "un catalogo come quello di Spotify; l'audio arriva da YouTube Music",
     });
-    public ICommand UpCommand { get; }
-    public ICommand DownCommand { get; }
-
     public bool Enabled
     {
         get => _owner.IsServiceOn(Name);
@@ -225,16 +220,8 @@ public sealed class SettingsViewModel : Observable
     {
         _main = main;
         Equalizer = new EqualizerViewModel(main);
-        AudioFormats = new List<Choice>
-        {
-            new(L.T("MP3 · 320 kbps"), "mp3", L.T("si apre ovunque")),
-            new(L.T("Originale (M4A/Opus)"), "original", L.T("nessuna conversione")),
-        };
-        VideoQualities = new List<Choice>
-        {
-            new("720p", 720), new("1080p (Full HD)", 1080, L.T("consigliata")), new("1440p (2K)", 1440), new("2160p (4K)", 2160),
-            new(L.T("Massima disponibile"), null),
-        };
+        AudioFormats = QualityChoices.Audio();
+        VideoQualities = QualityChoices.Video();
         ParallelChoices = Enumerable.Range(1, 6).Select(n => new Choice(L.F("{0} alla volta", n), n)).ToList();
         Languages = new List<Choice> { new("English", "en"), new("Italiano", "it") };
         BrowseCommand = new RelayCommand(() => _ = Browse());
@@ -373,6 +360,35 @@ public sealed class SettingsViewModel : Observable
 
     public string CrossfadeText => $"{_main.Profile.Data.CrossfadeSeconds} s";
 
+    // The transition at the next song's tempo (PlayerViewModel.ApplyBend).
+    public bool BpmMatch
+    {
+        get => _main.Profile.Data.BpmMatch;
+        set
+        {
+            _main.Profile.Data.BpmMatch = value;
+            _main.Profile.Save();
+            _main.Player.ApplyBend();
+            OnChanged();
+        }
+    }
+
+    public double BpmMatchSeconds
+    {
+        get => _main.Profile.Data.BpmMatchSeconds;
+        set
+        {
+            int s = (int)Math.Round(Math.Clamp(value, 2, 30));
+            if (s == _main.Profile.Data.BpmMatchSeconds) return;
+            _main.Profile.Data.BpmMatchSeconds = s;
+            _main.Profile.Save();
+            _main.Player.ApplyBend();
+            OnChanged(nameof(BpmMatchSeconds), nameof(BpmMatchText));
+        }
+    }
+
+    public string BpmMatchText => $"{_main.Profile.Data.BpmMatchSeconds} s";
+
     // ------------------------------------------------------------------ online search (app)
 
     public bool OnlineSearch
@@ -402,12 +418,14 @@ public sealed class SettingsViewModel : Observable
         _main.Search.OnSettingsChanged();
     }
 
-    internal void MoveService(string name, int delta)
+    // A site dragged to another place of the list (to: its new index).
+    public void MoveService(string name, int to)
     {
         var order = OnlineSearchServices.Ordered(S.SearchServices, Array.Empty<string>());
-        int i = order.IndexOf(name), j = i + delta;
-        if (i < 0 || j < 0 || j >= order.Count) return;
-        (order[i], order[j]) = (order[j], order[i]);
+        int i = order.IndexOf(name);
+        if (i < 0 || to < 0 || to >= order.Count || to == i) return;
+        order.RemoveAt(i);
+        order.Insert(to, name);
         S.SearchServices = order;
         Save();
         OnChanged(nameof(SearchServices));
@@ -513,7 +531,7 @@ public sealed class SettingsViewModel : Observable
     public List<Choice> VideoQualities { get; }
     public Choice VideoQuality
     {
-        get => VideoQualities.FirstOrDefault(c => Equals(c.Value, S.VideoMaxRes)) ?? VideoQualities[1];
+        get => VideoQualities.FirstOrDefault(c => Equals(c.Value, S.VideoMaxRes)) ?? QualityChoices.Pick(VideoQualities, 1080);
         set
         {
             if (value == null) return;

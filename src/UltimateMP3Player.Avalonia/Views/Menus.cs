@@ -73,6 +73,7 @@ public static class Menus
             menu.Items.Add(Item(L.T("Riproduci dopo"), "", () => main.Player.PlayNext(t)));
             menu.Items.Add(Item(L.T("Aggiungi alla coda"), "", () => main.Player.Enqueue(t)));
             menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => main.Player.PlayRadio(t)));
+            menu.Items.Add(Item(L.T("Riproduci brani dell'artista"), "", () => main.Player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         }
         menu.Items.Add(new Separator());
         AddSaveItems(menu, new[] { t });
@@ -102,6 +103,10 @@ public static class Menus
                 () => _ = main.SaveToDevice(cloud)));
         else if (tracks.Any(t => t.IsSaving))
             menu.Items.Add(Item(L.T("Salvataggio sul dispositivo in corso…"), SaveGlyph, () => { }, false));
+        // The quality of the ones with a link: downloaded again in it (the saved ones), kept for when they're heard (the cloud).
+        var linked = tracks.Where(t => t.T.HasLink && main.Library.Get(t.Id) == t.T).ToList();
+        if (linked.Count > 0)
+            menu.Items.Add(Item(linked.Any(t => t.T.HasSavedFile) ? L.T("Scarica di nuovo / qualità…") : L.T("Qualità di ascolto…"), "", () => _ = main.ChangeQuality(linked)));
     }
 
     private const string LyricsGlyph = "";
@@ -162,6 +167,7 @@ public static class Menus
         }
         else menu.Items.Add(Item(L.T("Salta"), "", room.Skip, room.CanSkip));
         menu.Items.Add(new Separator());
+        // As for any song: into the library (in the cloud) with the library icon, onto the device with the download arrow.
         if (item.InLibrary)
         {
             menu.Items.Add(AddToPlaylist(item.Track));
@@ -169,22 +175,24 @@ public static class Menus
         }
         else
         {
-            menu.Items.Add(Item(L.T("Salva nella libreria"), "", () => _ = room.Save(item, null), item.IsReady));
-            var sub = new MenuItem { Header = L.T("Salva in una playlist"), IsEnabled = item.IsReady };
+            if (TogetherViewModel.HasLink(item.Item))
+                menu.Items.Add(Item(L.T("Aggiungi alla libreria (senza scaricarlo)"), "", () => room.AddToLibrary(item, null)));
+            var sub = new MenuItem { Header = L.T("Aggiungi a playlist"), IsEnabled = item.IsReady || TogetherViewModel.HasLink(item.Item) };
             Ui.SetGlyph(sub, "");
             sub.Items.Add(Item(L.T("Nuova playlist…"), "", () =>
             {
                 var name = Dialogs.Prompt(L.T("Nuova playlist"), L.T("Nome della playlist"), main.NewPlaylistName());
-                if (!string.IsNullOrWhiteSpace(name)) _ = room.Save(item, main.Profile.CreatePlaylist(name));
+                if (!string.IsNullOrWhiteSpace(name)) room.AddToPlaylist(item, main.Profile.CreatePlaylist(name));
             }));
             sub.Items.Add(new Separator());
             foreach (var p in main.Playlists)
             {
                 var pl = p.P;
-                sub.Items.Add(Item(Short(p.Name), p.IsFavorites ? "" : "", () => _ = room.Save(item, pl)));
+                sub.Items.Add(Item(Short(p.Name), p.IsFavorites ? "" : "", () => room.AddToPlaylist(item, pl)));
             }
             menu.Items.Add(sub);
         }
+        if (!item.SavedOnDevice) menu.Items.Add(Item(L.T("Salva sul dispositivo"), "", () => _ = room.Save(item, null), item.IsReady));
         if (item.Item.SourceUrl is { } url)
             menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copiato")); } catch { } }));
         return menu;
@@ -221,6 +229,7 @@ public static class Menus
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => player.PlayRadio(t)));
+        menu.Items.Add(Item(L.T("Riproduci brani dell'artista"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copiato")); } catch { } }));
         if (row == null && player.Current != t)
         {
@@ -649,6 +658,7 @@ public static class Menus
         menu.Items.Add(Item(L.T("Sposta in fondo"), "", () => player.MoveUpcoming(row.Index, last), row.Index < last));
         menu.Items.Add(Item(L.T("Togli dai successivi"), "", () => player.RemoveUpcoming(row.Index)));
         menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => player.PlayRadio(t)));
+        menu.Items.Add(Item(L.T("Riproduci brani dell'artista"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(new Separator());
         AddSaveItems(menu, new[] { t });
         menu.Items.Add(AddToPlaylist(t));

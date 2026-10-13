@@ -231,6 +231,15 @@ public static partial class Dialogs
         return dir;
     }
 
+    // A folder to write into (the export of MP3s for a USB stick or an SD card): the system's picker, which also reaches
+    // the memory cards and the sticks plugged in. Null: none chosen.
+    public static async Task<IStorageFolder?> PickExportFolderAsync(string title)
+    {
+        if (Storage is not { } storage) return null;
+        var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = title });
+        return folders.FirstOrDefault();
+    }
+
     private static List<string>? Mimes(IEnumerable<string> extensions)
     {
         var list = new HashSet<string>();

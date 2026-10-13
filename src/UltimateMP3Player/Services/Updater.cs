@@ -15,7 +15,10 @@ public sealed record ReleaseInfo(Version Version, string Tag, string Url, string
 // Self-update from the latest GitHub release: swaps the exe, or runs the setup silently.
 public sealed class Updater : Observable
 {
+    // The installed exe. In the releases (3.7 on) the bare exe is UltimateMP3Player-windows-x64.exe and the setup
+    // UltimateMP3Player-windows-x64-setup.exe, named like the other systems' files; the old names are still accepted.
     public const string AssetName = "UltimateMP3Player.exe";
+    private const string ReleaseExe = "UltimateMP3Player-windows-x64.exe", ReleaseSetup = "UltimateMP3Player-windows-x64-setup.exe";
     private const string SetupPrefix = "UltimateMP3Player-Setup";
     private const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{3F6C2A71-9D4E-4B8A-A1C5-7E2D90B4F618}_is1";
 
@@ -48,6 +51,7 @@ public sealed class Updater : Observable
         try
         {
             foreach (var f in Directory.EnumerateFiles(AppPaths.TempDir, SetupPrefix + "*.exe")) File.Delete(f);
+            File.Delete(Path.Combine(AppPaths.TempDir, ReleaseSetup));
         }
         catch { }
     }
@@ -113,8 +117,9 @@ public sealed class Updater : Observable
         foreach (var a in root.GetProperty("assets").EnumerateArray())
         {
             var name = a.GetProperty("name").GetString() ?? "";
-            bool exe = name.Equals(AssetName, StringComparison.OrdinalIgnoreCase);
-            bool isSetup = name.StartsWith(SetupPrefix, StringComparison.OrdinalIgnoreCase) && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+            bool exe = name.Equals(ReleaseExe, StringComparison.OrdinalIgnoreCase) || name.Equals(AssetName, StringComparison.OrdinalIgnoreCase);
+            bool isSetup = name.Equals(ReleaseSetup, StringComparison.OrdinalIgnoreCase) ||
+                           name.StartsWith(SetupPrefix, StringComparison.OrdinalIgnoreCase) && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
             if (!exe && !isSetup) continue;
             string? sha = a.TryGetProperty("digest", out var d) && d.GetString() is { } dg && dg.StartsWith("sha256:") ? dg[7..] : null;
             var info = new ReleaseInfo(version, tag, a.GetProperty("browser_download_url").GetString()!, name, a.GetProperty("size").GetInt64(), sha, isSetup);

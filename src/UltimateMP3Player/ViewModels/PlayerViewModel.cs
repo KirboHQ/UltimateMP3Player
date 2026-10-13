@@ -117,6 +117,7 @@ public sealed class PlayerViewModel : Observable
             if (UpNextVisible) RefreshUpNext();
             SaveState();
             _main.Radio.Refresh();
+            ApplyBend();
         };
     }
 
@@ -126,10 +127,12 @@ public sealed class PlayerViewModel : Observable
 
     // Among the recently played: a song of the library, and one heard without saving it (suggested, from a link, or a
     // room's own, kept from now on like those).
-    private void AddHistory(Track t)
+    // The id it's remembered by (null: one that can't be found again).
+    private string? AddHistory(Track t)
     {
-        if (_main.Library.Get(t.Id) != null || _main.Radio.Has(t.Id)) _main.Profile.AddHistory(t.Id);
-        else if (_main.Radio.KeepHeard(t) is { } id) _main.Profile.AddHistory(id);
+        var id = _main.Library.Get(t.Id) != null || _main.Radio.Has(t.Id) ? t.Id : _main.Radio.KeepHeard(t);
+        if (id != null) _main.Profile.AddHistory(id);
+        return id;
     }
 
     // Brings back the song, the list and "next up" of the last session.
@@ -379,6 +382,7 @@ public sealed class PlayerViewModel : Observable
         "unsorted" => L.T("Senza playlist"),
         { } id when id.StartsWith("playlist:") && _main.Profile.GetPlaylist(id[9..]) is { } p => PlaylistViewModel.DisplayName(p),
         { } id when id.StartsWith("radio:") => L.F("Brani simili a «{0}»", _queue.ContextName),
+        { } id when id.StartsWith("artist:") => L.F("Brani di {0}", _queue.ContextName),
         _ => _queue.ContextName,
     };
 
@@ -479,6 +483,7 @@ public sealed class PlayerViewModel : Observable
             _main.Profile.Data.Repeat = value;
             _main.Profile.Save();
             OnChanged(nameof(Repeat), nameof(RepeatOn), nameof(RepeatGlyph), nameof(RepeatTip), nameof(QueueEndHint));
+            ApplyBend();
         }
     }
 
@@ -520,6 +525,52 @@ public sealed class PlayerViewModel : Observable
         var d = _main.Profile.Data;
         // In a room songs change when the host says so, never early.
         _audio.CrossfadeSeconds = d.Crossfade && _room == null ? Math.Clamp(d.CrossfadeSeconds, 1, 12) : 0;
+        ApplyBend();
+    }
+
+    // ------------------------------------------------------------------ the transition at the next song's tempo
+
+    // The song playing glides to the next one's BPM in its last seconds (Settings), the key unchanged, when both BPMs are
+    // known and close enough (half or double time too); it keeps that tempo while it fades out. Set again whenever the song
+    // or what comes after it changes.
+    private const double MaxBend = 0.15;
+
+    public void ApplyBend()
+    {
+        var d = _main.Profile.Data;
+        double ratio = 1;
+        var coming = _queue.PeekNext() is { } next ? TrackOf(next) : null;
+        if (d.BpmMatch && _room == null && Repeat != RepeatMode.One)
+        {
+            // (BPMs not known yet are detected, as the DJ does: the bend is set again once they are)
+            DetectBpm(Current?.T);
+            DetectBpm(coming);
+            if (Current?.T.Bpm is double from and > 0 && coming?.Bpm is double to and > 0) ratio = BendRatio(from, to);
+        }
+        _audio.SetBend(ratio, Math.Clamp(d.BpmMatchSeconds, 2, 30));
+    }
+
+    // Once per song and session (one that can't be read isn't tried again at every change).
+    private readonly HashSet<string> _bpmAsked = new();
+
+    private async void DetectBpm(Track? t)
+    {
+        if (t == null || t.Bpm is > 0 || t.AudioPath is not { } path || !_bpmAsked.Add(t.Id)) return;
+        DjAnalysis? a = null;
+        try { a = await Task.Run(() => DjAnalyzer.AnalyzeAsync(path)); }
+        catch { }
+        if (a?.Bpm is not double bpm || t.Bpm is > 0) return;
+        t.Bpm = Math.Round(bpm, 1);
+        t.BeatOffset ??= a.FirstBeat;
+        if (_main.Library.Get(t.Id) == t) _main.Library.Changed(t);
+        ApplyBend();
+    }
+
+    // The tempo change that brings one BPM to the other: the nearest of the same, half and double time; 1 when it's too far.
+    internal static double BendRatio(double from, double to)
+    {
+        var r = new[] { to / from, to * 2 / from, to / (2 * from) }.OrderBy(x => Math.Abs(Math.Log(x))).First();
+        return Math.Abs(r - 1) < 0.005 || Math.Abs(r - 1) > MaxBend ? 1 : r;
     }
 
     private double TrackGain(Track t)
@@ -607,6 +658,26 @@ public sealed class PlayerViewModel : Observable
         _queue.Play(new[] { t.Id }, 0, contextId, t.Title, radio: true);
         if (!playing) _ = Load(t, true);
         if (announce) _main.Toast(L.F("Cerco brani simili a «{0}»…", t.Title));
+    }
+
+    // The song now (or on, if it's the one playing) and after it the songs of its artist found online, the most listened
+    // first, more as they're heard (like the similar songs, the same cache).
+    public void PlayArtist(TrackViewModel seed)
+    {
+        if (_room != null) return;
+        var t = seed.T;
+        var artist = t.Artist?.Split(',')[0].Trim();
+        if (string.IsNullOrEmpty(artist))
+        {
+            _main.Toast(L.T("Questo brano non ha un artista da cercare."));
+            return;
+        }
+        var contextId = "artist:" + t.Id;
+        bool playing = Current?.Id == t.Id && (_opened || _waiting == t.Id);
+        _main.Radio.Begin(t, contextId);
+        _queue.Play(new[] { t.Id }, 0, contextId, artist, radio: true);
+        if (!playing) _ = Load(t, true);
+        _main.Toast(L.F("Cerco i brani di {0}…", artist));
     }
 
     // The songs of a link heard without downloading them into the library (RadioViewModel.AddFromLink): each comes into
@@ -740,6 +811,7 @@ public sealed class PlayerViewModel : Observable
             if (version != _loadVersion) return;
             _opened = true;
             Duration = _audio.Duration.TotalSeconds > 0 ? _audio.Duration.TotalSeconds : t.Duration;
+            ApplyBend();
             if (resume > 1 && resume < Duration - 1)
             {
                 _audio.Seek(TimeSpan.FromSeconds(resume));
@@ -852,7 +924,10 @@ public sealed class PlayerViewModel : Observable
         if (ids.Count > 0) _queue.Extend(ids);
         if (_queue.Context.Count == before && (first || _queue.UpcomingCount == 0))
         {
-            if (first) _main.Toast(L.T("Nessun brano simile trovato online: dopo questo continuano tutti i tuoi brani."));
+            if (first)
+                _main.Toast(contextId.StartsWith("artist:", StringComparison.Ordinal)
+                    ? L.T("Nessun brano dell'artista trovato online: dopo questo continuano tutti i tuoi brani.")
+                    : L.T("Nessun brano simile trovato online: dopo questo continuano tutti i tuoi brani."));
             _queue.UseFallback();
         }
         if (!_waitMore) return;
@@ -992,8 +1067,18 @@ public sealed class PlayerViewModel : Observable
     // The song sounding here right now: one of the library (saved or in the cloud), or one heard without keeping it
     // (suggested, from a link: it stays in the statistics once a play of it counts).
     private string? HeardId()
-        => Current is { } c && _opened && (_room == null || _roomLoaded == _room.Session?.Current?.Id) &&
-           (_main.Library.Get(c.Id) != null || _main.Radio.Has(c.Id)) ? c.Id : null;
+    {
+        if (Current is not { } c || !_opened) return null;
+        if (_room != null)
+        {
+            if (_roomLoaded != _room.Session?.Current?.Id) return null;
+            if (_main.Library.Get(c.Id) == null && !_main.Radio.Has(c.Id)) return _roomHeardId is { } kept && _main.Radio.Has(kept) ? kept : null;
+        }
+        return _main.Library.Get(c.Id) != null || _main.Radio.Has(c.Id) ? c.Id : null;
+    }
+
+    // In a room: the id the song playing was kept by (RoomLoad).
+    private string? _roomHeardId;
 
     public void PlayPause()
     {
@@ -1382,7 +1467,11 @@ public sealed class PlayerViewModel : Observable
             if (version != _loadVersion) return true;
             _opened = true;
             Duration = _audio.Duration.TotalSeconds > 0 ? _audio.Duration.TotalSeconds : vm.T.Duration;
-            AddHistory(vm.T);
+            // A room's own song (not in the library) counts in the statistics as the copy kept among the recently played.
+            _roomHeardId = AddHistory(vm.T);
+            // Just downloaded and never analyzed (added to the room from a link): its waveform and loudness now, as for the
+            // suggested songs, instead of a flat bar.
+            if (vm.T.Wave == null) _ = AnalyzeRoomSong(vm.T, path, _roomHeardId);
             return true;
         }
         catch (Exception ex)
@@ -1391,6 +1480,19 @@ public sealed class PlayerViewModel : Observable
             _roomLoaded = null;
             _main.Toast(L.F("Impossibile riprodurre «{0}»: {1}", vm.Title, ex.Message));
             return false;
+        }
+    }
+
+    private async Task AnalyzeRoomSong(Track t, string path, string? kept)
+    {
+        await _main.Radio.Analyze(t, path);
+        // The copy kept among the recently played gets them too.
+        if (t.Wave != null && kept != null && kept != t.Id && _main.Radio.Track(kept) is { Wave: null } copy)
+        {
+            copy.Wave = t.Wave;
+            copy.Loudness = t.Loudness;
+            copy.Peak = t.Peak;
+            _main.Vm(copy).Refresh();
         }
     }
 

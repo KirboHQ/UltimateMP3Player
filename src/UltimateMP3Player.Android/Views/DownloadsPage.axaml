@@ -98,6 +98,19 @@
                             <TextBlock Text="{local:T 'Lo vedrai nella schermata del brano (occupa più spazio)'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
+                    <!-- the quality of these songs (the one in Settings to start with): it stays theirs -->
+                    <Button Theme="{StaticResource SettingRow}" Margin="0,10,0,0" Tag="audio" Click="Quality_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Qualità dell\'audio'}" Classes="setting"/>
+                            <TextBlock Text="{Binding Audio.Label}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource SettingRow}" Tag="video" Click="Quality_Click" IsVisible="{Binding ShowVideoQuality}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Qualità massima dei video'}" Classes="setting"/>
+                            <TextBlock Text="{Binding Video.Label}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
 
                     <Button Theme="{StaticResource TouchPrimary}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,18,0,4"
                             Command="{Binding DownloadCommand}">

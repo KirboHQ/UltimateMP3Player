@@ -141,6 +141,9 @@ public sealed class ProfileData
     public bool Normalize { get; set; } = true;
     public bool Crossfade { get; set; }
     public int CrossfadeSeconds { get; set; } = 6;
+    // Before the next song comes in, the one playing glides to its BPM (when both are known and close enough).
+    public bool BpmMatch { get; set; }
+    public int BpmMatchSeconds { get; set; } = 8;
     // Playback speed 0.5-2; SpeedPitch = the key follows it (like a record), otherwise it stays.
     public double Speed { get; set; } = 1;
     public bool SpeedPitch { get; set; }

@@ -105,6 +105,36 @@ public partial class TogetherView : UserControl
         e.Handled = true;
     }
 
+    // ------------------------------------------------------------------ reordering the queue (like "Up next")
+
+    private Point? _dragStart;
+
+    private void Row_MouseDown(object sender, MouseButtonEventArgs e) => _dragStart = e.GetPosition(null);
+
+    private void Row_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _dragStart is not Point start) return;
+        if (e.OriginalSource is DependencyObject d && Ui.FindAncestor<System.Windows.Controls.Primitives.ButtonBase>(d) != null) return;
+        var p = e.GetPosition(null);
+        if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
+        _dragStart = null;
+        // (without the permission the rows stay put: moving needs the same one as removing)
+        if (sender is not FrameworkElement fe || fe.DataContext is not RoomItemViewModel item || _vm is not { CanRemove: true } vm) return;
+        var session = new DragSession(RoomQueue, item);
+        var outcome = DragVisuals.Run(fe, new DataObject(typeof(RoomItemViewModel), item), DragDropEffects.Move, session);
+        if (outcome != DragOutcome.Placed || session.Target is not RoomItemViewModel target) return;
+        int from = vm.Queue.IndexOf(item), to = vm.Queue.IndexOf(target);
+        if (from < 0 || to < 0) return;
+        int at = DragVisuals.MoveIndex(from, to, session.After);
+        if (at != from) vm.MoveTo(item, at);
+    }
+
+    private void Queue_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(typeof(RoomItemViewModel)) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
     private void Current_RightClick(object sender, MouseButtonEventArgs e)
     {
         if (_vm?.CurrentItem is not { } item) return;

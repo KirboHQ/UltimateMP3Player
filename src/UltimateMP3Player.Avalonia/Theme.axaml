@@ -183,6 +183,25 @@
         <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
     </ControlTheme>
 
+    <!-- Over a picture (a playlist's cover): a dark see-through veil, darker while pressed, never the grey of the other buttons. -->
+    <ControlTheme x:Key="OverlayButton" TargetType="Button">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Background" Value="#99000000"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" Background="{TemplateBinding Background}" CornerRadius="10">
+                    <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pressed /template/ Border#Bd">
+            <Setter Property="Background" Value="#CC000000"/>
+        </Style>
+    </ControlTheme>
+
     <ControlTheme x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource SubtleButton}">
         <Setter Property="local:Ui.GrayText" Value="True"/>
         <Setter Property="Width" Value="34"/>

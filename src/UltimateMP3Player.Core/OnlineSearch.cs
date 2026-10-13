@@ -29,6 +29,28 @@ public static class OnlineSearchServices
 
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
+    // A result as the item of a link, like a playlist's entry not opened yet: shown, downloaded, added to a room or heard
+    // without reading its link first (its details come with the download). Not for Deezer's, a catalogue read through its
+    // own resolver.
+    public static MediaItem ToItem(SearchHit h)
+    {
+        var item = new MediaItem
+        {
+            Title = h.Title,
+            // (a YouTube video's "artist" is its channel: the title says who sings, as when its link is read)
+            Artist = h.Service == YouTube ? null : h.Artist,
+            Album = h.Album,
+            Duration = h.Duration,
+            Kind = h.Service is YouTube or YouTubeMusic ? MediaKind.Video : MediaKind.Audio,
+            Source = SourceKind.YtDlp,
+            Url = h.Url,
+            PageUrl = h.Url,
+            SiteName = Sites.NameFor(h.Url),
+        };
+        if (h.Thumb != null) item.Thumbnails.Add(h.Thumb);
+        return item;
+    }
+
     // The enabled ones, in the chosen order (unknown names dropped, services added later go at the end).
     public static List<string> Ordered(IEnumerable<string> order, IEnumerable<string> off)
     {
@@ -334,6 +356,41 @@ public static class OnlineSearchServices
         if (id == null) return new List<SearchHit>();
         using var doc = JsonDocument.Parse(await SoundCloudGetAsync(c => $"https://api-v2.soundcloud.com/tracks/{id}/related?client_id={c}&limit={Math.Min(50, limit * 2)}", ct));
         return SoundCloudHits(doc.RootElement, limit);
+    }
+
+    // ------------------------------------------------------------------ the artist's songs ("Play the artist's songs")
+
+    // Songs of the seed's artist, the most listened first (the artist's top on Deezer; YouTube Music's songs of the artist
+    // when Deezer doesn't know them), without the seed and without doubles. skip: how many were given already (the next
+    // ones, when the queue asks for more).
+    public static async Task<List<SearchHit>> ArtistSongsAsync(RadioSeed seed, int limit, int skip, CancellationToken ct)
+    {
+        var name = seed.Artist?.Split(',')[0].Trim();
+        if (string.IsNullOrEmpty(name)) return new List<SearchHit>();
+        var hits = new List<SearchHit>();
+        try { hits = await DeezerArtistTopAsync(name, limit, skip, ct); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { }
+        if (hits.Count == 0 && skip == 0)
+        {
+            try { hits = (await YouTubeMusicAsync(name, Math.Min(50, limit * 2), ct)).Where(h => Text.Coverage(name, h.Artist ?? "") >= 0.5).ToList(); }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch { }
+        }
+        var seen = new HashSet<string> { SongMeta.Key(seed.Title, seed.Artist) };
+        return hits.Where(h => seen.Add(SongMeta.Key(h.Title, h.Artist))).Take(limit).ToList();
+    }
+
+    private static async Task<List<SearchHit>> DeezerArtistTopAsync(string name, int limit, int skip, CancellationToken ct)
+    {
+        using var s = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/search/artist?q={Uri.EscapeDataString(name)}&limit=5", ct));
+        // The artist with exactly that name, not the first one that only looks like it.
+        var artists = s.RootElement.Arr("data").ToList();
+        var artist = artists.FirstOrDefault(a => Text.Normalize(a.Str("name")) == Text.Normalize(name));
+        var id = artist.ValueKind == JsonValueKind.Object ? artist.Str("id") : artists.Count > 0 && Text.Coverage(name, artists[0].Str("name") ?? "") >= 0.8 ? artists[0].Str("id") : null;
+        if (id == null) return new List<SearchHit>();
+        using var doc = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/artist/{id}/top?limit={Math.Min(100, limit)}&index={skip}", ct));
+        return DeezerHits(doc.RootElement, limit);
     }
 
     // The radio of the song's artist.

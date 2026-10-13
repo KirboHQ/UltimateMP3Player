@@ -29,10 +29,65 @@ internal sealed class Voice : IDisposable
     public double CrossfadeAt = double.MaxValue;
     public bool NearEndRaised;
 
+    // The transition matched to the next song's BPM: from BendFrom (seconds of the song) its tempo glides to BendRatio in
+    // BendSeconds, the key unchanged, and stays there while it fades out. Only this song: the next one plays as it is.
+    public double BendFrom = double.MaxValue, BendSeconds, BendRatio = 1;
+    private SoundTouchProcessor? _bend;
+    private float[] _bendIn = Array.Empty<float>(), _bendOut = Array.Empty<float>();
+    private bool _bendEnded;
+    private const int BendChunk = 1024;
+
     public void Rebuild(int rate)
     {
         var s = Source.Samples;
         Chain = s.WaveFormat.SampleRate == rate ? s : new WdlResamplingSampleProvider(s, rate);
+        // (after a jump, or at another rate: what the stretcher held was of another point)
+        _bend = null;
+        _bendEnded = false;
+    }
+
+    // The tempo wanted now: 1 before the bend, then a smooth glide to the ratio.
+    private double BendTempo(double position)
+    {
+        if (BendRatio == 1 || position < BendFrom) return 1;
+        double p = BendSeconds <= 0 ? 1 : Math.Clamp((position - BendFrom) / BendSeconds, 0, 1);
+        return 1 + (BendRatio - 1) * p * p * (3 - 2 * p);
+    }
+
+    // Reads the song, through its own stretcher while it bends.
+    public int Read(float[] dst, int offset, int count, int rate)
+    {
+        if (Chain == null) return 0;
+        if (_bend == null && BendTempo(Source.Position.TotalSeconds) == 1) return Chain.Read(dst, offset, count);
+        if (_bend == null)
+        {
+            _bend = new SoundTouchProcessor { Channels = 2, SampleRate = rate };
+            _bendIn = new float[BendChunk * 2];
+        }
+        int frames = count / 2, got = 0;
+        if (_bendOut.Length < count) _bendOut = new float[count];
+        for (int guard = 0; got < frames && guard < 256; guard++)
+        {
+            if (_bend.AvailableSamples > 0)
+            {
+                int n = _bend.ReceiveSamples(_bendOut.AsSpan(0, (frames - got) * 2), frames - got);
+                for (int i = 0; i < n * 2; i++) dst[offset + got * 2 + i] = _bendOut[i];
+                got += n;
+                continue;
+            }
+            if (_bendEnded) break;
+            _bend.Tempo = BendTempo(Source.Position.TotalSeconds);
+            int read = Chain.Read(_bendIn, 0, _bendIn.Length);
+            if (read <= 0)
+            {
+                // The end of the song: what the stretcher still holds comes out, then it's over.
+                _bendEnded = true;
+                _bend.Flush();
+                continue;
+            }
+            _bend.PutSamples(_bendIn, read / 2);
+        }
+        return got * 2;
     }
 
     public void FadeTo(float target, double seconds, int rate)
@@ -276,7 +331,11 @@ public sealed class MasterProvider : ISampleProvider
         lock (_lock)
         {
             if (_current is not { } cur) return false;
-            var v = new Voice(source, cur.Gain, cur.Duration) { CrossfadeAt = cur.CrossfadeAt, NearEndRaised = cur.NearEndRaised, Ended = cur.Ended };
+            var v = new Voice(source, cur.Gain, cur.Duration)
+            {
+                CrossfadeAt = cur.CrossfadeAt, NearEndRaised = cur.NearEndRaised, Ended = cur.Ended,
+                BendFrom = cur.BendFrom, BendSeconds = cur.BendSeconds, BendRatio = cur.BendRatio,
+            };
             v.Rebuild(_rate);
             // Fade 0 with a jump pending: the first read seeks it there and fades it in.
             v.PendingSeek = cur.PendingSeek ?? cur.Source.Position;
@@ -309,6 +368,21 @@ public sealed class MasterProvider : ISampleProvider
     {
         lock (_lock)
             if (_current != null) SetCrossfadePoint(_current, seconds);
+    }
+
+    // The song playing glides to ratio × its tempo during the last seconds before the next one comes in (the crossfade's
+    // start, or its end without one), and keeps that tempo while it fades out. 1: no bend.
+    public void SetBend(double ratio, double seconds)
+    {
+        lock (_lock)
+        {
+            if (_current is not { } v) return;
+            double end = v.CrossfadeAt < double.MaxValue ? v.CrossfadeAt : v.Duration;
+            bool fits = ratio != 1 && seconds > 0 && end > seconds * 2;
+            v.BendRatio = fits ? ratio : 1;
+            v.BendSeconds = seconds;
+            v.BendFrom = fits ? end - seconds : double.MaxValue;
+        }
     }
 
     public double RemainingSeconds
@@ -510,7 +584,7 @@ public sealed class MasterProvider : ISampleProvider
         }
         if (v.Chain == null) return 0;
         int read;
-        try { read = v.Chain.Read(dst, offset, count); }
+        try { read = v.Read(dst, offset, count, _rate); }
         catch { read = 0; }
         for (int i = 0; i + 1 < read; i += 2)
         {

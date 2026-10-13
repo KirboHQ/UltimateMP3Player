@@ -22,7 +22,8 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 MinVersion=10.0
 OutputDir=Output
-OutputBaseFilename=UltimateMP3Player-Setup-{#AppVersion}
+; Named like the other systems' files of the release (UltimateMP3Player-linux-x64.tar.gz, -android-arm64-v8a.apk...).
+OutputBaseFilename=UltimateMP3Player-windows-x64-setup
 SetupIconFile=..\src\UltimateMP3Player\app.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}

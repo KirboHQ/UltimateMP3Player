@@ -109,7 +109,8 @@ public sealed class LyricsView : Grid
         var credit = new TextBlock
         {
             Text = L.T("Testo da LRCLIB"),
-            FontSize = 12,
+            // (like "Playing from:" under the title: the same size and colour)
+            FontSize = 12.5,
             Foreground = (Brush)FindResource("MutedBrush"),
             Margin = new Thickness(2, 34, 0, 0),
         };

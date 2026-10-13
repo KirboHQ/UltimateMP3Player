@@ -18,7 +18,7 @@ public sealed class StatsViewModel : Observable, ITrackList
         Sorts = new List<Choice>
         {
             new(L.T("Più ascoltati"), "most"), new(L.T("Meno ascoltati"), "least"), new(L.T("Più tempo di ascolto"), "time"),
-            new(L.T("Ascoltati di recente"), "recent"), new(L.T("Mai ascoltati"), "never"),
+            new(L.T("Ascoltati di recente"), "recent"), new(L.T("Mai ascoltati"), "never"), new(L.T("Tutti i brani"), "all"),
         };
         _sort = Sorts[0];
         PlayCommand = new RelayCommand(() => _main.Player.PlayAll(this, false), () => _order.Count > 0);
@@ -95,6 +95,8 @@ public sealed class StatsViewModel : Observable, ITrackList
             "time" => all.Where(t => Of(t) is { Seconds: > 0 }).OrderByDescending(t => Of(t)!.Seconds).ThenByDescending(t => Of(t)!.Plays),
             "recent" => all.Where(t => Of(t)?.Last != null).OrderByDescending(t => Of(t)!.Last),
             "never" => library.Where(t => Of(t) is not { Plays: > 0 }).OrderByDescending(t => t.Added),
+            // Every song, heard or not: the most played first, then the newest.
+            "all" => all.OrderByDescending(t => Of(t)?.Plays ?? 0).ThenByDescending(t => Of(t)?.Seconds ?? 0).ThenByDescending(t => t.Added),
             _ => all.Where(t => Of(t) is { Plays: > 0 }).OrderByDescending(t => Of(t)!.Plays).ThenByDescending(t => Of(t)!.Seconds),
         };
         _order = sorted.Select(_main.Vm).ToList();

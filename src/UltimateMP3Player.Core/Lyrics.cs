@@ -263,6 +263,9 @@ public static class LyricsFinder
         LyricsResult? best = null;
         int bestScore = -1;
         double bestDiff = double.MaxValue;
+        // A title several artists have sung ("Bittersweet"): without the artist confirmed, a song of the same length by
+        // someone else would get the wrong lyrics, so then only the artist's own count.
+        var ambiguous = guesses.ToDictionary(g => g, g => pool.Where(c => SameTitle(g.Core, c.Title)).Select(c => Squash(c.Artist)).Distinct().Count() > 1);
         foreach (var c in pool)
         {
             double diff = duration > 0 && c.Duration is > 0 ? Math.Abs(c.Duration.Value - duration) : double.MaxValue;
@@ -274,7 +277,7 @@ public static class LyricsFinder
                 bool exact = SameTitle(g.Core, c.Title);
                 if (!exact && !SameTitle(g.Loose, c.Title)) continue;
                 if (SameArtist(g.Artists, c.Artist)) { matched = artistOk = true; break; }
-                if (!g.Named && exact && diff <= StrictSlack && sameVersion) matched = true;
+                if (!g.Named && exact && diff <= StrictSlack && sameVersion && (g.Artists.Count == 0 || !ambiguous[g])) matched = true;
             }
             if (!matched) continue;
             // A remix matched to the original song keeps only the words, even when the lengths happen to match.

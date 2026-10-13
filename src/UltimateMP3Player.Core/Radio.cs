@@ -19,6 +19,8 @@ public sealed class RadioSong
     public List<string> Keys { get; set; } = new();
     // Not suggested: a song of a link you chose to hear without downloading it into the library.
     public bool FromLink { get; set; }
+    // The audio quality chosen for it (a library song in the cloud: Track.AudioQuality); null: the one in Settings.
+    public string? Quality { get; set; }
 
     public static bool IsRadio(string id) => id.StartsWith(Prefix, StringComparison.Ordinal);
 
@@ -46,23 +48,26 @@ public sealed class RadioSong
     };
 }
 
-// Gets the files of the suggested songs about to play, like the rooms do: the one playing and the next few, one download
-// at a time in the order of the queue, into the same cache (so a song heard in a room is ready here, and the other way).
-// The files of the songs still in the queue are never trimmed from the cache.
+// Parallel: downloads at a time (the "simultaneous downloads" setting).
+public sealed record RadioFetchOptions(string AudioFormat, string? Cookies, int CacheSize, int Parallel);
+
+// Gets the files of the suggested songs about to play, like the rooms do: the one playing and the next few, in the order
+// of the queue (as many at a time as the settings allow), into the same cache (so a song heard in a room is ready here, and
+// the other way). The files of the songs still in the queue are never trimmed from the cache.
 public sealed class RadioFetcher : IDisposable
 {
     private readonly TogetherCache _cache;
-    private readonly Func<(string AudioFormat, string? Cookies, int CacheSize)> _options;
+    private readonly Func<RadioFetchOptions> _options;
     private readonly Action<Action> _post;
     private readonly Dictionary<string, FileStatus> _status = new();
     private readonly Dictionary<string, string> _paths = new();
     private List<RadioSong> _window = new();
     private HashSet<string> _inUse = new(StringComparer.OrdinalIgnoreCase);
-    private string? _busy;
-    private CancellationTokenSource? _cts;
+    // The downloads going on (song id → how to stop it).
+    private readonly Dictionary<string, CancellationTokenSource> _running = new();
     private bool _disposed;
 
-    public RadioFetcher(TogetherCache cache, Func<(string AudioFormat, string? Cookies, int CacheSize)> options, Action<Action> post)
+    public RadioFetcher(TogetherCache cache, Func<RadioFetchOptions> options, Action<Action> post)
     {
         _cache = cache;
         _options = options;
@@ -93,11 +98,19 @@ public sealed class RadioFetcher : IDisposable
         _window = window.ToList();
         foreach (var s in _window)
             if (!IsReady(s.Id) && _cache.Find(s.Keys) is { } path) MarkReady(s, path);
-        // Work on a song no longer wanted stops; the first one comes before a later one already on its way.
-        if (_busy != null && (_window.All(s => s.Id != _busy) || _window.Count > 0 && _window[0].Id != _busy && !IsReady(_window[0].Id) && !IsFailed(_window[0].Id)))
-            _cts?.Cancel();
+        // Work on a song no longer wanted stops.
+        foreach (var id in _running.Keys.Where(id => _window.All(s => s.Id != id)).ToList()) _running[id].Cancel();
+        // The first one comes before a later one already on its way, when there's no room for both.
+        if (_window.Count > 0 && _window[0] is var first && !IsReady(first.Id) && !IsFailed(first.Id) && !_running.ContainsKey(first.Id) &&
+            Active() >= Limit() && _window.LastOrDefault(s => _running.TryGetValue(s.Id, out var c) && !c.IsCancellationRequested) is { } later)
+            _running[later.Id].Cancel();
         Next();
     }
+
+    private int Limit() => Math.Clamp(_options().Parallel, 1, 6);
+
+    // The downloads going on that weren't asked to stop.
+    private int Active() => _running.Values.Count(c => !c.IsCancellationRequested);
 
     // A failed song is tried again when asked (it may have been a hiccup of the connection).
     public void Retry(string id)
@@ -111,39 +124,38 @@ public sealed class RadioFetcher : IDisposable
 
     private void Next()
     {
-        if (_busy != null || _disposed) return;
-        var next = _window.FirstOrDefault(s => !IsReady(s.Id) && !IsFailed(s.Id));
-        if (next != null) _ = Download(next);
+        if (_disposed) return;
+        int free = Limit() - Active();
+        foreach (var s in _window.Where(s => !IsReady(s.Id) && !IsFailed(s.Id) && !_running.ContainsKey(s.Id)).Take(Math.Max(0, free)).ToList())
+            _ = Download(s);
     }
 
     private async Task Download(RadioSong s)
     {
-        _busy = s.Id;
-        var cts = _cts = new CancellationTokenSource();
+        var cts = _running[s.Id] = new CancellationTokenSource();
         Set(s.Id, FileState.Downloading, 0);
         var o = _options();
         Action<double> progress = pct => _post(() =>
         {
-            if (_busy == s.Id && Math.Abs((StatusOf(s.Id)?.Pct ?? 0) - pct) >= 2) Set(s.Id, FileState.Downloading, pct);
+            if (_running.GetValueOrDefault(s.Id) == cts && Math.Abs((StatusOf(s.Id)?.Pct ?? 0) - pct) >= 2) Set(s.Id, FileState.Downloading, pct);
         });
         try
         {
             var keys = s.Keys;
             string file;
+            YtInfo? info;
             try
             {
-                file = await TogetherCache.DownloadAsync(s.Url, o.AudioFormat, o.Cookies, _cache.TempDir, progress, cts.Token);
+                // Its link doesn't work (removed, private, DRM): the same song from YouTube.
+                (file, info) = await CloudSongs.DownloadAsync(s.Url, s.Title, s.Artist, s.Duration, s.Quality ?? o.AudioFormat, o.Cookies, _cache.TempDir, progress, cts.Token);
             }
-            catch (EngineException ex) when (ex.LinkProblem && !cts.IsCancellationRequested)
+            catch (EngineException ex) when (ex is { NotFoundElsewhere: true, Gone: true })
             {
-                // Its link no longer works (removed, private, blocked): the same song on YouTube, if there's a close match.
-                var info = await CloudSongs.FindElsewhereAsync(s.Title, s.Artist, s.Duration, o.Cookies, cts.Token);
-                if (info == null)
-                {
-                    if (ex.Gone) _gone.Add(s.Id);
-                    throw;
-                }
-                file = await TogetherCache.DownloadAsync(info.WebpageUrl, o.AudioFormat, o.Cookies, _cache.TempDir, progress, cts.Token);
+                _gone.Add(s.Id);
+                throw;
+            }
+            if (info != null)
+            {
                 var found = SourceKeys.ForInfo(info);
                 keys = s.Keys.Concat(found).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
                 if (!_disposed && !cts.IsCancellationRequested)
@@ -176,11 +188,7 @@ public sealed class RadioFetcher : IDisposable
         }
         finally
         {
-            if (_cts == cts)
-            {
-                _busy = null;
-                _cts = null;
-            }
+            if (_running.GetValueOrDefault(s.Id) == cts) _running.Remove(s.Id);
             cts.Dispose();
             if (!_disposed) _post(Next);
         }
@@ -212,14 +220,14 @@ public sealed class RadioFetcher : IDisposable
         _gone.Remove(id);
         _offline.Remove(id);
         if (_paths.Remove(id)) _inUse = _paths.Values.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (_busy == id) _cts?.Cancel();
+        if (_running.TryGetValue(id, out var cts)) cts.Cancel();
     }
 
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
-        _cts?.Cancel();
+        foreach (var cts in _running.Values) cts.Cancel();
         _cache.Release(this);
     }
 }

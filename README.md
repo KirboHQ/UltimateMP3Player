@@ -49,7 +49,34 @@
   <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · songs in the cloud · a player that feels like Spotify · synced lyrics · a queue that fills itself · DJ mode · playlists, favorites and tags · on all your devices · listen together">
 </picture>
 
-## 🆕 What's new in 3.6
+## 🆕 What's new in 3.7
+
+- **Your quality, song by song**: on the link card choose the audio (MP3 320, 256, 192, 128 kbps or the original file) and
+  the video resolution; a song keeps its choice, also when it's in the cloud and heard from its link. Right click →
+  **Download again / quality…** downloads a saved song again in another quality, in place of its files (cover, lyrics,
+  statistics and playlists stay).
+- **MP3s for the car**: *Export* → **To a folder (MP3)** puts the chosen playlists, tags or the whole library in a folder
+  (a USB stick, an SD card) as plain MP3 files named "Artist - Title", with title, artist, album and cover in their tags.
+  Songs in the cloud are downloaded on the way. Every platform, Android included.
+- **Play the artist's songs**: next to *Play similar songs*, the most listened songs of the artist, found online.
+- **BPM-matched transition** (Settings › Playback): in its last seconds a song slows down or speeds up to the next one's
+  BPM, without changing key, so they meet on the beat (BPMs are detected by themselves when missing).
+- **Listen together**: drag the room's queue like *Up next*; the library icon and the download arrow work as everywhere
+  else; songs heard in a room count in your statistics; songs found with the online search go straight into the room;
+  links that can't be downloaded (DRM) are taken from YouTube by themselves, in rooms and in the automatic queue too.
+- **Drag to reorder everywhere**: the online search's sites in Settings, and *Up next* on Android, with the line and the
+  box of the playlists (on Android a long press on the handle no longer scrolls the list away).
+- Online search results open their card at once, without reading the link again; songs added to the library without
+  saving them leave their card on screen, ready to be heard.
+- Statistics: an *All songs* filter. Simultaneous downloads now also apply to the automatic queue and to rooms. Switching
+  to the DJ pauses the song. Ctrl+arrows in text fields move the cursor instead of changing song. The lyrics icon is the
+  same on Android. Lyrics: no more someone else's song with the same title. The waveform of a song heard for the first time
+  in a room is drawn. The DJ page redraws less often. The DJ entry is now below Listen together.
+- Windows release files are named like the others: `UltimateMP3Player-windows-x64-setup.exe` and
+  `UltimateMP3Player-windows-x64.exe`.
+
+<details>
+<summary>3.6</summary>
 
 - **Songs in the cloud** ☁: a song doesn't need its audio on your device any more. In the cloud it keeps its cover,
   lyrics, statistics and its place in your playlists and Favorites, and plays from its link; the ones you've played
@@ -75,6 +102,8 @@
   every platform. On Android a long press opens the menu with *Select* first, like the gallery.
 - Cloud songs work in DJ mode too (they're downloaded when you load them on a deck), and the temporary storage can now
   keep up to 200 songs.
+
+</details>
 
 <details>
 <summary>3.5</summary>
@@ -129,7 +158,7 @@
 
 **Windows**
 
-1. Download **`UltimateMP3Player-Setup-x.y.z.exe`** from the [latest release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
+1. Download **`UltimateMP3Player-windows-x64-setup.exe`** from the [latest release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
 2. Run it: no administrator rights and nothing else to install. It asks for your language (English or Italiano,
    you can change it later in Settings).
 3. That's it: the app keeps itself up to date from the releases.
@@ -190,7 +219,9 @@
 - **Online search** inside the app: YouTube Music, YouTube, SoundCloud and Deezer next to your own songs; a click opens
   the download
 - Save the audio on your device, or just add the songs to your library in the cloud and save them later
-- MP3 at 320 kbps or the original format, videos up to 4K, several downloads at a time
+- MP3 at 320, 256, 192 or 128 kbps or the original format, videos from 360p up to 4K, chosen for each song and remembered;
+  several downloads at a time
+- *Download again / quality…*: a saved song downloaded again in another quality, in place of its files
 - Duplicates are recognized (same source or same song), and site rate limits are handled by themselves: downloads
   pause, then resume more gently
 - A link that can't be read, and failed downloads, can be retried on YouTube Music
@@ -212,8 +243,9 @@
 **Up next**
 - Drag to reorder, double-click to jump, drop on the bin to remove
 - Automatic queue, *Generate* and *Clear*, a panel you can hide to the side
-- Similar songs found online after a song: downloaded just before their turn (how many ahead is up to you), kept with
-  a right-click
+- Similar songs found online after a song, or the artist's songs: downloaded just before their turn (how many ahead
+  is up to you), kept with a right-click
+- Optional transition at the next song's tempo: the song playing glides to its BPM without changing key
 - Restored exactly where you left it when you reopen the app
 
 **Library**
@@ -226,8 +258,10 @@
   space freed
 - **`.ump` packs**: a playlist, a tag, several of them or everything in one file, with the audio or as links only
   (small enough for Discord); open it or drop it on the app to import it, without doubling the songs you already have
+- **MP3s in a folder** for a USB stick, an SD card or the car: "Artist - Title.mp3" with tags and cover
 - Rename an artist on all their songs at once; edit title, artist, album, BPM and cover
-- Listening statistics per profile: plays, time listened and last played of every song, the least played to clean up
+- Listening statistics per profile: plays, time listened and last played of every song (also the ones heard in rooms
+  and not saved), the least played to clean up
 
 **DJ**
 - Two decks with scrolling waveforms and overviews, CUE, nudge, tempo range ±8 / 16 / 50 %, key lock
@@ -280,8 +314,8 @@ Requirements: .NET 8 SDK, and for the installer Inno Setup 6. Put the external p
 | Command | Result |
 |---|---|
 | `.\build.ps1` | Portable app in `app\` and a Desktop shortcut |
-| `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-Setup-<version>.exe` |
-| `.\build.ps1 -Release` | `dist\`: the files to attach to a GitHub release: the setup (plus `UltimateMP3Player.exe`, optional, for lighter updates), the Linux and macOS packages and the Android APKs (`-WindowsOnly` skips both, `-NoAndroid` only the APKs) |
+| `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-windows-x64-setup.exe` |
+| `.\build.ps1 -Release` | `dist\`: the files to attach to a GitHub release: `UltimateMP3Player-windows-x64-setup.exe` (plus `UltimateMP3Player-windows-x64.exe`, optional, for lighter updates, and `legacy\UltimateMP3Player.exe`, the same exe under the name versions up to 3.6 look for), the Linux and macOS packages and the Android APKs (`-WindowsOnly` skips both, `-NoAndroid` only the APKs) |
 | `.\build-unix.ps1` | Only the Linux and macOS packages in `dist\`: `UltimateMP3Player-linux-x64.tar.gz`, `-linux-arm64.tar.gz`, `UltimateMP3Player-macos-x64.zip`, `-macos-arm64.zip` (`-Targets linux-x64,…` for some of them) |
 | `.\build-android.ps1` | Only the Android APKs in `dist\android\`: `UltimateMP3Player-android-arm64-v8a.apk`, `-armeabi-v7a.apk`, `-x86_64.apk` (`-Out <folder>` elsewhere) |
 
@@ -300,8 +334,9 @@ the same as the Windows one (and the Android one, in `src\UltimateMP3Player.Andr
 Two settings in `src\UltimateMP3Player\UltimateMP3Player.csproj` (and the same two in the Avalonia project):
 
 - `<GitHubRepo>owner/repo</GitHubRepo>`: where the app looks for updates and opens issues. The latest release must
-  contain the setup; if it also contains `UltimateMP3Player.exe`, updates download only that (70 MB instead of the
-  whole setup).
+  contain the setup; if it also contains `UltimateMP3Player-windows-x64.exe`, updates download only that (70 MB instead
+  of the whole setup). Versions up to 3.6 only know the old names: attach `dist\legacy\UltimateMP3Player.exe` too for a
+  few releases, so they can update.
 - `<DiscordAppId>…</DiscordAppId>`: the Discord application used for Rich Presence.
 
 `UMP_DATA=<folder>` runs a test copy with its own data next to the normal one. `src\Mp3Cli` is a command line harness

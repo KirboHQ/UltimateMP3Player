@@ -71,7 +71,8 @@ public sealed class RadioViewModel : Observable
         var host = main.Host;
         var ui = Application.Current.Dispatcher;
         _fetcher = new RadioFetcher(host.SongCache,
-            () => (host.Settings.AudioFormat, host.Settings.CookiesBrowserOrNull, Math.Clamp(host.Settings.TogetherCacheSize, 1, 200)), a => ui.BeginInvoke(a));
+            () => new RadioFetchOptions(host.Settings.AudioFormat, host.Settings.CookiesBrowserOrNull, Math.Clamp(host.Settings.TogetherCacheSize, 1, 200),
+                host.Settings.MaxParallel), a => ui.BeginInvoke(a));
         _fetcher.Changed += OnFile;
         _fetcher.Replaced += OnReplaced;
         // The ones of the last session: their files may still be in the cache (the player may even be playing one).
@@ -196,14 +197,19 @@ public sealed class RadioViewModel : Observable
 
     // ------------------------------------------------------------------ asking for suggestions
 
-    // A new list of suggestions after this song (the queue already plays it on its own).
+    // A new list of suggestions after this song (the queue already plays it on its own): songs like it ("radio:…"), or
+    // the songs of its artist ("artist:…", PlayerViewModel.PlayArtist).
     public void Begin(Track seed, string contextId)
     {
         _cts?.Cancel();
         _cts = null;
         _exhausted.Remove(contextId);
+        _artistGiven.Remove(contextId);
         _ = Fetch(SeedOf(seed), contextId, true);
     }
+
+    // The artist's songs already asked for, per list: the next ones come after them. Its first song is the seed's artist.
+    private readonly Dictionary<string, (int Given, RadioSeed Seed)> _artistGiven = new();
 
     private async Task Fetch(RadioSeed seed, string contextId, bool first)
     {
@@ -211,12 +217,17 @@ public sealed class RadioViewModel : Observable
         _main.Player.OnRadioBusy();
         var source = _main.Host.Settings.RadioSource;
         var known = _items.Values.Select(i => i.Song).ToList();
+        bool artist = contextId.StartsWith("artist:", StringComparison.Ordinal);
+        // (always the first song's artist: the last song of the list may be a duet)
+        var (given, artistSeed) = artist ? _artistGiven.GetValueOrDefault(contextId, (0, seed)) : (0, seed);
         List<(string Id, RadioSong? New)> picks = new();
         try
         {
             picks = await Task.Run(async () =>
             {
-                var hits = await OnlineSearchServices.SimilarAsync(seed, source, Batch, cts.Token);
+                var hits = artist
+                    ? await OnlineSearchServices.ArtistSongsAsync(artistSeed, Batch, given, cts.Token)
+                    : await OnlineSearchServices.SimilarAsync(seed, source, Batch, cts.Token);
                 // A song you already have plays from the library (saved or in the cloud); one suggested before keeps its id.
                 var list = new List<(string Id, RadioSong? New)>();
                 foreach (var song in hits.Select(RadioSong.From))
@@ -235,6 +246,7 @@ public sealed class RadioViewModel : Observable
         cts.Dispose();
         _main.Player.OnRadioBusy();
         if (canceled || !mine || _main.Player.ContextId != contextId) return;
+        if (artist) _artistGiven[contextId] = (given + Batch, artistSeed);
         foreach (var p in picks)
             if (p.New != null) Add(p.New);
         if (picks.Count == 0) _exhausted.Add(contextId);
@@ -297,6 +309,21 @@ public sealed class RadioViewModel : Observable
         }
         if (!Busy && p.RadioRunningLow(Low) is { } contextId && !_exhausted.Contains(contextId) && p.RadioSeed() is { } seed)
             _ = Fetch(seed, contextId, false);
+    }
+
+    // A library song in the cloud whose quality changed: its copy in the cache goes (unless it's playing), the next time it's
+    // heard it comes in the new quality.
+    public void Restream(Track t)
+    {
+        _streams.Remove(t.Id);
+        _fetcher.Forget(t.Id);
+        var playing = _main.Player.Current?.Id == t.Id;
+        if (!playing && _main.Host.SongCache.Find(t.Keys.ToList()) is { } cached)
+        {
+            _main.Host.SongCache.Forget(cached);
+            t.CachePath = null;
+        }
+        Refresh();
     }
 
     private Track? TrackFor(string id) => _items.TryGetValue(id, out var i) ? i.T : _streams.ContainsKey(id) ? _main.Library.Get(id) : null;
@@ -415,7 +442,8 @@ public sealed class RadioViewModel : Observable
     // file that can't be read isn't tried again at every change of the queue). A library song keeps them.
     private readonly HashSet<string> _analyzing = new();
 
-    private async Task Analyze(Track t, string path)
+    // (also for a room's song heard for the first time: PlayerViewModel.RoomLoad)
+    internal async Task Analyze(Track t, string path)
     {
         if (t.Wave != null || !_analyzing.Add(t.Id)) return;
         try

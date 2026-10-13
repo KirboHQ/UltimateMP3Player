@@ -90,11 +90,11 @@ public partial class MainWindow : Window
                 dj.TapKey();
                 e.Handled = true;
                 break;
-            case Key.Right when ctrl:
+            case Key.Right when ctrl && !inText:
                 vm.Player.NextCommand.Execute(null);
                 e.Handled = true;
                 break;
-            case Key.Left when ctrl:
+            case Key.Left when ctrl && !inText:
                 vm.Player.PreviousCommand.Execute(null);
                 e.Handled = true;
                 break;
@@ -106,11 +106,11 @@ public partial class MainWindow : Window
                 vm.Player.Seek(vm.Player.Position - 5);
                 e.Handled = true;
                 break;
-            case Key.Up when ctrl:
+            case Key.Up when ctrl && !inText:
                 vm.Player.Volume += 0.05;
                 e.Handled = true;
                 break;
-            case Key.Down when ctrl:
+            case Key.Down when ctrl && !inText:
                 vm.Player.Volume -= 0.05;
                 e.Handled = true;
                 break;

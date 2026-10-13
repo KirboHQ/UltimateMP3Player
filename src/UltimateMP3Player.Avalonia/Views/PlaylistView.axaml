@@ -10,9 +10,9 @@
             <Border Width="172" Height="172" CornerRadius="8" BoxShadow="0 6 24 0 #80000000">
                 <Panel>
                     <ContentControl Content="{Binding Vm}" ContentTemplate="{StaticResource PlaylistCover}"/>
-                    <Button x:Name="CoverButton" Theme="{StaticResource SubtleButton}" Padding="0" Command="{Binding CoverCommand}" Opacity="0"
-                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center"
-                            ToolTip.Tip="{local:T 'Cambia immagine'}" Background="#99000000" Foreground="White">
+                    <Button x:Name="CoverButton" Theme="{StaticResource OverlayButton}" Command="{Binding CoverCommand}" Opacity="0"
+                            HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                            ToolTip.Tip="{local:T 'Cambia immagine'}">
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="{local:Icon EB9F}" Classes="glyph" FontSize="30" HorizontalAlignment="Center"/>
                             <TextBlock Text="{local:T 'Cambia immagine'}" Margin="0,8,0,0" FontSize="12.5"/>

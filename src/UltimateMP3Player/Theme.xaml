@@ -237,6 +237,28 @@
         <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
     </Style>
 
+    <!-- Over a picture (a playlist's cover): a dark see-through veil, darker while pressed, never the grey of the other buttons. -->
+    <Style x:Key="OverlayButton" TargetType="Button">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Background" Value="#99000000"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="10" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="#CC000000"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource SubtleButton}">
         <Setter Property="Width" Value="34"/>
         <Setter Property="Height" Value="34"/>

@@ -5,6 +5,7 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.VisualTree;
 using UltimateMP3Player.ViewModels;
 using Text = UltimateMP3Player.Core.Text;
 
@@ -40,6 +41,39 @@ public partial class SettingsView : UserControl
             vm.StartSearch = null;
             SearchBox.Text = words;
         };
+        // The online search's sites are dragged into their order like the songs of a playlist.
+        ServiceList.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) _serviceDragStart = e.GetPosition(null);
+        }, RoutingStrategies.Tunnel);
+        ServiceList.AddHandler(PointerMovedEvent, Service_Moved, RoutingStrategies.Tunnel);
+        ServiceList.AddHandler(DragDrop.DragOverEvent, (_, e) =>
+        {
+            e.DragEffects = e.Data.Contains(ServiceFormat) ? DragDropEffects.Move : DragDropEffects.None;
+            e.Handled = true;
+        });
+        ServiceList.AddHandler(DragDrop.DropEvent, (_, e) => e.Handled = e.Data.Contains(ServiceFormat));
+    }
+
+    private const string ServiceFormat = "UltimateMP3Player.SearchService";
+    private Point? _serviceDragStart;
+
+    // Not from its switch: the line says where the site lands.
+    private async void Service_Moved(object? sender, PointerEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || _serviceDragStart is not Point start) return;
+        if (Ui.FindAncestor<Avalonia.Controls.Primitives.ToggleButton>(e.Source as Visual) != null || Ui.FindAncestor<Button>(e.Source as Visual) != null) return;
+        var p = e.GetPosition(null);
+        if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
+        _serviceDragStart = null;
+        if (Ui.FindAncestor<ListBoxItem>(e.Source as Visual) is not { DataContext: SearchServiceOption site } item || DataContext is not SettingsViewModel vm) return;
+        var row = item.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == "Row") ?? item;
+        var session = new DragSession(ServiceList, site);
+        var data = new DataObject();
+        data.Set(ServiceFormat, site.Name);
+        var outcome = await DragVisuals.RunAsync(row, e, data, DragDropEffects.Move, session);
+        if (outcome == DragOutcome.Placed && session.Target is SearchServiceOption target)
+            vm.MoveService(site.Name, DragVisuals.MoveIndex(site.Index, target.Index, session.After));
     }
 
     private static EqBandViewModel? Band(object? source)

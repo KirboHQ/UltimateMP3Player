@@ -258,7 +258,7 @@ public sealed class TogetherCache
         var job = new DownloadJob(item, new DownloadOptions
         {
             AudioOnly = true,
-            Audio = new AudioOptions(audioFormat == "original" ? "original" : "mp3"),
+            Audio = Quality.Options(audioFormat),
             EmbedMetadata = true,
             CookiesBrowser = cookies,
         }, dir);

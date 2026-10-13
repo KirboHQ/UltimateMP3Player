@@ -113,8 +113,11 @@ public sealed class DownloadJobViewModel : Observable
     private CancellationTokenSource? _cts;
     private int _rateLimits;
 
-    // attachTo: a library song this is for (one in the cloud saved on the device, or its video: videoOnly).
-    public DownloadJobViewModel(MediaItem item, DownloadBatch batch, int index, bool wantVideo, DownloadQueue queue, string? attachTo = null, bool videoOnly = false)
+    // attachTo: a library song this is for (one in the cloud saved on the device, or its video: videoOnly; replace: its files
+    // downloaded again). audio / videoRes: the quality chosen for it (null: the song's own, or the one in Settings; videoRes 0 =
+    // the best).
+    public DownloadJobViewModel(MediaItem item, DownloadBatch batch, int index, bool wantVideo, DownloadQueue queue, string? attachTo = null, bool videoOnly = false,
+        string? audio = null, int? videoRes = null, bool replace = false)
     {
         Item = item;
         Batch = batch;
@@ -122,6 +125,9 @@ public sealed class DownloadJobViewModel : Observable
         WantVideo = wantVideo;
         AttachTo = attachTo;
         VideoOnly = videoOnly;
+        AudioQuality = audio;
+        VideoRes = videoRes;
+        Replace = replace;
         _queue = queue;
         CancelCommand = new RelayCommand(Cancel);
         RetryCommand = new RelayCommand(Retry);
@@ -140,8 +146,12 @@ public sealed class DownloadJobViewModel : Observable
     public bool WantVideo { get; }
     public string? AttachTo { get; }
     public bool VideoOnly { get; }
+    public string? AudioQuality { get; }
+    public int? VideoRes { get; }
+    // "Download again": the song's files replaced by new ones (in another quality).
+    public bool Replace { get; }
     // Saving a song of the library that's in the cloud (its audio onto the device).
-    public bool IsSave => AttachTo != null && !VideoOnly;
+    public bool IsSave => AttachTo != null && !VideoOnly && !Replace;
     public Track? Result { get; private set; }
     private IReadOnlyList<string>? _originalKeys;
     // Its own link didn't work: the same song found on YouTube instead (once, by itself, for a song being saved).
@@ -169,7 +179,7 @@ public sealed class DownloadJobViewModel : Observable
         return Uri.UnescapeDataString(last).Replace('-', ' ').Replace('_', ' ').Trim();
     }
     public string Subtitle => string.Join(" · ", new[] { Result?.Artist ?? Item.Artist, Item.SiteName,
-            VideoOnly ? L.T("solo il video") : IsSave ? L.T("salvataggio sul dispositivo") : WantVideo ? L.T("con video") : null,
+            VideoOnly ? L.T("solo il video") : Replace ? L.T("scaricato di nuovo") : IsSave ? L.T("salvataggio sul dispositivo") : WantVideo ? L.T("con video") : null,
             ViaYouTube ? L.T("cercato su YouTube") : null }
         .Where(s => !string.IsNullOrWhiteSpace(s)));
 
@@ -288,7 +298,11 @@ public sealed class DownloadJobViewModel : Observable
     private async Task RunAsync(CancellationToken ct)
     {
         var s = _queue.Host.Settings;
-        var req = new TrackRequest(Item, WantVideo, s.VideoMaxRes, s.AudioFormat, s.MusicDir, s.CookiesBrowserOrNull, _originalKeys, AttachTo, VideoOnly);
+        // The quality chosen for this download, or the song's own, or the one in Settings.
+        var song = AttachTo != null ? _queue.Host.Library.Get(AttachTo) : null;
+        var audio = AudioQuality ?? Quality.For(song, s.AudioFormat);
+        var maxRes = VideoRes is int r ? (r > 0 ? r : null) : Quality.VideoFor(song, s.VideoMaxRes);
+        var req = new TrackRequest(Item, WantVideo, maxRes, audio, s.MusicDir, s.CookiesBrowserOrNull, _originalKeys, AttachTo, VideoOnly, Replace);
         var ui = Application.Current.Dispatcher;
         var service = Service;
         bool gentle = _queue.IsGentle(service);
@@ -302,6 +316,13 @@ public sealed class DownloadJobViewModel : Observable
             }, ct);
             Result = res.Track;
             Batch.Place(Index, res.Track.Id);
+            // A quality chosen on the card stays the song's own, for its next downloads (and for hearing it from the cloud).
+            if (!Replace && (AudioQuality != null || VideoRes != null) && _queue.Host.Library.Get(res.Track.Id) is { } got)
+            {
+                if (AudioQuality != null) got.AudioQuality = AudioQuality;
+                if (VideoRes != null && WantVideo) got.VideoRes = VideoRes;
+                _queue.Host.Library.Changed(got);
+            }
             Percent = 100;
             State = res.Outcome == TrackOutcome.AlreadyPresent ? JobState.Present : JobState.Done;
             StatusText = res.Outcome switch
@@ -310,6 +331,7 @@ public sealed class DownloadJobViewModel : Observable
                 TrackOutcome.AlreadyPresent when IsSave => L.T("Era già salvato sul dispositivo"),
                 TrackOutcome.AlreadyPresent => L.T("Già nella libreria: non riscaricato"),
                 TrackOutcome.VideoAdded => VideoOnly ? L.T("Video aggiunto al brano") : L.T("Video aggiunto al brano già presente"),
+                TrackOutcome.Replaced => L.T("Scaricato di nuovo"),
                 TrackOutcome.Saved => L.T("Salvato sul dispositivo") + (_foundElsewhere ? " · " + L.F("da {0}: il link di prima non funzionava più", Sites.NameFor(res.Track.SourceUrl ?? "")) : ""),
                 _ => L.T("Completato") + (res.Note != null ? " · " + res.Note : ""),
             };
@@ -528,14 +550,15 @@ public sealed class DownloadQueue : Observable
 
     public event Action? Finished;
 
-    public void Add(DownloadBatch batch, IEnumerable<(MediaItem Item, int Index)> items, bool video)
+    // audio / videoRes: the quality chosen on the card (null: the one in Settings).
+    public void Add(DownloadBatch batch, IEnumerable<(MediaItem Item, int Index)> items, bool video, string? audio = null, int? videoRes = null)
     {
         // A whole playlist: the counts are told once at the end (Pump), not once per song.
         _adding = true;
         try
         {
             foreach (var (item, index) in items)
-                Jobs.Add(new DownloadJobViewModel(item, batch, index, video, this));
+                Jobs.Add(new DownloadJobViewModel(item, batch, index, video, this, audio: audio, videoRes: videoRes));
         }
         finally { _adding = false; }
         Pump();
@@ -577,6 +600,24 @@ public sealed class DownloadQueue : Observable
                 Jobs.Add(job);
                 OnSaving(job);
             }
+        }
+        finally { _adding = false; }
+        Pump();
+        return todo.Count;
+    }
+
+    // "Download again": songs of the library (saved, or in the cloud) get new files from their link, in the quality now
+    // chosen (already set on them), in place of the ones they have. One already being saved or downloaded again isn't added.
+    public int Redownload(Profile profile, IReadOnlyList<Track> tracks, bool video)
+    {
+        var todo = tracks.Where(t => t.HasLink && SavingOf(t.Id) == null && !Jobs.Any(j => j.IsActive && j.AttachTo == t.Id)).ToList();
+        if (todo.Count == 0) return 0;
+        var batch = new DownloadBatch(profile, null, todo.Count);
+        _adding = true;
+        try
+        {
+            for (int i = 0; i < todo.Count; i++)
+                Jobs.Add(new DownloadJobViewModel(CloudSongs.ToMediaItem(todo[i]), batch, i, video, this, todo[i].Id, replace: true));
         }
         finally { _adding = false; }
         Pump();
@@ -771,13 +812,14 @@ public sealed class LinkItemViewModel : Observable
     {
         Item = item;
         Number = number;
-        InLibrary = inLibrary;
+        _inLibrary = inLibrary;
         _owner = owner;
     }
 
     public MediaItem Item { get; }
     public int Number { get; }
-    public bool InLibrary { get; }
+    private bool _inLibrary;
+    public bool InLibrary { get => _inLibrary; internal set => Set(ref _inLibrary, value); }
     public string Title => Item.Title;
 
     public string Meta
@@ -846,6 +888,8 @@ public sealed class LinkViewModel : Observable
         HasVideo = playable.Any(i => i.Kind == MediaKind.Video);
         _withVideo = HasVideo && !main.Host.Settings.PreferAudioOnly;
         _saveAudio = main.Host.Settings.SaveLinkAudio;
+        _audio = QualityChoices.Pick(AudioChoices, main.Host.Settings.AudioFormat);
+        _video = QualityChoices.Pick(VideoChoices, main.Host.Settings.VideoMaxRes);
 
         PlaylistChoices = new List<Choice> { new(L.T("Nessuna (solo in «Tutti i brani»)"), NoPlaylist), new(L.T("Nuova playlist…"), NewPlaylist) };
         PlaylistChoices.AddRange(main.Playlists.Select(p => new Choice(p.Name, p.Id, p.IsFavorites ? "♥" : null)));
@@ -883,7 +927,7 @@ public sealed class LinkViewModel : Observable
             if (!Set(ref _saveAudio, value)) return;
             _main.Host.Settings.SaveLinkAudio = value;
             _main.Host.Settings.Save();
-            OnChanged(nameof(DownloadLabel), nameof(DownloadGlyph), nameof(ShowVideoChoice), nameof(SaveAudioHint));
+            OnChanged(nameof(DownloadLabel), nameof(DownloadGlyph), nameof(ShowVideoChoice), nameof(ShowVideoQuality), nameof(SaveAudioHint));
             CommandManager.InvalidateRequerySuggested();
         }
     }
@@ -895,6 +939,19 @@ public sealed class LinkViewModel : Observable
     public string DownloadGlyph => SaveAudio ? "" : "";
     // "With video" only means something when the songs are saved.
     public bool ShowVideoChoice => HasVideo && SaveAudio;
+    public bool ShowVideoQuality => ShowVideoChoice && WithVideo;
+
+    // The quality of these songs (the one in Settings to start with): one chosen here stays theirs, for their next downloads
+    // and, in the cloud, for hearing them.
+    public List<Choice> AudioChoices { get; } = QualityChoices.Audio();
+    public List<Choice> VideoChoices { get; } = QualityChoices.Video();
+    private Choice _audio, _video;
+    public Choice Audio { get => _audio; set { if (value != null) Set(ref _audio, value); } }
+    public Choice Video { get => _video; set { if (value != null) Set(ref _video, value); } }
+
+    // What was chosen when it isn't the one in Settings (null: Settings decide).
+    private string? ChosenAudio => Equals(_audio.Value, _main.Host.Settings.AudioFormat) ? null : _audio.Value as string;
+    private int? ChosenVideo => Equals(_video.Value, _main.Host.Settings.VideoMaxRes) ? null : _video.Value as int? ?? 0;
 
     public string Title { get; }
     public string SiteName => R.Site;
@@ -965,7 +1022,7 @@ public sealed class LinkViewModel : Observable
     public string NewName { get => _newName; set { if (Set(ref _newName, value)) CommandManager.InvalidateRequerySuggested(); } }
 
     private bool _withVideo;
-    public bool WithVideo { get => _withVideo; set => Set(ref _withVideo, value); }
+    public bool WithVideo { get => _withVideo; set { if (Set(ref _withVideo, value)) OnChanged(nameof(ShowVideoQuality)); } }
 
     public int SelectedCount => Items.Count(i => i.IsSelected);
     public string SelectionText => L.F("{0} di {1} selezionati", SelectedCount, Items.Count);
@@ -1009,7 +1066,8 @@ public sealed class LinkViewModel : Observable
             AddToCloud(selected, batch, target);
             return;
         }
-        _main.Host.Downloads.Add(batch, selected.Select(i => (i.Item, i.Number - 1)), HasVideo && WithVideo);
+        bool video = HasVideo && WithVideo;
+        _main.Host.Downloads.Add(batch, selected.Select(i => (i.Item, i.Number - 1)), video, ChosenAudio, video ? ChosenVideo : null);
         var what = selected.Count == 1 ? L.F("«{0}» in download", selected[0].Title) : L.F("{0} brani in download", selected.Count);
         _main.Downloads.Queued(what + (target != null ? " " + L.F("nella playlist «{0}»", target) : "") + " ✓");
     }
@@ -1031,12 +1089,21 @@ public sealed class LinkViewModel : Observable
                 _ = _main.FetchCover(t, CloudSongs.Pictures(item));
                 added++;
             }
+            // (the quality chosen here is the one it's heard with, and saved with later)
+            if (ChosenAudio is { } q && !t.IsSaved && t.AudioQuality != q)
+            {
+                t.AudioQuality = q;
+                lib.Changed(t);
+            }
             batch.Place(it.Number - 1, t.Id);
+            it.InLibrary = true;
         }
+        OnChanged(nameof(Subtitle), nameof(AlreadyCount));
         var what = selected.Count == 1 ? L.F("«{0}» aggiunto senza salvarlo", selected[0].Title)
             : added == selected.Count ? L.F("{0} brani aggiunti senza salvarli", selected.Count)
             : L.F("{0} brani aggiunti senza salvarli ({1} c'erano già)", selected.Count, selected.Count - added);
-        _main.Downloads.Queued(what + (target != null ? " " + L.F("nella playlist «{0}»", target) : "") + " ☁");
+        // The card stays: the songs can be heard right away (Listen) or saved later.
+        _main.Downloads.Added(what + (target != null ? " " + L.F("nella playlist «{0}»", target) : "") + " ☁");
     }
 
     private void Listen()
@@ -1135,6 +1202,13 @@ public sealed class DownloadsPageViewModel : Observable
         _ = ClearFeedback(message);
     }
 
+    // Added to the library without downloading: the card stays, to hear the songs at once.
+    public void Added(string message)
+    {
+        Feedback = message;
+        _ = ClearFeedback(message);
+    }
+
     private async Task ClearFeedback(string text)
     {
         await Task.Delay(6000);
@@ -1207,6 +1281,33 @@ public sealed class DownloadsPageViewModel : Observable
         {
             if (_cts == cts) IsAnalyzing = false;
         }
+    }
+
+    // A song chosen among the online search's results: its card at once, without reading the link again (the search already
+    // said what it is). Deezer's, a catalogue, are read like a pasted link (their audio comes from YouTube Music).
+    public void ShowHit(SearchHit hit)
+    {
+        if (hit.Service == OnlineSearchServices.Deezer)
+        {
+            _ = AnalyzeAsync(hit.Url);
+            return;
+        }
+        _cts?.Cancel();
+        _cts = null;
+        _lastUrl = hit.Url;
+        IsAnalyzing = false;
+        Error = null;
+        ErrorHint = null;
+        SuggestCookies = false;
+        CanTryYouTube = false;
+        var item = OnlineSearchServices.ToItem(hit);
+        var r = new AnalysisResult
+        {
+            Site = Sites.NameFor(hit.Url), SourceUrl = hit.Url, Title = hit.Title, Uploader = hit.Artist, Thumbnails = item.Thumbnails.ToList(),
+            PreferAudio = hit.Service != OnlineSearchServices.YouTube,
+        };
+        r.Items.Add(item);
+        Link = new LinkViewModel(r, r.Items, _main);
     }
 
     // The link that failed, as the same song on YouTube Music: its card like any other (playlist, save or not).

@@ -126,8 +126,6 @@
                                 </Border>
                             </StackPanel>
                         </RadioButton>
-                        <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8D6;" Content="DJ" IsChecked="{Binding IsDj}"
-                                     ToolTip="{local:T 'Mixa due brani: tempo, pitch, taglio e volume'}"/>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE716;" IsChecked="{Binding IsTogether}"
                                      AutomationProperties.Name="{local:T 'Ascolta insieme'}" ToolTip="{local:T 'Ascolta la stessa musica con gli amici, sulla stessa rete'}">
                             <StackPanel Orientation="Horizontal">
@@ -139,6 +137,9 @@
                                 </Border>
                             </StackPanel>
                         </RadioButton>
+                        <!-- the least used one, last before the settings -->
+                        <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8D6;" Content="DJ" IsChecked="{Binding IsDj}"
+                                     ToolTip="{local:T 'Mixa due brani: tempo, pitch, taglio e volume'}"/>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE713;" Content="{local:T Impostazioni}" IsChecked="{Binding IsSettings}"/>
                     </StackPanel>
 

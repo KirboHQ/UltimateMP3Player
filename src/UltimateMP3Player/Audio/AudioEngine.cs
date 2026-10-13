@@ -82,6 +82,9 @@ public sealed class AudioEngine : IDisposable
 
     public double RemainingSeconds => _master.RemainingSeconds;
 
+    // The transition matched to the next song's BPM (MasterProvider.SetBend).
+    public void SetBend(double ratio, double seconds) => _master.SetBend(ratio, seconds);
+
     public void SetEqualizer(bool enabled, IReadOnlyList<double> gains) => _master.SetEqualizer(enabled, gains);
 
     public void SetTrackGain(double db) => _master.SetTrackGain(db);

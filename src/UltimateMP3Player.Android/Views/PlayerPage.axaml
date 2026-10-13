@@ -138,7 +138,7 @@
             <Grid x:Name="Extras" Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="14,4,14,10">
                 <Button x:Name="SpeedButton" Theme="{StaticResource PillButton}" Height="36" MinWidth="50" Padding="10,0" FontSize="13.5"
                         Background="Transparent" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1.5" Content="{Binding Player.SpeedText}" Click="Speed_Click"/>
-                <ToggleButton Grid.Column="2" Theme="{StaticResource TouchToggle}" Content="{local:Icon E8D6}" IsChecked="{Binding ShowLyrics}"
+                <ToggleButton Grid.Column="2" Theme="{StaticResource TouchToggle}" Content="{local:Icon E720}" IsChecked="{Binding ShowLyrics}"
                               IsVisible="{Binding HasLyrics}"/>
                 <ToggleButton Grid.Column="3" Theme="{StaticResource TouchToggle}" Content="{local:Icon E714}" IsChecked="{Binding ShowVideo}" IsVisible="{Binding HasVideo}"/>
                 <ToggleButton Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{local:Icon E90B}" IsChecked="{Binding Player.AutoQueue}"/>

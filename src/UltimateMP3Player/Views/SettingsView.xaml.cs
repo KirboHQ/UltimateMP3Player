@@ -36,6 +36,33 @@ public partial class SettingsView : UserControl
         if (sender is Slider { IsEnabled: true } s && s.DataContext is EqBandViewModel band) band.Gain = 0;
     }
 
+    // ------------------------------------------------------------------ the online search's sites, in their order
+
+    private Point? _serviceDragStart;
+
+    private void Service_MouseDown(object sender, MouseButtonEventArgs e) => _serviceDragStart = e.GetPosition(null);
+
+    // Dragged like the songs of a playlist: the line says where the site lands (not from its switch).
+    private void Service_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _serviceDragStart is not Point start) return;
+        if (e.OriginalSource is DependencyObject d && Ui.FindAncestor<ButtonBase>(d) != null) return;
+        var p = e.GetPosition(null);
+        if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
+        _serviceDragStart = null;
+        if (sender is not FrameworkElement fe || fe.DataContext is not SearchServiceOption site || DataContext is not SettingsViewModel vm) return;
+        var session = new DragSession(ServiceList, site);
+        var outcome = DragVisuals.Run(fe, new DataObject(typeof(SearchServiceOption), site), DragDropEffects.Move, session);
+        if (outcome == DragOutcome.Placed && session.Target is SearchServiceOption target)
+            vm.MoveService(site.Name, DragVisuals.MoveIndex(site.Index, target.Index, session.After));
+    }
+
+    private void Services_DragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(typeof(SearchServiceOption)) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
     // ------------------------------------------------------------------ search
 
     // Extra words (in the app language) that find a card.

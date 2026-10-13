@@ -44,7 +44,19 @@ public static class QueueSheet
 
         var rows = new StackPanel();
         var scroll = new ScrollViewer { Content = rows, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
-        body.Children.Add(scroll);
+        // The handle on the right of a song drags it (the copy, the line or the box: TouchReorder, like the playlists).
+        var layer = new Canvas { IsHitTestVisible = false, ClipToBounds = true };
+        var area = new Panel { Children = { scroll, layer } };
+        body.Children.Add(area);
+        List<ContentControl> SongRows() => rows.Children.OfType<ContentControl>().Where(c => c.Content is QueueRow).ToList();
+        _ = new TouchReorder(area, layer, SongRows, () => scroll, (from, onto, after) =>
+        {
+            var list = SongRows();
+            if (list[from].Content is not QueueRow r || list[onto].Content is not QueueRow t) return;
+            int last = player.UpNext.LastOrDefault()?.Index ?? r.Index;
+            int to = Math.Clamp(TouchReorder.MoveIndex(r.Index, t.Index, after), 0, last);
+            if (to != r.Index) player.MoveUpcoming(r.Index, to);
+        });
         var template = Ui.Find<IDataTemplate>("QueueRowTemplate");
 
         // Choosing several songs of the queue ("Select" in a song's menu): to the top or bottom, out, saved.
@@ -76,9 +88,7 @@ public static class QueueSheet
                     Marquee.SetAuto(header, true);
                     rows.Children.Add(header);
                 }
-                var row = new ContentControl { Content = r, ContentTemplate = template };
-                rows.Children.Add(row);
-                DragToMove(row, r, player, rows, scroll);
+                rows.Children.Add(new ContentControl { Content = r, ContentTemplate = template });
             }
             if (player.UpNext.Count == 0)
                 rows.Children.Add(new TextBlock { Text = L.T("Nessun brano dopo questo."), Classes = { "hint" }, FontSize = 14.5, Margin = new Thickness(20, 20, 20, 8), TextAlignment = TextAlignment.Center });
@@ -100,89 +110,6 @@ public static class QueueSheet
     {
         await sheets.Show(body, maxHeightShare: 0.85);
         closed();
-    }
-
-    // The handle drags the song: it follows the finger over the others, a line says where it lands.
-    private static void DragToMove(ContentControl row, QueueRow r, PlayerViewModel player, StackPanel rows, ScrollViewer scroll)
-    {
-        row.TemplateApplied += (_, _) => { };
-        double startY = 0;
-        bool dragging = false;
-        var shift = new TranslateTransform();
-        row.RenderTransform = shift;
-        Border? line = null;
-        int target = r.Index;
-
-        row.AddHandler(InputElement.PointerPressedEvent, (_, e) =>
-        {
-            if (e.Source is not Visual v || v.FindAncestorOfType<Border>(true) is not { } b || !IsHandle(v)) return;
-            dragging = true;
-            startY = e.GetPosition(rows).Y;
-            e.Pointer.Capture(row);
-            row.ZIndex = 10;
-            row.Opacity = 0.92;
-            Haptics.LongPress();
-            e.Handled = true;
-        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-
-        row.AddHandler(InputElement.PointerMovedEvent, (_, e) =>
-        {
-            if (!dragging) return;
-            double y = e.GetPosition(rows).Y;
-            shift.Y = y - startY;
-            // The row under the finger: the song lands before or after it.
-            var others = rows.Children.OfType<ContentControl>().Where(c => c != row && c.Content is QueueRow).ToList();
-            ContentControl? over = null;
-            bool after = false;
-            foreach (var o in others)
-            {
-                var b = o.Bounds;
-                if (y < b.Top || y > b.Bottom) continue;
-                over = o;
-                after = y > b.Top + b.Height / 2;
-                break;
-            }
-            if (over?.Content is QueueRow q)
-            {
-                target = Math.Clamp(after ? (q.Index > r.Index ? q.Index : q.Index + 1) : (q.Index > r.Index ? q.Index - 1 : q.Index), 0, Math.Max(0, player.UpNext.Count - 1));
-                line ??= new Border { Height = 3, CornerRadius = new CornerRadius(2), Background = Ui.Res("AccentBrush"), IsHitTestVisible = false, Margin = new Thickness(16, -2, 16, -1) };
-                rows.Children.Remove(line);
-                int at = rows.Children.IndexOf(over) + (after ? 1 : 0);
-                rows.Children.Insert(Math.Clamp(at, 0, rows.Children.Count), line);
-            }
-            // Near the edges the list scrolls by itself.
-            var inView = e.GetPosition(scroll).Y;
-            if (inView < 40) scroll.Offset = new Vector(0, Math.Max(0, scroll.Offset.Y - 12));
-            else if (inView > scroll.Bounds.Height - 40) scroll.Offset = new Vector(0, scroll.Offset.Y + 12);
-            e.Handled = true;
-        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-
-        void End(bool move)
-        {
-            if (!dragging) return;
-            dragging = false;
-            shift.Y = 0;
-            row.ZIndex = 0;
-            row.Opacity = 1;
-            if (line != null) rows.Children.Remove(line);
-            if (move && target != r.Index) player.MoveUpcoming(r.Index, target);
-        }
-
-        row.AddHandler(InputElement.PointerReleasedEvent, (_, e) =>
-        {
-            if (!dragging) return;
-            e.Pointer.Capture(null);
-            End(true);
-            e.Handled = true;
-        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        row.PointerCaptureLost += (_, _) => End(false);
-    }
-
-    private static bool IsHandle(Visual v)
-    {
-        for (var x = v; x != null; x = x.GetVisualParent())
-            if (x is Border { Classes: var c } && c.Contains("handle")) return true;
-        return false;
     }
 }
 

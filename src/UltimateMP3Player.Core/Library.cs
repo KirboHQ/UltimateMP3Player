@@ -37,6 +37,10 @@ public sealed class Track
     public double? BeatOffset { get; set; }
     // Lyrics found online (the text is in LyricsStore); null = never searched.
     public LyricsKind? Lyrics { get; set; }
+    // The quality chosen for this song, kept for its next downloads and, in the cloud, for hearing it: the audio (a Quality
+    // value) and its video's highest resolution (0 = the best). Null: the one in Settings.
+    public string? AudioQuality { get; set; }
+    public int? VideoRes { get; set; }
     public DateTime Added { get; set; } = DateTime.Now;
 
     public bool HasVideo => !string.IsNullOrEmpty(VideoPath);
@@ -99,6 +103,9 @@ public sealed class Library
         // A song in the cloud has no file, only its link.
         var tracks = file.Tracks.Where(t => !string.IsNullOrEmpty(t.Id) && (t.IsSaved || t.HasLink))
             .GroupBy(t => t.Id).Select(g => g.First()).ToList();
+        // Old files of songs downloaded again while they played.
+        var used = tracks.SelectMany(t => new[] { t.Path, t.VideoPath }).OfType<string>().Where(p => p.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        OldFiles.Sweep(used.Contains);
         return new Library(tracks);
     }
 

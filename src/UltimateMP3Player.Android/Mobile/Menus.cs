@@ -116,6 +116,7 @@ public static class Menus
         menu.Add(new(L.T("Riproduci dopo"), GNext, () => player.PlayNext(t)));
         menu.Add(new(L.T("Aggiungi alla coda"), GQueue, () => player.Enqueue(t)));
         menu.Add(new(L.T("Riproduci brani simili"), GRadio, () => player.PlayRadio(t)));
+        menu.Add(new(L.T("Riproduci brani dell'artista"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Line();
         AddSave(menu, new[] { t });
         menu.Add(AddToPlaylist(t));
@@ -144,6 +145,14 @@ public static class Menus
             }));
         else if (tracks.Any(t => t.IsSaving))
             menu.Add(new SheetEntry(L.T("Salvataggio sul dispositivo in corso…"), GSave, null) { Info = true });
+        // The quality of the ones with a link: downloaded again in it (the saved ones), kept for when they're heard (the cloud).
+        var linked = tracks.Where(t => t.T.HasLink && main.Library.Get(t.Id) == t.T).ToList();
+        if (linked.Count > 0)
+            menu.Add(new(linked.Any(t => t.T.HasSavedFile) ? L.T("Scarica di nuovo / qualità…") : L.T("Qualità di ascolto…"), "", () =>
+            {
+                _ = main.ChangeQuality(linked);
+                then?.Invoke();
+            }));
     }
 
     private static SheetEntry FavoriteItem(TrackViewModel t) => t.IsFavorite
@@ -235,6 +244,7 @@ public static class Menus
         menu.Add(FavoriteItem(t));
         menu.Add(new SheetEntry { Text = L.T("Testo"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
         menu.Add(new(L.T("Riproduci brani simili"), GRadio, () => player.PlayRadio(t)));
+        menu.Add(new(L.T("Riproduci brani dell'artista"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Add(new(L.T("Copia link originale"), GLink, () => { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copiato")); }));
         if (row == null && player.Current != t)
         {
@@ -258,6 +268,7 @@ public static class Menus
         menu.Add(new(L.T("Sposta in fondo"), GDown, () => player.MoveUpcoming(row.Index, last), row.Index < last));
         menu.Add(new(L.T("Togli dai successivi"), GRemove, () => player.RemoveUpcoming(row.Index)));
         menu.Add(new(L.T("Riproduci brani simili"), GRadio, () => player.PlayRadio(t)));
+        menu.Add(new(L.T("Riproduci brani dell'artista"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Line();
         AddSave(menu, new[] { t });
         menu.Add(AddToPlaylist(t));

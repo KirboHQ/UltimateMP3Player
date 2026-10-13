@@ -461,7 +461,7 @@ public sealed class OnlineHitViewModel : Observable
         _main = main;
         var lib = main.Library;
         InLibrary = Find();
-        DownloadCommand = new RelayCommand(() => _main.StartDownload(Hit.Url, fromSearch: true));
+        DownloadCommand = new RelayCommand(() => _main.OpenHit(Hit));
     }
 
     private bool Find()

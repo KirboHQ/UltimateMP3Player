@@ -115,6 +115,13 @@
                                 <TextBlock Text="{local:T 'Anche il video'}" Margin="8,0,0,0"/>
                             </StackPanel>
                         </CheckBox>
+                        <!-- the quality of these songs (the one in Settings to start with): it stays theirs -->
+                        <ComboBox Margin="0,24,12,0" VerticalAlignment="Center" MinWidth="150" ItemsSource="{Binding AudioChoices}" SelectedItem="{Binding Audio}"
+                                  ToolTip="{local:T 'Qualità dell\'audio di questi brani: resta la loro per i prossimi download e per ascoltarli dal cloud'}"
+                                  AutomationProperties.Name="{local:T 'Qualità dell\'audio'}"/>
+                        <ComboBox Margin="0,24,24,0" VerticalAlignment="Center" MinWidth="130" ItemsSource="{Binding VideoChoices}" SelectedItem="{Binding Video}"
+                                  Visibility="{Binding ShowVideoQuality, Converter={StaticResource BoolVis}}"
+                                  ToolTip="{local:T 'Qualità massima dei video'}" AutomationProperties.Name="{local:T 'Qualità massima dei video'}"/>
                         <Button Style="{StaticResource PrimaryButton}" Padding="22,10" Margin="0,24,0,0" VerticalAlignment="Center" Command="{Binding DownloadCommand}"
                                 ToolTip="{Binding SaveAudioHint}">
                             <StackPanel Orientation="Horizontal">

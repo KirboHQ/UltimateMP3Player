@@ -2,12 +2,13 @@ namespace UltimateMP3Player.Core;
 
 // ExtraKeys: the original link's identities when fetched elsewhere (its link then becomes the new one). AttachTo: the
 // library song this is for (a song in the cloud saved on the device, a video found for a song), whatever the link says.
-// VideoOnly: only the video, for AttachTo.
+// VideoOnly: only the video, for AttachTo. Replace: AttachTo's audio (and video, with WantVideo) downloaded again, in the quality
+// asked, in place of the files it has ("Download again").
 public sealed record TrackRequest(MediaItem Item, bool WantVideo, int? VideoMaxRes, string AudioFormat, string MusicDir, string? Cookies,
-    IReadOnlyList<string>? ExtraKeys = null, string? AttachTo = null, bool VideoOnly = false);
+    IReadOnlyList<string>? ExtraKeys = null, string? AttachTo = null, bool VideoOnly = false, bool Replace = false);
 
-// Saved: a song in the cloud whose audio is now on the device.
-public enum TrackOutcome { Downloaded, AlreadyPresent, VideoAdded, Saved }
+// Saved: a song in the cloud whose audio is now on the device. Replaced: downloaded again in place of its files.
+public enum TrackOutcome { Downloaded, AlreadyPresent, VideoAdded, Saved, Replaced }
 
 public sealed record TrackResult(Track Track, TrackOutcome Outcome, string? Note = null);
 
@@ -26,7 +27,7 @@ public static class TrackDownloader
         var known = target ?? lib.FindByKeys(keys);
         if (known == null && item.Source == SourceKind.Search) known = lib.FindSimilar(item.Title, item.Artist, item.Duration);
         // Already on the device (a song in the cloud gets its audio saved instead).
-        if (known != null && (req.VideoOnly ? known.HasVideo : known.HasSavedFile && (!req.WantVideo || known.HasVideo)))
+        if (known != null && !req.Replace && (req.VideoOnly ? known.HasVideo : known.HasSavedFile && (!req.WantVideo || known.HasVideo)))
         {
             if (!req.VideoOnly) lib.AddKeys(known, keys);
             return new TrackResult(known, TrackOutcome.AlreadyPresent);
@@ -135,6 +136,12 @@ public static class TrackDownloader
             lib.Changed(existing);
             return new TrackResult(existing, TrackOutcome.VideoAdded);
         }
+        if (existing != null && req.Replace)
+        {
+            await ReplaceAsync(lib, existing, req, videoAvailable, progress, ct);
+            lib.Changed(existing);
+            return new TrackResult(existing, TrackOutcome.Replaced);
+        }
         if (existing != null)
         {
             existing.ArtUrl ??= PublicArt(item);
@@ -176,7 +183,7 @@ public static class TrackDownloader
             var audio = new DownloadJob(item, new DownloadOptions
             {
                 AudioOnly = true,
-                Audio = new AudioOptions(req.AudioFormat == "original" ? "original" : "mp3"),
+                Audio = Quality.Options(req.AudioFormat),
                 EmbedMetadata = true,
                 CookiesBrowser = req.Cookies,
             }, req.MusicDir) { CoverOut = coverTmp };
@@ -251,7 +258,7 @@ public static class TrackDownloader
         var audio = new DownloadJob(item, new DownloadOptions
         {
             AudioOnly = true,
-            Audio = new AudioOptions(req.AudioFormat == "original" ? "original" : "mp3"),
+            Audio = Quality.Options(req.AudioFormat),
             EmbedMetadata = true,
             CookiesBrowser = req.Cookies,
         }, req.MusicDir) { CoverOut = t.HasCover ? null : coverTmp };
@@ -299,6 +306,34 @@ public static class TrackDownloader
         t.CachePath = null;
         t.Unavailable = false;
         progress(new JobProgress(JobPhase.Done, 100, L.T("Completato")));
+    }
+
+    // "Download again": new files in the quality asked take the place of the song's own (a song in the cloud gets its first one).
+    // Its cover, lyrics, statistics and playlists stay. The old files go once the new ones are there, and the new audio file
+    // takes the old one's name when it's free; a file still open (the song playing) goes later (OldFiles).
+    private static async Task ReplaceAsync(Library lib, Track t, TrackRequest req, bool videoAvailable, Action<JobProgress> progress, CancellationToken ct)
+    {
+        var oldAudio = t.HasSavedFile ? t.Path : null;
+        var oldVideo = t.HasVideo ? t.VideoPath : null;
+        await SaveAudioAsync(lib, t, req, progress, ct);
+        if (req.WantVideo && videoAvailable)
+        {
+            try { t.VideoPath = await DownloadVideoAsync(req, progress, ct); }
+            // (the old video stays when the new one can't be had)
+            catch (EngineException) { oldVideo = null; }
+        }
+        else oldVideo = null;
+        if (oldAudio != null && !oldAudio.Equals(t.Path, StringComparison.OrdinalIgnoreCase) && OldFiles.Delete(oldAudio) &&
+            Path.GetDirectoryName(oldAudio) == Path.GetDirectoryName(t.Path) && Path.GetExtension(oldAudio).Equals(Path.GetExtension(t.Path), StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                File.Move(t.Path, oldAudio);
+                t.Path = oldAudio;
+            }
+            catch { }
+        }
+        if (oldVideo != null && !oldVideo.Equals(t.VideoPath, StringComparison.OrdinalIgnoreCase)) OldFiles.Delete(oldVideo);
     }
 
     private static async Task<string> DownloadVideoAsync(TrackRequest req, Action<JobProgress> progress, CancellationToken ct)

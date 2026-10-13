@@ -8,6 +8,7 @@ using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.Platform;
 using UltimateMP3Player.ViewModels;
@@ -34,6 +35,15 @@ public partial class SettingsPage : UserControl, IPage
             if (string.IsNullOrWhiteSpace(SearchBox.Text)) Search();
             else _searchTimer.Start();
         };
+        // The online search's sites: dragged by their handle into the order they're searched in.
+        _ = new TouchReorder(ServicesArea, ServicesLayer,
+            () => Enumerable.Range(0, ServicesList.ItemCount).Select(ServicesList.ContainerFromIndex).OfType<Control>().ToList(),
+            () => ServicesArea.FindAncestorOfType<ScrollViewer>(),
+            (from, onto, after) =>
+            {
+                if (Vm is not { } vm || vm.SearchServices is not { } sites || from >= sites.Count) return;
+                vm.MoveService(sites[from].Name, TouchReorder.MoveIndex(from, onto, after));
+            });
     }
 
     // The logins' row follows them (only while the page is in the window: a page let go of isn't kept alive by them).

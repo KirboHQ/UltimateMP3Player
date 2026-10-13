@@ -75,6 +75,56 @@ public static class JsonStore
     }
 }
 
+// Files to delete that were still open (a song's old file while it played, after "Download again"): deleted at the next
+// start, unless a song of the library uses that path again.
+public static class OldFiles
+{
+    private static string ListFile => Path.Combine(AppPaths.DataDir, "old-files.txt");
+    private static readonly object Lock = new();
+
+    // True when it's gone now.
+    public static bool Delete(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+            return true;
+        }
+        catch
+        {
+            lock (Lock)
+            {
+                try { File.AppendAllLines(ListFile, new[] { path }); } catch { }
+            }
+            return false;
+        }
+    }
+
+    // The ones left from last time (Library.Load).
+    public static void Sweep(Func<string, bool> inUse)
+    {
+        lock (Lock)
+        {
+            try
+            {
+                if (!File.Exists(ListFile)) return;
+                var left = File.ReadAllLines(ListFile).Where(p => p.Length > 0 && !inUse(p)).Distinct(StringComparer.OrdinalIgnoreCase).Where(p =>
+                {
+                    try
+                    {
+                        if (File.Exists(p)) File.Delete(p);
+                        return false;
+                    }
+                    catch { return true; }
+                }).ToList();
+                if (left.Count == 0) File.Delete(ListFile);
+                else File.WriteAllLines(ListFile, left);
+            }
+            catch { }
+        }
+    }
+}
+
 // Many save requests become one write.
 public sealed class DebouncedSaver
 {
@@ -113,7 +163,7 @@ public sealed class AppSettings
     // "it" or "en"; null until chosen (installer or first run).
     public string? Language { get; set; }
     public string MusicDir { get; set; } = AppPaths.DefaultMusicDir;
-    // "mp3" (320 kbps) or "original".
+    // A Quality value: "mp3" (320 kbps), "mp3-256"/"-192"/"-128" or "original".
     public string AudioFormat { get; set; } = "mp3";
     public bool PreferAudioOnly { get; set; } = true;
     // Highest video resolution, null = best.

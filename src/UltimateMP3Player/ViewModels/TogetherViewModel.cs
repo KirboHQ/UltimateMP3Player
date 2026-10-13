@@ -190,6 +190,21 @@ public sealed class RoomItemViewModel : Observable
 
     public ICommand RemoveCommand => new RelayCommand(() => _owner.Remove(this));
     public ICommand SaveCommand => new RelayCommand(p => _owner.SaveMenu(this, p as UIElement));
+
+    // Like everywhere else: the library icon puts a song you don't have into the library (in the cloud, heard from its
+    // link), then the download arrow saves it on the device; nothing once it's saved. A song without a link (a file of
+    // someone's own) can only be saved.
+    public bool SavedOnDevice => InLibrary && Track.T.HasSavedFile;
+    private bool AddsToLibrary => !InLibrary && TogetherViewModel.HasLink(Item);
+    public bool ShowKeep => !SavedOnDevice;
+    public string KeepGlyph => AddsToLibrary ? "" : "";
+    public string KeepTip => AddsToLibrary ? L.T("Aggiungi alla libreria (senza scaricarlo)") : L.T("Salva sul dispositivo");
+    public string KeepLabel => AddsToLibrary ? L.T("Libreria") : L.T("Salva");
+    public ICommand KeepCommand => new RelayCommand(() =>
+    {
+        if (AddsToLibrary) _owner.AddToLibrary(this, null);
+        else _ = _owner.Save(this, null);
+    });
     public ICommand PlayNowCommand => new RelayCommand(() => _owner.PlayNow(Id));
     public string RemoveTip => CanRemove ? L.T("Togli dalla coda") : L.T("Solo chi ha il permesso può togliere i brani degli altri");
 
@@ -210,7 +225,7 @@ public sealed class RoomItemViewModel : Observable
         if (track != Track) Track = track;
         OnChanged(nameof(Item), nameof(Track), nameof(Number), nameof(IsCurrent), nameof(AddedByName), nameof(AddedByBrush), nameof(AddedByInitial),
             nameof(AddedByText), nameof(IsMine), nameof(State), nameof(Pct), nameof(IsReady), nameof(IsBusy), nameof(IsFailed), nameof(StateTip),
-            nameof(PctText), nameof(InLibrary), nameof(CanRemove), nameof(RemoveTip));
+            nameof(PctText), nameof(InLibrary), nameof(CanRemove), nameof(RemoveTip), nameof(SavedOnDevice), nameof(ShowKeep), nameof(KeepGlyph), nameof(KeepTip), nameof(KeepLabel));
     }
 }
 
@@ -521,7 +536,8 @@ public sealed class TogetherViewModel : Observable
         var settings = _main.Host.Settings;
         _fetcher = new TogetherFetcher(s, _main.Library, Cache,
             () => new FetchOptions(settings.AudioFormat, settings.CookiesBrowserOrNull, Math.Clamp(settings.TogetherCacheSize, 1, 200),
-                AheadSetting(settings.TogetherAhead), AheadSetting(settings.TogetherHostAhead), settings.TogetherTakeFromHost, settings.TogetherP2P));
+                AheadSetting(settings.TogetherAhead), AheadSetting(settings.TogetherHostAhead), settings.TogetherTakeFromHost, settings.TogetherP2P,
+                settings.MaxParallel));
         s.RoomChanged += OnRoom;
         s.QueueChanged += OnQueue;
         s.PlaybackChanged += OnPlayback;
@@ -1574,14 +1590,76 @@ public sealed class TogetherViewModel : Observable
         return null;
     }
 
-    // Into the library (and a playlist): the file leaves the room's cache.
+    // A room song that can be heard again from its link (not a file of someone's own).
+    public static bool HasLink(RoomTrack r) => r.SourceUrl is { } u && u.StartsWith("http", StringComparison.OrdinalIgnoreCase);
+
+    // Into the library without its audio (in the cloud), like a suggested song kept with the library icon: heard from its
+    // link from then on, saved on the device whenever wanted. One the library already has is that one.
+    public Track? AddToLibrary(RoomItemViewModel item, Playlist? playlist)
+    {
+        if (_s == null) return null;
+        var r = item.Item;
+        var lib = _main.Library;
+        var t = _fetcher?.LibraryTrack(item.Id) is { } have && lib.Get(have.Id) != null ? have : r.Keys.Count > 0 ? lib.FindByKeys(r.Keys) : null;
+        bool added = false;
+        if (t == null)
+        {
+            if (!HasLink(r))
+            {
+                _main.Toast(L.T("Questo brano non ha un link da cui riascoltarlo: puoi solo salvarlo sul dispositivo."));
+                return null;
+            }
+            t = new Track
+            {
+                Title = r.Title, Artist = r.Artist, Album = r.Album, Duration = r.Duration, SourceUrl = r.SourceUrl,
+                Site = r.Site ?? Sites.NameFor(r.SourceUrl!), Keys = r.Keys.ToList(), ArtUrl = r.ArtUrl,
+                Wave = r.Wave, Loudness = r.Loudness, Peak = r.Peak, Bpm = r.Bpm,
+            };
+            if (_ephemeral.TryGetValue(r.Id, out var standIn))
+            {
+                t.Wave ??= standIn.Wave;
+                t.Loudness ??= standIn.Loudness;
+                t.Peak ??= standIn.Peak;
+                LyricsStore.Copy(standIn.Id, t, standIn.Lyrics);
+            }
+            try
+            {
+                if (File.Exists(AppPaths.TrackCover("lt-" + r.Id)))
+                {
+                    File.Copy(AppPaths.TrackCover("lt-" + r.Id), AppPaths.TrackCover(t.Id), true);
+                    t.HasCover = true;
+                }
+            }
+            catch { }
+            t.CachePath = _fetcher?.PathFor(item.Id);
+            lib.Add(t);
+            if (!t.HasCover && t.ArtUrl != null) _ = _main.FetchCover(t, new[] { t.ArtUrl });
+            added = true;
+        }
+        if (playlist != null) _main.Profile.AddTrack(playlist, t.Id);
+        _fetcher?.UseLibrary(item.Id, t);
+        item.Refresh();
+        _main.Toast(playlist != null ? L.F("«{0}» aggiunto a «{1}»", t.Title, PlaylistViewModel.DisplayName(playlist))
+            : added ? L.F("«{0}» aggiunto alla libreria senza salvarlo", t.Title) : L.T("È già nella tua libreria"));
+        return t;
+    }
+
+    // A playlist for a room song: in the cloud when it has a link, otherwise saved on the device.
+    public void AddToPlaylist(RoomItemViewModel item, Playlist playlist)
+    {
+        if (item.InLibrary || HasLink(item.Item)) AddToLibrary(item, playlist);
+        else _ = Save(item, playlist);
+    }
+
+    // Saved on the device (and into a playlist): the file leaves the room's cache.
     public async Task<Track?> Save(RoomItemViewModel item, Playlist? playlist)
     {
         if (_s == null) return null;
-        if (_fetcher?.LibraryTrack(item.Id) is { } have && _main.Library.Get(have.Id) != null)
+        var known = _fetcher?.LibraryTrack(item.Id) is { } lt && _main.Library.Get(lt.Id) != null ? lt : null;
+        if (known is { HasSavedFile: true } have)
         {
             if (playlist != null) _main.AddToPlaylist(_main.Vm(have), playlist);
-            else _main.Toast(L.T("È già nella tua libreria"));
+            else _main.Toast(L.T("È già salvato sul dispositivo"));
             return have;
         }
         var from = _fetcher?.PathFor(item.Id);
@@ -1599,7 +1677,7 @@ public sealed class TogetherViewModel : Observable
             var target = Text.UniquePath(dir, name, Path.GetExtension(from));
             await Task.Run(() => File.Copy(from, target));
             // A song of your library in the cloud: this file becomes its saved one (no second copy of the song).
-            if (r.Keys.Count > 0 && _main.Library.FindByKeys(r.Keys) is { IsSaved: false } cloud)
+            if ((known ?? (r.Keys.Count > 0 ? _main.Library.FindByKeys(r.Keys) : null)) is { IsSaved: false } cloud)
             {
                 cloud.Path = target;
                 cloud.Unavailable = false;

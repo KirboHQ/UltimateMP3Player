@@ -87,6 +87,47 @@ public partial class TogetherView : UserControl
             Menus.Open(Menus.ForMembers(_vm, hit.Item), hit.Row, false);
             e.Handled = true;
         });
+        // Dragging a song of the queue moves it, like "Up next".
+        QueueList.AddHandler(PointerPressedEvent, Row_Pressed, RoutingStrategies.Tunnel);
+        QueueList.AddHandler(PointerMovedEvent, Row_Moved, RoutingStrategies.Tunnel);
+        QueueList.AddHandler(DragDrop.DragOverEvent, (_, e) =>
+        {
+            e.DragEffects = e.Data.Contains(RoomItemFormat) ? DragDropEffects.Move : DragDropEffects.None;
+            e.Handled = true;
+        });
+        // (the move itself happens when the drag ends: Row_Moved)
+        QueueList.AddHandler(DragDrop.DropEvent, (_, e) => e.Handled = e.Data.Contains(RoomItemFormat));
+    }
+
+    // ------------------------------------------------------------------ reordering the queue
+
+    private const string RoomItemFormat = "UltimateMP3Player.RoomItem";
+    private Point? _dragStart;
+
+    private void Row_Pressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && Find<RoomItemViewModel>(e.Source, "qrow") != null) _dragStart = e.GetPosition(null);
+    }
+
+    private async void Row_Moved(object? sender, PointerEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || _dragStart is not Point start) return;
+        if (Ui.FindAncestor<Button>(e.Source as Visual) != null) return;
+        var p = e.GetPosition(null);
+        if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
+        _dragStart = null;
+        // (without the permission the rows stay put: moving needs the same one as removing)
+        if (Find<RoomItemViewModel>(e.Source, "qrow") is not { } hit || _vm is not { CanRemove: true } vm) return;
+        var item = hit.Item;
+        var session = new DragSession(QueueList, item);
+        var data = new DataObject();
+        data.Set(RoomItemFormat, item.Id);
+        var outcome = await DragVisuals.RunAsync(hit.Row, e, data, DragDropEffects.Move, session);
+        if (outcome != DragOutcome.Placed || session.Target is not RoomItemViewModel target) return;
+        int from = vm.Queue.IndexOf(item), to = vm.Queue.IndexOf(target);
+        if (from < 0 || to < 0) return;
+        int at = DragVisuals.MoveIndex(from, to, session.After);
+        if (at != from) vm.MoveTo(item, at);
     }
 
     private static (T Item, Control Row)? Find<T>(object? source, string cls) where T : class

@@ -203,6 +203,27 @@ public enum VideoCompat { Auto, Original, H264 }
 
 public sealed record VideoOptions(string Container = "mp4", int? Res = null, double? Fps = null);
 public sealed record AudioOptions(string Format = "mp3", int? Kbps = null, int? SampleRate = null, int? Channels = null, int BitDepth = 16);
+
+// The audio a song is saved (or heard) with: "mp3" (MP3 at 320 kbps), "mp3-256", "mp3-192", "mp3-128" (smaller files),
+// or "original" (the site's own file, no conversion: AAC or Opus, usually the best).
+public static class Quality
+{
+    public const string Mp3 = "mp3", Original = "original";
+    public static readonly string[] Audio = { Mp3, "mp3-256", "mp3-192", "mp3-128", Original };
+
+    public static AudioOptions Options(string? quality) => quality switch
+    {
+        Original => new AudioOptions(Original),
+        { } q when q.StartsWith("mp3-", StringComparison.Ordinal) && int.TryParse(q[4..], out var kbps) && kbps is >= 64 and <= 320 => new AudioOptions(Mp3, kbps),
+        _ => new AudioOptions(Mp3),
+    };
+
+    // A song's own audio quality, or the one in Settings.
+    public static string For(Track? t, string fallback) => t?.AudioQuality is { } q && Audio.Contains(q) ? q : fallback;
+
+    // A song's video resolution (null = the best), or the one in Settings.
+    public static int? VideoFor(Track? t, int? fallback) => t?.VideoRes is int r ? (r > 0 ? r : null) : fallback;
+}
 public sealed record ImageOptions(string Format = "original", int? MaxSide = null);
 
 public sealed record DownloadOptions

@@ -158,7 +158,10 @@ public static class PackDialogs
 
         var cancel = Dialogs.Button(L.T("Annulla"), "GhostButton", isCancel: true);
         var ok = Dialogs.Button(L.T("Esporta…"), "PrimaryButton", isDefault: true);
-        var win = Dialogs.Frame(L.T("Esporta in un pacchetto"), Fit(body), 560, cancel, ok);
+        // The same songs as plain MP3s in a folder, for a USB stick, an SD card or the car (FolderExport).
+        var folder = Dialogs.Button(L.T("In una cartella (MP3)…"), "GhostButton");
+        ToolTip.SetTip(folder, L.T("Per una chiavetta, una scheda SD o l'autoradio: un file MP3 per brano, chiamato «Artista - Titolo», con titolo, artista, album e copertina nei tag. I brani nel cloud vengono scaricati."));
+        var win = Dialogs.Frame(L.T("Esporta in un pacchetto"), Fit(body), 560, folder, cancel, ok);
 
         PackExport Current() => new()
         {
@@ -179,7 +182,7 @@ public static class PackDialogs
                 ? L.T("La musica è dentro il pacchetto: si importa anche senza internet e con i brani spariti dai siti. Pesa quanto i brani.")
                 : L.T("Pacchetto leggerissimo, perfetto da mandare su Discord: chi lo apre riscarica i brani dai loro link. Quelli senza link (file tuoi, mix del DJ) viaggiano comunque come file.");
             videoBox.IsVisible = e.Music && songs.Any(t => t.HasVideo);
-            ok.IsEnabled = !e.IsEmpty;
+            ok.IsEnabled = folder.IsEnabled = !e.IsEmpty;
             if (e.IsEmpty)
             {
                 line1.Text = L.T("Scegli almeno una playlist, un tag o tutta la libreria.");
@@ -201,12 +204,14 @@ public static class PackDialogs
         // 0 = choosing, 1 = writing, 2 = done.
         int stage = 0;
         string? saved = null;
+        bool savedFolder = false;
         CancellationTokenSource? cts = null;
         ok.Click += async (_, _) =>
         {
             if (stage == 2)
             {
-                Ui.ShowInFolder(saved!);
+                if (savedFolder) MainViewModel.OpenFolder(saved!);
+                else Ui.ShowInFolder(saved!);
                 win.DialogResult = true;
                 return;
             }
@@ -249,6 +254,53 @@ public static class PackDialogs
                 stage = 0;
                 inputs.IsEnabled = true;
                 ok.IsEnabled = true;
+                status.Foreground = B("ErrorBrush");
+                status.Text = L.T("Esportazione non riuscita:") + " " + ex.Message;
+            }
+        };
+        folder.Click += async (_, _) =>
+        {
+            var e = Current();
+            if (stage != 0 || e.IsEmpty) return;
+            if (Dialogs.PickFolder(L.T("Dove mettere gli MP3 (una chiavetta, una scheda SD…)")) is not { } dir) return;
+            var songs = PackWriter.Songs(lib, profile, e);
+            stage = 1;
+            inputs.IsEnabled = false;
+            ok.IsEnabled = folder.IsEnabled = false;
+            progress.IsVisible = true;
+            status.Foreground = B("SubTextBrush");
+            status.Text = L.T("Preparo gli MP3…");
+            cts = new CancellationTokenSource();
+            var report = Reporter(bar, status);
+            var cookies = App.Host?.Settings.CookiesBrowserOrNull;
+            try
+            {
+                var r = await Task.Run(() => FolderExport.WriteAsync(songs, cookies, (file, name, _) =>
+                {
+                    File.Copy(file, Path.Combine(dir, name), true);
+                    return Task.CompletedTask;
+                }, report, cts.Token));
+                stage = 2;
+                saved = dir;
+                savedFolder = true;
+                bar.Value = 1;
+                status.Foreground = B(r.Written > 0 ? "SuccessBrush" : "WarningBrush");
+                status.Text = "✓ " + L.F("{0} in «{1}»", L.Count(r.Written, "1 MP3", "{0} MP3"), dir) +
+                              (r.Skipped > 0 ? " · " + L.Count(r.Skipped, "1 saltato (né audio né un link che funzioni)", "{0} saltati (né audio né un link che funzioni)") : "");
+                ok.Content = L.T("Mostra nella cartella");
+                ok.IsEnabled = true;
+                cancel.Content = L.T("Chiudi");
+            }
+            catch (OperationCanceledException)
+            {
+                stage = 0;
+                win.DialogResult = false;
+            }
+            catch (Exception ex)
+            {
+                stage = 0;
+                inputs.IsEnabled = true;
+                ok.IsEnabled = folder.IsEnabled = true;
                 status.Foreground = B("ErrorBrush");
                 status.Text = L.T("Esportazione non riuscita:") + " " + ex.Message;
             }

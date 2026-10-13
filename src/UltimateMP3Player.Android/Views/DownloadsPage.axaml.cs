@@ -67,6 +67,25 @@ public partial class DownloadsPage : UserControl, IPage
         Menus.Open(menu);
     }
 
+    // The audio or video quality of the songs of the card.
+    private void Quality_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Vm?.Link is not { } link || sender is not Control { Tag: string what }) return;
+        bool audio = what == "audio";
+        var menu = new SheetMenu { Title = audio ? L.T("Qualità dell'audio") : L.T("Qualità massima dei video"), Subtitle = link.Title };
+        foreach (var c in audio ? link.AudioChoices : link.VideoChoices)
+        {
+            var choice = c;
+            var text = string.IsNullOrEmpty(c.Hint) ? c.Label : $"{c.Label}  ·  {c.Hint}";
+            menu.Add(new SheetEntry(text, c == (audio ? link.Audio : link.Video) ? "" : "", () =>
+            {
+                if (audio) link.Audio = choice;
+                else link.Video = choice;
+            }));
+        }
+        Menus.Open(menu);
+    }
+
     private void Tags_Click(object? sender, RoutedEventArgs e)
     {
         if (Vm?.Link is not { } link || App.Host.Session is not { } main) return;

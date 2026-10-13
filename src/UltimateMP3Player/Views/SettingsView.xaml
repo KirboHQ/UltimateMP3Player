@@ -262,6 +262,24 @@
                                     Value="{Binding CrossfadeSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Durata dissolvenza'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding CrossfadeText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
                         </Grid>
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BpmMatch}" Margin="0,14,0,0" AutomationProperties.Name="{local:T 'Passaggio a tempo di BPM'}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Passaggio a tempo di BPM'}"/>
+                                <TextBlock Text="{local:T 'Negli ultimi secondi il brano rallenta o accelera fino ai BPM di quello dopo (senza cambiare tono), così entrano a tempo. Solo quando i BPM di entrambi sono noti e vicini.'}"
+                                           Style="{StaticResource Hint}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <Grid Margin="0,12,0,0" Visibility="{Binding BpmMatch, Converter={StaticResource BoolVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{local:T Durata}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <Slider Grid.Column="1" Minimum="2" Maximum="30" SmallChange="1" LargeChange="2" IsSnapToTickEnabled="True" TickFrequency="1"
+                                    Value="{Binding BpmMatchSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Durata del passaggio a tempo'}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding BpmMatchText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
@@ -365,18 +383,22 @@
                         </CheckBox>
                         <StackPanel IsEnabled="{Binding OnlineSearch}">
                             <TextBlock Text="{local:T 'Siti, in ordine di preferenza'}" Style="{StaticResource FieldLabel}"/>
-                            <ItemsControl ItemsSource="{Binding SearchServices}" Focusable="False" Margin="0,0,0,10">
-                                <ItemsControl.ItemTemplate>
+                            <!-- dragged to another place like the songs of a playlist (SettingsView.Service_MouseMove) -->
+                            <ListBox x:Name="ServiceList" ItemsSource="{Binding SearchServices}" Style="{StaticResource PlainList}" Focusable="False" Margin="0,0,0,10"
+                                     AllowDrop="True" DragOver="Services_DragOver" VirtualizingPanel.IsVirtualizing="False" ScrollViewer.CanContentScroll="False">
+                                <ListBox.Template>
+                                    <ControlTemplate TargetType="ListBox">
+                                        <ItemsPresenter/>
+                                    </ControlTemplate>
+                                </ListBox.Template>
+                                <ListBox.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:SearchServiceOption}">
-                                        <Border CornerRadius="10" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                                Padding="12,8,6,8" Margin="0,0,0,6">
+                                        <Border x:Name="Row" CornerRadius="10" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                                Padding="12,8,6,8" Margin="0,0,0,6" PreviewMouseLeftButtonDown="Service_MouseDown" MouseMove="Service_MouseMove">
                                             <DockPanel>
-                                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <Button Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="11" Content="&#xE70E;" Command="{Binding UpCommand}"
-                                                            ToolTip="{local:T 'Più su: cercato prima'}" AutomationProperties.Name="{local:T 'Sposta su'}"/>
-                                                    <Button Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="11" Content="&#xE70D;" Command="{Binding DownCommand}"
-                                                            ToolTip="{local:T 'Più giù: cercato dopo'}" AutomationProperties.Name="{local:T 'Sposta giù'}"/>
-                                                </StackPanel>
+                                                <TextBlock DockPanel.Dock="Right" Text="&#xE700;" Style="{StaticResource Glyph}" FontSize="14" Foreground="{StaticResource MutedBrush}"
+                                                           Background="Transparent" Cursor="SizeAll" VerticalAlignment="Center" Padding="10,6,8,6"
+                                                           ToolTip="{local:T 'Trascina per cambiare l\'ordine: i siti più in alto vengono cercati prima'}"/>
                                                 <CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}">
                                                     <StackPanel Margin="2,0,0,0">
                                                         <StackPanel Orientation="Horizontal">
@@ -390,8 +412,8 @@
                                             </DockPanel>
                                         </Border>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
                             <TextBlock Text="{local:T 'Come cercare'}" Style="{StaticResource FieldLabel}"/>
                             <ComboBox ItemsSource="{Binding SearchModes}" SelectedItem="{Binding SearchMode}" Width="280" HorizontalAlignment="Left"
                                       AutomationProperties.Name="{local:T 'Come cercare'}"/>

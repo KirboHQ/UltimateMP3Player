@@ -142,6 +142,12 @@ public static class PackDialogs
         var ok = Button(L.T("Crea il pacchetto"), "TouchPrimary");
         var buttons = Buttons(cancel, ok);
         body.Children.Add(buttons);
+        // The same songs as plain MP3s in a folder (a USB stick, an SD card, for the car): FolderExport.
+        var folder = Button(L.T("In una cartella (MP3)…"), "TouchGhost");
+        folder.Margin = new Thickness(0, 10, 0, 0);
+        body.Children.Add(folder);
+        var folderHint = Hint(L.T("Per una chiavetta, una scheda SD o l'autoradio: un MP3 per brano, «Artista - Titolo», con i tag e la copertina."), 6);
+        body.Children.Add(folderHint);
         var finished = new StackPanel { IsVisible = false, Margin = new Thickness(0, 16, 0, 0), Spacing = 10 };
         var share = Button(L.T("Condividi…"), "TouchPrimary");
         var saveAs = Button(L.T("Salva in…"), "TouchGhost");
@@ -169,7 +175,7 @@ public static class PackDialogs
                 ? L.T("La musica è dentro il pacchetto: si importa anche senza internet e con i brani spariti dai siti. Pesa quanto i brani.")
                 : L.T("Pacchetto leggerissimo, perfetto da mandare su Discord: chi lo apre riscarica i brani dai loro link. Quelli senza link (file tuoi, mix del DJ) viaggiano comunque come file.");
             videoBox.IsVisible = e.Music && songs.Any(t => t.HasVideo);
-            ok.IsEnabled = !e.IsEmpty;
+            ok.IsEnabled = folder.IsEnabled = !e.IsEmpty;
             if (e.IsEmpty)
             {
                 line1.Text = L.T("Scegli almeno una playlist, un tag o tutta la libreria.");
@@ -240,6 +246,51 @@ public static class PackDialogs
                 status.Text = L.T("Annullo…");
             }
             else sheets.Close(body);
+        };
+        folder.Click += async (_, _) =>
+        {
+            var e = Current();
+            if (busy || e.IsEmpty) return;
+            if (await Dialogs.PickExportFolderAsync(L.T("Dove mettere gli MP3")) is not { } target) return;
+            var songs = PackWriter.Songs(lib, profile, e);
+            busy = true;
+            inputs.IsEnabled = false;
+            ok.IsEnabled = folder.IsEnabled = false;
+            progress.IsVisible = true;
+            status.Foreground = B("SubTextBrush");
+            status.Text = L.T("Preparo gli MP3…");
+            cts = new CancellationTokenSource();
+            var report = Reporter(bar, status);
+            var cookies = App.Host.Settings.CookiesBrowserOrNull;
+            try
+            {
+                var r = await Task.Run(() => FolderExport.WriteAsync(songs, cookies, async (file, name, ct) =>
+                {
+                    var dest = await target.CreateFileAsync(name) ?? throw new IOException(L.T("La cartella scelta non accetta file."));
+                    await using var input = File.OpenRead(file);
+                    await using var output = await dest.OpenWriteAsync();
+                    await input.CopyToAsync(output, ct);
+                }, report, cts.Token));
+                bar.Value = 1;
+                status.Foreground = B(r.Written > 0 ? "SuccessBrush" : "WarningBrush");
+                status.Text = "✓ " + L.F("{0} in «{1}»", L.Count(r.Written, "1 MP3", "{0} MP3"), target.Name) +
+                              (r.Skipped > 0 ? " · " + L.Count(r.Skipped, "1 saltato (né audio né un link che funzioni)", "{0} saltati (né audio né un link che funzioni)") : "");
+                buttons.IsVisible = folder.IsVisible = folderHint.IsVisible = false;
+                finished.IsVisible = true;
+                share.IsVisible = saveAs.IsVisible = false;
+            }
+            catch (OperationCanceledException)
+            {
+                sheets.Close(body);
+            }
+            catch (Exception ex)
+            {
+                inputs.IsEnabled = true;
+                ok.IsEnabled = folder.IsEnabled = true;
+                status.Foreground = B("ErrorBrush");
+                status.Text = L.T("Esportazione non riuscita:") + " " + ex.Message;
+            }
+            finally { busy = false; }
         };
         share.Click += (_, _) => { if (saved != null) Platform.Files.Share(saved, "application/octet-stream", L.T("Condividi il pacchetto")); };
         saveAs.Click += async (_, _) =>

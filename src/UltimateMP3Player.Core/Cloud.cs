@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using UltimateMP3Player.Core.Together;
 
 namespace UltimateMP3Player.Core;
 
@@ -121,6 +122,7 @@ public static class CloudSongs
         Service = string.IsNullOrEmpty(t.Site) ? Sites.NameFor(t.SourceUrl ?? "") : t.Site,
         Keys = t.Keys.ToList(),
         FromLink = true,
+        Quality = t.AudioQuality,
     };
 
     // The same song on YouTube Music (or YouTube) when its own link no longer works: only a close match, null when there's
@@ -135,6 +137,40 @@ public static class CloudSongs
             Source = SourceKind.Search,
             SiteName = "YouTube Music",
         }, cookies, ct);
+
+    // The same song on YouTube when its own link failed. A link that's dead or changed gets only a close match (a remix isn't
+    // replaced by the original); a song its site won't give at all (DRM, private, members only, removed) is then searched like
+    // "Try on YouTube" on the download page does, the best match taken. Null when nothing was found; a connection that fails
+    // throws.
+    public static async Task<YtInfo?> FindForAsync(EngineException failure, string title, string? artist, double duration, string url, string? cookies,
+        CancellationToken ct)
+    {
+        var item = TrackDownloader.YouTubeFallback(new MediaItem
+        {
+            Title = title, Artist = artist, Duration = duration > 0 ? duration : null, Url = url, PageUrl = url, Kind = MediaKind.Audio,
+        });
+        var close = await FindElsewhereAsync(item.Title, item.Artist, duration, cookies, ct);
+        if (close != null || !(failure.Gone || failure.NeedsLogin)) return close;
+        try { return await MusicMatcher.FindAsync(item, cookies, _ => { }, ct); }
+        catch (EngineException ex) when (!ex.Offline) { return null; }
+    }
+
+    // A song's audio into dir from its link, or, when the link can't give it, from the same song found on YouTube (FindForAsync).
+    // Replacement: where it came from instead (null: its own link).
+    public static async Task<(string File, YtInfo? Replacement)> DownloadAsync(string url, string title, string? artist, double duration, string audioFormat,
+        string? cookies, string dir, Action<double> progress, CancellationToken ct)
+    {
+        try
+        {
+            return (await TogetherCache.DownloadAsync(url, audioFormat, cookies, dir, progress, ct), null);
+        }
+        catch (EngineException ex) when (ex.LinkProblem && !ct.IsCancellationRequested)
+        {
+            var info = await FindForAsync(ex, title, artist, duration, url, cookies, ct);
+            if (info == null) throw new EngineException(ex.Message, ex.Details) { Gone = ex.Gone, NeedsLogin = ex.NeedsLogin, NotFoundElsewhere = true };
+            return (await TogetherCache.DownloadAsync(info.WebpageUrl, audioFormat, cookies, dir, progress, ct), info);
+        }
+    }
 }
 
 // A video on YouTube for a song saved without one.

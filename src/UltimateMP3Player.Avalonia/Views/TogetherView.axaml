@@ -556,13 +556,13 @@
                             </Panel></Border>
                             <StackPanel Grid.Column="1" Margin="18,0,0,0" VerticalAlignment="Center">
                                 <DockPanel>
+                                    <!-- the library icon, then the download arrow, as everywhere else -->
                                     <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Padding="12,5" FontSize="12.5" VerticalAlignment="Top"
-                                            Command="{Binding CurrentItem.SaveCommand}" CommandParameter="{Binding $self}"
-                                            ToolTip.Tip="{local:T 'Tienilo: nella tua libreria o in una playlist'}"
-                                            IsVisible="{Binding HasCurrent}">
+                                            Command="{Binding CurrentItem.KeepCommand}" ToolTip.Tip="{Binding CurrentItem.KeepTip}"
+                                            IsVisible="{Binding CurrentItem.ShowKeep, FallbackValue=False}">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{local:Icon E74E}" Classes="glyph" FontSize="12"/>
-                                            <TextBlock Text="{local:T Salva}" Margin="7,0,0,0"/>
+                                            <TextBlock Text="{Binding CurrentItem.KeepGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="12"/>
+                                            <TextBlock Text="{Binding CurrentItem.KeepLabel}" Margin="7,0,0,0"/>
                                         </StackPanel>
                                     </Button>
                                     <WrapPanel VerticalAlignment="Center">
@@ -663,7 +663,8 @@
                                     </DockPanel>
                                 </StackPanel>
                             </Border>
-                            <ListBox x:Name="QueueList" Grid.Row="2" Theme="{StaticResource PlainList}" ItemsSource="{Binding Queue}" AutomationProperties.Name="{local:T 'In coda'}">
+                            <ListBox x:Name="QueueList" Grid.Row="2" Theme="{StaticResource PlainList}" ItemsSource="{Binding Queue}" AutomationProperties.Name="{local:T 'In coda'}"
+                                     DragDrop.AllowDrop="True">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:RoomItemViewModel}">
                                         <Border Classes="qrow" CornerRadius="8" Padding="6" Margin="0,0,0,1" local:Marquee.Host="True"
@@ -711,8 +712,8 @@
                                                 <TextBlock Classes="length" Grid.Column="5" Text="{Binding Track.DurationText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}"
                                                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                                 <StackPanel Classes="actions" Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" Opacity="0">
-                                                    <Button Theme="{StaticResource RowIconButton}" Content="{local:Icon E74E}" Command="{Binding SaveCommand}"
-                                                            CommandParameter="{Binding $self}" ToolTip.Tip="{local:T 'Tienilo: nella tua libreria o in una playlist'}"/>
+                                                    <Button Theme="{StaticResource RowIconButton}" Content="{Binding KeepGlyph, Converter={StaticResource Icon}}" Command="{Binding KeepCommand}"
+                                                            ToolTip.Tip="{Binding KeepTip}" IsVisible="{Binding ShowKeep}"/>
                                                     <Button Theme="{StaticResource RowIconButton}" Content="{local:Icon E711}" FontSize="11" Command="{Binding RemoveCommand}"
                                                             IsEnabled="{Binding CanRemove}" ToolTip.Tip="{Binding RemoveTip}" ToolTip.ShowOnDisabled="True"/>
                                                 </StackPanel>

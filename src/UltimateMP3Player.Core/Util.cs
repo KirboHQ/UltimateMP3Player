@@ -169,6 +169,8 @@ public sealed class EngineException : Exception
     public bool Gone { get; init; }
     // The site couldn't be reached at all (no connection).
     public bool Offline { get; init; }
+    // Its link failed and the same song wasn't found on YouTube either (CloudSongs.DownloadAsync).
+    public bool NotFoundElsewhere { get; init; }
 
     public EngineException(string message, string? details = null) : base(message) => Details = details ?? "";
 

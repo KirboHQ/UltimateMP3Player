@@ -388,11 +388,28 @@ public sealed class DjDeckViewModel : Observable
     private float _level;
     public float Level { get => _level; private set => Set(ref _level, value); }
 
+    // What the deck's texts said last: they're told again only when they change (a timer ticks 30 times a second, and
+    // every change makes the page measure and draw them again).
+    private string? _shownElapsed, _shownRemaining, _shownTapTime;
+    private bool? _shownPlaying, _shownTapPlaying;
+
     public void Poll()
     {
         Frame();
-        Level = Engine.Level;
-        OnChanged(nameof(ElapsedText), nameof(RemainingText), nameof(IsPlaying), nameof(IsTapPlaying), nameof(TapTimeText));
+        // (to the hundredth: the meter can't show finer, and a value that keeps changing keeps redrawing it)
+        Level = MathF.Round(Engine.Level, 2);
+        if (Changed(ref _shownElapsed, ElapsedText)) OnChanged(nameof(ElapsedText));
+        if (Changed(ref _shownRemaining, RemainingText)) OnChanged(nameof(RemainingText));
+        if (Changed(ref _shownTapTime, TapTimeText)) OnChanged(nameof(TapTimeText));
+        if (Changed(ref _shownPlaying, IsPlaying)) OnChanged(nameof(IsPlaying));
+        if (Changed(ref _shownTapPlaying, IsTapPlaying)) OnChanged(nameof(IsTapPlaying));
+    }
+
+    private static bool Changed<T>(ref T shown, T now)
+    {
+        if (EqualityComparer<T>.Default.Equals(shown, now)) return false;
+        shown = now;
+        return true;
     }
 
     // ------------------------------------------------------------------ tempo
@@ -839,15 +856,30 @@ public sealed class DjViewModel : Observable
     private string? _status;
     public string? Status { get => _status; set => Set(ref _status, value); }
 
+    private bool? _shownAnyPlaying;
+    private string? _shownRecord;
+
     public void Poll()
     {
         A.Poll();
         B.Poll();
         Tapper.Poll();
-        Level = Engine.Level;
-        OnChanged(nameof(AnyPlaying));
-        if (Engine.IsRecording) OnChanged(nameof(RecordText));
-        Frames(_open && Decks.Append(Tapper).Any(d => d.IsPlaying || d.IsNudging));
+        Level = MathF.Round(Engine.Level, 2);
+        if (_shownAnyPlaying != AnyPlaying)
+        {
+            _shownAnyPlaying = AnyPlaying;
+            OnChanged(nameof(AnyPlaying));
+        }
+        if (Engine.IsRecording && RecordText != _shownRecord)
+        {
+            _shownRecord = RecordText;
+            OnChanged(nameof(RecordText));
+        }
+        bool moving = Decks.Append(Tapper).Any(d => d.IsPlaying || d.IsNudging);
+        Frames(_open && moving);
+        // Nothing moving: the texts are checked a few times a second instead of 30 (a press of Play polls at once).
+        var interval = TimeSpan.FromMilliseconds(moving || Engine.IsRecording ? 33 : 200);
+        if (_clock.Interval != interval) _clock.Interval = interval;
     }
 
     // The waveforms move at the screen's frame rate while the page is open and something moves
@@ -862,8 +894,15 @@ public sealed class DjViewModel : Observable
         else FrameClock.Remove(OnFrame);
     }
 
+    private long _lastFrame;
+
     private void OnFrame(object? sender, EventArgs e)
     {
+        // At most about 60-75 a second: a 144 or 240 Hz screen would redraw the waves (the heaviest part of the page) 2-4
+        // times as often for movements the eye can't tell apart. (A 60 Hz screen keeps every frame, even with some jitter.)
+        long now = Stopwatch.GetTimestamp();
+        if (now - _lastFrame < Stopwatch.Frequency / 75) return;
+        _lastFrame = now;
         A.Frame();
         B.Frame();
         Tapper.Frame();
@@ -874,11 +913,13 @@ public sealed class DjViewModel : Observable
     {
         _clock.Start();
         _open = true;
+        // The song playing stops here (the decks start at their own volume, often much louder): it waits on deck A at the
+        // same point, ready to go on with Play.
         var player = Main.Player;
-        if (A.HasTrack || A.IsLoading || player.Current is not { } cur || (player.OpenPath ?? cur.T.AudioPath) is not { } path) return;
-        bool playing = player.IsPlaying;
         double at = player.Position;
-        _ = A.LoadAsync(path, cur.Title, cur.T.Artist, cur.T, cur, at, playing);
+        if (player.IsPlaying) player.Pause();
+        if (A.HasTrack || A.IsLoading || player.Current is not { } cur || (player.OpenPath ?? cur.T.AudioPath) is not { } path) return;
+        _ = A.LoadAsync(path, cur.Title, cur.T.Artist, cur.T, cur, at);
     }
 
     // Leaving: the decks stop (a recording keeps its file until saved).

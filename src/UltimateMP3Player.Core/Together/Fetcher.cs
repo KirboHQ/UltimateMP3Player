@@ -3,14 +3,15 @@ namespace UltimateMP3Player.Core.Together;
 // Ahead / HostAhead: songs after the one playing to get ready, as a guest and as the host.
 // TakeFromHost: as a guest, songs come from the host first when the host sends them (P2P).
 // P2P off: nothing comes from the others, only from the library, the cache and the links.
-public sealed record FetchOptions(string AudioFormat, string? Cookies, int CacheSize, int Ahead, int HostAhead, bool TakeFromHost, bool P2P = true);
+// Parallel: downloads at a time (the "simultaneous downloads" setting).
+public sealed record FetchOptions(string AudioFormat, string? Cookies, int CacheSize, int Ahead, int HostAhead, bool TakeFromHost, bool P2P = true, int Parallel = 1);
 
 // Gets this computer the files of the room's song and the next ones (so nobody has to wait for anyone):
 // from the library if the song is already there, from the cache of past rooms, downloaded from its link,
 // and as a last resort sent over by someone in the room who has it.
 // When the host sends songs and this guest takes them (both chose so), it goes the other way round: the songs the host
 // gets ready come from the host; the ones further on are downloaded here and, if that fails, come from the host once it has them.
-// Downloads and transfers go on side by side, one of each at a time, in the order of the queue.
+// Downloads (as many at a time as the settings allow) and transfers (one at a time) go on side by side, in the order of the queue.
 public sealed class TogetherFetcher : IDisposable
 {
     private enum Route { Download, Transfer, WaitHost, Later }
@@ -43,7 +44,9 @@ public sealed class TogetherFetcher : IDisposable
     private readonly HashSet<string> _waitHost = new();
     private readonly Dictionary<string, long> _retryAt = new();
     private readonly Dictionary<string, TaskCompletionSource<string?>> _transfers = new();
-    private readonly Lane _download = new(), _transfer = new();
+    private readonly Lane _transfer = new();
+    // One lane per download allowed at a time (more are added when the setting grows).
+    private readonly List<Lane> _downloads = new() { new Lane() };
     private Dictionary<string, FileStatus>? _reported;
     private bool _disposed, _refreshPosted;
     private long _lastReport;
@@ -123,7 +126,7 @@ public sealed class TogetherFetcher : IDisposable
         var ids = window.Select(w => w.T.Id).ToHashSet();
         bool p2p = o.P2P && _s.P2PAllowed;
         // Work on songs no longer wanted here stops.
-        if (_download.Id != null && !ids.Contains(_download.Id)) _download.Cancel();
+        foreach (var lane in _downloads) if (lane.Id != null && !ids.Contains(lane.Id)) lane.Cancel();
         if (_transfer.Id != null && (!ids.Contains(_transfer.Id) || !p2p)) _transfer.Cancel();
         // Quick look for all of them: already in the library or the cache?
         foreach (var (t, _) in window)
@@ -132,7 +135,8 @@ public sealed class TogetherFetcher : IDisposable
         bool fromHost = p2p && !_s.IsHost && o.TakeFromHost && _s.HostSendsFiles;
         int hostAhead = _s.Host is { } h ? _s.AheadOf(h) : TogetherSession.DefaultAhead;
         long now = Environment.TickCount64;
-        (RoomTrack T, int Index)? download = null, transfer = null;
+        (RoomTrack T, int Index)? transfer = null;
+        var downloads = new List<(RoomTrack T, int Index)>();
         var waiting = new HashSet<string>();
         foreach (var w in window)
         {
@@ -140,24 +144,24 @@ public sealed class TogetherFetcher : IDisposable
             switch (RouteOf(w.T, w.Index, fromHost, p2p, hostAhead, now))
             {
                 case Route.Download when _transfer.Id != w.T.Id:
-                    download ??= w;
+                    if (!Downloading(w.T.Id)) downloads.Add(w);
                     break;
-                case Route.Transfer when _download.Id != w.T.Id:
+                case Route.Transfer when !Downloading(w.T.Id):
                     transfer ??= w;
                     break;
                 // (One already on its way goes on.)
-                case Route.WaitHost when _download.Id != w.T.Id && _transfer.Id != w.T.Id:
+                case Route.WaitHost when !Downloading(w.T.Id) && _transfer.Id != w.T.Id:
                     waiting.Add(w.T.Id);
                     break;
                 // Without P2P a song whose link didn't work has nowhere else to come from.
-                case Route.Later when !p2p && _download.Id != w.T.Id && StatusOf(w.T.Id)?.State != FileState.Failed:
+                case Route.Later when !p2p && !Downloading(w.T.Id) && StatusOf(w.T.Id)?.State != FileState.Failed:
                     Set(w.T.Id, FileState.Failed, 0);
                     break;
             }
         }
         Waiting(waiting, transfer?.T.Id);
         // The song playing comes first: a lane busy with a later one lets go of it.
-        Start(_download, download, t => Download(t));
+        StartDownloads(downloads, o);
         Start(_transfer, transfer, t => Transfer(t, fromHost && _s.StatusOf(_s.HostId, t.Id)?.State == FileState.Ready));
         Report(true);
     }
@@ -180,6 +184,32 @@ public sealed class TogetherFetcher : IDisposable
         return p2p && (!_retryAt.TryGetValue(t.Id, out var at) || now >= at) ? Route.Transfer : Route.Later;
     }
 
+    private bool Downloading(string id) => _downloads.Any(l => l.Id == id);
+
+    // The songs to download, in the order of the queue, into the free lanes. With none free the song playing (if it's one of
+    // them) takes the lane of the furthest one.
+    private void StartDownloads(List<(RoomTrack T, int Index)> todo, FetchOptions o)
+    {
+        int limit = Math.Clamp(o.Parallel, 1, 6);
+        while (_downloads.Count < limit) _downloads.Add(new Lane());
+        foreach (var w in todo)
+        {
+            // (lanes beyond a lowered limit finish their song and stay unused)
+            var free = _downloads.Take(limit).FirstOrDefault(l => l.Id == null);
+            if (free != null)
+            {
+                _ = Download(w.T, free);
+                continue;
+            }
+            if (w.Index == 0 && _downloads.Where(l => l.Id != null).OrderByDescending(l => WindowIndex(l.Id!)).FirstOrDefault() is { } furthest &&
+                WindowIndex(furthest.Id!) > 0)
+                furthest.Cancel();
+            break;
+        }
+    }
+
+    private int WindowIndex(string id) => _s.Current?.Id == id ? 0 : _s.Queue.FindIndex(t => t.Id == id) is var i and >= 0 ? i + 1 : int.MaxValue;
+
     private void Start(Lane lane, (RoomTrack T, int Index)? next, Func<RoomTrack, Task> work)
     {
         if (next is not { } n) return;
@@ -193,7 +223,7 @@ public sealed class TogetherFetcher : IDisposable
         foreach (var id in _waitHost.Where(id => !now.Contains(id)).ToList())
         {
             _waitHost.Remove(id);
-            if (!IsReady(id) && id != arriving && _transfer.Id != id && _download.Id != id) Set(id, FileState.None, 0);
+            if (!IsReady(id) && id != arriving && _transfer.Id != id && !Downloading(id)) Set(id, FileState.None, 0);
         }
         foreach (var id in now)
             if (_waitHost.Add(id)) Set(id, FileState.Transfer, 0);
@@ -234,7 +264,7 @@ public sealed class TogetherFetcher : IDisposable
         _waitHost.Remove(t.Id);
         Set(t.Id, FileState.Ready, 100, t.Duration);
         // Got it one way: the other way stops.
-        _download.Cancel(t.Id);
+        foreach (var lane in _downloads) lane.Cancel(t.Id);
         _transfer.Cancel(t.Id);
     }
 
@@ -258,13 +288,13 @@ public sealed class TogetherFetcher : IDisposable
     }
 
     // From its link, into the cache.
-    private async Task Download(RoomTrack t)
+    private async Task Download(RoomTrack t, Lane lane)
     {
-        var cts = Begin(_download, t.Id);
+        var cts = Begin(lane, t.Id);
         try
         {
             Set(t.Id, FileState.Downloading, 0);
-            var file = await DownloadFile(t, cts.Token);
+            var file = await DownloadFile(t, lane, cts.Token);
             if (!_disposed && !cts.IsCancellationRequested && _s.Find(t.Id) != null && !IsReady(t.Id))
             {
                 MarkReady(t, _cache.Adopt(t, file));
@@ -285,7 +315,7 @@ public sealed class TogetherFetcher : IDisposable
             _noLink.Add(t.Id);
             if (!IsReady(t.Id)) Set(t.Id, FileState.None, 0);
         }
-        finally { End(_download, cts); }
+        finally { End(lane, cts); }
     }
 
     // From someone in the room, through the host (from the host itself when it has it).
@@ -338,13 +368,15 @@ public sealed class TogetherFetcher : IDisposable
         if (!_disposed) _s.Post(Refresh);
     }
 
-    private Task<string> DownloadFile(RoomTrack t, CancellationToken ct)
+    private async Task<string> DownloadFile(RoomTrack t, Lane lane, CancellationToken ct)
     {
         var o = _options();
-        return TogetherCache.DownloadAsync(t.SourceUrl!, o.AudioFormat, o.Cookies, _cache.TempDir, pct => _s.Post(() =>
+        // A link that can't be downloaded (DRM, removed, private): the same song from YouTube, like everywhere else.
+        var (file, _) = await CloudSongs.DownloadAsync(t.SourceUrl!, t.Title, t.Artist, t.Duration, o.AudioFormat, o.Cookies, _cache.TempDir, pct => _s.Post(() =>
         {
-            if (_download.Id == t.Id && Math.Abs((StatusOf(t.Id)?.Pct ?? 0) - pct) >= 2) Set(t.Id, FileState.Downloading, pct);
+            if (lane.Id == t.Id && Math.Abs((StatusOf(t.Id)?.Pct ?? 0) - pct) >= 2) Set(t.Id, FileState.Downloading, pct);
         }), ct);
+        return file;
     }
 
     // A file sent by someone in the room (or, on the host, one it asked for on behalf of others).
@@ -389,7 +421,7 @@ public sealed class TogetherFetcher : IDisposable
         _disposed = true;
         _retry?.Dispose();
         _retry = null;
-        _download.Cancel();
+        foreach (var lane in _downloads) lane.Cancel();
         _transfer.Cancel();
         foreach (var tcs in _transfers.Values) tcs.TrySetResult(null);
         _transfers.Clear();

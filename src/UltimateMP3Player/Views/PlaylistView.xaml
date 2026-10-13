@@ -21,8 +21,8 @@
                     <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.5" Color="Black"/>
                 </Grid.Effect>
                 <ContentPresenter Content="{Binding Vm}" ContentTemplate="{StaticResource PlaylistCover}"/>
-                <Button x:Name="CoverButton" Style="{StaticResource SubtleButton}" Padding="0" Command="{Binding CoverCommand}" Opacity="0"
-                        ToolTip="{local:T 'Cambia immagine'}" Background="#99000000" Foreground="White">
+                <Button x:Name="CoverButton" Style="{StaticResource OverlayButton}" Command="{Binding CoverCommand}" Opacity="0"
+                        ToolTip="{local:T 'Cambia immagine'}">
                     <StackPanel>
                         <TextBlock Text="&#xEB9F;" Style="{StaticResource Glyph}" FontSize="30" HorizontalAlignment="Center"/>
                         <TextBlock Text="{local:T 'Cambia immagine'}" Margin="0,8,0,0" FontSize="12.5"/>

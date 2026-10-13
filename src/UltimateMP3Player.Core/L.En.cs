@@ -1823,5 +1823,54 @@ public static partial class L
         ["Sposta"] = "Move",
         ["Sposta i brani"] = "Move songs",
         ["Trascina ≡ per cambiare posto a un brano"] = "Drag ≡ to move a song",
+        // 3.7
+        ["Qualità dell'audio"] = "Audio quality",
+        ["Riproduci brani dell'artista"] = "Play the artist's songs",
+        ["Scarica di nuovo / qualità…"] = "Download again / quality…",
+        ["Qualità di ascolto…"] = "Listening quality…",
+        ["In una cartella (MP3)…"] = "To a folder (MP3)…",
+        ["Per una chiavetta, una scheda SD o l'autoradio: un MP3 per brano, «Artista - Titolo», con i tag e la copertina."] =
+            "For a USB stick, an SD card or the car stereo: one MP3 per song, “Artist - Title”, with its tags and cover.",
+        ["Dove mettere gli MP3"] = "Where to put the MP3s",
+        ["Preparo gli MP3…"] = "Preparing the MP3s…",
+        ["La cartella scelta non accetta file."] = "The chosen folder doesn't accept files.",
+        ["{0} in «{1}»"] = "{0} in “{1}”",
+        ["1 MP3"] = "1 MP3",
+        ["{0} MP3"] = "{0} MP3s",
+        ["1 saltato (né audio né un link che funzioni)"] = "1 skipped (no audio and no working link)",
+        ["{0} saltati (né audio né un link che funzioni)"] = "{0} skipped (no audio and no working link)",
+        ["Passaggio a tempo di BPM"] = "BPM-matched transition",
+        ["Negli ultimi secondi il brano rallenta o accelera fino ai BPM di quello dopo, così entrano a tempo"] =
+            "In its last seconds the song slows down or speeds up to the next one's BPM, so they meet on the beat",
+        ["Qualità dell'audio di questi brani: resta la loro per i prossimi download e per ascoltarli dal cloud"] =
+            "Audio quality of these songs: it stays theirs for their next downloads and for hearing them from the cloud",
+        ["Per una chiavetta, una scheda SD o l'autoradio: un file MP3 per brano, chiamato «Artista - Titolo», con titolo, artista, album e copertina nei tag. I brani nel cloud vengono scaricati."] =
+            "For a USB stick, an SD card or the car stereo: one MP3 file per song, named “Artist - Title”, with title, artist, album and cover in its tags. Songs in the cloud are downloaded.",
+        ["Dove mettere gli MP3 (una chiavetta, una scheda SD…)"] = "Where to put the MP3s (a USB stick, an SD card…)",
+        ["Negli ultimi secondi il brano rallenta o accelera fino ai BPM di quello dopo (senza cambiare tono), così entrano a tempo. Solo quando i BPM di entrambi sono noti e vicini."] =
+            "In its last seconds the song slows down or speeds up to the next one's BPM (without changing key), so they meet on the beat. Only when both BPMs are known and close.",
+        ["Durata del passaggio a tempo"] = "Length of the BPM-matched transition",
+        ["Trascina per cambiare l'ordine: i siti più in alto vengono cercati prima"] = "Drag to change the order: the sites higher up are searched first",
+        ["scaricato di nuovo"] = "downloaded again",
+        ["Scaricato di nuovo"] = "Downloaded again",
+        ["Questi brani non hanno un link da cui scaricarli di nuovo."] = "These songs have no link to download them again from.",
+        ["Scarica di nuovo"] = "Download again",
+        ["Qualità di ascolto"] = "Listening quality",
+        ["Qualità salvata"] = "Quality saved",
+        ["Il brano si scarica di nuovo: lo vedi nei Download"] = "The song is being downloaded again: see Downloads",
+        ["{0} brani si scaricano di nuovo: li vedi nei Download"] = "{0} songs are being downloaded again: see Downloads",
+        ["Brani di {0}"] = "Songs by {0}",
+        ["Questo brano non ha un artista da cercare."] = "This song has no artist to look for.",
+        ["Cerco i brani di {0}…"] = "Looking for songs by {0}…",
+        ["Nessun brano dell'artista trovato online: dopo questo continuano tutti i tuoi brani."] = "No songs by the artist found online: all your songs follow this one.",
+        ["Questo brano non ha un link da cui riascoltarlo: puoi solo salvarlo sul dispositivo."] = "This song has no link to hear it again from: you can only save it on the device.",
+        ["«{0}» aggiunto a «{1}»"] = "“{0}” added to “{1}”",
+        ["«{0}» aggiunto alla libreria senza salvarlo"] = "“{0}” added to your library without saving it",
+        ["È già salvato sul dispositivo"] = "It's already saved on the device",
+        ["occupa meno spazio"] = "takes less space",
+        ["I brani si scaricano di nuovo dal loro link in questa qualità e prendono il posto dei file di adesso: copertina, testo, statistiche e playlist restano."] =
+            "The songs are downloaded again from their link in this quality and take the place of their current files: cover, lyrics, statistics and playlists stay.",
+        ["Nel cloud: la qualità con cui li ascolti dal loro link, e con cui verranno salvati sul dispositivo."] =
+            "In the cloud: the quality you hear them with from their link, and the one they'll be saved on the device with.",
     };
 }

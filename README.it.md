@@ -49,7 +49,36 @@
   <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · brani nel cloud · un lettore come Spotify · testi sincronizzati · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · su tutti i tuoi dispositivi · ascolta insieme">
 </picture>
 
-## 🆕 Novità della 3.6
+## 🆕 Novità della 3.7
+
+- **La qualità che vuoi, brano per brano**: nella scheda del link scegli l'audio (MP3 a 320, 256, 192, 128 kbps o il
+  file originale) e la risoluzione del video; il brano si ricorda la scelta, anche nel cloud quando lo ascolti dal suo
+  link. Tasto destro → **Scarica di nuovo / qualità…** riscarica un brano salvato in un'altra qualità, al posto dei suoi
+  file (copertina, testo, statistiche e playlist restano).
+- **MP3 per l'auto**: *Esporta* → **In una cartella (MP3)** mette le playlist, i tag o tutta la libreria scelti in una
+  cartella (una chiavetta, una scheda SD) come normali file MP3 chiamati "Artista - Titolo", con titolo, artista, album e
+  copertina nei tag. I brani nel cloud si scaricano strada facendo. Su tutte le piattaforme, Android compreso.
+- **Riproduci brani dell'artista**: accanto a *Riproduci brani simili*, i brani più ascoltati dell'artista, trovati online.
+- **Passaggio a tempo di BPM** (Impostazioni › Riproduzione): negli ultimi secondi il brano rallenta o accelera fino ai
+  BPM di quello dopo, senza cambiare tono, così entrano a tempo (i BPM mancanti si rilevano da soli).
+- **Ascolta insieme**: la coda della stanza si trascina come i *Successivi*; l'icona della libreria e la freccia del
+  download funzionano come ovunque; i brani ascoltati in una stanza contano nelle tue statistiche; i brani trovati con la
+  ricerca online vanno dritti nella stanza; i link che non si possono scaricare (DRM) si prendono da YouTube da soli,
+  nelle stanze e anche nella coda automatica.
+- **Trascina per riordinare ovunque**: i siti della ricerca online nelle impostazioni e i *Successivi* su Android, con
+  la linea e il rettangolo delle playlist (su Android tenere premuto la maniglia non fa più scorrere via la lista).
+- I risultati della ricerca online aprono subito la loro scheda, senza rileggere il link; i brani aggiunti alla libreria
+  senza salvarli lasciano la scheda sullo schermo, pronti da ascoltare.
+- Statistiche: un filtro *Tutti i brani*. I download contemporanei valgono anche per la coda automatica e per le stanze.
+  Passando al DJ il brano va in pausa. Ctrl+frecce nei campi di testo spostano il cursore invece di cambiare brano.
+  L'icona del testo è la stessa su Android. Testi: niente più il brano di qualcun altro con lo stesso titolo. Si vede
+  l'onda di un brano ascoltato per la prima volta in una stanza. La pagina del DJ si ridisegna meno spesso. La voce DJ
+  ora è sotto Ascolta insieme.
+- I file della release per Windows hanno nomi come gli altri: `UltimateMP3Player-windows-x64-setup.exe` e
+  `UltimateMP3Player-windows-x64.exe`.
+
+<details>
+<summary>3.6</summary>
 
 - **Brani nel cloud** ☁: un brano non ha più bisogno del suo audio sul dispositivo. Nel cloud tiene copertina, testo,
   statistiche e il suo posto nelle playlist e nei Preferiti, e si ascolta dal suo link; quelli che hai ascoltato restano
@@ -76,6 +105,8 @@
   nella galleria.
 - I brani nel cloud funzionano anche nella modalità DJ (si scaricano quando li carichi su una traccia), e la memoria
   temporanea ora può tenere fino a 200 brani.
+
+</details>
 
 <details>
 <summary>3.5</summary>
@@ -133,7 +164,7 @@
 
 **Windows**
 
-1. Scarica **`UltimateMP3Player-Setup-x.y.z.exe`** dall'[ultima release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
+1. Scarica **`UltimateMP3Player-windows-x64-setup.exe`** dall'[ultima release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
 2. Avvialo: niente diritti di amministratore e nient'altro da installare. Ti chiede la lingua (italiano o inglese,
    si cambia poi dalle impostazioni).
 3. Fatto: l'app si aggiorna da sola dalle release.
@@ -195,7 +226,9 @@
 - **Ricerca online** dentro l'app: YouTube Music, YouTube, SoundCloud e Deezer accanto ai tuoi brani; un clic apre il
   download
 - Salvi l'audio sul dispositivo, oppure aggiungi solo i brani alla libreria nel cloud e li salvi dopo
-- MP3 a 320 kbps o formato originale, video fino al 4K, più download insieme
+- MP3 a 320, 256, 192 o 128 kbps o formato originale, video da 360p fino al 4K, scelti per ogni brano e ricordati;
+  più download insieme
+- *Scarica di nuovo / qualità…*: un brano salvato riscaricato in un'altra qualità, al posto dei suoi file
 - Riconosce i doppioni (stessa fonte o stesso brano) e gestisce da solo i limiti dei siti: i download si mettono in
   pausa e riprendono più piano
 - Un link che non si riesce a leggere, e i download non riusciti, si possono riprovare su YouTube Music
@@ -218,8 +251,9 @@
 **Successivi**
 - Trascina per riordinare, doppio clic per saltare, lascia sul cestino per togliere
 - Coda automatica, *Genera* e *Svuota*, pannello da nascondere di lato
-- Brani simili trovati online dopo un brano: si scaricano poco prima del loro turno (quanti in anticipo lo scegli tu),
-  e li tieni con il tasto destro
+- Brani simili trovati online dopo un brano, o i brani dell'artista: si scaricano poco prima del loro turno (quanti in
+  anticipo lo scegli tu), e li tieni con il tasto destro
+- Passaggio facoltativo a tempo del brano dopo: quello in riproduzione si porta ai suoi BPM senza cambiare tono
 - Ritrovi tutto com'era quando riapri l'app
 
 **Libreria**
@@ -232,8 +266,10 @@
   liberato
 - **Pacchetti `.ump`**: una playlist, un tag, più di uno o tutto in un solo file, con l'audio o con i soli link
   (abbastanza piccolo per Discord); lo apri o lo trascini sull'app per importarlo, senza doppioni dei brani che hai già
+- **MP3 in una cartella** per una chiavetta, una scheda SD o l'auto: "Artista - Titolo.mp3" con tag e copertina
 - Rinomina un artista su tutti i suoi brani in un colpo; modifica titolo, artista, album, BPM e copertina
-- Statistiche di ascolto per profilo: ascolti, tempo e ultimo ascolto di ogni brano, i meno ascoltati per fare pulizia
+- Statistiche di ascolto per profilo: ascolti, tempo e ultimo ascolto di ogni brano (anche quelli ascoltati nelle stanze
+  e non salvati), i meno ascoltati per fare pulizia
 
 **DJ**
 - Due tracce con forme d'onda scorrevoli e panoramica, CUE, avanti/indietro, range del tempo ±8 / 16 / 50 %, key lock
@@ -288,8 +324,8 @@ Serve il .NET 8 SDK, e per l'installer Inno Setup 6. I programmi esterni vanno i
 | Comando | Risultato |
 |---|---|
 | `.\build.ps1` | App portatile in `app\` e collegamento sul Desktop |
-| `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-Setup-<versione>.exe` |
-| `.\build.ps1 -Release` | `dist\`: i file da allegare a una release di GitHub: il setup (più `UltimateMP3Player.exe`, facoltativo, per aggiornamenti più leggeri), i pacchetti per Linux e macOS e gli APK per Android (`-WindowsOnly` salta entrambi, `-NoAndroid` solo gli APK) |
+| `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-windows-x64-setup.exe` |
+| `.\build.ps1 -Release` | `dist\`: i file da allegare a una release di GitHub: `UltimateMP3Player-windows-x64-setup.exe` (più `UltimateMP3Player-windows-x64.exe`, facoltativo, per aggiornamenti più leggeri, e `legacy\UltimateMP3Player.exe`, lo stesso exe con il nome che cercano le versioni fino alla 3.6), i pacchetti per Linux e macOS e gli APK per Android (`-WindowsOnly` salta entrambi, `-NoAndroid` solo gli APK) |
 | `.\build-unix.ps1` | Solo i pacchetti per Linux e macOS in `dist\`: `UltimateMP3Player-linux-x64.tar.gz`, `-linux-arm64.tar.gz`, `UltimateMP3Player-macos-x64.zip`, `-macos-arm64.zip` (`-Targets linux-x64,…` per farne solo alcuni) |
 | `.\build-android.ps1` | Solo gli APK per Android in `dist\android\`: `UltimateMP3Player-android-arm64-v8a.apk`, `-armeabi-v7a.apk`, `-x86_64.apk` (`-Out <cartella>` per metterli altrove) |
 
@@ -308,8 +344,9 @@ va tenuta uguale a quella di Windows (e di Android, in `src\UltimateMP3Player.An
 Due impostazioni in `src\UltimateMP3Player\UltimateMP3Player.csproj` (e le stesse due nel progetto Avalonia):
 
 - `<GitHubRepo>proprietario/repo</GitHubRepo>`: dove l'app cerca gli aggiornamenti e apre le segnalazioni. L'ultima
-  release deve contenere il setup; se contiene anche `UltimateMP3Player.exe`, gli aggiornamenti scaricano solo quello
-  (70 MB invece dell'intero setup).
+  release deve contenere il setup; se contiene anche `UltimateMP3Player-windows-x64.exe`, gli aggiornamenti scaricano solo
+  quello (70 MB invece dell'intero setup). Le versioni fino alla 3.6 conoscono solo i vecchi nomi: per qualche release
+  allega anche `dist\legacy\UltimateMP3Player.exe`, così si aggiornano.
 - `<DiscordAppId>…</DiscordAppId>`: l'applicazione Discord usata per lo stato.
 
 `UMP_DATA=<cartella>` avvia una copia di prova con dati suoi, accanto a quella normale. `src\Mp3Cli` è un programma
