@@ -5,7 +5,8 @@ using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.Audio;
 
-// The player's sound: MasterProvider on the default output device (AudioPlatform), followed when it changes.
+// The player's sound: MasterProvider on the output device (AudioPlatform: the one chosen in Settings or the default one),
+// followed when it changes.
 public sealed class AudioEngine : IDisposable
 {
     public const int LatencyMs = 120;
@@ -15,6 +16,8 @@ public sealed class AudioEngine : IDisposable
     private readonly MasterProvider _master = new(48000);
     private readonly IDisposable? _watcher;
     private IWavePlayer? _out;
+    // The device _out plays on (AudioPlatform.OutputId): a change of some other device leaves the music alone.
+    private string? _outDevice;
     private bool _playing;
     // The device still plays for a moment after Pause (the fade): a song swapped meanwhile must fade too.
     private bool _outRunning;
@@ -30,7 +33,19 @@ public sealed class AudioEngine : IDisposable
         _ui = ui;
         _master.Ended += () => _ui.BeginInvoke(() => Ended?.Invoke());
         _master.NearEnd += () => _ui.BeginInvoke(() => NearEnd?.Invoke());
-        _watcher = AudioPlatform.WatchDefaultDevice(() => _ui.BeginInvoke(SwitchDevice));
+        _watcher = AudioPlatform.WatchDevices(() => _ui.BeginInvoke(SwitchDevice));
+    }
+
+    // The output chosen in Settings (an id of AudioPlatform.OutputDevices), null = the system's default: the music
+    // moves there at once.
+    public string? OutputDevice
+    {
+        get => AudioPlatform.Device;
+        set
+        {
+            AudioPlatform.Device = value;
+            SwitchDevice();
+        }
     }
 
     public bool IsPlaying => _playing;
@@ -200,6 +215,7 @@ public sealed class AudioEngine : IDisposable
     private void EnsureOutput()
     {
         if (_out != null) return;
+        _outDevice = AudioPlatform.OutputId();
         _master.SetRate(AudioPlatform.OutputRate());
         var o = AudioPlatform.CreateOutput(LatencyMs);
         o.Init(new SampleToWaveProvider(_master));
@@ -227,12 +243,17 @@ public sealed class AudioEngine : IDisposable
         try { o.Dispose(); } catch { }
     }
 
-    // Headphones plugged in, Bluetooth: move there.
+    // Headphones plugged in, Bluetooth, another output chosen in Settings: move there, only when it's another device (a
+    // device that comes or goes elsewhere changes nothing; with no output open, the next Play opens the right one).
     private void SwitchDevice()
     {
+        if (_out == null || AudioPlatform.OutputId() == _outDevice) return;
         bool was = _playing;
+        // An output that holds a lot (the phone's, away from the screen): what it held is played again on the new one.
+        TimeSpan? heard = was && _out is IOutputLatency ? Position : null;
         _playing = false;
         ResetOutput();
+        if (heard is { } h) _master.Rewind(h);
         if (was) Play();
     }
 

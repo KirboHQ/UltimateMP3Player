@@ -125,7 +125,7 @@ public static class Menus
         menu.Add(FavoriteItem(t));
         menu.Add(new SheetEntry { Text = L.T("Tag"), Glyph = GTag, Sub = () => TagMenu(new[] { t }) });
         menu.Add(new SheetEntry { Text = L.T("Testo"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
-        if (t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
+        if (Engines.VideoDownloads && t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
             menu.Add(new(L.T("Cerca il video…"), GVideo, () => _ = main.FindVideo(t)));
         menu.Line();
         AddEditItems(menu, t);

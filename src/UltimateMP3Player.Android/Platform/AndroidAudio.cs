@@ -7,22 +7,81 @@ using UltimateMP3Player.Core;
 namespace UltimateMP3Player.Audio;
 
 // What the audio engine needs from the system, on Android: the output through an AudioTrack (Android moves it to the
-// headphones, the Bluetooth speaker or the car by itself) and the decoders of Decoders.cs (MP3 in managed code, WAV
-// directly, everything else through ffmpeg).
+// headphones, the Bluetooth speaker or the car by itself, unless an output was chosen in Settings) and the decoders of
+// Decoders.cs (MP3 in managed code, WAV directly, everything else through ffmpeg).
 public static class AudioPlatform
 {
+    private static AudioManager? Manager => (AudioManager?)Android.App.Application.Context.GetSystemService(Context.AudioService);
+
     public static int OutputRate()
     {
         try
         {
-            var am = (AudioManager?)Android.App.Application.Context.GetSystemService(Context.AudioService);
-            if (int.TryParse(am?.GetProperty(AudioManager.PropertyOutputSampleRate), out var rate) && rate is >= 8000 and <= 192000) return rate;
+            if (int.TryParse(Manager?.GetProperty(AudioManager.PropertyOutputSampleRate), out var rate) && rate is >= 8000 and <= 192000) return rate;
         }
         catch { }
         return 48000;
     }
 
-    public static IWavePlayer CreateOutput(int latencyMs) => new TrackOut(latencyMs);
+    // The output chosen in Settings (a kind and a name: Android gives a device another id every time it connects),
+    // null = where Android sends the music.
+    public static string? Device { get; set; }
+
+    // The outputs connected now that play music (not the earpiece of calls), to choose from in Settings.
+    public static List<(string Id, string Name)> OutputDevices()
+    {
+        var list = new List<(string Id, string Name)>();
+        foreach (var d in Outputs())
+            if (Describe(d) is { } x && list.All(o => o.Id != x.Id)) list.Add(x);
+        return list;
+    }
+
+    private static AudioDeviceInfo[] Outputs()
+    {
+        try { return Manager?.GetDevices(GetDevicesTargets.Outputs) ?? Array.Empty<AudioDeviceInfo>(); }
+        catch (Exception ex)
+        {
+            App.Log(ex);
+            return Array.Empty<AudioDeviceInfo>();
+        }
+    }
+
+    // The id and the name of an output that plays music. Two of a kind are told apart by their own name (two Bluetooth
+    // speakers); the phone's speaker and the wired headphones carry the phone's name there, so it isn't part of theirs.
+    private static (string Id, string Name)? Describe(AudioDeviceInfo d)
+    {
+        var product = d.ProductName?.ToString()?.Trim() ?? "";
+        (string Kind, string Name, bool Own)? k = d.Type switch
+        {
+            AudioDeviceType.BuiltinSpeaker => ("speaker", L.T("Altoparlante del telefono"), false),
+            AudioDeviceType.WiredHeadset or AudioDeviceType.WiredHeadphones => ("wired", L.T("Cuffie con il filo"), false),
+            AudioDeviceType.BluetoothA2dp or AudioDeviceType.BleHeadset or AudioDeviceType.BleSpeaker
+                => ("bluetooth", product.Length > 0 ? product : "Bluetooth", true),
+            AudioDeviceType.UsbDevice or AudioDeviceType.UsbHeadset or AudioDeviceType.UsbAccessory
+                => ("usb", product.Length > 0 ? "USB · " + product : "USB", true),
+            AudioDeviceType.Hdmi or AudioDeviceType.HdmiArc or AudioDeviceType.HdmiEarc => ("hdmi", "HDMI", false),
+            AudioDeviceType.LineAnalog or AudioDeviceType.LineDigital or AudioDeviceType.AuxLine => ("line", L.T("Uscita di linea"), false),
+            AudioDeviceType.Dock or AudioDeviceType.DockAnalog => ("dock", L.T("Base con altoparlante"), false),
+            AudioDeviceType.HearingAid => ("hearing", product.Length > 0 ? product : L.T("Apparecchio acustico"), true),
+            _ => null,
+        };
+        if (k is not { } kind) return null;
+        return (kind.Own ? kind.Kind + ":" + product : kind.Kind, kind.Name);
+    }
+
+    // The chosen output while it's connected; null = Android's own choice.
+    private static AudioDeviceInfo? Target()
+    {
+        if (Device is not { } want) return null;
+        foreach (var d in Outputs())
+            if (Describe(d)?.Id == want) return d;
+        return null;
+    }
+
+    // The device a new output would play on: when it's another one, the engine moves there.
+    public static string? OutputId() => Target() != null ? Device : null;
+
+    public static IWavePlayer CreateOutput(int latencyMs) => new TrackOut(latencyMs, Target());
 
     public static ITrackSource Open(string path, double durationHint)
     {
@@ -37,8 +96,45 @@ public static class AudioPlatform
         return new StreamingFfmpegSource(path, TimeSpan.FromSeconds(durationHint));
     }
 
-    // AudioTrack follows the system's routing by itself.
-    public static IDisposable? WatchDefaultDevice(Action changed) => null;
+    // AudioTrack follows the system's routing by itself; changed (on the main thread) when an output connects or goes, for
+    // the chosen one: unplugged, the music goes where Android sends it; back, it goes back there.
+    public static IDisposable? WatchDevices(Action changed)
+    {
+        try
+        {
+            if (Manager is not { } am) return null;
+            var w = new DeviceWatcher(am, changed);
+            am.RegisterAudioDeviceCallback(w, null);
+            return w;
+        }
+        catch (Exception ex)
+        {
+            App.Log(ex);
+            return null;
+        }
+    }
+
+    private sealed class DeviceWatcher : AudioDeviceCallback
+    {
+        private readonly AudioManager _am;
+        private readonly Action _changed;
+
+        public DeviceWatcher(AudioManager am, Action changed)
+        {
+            _am = am;
+            _changed = changed;
+        }
+
+        public override void OnAudioDevicesAdded(AudioDeviceInfo[]? addedDevices) => _changed();
+        public override void OnAudioDevicesRemoved(AudioDeviceInfo[]? removedDevices) => _changed();
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                try { _am.UnregisterAudioDeviceCallback(this); } catch { }
+            base.Dispose(disposing);
+        }
+    }
 }
 
 // A NAudio wave player on an AudioTrack: a thread of its own reads the mix and writes it, blocking while the track's
@@ -54,6 +150,8 @@ public sealed class TrackOut : IWavePlayer, IOutputLatency
     private static bool _background;
 
     private readonly int _latencyMs;
+    // The output chosen in Settings, null = Android's own choice.
+    private readonly AudioDeviceInfo? _device;
     private readonly ManualResetEventSlim _go = new(false);
     private readonly object _sync = new();
     private IWaveProvider? _source;
@@ -67,7 +165,11 @@ public sealed class TrackOut : IWavePlayer, IOutputLatency
     private uint _written;
     private int _flushes;
 
-    public TrackOut(int latencyMs) => _latencyMs = latencyMs;
+    public TrackOut(int latencyMs, AudioDeviceInfo? device = null)
+    {
+        _latencyMs = latencyMs;
+        _device = device;
+    }
 
     public event EventHandler<StoppedEventArgs>? PlaybackStopped;
 
@@ -112,6 +214,9 @@ public sealed class TrackOut : IWavePlayer, IOutputLatency
             .SetTransferMode(AudioTrackMode.Stream)
             .Build();
         if (_track.State != AudioTrackState.Initialized) throw new InvalidOperationException("AudioTrack");
+        if (_device != null)
+            try { _track.SetPreferredDevice(_device); }
+            catch (Exception ex) { App.Log(ex); }
         lock (Live)
         {
             Live.Add(this);

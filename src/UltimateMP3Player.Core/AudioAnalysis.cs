@@ -10,14 +10,38 @@ public sealed record AnalysisOutput(byte[] Wave, double? Loudness, double? Peak,
 
 public sealed record FileTags(string? Title, string? Artist, string? Album, string? Year, double? Duration, bool HasVideo, bool HasCover);
 
+// What the system can do instead of ffmpeg and ffprobe where programs can't be started (the iPhone): the songs' tags,
+// covers and analysis, and what a download does with the file it got (Ffmpeg, DownloadJob, FolderExport).
+public interface IMediaTools
+{
+    Task<FileTags> ReadTagsAsync(string file, CancellationToken ct);
+    Task<bool> ExtractCoverAsync(string file, string jpg, bool fromVideo, CancellationToken ct);
+    Task<AnalysisOutput> AnalyzeAsync(string file, CancellationToken ct);
+    Task<bool> MakeCoverFromImageAsync(string image, string jpg, CancellationToken ct);
+    // A downloaded file's streams (ffprobe's work).
+    Task<ProbeInfo> ProbeAsync(string file, CancellationToken ct);
+    // A picture from the web as the cover's JPEG in dir (square: its middle), at most maxSize pixels, or null.
+    Task<string?> MakeCoverAsync(byte[] data, string dir, bool square, int maxSize, CancellationToken ct);
+    // A downloaded file's audio as the target asks, with the tags and the cover: the file written (output with its format's
+    // extension) and what was done to it. progress: 0..1.
+    Task<(string File, string Description)> ConvertAudioAsync(string input, ProbeInfo probe, AudioTarget target, Tags? tags, string? coverJpg,
+        string output, Action<double>? progress, CancellationToken ct);
+    // An audio format it can decode (Codecs.Family: "aac", "mp3"...; "" when the site doesn't say): the downloads pick those.
+    bool CanDecode(string codecFamily);
+}
+
 public static class AudioAnalysis
 {
     public const int Bars = 320;
     private const int Rate = 8000;
 
+    // Set by the iPhone app as it starts: tags, covers and the analysis without ffmpeg. Null elsewhere.
+    public static IMediaTools? Native { get; set; }
+
     // One ffmpeg pass: RMS waveform and EBU R128 loudness.
     public static async Task<AnalysisOutput> AnalyzeAsync(string file, CancellationToken ct)
     {
+        if (Native is { } native) return await native.AnalyzeAsync(file, ct);
         var args = new[]
         {
             "-hide_banner", "-nostdin", "-nostats", "-loglevel", "info", "-i", file,
@@ -74,7 +98,8 @@ public static class AudioAnalysis
         return new AnalysisOutput(ToBars(squares), lufs, peak, samples / (double)Rate);
     }
 
-    private static byte[] ToBars(List<double> blocks)
+    // The mean squares of 20 ms blocks into the song's bars (also the iPhone's analysis).
+    public static byte[] ToBars(List<double> blocks)
     {
         var bars = new double[Bars];
         for (int b = 0; b < Bars; b++)
@@ -96,6 +121,7 @@ public static class AudioAnalysis
 
     public static async Task<FileTags> ReadTagsAsync(string file, CancellationToken ct)
     {
+        if (Native is { } native) return await native.ReadTagsAsync(file, ct);
         var r = await ProcRunner.RunAsync(Engines.Ffprobe,
             new[] { "-v", "error", "-print_format", "json", "-show_format", "-show_streams", file }, ct: ct, timeout: TimeSpan.FromMinutes(1));
         if (r.ExitCode != 0 || !r.StdOut.TrimStart().StartsWith('{'))
@@ -131,6 +157,7 @@ public static class AudioAnalysis
     // Embedded cover or video frame as a ≤600 px JPEG.
     public static async Task<bool> ExtractCoverAsync(string file, string jpg, bool fromVideo, CancellationToken ct)
     {
+        if (Native is { } native) return await native.ExtractCoverAsync(file, jpg, fromVideo, ct);
         var args = new List<string> { "-hide_banner", "-nostdin", "-y", "-loglevel", "error" };
         if (fromVideo) args.AddRange(new[] { "-ss", "5" });
         args.AddRange(new[] { "-i", file, "-map", "0:v:0", "-frames:v", "1", "-vf", "scale='min(600,iw)':-2:flags=lanczos,format=yuvj420p", "-q:v", "3", jpg });
@@ -153,6 +180,7 @@ public static class AudioAnalysis
     // User-chosen picture to a square cover JPEG.
     public static async Task<bool> MakeCoverFromImageAsync(string image, string jpg, CancellationToken ct = default)
     {
+        if (Native is { } native) return await native.MakeCoverFromImageAsync(image, jpg, ct);
         var tmp = jpg + ".new.jpg";
         Directory.CreateDirectory(Path.GetDirectoryName(jpg)!);
         var r = await ProcRunner.RunAsync(Engines.Ffmpeg, new[]

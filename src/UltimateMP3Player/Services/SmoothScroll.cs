@@ -53,9 +53,16 @@ public static class SmoothScroll
 
     private static void OnWheel(object sender, MouseWheelEventArgs e)
     {
-        if (!Enabled || e.Handled || Keyboard.Modifiers != ModifierKeys.None) return;
-        var sv = Target(e.OriginalSource as DependencyObject, e.Delta);
-        if (sv == null) return;
+        if (e.Handled || Keyboard.Modifiers != ModifierKeys.None) return;
+        var sv = Target(e.OriginalSource as DependencyObject, e.Delta, out bool edge);
+        if (sv == null)
+        {
+            // An open drop-down or menu with nothing left to scroll: what's behind it stays still (with smooth scrolling
+            // off too), or the list would stay where it was, cut off from its box.
+            if (edge) e.Handled = true;
+            return;
+        }
+        if (!Enabled) return;
         e.Handled = true;
 
         double step = 100 * Math.Max(1, SystemParameters.WheelScrollLines) / 3.0;
@@ -151,17 +158,27 @@ public static class SmoothScroll
         a.Set = sv.VerticalOffset;
     }
 
-    // Innermost scroll area under the mouse that can still move that way.
-    private static ScrollViewer? Target(DependencyObject? d, int delta)
+    // Innermost scroll area under the mouse that can still move that way (null for a list that scrolls by whole items:
+    // WPF's own wheel moves it). Edge: none before the edge of a drop-down or a menu (the mouse inside it, or anywhere
+    // while an open drop-down holds the mouse), and nothing behind it may move.
+    private static ScrollViewer? Target(DependencyObject? d, int delta, out bool edge)
     {
-        for (; d != null; d = Ui.Parent(d))
+        edge = false;
+        DependencyObject? last = null;
+        for (; d != null; last = d, d = Ui.Parent(d))
         {
             if (d is Slider) return null;
-            if (d is not ScrollViewer sv || sv.ScrollableHeight <= 0 ||
-                sv.VerticalScrollBarVisibility == ScrollBarVisibility.Disabled || !InPixels(sv)) continue;
+            if (d is Popup or ContextMenu or ComboBox { IsDropDownOpen: true })
+            {
+                edge = true;
+                return null;
+            }
+            if (d is not ScrollViewer sv || sv.ScrollableHeight <= 0 || sv.VerticalScrollBarVisibility == ScrollBarVisibility.Disabled) continue;
             double at = Active.TryGetValue(sv, out var a) ? a.Destination : sv.VerticalOffset;
-            if (delta > 0 ? at > 0.5 : at < sv.ScrollableHeight - 0.5) return sv;
+            if (delta > 0 ? at > 0.5 : at < sv.ScrollableHeight - 0.5) return InPixels(sv) ? sv : null;
         }
+        // Out of the tree without reaching a window: the root of a drop-down or a menu.
+        edge = last is not null and not Window;
         return null;
     }
 

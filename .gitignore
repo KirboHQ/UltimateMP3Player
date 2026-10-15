@@ -22,3 +22,6 @@ src/UltimateMP3Player.Android/Engines/
 .vscode/
 *.user
 *.suo
+
+# the iPhone app's engines (tools/ios-deps.sh: Python for iOS, yt-dlp, certifi, LAME)
+deps/

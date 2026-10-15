@@ -7,12 +7,13 @@ using static SDL.SDL3;
 
 namespace UltimateMP3Player.Audio;
 
-// What the audio engine needs from the system, on Linux and macOS: the default output device through SDL3 (PipeWire,
-// PulseAudio, ALSA or Core Audio, whatever the system has; it follows the default device by itself) and the decoders
-// (Decoders.cs): MP3 in managed code (NLayer, sample-exact seeking), WAV directly, everything else through ffmpeg.
+// What the audio engine needs from the system, on Linux and macOS: the output device through SDL3 (PipeWire, PulseAudio,
+// ALSA or Core Audio, whatever the system has): the one chosen in Settings, or the default one, which SDL follows by
+// itself; and the decoders (Decoders.cs): MP3 in managed code (NLayer, sample-exact seeking), WAV directly, everything
+// else through ffmpeg.
 public static class AudioPlatform
 {
-    private static bool _ready;
+    private static volatile bool _ready;
 
     internal static bool Init()
     {
@@ -21,15 +22,50 @@ public static class AudioPlatform
         return _ready;
     }
 
+    // The output chosen in Settings (its name: SDL's ids change from a run to the next), null = the system's default.
+    public static string? Device { get; set; }
+
+    // The outputs there now, to choose from in Settings (two with the same name are one).
+    public static List<(string Id, string Name)> OutputDevices()
+    {
+        var list = new List<(string Id, string Name)>();
+        if (!Init()) return list;
+        foreach (var (_, name) in Playback())
+            if (list.All(d => d.Id != name)) list.Add((name, name));
+        return list;
+    }
+
+    private static List<(SDL_AudioDeviceID Id, string Name)> Playback()
+    {
+        var list = new List<(SDL_AudioDeviceID, string)>();
+        using var ids = SDL_GetAudioPlaybackDevices();
+        if (ids == null) return list;
+        for (int i = 0; i < ids.Count; i++)
+            if (SDL_GetAudioDeviceName(ids[i]) is { Length: > 0 } name) list.Add((ids[i], name));
+        return list;
+    }
+
+    // The chosen output while it's there; null = the default one.
+    private static SDL_AudioDeviceID? Target()
+    {
+        if (Device is not { } want || !Init()) return null;
+        foreach (var (id, name) in Playback())
+            if (name == want) return id;
+        return null;
+    }
+
+    // The device a new output would play on: when it's another one, the engine moves there.
+    public static string? OutputId() => Target() != null ? Device : null;
+
     public static unsafe int OutputRate()
     {
         if (!Init()) return 48000;
         SDL_AudioSpec spec;
         int frames;
-        return SDL_GetAudioDeviceFormat(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, &frames) && spec.freq > 0 ? spec.freq : 48000;
+        return SDL_GetAudioDeviceFormat(Target() ?? SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, &frames) && spec.freq > 0 ? spec.freq : 48000;
     }
 
-    public static IWavePlayer CreateOutput(int latencyMs) => new SdlOut(latencyMs);
+    public static IWavePlayer CreateOutput(int latencyMs) => new SdlOut(latencyMs, Target() ?? SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK);
 
     public static ITrackSource Open(string path, double durationHint)
     {
@@ -44,15 +80,33 @@ public static class AudioPlatform
         return new StreamingFfmpegSource(path, TimeSpan.FromSeconds(durationHint));
     }
 
-    // SDL moves the stream to the new default device by itself.
-    public static IDisposable? WatchDefaultDevice(Action changed) => null;
+    // SDL moves the stream to the new default device by itself; the chosen output is looked for every few seconds
+    // (unplugged, the music goes to the default one; back, it goes back there). Not before the sound was ever opened:
+    // SDL starts on the window's thread.
+    public static IDisposable? WatchDevices(Action changed)
+    {
+        string? last = null;
+        return new Timer(_ =>
+        {
+            if (!_ready) return;
+            try
+            {
+                var now = Device == null ? null : OutputId();
+                if (now == last) return;
+                last = now;
+                changed();
+            }
+            catch { }
+        }, null, 3000, 3000);
+    }
 }
 
-// A NAudio wave player on SDL3's default playback device. SDL asks for sound on its own thread; the stream is kept about
-// latencyMs ahead (what AudioEngine.LatencyMs assumes the output holds).
+// A NAudio wave player on an SDL3 playback device (the default one unless chosen). SDL asks for sound on its own thread;
+// the stream is kept about latencyMs ahead (what AudioEngine.LatencyMs assumes the output holds).
 public sealed unsafe class SdlOut : IWavePlayer
 {
     private readonly int _latencyMs;
+    private readonly SDL_AudioDeviceID _device;
     private IWaveProvider? _source;
     private SDL_AudioStream* _stream;
     private GCHandle _self;
@@ -60,7 +114,11 @@ public sealed unsafe class SdlOut : IWavePlayer
     private int _bytesPerSecond;
     private volatile bool _stopped;
 
-    public SdlOut(int latencyMs) => _latencyMs = latencyMs;
+    public SdlOut(int latencyMs, SDL_AudioDeviceID device)
+    {
+        _latencyMs = latencyMs;
+        _device = device;
+    }
 
     public event EventHandler<StoppedEventArgs>? PlaybackStopped;
 
@@ -78,7 +136,7 @@ public sealed unsafe class SdlOut : IWavePlayer
         _bytesPerSecond = wf.AverageBytesPerSecond;
         var spec = new SDL_AudioSpec { format = SDL_AudioFormat.SDL_AUDIO_F32LE, channels = wf.Channels, freq = wf.SampleRate };
         _self = GCHandle.Alloc(this);
-        _stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, &Feed, GCHandle.ToIntPtr(_self));
+        _stream = SDL_OpenAudioDeviceStream(_device, &spec, &Feed, GCHandle.ToIntPtr(_self));
         if (_stream == null)
         {
             _self.Free();

@@ -33,6 +33,9 @@ public static class SmoothScroll
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
     private static double _renderLead;
     private static bool _hooked, _registered;
+    // The drop-down open now: while it is, the wheel over the window behind it moves nothing (the list would stay where
+    // it was, cut off from its box).
+    private static ComboBox? _dropDown;
 
     public static void Register()
     {
@@ -40,6 +43,14 @@ public static class SmoothScroll
         _registered = true;
         // Every window, dialog, menu and drop-down (popups are top levels of their own).
         InputElement.PointerWheelChangedEvent.AddClassHandler<TopLevel>(OnWheel, RoutingStrategies.Tunnel);
+        // A wheel in a drop-down or a menu that its own list didn't use doesn't go on to the window behind it (with smooth
+        // scrolling off too).
+        InputElement.PointerWheelChangedEvent.AddClassHandler<PopupRoot>((_, e) => e.Handled = true, RoutingStrategies.Bubble);
+        ComboBox.IsDropDownOpenProperty.Changed.AddClassHandler<ComboBox>((cb, _) =>
+        {
+            if (cb.IsDropDownOpen) _dropDown = cb;
+            else if (_dropDown == cb) _dropDown = null;
+        });
     }
 
     private static double Now => Clock.Elapsed.TotalMilliseconds + _renderLead;
@@ -48,7 +59,13 @@ public static class SmoothScroll
 
     private static void OnWheel(TopLevel top, PointerWheelEventArgs e)
     {
-        if (!Enabled || e.Handled || e.KeyModifiers != KeyModifiers.None) return;
+        if (e.Handled) return;
+        if (_dropDown is { IsDropDownOpen: true } open && TopLevel.GetTopLevel(open) == top && (e.Source as Visual)?.GetVisualRoot() is not PopupRoot)
+        {
+            e.Handled = true;
+            return;
+        }
+        if (!Enabled || e.KeyModifiers != KeyModifiers.None) return;
         double notches = e.Delta.Y;
         // Whole notches only: fractions come from touchpads.
         if (notches == 0 || Math.Abs(notches - Math.Round(notches)) > 0.001 || e.Delta.X != 0) return;

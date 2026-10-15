@@ -6,20 +6,66 @@ using NAudio.Wave.SampleProviders;
 
 namespace UltimateMP3Player.Audio;
 
-// What the audio engine needs from Windows: the default output device (WASAPI) and Media Foundation's decoders.
+// What the audio engine needs from Windows: the output device (WASAPI: the one chosen in Settings, or the default one)
+// and Media Foundation's decoders.
 public static class AudioPlatform
 {
     private static readonly MMDeviceEnumerator Devices = new();
 
+    // The output chosen in Settings (an endpoint id), null = the system's default.
+    public static string? Device { get; set; }
+
+    // The outputs plugged in now, to choose from in Settings.
+    public static List<(string Id, string Name)> OutputDevices()
+    {
+        var list = new List<(string Id, string Name)>();
+        try
+        {
+            foreach (var d in Devices.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
+                using (d)
+                    try { list.Add((d.ID, d.FriendlyName)); } catch { }
+        }
+        catch { }
+        return list;
+    }
+
+    // Where the sound goes: the chosen output while it's plugged in, otherwise the default one.
+    private static MMDevice Endpoint()
+    {
+        if (Device is { } id)
+            try
+            {
+                var d = Devices.GetDevice(id);
+                if (d.State == DeviceState.Active) return d;
+                d.Dispose();
+            }
+            catch { }
+        return Devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+    }
+
+    // The device a new output would play on: when it's another one, the engine moves there.
+    public static string? OutputId()
+    {
+        try
+        {
+            using var d = Endpoint();
+            return d.ID;
+        }
+        catch { return null; }
+    }
+
     // The rate the device mixes at (the engine resamples to it).
     public static int OutputRate()
     {
-        try { return Devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia).AudioClient.MixFormat.SampleRate; }
+        try
+        {
+            using var d = Endpoint();
+            return d.AudioClient.MixFormat.SampleRate;
+        }
         catch { return 48000; }
     }
 
-    public static IWavePlayer CreateOutput(int latencyMs)
-        => new WasapiOut(Devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia), AudioClientShareMode.Shared, true, latencyMs);
+    public static IWavePlayer CreateOutput(int latencyMs) => new WasapiOut(Endpoint(), AudioClientShareMode.Shared, true, latencyMs);
 
     // Media Foundation first (MP3, AAC, MP4, WAV, FLAC, WMA), ffmpeg for the rest.
     public static ITrackSource Open(string path, double durationHint)
@@ -29,8 +75,9 @@ public static class AudioPlatform
         catch { return new FfmpegTrackSource(path, TimeSpan.FromSeconds(durationHint)); }
     }
 
-    // Headphones plugged in, Bluetooth: changed is called (on any thread) when the default device changes.
-    public static IDisposable? WatchDefaultDevice(Action changed)
+    // Headphones plugged in, Bluetooth, the chosen output unplugged or back: changed is called (on any thread) when the
+    // default device changes or a device comes or goes; the engine sees whether its output must move (OutputId).
+    public static IDisposable? WatchDevices(Action changed)
     {
         try { return new DeviceWatcher(changed); }
         catch { return null; }
@@ -52,9 +99,9 @@ public static class AudioPlatform
             if (flow == DataFlow.Render && role == Role.Multimedia) _changed();
         }
 
-        void IMMNotificationClient.OnDeviceStateChanged(string deviceId, DeviceState newState) { }
-        void IMMNotificationClient.OnDeviceAdded(string pwstrDeviceId) { }
-        void IMMNotificationClient.OnDeviceRemoved(string deviceId) { }
+        void IMMNotificationClient.OnDeviceStateChanged(string deviceId, DeviceState newState) => _changed();
+        void IMMNotificationClient.OnDeviceAdded(string pwstrDeviceId) => _changed();
+        void IMMNotificationClient.OnDeviceRemoved(string deviceId) => _changed();
         void IMMNotificationClient.OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) { }
 
         public void Dispose()

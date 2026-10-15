@@ -422,6 +422,8 @@ public static class Ui
             {
 #if ANDROID_APP
                 return $"Android {Android.OS.Build.VERSION.Release} ({Android.OS.Build.Manufacturer} {Android.OS.Build.Model})";
+#elif IOS_APP
+                return $"{UIKit.UIDevice.CurrentDevice.SystemName} {UIKit.UIDevice.CurrentDevice.SystemVersion} ({UIKit.UIDevice.CurrentDevice.Model})";
 #else
                 if (OperatingSystem.IsMacOS()) return "macOS " + Environment.OSVersion.Version.ToString(3);
                 if (OperatingSystem.IsLinux() && File.Exists("/etc/os-release"))

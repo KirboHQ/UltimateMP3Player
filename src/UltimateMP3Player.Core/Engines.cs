@@ -5,7 +5,8 @@ using System.Text;
 namespace UltimateMP3Player.Core;
 
 // Android: the programs come inside the app (Python with yt-dlp, ffmpeg, QuickJS), prepared by the app at its first start.
-// Dir holds ffmpeg and ffprobe (links to them) and yt-dlp (a Python program, run by Python).
+// Dir holds ffmpeg and ffprobe (links to them) and yt-dlp (a Python program, run by Python). The iPhone: Python and
+// yt-dlp run inside the app's own process (ChildProcess.Starter), and the system does ffmpeg's work (AudioAnalysis.Native).
 public sealed class EngineHost
 {
     public required string Dir { get; init; }
@@ -15,6 +16,8 @@ public sealed class EngineHost
     public required Func<Action<string, double?>, CancellationToken, Task> Install { get; init; }
     // Why a program could crash here (the app built for another processor), shown with the error; null when nothing's known.
     public Func<string?>? CrashHint { get; init; }
+    // ffmpeg and ffprobe come with the engines (not on the iPhone).
+    public bool Ffmpeg { get; init; } = true;
 }
 
 // External programs, kept in "engines" next to the exe (on Linux and macOS next to the data: the app's own folder,
@@ -55,9 +58,12 @@ public static class Engines
     // gallery-dl (picture galleries) has no build for macOS and Android: there it's used only if installed by hand.
     private static bool GalleryDlNeeded => !OperatingSystem.IsMacOS() && Host == null;
 
+    // Without ffmpeg (the iPhone) videos aren't downloaded: nothing could put their video and audio together or play them.
+    public static bool VideoDownloads => Host?.Ffmpeg != false;
+
     public static IReadOnlyList<string> Missing()
-        => new[] { YtDlp, GalleryDlNeeded ? GalleryDl : null, Ffmpeg, Ffprobe, Host == null ? Deno : null }.OfType<string>()
-            .Where(p => !File.Exists(p)).Select(Path.GetFileName).ToList()!;
+        => new[] { YtDlp, GalleryDlNeeded ? GalleryDl : null, VideoDownloads ? Ffmpeg : null, VideoDownloads ? Ffprobe : null, Host == null ? Deno : null }
+            .OfType<string>().Where(p => !File.Exists(p)).Select(Path.GetFileName).ToList()!;
 
     public static async Task<string> VersionAsync(string exe, CancellationToken ct = default)
     {

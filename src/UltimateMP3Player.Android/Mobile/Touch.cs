@@ -136,13 +136,23 @@ public static class Haptics
 {
     public static void LongPress()
     {
+#if ANDROID_APP
         try { MainActivity.Current?.Window?.DecorView?.PerformHapticFeedback(Android.Views.FeedbackConstants.LongPress); }
         catch { }
+#elif IOS_APP
+        try { new UIKit.UIImpactFeedbackGenerator(UIKit.UIImpactFeedbackStyle.Medium).ImpactOccurred(); }
+        catch { }
+#endif
     }
 
     public static void Tick()
     {
+#if ANDROID_APP
         try { MainActivity.Current?.Window?.DecorView?.PerformHapticFeedback(Android.Views.FeedbackConstants.ClockTick); }
         catch { }
+#elif IOS_APP
+        try { new UIKit.UISelectionFeedbackGenerator().SelectionChanged(); }
+        catch { }
+#endif
     }
 }

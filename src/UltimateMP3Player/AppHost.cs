@@ -38,7 +38,7 @@ public sealed class AppHost : Observable
         Ui.Animations = Settings.Animations;
         SmoothScroll.Enabled = Settings.SmoothScroll;
 
-        Audio = new AudioEngine(_ui);
+        Audio = new AudioEngine(_ui) { OutputDevice = Settings.OutputDevice };
         Downloads = new DownloadQueue(this);
         Updates = new Updater();
         Presence = new DiscordPresence { Enabled = Settings.DiscordPresence };

@@ -147,9 +147,12 @@ public partial class MainView : UserControl
         ApplyInsets(new Thickness(Math.Max(a.Left, s.Left), Math.Max(a.Top, s.Top), Math.Max(a.Right, s.Right), Math.Max(a.Bottom, s.Bottom)));
     }
 
-    // The system bars and the notch (never the keyboard), in the app's units.
+    // The system bars and the notch (never the keyboard), in the app's units. (On the iPhone Avalonia's are right.)
     private static Thickness SystemInsets(double scaling)
     {
+#if !ANDROID_APP
+        return default;
+#else
         try
         {
             var wi = MainActivity.Current?.Window?.DecorView?.RootWindowInsets;
@@ -170,6 +173,7 @@ public partial class MainView : UserControl
             return new Thickness(l / scaling, t / scaling, r / scaling, b / scaling);
         }
         catch { return default; }
+#endif
     }
 
     private Thickness _insets = new(-1);
@@ -227,7 +231,11 @@ public partial class MainView : UserControl
             {
                 if (!await Dialogs.TermsAsync(true))
                 {
+#if ANDROID_APP
                     MainActivity.Current?.FinishAndRemoveTask();
+#else
+                    Environment.Exit(0);
+#endif
                     return;
                 }
                 _host.AcceptTerms();
@@ -286,14 +294,19 @@ public partial class MainView : UserControl
     }
 
     // Android 13+: the notifications are allowed by the user (the player's one is shown anyway, the downloads' isn't).
+    // (The iPhone shows the song on the lock screen without asking.)
     private static async Task AskNotifications()
     {
+#if ANDROID_APP
         if (Android.OS.Build.VERSION.SdkInt < Android.OS.BuildVersionCodes.Tiramisu || MainActivity.Current is not { } activity) return;
         var prefs = activity.GetSharedPreferences("ump", Android.Content.FileCreationMode.Private);
         if (prefs == null || prefs.GetBoolean("asked-notifications", false)) return;
         prefs.Edit()?.PutBoolean("asked-notifications", true)?.Apply();
         await Task.Delay(1500);
         await activity.RequestPermission(Android.Manifest.Permission.PostNotifications);
+#else
+        await Task.CompletedTask;
+#endif
     }
 
     // "Who's listening?" (at start with several profiles, or from the avatar): the chosen one opens.
@@ -577,7 +590,9 @@ public partial class MainView : UserControl
         {
             if (Gate.Content is ProfilesPage p && p.Back()) return;
             if (_session != null) { Gate.IsVisible = false; Gate.Content = null; return; }
+#if ANDROID_APP
             MainActivity.Current?.MoveTaskToBack(true);
+#endif
             return;
         }
         if (_session == null) return;
@@ -599,7 +614,9 @@ public partial class MainView : UserControl
             return;
         }
         // At the start: the app goes in the background (the music goes on), like the other players.
+#if ANDROID_APP
         MainActivity.Current?.MoveTaskToBack(true);
+#endif
     }
 
     // ------------------------------------------------------------------ toast

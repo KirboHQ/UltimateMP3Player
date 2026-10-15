@@ -115,6 +115,14 @@
             <TextBlock Text="{local:T RIPRODUZIONE}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Keywords="{local:T 'riproduzione audio suono equalizzatore eq bassi alti volume normalizza crossfade sfumatura radio suggeriti'}">
                 <StackPanel>
+                    <Button x:Name="OutputRow" Theme="{StaticResource SettingRow}" Tag="OutputDevice" Click="Choose_Click"
+                            views:SettingsPage.Keywords="{local:T 'uscita dispositivo cuffie altoparlante cassa bluetooth usb'}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Uscita audio'}" Classes="setting"/>
+                            <TextBlock Text="{Binding OutputDevice.Label}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <Border x:Name="OutputLine" Classes="line"/>
                     <Button Theme="{StaticResource SettingRow}" Click="Equalizer_Click">
                         <StackPanel>
                             <TextBlock Text="{local:T Equalizzatore}" Classes="setting"/>
@@ -248,14 +256,14 @@
             <TextBlock Text="{local:T DOWNLOAD}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Keywords="{local:T 'download scaricare formato mp3 m4a opus flac qualità video cartella musica memoria'}">
                 <StackPanel>
-                    <Button Theme="{StaticResource SettingRow}" Click="Logins_Click" views:SettingsPage.Keywords="{local:T 'accesso accedi account login password cookie privati abbonati età youtube soundcloud instagram'}">
+                    <Button x:Name="LoginsRow" Theme="{StaticResource SettingRow}" Click="Logins_Click" views:SettingsPage.Keywords="{local:T 'accesso accedi account login password cookie privati abbonati età youtube soundcloud instagram'}">
                         <StackPanel>
                             <TextBlock Text="{local:T 'Accessi ai siti'}" Classes="setting"/>
                             <TextBlock x:Name="LoginsValue" Classes="value"/>
                             <TextBlock Text="{local:T 'Per scaricare i contenuti privati, per abbonati o con limite d\'età: accedi al sito dall\'app'}" Classes="setting-hint"/>
                         </StackPanel>
                     </Button>
-                    <Border Classes="line"/>
+                    <Border x:Name="LoginsLine" Classes="line"/>
                     <Button Theme="{StaticResource SettingRow}" Tag="AudioFormat" Click="Choose_Click">
                         <StackPanel>
                             <TextBlock Text="{local:T 'Formato dell\'audio'}" Classes="setting"/>
@@ -287,7 +295,7 @@
                     <StackPanel Margin="0,12,0,10">
                         <TextBlock Text="{local:T 'Dove è salvata la musica'}" Classes="setting"/>
                         <TextBlock Text="{Binding MusicDir}" Classes="value" FontSize="12.5"/>
-                        <TextBlock Text="{local:T 'Nella memoria del telefono, nella cartella dell\'app: la vedi collegando il telefono al computer (Android › data). Se disinstalli l\'app, Android chiede se tenerla.'}"
+                        <TextBlock x:Name="MusicDirHint" Text="{local:T 'Nella memoria del telefono, nella cartella dell\'app: la vedi collegando il telefono al computer (Android › data). Se disinstalli l\'app, Android chiede se tenerla.'}"
                                    Classes="setting-hint"/>
                     </StackPanel>
                 </StackPanel>
@@ -343,7 +351,7 @@
             <TextBlock Text="{local:T AGGIORNAMENTI}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Keywords="{local:T 'aggiornamenti versione nuova github motori yt-dlp ffmpeg'}">
                 <StackPanel>
-                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoUpdateApp}">
+                    <CheckBox x:Name="AutoUpdateSwitch" Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoUpdateApp}">
                         <StackPanel>
                             <TextBlock Text="{local:T 'Aggiorna l\'app da sola'}" Classes="setting"/>
                             <TextBlock Text="{local:T 'Le nuove versioni da GitHub si scaricano con il Wi-Fi; Android chiede prima di installarle'}" Classes="setting-hint"/>
@@ -356,14 +364,14 @@
                         </StackPanel>
                         <Button Grid.Column="1" Theme="{StaticResource SmallGhost}" Command="{Binding CheckAppUpdateCommand}" Content="{local:T Controlla}" Margin="10,0,0,0"/>
                     </Grid>
-                    <Border Classes="line"/>
-                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoUpdateEngines}">
+                    <Border x:Name="EnginesLine" Classes="line"/>
+                    <CheckBox x:Name="EnginesSwitch" Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoUpdateEngines}">
                         <StackPanel>
                             <TextBlock Text="{local:T 'Aggiorna i motori di download'}" Classes="setting"/>
                             <TextBlock Text="{local:T 'yt-dlp cambia spesso, per stare dietro ai siti: si aggiorna una volta al giorno'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
-                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                    <Grid x:Name="EnginesRow" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
                         <TextBlock Text="{Binding EngineInfo}" Classes="value" VerticalAlignment="Center"/>
                         <Button Grid.Column="1" Theme="{StaticResource SmallGhost}" Command="{Binding UpdateEnginesCommand}" Content="{local:T 'Aggiorna ora'}" Margin="10,0,0,0"/>
                     </Grid>

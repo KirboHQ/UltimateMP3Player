@@ -17,6 +17,7 @@
   <img alt="Linux" src="https://img.shields.io/badge/Linux-x64%20%7C%20arm64-FCC624?style=flat-square&logo=linux&logoColor=black">
   <img alt="macOS 12 or later" src="https://img.shields.io/badge/macOS-12%2B-000000?style=flat-square&logo=apple&logoColor=white">
   <img alt="Android 8 or later" src="https://img.shields.io/badge/Android-8%2B-3DDC84?style=flat-square&logo=android&logoColor=white">
+  <img alt="iOS 15 or later, preview" src="https://img.shields.io/badge/iOS-15%2B%20preview-000000?style=flat-square&logo=apple&logoColor=white">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white">
   <a href="LICENSE"><img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-6E7781?style=flat-square"></a>
 </p>
@@ -49,7 +50,22 @@
   <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · songs in the cloud · a player that feels like Spotify · synced lyrics · a queue that fills itself · DJ mode · playlists, favorites and tags · on all your devices · listen together">
 </picture>
 
-## 🆕 What's new in 3.7
+## 🆕 What's new in 3.7.1
+
+- **Choose where the sound goes** (Settings › Playback › *Audio output*): speakers, headphones, a USB DAC, a monitor
+  over HDMI… instead of the system's default. If it's unplugged the music moves to the default one, and goes back when
+  it's plugged in again. Windows, Linux, macOS and Android.
+- **iPhone and iPad (preview)**: the Android app on iOS 15 or later, installed for free with SideStore (no Mac, no
+  jailbreak, see [Install](#-install)): library, playlists, tags, lyrics, equalizer, crossfade, statistics, the song on the
+  lock screen and the headphones' buttons; songs and `.ump` packs come in from the Files app. **Downloads too**, like on
+  Android: links, the online search, songs in the cloud, similar songs and the artist's songs, signing in to sites.
+  iOS doesn't let apps start programs, so yt-dlp runs inside the app (with Python) and iOS itself makes the MP3s and
+  M4As: on iPhone only the audio is downloaded, no videos. A `ump://add?url=<link>` link (from a Shortcut in the share
+  sheet, for example) opens the app on that link.
+- An open drop-down no longer stays behind, cut off from its box, when the mouse wheel scrolls the page under it.
+
+<details>
+<summary>3.7</summary>
 
 - **Your quality, song by song**: on the link card choose the audio (MP3 320, 256, 192, 128 kbps or the original file) and
   the video resolution; a song keeps its choice, also when it's in the cloud and heard from its link. Right click →
@@ -74,6 +90,8 @@
   in a room is drawn. The DJ page redraws less often. The DJ entry is now below Listen together.
 - Windows release files are named like the others: `UltimateMP3Player-windows-x64-setup.exe` and
   `UltimateMP3Player-windows-x64.exe`.
+
+</details>
 
 <details>
 <summary>3.6</summary>
@@ -211,6 +229,24 @@
 > anyway**. The music stays in the app's own folder (*Android › data*, visible from a computer); if you uninstall the
 > app, Android asks whether to keep it. To move your music to another phone or computer, use a `.ump` pack.
 
+**iPhone and iPad** (iOS 15 or later; a preview; not on the App Store)
+
+1. Install **SideStore** from your Windows PC (or Mac) following the official guide at [sidestore.io](https://sidestore.io):
+   it installs apps signed with your free Apple ID, without a Mac or a jailbreak. Then turn on **Developer Mode**
+   (Settings › Privacy & Security, at the bottom; the iPhone restarts).
+2. In SideStore open **Sources**, tap **+** and add
+   `https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/sidestore-source.json`, then install
+   **Ultimate MP3 Player** from there. (Or download `UltimateMP3Player-ios.ipa` from the
+   [latest release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest) and open it with SideStore.)
+3. New versions show up in SideStore (**My Apps › Update**); the app tells you in Settings › Updates when there's one.
+
+> [!NOTE]
+> With a free Apple ID an app stays signed for 7 days and SideStore renews it by itself (open it now and then), and at
+> most 3 sideloaded apps can be active, SideStore included. Your songs are in the Files app (*On My iPhone › Ultimate MP3
+> Player › Music*): add more from there with Settings › Library. Uninstalling the app deletes them: keep a `.ump` pack.
+> Downloads need the app open: iOS gives an app in the background only about half a minute to finish them. To send a
+> link from another app, make a Shortcut that takes the shared URL and opens `ump://add?url=` followed by it.
+
 ## 🎵 Features
 
 **Downloads**
@@ -225,8 +261,8 @@
 - Duplicates are recognized (same source or same song), and site rate limits are handled by themselves: downloads
   pause, then resume more gently
 - A link that can't be read, and failed downloads, can be retried on YouTube Music
-- Optional browser cookies for private playlists and age-restricted content (on Android you sign in to the sites inside
-  the app)
+- Optional browser cookies for private playlists and age-restricted content (on Android and iPhone you sign in to the
+  sites inside the app)
 - Music you already have: drag files or folders into the window
 
 **Player**
@@ -235,7 +271,7 @@
 - Loudness normalization (−14 LUFS) and a 10-band equalizer with presets and a live response curve
 - **Synced lyrics**, found by themselves: the line being sung lights up over the cover's colors, click a line to jump
   there; over a video they become subtitles
-- Media keys, the system's media controls (Windows, MPRIS on Linux, Now Playing on macOS, the lock screen on Android)
+- Media keys, the system's media controls (Windows, MPRIS on Linux, Now Playing on macOS and iPhone, the lock screen on Android)
   and the tray: close the window and the music keeps playing with very little memory
 - Songs with a video show it in the song screen, framed on a blurred copy of itself; *Find the video…* gets one from
   YouTube for the others
@@ -292,7 +328,7 @@
 > Linux or macOS use ZeroTier or Tailscale, which work everywhere (also on Windows).
 
 **And also**
-- The same app on Windows, Linux, macOS and Android
+- The same app on Windows, Linux, macOS and Android (and iPhone, in preview)
 - Profiles like in Chrome, themes, English and Italian, smooth animations and scrolling
 - Discord Rich Presence with song, artist, cover and progress bar
 - Automatic updates from the GitHub releases
@@ -329,7 +365,16 @@ update only if it's signed with the same key.
 The Linux and macOS packages are made on Windows too. The macOS app is signed "ad hoc" (without an Apple certificate)
 with [rcodesign](https://github.com/indygreg/apple-platform-rs), downloaded once into `tools\bin`: Apple Silicon Macs
 don't run apps without any signature. Keep the version in `src\UltimateMP3Player.Avalonia\UltimateMP3Player.Avalonia.csproj`
-the same as the Windows one (and the Android one, in `src\UltimateMP3Player.Android\UltimateMP3Player.Android.csproj`).
+the same as the Windows one (and the Android and iPhone ones, in `src\UltimateMP3Player.Android\UltimateMP3Player.Android.csproj`
+and `src\UltimateMP3Player.iOS\UltimateMP3Player.iOS.csproj`).
+
+The iPhone app needs Xcode, so it's built on macOS by GitHub Actions ([.github/workflows/ios.yml](.github/workflows/ios.yml)):
+publishing a release attaches `UltimateMP3Player-ios.ipa` (unsigned: SideStore signs it on the phone) and
+`sidestore-source.json` to it; running the workflow by hand (*Actions › iOS › Run workflow*) builds both as the run's
+artifact, without touching the releases. Its engines (Python for iOS from python.org, yt-dlp, certifi and LAME built
+for the iPhone) are fetched and put into the app by `tools/ios-deps.sh`, pinned by version and SHA-256, in the same
+workflow. On Windows, `dotnet build src\UltimateMP3Player.iOS` with the .NET 10 SDK and the iOS workload
+(`dotnet workload install ios`) checks the code.
 
 Two settings in `src\UltimateMP3Player\UltimateMP3Player.csproj` (and the same two in the Avalonia project):
 
@@ -348,6 +393,7 @@ for the core (downloads, import, queue, shuffle).
 | `src\UltimateMP3Player` | WPF interface, audio engine (NAudio/WASAPI), DJ engine (SoundTouch), tray, media keys, updater, Discord |
 | `src\UltimateMP3Player.Avalonia` | Linux and macOS: the same interface drawn with Avalonia; it shares the view models, the audio and DJ engines and most services with `src\UltimateMP3Player` (audio out through SDL3, MPRIS, macOS Now Playing, updater) |
 | `src\UltimateMP3Player.Android` | Android: the phone's pages (Avalonia), sharing the view models, the audio engine and the Linux/macOS views' building blocks; the player's service with the notification and lock screen controls (MediaSession), audio out through AudioTrack, the engines inside the app, sharing, updates |
+| `src\UltimateMP3Player.iOS` | iPhone and iPad: the Android app's pages and phone parts (linked), with iOS's own audio out (AudioQueue), decoders and tags (AudioToolbox, AVFoundation), Now Playing, the Files app; yt-dlp inside the app (Python embedded, JavaScriptCore for YouTube), MP3s with LAME |
 | `installer` | Inno Setup script and wizard images (`tools\make-images.ps1` renders them, and the macOS icons, from `Logo.xaml`) |
 
 </details>
@@ -363,7 +409,8 @@ for the core (downloads, import, queue, shuffle).
 On Linux the data is in `~/.local/share/Ultimate MP3 Player` and on macOS in `~/Library/Application Support/Ultimate MP3 Player`
 (there also the engines, in `engines`); the songs go to `~/Music/Ultimate MP3 Player`. On Android the songs are in the
 app's folder `Android/data/com.kirbohq.ultimatemp3player/files/Music` (visible from a computer), the rest inside the
-app.
+app. On iPhone the songs and `errori.log` are in the Files app (*On My iPhone › Ultimate MP3 Player*), the rest inside
+the app.
 
 ## 🙏 Third-party software
 
@@ -378,7 +425,9 @@ Linux and macOS: [Avalonia](https://avaloniaui.net) (MIT), [SDL3](https://www.li
 [Fluent System Icons](https://github.com/microsoft/fluentui-system-icons) (MIT) and
 [Selawik](https://github.com/microsoft/Selawik) (OFL-1.1), in place of Segoe UI and its icons.
 Android: the same, plus [youtubedl-android](https://github.com/JunkFood02/youtubedl-android) (GPL-3.0) for Python,
-FFmpeg and [QuickJS](https://bellard.org/quickjs/) (MIT) built for Android.
+FFmpeg and [QuickJS](https://bellard.org/quickjs/) (MIT) built for Android. iPhone: Avalonia, NAudio, NLayer,
+SoundTouch.Net and the same fonts and icons, yt-dlp, [Python](https://www.python.org) (PSF License),
+[certifi](https://github.com/certifi/python-certifi) (MPL-2.0) and [LAME](https://lame.sourceforge.io) (LGPL).
 
 Their licenses, copyright notices and where to find each one's source code are in
 [licenses/THIRD-PARTY-NOTICES.txt](licenses/THIRD-PARTY-NOTICES.txt), which also comes with the app (the `licenses`

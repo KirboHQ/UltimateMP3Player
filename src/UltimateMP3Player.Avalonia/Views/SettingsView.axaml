@@ -240,9 +240,12 @@
                 </Border>
 
                 <!-- ==================================================== playback -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'riproduzione volume dissolvenza sfumatura normalizza'}">
+                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'riproduzione volume dissolvenza sfumatura normalizza uscita dispositivo casse cuffie altoparlanti'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Riproduzione}" Classes="card-title"/>
+                        <TextBlock Text="{local:T 'Uscita audio'}" Classes="field-label"/>
+                        <ComboBox ItemsSource="{Binding OutputDevices}" SelectedItem="{Binding OutputDevice}" Margin="0,0,0,18"
+                                  HorizontalAlignment="Stretch" AutomationProperties.Name="{local:T 'Uscita audio'}"/>
                         <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding Normalize}">
                             <StackPanel>
                                 <TextBlock Text="{local:T 'Normalizza il volume'}"/>

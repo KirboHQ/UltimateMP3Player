@@ -126,7 +126,7 @@ public static class TrackDownloader
         (string Title, string? Artist, string? Album, string? Year) meta, double? duration, Track? target, Action<JobProgress> progress, CancellationToken ct)
     {
         var item = req.Item;
-        bool videoAvailable = item.Info?.HasVideo == true || (item.Info == null && item.Kind == MediaKind.Video);
+        bool videoAvailable = Engines.VideoDownloads && (item.Info?.HasVideo == true || (item.Info == null && item.Kind == MediaKind.Video));
         var existing = target ?? lib.FindByKeys(keys) ?? lib.FindSimilar(meta.Title, meta.Artist, duration);
         if (existing != null && req.VideoOnly)
         {

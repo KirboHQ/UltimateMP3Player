@@ -1,0 +1,132 @@
+# The iPhone app (src/UltimateMP3Player.iOS): built on macOS (the .app needs Xcode) into an unsigned .ipa, which SideStore
+# signs on the phone with the user's Apple ID, and the SideStore source that points to it.
+# - A release published on GitHub: both are attached to it (the other packages come from build*.ps1 on Windows). SideStore
+#   reads the source of the latest release: https://github.com/<repo>/releases/latest/download/sidestore-source.json
+# - Run by hand (Actions › iOS › Run workflow): both are kept only as the run's artifact, to try; no release changes.
+name: iOS
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ipa:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # The newest stable Xcode on the runner: the .NET iOS workload wants the newest iOS SDK.
+      - name: Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -iv beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: .NET iOS workload
+        run: dotnet workload install ios
+
+      # The download engines (Python for iOS, yt-dlp, certifi, LAME built for the iPhone): tools/ios-deps.sh, kept between
+      # runs until its versions change.
+      - name: Engines (cache)
+        uses: actions/cache@v4
+        with:
+          path: deps/ios
+          key: ios-deps-${{ hashFiles('tools/ios-deps.sh') }}
+
+      - name: Engines
+        run: bash tools/ios-deps.sh
+
+      # Unsigned (SideStore signs it); Release: compiled ahead of time, as iOS requires.
+      - name: Build
+        run: >
+          dotnet build src/UltimateMP3Player.iOS/UltimateMP3Player.iOS.csproj -c Release
+          -p:EnableCodeSigning=false -p:ValidateXcodeVersion=false
+
+      # The app with the engines put into it, as Payload/<app>.app zipped.
+      - name: Package
+        run: |
+          APP=$(find src/UltimateMP3Player.iOS/bin/Release -name "UltimateMP3Player.app" -type d -prune | head -1)
+          test -n "$APP"
+          mkdir -p out/Payload
+          cp -R "$APP" out/Payload/
+          bash tools/ios-deps.sh install out/Payload/UltimateMP3Player.app
+          (cd out && zip -qry UltimateMP3Player-ios.ipa Payload)
+          ls -l out
+
+      # The format of AltStore's sources (SideStore reads the same): the version, the build number, the bundle id and
+      # the minimum iOS come from the app's own Info.plist.
+      - name: SideStore source
+        env:
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+          NOTES: ${{ github.event.release.body }}
+        run: |
+          python3 - <<'EOF'
+          import datetime, glob, json, os, plistlib
+          repo, tag = os.environ["REPO"], os.environ.get("TAG") or ""
+          app = glob.glob("out/Payload/*.app")[0]
+          with open(os.path.join(app, "Info.plist"), "rb") as f:
+              info = plistlib.load(f)
+          ipa = "out/UltimateMP3Player-ios.ipa"
+          releases = f"https://github.com/{repo}/releases"
+          download = f"{releases}/download/{tag}/UltimateMP3Player-ios.ipa" if tag else f"{releases}/latest/download/UltimateMP3Player-ios.ipa"
+          icon = f"https://raw.githubusercontent.com/{repo}/main/src/UltimateMP3Player.iOS/Assets.xcassets/AppIcon.appiconset/Icon1024.png"
+          notes = (os.environ.get("NOTES") or "").strip() or "Ultimate MP3 Player " + info["CFBundleShortVersionString"]
+          source = {
+              "name": "Ultimate MP3 Player",
+              "identifier": "com.kirbohq.ultimatemp3player.source",
+              "subtitle": "Offline music player",
+              "sourceURL": f"{releases}/latest/download/sidestore-source.json",
+              "iconURL": icon,
+              "website": f"https://github.com/{repo}",
+              "tintColor": "#7C5CFF",
+              "apps": [{
+                  "name": "Ultimate MP3 Player",
+                  "bundleIdentifier": info["CFBundleIdentifier"],
+                  "developerName": "KirboHQ",
+                  "subtitle": "Offline music player",
+                  "localizedDescription": "Your music offline: songs and playlists downloaded from YouTube, SoundCloud and many other sites, or added from the Files app. Playlists, tags, lyrics, equalizer, crossfade, statistics, songs in the cloud and similar songs radio.",
+                  "iconURL": icon,
+                  "tintColor": "#7C5CFF",
+                  "category": "entertainment",
+                  "screenshots": [],
+                  "versions": [{
+                      "version": info["CFBundleShortVersionString"],
+                      "buildVersion": info["CFBundleVersion"],
+                      "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                      "localizedDescription": notes,
+                      "downloadURL": download,
+                      "size": os.path.getsize(ipa),
+                      "minOSVersion": info.get("MinimumOSVersion", "15.0"),
+                  }],
+                  "appPermissions": {"entitlements": [], "privacy": {}},
+              }],
+              "news": [],
+          }
+          with open("out/sidestore-source.json", "w", encoding="utf-8") as f:
+              json.dump(source, f, ensure_ascii=False, indent=2)
+          print(json.dumps(source["apps"][0]["versions"][0], indent=2))
+          EOF
+
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" out/UltimateMP3Player-ios.ipa out/sidestore-source.json --clobber
+
+      - name: Keep for trying (run by hand)
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: UltimateMP3Player-ios
+          path: |
+            out/UltimateMP3Player-ios.ipa
+            out/sidestore-source.json

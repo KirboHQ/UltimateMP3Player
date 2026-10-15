@@ -88,68 +88,14 @@ public sealed class DownloadJob
                 throw new EngineException(L.T("Il file scaricato non è un'immagine."));
 
             var outBase = Path.Combine(temp, "out");
-            Ffmpeg.Plan plan;
-            switch (target)
-            {
-                case VideoTarget vt:
-                    {
-                        if (probe.Video == null) throw new EngineException(L.T("Il file scaricato non contiene né video né audio."));
-                        string? meta = Options.EmbedMetadata ? Ffmpeg.WriteMetadata(temp, BuildTags()) : null;
-                        plan = Ffmpeg.ForVideo(input, probe, vt, meta, outBase + "." + vt.Container);
-                        break;
-                    }
-                case AudioTarget at:
-                    {
-                        string? meta = null, cover = null;
-                        if (Options.EmbedMetadata)
-                        {
-                            var tags = BuildTags();
-                            var ext = at.Format == "original" ? "" : at.Format;
-                            byte[]? oggPic = null;
-                            if (at.Format is "mp3" or "m4a" or "flac" or "opus" or "ogg" or "original")
-                            {
-                                bool small = at.Format is "opus" or "ogg";
-                                cover = await PrepareCoverAsync(temp, small ? 600 : 1200, ct);
-                                if (cover != null && CoverOut != null)
-                                {
-                                    try { File.Copy(cover, CoverOut, true); } catch { }
-                                }
-                                if (cover != null && small)
-                                {
-                                    var cp = await Ffmpeg.ProbeAsync(cover, ct);
-                                    oggPic = Ffmpeg.OggPictureBlock(await File.ReadAllBytesAsync(cover, ct), cp.Video?.Width ?? 0, cp.Video?.Height ?? 0);
-                                }
-                            }
-                            meta = Ffmpeg.WriteMetadata(temp, tags, oggPic);
-                        }
-                        plan = Ffmpeg.ForAudio(input, probe, at, meta, cover, outBase + ".tmp");
-                        break;
-                    }
-                case ImageTarget it:
-                    plan = Ffmpeg.ForImage(input, probe, it, outBase + ".tmp");
-                    break;
-                default:
-                    throw new InvalidOperationException();
-            }
-
-            string produced;
-            if (plan.JustMove)
-            {
-                produced = input;
-            }
-            else
-            {
-                Report(JobPhase.Converting, 0, ConvertLabel(target));
-                double? dur = probe.Duration ?? Item.Duration;
-                await Ffmpeg.RunAsync(plan.Args, dur, f => Report(JobPhase.Converting, f * 100, ConvertLabel(target)), ct);
-                produced = Path.ChangeExtension(outBase, plan.Ext);
-                if (!File.Exists(produced)) throw new EngineException(L.T("La conversione non ha prodotto alcun file."));
-            }
-            Summary = plan.Description;
+            var (produced, ext, summary) = AudioAnalysis.Native is { } native
+                ? await ConvertNativelyAsync(native, input, probe, target, outBase, temp, ct)
+                : await ConvertWithFfmpegAsync(input, probe, target, outBase, temp, ct);
+            Summary = summary;
 
             Directory.CreateDirectory(OutputDir);
             var name = Text.SafeFileName(FileName());
-            var final = Text.UniquePath(OutputDir, name, plan.Ext);
+            var final = Text.UniquePath(OutputDir, name, ext);
             File.Move(produced, final);
             ResultPath = final;
             Report(JobPhase.Done, 100, L.T("Completato"));
@@ -158,6 +104,87 @@ public sealed class DownloadJob
         {
             try { Directory.Delete(temp, true); } catch { }
         }
+    }
+
+    // The downloaded file as the target asks, through ffmpeg: the file made (or the download itself, when it's already
+    // right), its extension and what was done.
+    private async Task<(string File, string Ext, string Description)> ConvertWithFfmpegAsync(string input, ProbeInfo probe, Target target, string outBase,
+        string temp, CancellationToken ct)
+    {
+        Ffmpeg.Plan plan;
+        switch (target)
+        {
+            case VideoTarget vt:
+                {
+                    if (probe.Video == null) throw new EngineException(L.T("Il file scaricato non contiene né video né audio."));
+                    string? meta = Options.EmbedMetadata ? Ffmpeg.WriteMetadata(temp, BuildTags()) : null;
+                    plan = Ffmpeg.ForVideo(input, probe, vt, meta, outBase + "." + vt.Container);
+                    break;
+                }
+            case AudioTarget at:
+                {
+                    string? meta = null, cover = null;
+                    if (Options.EmbedMetadata)
+                    {
+                        var tags = BuildTags();
+                        byte[]? oggPic = null;
+                        if (at.Format is "mp3" or "m4a" or "flac" or "opus" or "ogg" or "original")
+                        {
+                            bool small = at.Format is "opus" or "ogg";
+                            cover = await PrepareCoverAsync(temp, small ? 600 : 1200, ct);
+                            if (cover != null && CoverOut != null)
+                            {
+                                try { File.Copy(cover, CoverOut, true); } catch { }
+                            }
+                            if (cover != null && small)
+                            {
+                                var cp = await Ffmpeg.ProbeAsync(cover, ct);
+                                oggPic = Ffmpeg.OggPictureBlock(await File.ReadAllBytesAsync(cover, ct), cp.Video?.Width ?? 0, cp.Video?.Height ?? 0);
+                            }
+                        }
+                        meta = Ffmpeg.WriteMetadata(temp, tags, oggPic);
+                    }
+                    plan = Ffmpeg.ForAudio(input, probe, at, meta, cover, outBase + ".tmp");
+                    break;
+                }
+            case ImageTarget it:
+                plan = Ffmpeg.ForImage(input, probe, it, outBase + ".tmp");
+                break;
+            default:
+                throw new InvalidOperationException();
+        }
+
+        if (plan.JustMove) return (input, plan.Ext, plan.Description);
+        Report(JobPhase.Converting, 0, ConvertLabel(target));
+        double? dur = probe.Duration ?? Item.Duration;
+        await Ffmpeg.RunAsync(plan.Args, dur, f => Report(JobPhase.Converting, f * 100, ConvertLabel(target)), ct);
+        var produced = Path.ChangeExtension(outBase, plan.Ext);
+        if (!File.Exists(produced)) throw new EngineException(L.T("La conversione non ha prodotto alcun file."));
+        return (produced, plan.Ext, plan.Description);
+    }
+
+    // The iPhone, without ffmpeg: the system rewrites the audio with its tags and cover (AudioAnalysis.Native). Videos and
+    // pictures aren't downloaded there.
+    private async Task<(string File, string Ext, string Description)> ConvertNativelyAsync(IMediaTools native, string input, ProbeInfo probe, Target target,
+        string outBase, string temp, CancellationToken ct)
+    {
+        if (target is not AudioTarget at) throw new EngineException(L.T("Su iPhone si scarica solo l'audio."));
+        Tags? tags = null;
+        string? cover = null;
+        if (Options.EmbedMetadata)
+        {
+            tags = BuildTags();
+            cover = await PrepareCoverAsync(temp, 1200, ct);
+            if (cover != null && CoverOut != null)
+            {
+                try { File.Copy(cover, CoverOut, true); } catch { }
+            }
+        }
+        Report(JobPhase.Converting, 0, ConvertLabel(target));
+        var (file, description) = await native.ConvertAudioAsync(input, probe, at, tags, cover, outBase,
+            f => Report(JobPhase.Converting, f * 100, ConvertLabel(target)), ct);
+        if (!File.Exists(file)) throw new EngineException(L.T("La conversione non ha prodotto alcun file."));
+        return (file, Path.GetExtension(file).TrimStart('.'), description);
     }
 
     private static string ConvertLabel(Target t) => t switch

@@ -44,6 +44,13 @@ public partial class SettingsPage : UserControl, IPage
                 if (Vm is not { } vm || vm.SearchServices is not { } sites || from >= sites.Count) return;
                 vm.MoveService(sites[from].Name, TouchReorder.MoveIndex(from, onto, after));
             });
+#if IOS_APP
+        // The iPhone: iOS chooses the output (Control Center), the updates of the app come through SideStore (yt-dlp's
+        // still from here), the music is in the Files app.
+        foreach (var c in new Control[] { OutputRow, OutputLine, AutoUpdateSwitch })
+            c.IsVisible = false;
+        MusicDirHint.Text = L.T("Nell'app File: Sul mio iPhone › Ultimate MP3 Player › Music. Se disinstalli l'app, la musica viene cancellata.");
+#endif
     }
 
     // The logins' row follows them (only while the page is in the window: a page let go of isn't kept alive by them).
@@ -208,8 +215,11 @@ public partial class SettingsPage : UserControl, IPage
     private void Choose_Click(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm || sender is not Control { Tag: string what }) return;
+        // (headphones or a speaker connected since the page opened)
+        if (what == "OutputDevice") vm.RefreshOutputDevices();
         (string Title, List<Choice> Items, Choice? Current, Action<Choice> Set)? c = what switch
         {
+            "OutputDevice" => (L.T("Uscita audio"), vm.OutputDevices, vm.OutputDevice, x => vm.OutputDevice = x),
             "Language" => (L.T("Lingua"), vm.Languages, vm.Language, x => vm.Language = x),
             "StartupProfile" => (L.T("All'avvio"), vm.StartupChoices, vm.StartupProfile, x => vm.StartupProfile = x),
             "RadioSource" => (L.T("Da dove arrivano i brani simili"), vm.RadioSourceChoices, vm.RadioSource, x => vm.RadioSource = x),

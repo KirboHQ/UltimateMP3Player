@@ -740,7 +740,8 @@ public static partial class L
         ["Nessuna impostazione corrisponde alla ricerca."] = "No setting matches the search.",
         ["tema colori lingua inglese italiano animazioni scorrimento rotella mouse copertina 3d"] = "theme colors language english italian animations scrolling mouse wheel cover 3d parallax",
         ["equalizzatore eq bassi medi alti frequenze preset suono audio"] = "equalizer eq bass mids treble frequencies preset sound audio",
-        ["riproduzione volume dissolvenza sfumatura normalizza"] = "playback volume crossfade fade normalize",
+        ["riproduzione volume dissolvenza sfumatura normalizza uscita dispositivo casse cuffie altoparlanti"] =
+            "playback volume crossfade fade normalize output device speakers headphones",
         ["download formato mp3 m4a opus flac qualità video cookie browser chrome firefox edge cartella musica"] = "downloads format mp3 m4a opus flac quality video cookies browser chrome firefox edge folder music",
         ["tag etichette colore colori"] = "tags labels color colors",
         ["artista artisti rinomina nomi modifica"] = "artist artists rename names edit",
@@ -1872,5 +1873,25 @@ public static partial class L
             "The songs are downloaded again from their link in this quality and take the place of their current files: cover, lyrics, statistics and playlists stay.",
         ["Nel cloud: la qualità con cui li ascolti dal loro link, e con cui verranno salvati sul dispositivo."] =
             "In the cloud: the quality you hear them with from their link, and the one they'll be saved on the device with.",
+        ["Uscita audio"] = "Audio output",
+        ["Predefinita del sistema"] = "System default",
+        ["non collegata"] = "not connected",
+        ["uscita dispositivo cuffie altoparlante cassa bluetooth usb"] = "output device headphones speaker bluetooth usb",
+        ["Altoparlante del telefono"] = "Phone speaker",
+        ["Cuffie con il filo"] = "Wired headphones",
+        ["Uscita di linea"] = "Line out",
+        ["Base con altoparlante"] = "Speaker dock",
+        ["Apparecchio acustico"] = "Hearing aid",
+        ["Su iPhone si scarica solo l'audio."] = "On iPhone only the audio is downloaded.",
+        ["Questa versione dell'app non contiene i motori di download."] = "This version of the app doesn't include the download engines.",
+        ["Python non si avvia."] = "Python doesn't start.",
+        ["Errore interno di Python."] = "Python internal error.",
+        ["Formato non supportato su iPhone: {0}"] = "Format not supported on iPhone: {0}",
+        ["Questa versione dell'app non sa creare MP3: scegli «Originale» come qualità dell'audio."] =
+            "This version of the app can't make MP3s: choose “Original” as the audio quality.",
+        ["Questo formato non si può ascoltare su iPhone ({0})."] = "This format can't be played on iPhone ({0}).",
+        ["È uscita la versione {0}: aggiornala da SideStore (Le mie app › Aggiorna)."] = "Version {0} is out: update it from SideStore (My Apps › Update).",
+        ["Nell'app File: Sul mio iPhone › Ultimate MP3 Player › Music. Se disinstalli l'app, la musica viene cancellata."] =
+            "In the Files app: On My iPhone › Ultimate MP3 Player › Music. If you uninstall the app, the music is deleted.",
     };
 }

@@ -378,7 +378,7 @@ public sealed class DownloadJobViewModel : Observable
                 }
             }
             ForbiddenAt = ex.Forbidden ? DateTime.Now : null;
-#if ANDROID_APP
+#if ANDROID_APP || IOS_APP
             // The phone's logins are per site: signed in somewhere else doesn't help this one.
             _loginFailure = ex.NeedsLogin;
 #else
@@ -885,7 +885,7 @@ public sealed class LinkViewModel : Observable
                         (it.Source == SourceKind.Search ? lib.FindSimilar(it.Title, it.Artist, it.Duration) : null);
             return new LinkItemViewModel(it, i + 1, known != null, this);
         }).ToList();
-        HasVideo = playable.Any(i => i.Kind == MediaKind.Video);
+        HasVideo = Engines.VideoDownloads && playable.Any(i => i.Kind == MediaKind.Video);
         _withVideo = HasVideo && !main.Host.Settings.PreferAudioOnly;
         _saveAudio = main.Host.Settings.SaveLinkAudio;
         _audio = QualityChoices.Pick(AudioChoices, main.Host.Settings.AudioFormat);
@@ -1246,7 +1246,7 @@ public sealed class DownloadsPageViewModel : Observable
         catch (OperationCanceledException) { }
         catch (EngineException ex) when (!cts.IsCancellationRequested)
         {
-#if ANDROID_APP
+#if ANDROID_APP || IOS_APP
             // The phone has no browser to lend its cookies: the logins made inside the app (Settings › Download).
             bool logins = s.CookiesBrowserOrNull != null;
             SuggestCookies = ex.NeedsLogin && !logins;

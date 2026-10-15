@@ -432,7 +432,7 @@ public sealed class MainViewModel : Observable
             saved ? L.T("Scarica di nuovo") : L.T("Qualità di ascolto"),
             tracks.Count == 1 ? first.Title + (string.IsNullOrWhiteSpace(first.Artist) ? "" : " · " + first.Artist) : L.F("{0} brani", tracks.Count),
             Quality.For(first, s.AudioFormat), Quality.VideoFor(first, s.VideoMaxRes),
-            canVideo: saved && tracks.Any(t => t.HasVideo || VideoFinder.OwnVideo(t) != null), withVideo: tracks.Any(t => t.HasVideo), saved);
+            canVideo: Engines.VideoDownloads && saved && tracks.Any(t => t.HasVideo || VideoFinder.OwnVideo(t) != null), withVideo: tracks.Any(t => t.HasVideo), saved);
         if (!await Dialogs.QualityAsync(plan)) return;
         string? audio = Equals(plan.Audio.Value, s.AudioFormat) ? null : plan.Audio.Value as string;
         int? video = Equals(plan.Video.Value, s.VideoMaxRes) ? null : plan.Video.Value as int? ?? 0;
@@ -1343,7 +1343,7 @@ public sealed class MainViewModel : Observable
         {
             try
             {
-                if (Engines.Missing().Contains(Path.GetFileName(Engines.Ffmpeg))) await Host.EnsureEnginesAsync();
+                if (AudioAnalysis.Native == null && Engines.Missing().Contains(Path.GetFileName(Engines.Ffmpeg))) await Host.EnsureEnginesAsync();
                 var t = await Task.Run(() => Importer.ImportAsync(Library, f, CancellationToken.None));
                 first ??= t;
                 ok++;
@@ -1449,7 +1449,7 @@ public sealed class MainViewModel : Observable
     // A web page in the default browser.
     public static void OpenUrl(string url)
     {
-#if ANDROID_APP
+#if ANDROID_APP || IOS_APP
         Platform.Files.OpenUrl(url);
 #else
         try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }

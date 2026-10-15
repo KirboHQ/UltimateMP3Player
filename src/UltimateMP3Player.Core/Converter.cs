@@ -39,6 +39,7 @@ public static class Ffmpeg
 
     public static async Task<ProbeInfo> ProbeAsync(string file, CancellationToken ct, bool countPackets = false)
     {
+        if (AudioAnalysis.Native is { } native) return await native.ProbeAsync(file, ct);
         var args = new List<string> { "-v", "error", "-print_format", "json", "-show_format", "-show_streams" };
         if (countPackets) args.Add("-count_packets");
         args.Add(file);
@@ -119,6 +120,7 @@ public static class Ffmpeg
     // Picture to cover-art JPEG, optionally cropped square.
     public static async Task<string?> MakeCoverAsync(byte[] data, string dir, bool square, int maxSize, CancellationToken ct)
     {
+        if (AudioAnalysis.Native is { } native) return await native.MakeCoverAsync(data, dir, square, maxSize, ct);
         var src = Path.Combine(dir, "cover.src");
         var dst = Path.Combine(dir, "cover.jpg");
         await File.WriteAllBytesAsync(src, data, ct);

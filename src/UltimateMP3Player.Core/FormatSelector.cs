@@ -126,9 +126,17 @@ public static class FormatSelector
 
     private static readonly string[] BestAudioOrder = { "flac", "alac", "pcm", "opus", "vorbis", "aac", "mp3" };
 
+    // The iPhone decodes only some formats itself (no ffmpeg there): those, when there are any.
+    private static List<YtFormat> Decodable(List<YtFormat> formats)
+    {
+        if (AudioAnalysis.Native is not { } native) return formats;
+        var ok = formats.Where(f => native.CanDecode(Codecs.Family(f.ACodec))).ToList();
+        return ok.Count > 0 ? ok : formats;
+    }
+
     private static YtFormat? BestAudioOnly(YtInfo info, string[] codecOrder)
     {
-        var auds = AudioOnlyFormats(info).ToList();
+        var auds = Decodable(AudioOnlyFormats(info).ToList());
         if (auds.Count == 0) return null;
         var nonDrc = auds.Where(a => !a.IsDrc).ToList();
         if (nonDrc.Count > 0) auds = nonDrc;
@@ -167,6 +175,7 @@ public static class FormatSelector
         var combined = info.Formats.Where(f => f.HasVideo && f.HasAudio && !f.IsStoryboard).ToList();
         if (combined.Count == 0) combined = info.Formats.Where(f => !f.IsStoryboard).ToList();
         if (combined.Count == 0) return null;
+        combined = Decodable(combined);
         var best = combined
             .OrderByDescending(f => f.Abr ?? 0)
             .ThenBy(f => f.IsM3u8 ? 1 : 0)

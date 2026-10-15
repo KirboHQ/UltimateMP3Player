@@ -39,6 +39,10 @@ public partial class App : Application
                     Spinners.Register();
                     RequeryAfterInput();
                     Host = new AppHost();
+#if IOS_APP
+                    // In front or away, files and links opened with the app, a call or the headphones taken off.
+                    Lifecycle.Hook(this);
+#endif
                 }
                 // The screen (again, if the app was closed while the music played on).
                 var view = Host.View ?? new MainView(Host);
@@ -77,7 +81,7 @@ public partial class App : Application
         Avalonia.Input.InputElement.KeyUpEvent.AddClassHandler<TopLevel>((_, _) => Requery(), Avalonia.Interactivity.RoutingStrategies.Bubble, true);
     }
 
-    // Leftovers of downloads interrupted (the app closed by Android halfway).
+    // Leftovers of downloads interrupted (the app closed by the system halfway).
     private static void CleanTemp()
     {
         try
@@ -96,13 +100,20 @@ public partial class App : Application
         catch { }
     }
 
+    // Where Log writes: the data folder, or (the iPhone) a folder the Files app shows.
+    public static string? LogFile { get; set; }
+
     public static void Log(Exception ex)
     {
         try
         {
-            var log = Path.Combine(AppPaths.DataDir, "errori.log");
+            var log = LogFile ?? Path.Combine(AppPaths.DataDir, "errori.log");
             File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
+#if ANDROID_APP
             Android.Util.Log.Error("UltimateMP3Player", ex.ToString());
+#else
+            Console.Error.WriteLine(ex);
+#endif
         }
         catch { }
     }

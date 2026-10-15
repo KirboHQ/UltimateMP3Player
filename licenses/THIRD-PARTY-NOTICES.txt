@@ -18,9 +18,9 @@ ENGINES (separate programs the app starts)
 
 They aren't part of Ultimate MP3 Player's code: the app runs them as programs of their own. Windows: in the "engines"
 folder of the installation. Linux and macOS: not in the package, the app downloads them from their projects on its
-first start. Android: inside the app (see "Android" below).
+first start. Android and iPhone: inside the app (see "Android" and "iPhone" below).
 
-yt-dlp (Windows, Android)
+yt-dlp (Windows, Android, iPhone)
   License: Unlicense (public domain), text at the end.
   Source: https://github.com/yt-dlp/yt-dlp (each version is a tag there; "yt-dlp --version" shows the one you have).
   yt-dlp.exe contains Python and other libraries:
@@ -124,6 +124,31 @@ AndroidX, Kotlin, kotlinx.coroutines, Guava ListenableFuture and JetBrains annot
   Source: https://android.googlesource.com/platform/frameworks/support, https://github.com/JetBrains/kotlin,
   https://github.com/Kotlin/kotlinx.coroutines, https://github.com/google/guava,
   https://github.com/JetBrains/java-annotations, https://github.com/dotnet/android-libraries
+
+
+IPHONE
+------
+
+Python 3.15 (Python.framework, its standard library in python/lib, its binary modules as frameworks)
+  The official build for iOS from python.org (python-3.15.0-iOS-XCframework.tar.gz), with the libraries it's built with
+  (OpenSSL, libffi, SQLite, zlib, bzip2, XZ, mpdecimal, Expat and others).
+  License: PSF License, Python-LICENSE.txt; the notices of the libraries inside it in python/lib/python3.15/LICENSE.txt.
+  Source: https://www.python.org/downloads/release/python-3150/ and https://github.com/python/cpython (tag v3.15.0).
+
+yt-dlp (python/app/yt-dlp, run by the app's Python) and yt-dlp-ejs (inside it)
+  License: Unlicense (public domain), text at the end.
+  Source: https://github.com/yt-dlp/yt-dlp and https://github.com/yt-dlp/ejs. yt-dlp-ejs bundles meriyah (ISC) and
+  astring (MIT), their notices in its source.
+
+certifi (python/app/certifi): Mozilla's root certificates for Python
+  License: Mozilla Public License 2.0, MPL-2.0.txt.
+  Source: https://github.com/certifi/python-certifi
+
+LAME 3.100 (Frameworks/mp3lame.framework): the MP3 encoder
+  License: GNU Lesser General Public License version 2 or later, LGPL-2.1.txt. Copyright (c) 1999-2017 the LAME
+  developers (see the source).
+  Source: https://lame.sourceforge.io (lame-3.100.tar.gz), built by tools/ios-deps.sh in this repository. It's a separate
+  library inside the app: you can replace it with a modified version built the same way.
 
 
 LICENSE TEXTS

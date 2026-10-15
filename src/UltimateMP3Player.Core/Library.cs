@@ -100,6 +100,12 @@ public sealed class Library
     {
         var file = JsonStore.Load<LibraryFile>(AppPaths.LibraryFile);
         foreach (var t in file.Tracks) t.Path ??= "";
+        if (AppPaths.MovedPath is { } moved)
+            foreach (var t in file.Tracks)
+            {
+                if (t.Path.Length > 0) t.Path = moved(t.Path);
+                if (t.VideoPath != null) t.VideoPath = moved(t.VideoPath);
+            }
         // A song in the cloud has no file, only its link.
         var tracks = file.Tracks.Where(t => !string.IsNullOrEmpty(t.Id) && (t.IsSaved || t.HasLink))
             .GroupBy(t => t.Id).Select(g => g.First()).ToList();

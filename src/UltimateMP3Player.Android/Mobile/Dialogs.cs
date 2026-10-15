@@ -195,7 +195,15 @@ public static partial class Dialogs
     public static async Task<string[]?> PickFilesAsync(string title, bool multiple, params (string Name, IEnumerable<string> Extensions)[] filters)
     {
         if (Storage is not { } storage) return null;
-        var types = filters.Select(f => new FilePickerFileType(f.Name) { Patterns = f.Extensions.Select(e => "*" + e).ToList(), MimeTypes = Mimes(f.Extensions) }).ToList();
+        var types = filters.Select(f => new FilePickerFileType(f.Name)
+        {
+            Patterns = f.Extensions.Select(e => "*" + e).ToList(),
+            MimeTypes = Mimes(f.Extensions),
+#if IOS_APP
+            // The iPhone's picker goes by type (public.mp3...), not by extension.
+            AppleUniformTypeIdentifiers = Platform.Files.TypesOf(f.Extensions),
+#endif
+        }).ToList();
         var files = await storage.OpenFilePickerAsync(new FilePickerOpenOptions { Title = title, AllowMultiple = multiple, FileTypeFilter = types });
         if (files.Count == 0) return null;
         bool songs = files.All(f => IsAudio(f.Name));
@@ -245,7 +253,11 @@ public static partial class Dialogs
         var list = new HashSet<string>();
         foreach (var e in extensions)
         {
+#if ANDROID_APP
             var mime = Android.Webkit.MimeTypeMap.Singleton?.GetMimeTypeFromExtension(e.TrimStart('.'));
+#else
+            string? mime = null;
+#endif
             if (mime != null) list.Add(mime);
             else if (e == Pack.Extension) list.Add("application/octet-stream");
         }

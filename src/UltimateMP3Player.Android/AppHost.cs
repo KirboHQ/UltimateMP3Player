@@ -15,6 +15,7 @@ namespace UltimateMP3Player;
 
 // Lives as long as the app's process (the Windows app's AppHost, same members): settings, library, audio, downloads, the
 // player's notification. The screen (MainView) can come and go (the app closed while the music plays), this stays.
+// The iPhone app uses this file too: the few Android-only lines are marked ANDROID_APP.
 public sealed class AppHost : Observable
 {
     private readonly DispatcherTimer _updateTimer;
@@ -41,7 +42,7 @@ public sealed class AppHost : Observable
         }
         Ui.Animations = Settings.Animations;
 
-        Audio = new AudioEngine(System.Windows.Application.Current.Dispatcher);
+        Audio = new AudioEngine(System.Windows.Application.Current.Dispatcher) { OutputDevice = Settings.OutputDevice };
         Downloads = new DownloadQueue(this);
         Downloads.PropertyChanged += (_, e) =>
         {
@@ -133,7 +134,9 @@ public sealed class AppHost : Observable
         Settings.Language = code;
         Settings.Save();
         L.English = code == "en";
+#if ANDROID_APP
         PlaybackService.CreateChannel(Android.App.Application.Context);
+#endif
         Reload();
     }
 
@@ -212,8 +215,10 @@ public sealed class AppHost : Observable
     {
         if (_visible == visible) return;
         _visible = visible;
+#if ANDROID_APP
         // Away, the sound waits in a much bigger buffer (first of all: it fills while the rest happens).
         TrackOut.Background = !visible;
+#endif
         Ui.Hidden = !visible;
         Session?.Player.SetVisible(visible);
         _awayTimer?.Dispose();
@@ -309,9 +314,13 @@ public sealed class AppHost : Observable
 
     private void OnDownloadsChanged()
     {
+#if ANDROID_APP
         var running = Downloads.Jobs.Where(j => j.IsRunning).ToList();
         double? pct = running.Count == 1 && !running[0].Indeterminate ? running[0].Percent : null;
         DownloadService.Update(Downloads.HasActive, Downloads.Summary, pct);
+#elif IOS_APP
+        Background.Downloading(Downloads.HasActive);
+#endif
     }
 
     // ------------------------------------------------------------------ updates

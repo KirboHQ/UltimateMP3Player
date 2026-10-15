@@ -72,9 +72,14 @@ public static class FolderExport
     private static async Task<string> ToMp3Async(Track t, string source, string dir, Action<double> progress, CancellationToken ct)
     {
         var probe = await Ffmpeg.ProbeAsync(source, ct);
-        var meta = Ffmpeg.WriteMetadata(dir, new Tags(t.Title, t.Artist, t.Album, t.Year, null, null));
+        var tags = new Tags(t.Title, t.Artist, t.Album, t.Year, null, null);
         var cover = t.HasCover && File.Exists(AppPaths.TrackCover(t.Id)) ? AppPaths.TrackCover(t.Id) : null;
-        var plan = Ffmpeg.ForAudio(source, probe, new AudioTarget(Quality.Mp3, null, null, null, 16), meta, cover, Path.Combine(dir, "song"));
+        var target = new AudioTarget(Quality.Mp3, null, null, null, 16);
+        // (the iPhone, without ffmpeg: the system's decoders and LAME)
+        if (AudioAnalysis.Native is { } native)
+            return (await native.ConvertAudioAsync(source, probe, target, tags, cover, Path.Combine(dir, "song"), progress, ct)).File;
+        var meta = Ffmpeg.WriteMetadata(dir, tags);
+        var plan = Ffmpeg.ForAudio(source, probe, target, meta, cover, Path.Combine(dir, "song"));
         await Ffmpeg.RunAsync(plan.Args, probe.Duration ?? t.Duration, progress, ct);
         var output = plan.Args[^1];
         if (!File.Exists(output)) throw new EngineException(L.T("La conversione non ha prodotto alcun file."));

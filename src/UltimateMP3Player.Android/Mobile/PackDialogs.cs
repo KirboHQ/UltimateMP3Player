@@ -583,7 +583,7 @@ public static class PackDialogs
             var report = Reporter(bar, status);
             try
             {
-                if (Engines.Missing().Contains(Path.GetFileName(Engines.Ffmpeg))) await ensureEngines();
+                if (AudioAnalysis.Native == null && Engines.Missing().Contains(Path.GetFileName(Engines.Ffmpeg))) await ensureEngines();
                 outcome = await Task.Run(() => PackImporter.RunAsync(pack, plan, lib, profile, musicDir, report, cts.Token));
                 busy = false;
                 sheets.Close(body);

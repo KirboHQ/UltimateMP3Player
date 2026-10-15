@@ -34,6 +34,10 @@ public static class AppPaths
     // Android: the app's own music folder (set by the app before the settings are read).
     public static string? MusicDirOverride { get; set; }
 
+    // iPhone: the app's folder can get another name with an update, so a path saved before is moved under today's one
+    // (set by the app as it starts; null elsewhere).
+    public static Func<string, string>? MovedPath { get; set; }
+
     public static string TrackCover(string trackId) => Path.Combine(CoversDir, trackId + ".jpg");
 
     private static string Dir(string d)
@@ -182,6 +186,10 @@ public sealed class AppSettings
     public bool SmoothScroll { get; set; } = true;
     public bool CoverTilt { get; set; } = true;
     public bool DiscordPresence { get; set; } = true;
+    // The output the music plays on (an id of AudioPlatform.OutputDevices: the endpoint's on Windows, the name on Linux
+    // and macOS, a kind and a name on the phone), null = the system's default; its name, shown while it isn't connected.
+    public string? OutputDevice { get; set; }
+    public string? OutputDeviceName { get; set; }
     // "Listen together": who this installation is in rooms (kept, so a kicked person stays out),
     // how many songs of rooms are kept, the last choices when creating a room.
     public string? TogetherId { get; set; }

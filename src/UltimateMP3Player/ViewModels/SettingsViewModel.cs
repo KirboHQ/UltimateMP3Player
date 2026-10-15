@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using UltimateMP3Player.Audio;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.Core.Together;
 using UltimateMP3Player.Services;
@@ -243,6 +244,7 @@ public sealed class SettingsViewModel : Observable
         OpenRepoCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.RepoUrl!), () => hasRepo);
         BuildBrowsers();
         RefreshStartupChoices();
+        RefreshOutputDevices();
         _ = RefreshEngineInfo();
     }
 
@@ -388,6 +390,36 @@ public sealed class SettingsViewModel : Observable
     }
 
     public string BpmMatchText => $"{_main.Profile.Data.BpmMatchSeconds} s";
+
+    // ------------------------------------------------------------------ output device (app: it belongs to this device)
+
+    public List<Choice> OutputDevices { get; private set; } = new();
+
+    // The outputs there now (read again every time the page opens); the chosen one even when it isn't connected, the
+    // music goes to the default one until it's back.
+    public void RefreshOutputDevices()
+    {
+        var list = new List<Choice> { new(L.T("Predefinita del sistema"), null) };
+        list.AddRange(AudioPlatform.OutputDevices().Select(d => new Choice(d.Name, d.Id)));
+        if (S.OutputDevice is { } id && list.All(c => !Equals(c.Value, id)))
+            list.Add(new Choice(S.OutputDeviceName ?? id, id, L.T("non collegata")));
+        OutputDevices = list;
+        OnChanged(nameof(OutputDevices), nameof(OutputDevice));
+    }
+
+    public Choice OutputDevice
+    {
+        get => OutputDevices.FirstOrDefault(c => Equals(c.Value, S.OutputDevice)) ?? OutputDevices[0];
+        set
+        {
+            if (value == null || Equals(value.Value, S.OutputDevice)) return;
+            S.OutputDevice = value.Value as string;
+            S.OutputDeviceName = S.OutputDevice == null ? null : value.Label;
+            Save();
+            _main.Host.Audio.OutputDevice = S.OutputDevice;
+            OnChanged();
+        }
+    }
 
     // ------------------------------------------------------------------ online search (app)
 
@@ -733,6 +765,7 @@ public sealed class SettingsViewModel : Observable
     public void Refresh()
     {
         RefreshStartupChoices();
+        RefreshOutputDevices();
         OnChanged(nameof(MusicDir), nameof(Themes), nameof(Artists), nameof(Language), nameof(TogetherCacheText), nameof(LyricsStats), nameof(StatsSummary),
             nameof(TopTracks));
     }
