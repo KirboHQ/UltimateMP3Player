@@ -32,6 +32,7 @@ public static class AndroidEngines
             Python = Path.Combine(NativeDir, "libpython.so"),
             JsRuntime = "quickjs:" + Path.Combine(NativeDir, "libqjs.so"),
             Install = InstallAsync,
+            YtDlpArgs = YtDlpArgs,
             CrashHint = () => Services.Updater.WrongPackage
                 ? L.T("Questa è la versione dell'app per telefoni (ARM): su questo dispositivo x86_64 i motori non partono. Installa quella giusta da Impostazioni › Aggiornamenti › Controlla.")
                 : null,
@@ -45,8 +46,44 @@ public static class AndroidEngines
             if (!Directory.Exists(Bin)) return;
             if (Stale("libpython.zip.so", "python") || Stale("libffmpeg.zip.so", "ffmpeg")) File.Delete(Path.Combine(Bin, "ffmpeg"));
             else Links();
+            // yt-dlp's versions before (nothing runs yet).
+            var lib = Path.Combine(Bin, "yt-dlp-lib");
+            if (Directory.Exists(lib))
+                foreach (var dir in Directory.GetDirectories(lib))
+                    if (dir != YtDlpLib()) Directory.Delete(dir, true);
         }
         catch { }
+    }
+
+    // yt-dlp run from its own copy unpacked once per version, where Python keeps the compiled code, as on the iPhone: from
+    // the zip it compiles yt-dlp again at every run, seconds on a phone. Python unpacks it (the zip starts with a line of
+    // script, which .NET's zip can't read); -U updates the zip itself.
+    private const string Boot = """
+        import os, shutil, sys, zipfile
+        z, d = sys.argv[1], sys.argv[2]
+        if not os.path.isdir(d):
+            p = f'{d}.{os.getpid()}'
+            shutil.rmtree(p, True)
+            zipfile.ZipFile(z).extractall(p)
+            try:
+                os.rename(p, d)
+            except OSError:
+                shutil.rmtree(p, True)
+        sys.path.insert(0, d)
+        sys.argv = [z] + sys.argv[3:]
+        import yt_dlp
+        yt_dlp.main()
+        """;
+
+    private static IEnumerable<string> YtDlpArgs(IReadOnlyList<string> args)
+        => args is ["-U"] || !File.Exists(Engines.YtDlp) ? args.Prepend(Engines.YtDlp)
+            : new[] { "-c", Boot, Engines.YtDlp, YtDlpLib() }.Concat(args);
+
+    // The folder of this version of the zip (its size and date).
+    private static string YtDlpLib()
+    {
+        var zip = new FileInfo(Engines.YtDlp);
+        return Path.Combine(Bin, "yt-dlp-lib", $"{zip.Length}-{zip.LastWriteTimeUtc.Ticks}");
     }
 
     private static string Stamp(string zipName)

@@ -203,7 +203,7 @@ public partial class PlayerPage : UserControl
         if (!_open) return;
         var img = _coverTrack?.Cover300 as Bitmap;
         CoverImage.Source = CoverArt.Bake(img);
-        Glow.Source = CoverArt.Glow(img);
+        Glow.Source = CoverGlow.Bake(img, true);
     }
 
     // The cover as big as the stage allows, square.

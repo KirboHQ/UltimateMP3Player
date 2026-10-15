@@ -12,7 +12,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>3.7.2</Version>
+    <Version>3.7.3</Version>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -62,6 +62,7 @@
     <Compile Include="..\UltimateMP3Player\Services\DiscordPresence.cs" Link="Shared\Services\DiscordPresence.cs" />
     <Compile Include="..\UltimateMP3Player\Services\LyricsService.cs" Link="Shared\Services\LyricsService.cs" />
     <Compile Include="..\UltimateMP3Player\Services\SingleInstance.cs" Link="Shared\Services\SingleInstance.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\Menus.Shared.cs" Link="Shared\Views\Menus.Shared.cs" />
   </ItemGroup>
 
   <ItemGroup>

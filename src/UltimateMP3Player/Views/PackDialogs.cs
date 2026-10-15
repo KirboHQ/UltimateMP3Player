@@ -179,21 +179,7 @@ public static class PackDialogs
                 : L.T("Pacchetto leggerissimo, perfetto da mandare su Discord: chi lo apre riscarica i brani dai loro link. Quelli senza link (file tuoi, mix del DJ) viaggiano comunque come file.");
             videoBox.Visibility = e.Music && songs.Any(t => t.HasVideo) ? Visibility.Visible : Visibility.Collapsed;
             ok.IsEnabled = folder.IsEnabled = !e.IsEmpty;
-            if (e.IsEmpty)
-            {
-                line1.Text = L.T("Scegli almeno una playlist, un tag o tutta la libreria.");
-                line2.Text = "";
-                return;
-            }
-            var parts = new List<string> { L.Count(songs.Count, "1 brano", "{0} brani") };
-            if (e.Playlists.Count > 0) parts.Add(L.Count(e.Playlists.Count, "1 playlist", "{0} playlist"));
-            if (e.Tags.Count > 0) parts.Add(L.Count(e.Tags.Count, "1 tag", "{0} tag"));
-            line1.Text = string.Join(" · ", parts);
-            var size = PackWriter.EstimateSize(songs, e, SizeOf);
-            var more = new List<string> { L.F("circa {0}", Text.Size(Math.Max(size, 1024))) };
-            int files = songs.Count(t => !Pack.HasLink(t));
-            if (!e.Music && files > 0) more.Add(L.Count(files, "1 brano senza link viaggia come file", "{0} brani senza link viaggiano come file"));
-            line2.Text = string.Join(" · ", more);
+            (line1.Text, line2.Text) = PackWriter.Summary(songs, e, SizeOf);
         }
         changed = Update;
 
@@ -607,21 +593,7 @@ public static class PackDialogs
             int Count(PackSongState s) => rows.Count(r => r.IsIncluded && r.Song.State == s);
             int add = Count(PackSongState.New), get = Count(PackSongState.Download), have = Count(PackSongState.InLibrary), miss = Count(PackSongState.Missing);
             ok.IsEnabled = chosen.Count > 0 || plan.Playlists.Count > 0 || plan.Tags.Count > 0;
-            if (!ok.IsEnabled)
-            {
-                line1.Text = L.T("Scegli cosa importare.");
-                line2.Text = "";
-                return;
-            }
-            line1.Text = add + get == 0
-                ? (chosen.Count > 0 ? L.T("Nessun brano da copiare: li hai già tutti") : L.T("Nessun brano da aggiungere"))
-                : L.Count(add + get, "Verrà aggiunto 1 brano", "Verranno aggiunti {0} brani");
-            var more = new List<string>();
-            if (get > 0) more.Add(cloud ? L.F("{0} nel cloud, senza scaricarli", get) : L.F("{0} da scaricare", get));
-            if (have > 0) more.Add(L.F("{0} già nella libreria", have));
-            if (miss > 0) more.Add(L.Count(miss, "1 non disponibile", "{0} non disponibili"));
-            if (add > 0) more.Add(L.F("nella cartella {0}", musicDir));
-            line2.Text = string.Join(" · ", more);
+            (line1.Text, line2.Text) = PackImporter.Summary(ok.IsEnabled, chosen.Count, add, get, have, miss, cloud, musicDir);
         }
         changed = Update;
 

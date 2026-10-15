@@ -60,6 +60,8 @@ public static class TrackDownloader
             }
             finally
             {
+                // (the analysis' text, when nothing was downloaded with it)
+                if (item.Info != null) item.Info.Json = null;
                 lock (InFlight)
                     foreach (var k in keys)
                         if (InFlight.TryGetValue(k, out var t) && t == mine.Task) InFlight.Remove(k);

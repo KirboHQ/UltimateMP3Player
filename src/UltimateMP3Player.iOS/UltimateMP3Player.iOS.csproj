@@ -22,9 +22,9 @@
     <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
     <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
     <!-- Keep equal to the other projects; the build number as on Android (3.7.2 → 30702). -->
-    <Version>3.7.2</Version>
-    <ApplicationDisplayVersion>3.7.2</ApplicationDisplayVersion>
-    <ApplicationVersion>30702</ApplicationVersion>
+    <Version>3.7.3</Version>
+    <ApplicationDisplayVersion>3.7.3</ApplicationDisplayVersion>
+    <ApplicationVersion>30703</ApplicationVersion>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -97,6 +97,7 @@
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\LyricsCaptions.cs" Link="Shared\Avalonia\LyricsCaptions.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\VideoView.cs" Link="Shared\Avalonia\VideoView.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\CoverSheen.cs" Link="Shared\Avalonia\CoverSheen.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\CoverGlow.cs" Link="Shared\Avalonia\CoverGlow.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\EqCurve.cs" Link="Shared\Avalonia\EqCurve.cs" />
     <AvaloniaXaml Include="..\UltimateMP3Player.Avalonia\Theme.axaml" Link="Theme.axaml" />
   </ItemGroup>
@@ -107,6 +108,7 @@
     <Compile Include="..\UltimateMP3Player.Android\App.axaml.cs" Link="App.axaml.cs" />
     <Compile Include="..\UltimateMP3Player.Android\AppHost.cs" Link="AppHost.cs" />
     <Compile Include="..\UltimateMP3Player.Android\Platform\Stubs.cs" Link="Shared\Phone\Stubs.cs" />
+    <Compile Include="..\UltimateMP3Player.Android\Platform\SiteLogins.Shared.cs" Link="Shared\Phone\SiteLogins.Shared.cs" />
     <AvaloniaXaml Include="..\UltimateMP3Player.Android\Views\*.axaml" Link="Views\%(Filename)%(Extension)" />
     <Compile Include="..\UltimateMP3Player.Android\Views\*.cs" Link="Views\%(Filename)%(Extension)" />
     <AvaloniaXaml Include="..\UltimateMP3Player.Android\Mobile\*.axaml" Link="Mobile\%(Filename)%(Extension)" />

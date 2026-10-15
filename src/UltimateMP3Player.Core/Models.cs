@@ -92,6 +92,8 @@ public sealed class YtInfo
     public List<string> Thumbnails { get; init; } = new();
     public bool IsLive { get; init; }
     public List<YtFormat> Formats { get; init; } = new();
+    // The whole "yt-dlp -J" text, until the download takes it (--load-info-json: the page isn't read a second time).
+    public string? Json { get; set; }
 
     public bool HasVideo => Formats.Any(f => f.HasVideo && !f.IsStoryboard);
 

@@ -43,11 +43,11 @@ public static class YtDlp
         ProcResult r;
         try { r = await ProcRunner.RunAsync(Engines.YtDlp, args, ct: ct, timeout: TimeSpan.FromMinutes(5)); }
         finally { CookieFile.Delete(copy); }
-        var json = r.StdOut.Trim();
-        int start = json.IndexOf('{');
+        // (read in place: a video's analysis is up to a megabyte of text)
+        int start = r.StdOut.IndexOf('{');
         if (start >= 0)
         {
-            try { return JsonDocument.Parse(json[start..]); }
+            try { return JsonDocument.Parse(r.StdOut.AsMemory(start)); }
             catch (JsonException) { }
         }
         throw ErrorText.FromEngine("yt-dlp", r.StdErr, r.ExitCode);
@@ -59,16 +59,17 @@ public static class YtDlp
         var root = doc.RootElement;
         if (root.Str("_type") is "playlist" or "multi_video")
         {
-            var first = root.Arr("entries").FirstOrDefault(e => e.ValueKind == JsonValueKind.Object);
-            if (first.ValueKind != JsonValueKind.Object) throw new EngineException(L.T("Nessun contenuto trovato.")) { NoMedia = true };
-            return YtInfo.Parse(first);
+            root = root.Arr("entries").FirstOrDefault(e => e.ValueKind == JsonValueKind.Object);
+            if (root.ValueKind != JsonValueKind.Object) throw new EngineException(L.T("Nessun contenuto trovato.")) { NoMedia = true };
         }
-        return YtInfo.Parse(root);
+        var info = YtInfo.Parse(root);
+        info.Json = root.GetRawText();
+        return info;
     }
 
     // Downloads a format spec into dir, returns the file.
     public static async Task<string> DownloadAsync(string url, string spec, bool merge, string dir, string? cookies,
-        Action<DlProgress> progress, CancellationToken ct, IEnumerable<string>? extra = null)
+        Action<DlProgress> progress, CancellationToken ct, IEnumerable<string>? extra = null, string? infoFile = null)
     {
         var copy = CookieFile.Copy(cookies);
         var args = BaseArgs(cookies, copy);
@@ -83,8 +84,10 @@ public static class YtDlp
         });
         if (merge) { args.Add("--merge-output-format"); args.Add("mkv"); }
         if (extra != null) args.AddRange(extra);
-        args.Add("--");
-        args.Add(url);
+        // The analysis just made (GetInfoAsync) instead of the page again: half the work. yt-dlp goes back to the link
+        // itself when that fails.
+        if (infoFile != null) { args.Add("--load-info-json"); args.Add(infoFile); }
+        else { args.Add("--"); args.Add(url); }
 
         ProcResult r;
         try

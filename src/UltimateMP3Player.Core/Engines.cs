@@ -18,6 +18,8 @@ public sealed class EngineHost
     public Func<string?>? CrashHint { get; init; }
     // ffmpeg and ffprobe come with the engines (not on the iPhone).
     public bool Ffmpeg { get; init; } = true;
+    // Python's arguments for yt-dlp's (null: the zip's path before them).
+    public Func<IReadOnlyList<string>, IEnumerable<string>>? YtDlpArgs { get; init; }
 }
 
 // External programs, kept in "engines" next to the exe (on Linux and macOS next to the data: the app's own folder,
@@ -218,7 +220,8 @@ public static class ProcRunner
         string name = exe;
         if (Engines.Host is { } host && exe == Engines.YtDlp)
         {
-            args = args.Prepend(exe).ToList();
+            var own = args.ToList();
+            args = (host.YtDlpArgs?.Invoke(own) ?? own.Prepend(exe)).ToList();
             exe = host.Python;
         }
         // gallery-dl isn't there: picture galleries are left out, the link goes on to the next way of reading it.

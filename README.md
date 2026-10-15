@@ -50,11 +50,22 @@
   <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · songs in the cloud · a player that feels like Spotify · synced lyrics · a queue that fills itself · DJ mode · playlists, favorites and tags · on all your devices · listen together">
 </picture>
 
-## 🆕 What's new in 3.7.2
+## 🆕 What's new in 3.7.3
+
+- **Faster downloads** on every platform: each song's page is read once instead of twice (the download uses the
+  analysis just made). On Android yt-dlp also stays ready between songs, as on iPhone, instead of starting from scratch
+  every time: after the first download, each song starts noticeably sooner.
+- Lighter: the song changes more smoothly on Linux/macOS (the glow behind the lyrics no longer re-reads the whole cover),
+  and search results' pictures are decoded once instead of twice.
+
+<details>
+<summary>3.7.2</summary>
 
 - Dragging a song to move it (Android, iPhone, and Linux/macOS on high-resolution screens): the copy that follows the
   finger is the row's size again, no longer a blown-up corner of it.
 - iPhone and Android: the first menus opened stutter less (a menu is prepared, unseen, a moment after the start).
+
+</details>
 
 <details>
 <summary>3.7.1</summary>

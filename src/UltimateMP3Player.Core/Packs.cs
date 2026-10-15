@@ -151,6 +151,19 @@ public static class PackWriter
         return total;
     }
 
+    // The export dialog's two lines under the choices (the same on every platform).
+    public static (string, string) Summary(List<Track> songs, PackExport e, Func<string?, long> sizeOf)
+    {
+        if (e.IsEmpty) return (L.T("Scegli almeno una playlist, un tag o tutta la libreria."), "");
+        var parts = new List<string> { L.Count(songs.Count, "1 brano", "{0} brani") };
+        if (e.Playlists.Count > 0) parts.Add(L.Count(e.Playlists.Count, "1 playlist", "{0} playlist"));
+        if (e.Tags.Count > 0) parts.Add(L.Count(e.Tags.Count, "1 tag", "{0} tag"));
+        var more = new List<string> { L.F("circa {0}", Text.Size(Math.Max(EstimateSize(songs, e, sizeOf), 1024))) };
+        int files = songs.Count(t => !Pack.HasLink(t));
+        if (!e.Music && files > 0) more.Add(L.Count(files, "1 brano senza link viaggia come file", "{0} brani senza link viaggiano come file"));
+        return (string.Join(" · ", parts), string.Join(" · ", more));
+    }
+
     public static long SizeOf(string? path)
     {
         try { return path != null && File.Exists(path) ? new FileInfo(path).Length : 0; }
@@ -567,6 +580,22 @@ public static class PackImporter
             else list.Add(new PackSong(t, PackSongState.Missing, null));
         }
         return list;
+    }
+
+    // The import dialog's two lines: the songs that come in (copied or downloaded) and what the others are; folder: where
+    // they go (null on the phone, where it isn't shown).
+    public static (string, string) Summary(bool any, int chosen, int add, int get, int have, int miss, bool cloud, string? folder)
+    {
+        if (!any) return (L.T("Scegli cosa importare."), "");
+        var line1 = add + get == 0
+            ? (chosen > 0 ? L.T("Nessun brano da copiare: li hai già tutti") : L.T("Nessun brano da aggiungere"))
+            : L.Count(add + get, "Verrà aggiunto 1 brano", "Verranno aggiunti {0} brani");
+        var more = new List<string>();
+        if (get > 0) more.Add(cloud ? L.F("{0} nel cloud, senza scaricarli", get) : L.F("{0} da scaricare", get));
+        if (have > 0) more.Add(L.F("{0} già nella libreria", have));
+        if (miss > 0) more.Add(L.Count(miss, "1 non disponibile", "{0} non disponibili"));
+        if (add > 0 && folder != null) more.Add(L.F("nella cartella {0}", folder));
+        return (line1, string.Join(" · ", more));
     }
 
     // The pack songs the plan brings in, in pack order.

@@ -230,13 +230,22 @@ public sealed class DownloadJob
         }
 
         Report(JobPhase.Downloading, null, L.T("Connessione…"));
+        // The first try reads the analysis already made (its links are fresh); the next ones the page again.
+        string? infoFile = null;
+        if (info.Json is { } json)
+        {
+            info.Json = null;
+            infoFile = Path.Combine(temp, "info.json");
+            await File.WriteAllTextAsync(infoFile, json, ct);
+        }
         try
         {
             for (int attempt = 1; ; attempt++)
             {
                 try
                 {
-                    return await YtDlp.DownloadAsync(info.WebpageUrl, sel.Spec, sel.Merge, temp, Options.CookiesBrowser, OnProgress, ct);
+                    return await YtDlp.DownloadAsync(info.WebpageUrl, sel.Spec, sel.Merge, temp, Options.CookiesBrowser, OnProgress, ct,
+                        infoFile: attempt == 1 ? infoFile : null);
                 }
                 catch (EngineException ex) when (attempt < 3 && IsTransient(ex))
                 {

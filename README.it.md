@@ -50,11 +50,22 @@
   <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · brani nel cloud · un lettore come Spotify · testi sincronizzati · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · su tutti i tuoi dispositivi · ascolta insieme">
 </picture>
 
-## 🆕 Novità della 3.7.2
+## 🆕 Novità della 3.7.3
+
+- **Download più veloci** su tutte le piattaforme: la pagina di ogni brano viene letta una volta invece di due (il
+  download usa l'analisi appena fatta). Su Android inoltre yt-dlp resta pronto tra un brano e l'altro, come su iPhone,
+  invece di ripartire da zero ogni volta: dopo il primo download, ogni brano parte sensibilmente prima.
+- Più leggera: il cambio di brano è più fluido su Linux/macOS (l'alone dietro il testo non rilegge più tutta la
+  copertina) e le immagini dei risultati di ricerca vengono decodificate una volta sola invece di due.
+
+<details>
+<summary>3.7.2</summary>
 
 - Trascinare un brano per spostarlo (Android, iPhone, e Linux/macOS sugli schermi ad alta risoluzione): la copia che
   segue il dito torna grande quanto la riga, non più un suo angolo ingrandito.
 - iPhone e Android: i primi menu aperti scattano meno (un menu viene preparato, senza vederlo, poco dopo l'avvio).
+
+</details>
 
 <details>
 <summary>3.7.1</summary>

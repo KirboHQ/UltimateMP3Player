@@ -841,10 +841,8 @@ public static class Images
         {
             using var ms = new MemoryStream(data);
             if (width <= 0) return new Bitmap(ms);
-            using var probe = SKBitmap.Decode(data);
-            if (probe == null) return null;
-            ms.Position = 0;
-            return probe.Width > width ? Bitmap.DecodeToWidth(ms, width, BitmapInterpolationMode.HighQuality) : new Bitmap(ms);
+            // Only the header read for the size, not the whole picture decoded once more.
+            return SKBitmap.DecodeBounds(data).Width > width ? Bitmap.DecodeToWidth(ms, width, BitmapInterpolationMode.HighQuality) : new Bitmap(ms);
         }
         catch { return null; }
     }
