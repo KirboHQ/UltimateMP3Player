@@ -214,7 +214,7 @@ public sealed class TouchReorder
             Child = new Border
             {
                 CornerRadius = new CornerRadius(12), ClipToBounds = true, Background = Ui.Res("Surface3Brush"),
-                Child = new Image { Source = bmp, Width = size.Width, Height = size.Height },
+                Child = new CoverImage { Source = bmp, Width = size.Width, Height = size.Height },
             },
         };
     }

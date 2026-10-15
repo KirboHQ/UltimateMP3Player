@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using UltimateMP3Player.ViewModels;
 
@@ -273,18 +274,52 @@ public sealed class SheetHost : Panel
 
     public void ShowMenu(SheetMenu menu)
     {
+        Control? content = null;
+        content = MenuContent(menu, () => Close(content!));
+        _ = Show(content);
+    }
+
+    private Control MenuContent(SheetMenu menu, Action close)
+    {
         var body = new StackPanel { Margin = new Thickness(10, 0, 10, 10) };
         if (menu.Title != null) body.Children.Add(MenuHeader(menu));
-        Control? content = null;
         void Fill()
         {
             int keep = menu.Title != null ? 1 : 0;
             while (body.Children.Count > keep) body.Children.RemoveAt(body.Children.Count - 1);
-            foreach (var e in menu.Items) body.Children.Add(Entry(e, Fill, () => Close(content!)));
+            foreach (var e in menu.Items) body.Children.Add(Entry(e, Fill, close));
         }
         Fill();
-        content = new ScrollViewer { Content = body, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
-        _ = Show(content);
+        return new ScrollViewer { Content = body, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
+    }
+
+    // A menu made once, unseen (transparent, not touchable), a moment after the start: the first menus opened stuttered (on
+    // the iPhone above all) while their pieces were made for the first time: the rows' template and bindings, the scroll
+    // view, the fonts' faces, the code behind them.
+    public void Warm()
+    {
+        if (IsOpen) return;
+        var menu = new SheetMenu { Title = "Ultimate MP3 Player", Subtitle = "Ultimate MP3 Player" };
+        menu.Add(new SheetEntry("Ultimate MP3 Player", "", null));
+        menu.Add(new SheetEntry("Ultimate MP3 Player", "", null) { Checked = () => true });
+        menu.Add(new SheetEntry { Text = "Ultimate MP3 Player", Glyph = "", Sub = () => new SheetMenu() });
+        menu.Add(new SheetEntry { Text = "Ultimate MP3 Player", Dot = Brushes.Gray });
+        menu.Line();
+        menu.Add(new SheetEntry("Ultimate MP3 Player", "", null, false) { Danger = true });
+        menu.Add(new SheetEntry { Text = "Ultimate MP3 Player", Info = true });
+        var probe = new Border
+        {
+            Background = Ui.Find<IBrush>("SheetBrush"), CornerRadius = new CornerRadius(24, 24, 0, 0), VerticalAlignment = VerticalAlignment.Bottom,
+            Opacity = 0, IsHitTestVisible = false, Child = MenuContent(menu, () => { }),
+        };
+        IsVisible = true;
+        Children.Insert(0, probe);
+        // (after the layout pass that builds it)
+        Dispatcher.UIThread.Post(() =>
+        {
+            Children.Remove(probe);
+            if (!IsOpen) IsVisible = false;
+        }, DispatcherPriority.Background);
     }
 
     private static Control MenuHeader(SheetMenu menu)

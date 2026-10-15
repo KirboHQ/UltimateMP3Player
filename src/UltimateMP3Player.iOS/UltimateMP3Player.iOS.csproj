@@ -21,10 +21,10 @@
     <!-- SideStore may add a suffix to it (a free Apple ID): the code never relies on it. -->
     <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
     <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
-    <!-- Keep equal to the other projects; the build number as on Android (3.7.1 → 30701). -->
-    <Version>3.7.1</Version>
-    <ApplicationDisplayVersion>3.7.1</ApplicationDisplayVersion>
-    <ApplicationVersion>30701</ApplicationVersion>
+    <!-- Keep equal to the other projects; the build number as on Android (3.7.2 → 30702). -->
+    <Version>3.7.2</Version>
+    <ApplicationDisplayVersion>3.7.2</ApplicationDisplayVersion>
+    <ApplicationVersion>30702</ApplicationVersion>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>

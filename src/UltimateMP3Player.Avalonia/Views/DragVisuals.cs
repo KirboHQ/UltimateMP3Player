@@ -257,7 +257,7 @@ public static class DragVisuals
                 CornerRadius = new CornerRadius(8),
                 ClipToBounds = true,
                 Background = Ui.Res("Surface3Brush"),
-                Child = image == null ? null : new Image { Source = image, Width = size.Width, Height = size.Height },
+                Child = image == null ? null : new CoverImage { Source = image, Width = size.Width, Height = size.Height },
                 Opacity = 0.92,
                 BoxShadow = BoxShadows.Parse("0 6 22 0 #8C000000"),
                 RenderTransformOrigin = new RelativePoint(grab.X, grab.Y, RelativeUnit.Absolute),

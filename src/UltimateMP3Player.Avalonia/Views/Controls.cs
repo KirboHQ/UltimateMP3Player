@@ -4,6 +4,7 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Styling;
 
 namespace UltimateMP3Player.Views;
@@ -287,7 +288,9 @@ public sealed class CoverImage : Control
     {
         if (Source is not { } img) return;
         var box = new Rect(Bounds.Size);
-        var size = img.Size;
+        // Skia reads a bitmap's source rect in pixels (Avalonia hands it DIPs, the same only at 96 DPI): a snapshot made at
+        // the screen's scaling showed just its top-left corner, blown up.
+        var size = img is Bitmap bitmap ? new Size(bitmap.PixelSize.Width, bitmap.PixelSize.Height) : img.Size;
         if (box.Width <= 0 || box.Height <= 0 || size.Width <= 0 || size.Height <= 0) return;
         double scale = Math.Max(box.Width / size.Width, box.Height / size.Height);
         double w = box.Width / scale, h = box.Height / scale;

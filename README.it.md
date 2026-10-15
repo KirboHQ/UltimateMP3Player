@@ -50,7 +50,14 @@
   <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · brani nel cloud · un lettore come Spotify · testi sincronizzati · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · su tutti i tuoi dispositivi · ascolta insieme">
 </picture>
 
-## 🆕 Novità della 3.7.1
+## 🆕 Novità della 3.7.2
+
+- Trascinare un brano per spostarlo (Android, iPhone, e Linux/macOS sugli schermi ad alta risoluzione): la copia che
+  segue il dito torna grande quanto la riga, non più un suo angolo ingrandito.
+- iPhone e Android: i primi menu aperti scattano meno (un menu viene preparato, senza vederlo, poco dopo l'avvio).
+
+<details>
+<summary>3.7.1</summary>
 
 - **Scegli dove va il suono** (Impostazioni › Riproduzione › *Uscita audio*): casse, cuffie, un DAC USB, un monitor in
   HDMI… invece del dispositivo predefinito del sistema. Se lo scolleghi la musica passa a quello predefinito, e torna
@@ -64,6 +71,8 @@
   Comando rapido nel menu Condividi, per esempio) apre l'app su quel link.
 - Un menu a tendina aperto non resta più indietro, staccato dalla sua casella, quando la rotella fa scorrere la pagina
   sotto di lui.
+
+</details>
 
 <details>
 <summary>3.7</summary>

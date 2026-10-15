@@ -275,6 +275,7 @@ public partial class MainView : UserControl
         _ = _host.EnsureEnginesAsync();
         _ = AskNotifications();
         _ = OfferRightPackage();
+        DispatcherTimer.RunOnce(Sheets.Warm, TimeSpan.FromSeconds(2));
     }
 
     // The phones' package (ARM) on an x86 device, an emulator: everything runs through a translator and downloads fail.
