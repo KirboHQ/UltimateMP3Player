@@ -7,7 +7,8 @@
        on the phone with the user's Apple ID; on Windows `dotnet build` checks the C# (the .app needs Xcode).
        No downloads yet: iOS can't start programs (yt-dlp, ffmpeg); they'll come with Python inside the app. -->
   <PropertyGroup>
-    <TargetFramework>net10.0-ios</TargetFramework>
+    <!-- The iOS 26 bindings, not the newest (27): GitHub's macOS runners have Xcode 26, and the newest pack needs its Xcode. -->
+    <TargetFramework>net10.0-ios26.0</TargetFramework>
     <SupportedOSPlatformVersion>15.0</SupportedOSPlatformVersion>
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <OutputType>Exe</OutputType>
