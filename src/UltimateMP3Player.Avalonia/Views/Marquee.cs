@@ -76,6 +76,17 @@ public static class Marquee
             if (e.NewValue is true) Later(st);
             else Stop(st);
         });
+        // Another look (light, dark, another colour): a moving text fades through the colour it had when it started, so
+        // it starts again in the new one.
+        Themes.Changed += () =>
+        {
+            foreach (var st in Running.ToList())
+            {
+                if (st.Ink == null) continue;
+                Stop(st);
+                if (GetAuto(st.Element)) Later(st);
+            }
+        };
     }
 
     private static void OnAttached(object? sender, VisualTreeAttachmentEventArgs e) => Attach((Control)sender!);

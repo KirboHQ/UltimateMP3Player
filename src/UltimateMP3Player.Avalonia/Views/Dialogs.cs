@@ -108,8 +108,8 @@ public static partial class Dialogs
     public static string? Prompt(string title, string label, string initial)
         => Show(title, null, new[] { (label, initial) }, L.T("Save"), false)?[0];
 
-    private static IBrush Res(string key) => Application.Current!.FindResource(key) as IBrush ?? Brushes.Gray;
-    private static T Res<T>(string key) where T : class => (Application.Current!.FindResource(key) as T)!;
+    private static IBrush Res(string key) => Ui.Find<IBrush>(key) ?? Brushes.Gray;
+    private static T Res<T>(string key) where T : class => Ui.Find<T>(key);
 
     // Bumped when the terms of use change: they're asked again.
     public const int TermsVersion = 1;

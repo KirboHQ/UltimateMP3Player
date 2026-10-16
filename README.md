@@ -50,165 +50,127 @@
   <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · songs in the cloud · a player that feels like Spotify · synced lyrics · a queue that fills itself · DJ mode · playlists, favorites and tags · on all your devices · listen together">
 </picture>
 
-## 🆕 What's new in 3.8
+<img src="assets/readme/screens/hero.webp" width="100%" alt="The app on Windows and Android: the home page, the player on the phone">
 
-- **Light theme** (Settings › Appearance › *Light or dark*): light, dark or the same as the system, following it when it
-  changes. Each profile has its own, and every accent colour has a light version.
-- **A cleaner look**, closer to the iPhone's: no more outlines around cards, buttons and fields, thinner separators,
-  menus and pop-ups that float on a soft shadow.
-- **Android and iPhone: swipe sideways** to move to the tab beside, the pages following the finger; inside a playlist a
-  swipe to the right goes back. Not over what already moves sideways (rows of cards, sliders, text boxes).
-- Tapping the song that's already playing no longer starts it over: from its own list it opens the player, from another
-  list it goes on and what follows becomes that list.
-- Easier on the battery: the waveform and the synced lyrics stand still while the app is minimized, in the tray or in
-  the background.
-- The data folder's names are in English: `errori.log` is now `errors.log` and `ascolta-insieme` is now `cache` (moved
-  by themselves at the first start).
+<sub>Demo profiles and music by <a href="https://ncs.io">NoCopyrightSounds</a>. Light and dark, eight colours, the same app on
+Windows, Linux, macOS, Android and iPhone.</sub>
 
-<details>
-<summary>3.7.3</summary>
+## 🎵 Features
 
-- **Faster downloads** on every platform: each song's page is read once instead of twice (the download uses the
-  analysis just made). On Android yt-dlp also stays ready between songs, as on iPhone, instead of starting from scratch
-  every time: after the first download, each song starts noticeably sooner.
-- Lighter: the song changes more smoothly on Linux/macOS (the glow behind the lyrics no longer re-reads the whole cover),
-  and search results' pictures are decoded once instead of twice.
+### Downloads
 
-</details>
+<img src="assets/readme/screens/search.webp" width="100%" alt="Online search: YouTube Music, SoundCloud, YouTube and Deezer results next to your own songs">
 
-<details>
-<summary>3.7.2</summary>
+- Links from YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp and
+  hundreds of other sites, powered by yt-dlp and gallery-dl
+- **Online search** inside the app: YouTube Music, YouTube, SoundCloud and Deezer next to your own songs; a click opens
+  the download
+- Save the audio on your device, or just add the songs to your library in the cloud and save them later
+- MP3 at 320, 256, 192 or 128 kbps or the original format, videos from 360p up to 4K, chosen for each song and remembered;
+  several downloads at a time
+- *Download again / quality…*: a saved song downloaded again in another quality, in place of its files
+- Duplicates are recognized (same source or same song), and site rate limits are handled by themselves: downloads
+  pause, then resume more gently
+- A link that can't be read, and failed downloads, can be retried on YouTube Music
+- Optional browser cookies for private playlists and age-restricted content (on Android and iPhone you sign in to the
+  sites inside the app)
+- Music you already have: drag files or folders into the window
 
-- Dragging a song to move it (Android, iPhone, and Linux/macOS on high-resolution screens): the copy that follows the
-  finger is the row's size again, no longer a blown-up corner of it.
-- iPhone and Android: the first menus opened stutter less (a menu is prepared, unseen, a moment after the start).
+### Player
 
-</details>
+<img src="assets/readme/screens/player.webp" width="100%" alt="Synced lyrics over the cover's colours, with Up next">
 
-<details>
-<summary>3.7.1</summary>
+- Waveform seek bar, fair shuffle, repeat all / repeat one, crossfade from 1 to 12 seconds
+- Speed from 0.5× to 2×, with or without changing the pitch
+- Loudness normalization (−14 LUFS) and a 10-band equalizer with presets and a live response curve
+- **Synced lyrics**, found by themselves: the line being sung lights up over the cover's colors, click a line to jump
+  there; over a video they become subtitles
+- Choose where the sound goes (computers and Android): speakers, headphones, a USB DAC, a monitor over HDMI…; if it's unplugged the music moves to
+  the default one, and goes back when it's plugged in again
+- Media keys, the system's media controls (Windows, MPRIS on Linux, Now Playing on macOS and iPhone, the lock screen on Android)
+  and the tray: close the window and the music keeps playing with very little memory
+- Songs with a video show it in the song screen, framed on a blurred copy of itself; *Find the video…* gets one from
+  YouTube for the others
 
-- **Choose where the sound goes** (Settings › Playback › *Audio output*): speakers, headphones, a USB DAC, a monitor
-  over HDMI… instead of the system's default. If it's unplugged the music moves to the default one, and goes back when
-  it's plugged in again. Windows, Linux, macOS and Android.
-- **iPhone and iPad (preview)**: the Android app on iOS 15 or later, installed for free with SideStore (no Mac, no
-  jailbreak, see [Install](#-install)): library, playlists, tags, lyrics, equalizer, crossfade, statistics, the song on the
-  lock screen and the headphones' buttons; songs and `.ump` packs come in from the Files app. **Downloads too**, like on
-  Android: links, the online search, songs in the cloud, similar songs and the artist's songs, signing in to sites.
-  iOS doesn't let apps start programs, so yt-dlp runs inside the app (with Python) and iOS itself makes the MP3s and
-  M4As: on iPhone only the audio is downloaded, no videos. A `ump://add?url=<link>` link (from a Shortcut in the share
-  sheet, for example) opens the app on that link.
-- An open drop-down no longer stays behind, cut off from its box, when the mouse wheel scrolls the page under it.
+### Up next
 
-</details>
+- Drag to reorder, double-click to jump, drop on the bin to remove
+- Automatic queue, *Generate* and *Clear*, a panel you can hide to the side
+- Similar songs found online after a song, or the artist's songs: downloaded just before their turn (how many ahead
+  is up to you), kept with a right-click
+- Optional transition at the next song's tempo: the song playing glides to its BPM without changing key
+- Restored exactly where you left it when you reopen the app
 
-<details>
-<summary>3.7</summary>
+### Library
 
-- **Your quality, song by song**: on the link card choose the audio (MP3 320, 256, 192, 128 kbps or the original file) and
-  the video resolution; a song keeps its choice, also when it's in the cloud and heard from its link. Right click →
-  **Download again / quality…** downloads a saved song again in another quality, in place of its files (cover, lyrics,
-  statistics and playlists stay).
-- **MP3s for the car**: *Export* → **To a folder (MP3)** puts the chosen playlists, tags or the whole library in a folder
-  (a USB stick, an SD card) as plain MP3 files named "Artist - Title", with title, artist, album and cover in their tags.
-  Songs in the cloud are downloaded on the way. Every platform, Android included.
-- **Play the artist's songs**: next to *Play similar songs*, the most listened songs of the artist, found online.
-- **BPM-matched transition** (Settings › Playback): in its last seconds a song slows down or speeds up to the next one's
-  BPM, without changing key, so they meet on the beat (BPMs are detected by themselves when missing).
-- **Listen together**: drag the room's queue like *Up next*; the library icon and the download arrow work as everywhere
-  else; songs heard in a room count in your statistics; songs found with the online search go straight into the room;
-  links that can't be downloaded (DRM) are taken from YouTube by themselves, in rooms and in the automatic queue too.
-- **Drag to reorder everywhere**: the online search's sites in Settings, and *Up next* on Android, with the line and the
-  box of the playlists (on Android a long press on the handle no longer scrolls the list away).
-- Online search results open their card at once, without reading the link again; songs added to the library without
-  saving them leave their card on screen, ready to be heard.
-- Statistics: an *All songs* filter. Simultaneous downloads now also apply to the automatic queue and to rooms. Switching
-  to the DJ pauses the song. Ctrl+arrows in text fields move the cursor instead of changing song. The lyrics icon is the
-  same on Android. Lyrics: no more someone else's song with the same title. The waveform of a song heard for the first time
-  in a room is drawn. The DJ page redraws less often. The DJ entry is now below Listen together.
-- Windows release files are named like the others: `UltimateMP3Player-windows-x64-setup.exe` and
-  `UltimateMP3Player-windows-x64.exe`.
+<img src="assets/readme/screens/library.webp" width="100%" alt="A playlist with coloured tags">
 
-</details>
+- **Songs in the cloud** next to the saved ones: a big library without filling the disk, saved on the device only where
+  you want it (*On device only*, *Save all those in the cloud*)
+- Playlists with custom covers, Favorites, recently played, and a *Not in a playlist* view to tidy up
+- Tags with colors, multi-tag filters (all / any) and `#tag` in the search box
+- Select several songs, playlists or downloads in any list and act on all of them at once
+- *Delete…* takes away only the video, only the lyrics, the audio from the device or the whole song, and shows the
+  space freed
+- **`.ump` packs**: a playlist, a tag, several of them or everything in one file, with the audio or as links only
+  (small enough for Discord); open it or drop it on the app to import it, without doubling the songs you already have
+- **MP3s in a folder** for a USB stick, an SD card or the car: "Artist - Title.mp3" with tags and cover
+- Rename an artist on all their songs at once; edit title, artist, album, BPM and cover
+- Listening statistics per profile: plays, time listened and last played of every song (also the ones heard in rooms
+  and not saved), the least played to clean up
 
-<details>
-<summary>3.6</summary>
+### Listen together
 
-- **Songs in the cloud** ☁: a song doesn't need its audio on your device any more. In the cloud it keeps its cover,
-  lyrics, statistics and its place in your playlists and Favorites, and plays from its link; the ones you've played
-  stay ready for next time. Saved songs play offline as always and a small cloud marks the others. The filter next to
-  *Tag* (3.6.2), on your library and on every playlist, shows *All songs*, only the ones *On device* or *Cloud only*;
-  *Play* and *Shuffle* play what it shows, handy offline.
-- **Add now, save later**: the *Save the audio on your device* switch on the link card decides. On, the usual
-  download; off, songs and whole playlists go into your library (and the playlist) in a few seconds, in the cloud. The
-  app remembers your choice, also for links-only `.ump` packs. *Save to device* a song, a selection or a playlist, or
-  *Save all those in the cloud*, whenever you want them offline.
-- **Clear buttons** (3.6.1): **+** adds to a playlist, the **library icon** adds a suggested song (or one heard from a
-  link) to your library in the cloud, the **download arrow** saves it on your device. The heart only keeps a song, it
-  never downloads it.
-- **One *Delete…* for everything**: *Video only*, *Lyrics only*, *From the device* (it stays in your library, in the
-  cloud) or *Completely*, with the space it frees, for one song or a hundred. *Free up space…* on playlists.
-- **Links that fix themselves**: when a cloud song's link dies (removed, DMCA, made private) the app finds the same
-  song on YouTube Music, plays it and keeps the new link. A link that can't be read at all (SoundCloud Go+, removed)
-  offers *Retry with YouTube*, and failed downloads *Retry on YouTube*.
-- **Find the video…**: a saved song from SoundCloud, Spotify & co. gets its music video from YouTube. You pick it among
-  the results: the best match is already chosen, with a warning when the length differs, because the video plays in
-  time with the audio. Songs from YouTube take it straight from their link.
-- **Select several, everywhere**: in every song list (search and Home too), *Up next*, downloads and playlists, on
-  every platform. On Android a long press opens the menu with *Select* first, like the gallery.
-- Cloud songs work in DJ mode too (they're downloaded when you load them on a deck), and the temporary storage can now
-  keep up to 200 songs.
+<img src="assets/readme/screens/together.webp" width="100%" alt="A room with three people: the song playing, the queue with who added each song, the chat">
 
-</details>
+- Rooms found by themselves on the same network (Wi-Fi or cable); from afar, everyone joins the same Radmin VPN
+  network. Rooms can have a password and a maximum number of people; you can also join by address.
+- Everyone hears the same song at the same point: the host's clock leads, each computer follows it (volume and
+  equalizer stay your own)
+- Each computer gets the playing song and the next two: from its library, from the room cache, from the song's link,
+  or sent by someone in the room. A song starts when everyone has it (or after a few seconds for those who have it);
+  late ones join in at the right point.
+- The host decides who can add, remove and move, skip, pause, and seek; greyed-out buttons for the others. In a room
+  the play buttons of your lists become **+**, and a double click adds the song to the room.
+- Chat, who added each song, everyone's download progress, kick, hand over the host. If the host leaves or their PC
+  goes off, the room passes to the person with the most permissions (on a tie, who joined first).
+- Songs heard in rooms stay in a cache (10 by default, shared with the suggested songs); save the ones you like to
+  your library or a playlist
+- P2P can be switched off in Settings: songs then come only from your library, the cache or their link
 
-<details>
-<summary>3.5</summary>
+> [!TIP]
+> The first time, Windows asks whether the app may use the network: allow it. With Radmin VPN also tick *Public
+> networks*, or use **Allow through the firewall** in the app. Radmin VPN exists only for Windows: with friends on
+> Linux or macOS use ZeroTier or Tailscale, which work everywhere (also on Windows).
 
-**3.5.1 – 3.5.2**
-- Android: no more crashes during long downloads, scrolling at the screen's full refresh rate, about a third of the
-  processor while on screen, faster start, settings search, *Sign in to sites* inside the app (for private playlists
-  and age-restricted content), no audio hiccups with the screen off
-- Linux: much smoother (especially in virtual machines and without graphics acceleration), cleaner text, no more crash
-  on the online search results
+### DJ
 
-**3.5.0**
-- **Android**: the same app on phones and tablets (Android 8 or later), with the same look and features, except DJ
-  mode and Listen together. A bottom bar with Home, Search, Library, Downloads and Settings; the song playing just
-  above it, opening into its full screen with the cover (tilting under your finger), video, synced lyrics and the queue.
-  Turned sideways or on a tablet, the tabs move to a column on the left (like the computer's side bar) and the song's
-  page shows the cover next to the title and the buttons. The screen runs at its full refresh rate (90, 120 Hz and more).
-- **Share to download**: in YouTube, Spotify, SoundCloud and almost any other app tap *Share → Download with Ultimate
-  MP3 Player*: the app opens on the download page with the link already there.
-- **Listen without downloading** (every platform): next to *Download*, a link can just be played. Its songs come into
-  the temporary storage shortly before their turn, like the suggested ones, and stay out of your library; keep one with
-  *Save to library* (on Android also from the notification). In a *Listen together* room the same button is *Add to
-  the room*: the songs go into the room's queue without being downloaded to your library.
-- **Lock screen and notification**: cover, previous / pause / next and the heart for Favorites (and *Save to library*
-  for a song you're only listening to), also from Bluetooth headphones and the car. Music and downloads keep going with
-  the screen off.
-- **Lighter on the processor and the battery** (every platform): downloads that are waiting or finished no longer keep
-  an animation running behind the scenes (a long list could keep a processor core busy), and while the app isn't on
-  screen (in the background, minimized, the song's page closed) scrolling titles, spinners, lyrics and video rest.
-- Linux and macOS: changing the language in Settings works again.
-- Long press is the right click; profiles (handy on a family tablet), statistics, tags, `.ump` packs and automatic
-  updates from the GitHub releases are all there.
+<img src="assets/readme/screens/dj.webp" width="100%" alt="DJ mode: two decks with waveforms, BPM, mixer and crossfader">
 
-</details>
+- Two decks with scrolling waveforms and overviews, CUE, nudge, tempo range ±8 / 16 / 50 %, key lock
+- A song browser for each deck: library, playlists, tags, the song playing or a file
+- Automatic BPM detection, TAP on each deck (also with the T key), beat grid and SYNC of tempo and phase
+- Mixer with 3-band EQ and kills, channel faders and crossfader
+- Record the mix and save it as an MP3 in your library, even into a new playlist
 
-<details>
-<summary>3.4.0</summary>
+### On your phone
 
-- **Linux and macOS**: the same app, with the same look and the same features, on Linux (x64 and arm64) and macOS
-  (Intel and Apple Silicon). Media controls of the system, tray icon, `.ump` packs, automatic updates included.
-- **Statistics**: a play counts once you've heard 75 % of the song (at 2× speed half the time is enough), time listened
-  counts from the first second, and both update live while you listen. *Select the never played* works again from any
-  sort and filter.
-- **Windows media controls**: the app shows its name and icon instead of *Unknown app*
-- A suggested song saved and then deleted while it plays doesn't skip any more: it finishes from the cache
-- The Settings search box always stays at the top
-- Dialogs (like the terms of use): the buttons no longer flicker under the mouse
+<img src="assets/readme/screens/phone.webp" width="100%" alt="On Android: the library, synced lyrics, online search and the download card">
 
-</details>
+- The same library, playlists, tags, lyrics, equalizer and downloads on Android (and iPhone, in preview)
+- Share a link from YouTube, Spotify, SoundCloud or almost any other app with *Download with Ultimate MP3 Player*
+- Swipe sideways to move between tabs; inside a playlist a swipe to the right goes back
+- Sign in to the sites inside the app for private playlists; the song on the lock screen and the headphones' buttons
+
+### And also
+
+<img src="assets/readme/screens/looks.webp" width="100%" alt="Light or dark and eight colours, chosen by each profile">
+
+- The same app on Windows, Linux, macOS and Android (and iPhone, in preview)
+- Profiles like in Chrome, each with its own playlists, favorites, equalizer, colour and light or dark look
+- English and Italian, smooth animations and scrolling
+- Discord Rich Presence with song, artist, cover and progress bar
+- Automatic updates from the GitHub releases
 
 ## 📥 Install
 
@@ -284,92 +246,6 @@
 > Player › Music*): add more from there with Settings › Library. Uninstalling the app deletes them: keep a `.ump` pack.
 > Downloads need the app open: iOS gives an app in the background only about half a minute to finish them. To send a
 > link from another app, make a Shortcut that takes the shared URL and opens `ump://add?url=` followed by it.
-
-## 🎵 Features
-
-**Downloads**
-- Links from YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp and
-  hundreds of other sites, powered by yt-dlp and gallery-dl
-- **Online search** inside the app: YouTube Music, YouTube, SoundCloud and Deezer next to your own songs; a click opens
-  the download
-- Save the audio on your device, or just add the songs to your library in the cloud and save them later
-- MP3 at 320, 256, 192 or 128 kbps or the original format, videos from 360p up to 4K, chosen for each song and remembered;
-  several downloads at a time
-- *Download again / quality…*: a saved song downloaded again in another quality, in place of its files
-- Duplicates are recognized (same source or same song), and site rate limits are handled by themselves: downloads
-  pause, then resume more gently
-- A link that can't be read, and failed downloads, can be retried on YouTube Music
-- Optional browser cookies for private playlists and age-restricted content (on Android and iPhone you sign in to the
-  sites inside the app)
-- Music you already have: drag files or folders into the window
-
-**Player**
-- Waveform seek bar, fair shuffle, repeat all / repeat one, crossfade from 1 to 12 seconds
-- Speed from 0.5× to 2×, with or without changing the pitch
-- Loudness normalization (−14 LUFS) and a 10-band equalizer with presets and a live response curve
-- **Synced lyrics**, found by themselves: the line being sung lights up over the cover's colors, click a line to jump
-  there; over a video they become subtitles
-- Media keys, the system's media controls (Windows, MPRIS on Linux, Now Playing on macOS and iPhone, the lock screen on Android)
-  and the tray: close the window and the music keeps playing with very little memory
-- Songs with a video show it in the song screen, framed on a blurred copy of itself; *Find the video…* gets one from
-  YouTube for the others
-
-**Up next**
-- Drag to reorder, double-click to jump, drop on the bin to remove
-- Automatic queue, *Generate* and *Clear*, a panel you can hide to the side
-- Similar songs found online after a song, or the artist's songs: downloaded just before their turn (how many ahead
-  is up to you), kept with a right-click
-- Optional transition at the next song's tempo: the song playing glides to its BPM without changing key
-- Restored exactly where you left it when you reopen the app
-
-**Library**
-- **Songs in the cloud** next to the saved ones: a big library without filling the disk, saved on the device only where
-  you want it (*On device only*, *Save all those in the cloud*)
-- Playlists with custom covers, Favorites, recently played, and a *Not in a playlist* view to tidy up
-- Tags with colors, multi-tag filters (all / any) and `#tag` in the search box
-- Select several songs, playlists or downloads in any list and act on all of them at once
-- *Delete…* takes away only the video, only the lyrics, the audio from the device or the whole song, and shows the
-  space freed
-- **`.ump` packs**: a playlist, a tag, several of them or everything in one file, with the audio or as links only
-  (small enough for Discord); open it or drop it on the app to import it, without doubling the songs you already have
-- **MP3s in a folder** for a USB stick, an SD card or the car: "Artist - Title.mp3" with tags and cover
-- Rename an artist on all their songs at once; edit title, artist, album, BPM and cover
-- Listening statistics per profile: plays, time listened and last played of every song (also the ones heard in rooms
-  and not saved), the least played to clean up
-
-**DJ**
-- Two decks with scrolling waveforms and overviews, CUE, nudge, tempo range ±8 / 16 / 50 %, key lock
-- A song browser for each deck: library, playlists, tags, the song playing or a file
-- Automatic BPM detection, TAP on each deck (also with the T key), beat grid and SYNC of tempo and phase
-- Mixer with 3-band EQ and kills, channel faders and crossfader
-- Record the mix and save it as an MP3 in your library, even into a new playlist
-
-**Listen together**
-- Rooms found by themselves on the same network (Wi-Fi or cable); from afar, everyone joins the same Radmin VPN
-  network. Rooms can have a password and a maximum number of people; you can also join by address.
-- Everyone hears the same song at the same point: the host's clock leads, each computer follows it (volume and
-  equalizer stay your own)
-- Each computer gets the playing song and the next two: from its library, from the room cache, from the song's link,
-  or sent by someone in the room. A song starts when everyone has it (or after a few seconds for those who have it);
-  late ones join in at the right point.
-- The host decides who can add, remove and move, skip, pause, and seek; greyed-out buttons for the others. In a room
-  the play buttons of your lists become **+**, and a double click adds the song to the room.
-- Chat, who added each song, everyone's download progress, kick, hand over the host. If the host leaves or their PC
-  goes off, the room passes to the person with the most permissions (on a tie, who joined first).
-- Songs heard in rooms stay in a cache (10 by default, shared with the suggested songs); save the ones you like to
-  your library or a playlist
-- P2P can be switched off in Settings: songs then come only from your library, the cache or their link
-
-> [!TIP]
-> The first time, Windows asks whether the app may use the network: allow it. With Radmin VPN also tick *Public
-> networks*, or use **Allow through the firewall** in the app. Radmin VPN exists only for Windows: with friends on
-> Linux or macOS use ZeroTier or Tailscale, which work everywhere (also on Windows).
-
-**And also**
-- The same app on Windows, Linux, macOS and Android (and iPhone, in preview)
-- Profiles like in Chrome, themes, English and Italian, smooth animations and scrolling
-- Discord Rich Presence with song, artist, cover and progress bar
-- Automatic updates from the GitHub releases
 
 ## 💬 Help & feedback
 

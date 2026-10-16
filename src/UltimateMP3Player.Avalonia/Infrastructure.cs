@@ -251,8 +251,10 @@ public static class Ui
 
     public static IBrush Res(string key) => System.Windows.Application.Current.Resources[key] as IBrush ?? Brushes.Gray;
 
-    // Any resource of the app (templates, themes of the controls).
-    public static TRes Find<TRes>(string key) where TRes : class => (Application.Current!.FindResource(key) as TRes)!;
+    // Any resource of the app (templates, themes of the controls), the colours of the look showing now too: a plain
+    // FindResource skips the light and dark dictionaries (the sheets came out without a background).
+    public static TRes Find<TRes>(string key) where TRes : class
+        => (Application.Current is { } app && app.TryFindResource(key, app.ActualThemeVariant, out var v) ? v as TRes : null)!;
     public static Avalonia.Styling.ControlTheme Theme(string key) => Find<Avalonia.Styling.ControlTheme>(key);
 
     public static readonly Cursor Hand = new(StandardCursorType.Hand);

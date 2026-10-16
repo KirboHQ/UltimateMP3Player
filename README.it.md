@@ -50,173 +50,130 @@
   <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · brani nel cloud · un lettore come Spotify · testi sincronizzati · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · su tutti i tuoi dispositivi · ascolta insieme">
 </picture>
 
-## 🆕 Novità della 3.8
+<img src="assets/readme/screens/hero.webp" width="100%" alt="L'app su Windows e Android: la home, il lettore sul telefono">
 
-- **Tema chiaro** (Impostazioni › Aspetto › *Chiaro o scuro*): chiaro, scuro o come il sistema, che segue quando
-  cambia. Ogni profilo ha il suo, e ogni colore d'accento ha la sua versione chiara.
-- **Un aspetto più pulito**, più vicino a quello di iPhone: niente più bordi intorno a schede, pulsanti e campi,
-  separatori più sottili, menu e finestre che galleggiano su un'ombra morbida.
-- **Android e iPhone: scorri di lato** per passare alla scheda accanto, con le pagine che seguono il dito; dentro una
-  playlist uno scorrimento verso destra torna indietro. Non sopra ciò che si muove già di lato (file di copertine,
-  cursori, caselle di testo).
-- Toccare il brano già in riproduzione non lo fa più ripartire da capo: dalla sua lista apre il lettore, da un'altra
-  lista continua e quello che segue diventa quella lista.
-- Consuma meno batteria: la forma d'onda e il testo sincronizzato restano fermi quando l'app è ridotta a icona, vicino
-  all'orologio o in background.
-- I nomi nella cartella dei dati sono in inglese: `errori.log` ora è `errors.log` e `ascolta-insieme` ora è `cache`
-  (spostati da soli al primo avvio).
+<sub>Profili di prova e musica di <a href="https://ncs.io">NoCopyrightSounds</a>. Chiaro e scuro, otto colori, la stessa app su
+Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è anche in italiano).</sub>
 
-<details>
-<summary>3.7.3</summary>
+## 🎵 Funzioni
 
-- **Download più veloci** su tutte le piattaforme: la pagina di ogni brano viene letta una volta invece di due (il
-  download usa l'analisi appena fatta). Su Android inoltre yt-dlp resta pronto tra un brano e l'altro, come su iPhone,
-  invece di ripartire da zero ogni volta: dopo il primo download, ogni brano parte sensibilmente prima.
-- Più leggera: il cambio di brano è più fluido su Linux/macOS (l'alone dietro il testo non rilegge più tutta la
-  copertina) e le immagini dei risultati di ricerca vengono decodificate una volta sola invece di due.
+### Download
 
-</details>
+<img src="assets/readme/screens/search.webp" width="100%" alt="Ricerca online: risultati da YouTube Music, SoundCloud, YouTube e Deezer accanto ai tuoi brani">
 
-<details>
-<summary>3.7.2</summary>
+- Link da YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp e centinaia
+  di altri siti, grazie a yt-dlp e gallery-dl
+- **Ricerca online** dentro l'app: YouTube Music, YouTube, SoundCloud e Deezer accanto ai tuoi brani; un clic apre il
+  download
+- Salvi l'audio sul dispositivo, oppure aggiungi solo i brani alla libreria nel cloud e li salvi dopo
+- MP3 a 320, 256, 192 o 128 kbps o formato originale, video da 360p fino al 4K, scelti per ogni brano e ricordati;
+  più download insieme
+- *Scarica di nuovo / qualità…*: un brano salvato riscaricato in un'altra qualità, al posto dei suoi file
+- Riconosce i doppioni (stessa fonte o stesso brano) e gestisce da solo i limiti dei siti: i download si mettono in
+  pausa e riprendono più piano
+- Un link che non si riesce a leggere, e i download non riusciti, si possono riprovare su YouTube Music
+- Cookie del browser (facoltativi) per playlist private e contenuti con limite d'età (su Android e iPhone accedi ai
+  siti direttamente dall'app)
+- La musica che hai già: trascina file o cartelle nella finestra
 
-- Trascinare un brano per spostarlo (Android, iPhone, e Linux/macOS sugli schermi ad alta risoluzione): la copia che
-  segue il dito torna grande quanto la riga, non più un suo angolo ingrandito.
-- iPhone e Android: i primi menu aperti scattano meno (un menu viene preparato, senza vederlo, poco dopo l'avvio).
+### Lettore
 
-</details>
+<img src="assets/readme/screens/player.webp" width="100%" alt="Testi sincronizzati sui colori della copertina, con i Successivi">
 
-<details>
-<summary>3.7.1</summary>
+- Forma d'onda, casuale vero, ripeti tutto / ripeti brano, dissolvenza da 1 a 12 secondi
+- Velocità da 0,5× a 2×, cambiando o no anche il tono
+- Volume normalizzato (−14 LUFS) ed equalizzatore a 10 bande con preset e curva di risposta
+- **Testi sincronizzati**, trovati da soli: la riga cantata si illumina sui colori della copertina, un clic su una riga
+  ci salta; sopra un video diventano sottotitoli
+- Scegli dove va il suono (computer e Android): casse, cuffie, un DAC USB, un monitor in HDMI…; se lo scolleghi la
+  musica passa a quello predefinito, e torna quando lo ricolleghi
+- Tasti multimediali, controlli multimediali del sistema (Windows, MPRIS su Linux, "In riproduzione" su macOS e iPhone,
+  la schermata di blocco su Android) e icona vicino all'orologio: chiudi la finestra e la musica continua usando
+  pochissima memoria
+- I brani con video lo mostrano nella schermata del brano, su uno sfondo sfocato di sé stesso; *Cerca il video…* ne
+  trova uno su YouTube per gli altri
 
-- **Scegli dove va il suono** (Impostazioni › Riproduzione › *Uscita audio*): casse, cuffie, un DAC USB, un monitor in
-  HDMI… invece del dispositivo predefinito del sistema. Se lo scolleghi la musica passa a quello predefinito, e torna
-  quando lo ricolleghi. Windows, Linux, macOS e Android.
-- **iPhone e iPad (anteprima)**: l'app di Android su iOS 15 o successivo, installata gratis con SideStore (niente Mac,
-  niente jailbreak, vedi [Installazione](#-installazione)): libreria, playlist, tag, testi, equalizzatore, dissolvenza,
-  statistiche, il brano nella schermata di blocco e i tasti delle cuffie; brani e pacchetti `.ump` arrivano dall'app
-  File. **Anche i download**, come su Android: link, ricerca online, brani nel cloud, brani simili e brani dell'artista,
-  accesso ai siti. iOS non lascia avviare programmi alle app, quindi yt-dlp gira dentro l'app (con Python) e gli MP3 e
-  gli M4A li fa iOS stesso: su iPhone si scarica solo l'audio, niente video. Un link `ump://add?url=<link>` (da un
-  Comando rapido nel menu Condividi, per esempio) apre l'app su quel link.
-- Un menu a tendina aperto non resta più indietro, staccato dalla sua casella, quando la rotella fa scorrere la pagina
-  sotto di lui.
+### Successivi
 
-</details>
+- Trascina per riordinare, doppio clic per saltare, lascia sul cestino per togliere
+- Coda automatica, *Genera* e *Svuota*, pannello da nascondere di lato
+- Brani simili trovati online dopo un brano, o i brani dell'artista: si scaricano poco prima del loro turno (quanti in
+  anticipo lo scegli tu), e li tieni con il tasto destro
+- Passaggio facoltativo a tempo del brano dopo: quello in riproduzione si porta ai suoi BPM senza cambiare tono
+- Ritrovi tutto com'era quando riapri l'app
 
-<details>
-<summary>3.7</summary>
+### Libreria
 
-- **La qualità che vuoi, brano per brano**: nella scheda del link scegli l'audio (MP3 a 320, 256, 192, 128 kbps o il
-  file originale) e la risoluzione del video; il brano si ricorda la scelta, anche nel cloud quando lo ascolti dal suo
-  link. Tasto destro → **Scarica di nuovo / qualità…** riscarica un brano salvato in un'altra qualità, al posto dei suoi
-  file (copertina, testo, statistiche e playlist restano).
-- **MP3 per l'auto**: *Esporta* → **In una cartella (MP3)** mette le playlist, i tag o tutta la libreria scelti in una
-  cartella (una chiavetta, una scheda SD) come normali file MP3 chiamati "Artista - Titolo", con titolo, artista, album e
-  copertina nei tag. I brani nel cloud si scaricano strada facendo. Su tutte le piattaforme, Android compreso.
-- **Riproduci brani dell'artista**: accanto a *Riproduci brani simili*, i brani più ascoltati dell'artista, trovati online.
-- **Passaggio a tempo di BPM** (Impostazioni › Riproduzione): negli ultimi secondi il brano rallenta o accelera fino ai
-  BPM di quello dopo, senza cambiare tono, così entrano a tempo (i BPM mancanti si rilevano da soli).
-- **Ascolta insieme**: la coda della stanza si trascina come i *Successivi*; l'icona della libreria e la freccia del
-  download funzionano come ovunque; i brani ascoltati in una stanza contano nelle tue statistiche; i brani trovati con la
-  ricerca online vanno dritti nella stanza; i link che non si possono scaricare (DRM) si prendono da YouTube da soli,
-  nelle stanze e anche nella coda automatica.
-- **Trascina per riordinare ovunque**: i siti della ricerca online nelle impostazioni e i *Successivi* su Android, con
-  la linea e il rettangolo delle playlist (su Android tenere premuto la maniglia non fa più scorrere via la lista).
-- I risultati della ricerca online aprono subito la loro scheda, senza rileggere il link; i brani aggiunti alla libreria
-  senza salvarli lasciano la scheda sullo schermo, pronti da ascoltare.
-- Statistiche: un filtro *Tutti i brani*. I download contemporanei valgono anche per la coda automatica e per le stanze.
-  Passando al DJ il brano va in pausa. Ctrl+frecce nei campi di testo spostano il cursore invece di cambiare brano.
-  L'icona del testo è la stessa su Android. Testi: niente più il brano di qualcun altro con lo stesso titolo. Si vede
-  l'onda di un brano ascoltato per la prima volta in una stanza. La pagina del DJ si ridisegna meno spesso. La voce DJ
-  ora è sotto Ascolta insieme.
-- I file della release per Windows hanno nomi come gli altri: `UltimateMP3Player-windows-x64-setup.exe` e
-  `UltimateMP3Player-windows-x64.exe`.
+<img src="assets/readme/screens/library.webp" width="100%" alt="Una playlist con i tag colorati">
 
-</details>
+- **Brani nel cloud** accanto a quelli salvati: una libreria grande senza riempire il disco, salvata sul dispositivo
+  solo dove vuoi tu (*Solo sul dispositivo*, *Salva tutti quelli nel cloud*)
+- Playlist con copertina personalizzata, Preferiti, ascoltati di recente e la vista *Senza playlist* per fare ordine
+- Tag colorati, filtri con più tag (tutti / almeno uno) e `#tag` nella ricerca
+- Selezioni più brani, playlist o download in qualsiasi lista e agisci su tutti insieme
+- *Elimina…* toglie solo il video, solo il testo, l'audio dal dispositivo o il brano intero, e mostra lo spazio
+  liberato
+- **Pacchetti `.ump`**: una playlist, un tag, più di uno o tutto in un solo file, con l'audio o con i soli link
+  (abbastanza piccolo per Discord); lo apri o lo trascini sull'app per importarlo, senza doppioni dei brani che hai già
+- **MP3 in una cartella** per una chiavetta, una scheda SD o l'auto: "Artista - Titolo.mp3" con tag e copertina
+- Rinomina un artista su tutti i suoi brani in un colpo; modifica titolo, artista, album, BPM e copertina
+- Statistiche di ascolto per profilo: ascolti, tempo e ultimo ascolto di ogni brano (anche quelli ascoltati nelle stanze
+  e non salvati), i meno ascoltati per fare pulizia
 
-<details>
-<summary>3.6</summary>
+### Ascolta insieme
 
-- **Brani nel cloud** ☁: un brano non ha più bisogno del suo audio sul dispositivo. Nel cloud tiene copertina, testo,
-  statistiche e il suo posto nelle playlist e nei Preferiti, e si ascolta dal suo link; quelli che hai ascoltato restano
-  pronti per la prossima volta. I brani salvati si ascoltano offline come sempre e una piccola nuvola segna gli altri.
-  Il filtro accanto a *Tag* (3.6.2), nella libreria e in ogni playlist, mostra *Tutti i brani*, solo quelli *Sul
-  dispositivo* o *Solo nel cloud*; *Riproduci* e *Casuale* suonano quelli che mostra, comodo offline.
-- **Aggiungi ora, salva dopo**: decide l'interruttore *Salva l'audio sul dispositivo* nella card del link. Acceso, il
-  solito download; spento, brani e playlist intere finiscono nella libreria (e nella playlist) in pochi secondi, nel
-  cloud. L'app si ricorda la tua scelta, anche per i pacchetti `.ump` con i soli link. *Salva sul dispositivo* un brano,
-  una selezione o una playlist, oppure *Salva tutti quelli nel cloud*, quando li vuoi offline.
-- **Pulsanti chiari** (3.6.1): il **+** aggiunge a una playlist, l'**icona della libreria** mette nella libreria (nel
-  cloud) un brano consigliato o ascoltato da un link, la **freccia** lo salva sul dispositivo. Il cuore tiene solo il
-  brano, non lo scarica mai.
-- **Un solo *Elimina…* per tutto**: *Solo il video*, *Solo il testo*, *Dal dispositivo* (resta nella libreria, nel
-  cloud) o *Completamente*, con lo spazio che liberi, per un brano o per cento. *Libera spazio…* sulle playlist.
-- **Link che si aggiustano da soli**: quando il link di un brano nel cloud non va più (rimosso, DMCA, reso privato)
-  l'app trova lo stesso brano su YouTube Music, lo fa partire e tiene il nuovo link. Un link che non si riesce proprio a
-  leggere (SoundCloud Go+, rimosso) propone *Riprova con YouTube*, e i download non riusciti *Riprova su YouTube*.
-- **Cerca il video…**: un brano salvato da SoundCloud, Spotify e simili prende il suo video da YouTube. Lo scegli tra i
-  risultati: il più adatto è già selezionato, con un avviso se la durata è diversa, perché il video va a tempo con
-  l'audio. I brani di YouTube lo prendono direttamente dal loro link.
-- **Selezione multipla ovunque**: in ogni lista di brani (anche ricerca e Home), nei *Successivi*, nei download e nelle
-  playlist, su tutte le piattaforme. Su Android la pressione prolungata apre il menu con *Seleziona* per primo, come
-  nella galleria.
-- I brani nel cloud funzionano anche nella modalità DJ (si scaricano quando li carichi su una traccia), e la memoria
-  temporanea ora può tenere fino a 200 brani.
+<img src="assets/readme/screens/together.webp" width="100%" alt="Una stanza con tre persone: il brano in riproduzione, la coda con chi ha aggiunto ogni brano, la chat">
 
-</details>
+- Le stanze sulla stessa rete (Wi-Fi o cavo) si trovano da sole; da lontano entrate tutti nella stessa rete di Radmin
+  VPN. Una stanza può avere una password e un numero massimo di persone; si può entrare anche con l'indirizzo.
+- Tutti sentono lo stesso brano allo stesso punto: comanda l'orologio dell'host, ogni computer lo segue (volume ed
+  equalizzatore restano i tuoi)
+- Ogni computer si procura il brano in riproduzione e i due dopo: dalla sua libreria, dalla memoria delle stanze, dal
+  link del brano, oppure glielo manda qualcuno nella stanza. Un brano parte quando ce l'hanno tutti (o dopo qualche
+  secondo per chi ce l'ha); chi arriva dopo entra al punto giusto.
+- L'host decide chi può aggiungere, togliere e spostare, saltare, mettere in pausa, andare avanti e indietro; per gli
+  altri i tasti sono oscurati. In una stanza i tasti play delle tue liste diventano **+** e il doppio clic mette il
+  brano nella stanza.
+- Chat, chi ha aggiunto ogni brano, l'avanzamento dei download di tutti, espulsioni, passaggio dell'host. Se l'host
+  esce o il suo PC si spegne, la stanza passa a chi ha più permessi (a parità, a chi è entrato per primo).
+- I brani ascoltati nelle stanze restano in memoria (10 di base, insieme ai consigliati); quelli che ti piacciono li
+  salvi nella libreria o in una playlist
+- Il P2P si può spegnere dalle impostazioni: i brani arrivano allora solo dalla tua libreria, dalla memoria o dal loro
+  link
 
-<details>
-<summary>3.5</summary>
+> [!TIP]
+> La prima volta Windows chiede se l'app può usare la rete: consenti l'accesso. Con Radmin VPN spunta anche *Reti
+> pubbliche*, oppure usa **Consenti nel firewall** nell'app. Radmin VPN esiste solo per Windows: con amici su Linux o
+> macOS usate ZeroTier o Tailscale, che vanno ovunque (anche su Windows).
 
-**3.5.1 – 3.5.2**
-- Android: niente più chiusure durante i download lunghi, scorrimento alla frequenza piena dello schermo, circa un terzo
-  del processore mentre è a schermo, avvio più veloce, ricerca nelle impostazioni, *Accessi ai siti* dentro l'app (per
-  playlist private e contenuti con limite d'età), niente scatti dell'audio a schermo spento
-- Linux: molto più fluida (soprattutto nelle macchine virtuali e senza accelerazione grafica), testo più pulito, niente
-  più chiusura sui risultati della ricerca online
+### DJ
 
-**3.5.0**
-- **Android**: la stessa app su telefoni e tablet (Android 8 o successivo), con lo stesso aspetto e le stesse funzioni,
-  tranne la modalità DJ e Ascolta insieme. Una barra in basso con Home, Cerca, Libreria, Download e Impostazioni; il
-  brano in riproduzione subito sopra, che si apre a tutto schermo con la copertina (che si inclina sotto il dito), il
-  video, i testi sincronizzati e la coda. In orizzontale o su un tablet le schede passano in una colonna a sinistra (come
-  la barra laterale del computer) e la pagina del brano mette la copertina accanto al titolo e ai pulsanti. Lo schermo va
-  alla sua frequenza massima (90, 120 Hz e oltre).
-- **Condividi per scaricare**: in YouTube, Spotify, SoundCloud e quasi ogni altra app premi *Condividi → Scarica con
-  Ultimate MP3 Player*: l'app si apre sulla pagina dei download con il link già inserito.
-- **Ascolta senza scaricare** (su tutte le piattaforme): accanto a *Scarica*, un link si può anche solo ascoltare. I suoi
-  brani arrivano nella memoria temporanea poco prima del loro turno, come i consigliati, e restano fuori dalla libreria;
-  per tenerne uno c'è *Salva nella libreria* (su Android anche dalla notifica). In una stanza di *Ascolta insieme* lo
-  stesso pulsante è *Aggiungi alla stanza*: i brani vanno nella coda della stanza senza essere scaricati nella libreria.
-- **Schermata di blocco e notifica**: copertina, precedente / pausa / successivo e il cuore dei Preferiti (e *Salva
-  nella libreria* per un brano che stai solo ascoltando), anche dalle cuffie Bluetooth e in auto. Musica e download vanno
-  avanti anche a schermo spento.
-- **Più leggera per il processore e la batteria** (su tutte le piattaforme): i download in attesa o finiti non tengono
-  più un'animazione accesa dietro le quinte (una lista lunga poteva tenere occupato un core del processore), e mentre
-  l'app non è a schermo (in background, ridotta a icona, la pagina del brano chiusa) titoli che scorrono, rotelline di
-  caricamento, testi e video si fermano.
-- Linux e macOS: cambiare lingua dalle impostazioni funziona di nuovo.
-- La pressione prolungata è il tasto destro; ci sono i profili (comodi sul tablet di famiglia), le statistiche, i tag,
-  i pacchetti `.ump` e gli aggiornamenti automatici dalle release di GitHub.
+<img src="assets/readme/screens/dj.webp" width="100%" alt="Modalità DJ: due tracce con forme d'onda, BPM, mixer e crossfader">
 
-</details>
+- Due tracce con forme d'onda scorrevoli e panoramica, CUE, avanti/indietro, range del tempo ±8 / 16 / 50 %, key lock
+- Un selettore dei brani per ogni traccia: libreria, playlist, tag, il brano in riproduzione o un file
+- BPM rilevati in automatico, TAP su ogni traccia (anche con il tasto T), griglia dei beat e SYNC di tempo e fase
+- Mixer con EQ a 3 bande e kill, fader dei canali e crossfader
+- Registra il mix e salvalo come MP3 nella libreria, anche in una playlist nuova
 
-<details>
-<summary>3.4.0</summary>
+### Sul telefono
 
-- **Linux e macOS**: la stessa app, con lo stesso aspetto e le stesse funzioni, su Linux (x64 e arm64) e macOS (Intel
-  e Apple Silicon). Con i controlli multimediali del sistema, l'icona vicino all'orologio, i pacchetti `.ump` e gli
-  aggiornamenti automatici.
-- **Statistiche**: un ascolto conta quando hai sentito il 75% del brano (a velocità 2× basta metà del tempo), il tempo
-  di ascolto conta dal primo secondo, e si aggiornano da soli mentre ascolti. *Seleziona i mai ascoltati* funziona di
-  nuovo con qualsiasi ordine e filtro.
-- **Controlli multimediali di Windows**: l'app mostra il suo nome e la sua icona invece di *App sconosciuta*
-- Un brano consigliato salvato e poi eliminato mentre suona non salta più: finisce dalla memoria
-- La ricerca delle impostazioni resta sempre in alto
-- Finestre di dialogo (come i termini d'uso): i pulsanti non sfarfallano più sotto il mouse
+<img src="assets/readme/screens/phone.webp" width="100%" alt="Su Android: la libreria, i testi sincronizzati, la ricerca online e la scheda del download">
 
-</details>
+- La stessa libreria, playlist, tag, testi, equalizzatore e download su Android (e iPhone, in anteprima)
+- Condividi un link da YouTube, Spotify, SoundCloud o quasi ogni altra app con *Scarica con Ultimate MP3 Player*
+- Scorri di lato per passare da una scheda all'altra; dentro una playlist uno scorrimento verso destra torna indietro
+- Accedi ai siti dall'app per le playlist private; il brano sulla schermata di blocco e i tasti delle cuffie
+
+### E poi
+
+<img src="assets/readme/screens/looks.webp" width="100%" alt="Chiaro o scuro e otto colori, scelti da ogni profilo">
+
+- La stessa app su Windows, Linux, macOS e Android (e iPhone, in anteprima)
+- Profili come in Chrome, ognuno con le sue playlist, i preferiti, l'equalizzatore, il colore e l'aspetto chiaro o scuro
+- Italiano e inglese, animazioni e scorrimento fluidi
+- Stato su Discord con brano, artista, copertina e barra di avanzamento
+- Aggiornamenti automatici dalle release di GitHub
 
 ## 📥 Installazione
 
@@ -295,95 +252,6 @@
 > tieni un pacchetto `.ump`. I download vogliono l'app aperta: in background iOS lascia a un'app solo mezzo minuto
 > circa per finirli. Per mandare un link da un'altra app, crea un Comando rapido che prende l'URL condiviso e apre
 > `ump://add?url=` seguito da quello.
-
-## 🎵 Funzioni
-
-**Download**
-- Link da YouTube Music, Spotify, Apple Music, SoundCloud, YouTube, TikTok, Instagram, Deezer, Bandcamp e centinaia
-  di altri siti, grazie a yt-dlp e gallery-dl
-- **Ricerca online** dentro l'app: YouTube Music, YouTube, SoundCloud e Deezer accanto ai tuoi brani; un clic apre il
-  download
-- Salvi l'audio sul dispositivo, oppure aggiungi solo i brani alla libreria nel cloud e li salvi dopo
-- MP3 a 320, 256, 192 o 128 kbps o formato originale, video da 360p fino al 4K, scelti per ogni brano e ricordati;
-  più download insieme
-- *Scarica di nuovo / qualità…*: un brano salvato riscaricato in un'altra qualità, al posto dei suoi file
-- Riconosce i doppioni (stessa fonte o stesso brano) e gestisce da solo i limiti dei siti: i download si mettono in
-  pausa e riprendono più piano
-- Un link che non si riesce a leggere, e i download non riusciti, si possono riprovare su YouTube Music
-- Cookie del browser (facoltativi) per playlist private e contenuti con limite d'età (su Android e iPhone accedi ai
-  siti direttamente dall'app)
-- La musica che hai già: trascina file o cartelle nella finestra
-
-**Lettore**
-- Forma d'onda, casuale vero, ripeti tutto / ripeti brano, dissolvenza da 1 a 12 secondi
-- Velocità da 0,5× a 2×, cambiando o no anche il tono
-- Volume normalizzato (−14 LUFS) ed equalizzatore a 10 bande con preset e curva di risposta
-- **Testi sincronizzati**, trovati da soli: la riga cantata si illumina sui colori della copertina, un clic su una riga
-  ci salta; sopra un video diventano sottotitoli
-- Tasti multimediali, controlli multimediali del sistema (Windows, MPRIS su Linux, "In riproduzione" su macOS e iPhone,
-  la schermata di blocco su Android) e icona vicino all'orologio: chiudi la finestra e la musica continua usando
-  pochissima memoria
-- I brani con video lo mostrano nella schermata del brano, su uno sfondo sfocato di sé stesso; *Cerca il video…* ne
-  trova uno su YouTube per gli altri
-
-**Successivi**
-- Trascina per riordinare, doppio clic per saltare, lascia sul cestino per togliere
-- Coda automatica, *Genera* e *Svuota*, pannello da nascondere di lato
-- Brani simili trovati online dopo un brano, o i brani dell'artista: si scaricano poco prima del loro turno (quanti in
-  anticipo lo scegli tu), e li tieni con il tasto destro
-- Passaggio facoltativo a tempo del brano dopo: quello in riproduzione si porta ai suoi BPM senza cambiare tono
-- Ritrovi tutto com'era quando riapri l'app
-
-**Libreria**
-- **Brani nel cloud** accanto a quelli salvati: una libreria grande senza riempire il disco, salvata sul dispositivo
-  solo dove vuoi tu (*Solo sul dispositivo*, *Salva tutti quelli nel cloud*)
-- Playlist con copertina personalizzata, Preferiti, ascoltati di recente e la vista *Senza playlist* per fare ordine
-- Tag colorati, filtri con più tag (tutti / almeno uno) e `#tag` nella ricerca
-- Selezioni più brani, playlist o download in qualsiasi lista e agisci su tutti insieme
-- *Elimina…* toglie solo il video, solo il testo, l'audio dal dispositivo o il brano intero, e mostra lo spazio
-  liberato
-- **Pacchetti `.ump`**: una playlist, un tag, più di uno o tutto in un solo file, con l'audio o con i soli link
-  (abbastanza piccolo per Discord); lo apri o lo trascini sull'app per importarlo, senza doppioni dei brani che hai già
-- **MP3 in una cartella** per una chiavetta, una scheda SD o l'auto: "Artista - Titolo.mp3" con tag e copertina
-- Rinomina un artista su tutti i suoi brani in un colpo; modifica titolo, artista, album, BPM e copertina
-- Statistiche di ascolto per profilo: ascolti, tempo e ultimo ascolto di ogni brano (anche quelli ascoltati nelle stanze
-  e non salvati), i meno ascoltati per fare pulizia
-
-**DJ**
-- Due tracce con forme d'onda scorrevoli e panoramica, CUE, avanti/indietro, range del tempo ±8 / 16 / 50 %, key lock
-- Un selettore dei brani per ogni traccia: libreria, playlist, tag, il brano in riproduzione o un file
-- BPM rilevati in automatico, TAP su ogni traccia (anche con il tasto T), griglia dei beat e SYNC di tempo e fase
-- Mixer con EQ a 3 bande e kill, fader dei canali e crossfader
-- Registra il mix e salvalo come MP3 nella libreria, anche in una playlist nuova
-
-**Ascolta insieme**
-- Le stanze sulla stessa rete (Wi-Fi o cavo) si trovano da sole; da lontano entrate tutti nella stessa rete di Radmin
-  VPN. Una stanza può avere una password e un numero massimo di persone; si può entrare anche con l'indirizzo.
-- Tutti sentono lo stesso brano allo stesso punto: comanda l'orologio dell'host, ogni computer lo segue (volume ed
-  equalizzatore restano i tuoi)
-- Ogni computer si procura il brano in riproduzione e i due dopo: dalla sua libreria, dalla memoria delle stanze, dal
-  link del brano, oppure glielo manda qualcuno nella stanza. Un brano parte quando ce l'hanno tutti (o dopo qualche
-  secondo per chi ce l'ha); chi arriva dopo entra al punto giusto.
-- L'host decide chi può aggiungere, togliere e spostare, saltare, mettere in pausa, andare avanti e indietro; per gli
-  altri i tasti sono oscurati. In una stanza i tasti play delle tue liste diventano **+** e il doppio clic mette il
-  brano nella stanza.
-- Chat, chi ha aggiunto ogni brano, l'avanzamento dei download di tutti, espulsioni, passaggio dell'host. Se l'host
-  esce o il suo PC si spegne, la stanza passa a chi ha più permessi (a parità, a chi è entrato per primo).
-- I brani ascoltati nelle stanze restano in memoria (10 di base, insieme ai consigliati); quelli che ti piacciono li
-  salvi nella libreria o in una playlist
-- Il P2P si può spegnere dalle impostazioni: i brani arrivano allora solo dalla tua libreria, dalla memoria o dal loro
-  link
-
-> [!TIP]
-> La prima volta Windows chiede se l'app può usare la rete: consenti l'accesso. Con Radmin VPN spunta anche *Reti
-> pubbliche*, oppure usa **Consenti nel firewall** nell'app. Radmin VPN esiste solo per Windows: con amici su Linux o
-> macOS usate ZeroTier o Tailscale, che vanno ovunque (anche su Windows).
-
-**E poi**
-- La stessa app su Windows, Linux, macOS e Android (e iPhone, in anteprima)
-- Profili come in Chrome, temi, italiano e inglese, animazioni e scorrimento fluidi
-- Stato su Discord con brano, artista, copertina e barra di avanzamento
-- Aggiornamenti automatici dalle release di GitHub
 
 ## 💬 Aiuto e segnalazioni
 
