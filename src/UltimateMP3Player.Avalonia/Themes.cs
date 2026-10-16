@@ -12,10 +12,14 @@ namespace UltimateMP3Player;
 public static class Themes
 {
     private static Dictionary<string, uint> _dark = ThemeColors.Build(ThemeColors.All[0], false), _light = ThemeColors.Build(ThemeColors.All[0], true);
-    private static bool _watching;
+    private static bool _watching, _followsDevice;
 
     // The light or dark look changed (another choice, the device switched): what draws its own colours redraws.
     public static event Action? Changed;
+
+    // Android: the device's own look, chosen here rather than left to Avalonia (its window stops telling once it has shown
+    // one). Null elsewhere: Avalonia follows the device by itself.
+    public static Func<ThemeVariant>? DeviceLook;
 
     public static bool IsLight => Application.Current?.ActualThemeVariant == ThemeVariant.Light;
 
@@ -32,9 +36,16 @@ public static class Themes
             _watching = true;
             app.ActualThemeVariantChanged += (_, _) => Changed?.Invoke();
         }
-        var variant = mode == ThemeColors.Light ? ThemeVariant.Light : mode == ThemeColors.Dark ? ThemeVariant.Dark : ThemeVariant.Default;
+        _followsDevice = mode != ThemeColors.Light && mode != ThemeColors.Dark;
+        var variant = mode == ThemeColors.Light ? ThemeVariant.Light : mode == ThemeColors.Dark ? ThemeVariant.Dark : DeviceLook?.Invoke() ?? ThemeVariant.Default;
         app.RequestedThemeVariant = variant;
         Changed?.Invoke();
+    }
+
+    // The device switched light or dark (Android): the app follows when the profile says "same as the device".
+    public static void DeviceChanged()
+    {
+        if (_followsDevice && DeviceLook != null && Application.Current is { } app) app.RequestedThemeVariant = DeviceLook();
     }
 
     // A colour of the look showing now (code that draws by itself).

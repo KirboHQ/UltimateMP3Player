@@ -86,6 +86,11 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         Current = this;
+        // Avalonia sets AppCompat's night mode to the look it shows (for the system bars), and from then this window reports
+        // that one instead of the device's: "same as the device" stayed on the first look until a restart. The system's own
+        // settings still say what the device shows.
+        Themes.DeviceLook = () => (Android.Content.Res.Resources.System!.Configuration!.UiMode & Android.Content.Res.UiMode.NightMask) == Android.Content.Res.UiMode.NightYes
+            ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
         base.OnCreate(savedInstanceState);
         PreferFastestMode();
         Take(Intent);
@@ -123,6 +128,13 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
         base.OnResume();
         Current = this;
         App.Host?.SetVisible(true);
+        Themes.DeviceChanged();
+    }
+
+    public override void OnConfigurationChanged(Android.Content.Res.Configuration newConfig)
+    {
+        base.OnConfigurationChanged(newConfig);
+        Themes.DeviceChanged();
     }
 
     protected override void OnPause()

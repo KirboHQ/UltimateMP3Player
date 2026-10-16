@@ -77,17 +77,23 @@ public static class Marquee
             else Stop(st);
         });
         // Another look (light, dark, another colour): a moving text fades through the colour it had when it started, so
-        // it starts again in the new one.
-        Themes.Changed += () =>
+        // it takes the new one where it is (started over, one on a hidden page wouldn't move again until a new song).
+        Themes.Changed += () => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            foreach (var st in Running.ToList())
+            foreach (var st in Running)
             {
-                if (st.Ink == null) continue;
-                Stop(st);
-                if (GetAuto(st.Element)) Later(st);
+                if (st.Ink == null || st.Element is not TextBlock tb) continue;
+                st.InkSet?.Dispose();
+                st.InkSet = null;
+                st.Ink = InkOf(tb);
+                st.LastX = double.NaN;
+                Apply(st, (DateTime.Now - st.Started).TotalSeconds);
             }
-        };
+        }, Avalonia.Threading.DispatcherPriority.Background);
     }
+
+    private static Color? InkOf(TextBlock tb)
+        => tb.Foreground is ISolidColorBrush ink ? Color.FromArgb((byte)Math.Round(ink.Color.A * ink.Opacity), ink.Color.R, ink.Color.G, ink.Color.B) : null;
 
     private static void OnAttached(object? sender, VisualTreeAttachmentEventArgs e) => Attach((Control)sender!);
     private static void OnDetached(object? sender, VisualTreeAttachmentEventArgs e) => Detach((Control)sender!);
@@ -196,7 +202,7 @@ public static class Marquee
         tb.RenderTransform = st.Shift;
         tb.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute);
         st.MaskHost = tb;
-        st.Ink = tb.Foreground is ISolidColorBrush ink ? Color.FromArgb((byte)Math.Round(ink.Color.A * ink.Opacity), ink.Color.R, ink.Color.G, ink.Color.B) : null;
+        st.Ink = InkOf(tb);
         return (overflow + Edge, Edge);
     }
 
