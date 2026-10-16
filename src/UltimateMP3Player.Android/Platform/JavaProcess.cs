@@ -38,7 +38,7 @@ public sealed class JavaProcess : ChildProcess
             foreach (var kv in env) penv[kv.Key] = kv.Value;
         if (!errors) pb.RedirectError(Java.Lang.ProcessBuilder.Redirect.To(new Java.IO.File("/dev/null"))!);
         try { _p = pb.Start()!; }
-        catch (Java.Lang.Throwable ex) { throw new EngineException(L.F("Impossibile avviare {0}.", Path.GetFileName(exe)), ex.Message ?? ""); }
+        catch (Java.Lang.Throwable ex) { throw new EngineException(L.F("Couldn't start {0}.", Path.GetFileName(exe)), ex.Message ?? ""); }
         _pid = PidOf(_p);
         try { _p.OutputStream?.Close(); } catch { }
         StandardOutput = Pipe(_p.InputStream);

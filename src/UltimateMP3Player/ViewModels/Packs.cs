@@ -23,10 +23,10 @@ public sealed class PackSongRow : Observable
 
     public string StateText => L.T(Song.State switch
     {
-        PackSongState.InLibrary => "Già nella libreria",
-        PackSongState.New => "Nuovo",
-        PackSongState.Download => "Da scaricare",
-        _ => "Non disponibile",
+        PackSongState.InLibrary => "Already in your library",
+        PackSongState.New => "New",
+        PackSongState.Download => "To download",
+        _ => "Not available",
     });
 
     public Brush StateBrush => (Brush)Application.Current.Resources[Song.State switch
@@ -39,10 +39,10 @@ public sealed class PackSongRow : Observable
 
     public string StateTip => Song.State switch
     {
-        PackSongState.InLibrary => L.F("Hai già «{0}»: non viene copiato di nuovo.", Song.Existing?.Title ?? Song.T.Title),
-        PackSongState.New => L.T("Il file è nel pacchetto: viene copiato nella tua cartella della musica."),
-        PackSongState.Download => L.F("Il file non è nel pacchetto: viene scaricato da {0}.", Sites.NameFor(Song.T.SourceUrl ?? "")),
-        _ => L.T("Il file non è nel pacchetto e non c'è un link da cui scaricarlo."),
+        PackSongState.InLibrary => L.F("You already have “{0}”: it isn't copied again.", Song.Existing?.Title ?? Song.T.Title),
+        PackSongState.New => L.T("The file is in the pack: it's copied into your music folder."),
+        PackSongState.Download => L.F("The file isn't in the pack: it's downloaded from {0}.", Sites.NameFor(Song.T.SourceUrl ?? "")),
+        _ => L.T("The file isn't in the pack and there's no link to download it from."),
     };
 
     // Brought in with the current choices.

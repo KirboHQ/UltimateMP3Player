@@ -45,7 +45,7 @@ public static class Ffmpeg
         args.Add(file);
         var r = await ProcRunner.RunAsync(Engines.Ffprobe, args, ct: ct, timeout: TimeSpan.FromMinutes(2));
         if (r.ExitCode != 0 || !r.StdOut.TrimStart().StartsWith("{"))
-            throw new EngineException(L.T("Il file scaricato non è leggibile (formato sconosciuto o danneggiato)."), r.StdErr);
+            throw new EngineException(L.T("The downloaded file can't be read (unknown or corrupted format)."), r.StdErr);
         using var doc = JsonDocument.Parse(r.StdOut);
         var root = doc.RootElement;
         ProbeStream? video = null, audio = null;
@@ -113,7 +113,7 @@ public static class Ffmpeg
         if (r.ExitCode != 0)
         {
             var last = r.StdErr.Split('\n', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?.Trim() ?? "";
-            throw new EngineException(L.T("Conversione non riuscita") + (last.Length > 0 ? ": " + (last.Length > 160 ? last[..160] + "…" : last) : "."), r.StdErr);
+            throw new EngineException(L.T("Conversion failed") + (last.Length > 0 ? ": " + (last.Length > 160 ? last[..160] + "…" : last) : "."), r.StdErr);
         }
     }
 
@@ -185,7 +185,7 @@ public static class Ffmpeg
         if (t.Res is int r && shortSide > r + 1)
         {
             filters.Add(portrait ? $"scale={r}:-2:flags=lanczos" : $"scale=-2:{r}:flags=lanczos");
-            notes.Add(L.F("ridimensionato a {0}p", r));
+            notes.Add(L.F("resized to {0}p", r));
         }
         double? fpsOut = null;
         if (t.Container == "gif")
@@ -200,7 +200,7 @@ public static class Ffmpeg
         {
             var chain = string.Join(",", filters.Append("split[s0][s1]"));
             a.AddRange(new[] { "-map", $"0:{v.Index}", "-vf", chain + ";[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=sierra2_4a", "-loop", "0", "-an", output });
-            return new Plan(a, "gif", false, L.T("conversione in GIF"));
+            return new Plan(a, "gif", false, L.T("converting to GIF"));
         }
 
         var vf = Codecs.Family(v.Codec);
@@ -216,7 +216,7 @@ public static class Ffmpeg
                 a.AddRange(new[] { "-c:v", "libvpx-vp9", "-crf", scaled ? "33" : "31", "-b:v", "0", "-row-mt", "1", "-cpu-used", "4", "-pix_fmt", "yuv420p" });
             else
                 a.AddRange(new[] { "-c:v", "libx264", "-preset", "medium", "-crf", scaled ? "21" : "18", "-pix_fmt", "yuv420p" });
-            notes.Add(L.F("video ricodificato in {0}", t.Container == "webm" ? "VP9" : "H.264"));
+            notes.Add(L.F("video re-encoded to {0}", t.Container == "webm" ? "VP9" : "H.264"));
         }
         else
         {
@@ -234,14 +234,14 @@ public static class Ffmpeg
                 aEnc = true;
                 if (t.Container == "webm") a.AddRange(new[] { "-c:a", "libopus", "-b:a", "160k" });
                 else a.AddRange(new[] { "-c:a", "aac", "-b:a", "192k" });
-                notes.Add(L.F("audio convertito in {0}", t.Container == "webm" ? "Opus" : "AAC"));
+                notes.Add(L.F("audio converted to {0}", t.Container == "webm" ? "Opus" : "AAC"));
             }
         }
         if (metaFile != null) a.AddRange(new[] { "-map_metadata", "1" });
         if (t.Container is "mp4" or "mov") a.AddRange(new[] { "-movflags", "+faststart" });
         a.Add(output);
 
-        var desc = notes.Count > 0 ? string.Join(", ", notes) : L.T("nessuna ricodifica");
+        var desc = notes.Count > 0 ? string.Join(", ", notes) : L.T("no re-encoding");
         bool justMove = !vEnc && !aEnc && metaFile == null &&
                         Path.GetExtension(input).TrimStart('.').Equals(t.Container, StringComparison.OrdinalIgnoreCase);
         return new Plan(a, t.Container, justMove, desc);
@@ -249,7 +249,7 @@ public static class Ffmpeg
 
     public static Plan ForAudio(string input, ProbeInfo p, AudioTarget t, string? metaFile, string? coverJpg, string output)
     {
-        var s = p.Audio ?? throw new EngineException(L.T("Il file scaricato non contiene audio."));
+        var s = p.Audio ?? throw new EngineException(L.T("The downloaded file has no audio."));
         var fam = Codecs.Family(s.Codec);
         bool original = t.Format == "original";
         bool copy = FormatSelector.CanCopyAudio(fam, new AudioOptions(t.Format, t.Kbps, t.SampleRate, t.Channels, t.BitDepth), s.SampleRate, s.Channels);
@@ -272,7 +272,7 @@ public static class Ffmpeg
         if (copy)
         {
             a.AddRange(new[] { "-c:a", "copy" });
-            desc = L.T("audio originale senza perdita");
+            desc = L.T("original lossless audio");
         }
         else
         {
@@ -307,7 +307,7 @@ public static class Ffmpeg
 
     public static Plan ForImage(string input, ProbeInfo p, ImageTarget t, string output)
     {
-        var v = p.Video ?? throw new EngineException(L.T("Il file scaricato non è un'immagine leggibile."));
+        var v = p.Video ?? throw new EngineException(L.T("The downloaded file isn't a readable image."));
         var inExt = Path.GetExtension(input).TrimStart('.').ToLowerInvariant();
         if (inExt == "jpeg" || inExt == "jfif") inExt = "jpg";
         bool animated = p.Animated;
@@ -322,7 +322,7 @@ public static class Ffmpeg
 
         bool resize = t.MaxSide is int maxSide && Math.Max(v.Width, v.Height) > maxSide;
         if (!resize && fmt == inExt)
-            return new Plan(new List<string>(), inExt, true, L.F("{0}×{1}, file originale", v.Width, v.Height));
+            return new Plan(new List<string>(), inExt, true, L.F("{0}×{1}, original file", v.Width, v.Height));
 
         int nw = v.Width, nh = v.Height;
         if (resize)
@@ -374,7 +374,7 @@ public static class Ffmpeg
                     break;
                 }
             default:
-                throw new EngineException(L.F("Formato immagine non supportato: {0}", fmt));
+                throw new EngineException(L.F("Unsupported image format: {0}", fmt));
         }
         return new Plan(a, fmt, false, resize ? $"{nw}×{nh}" : $"{v.Width}×{v.Height}");
     }

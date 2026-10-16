@@ -1,8 +1,10 @@
-namespace UltimateMP3Player.Core.Together;
+using UltimateMP3Player.Core.Together;
 
-// Songs heard in rooms or suggested online that aren't in the library: kept in their own folder, at most N (the oldest
+namespace UltimateMP3Player.Core;
+
+// Songs heard without saving them (in the cloud, suggested online, in rooms): kept in their own folder, at most N (the oldest
 // go), so the same song next time is ready at once. Saving one to the library takes it out of here.
-public sealed class TogetherCache
+public sealed class SongCache
 {
     private sealed class Entry
     {
@@ -21,15 +23,27 @@ public sealed class TogetherCache
     private readonly object _lock = new();
     private readonly List<Entry> _entries;
     private readonly string _index;
+    // Songs looked up (Find) since the last write: many looks are one write, a moment later (the radio looks up all its
+    // songs as it starts).
+    private readonly DebouncedSaver _usedSaver;
+    private bool _usedUnsaved;
 
-    public TogetherCache(string dir)
+    public SongCache(string dir)
     {
         Dir = dir;
         Directory.CreateDirectory(dir);
         _index = Path.Combine(dir, "cache.json");
         _entries = JsonStore.Load<IndexFile>(_index).Entries.Where(e => File.Exists(Path.Combine(Dir, e.File))).ToList();
+        _usedSaver = new DebouncedSaver(() =>
+        {
+            lock (_lock)
+                if (_usedUnsaved) Save();
+        }, 2000);
         CleanUp();
     }
+
+    // The app closes or goes to the background.
+    public void Flush() => _usedSaver.Flush();
 
     public string Dir { get; }
 
@@ -49,11 +63,12 @@ public sealed class TogetherCache
 
     public string? Find(List<string> keys)
     {
+        string path;
         lock (_lock)
         {
             var e = _entries.FirstOrDefault(x => x.Keys.Any(k => keys.Contains(k, StringComparer.OrdinalIgnoreCase)));
             if (e == null) return null;
-            var path = Path.Combine(Dir, e.File);
+            path = Path.Combine(Dir, e.File);
             if (!File.Exists(path))
             {
                 _entries.Remove(e);
@@ -61,9 +76,11 @@ public sealed class TogetherCache
                 return null;
             }
             e.Used = DateTime.Now;
-            Save();
-            return path;
+            _usedUnsaved = true;
         }
+        // Outside the lock: the saver takes its own lock first, then this one.
+        _usedSaver.Request();
+        return path;
     }
 
     public string Adopt(RoomTrack t, string file) => Adopt(KeysOf(t), t.Title, t.Artist, file);
@@ -246,6 +263,7 @@ public sealed class TogetherCache
 
     private void Save()
     {
+        _usedUnsaved = false;
         try { JsonStore.Save(_index, new IndexFile { Entries = _entries }); } catch { }
     }
 
@@ -253,7 +271,7 @@ public sealed class TogetherCache
     public static async Task<string> DownloadAsync(string url, string audioFormat, string? cookies, string dir, Action<double> progress, CancellationToken ct)
     {
         var analysis = await Analyzer.AnalyzeAsync(new AnalyzeRequest(url, cookies), ct);
-        var item = analysis.Items.FirstOrDefault() ?? throw new EngineException(L.T("Nessun contenuto scaricabile trovato in questo link."));
+        var item = analysis.Items.FirstOrDefault() ?? throw new EngineException(L.T("No downloadable content found in this link."));
         if (item.Kind == MediaKind.Video) item.Kind = MediaKind.Audio;
         var job = new DownloadJob(item, new DownloadOptions
         {
@@ -267,6 +285,6 @@ public sealed class TogetherCache
             if (p.Percent is double pct) progress(p.Phase == JobPhase.Converting ? 85 + pct * 0.15 : Math.Min(85, pct * 0.85));
         };
         await job.RunAsync(ct);
-        return job.ResultPath ?? throw new EngineException(L.T("La conversione non ha prodotto alcun file."));
+        return job.ResultPath ?? throw new EngineException(L.T("The conversion didn't produce any file."));
     }
 }

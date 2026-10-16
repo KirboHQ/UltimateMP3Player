@@ -54,7 +54,7 @@ public sealed class MediaControls : IDisposable
     public bool IsTemporary { get; private set; }
     public bool InLibrary { get; private set; }
     public int SaveIcon => InLibrary ? Resource.Drawable.ic_download : Resource.Drawable.ic_library;
-    public string SaveLabel => L.T(InLibrary ? "Salva sul dispositivo" : "Aggiungi alla libreria");
+    public string SaveLabel => L.T(InLibrary ? "Save to device" : "Add to library");
 
     public void SetTrack(string? title, string? artist, string? album, string? coverPath, double duration)
     {
@@ -114,7 +114,7 @@ public sealed class MediaControls : IDisposable
             .SetState(IsPlaying ? PlaybackStateCode.Playing : HasTrack ? PlaybackStateCode.Paused : PlaybackStateCode.None,
                 (long)_position.TotalMilliseconds, IsPlaying ? (float)_speed : 0f, _positionAt > 0 ? _positionAt : SystemClock.ElapsedRealtime())!;
         if (HasTrack)
-            state.AddCustomAction(new PlaybackState.CustomAction.Builder(FavoriteAction, L.T(IsFavorite ? "Togli dai Preferiti" : "Aggiungi ai Preferiti"),
+            state.AddCustomAction(new PlaybackState.CustomAction.Builder(FavoriteAction, L.T(IsFavorite ? "Remove from Favorites" : "Add to Favorites"),
                 IsFavorite ? Resource.Drawable.ic_heart : Resource.Drawable.ic_heart_outline).Build());
         // A song not saved on the phone: into the library, or saved on the phone, with a tap.
         if (HasTrack && IsTemporary)

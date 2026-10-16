@@ -32,23 +32,23 @@ public static partial class Menus
         if (main.InRoom) AddRoomItems(menu, new[] { t });
         else
         {
-            if (owner != null) menu.Items.Add(Item(L.T("Riproduci"), "", () => main.Player.PlayFrom(owner, t)));
-            else if (main.Player.Current != t) menu.Items.Add(Item(L.T("Riproduci"), "", () => main.Player.PlaySingle(t.T)));
-            menu.Items.Add(Item(L.T("Riproduci dopo"), "", () => main.Player.PlayNext(t)));
-            menu.Items.Add(Item(L.T("Aggiungi alla coda"), "", () => main.Player.Enqueue(t)));
-            menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => main.Player.PlayRadio(t)));
-            menu.Items.Add(Item(L.T("Riproduci brani dell'artista"), "", () => main.Player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
+            if (owner != null) menu.Items.Add(Item(L.T("Play"), "", () => main.Player.PlayFrom(owner, t)));
+            else if (main.Player.Current != t) menu.Items.Add(Item(L.T("Play"), "", () => main.Player.PlaySingle(t.T)));
+            menu.Items.Add(Item(L.T("Play next"), "", () => main.Player.PlayNext(t)));
+            menu.Items.Add(Item(L.T("Add to queue"), "", () => main.Player.Enqueue(t)));
+            menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => main.Player.PlayRadio(t)));
+            menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => main.Player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         }
         menu.Items.Add(new Separator());
         AddSaveItems(menu, new[] { t });
         menu.Items.Add(AddToPlaylist(t));
         if (owner?.Playlist is { } pl && !pl.IsFavorites)
-            menu.Items.Add(Item(L.F("Rimuovi da «{0}»", Short(pl.Name)), "", () => main.RemoveFromPlaylist(t, pl)));
+            menu.Items.Add(Item(L.F("Remove from “{0}”", Short(pl.Name)), "", () => main.RemoveFromPlaylist(t, pl)));
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(TagSubmenu(new[] { t }));
         menu.Items.Add(LyricsSubmenu(t));
         if (t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
-            menu.Items.Add(Item(L.T("Cerca il video…"), VideoGlyph, () => _ = main.FindVideo(t)));
+            menu.Items.Add(Item(L.T("Find the video…"), VideoGlyph, () => _ = main.FindVideo(t)));
         if (!main.InRoom) menu.Items.Add(DjSubmenu(t));
         menu.Items.Add(new Separator());
         AddEditItems(menu, t);
@@ -63,14 +63,14 @@ public static partial class Menus
         var main = tracks[0].Main;
         var cloud = tracks.Where(t => t.IsCloud && !t.IsSaving).ToList();
         if (cloud.Count > 0)
-            menu.Items.Add(Item(tracks.Count == 1 ? L.T("Salva sul dispositivo") : L.F("Salva sul dispositivo ({0})", cloud.Count), SaveGlyph,
+            menu.Items.Add(Item(tracks.Count == 1 ? L.T("Save to device") : L.F("Save to device ({0})", cloud.Count), SaveGlyph,
                 () => _ = main.SaveToDevice(cloud)));
         else if (tracks.Any(t => t.IsSaving))
-            menu.Items.Add(Item(L.T("Salvataggio sul dispositivo in corso…"), SaveGlyph, () => { }, false));
+            menu.Items.Add(Item(L.T("Saving to device…"), SaveGlyph, () => { }, false));
         // The quality of the ones with a link: downloaded again in it (the saved ones), kept for when they're heard (the cloud).
         var linked = tracks.Where(t => t.T.HasLink && main.Library.Get(t.Id) == t.T).ToList();
         if (linked.Count > 0)
-            menu.Items.Add(Item(linked.Any(t => t.T.HasSavedFile) ? L.T("Scarica di nuovo / qualità…") : L.T("Qualità di ascolto…"), "", () => _ = main.ChangeQuality(linked)));
+            menu.Items.Add(Item(linked.Any(t => t.T.HasSavedFile) ? L.T("Download again / quality…") : L.T("Listening quality…"), "", () => _ = main.ChangeQuality(linked)));
     }
 
     private const string LyricsGlyph = "";
@@ -79,23 +79,23 @@ public static partial class Menus
     public static MenuItem LyricsSubmenu(TrackViewModel t)
     {
         var main = t.Main;
-        var sub = new SubmenuEntry { Header = L.T("Testo") };
+        var sub = new SubmenuEntry { Header = L.T("Lyrics") };
         Ui.SetGlyph(sub, LyricsGlyph);
         bool searching = main.Host.Lyrics.IsSearching(t.T);
-        var state = searching ? L.T("Ricerca in corso…") : t.T.Lyrics switch
+        var state = searching ? L.T("Searching…") : t.T.Lyrics switch
         {
-            LyricsKind.Synced => L.T("Con i tempi: si illumina mentre ascolti"),
-            LyricsKind.Plain => L.T("Senza tempi"),
-            LyricsKind.Instrumental => L.T("Brano strumentale"),
-            LyricsKind.None => L.T("Non trovato online"),
-            _ => L.T("Non ancora cercato"),
+            LyricsKind.Synced => L.T("Synced: lights up as you listen"),
+            LyricsKind.Plain => L.T("Without timing"),
+            LyricsKind.Instrumental => L.T("Instrumental song"),
+            LyricsKind.None => L.T("Not found online"),
+            _ => L.T("Not searched yet"),
         };
         sub.Items.Add(Item(state, "", () => { }, false));
         sub.Items.Add(new Separator());
         if (t.HasLyrics && main.Player.Current == t)
-            sub.Items.Add(Item(L.T("Mostra il testo"), "", main.ShowLyrics));
-        sub.Items.Add(Item(t.HasLyrics ? L.T("Cerca di nuovo online") : L.T("Cerca online"), "", () => main.SearchLyrics(new[] { t }), !searching));
-        if (t.HasLyrics) sub.Items.Add(Item(L.T("Elimina il testo"), "", () => main.DeleteLyrics(t)));
+            sub.Items.Add(Item(L.T("Show lyrics"), "", main.ShowLyrics));
+        sub.Items.Add(Item(t.HasLyrics ? L.T("Search online again") : L.T("Search online"), "", () => main.SearchLyrics(new[] { t }), !searching));
+        if (t.HasLyrics) sub.Items.Add(Item(L.T("Delete lyrics"), "", () => main.DeleteLyrics(t)));
         return sub;
     }
 
@@ -103,9 +103,9 @@ public static partial class Menus
     private static void AddRoomItems(ContextMenu menu, IReadOnlyList<TrackViewModel> tracks)
     {
         var room = tracks[0].Main.Together;
-        var add = Item(tracks.Count == 1 ? L.T("Aggiungi alla coda della stanza") : L.F("Aggiungi {0} brani alla stanza", tracks.Count), "",
+        var add = Item(tracks.Count == 1 ? L.T("Add to the room's queue") : L.F("Add {0} songs to the room", tracks.Count), "",
             () => room.Add(tracks), room.CanAdd);
-        var next = Item(L.T("Metti come prossimo nella stanza"), "", () => room.Add(tracks, next: true), room.CanAdd && room.CanRemove);
+        var next = Item(L.T("Play next in the room"), "", () => room.Add(tracks, next: true), room.CanAdd && room.CanRemove);
         if (!room.CanAdd)
         {
             Tip(add, room.Denied(Core.Together.Perm.Add), true);
@@ -124,12 +124,12 @@ public static partial class Menus
         if (!item.IsCurrent)
         {
             int index = room.Queue.IndexOf(item), last = room.Queue.Count - 1;
-            menu.Items.Add(Item(L.T("Fallo partire ora"), "", () => room.PlayNow(item.Id), room.CanRemove && room.CanSkip));
-            menu.Items.Add(Item(L.T("Sposta in cima"), "", () => room.MoveTo(item, 0), room.CanRemove && index > 0));
-            menu.Items.Add(Item(L.T("Sposta in fondo"), "", () => room.MoveTo(item, last), room.CanRemove && index < last));
-            menu.Items.Add(Item(L.T("Togli dalla coda"), "", () => room.Remove(item), item.CanRemove));
+            menu.Items.Add(Item(L.T("Play it now"), "", () => room.PlayNow(item.Id), room.CanRemove && room.CanSkip));
+            menu.Items.Add(Item(L.T("Move to top"), "", () => room.MoveTo(item, 0), room.CanRemove && index > 0));
+            menu.Items.Add(Item(L.T("Move to bottom"), "", () => room.MoveTo(item, last), room.CanRemove && index < last));
+            menu.Items.Add(Item(L.T("Remove from queue"), "", () => room.Remove(item), item.CanRemove));
         }
-        else menu.Items.Add(Item(L.T("Salta"), "", room.Skip, room.CanSkip));
+        else menu.Items.Add(Item(L.T("Skip"), "", room.Skip, room.CanSkip));
         menu.Items.Add(new Separator());
         // As for any song: into the library (in the cloud) with the library icon, onto the device with the download arrow.
         if (item.InLibrary)
@@ -140,12 +140,12 @@ public static partial class Menus
         else
         {
             if (TogetherViewModel.HasLink(item.Item))
-                menu.Items.Add(Item(L.T("Aggiungi alla libreria (senza scaricarlo)"), "", () => room.AddToLibrary(item, null)));
-            var sub = new SubmenuEntry { Header = L.T("Aggiungi a playlist"), IsEnabled = item.IsReady || TogetherViewModel.HasLink(item.Item) };
+                menu.Items.Add(Item(L.T("Add to library (without downloading it)"), "", () => room.AddToLibrary(item, null)));
+            var sub = new SubmenuEntry { Header = L.T("Add to playlist"), IsEnabled = item.IsReady || TogetherViewModel.HasLink(item.Item) };
             Ui.SetGlyph(sub, "");
-            sub.Items.Add(Item(L.T("Nuova playlist…"), "", () =>
+            sub.Items.Add(Item(L.T("New playlist…"), "", () =>
             {
-                var name = Dialogs.Prompt(L.T("Nuova playlist"), L.T("Nome della playlist"), main.NewPlaylistName());
+                var name = Dialogs.Prompt(L.T("New playlist"), L.T("Playlist name"), main.NewPlaylistName());
                 if (!string.IsNullOrWhiteSpace(name)) room.AddToPlaylist(item, main.Profile.CreatePlaylist(name));
             }));
             sub.Items.Add(new Separator());
@@ -156,9 +156,9 @@ public static partial class Menus
             }
             menu.Items.Add(sub);
         }
-        if (!item.SavedOnDevice) menu.Items.Add(Item(L.T("Salva sul dispositivo"), "", () => _ = room.Save(item, null), item.IsReady));
+        if (!item.SavedOnDevice) menu.Items.Add(Item(L.T("Save to device"), "", () => _ = room.Save(item, null), item.IsReady));
         if (item.Item.SourceUrl is { } url)
-            menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copiato")); } catch { } }));
+            menu.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copied")); } catch { } }));
         return menu;
     }
 
@@ -176,29 +176,29 @@ public static partial class Menus
         if (row != null)
         {
             int last = player.UpNext.LastOrDefault()?.Index ?? row.Index;
-            menu.Items.Add(Item(L.T("Riproduci ora"), "", () => _ = player.JumpTo(row.Index)));
-            menu.Items.Add(Item(L.T("Sposta in cima"), "", () => player.MoveUpcoming(row.Index, 0), row.Index > 0));
-            menu.Items.Add(Item(L.T("Sposta in fondo"), "", () => player.MoveUpcoming(row.Index, last), row.Index < last));
-            menu.Items.Add(Item(L.T("Togli dai successivi"), "", () => player.RemoveUpcoming(row.Index)));
+            menu.Items.Add(Item(L.T("Play now"), "", () => _ = player.JumpTo(row.Index)));
+            menu.Items.Add(Item(L.T("Move to top"), "", () => player.MoveUpcoming(row.Index, 0), row.Index > 0));
+            menu.Items.Add(Item(L.T("Move to bottom"), "", () => player.MoveUpcoming(row.Index, last), row.Index < last));
+            menu.Items.Add(Item(L.T("Remove from Up next"), "", () => player.RemoveUpcoming(row.Index)));
         }
-        else if (player.Current == t) menu.Items.Add(Item(L.T("Salta"), "", () => player.NextCommand.Execute(null)));
+        else if (player.Current == t) menu.Items.Add(Item(L.T("Skip"), "", () => player.NextCommand.Execute(null)));
         // (a card of the recently played, a row of the statistics)
-        else menu.Items.Add(Item(L.T("Riproduci"), "", () => player.PlaySingle(t.T)));
-        if (item.IsFailed) menu.Items.Add(Item(L.T("Riprova a scaricarlo"), "", () => main.Radio.Prepare(item.Id)));
+        else menu.Items.Add(Item(L.T("Play"), "", () => player.PlaySingle(t.T)));
+        if (item.IsFailed) menu.Items.Add(Item(L.T("Try downloading it again"), "", () => main.Radio.Prepare(item.Id)));
         menu.Items.Add(new Separator());
         // Only into the library (in the cloud, nothing downloaded: also a playlist, the favourites), or saved on the device too.
-        menu.Items.Add(Item(L.T("Aggiungi alla libreria"), LibraryGlyph, () => main.AddToLibrary(t)));
-        menu.Items.Add(Item(L.T("Salva sul dispositivo"), SaveGlyph, () => _ = main.Radio.Save(item, null)));
+        menu.Items.Add(Item(L.T("Add to library"), LibraryGlyph, () => main.AddToLibrary(t)));
+        menu.Items.Add(Item(L.T("Save to device"), SaveGlyph, () => _ = main.Radio.Save(item, null)));
         menu.Items.Add(AddToPlaylist(t));
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(LyricsSubmenu(t));
-        menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => player.PlayRadio(t)));
-        menu.Items.Add(Item(L.T("Riproduci brani dell'artista"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
-        menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copiato")); } catch { } }));
+        menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => player.PlayRadio(t)));
+        menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
+        menu.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copied")); } catch { } }));
         if (row == null && player.Current != t)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item(L.T("Elimina…"), DeleteGlyph, () => _ = main.DeleteTracks(new[] { t })));
+            menu.Items.Add(Item(L.T("Delete…"), DeleteGlyph, () => _ = main.DeleteTracks(new[] { t })));
         }
         return menu;
     }
@@ -212,18 +212,18 @@ public static partial class Menus
         who = who.Where(m => !m.IsMe).ToList();
         if (!room.IsHost || who.Count == 0)
         {
-            menu.Items.Add(Item(room.IsHost ? L.T("Seleziona qualcuno nell'elenco") : L.T("Solo l'host può cambiare i permessi"), "", () => { }, false));
+            menu.Items.Add(Item(room.IsHost ? L.T("Select someone in the list") : L.T("Only the host can change permissions"), "", () => { }, false));
             return menu;
         }
-        menu.Items.Add(Item(who.Count == 1 ? who[0].Name : L.F("{0} persone", who.Count), "", () => { }, false));
+        menu.Items.Add(Item(who.Count == 1 ? who[0].Name : L.F("{0} people", who.Count), "", () => { }, false));
         menu.Items.Add(new Separator());
         foreach (var (perm, text) in new[]
                  {
-                     (Core.Together.Perm.Add, L.T("Può aggiungere brani")),
-                     (Core.Together.Perm.Remove, L.T("Può togliere e spostare brani")),
-                     (Core.Together.Perm.Skip, L.T("Può saltare i brani")),
-                     (Core.Together.Perm.Pause, L.T("Può mettere in pausa, andare avanti e indietro e ripetere il brano")),
-                     (Core.Together.Perm.Speed, L.T("Può cambiare la velocità")),
+                     (Core.Together.Perm.Add, L.T("Can add songs")),
+                     (Core.Together.Perm.Remove, L.T("Can remove and move songs")),
+                     (Core.Together.Perm.Skip, L.T("Can skip songs")),
+                     (Core.Together.Perm.Pause, L.T("Can pause, move forward and back and loop the song")),
+                     (Core.Together.Perm.Speed, L.T("Can change the speed")),
                  })
         {
             int n = who.Count(m => (m.M.Perms & perm) != 0);
@@ -239,12 +239,12 @@ public static partial class Menus
             menu.Items.Add(item);
         }
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Dai tutti i permessi"), "", () => room.SetAllPerms(who, true)));
-        menu.Items.Add(Item(L.T("Togli tutti i permessi"), "", () => room.SetAllPerms(who, false)));
+        menu.Items.Add(Item(L.T("Give every permission"), "", () => room.SetAllPerms(who, true)));
+        menu.Items.Add(Item(L.T("Remove every permission"), "", () => room.SetAllPerms(who, false)));
         if (who.Count == 1 && !who[0].Away)
-            menu.Items.Add(Item(L.T("Rendi host"), "", () => room.MakeHost(who[0])));
+            menu.Items.Add(Item(L.T("Make host"), "", () => room.MakeHost(who[0])));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(who.Count == 1 ? L.T("Espelli dalla stanza…") : L.F("Espelli {0} persone…", who.Count), "", () => room.Kick(who)));
+        menu.Items.Add(Item(who.Count == 1 ? L.T("Kick from the room…") : L.F("Kick {0} people…", who.Count), "", () => room.Kick(who)));
         return menu;
     }
 
@@ -270,7 +270,7 @@ public static partial class Menus
             yield return item;
         }
         if (main.Tags.Count > 0) yield return new Separator();
-        yield return Item(L.T("Nuovo tag…"), "", () => _ = main.NewTag(tracks));
+        yield return Item(L.T("New tag…"), "", () => _ = main.NewTag(tracks));
     }
 
     private static string? StateOf(IReadOnlyList<TrackViewModel> tracks, TagViewModel tag)
@@ -292,16 +292,16 @@ public static partial class Menus
 
     public static MenuItem DjSubmenu(TrackViewModel t)
     {
-        var sub = new SubmenuEntry { Header = L.T("Carica nel DJ") };
+        var sub = new SubmenuEntry { Header = L.T("Load in DJ") };
         Ui.SetGlyph(sub, "");
-        sub.Items.Add(Item(L.T("Traccia A"), "", () => t.Main.LoadInDj(t, false)));
-        sub.Items.Add(Item(L.T("Traccia B"), "", () => t.Main.LoadInDj(t, true)));
+        sub.Items.Add(Item(L.T("Deck A"), "", () => t.Main.LoadInDj(t, false)));
+        sub.Items.Add(Item(L.T("Deck B"), "", () => t.Main.LoadInDj(t, true)));
         return sub;
     }
 
     public static MenuItem TagSubmenu(IReadOnlyList<TrackViewModel> tracks)
     {
-        var sub = new SubmenuEntry { Header = L.T("Tag") };
+        var sub = new SubmenuEntry { Header = L.T("Tags") };
         Ui.SetGlyph(sub, TagGlyph);
         foreach (var i in TagItems(tracks)) sub.Items.Add(i);
         return sub;
@@ -332,12 +332,12 @@ public static partial class Menus
             yield return item;
         }
         if (main.Tags.Count > 0) yield return new Separator();
-        yield return Item(L.T("Nuovo tag…"), "", () => _ = main.NewTag(playlist: p));
+        yield return Item(L.T("New tag…"), "", () => _ = main.NewTag(playlist: p));
     }
 
     private static MenuItem PlaylistTagSubmenu(PlaylistViewModel p)
     {
-        var sub = new SubmenuEntry { Header = L.T("Tag") };
+        var sub = new SubmenuEntry { Header = L.T("Tags") };
         Ui.SetGlyph(sub, TagGlyph);
         foreach (var i in PlaylistTagItems(p)) sub.Items.Add(i);
         return sub;
@@ -348,7 +348,7 @@ public static partial class Menus
     {
         var menu = new ContextMenu();
         foreach (var i in PlaylistTagItems(p)) menu.Items.Add(i);
-        menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "", () => _ = App.Host.Session!.TagPlaylistSongs(p), p.Count > 0));
+        menu.Items.Add(Item(L.T("Put its tags on its songs…"), "", () => _ = App.Host.Session!.TagPlaylistSongs(p), p.Count > 0));
         return menu;
     }
 
@@ -370,7 +370,7 @@ public static partial class Menus
             menu.Items.Add(item);
         }
         if (main.Tags.Count > 0) menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Nuovo tag…"), "", async () =>
+        menu.Items.Add(Item(L.T("New tag…"), "", async () =>
         {
             if (await main.NewTag() is { } t)
             {
@@ -385,9 +385,9 @@ public static partial class Menus
     public static ContextMenu TagFilterMenu(TagFilter filter, MainViewModel main)
     {
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.T("Mostra i brani con:"), "", () => { }, false));
-        var all = Item(L.T("tutti i tag scelti"), filter.MatchAll ? Check : "", () => { });
-        var any = Item(L.T("almeno uno dei tag scelti"), filter.MatchAll ? "" : Check, () => { });
+        menu.Items.Add(Item(L.T("Show songs with:"), "", () => { }, false));
+        var all = Item(L.T("all the chosen tags"), filter.MatchAll ? Check : "", () => { });
+        var any = Item(L.T("at least one of the chosen tags"), filter.MatchAll ? "" : Check, () => { });
         all.StaysOpenOnClick = any.StaysOpenOnClick = true;
         all.Click += (_, _) => { filter.MatchAll = true; Ui.SetGlyph(all, Check); Ui.SetGlyph(any, null); };
         any.Click += (_, _) => { filter.MatchAll = false; Ui.SetGlyph(any, Check); Ui.SetGlyph(all, null); };
@@ -407,7 +407,7 @@ public static partial class Menus
             menu.Items.Add(item);
         }
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Togli il filtro"), "", filter.Clear, filter.IsActive));
+        menu.Items.Add(Item(L.T("Clear the filter"), "", filter.Clear, filter.IsActive));
         return menu;
     }
 
@@ -428,56 +428,56 @@ public static partial class Menus
     {
         var main = App.Host.Session!;
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.T("Apri"), "", () => main.OpenTag(t)));
-        menu.Items.Add(Item(L.T("Modifica…"), "", () => _ = main.EditTag(t)));
-        menu.Items.Add(Item(L.T("Esporta in un file .ump…"), "", () => main.ExportPack(tag: t)));
+        menu.Items.Add(Item(L.T("Open"), "", () => main.OpenTag(t)));
+        menu.Items.Add(Item(L.T("Edit…"), "", () => _ = main.EditTag(t)));
+        menu.Items.Add(Item(L.T("Export to a .ump file…"), "", () => main.ExportPack(tag: t)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Elimina tag…"), "", () => _ = main.DeleteTag(t)));
+        menu.Items.Add(Item(L.T("Delete tag…"), "", () => _ = main.DeleteTag(t)));
         return menu;
     }
 
     private static MenuItem FavoriteItem(TrackViewModel t) => t.IsFavorite
-        ? Item(L.T("Togli dai Preferiti"), "", () => t.Main.ToggleFavorite(t))
-        : Item(L.T("Aggiungi ai Preferiti"), "", () => t.Main.ToggleFavorite(t));
+        ? Item(L.T("Remove from Favorites"), "", () => t.Main.ToggleFavorite(t))
+        : Item(L.T("Add to Favorites"), "", () => t.Main.ToggleFavorite(t));
 
     // Edit, cover, folder, link, delete: the same everywhere.
     private static void AddEditItems(ContextMenu menu, TrackViewModel t)
     {
         var main = t.Main;
-        menu.Items.Add(Item(L.T("Modifica informazioni…"), "", () => _ = main.EditTrack(t)));
-        menu.Items.Add(Item(L.T("Cambia copertina…"), "", () => _ = main.ChangeTrackCover(t)));
-        if (t.IsSaved) menu.Items.Add(Item(L.T("Mostra nella cartella"), "", () => main.ShowInFolder(t)));
+        menu.Items.Add(Item(L.T("Edit info…"), "", () => _ = main.EditTrack(t)));
+        menu.Items.Add(Item(L.T("Change cover…"), "", () => _ = main.ChangeTrackCover(t)));
+        if (t.IsSaved) menu.Items.Add(Item(L.T("Show in folder"), "", () => main.ShowInFolder(t)));
         if (t.T.SourceUrl is { } url && url.StartsWith("http"))
-            menu.Items.Add(Item(L.T("Copia link originale"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copiato")); } catch { } }));
+            menu.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copied")); } catch { } }));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Elimina…"), DeleteGlyph, () => _ = main.DeleteTrack(t)));
+        menu.Items.Add(Item(L.T("Delete…"), DeleteGlyph, () => _ = main.DeleteTrack(t)));
     }
 
     public static ContextMenu ForSelection(IReadOnlyList<TrackViewModel> tracks, ITrackList? owner)
     {
         var main = tracks[0].Main;
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.F("{0} brani selezionati", tracks.Count), "", () => { }, false));
+        menu.Items.Add(Item(L.F("{0} songs selected", tracks.Count), "", () => { }, false));
         menu.Items.Add(new Separator());
         if (main.InRoom) AddRoomItems(menu, tracks);
         else
         {
-            menu.Items.Add(Item(L.T("Riproduci"), "\uE768", () => main.PlaySelection(tracks)));
-            menu.Items.Add(Item(L.T("Aggiungi alla coda"), "\uE8FD", () => main.Enqueue(tracks)));
+            menu.Items.Add(Item(L.T("Play"), "\uE768", () => main.PlaySelection(tracks)));
+            menu.Items.Add(Item(L.T("Add to queue"), "\uE8FD", () => main.Enqueue(tracks)));
         }
         menu.Items.Add(new Separator());
         AddSaveItems(menu, tracks);
-        var sub = new SubmenuEntry { Header = L.T("Aggiungi a playlist") };
+        var sub = new SubmenuEntry { Header = L.T("Add to playlist") };
         Ui.SetGlyph(sub, "");
         foreach (var i in PlaylistItems(tracks)) sub.Items.Add(i);
         menu.Items.Add(sub);
         if (owner?.Playlist is { } pl)
-            menu.Items.Add(Item(L.F("Togli da «{0}»", Short(PlaylistViewModel.DisplayName(pl))), "", () => main.RemoveFromPlaylist(tracks, pl)));
-        menu.Items.Add(Item(L.T("Aggiungi ai Preferiti"), "", () => main.AddToFavorites(tracks)));
+            menu.Items.Add(Item(L.F("Remove from “{0}”", Short(PlaylistViewModel.DisplayName(pl))), "", () => main.RemoveFromPlaylist(tracks, pl)));
+        menu.Items.Add(Item(L.T("Add to Favorites"), "", () => main.AddToFavorites(tracks)));
         menu.Items.Add(TagSubmenu(tracks));
-        menu.Items.Add(Item(L.F("Cerca i testi online ({0})", tracks.Count), LyricsGlyph, () => main.SearchLyrics(tracks)));
+        menu.Items.Add(Item(L.F("Search lyrics online ({0})", tracks.Count), LyricsGlyph, () => main.SearchLyrics(tracks)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.F("Elimina {0} brani…", tracks.Count), DeleteGlyph, () => _ = main.DeleteTracks(tracks)));
+        menu.Items.Add(Item(L.F("Delete {0} songs…", tracks.Count), DeleteGlyph, () => _ = main.DeleteTracks(tracks)));
         return menu;
     }
 
@@ -486,22 +486,22 @@ public static partial class Menus
     {
         var main = App.Host.Session!;
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.Count(lists.Count, "1 playlist selezionata", "{0} playlist selezionate"), SelectGlyph, () => { }, false));
+        menu.Items.Add(Item(L.Count(lists.Count, "1 playlist selected", "{0} playlists selected"), SelectGlyph, () => { }, false));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Riproduci"), "", () => main.PlayPlaylists(lists)));
-        menu.Items.Add(Item(L.T("Aggiungi alla coda"), "", () => main.EnqueuePlaylists(lists)));
+        menu.Items.Add(Item(L.T("Play"), "", () => main.PlayPlaylists(lists)));
+        menu.Items.Add(Item(L.T("Add to queue"), "", () => main.EnqueuePlaylists(lists)));
         menu.Items.Add(new Separator());
         int cloud = main.SongsOf(lists).Count(t => t.IsCloud && !t.IsSaving);
-        if (cloud > 0) menu.Items.Add(Item(L.F("Salva sul dispositivo ({0})", cloud), SaveGlyph, () => _ = main.SavePlaylists(lists)));
-        var tags = new SubmenuEntry { Header = L.T("Tag") };
+        if (cloud > 0) menu.Items.Add(Item(L.F("Save to device ({0})", cloud), SaveGlyph, () => _ = main.SavePlaylists(lists)));
+        var tags = new SubmenuEntry { Header = L.T("Tags") };
         Ui.SetGlyph(tags, TagGlyph);
         foreach (var i in PlaylistsTagItems(lists)) tags.Items.Add(i);
         menu.Items.Add(tags);
-        menu.Items.Add(Item(L.T("Esporta in un file .ump…"), "", () => main.ExportPlaylists(lists)));
+        menu.Items.Add(Item(L.T("Export to a .ump file…"), "", () => main.ExportPlaylists(lists)));
         if (lists.Any(p => !p.IsFavorites))
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item(L.Count(lists.Count(p => !p.IsFavorites), "Elimina la playlist…", "Elimina {0} playlist…"), DeleteGlyph, () => _ = main.DeletePlaylists(lists)));
+            menu.Items.Add(Item(L.Count(lists.Count(p => !p.IsFavorites), "Delete playlist…", "Delete {0} playlists…"), DeleteGlyph, () => _ = main.DeletePlaylists(lists)));
         }
         return menu;
     }
@@ -532,7 +532,7 @@ public static partial class Menus
             yield return item;
         }
         if (main.Tags.Count > 0) yield return new Separator();
-        yield return Item(L.T("Nuovo tag…"), "", async () =>
+        yield return Item(L.T("New tag…"), "", async () =>
         {
             if (await main.NewTag() is { } t) main.SetPlaylistsTag(lists, t, true);
         });
@@ -546,20 +546,20 @@ public static partial class Menus
         var places = rows.Select(r => r.Index).ToList();
         var songs = rows.Select(r => r.Track).Distinct().ToList();
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.F("{0} brani selezionati", rows.Count), SelectGlyph, () => { }, false));
+        menu.Items.Add(Item(L.F("{0} songs selected", rows.Count), SelectGlyph, () => { }, false));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Sposta in cima"), "", () => player.MoveUpcomingToTop(places)));
-        menu.Items.Add(Item(L.T("Sposta in fondo"), "", () => player.MoveUpcomingToBottom(places)));
-        menu.Items.Add(Item(L.T("Togli dai successivi"), "", () => player.RemoveUpcoming(places)));
+        menu.Items.Add(Item(L.T("Move to top"), "", () => player.MoveUpcomingToTop(places)));
+        menu.Items.Add(Item(L.T("Move to bottom"), "", () => player.MoveUpcomingToBottom(places)));
+        menu.Items.Add(Item(L.T("Remove from Up next"), "", () => player.RemoveUpcoming(places)));
         if (!player.InRoom)
         {
             menu.Items.Add(new Separator());
             AddSaveItems(menu, songs);
-            var sub = new SubmenuEntry { Header = L.T("Aggiungi a playlist") };
+            var sub = new SubmenuEntry { Header = L.T("Add to playlist") };
             Ui.SetGlyph(sub, "");
             foreach (var i in PlaylistItems(songs)) sub.Items.Add(i);
             menu.Items.Add(sub);
-            menu.Items.Add(Item(L.T("Aggiungi ai Preferiti"), "", () => main.AddToFavorites(songs)));
+            menu.Items.Add(Item(L.T("Add to Favorites"), "", () => main.AddToFavorites(songs)));
         }
         return menu;
     }
@@ -569,14 +569,14 @@ public static partial class Menus
     {
         var queue = App.Host.Session!.Queue;
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.Count(jobs.Count, "1 download selezionato", "{0} download selezionati"), SelectGlyph, () => { }, false));
+        menu.Items.Add(Item(L.Count(jobs.Count, "1 download selected", "{0} downloads selected"), SelectGlyph, () => { }, false));
         menu.Items.Add(new Separator());
         int failed = jobs.Count(j => j.CanRetry), youTube = jobs.Count(j => j.CanRetryYouTube), active = jobs.Count(j => j.IsActive);
-        menu.Items.Add(Item(L.F("Riprova ({0})", failed), "", () => queue.Retry(jobs), failed > 0));
-        menu.Items.Add(Item(L.F("Riprova su YouTube ({0})", youTube), "", () => queue.RetryOnYouTube(jobs), youTube > 0));
-        menu.Items.Add(Item(L.F("Annulla ({0})", active), "", () => queue.Cancel(jobs), active > 0));
+        menu.Items.Add(Item(L.F("Retry ({0})", failed), "", () => queue.Retry(jobs), failed > 0));
+        menu.Items.Add(Item(L.F("Retry on YouTube ({0})", youTube), "", () => queue.RetryOnYouTube(jobs), youTube > 0));
+        menu.Items.Add(Item(L.F("Cancel ({0})", active), "", () => queue.Cancel(jobs), active > 0));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Togli dalla lista"), DeleteGlyph, () => queue.Remove(jobs)));
+        menu.Items.Add(Item(L.T("Remove from list"), DeleteGlyph, () => queue.Remove(jobs)));
         return menu;
     }
 
@@ -590,7 +590,7 @@ public static partial class Menus
     private static IEnumerable<object> PlaylistItems(IReadOnlyList<TrackViewModel> tracks)
     {
         var main = tracks[0].Main;
-        yield return Item(L.T("Nuova playlist…"), "", () => _ = main.NewPlaylistWith(tracks));
+        yield return Item(L.T("New playlist…"), "", () => _ = main.NewPlaylistWith(tracks));
         yield return new Separator();
         foreach (var p in main.Playlists)
         {
@@ -608,12 +608,12 @@ public static partial class Menus
         if (row.Radio is { } suggested) return ForRadioItem(suggested, t.Main, row);
         int last = player.UpNext.LastOrDefault()?.Index ?? row.Index;
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.T("Riproduci ora"), "", () => _ = player.JumpTo(row.Index)));
-        menu.Items.Add(Item(L.T("Sposta in cima"), "", () => player.MoveUpcoming(row.Index, 0), row.Index > 0));
-        menu.Items.Add(Item(L.T("Sposta in fondo"), "", () => player.MoveUpcoming(row.Index, last), row.Index < last));
-        menu.Items.Add(Item(L.T("Togli dai successivi"), "", () => player.RemoveUpcoming(row.Index)));
-        menu.Items.Add(Item(L.T("Riproduci brani simili"), RadioGlyph, () => player.PlayRadio(t)));
-        menu.Items.Add(Item(L.T("Riproduci brani dell'artista"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
+        menu.Items.Add(Item(L.T("Play now"), "", () => _ = player.JumpTo(row.Index)));
+        menu.Items.Add(Item(L.T("Move to top"), "", () => player.MoveUpcoming(row.Index, 0), row.Index > 0));
+        menu.Items.Add(Item(L.T("Move to bottom"), "", () => player.MoveUpcoming(row.Index, last), row.Index < last));
+        menu.Items.Add(Item(L.T("Remove from Up next"), "", () => player.RemoveUpcoming(row.Index)));
+        menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => player.PlayRadio(t)));
+        menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(new Separator());
         AddSaveItems(menu, new[] { t });
         menu.Items.Add(AddToPlaylist(t));
@@ -628,9 +628,9 @@ public static partial class Menus
     public static MenuItem AddToPlaylist(TrackViewModel t)
     {
         var main = t.Main;
-        var sub = new SubmenuEntry { Header = L.T("Aggiungi a playlist") };
+        var sub = new SubmenuEntry { Header = L.T("Add to playlist") };
         Ui.SetGlyph(sub, "");
-        sub.Items.Add(Item(L.T("Nuova playlist…"), "", () => _ = main.NewPlaylist(t)));
+        sub.Items.Add(Item(L.T("New playlist…"), "", () => _ = main.NewPlaylist(t)));
         sub.Items.Add(new Separator());
         foreach (var p in main.Playlists)
         {
@@ -655,24 +655,24 @@ public static partial class Menus
     {
         var main = App.Host.Session!;
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.T("Riproduci"), "", () => main.PlayPlaylistCommand.Execute(p)));
-        menu.Items.Add(Item(L.T("Apri"), "", () => main.OpenPlaylist(p)));
+        menu.Items.Add(Item(L.T("Play"), "", () => main.PlayPlaylistCommand.Execute(p)));
+        menu.Items.Add(Item(L.T("Open"), "", () => main.OpenPlaylist(p)));
         menu.Items.Add(new Separator());
         menu.Items.Add(PlaylistTagSubmenu(p));
-        menu.Items.Add(Item(L.T("Metti i tag sui suoi brani…"), "\uE8B3", () => _ = main.TagPlaylistSongs(p), p.Count > 0));
-        menu.Items.Add(Item(L.T("Esporta in un file .ump…"), "", () => main.ExportPack(p)));
+        menu.Items.Add(Item(L.T("Put its tags on its songs…"), "\uE8B3", () => _ = main.TagPlaylistSongs(p), p.Count > 0));
+        menu.Items.Add(Item(L.T("Export to a .ump file…"), "", () => main.ExportPack(p)));
         // Its songs in the cloud saved on the device; or the space its songs take, freed (the window says how).
-        if (p.CloudCount > 0) menu.Items.Add(Item(L.F("Salva sul dispositivo ({0})", p.CloudCount), SaveGlyph, () => _ = main.SavePlaylists(new[] { p })));
+        if (p.CloudCount > 0) menu.Items.Add(Item(L.F("Save to device ({0})", p.CloudCount), SaveGlyph, () => _ = main.SavePlaylists(new[] { p })));
         if (p.Count > p.CloudCount)
-            menu.Items.Add(Item(L.T("Libera spazio…"), DeleteGlyph, () => _ = main.DeleteTracks(p.Songs.Where(t => t.IsSaved).ToList())));
+            menu.Items.Add(Item(L.T("Free up space…"), DeleteGlyph, () => _ = main.DeleteTracks(p.Songs.Where(t => t.IsSaved).ToList())));
         if (!p.IsFavorites)
         {
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item(L.T("Rinomina…"), "", () => _ = main.RenamePlaylist(p)));
-            menu.Items.Add(Item(L.T("Cambia immagine…"), "", () => _ = main.ChangePlaylistCover(p)));
-            if (p.HasCustomCover) menu.Items.Add(Item(L.T("Rimuovi immagine"), "", () => main.RemovePlaylistCover(p)));
+            menu.Items.Add(Item(L.T("Rename…"), "", () => _ = main.RenamePlaylist(p)));
+            menu.Items.Add(Item(L.T("Change image…"), "", () => _ = main.ChangePlaylistCover(p)));
+            if (p.HasCustomCover) menu.Items.Add(Item(L.T("Remove image"), "", () => main.RemovePlaylistCover(p)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(Item(L.T("Elimina playlist…"), "", () => _ = main.DeletePlaylist(p)));
+            menu.Items.Add(Item(L.T("Delete playlist…"), "", () => _ = main.DeletePlaylist(p)));
         }
         return menu;
     }

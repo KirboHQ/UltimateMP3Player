@@ -60,7 +60,7 @@ public static class YtDlp
         if (root.Str("_type") is "playlist" or "multi_video")
         {
             root = root.Arr("entries").FirstOrDefault(e => e.ValueKind == JsonValueKind.Object);
-            if (root.ValueKind != JsonValueKind.Object) throw new EngineException(L.T("Nessun contenuto trovato.")) { NoMedia = true };
+            if (root.ValueKind != JsonValueKind.Object) throw new EngineException(L.T("No content found.")) { NoMedia = true };
         }
         var info = YtInfo.Parse(root);
         info.Json = root.GetRawText();
@@ -103,7 +103,7 @@ public static class YtDlp
         finally { CookieFile.Delete(copy); }
 
         if (r.ExitCode != 0) throw ErrorText.FromEngine("yt-dlp", r.StdErr, r.ExitCode);
-        return FindOutput(dir, "media.") ?? throw new EngineException(L.T("yt-dlp non ha prodotto alcun file."), r.StdErr);
+        return FindOutput(dir, "media.") ?? throw new EngineException(L.T("yt-dlp didn't produce any file."), r.StdErr);
     }
 
     internal static string? FindOutput(string dir, string prefix)
@@ -237,7 +237,7 @@ public static class GalleryDl
             var stderr = r.StdErr + (error != null ? "\n[gallery-dl][error] " + error : "");
             var ex = ErrorText.FromEngine("gallery-dl", stderr, r.ExitCode);
             if (!ex.NeedsLogin && !ex.Unsupported && error == null && r.ExitCode == 0)
-                throw new EngineException(L.T("Nessun file trovato in questo link."), stderr) { NoMedia = true };
+                throw new EngineException(L.T("No files found in this link."), stderr) { NoMedia = true };
             throw ex;
         }
         return (dir, files, doc);

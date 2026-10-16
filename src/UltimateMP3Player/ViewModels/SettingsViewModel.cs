@@ -45,7 +45,7 @@ public sealed class EqualizerViewModel : Observable
 {
     private readonly MainViewModel _main;
     private bool _applying;
-    private const string Custom = "Personalizzato";
+    private const string Custom = "Custom";
 
     public EqualizerViewModel(MainViewModel main)
     {
@@ -99,7 +99,7 @@ public sealed class EqualizerViewModel : Observable
     private void BuildPresets()
     {
         var list = Equalizer.BuiltIn.Select(p => new Choice(L.T(p.Name), p)).ToList();
-        list.AddRange(Eq.Custom.Select(p => new Choice(p.Name, p, L.T("tuo"))));
+        list.AddRange(Eq.Custom.Select(p => new Choice(p.Name, p, L.T("yours"))));
         var current = list.FirstOrDefault(c => ((EqPreset)c.Value!).Name == Eq.Preset && ((EqPreset)c.Value!).Gains.SequenceEqual(Eq.Gains));
         if (current == null) list.Add(current = new Choice(L.T(Custom), null));
         Presets = list;
@@ -138,24 +138,24 @@ public sealed class EqualizerViewModel : Observable
 
     private async Task SavePreset()
     {
-        var name = await Dialogs.PromptAsync(L.T("Salva preset dell'equalizzatore"), L.T("Nome del preset"),
-            Eq.Preset == Custom ? L.T("Il mio preset") : L.T(Eq.Preset) + " " + L.T("(mio)"));
+        var name = await Dialogs.PromptAsync(L.T("Save equalizer preset"), L.T("Preset name"),
+            Eq.Preset == Custom ? L.T("My preset") : L.T(Eq.Preset) + " " + L.T("(mine)"));
         if (string.IsNullOrWhiteSpace(name)) return;
         name = name.Trim();
         if (Equalizer.BuiltIn.Any(b => b.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase) ||
-                                       L.T(b.Name).Equals(name, StringComparison.CurrentCultureIgnoreCase))) name += " " + L.T("(mio)");
+                                       L.T(b.Name).Equals(name, StringComparison.CurrentCultureIgnoreCase))) name += " " + L.T("(mine)");
         Eq.Custom.RemoveAll(c => c.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase));
         Eq.Custom.Add(new EqPreset { Name = name, Gains = Eq.Gains.ToArray() });
         Eq.Preset = name;
         _main.Profile.Save();
         BuildPresets();
-        _main.Toast(L.F("Preset «{0}» salvato", name));
+        _main.Toast(L.F("Preset “{0}” saved", name));
     }
 
     private async Task DeletePreset()
     {
         if (_preset?.Value is not EqPreset p || !Eq.Custom.Contains(p)) return;
-        if (!await Dialogs.ConfirmAsync(L.T("Eliminare il preset?"), L.F("Il preset «{0}» verrà eliminato.", p.Name), L.T("Elimina"), true)) return;
+        if (!await Dialogs.ConfirmAsync(L.T("Delete this preset?"), L.F("The preset “{0}” will be deleted.", p.Name), L.T("Delete"), true)) return;
         Eq.Custom.Remove(p);
         Eq.Preset = Custom;
         _main.Profile.Save();
@@ -197,10 +197,10 @@ public sealed class SearchServiceOption : Observable
     public Brush Brush => Ui.BrushFrom(Sites.ColorFor(Name));
     public string Description => L.T(Name switch
     {
-        OnlineSearchServices.YouTubeMusic => "i brani ufficiali, con album e copertine",
-        OnlineSearchServices.YouTube => "video: cover, live, versioni che non sono altrove",
-        OnlineSearchServices.SoundCloud => "remix, mashup e artisti indipendenti",
-        _ => "un catalogo come quello di Spotify; l'audio arriva da YouTube Music",
+        OnlineSearchServices.YouTubeMusic => "the official songs, with albums and covers",
+        OnlineSearchServices.YouTube => "videos: covers, live, versions found nowhere else",
+        OnlineSearchServices.SoundCloud => "remixes, mashups and independent artists",
+        _ => "a catalogue like Spotify's; the audio comes from YouTube Music",
     });
     public bool Enabled
     {
@@ -223,7 +223,7 @@ public sealed class SettingsViewModel : Observable
         Equalizer = new EqualizerViewModel(main);
         AudioFormats = QualityChoices.Audio();
         VideoQualities = QualityChoices.Video();
-        ParallelChoices = Enumerable.Range(1, 6).Select(n => new Choice(L.F("{0} alla volta", n), n)).ToList();
+        ParallelChoices = Enumerable.Range(1, 6).Select(n => new Choice(L.F("{0} at a time", n), n)).ToList();
         Languages = new List<Choice> { new("English", "en"), new("Italiano", "it") };
         BrowseCommand = new RelayCommand(() => _ = Browse());
         OpenMusicDirCommand = new RelayCommand(() => MainViewModel.OpenFolder(S.MusicDir));
@@ -238,7 +238,7 @@ public sealed class SettingsViewModel : Observable
         SelectThemeCommand = new RelayCommand(p => { if (p is string id) SelectTheme(id); });
         RenameArtistCommand = new RelayCommand(() => _ = RenameArtist(), () => SelectedArtist != null && !string.IsNullOrWhiteSpace(NewArtistName));
         bool hasRepo = AppInfo.RepoUrl != null;
-        ReportProblemCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Problema] "), BugTemplate())!), () => hasRepo);
+        ReportProblemCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Bug] "), BugTemplate())!), () => hasRepo);
         SuggestIdeaCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Idea] "), IdeaTemplate())!), () => hasRepo);
         OpenIssuesCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.RepoUrl + "/issues"), () => hasRepo);
         OpenRepoCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.RepoUrl!), () => hasRepo);
@@ -277,8 +277,8 @@ public sealed class SettingsViewModel : Observable
     {
         get
         {
-            var current = UltimateMP3Player.Themes.Resolve(_main.Profile.Data.Theme, _main.Profile.Info.Color).Id;
-            return UltimateMP3Player.Themes.All.Select(t => new ThemeOption(t.Id, t.Label, t.Swatch, current == t.Id)).ToList();
+            var current = ThemeColors.Resolve(_main.Profile.Data.Theme, _main.Profile.Info.Color).Id;
+            return ThemeColors.All.Select(t => new ThemeOption(t.Id, L.T(t.Name), UltimateMP3Player.Themes.Swatch(t), current == t.Id)).ToList();
         }
     }
 
@@ -288,6 +288,25 @@ public sealed class SettingsViewModel : Observable
         _main.Profile.Save();
         _main.Host.ApplyTheme();
         OnChanged(nameof(Themes));
+    }
+
+    public List<Choice> Appearances { get; } = new()
+    {
+        new(L.T("Same as the system"), ThemeColors.System), new(L.T("Light"), ThemeColors.Light), new(L.T("Dark"), ThemeColors.Dark),
+    };
+
+    public Choice Appearance
+    {
+        get => Appearances.FirstOrDefault(c => Equals(c.Value, _main.Profile.Data.Appearance)) ?? Appearances[0];
+        set
+        {
+            if (value?.Value is not string mode || mode == _main.Profile.Data.Appearance) return;
+            _main.Profile.Data.Appearance = mode;
+            _main.Profile.Save();
+            _main.Host.ApplyTheme();
+            // (the swatches show the light or the dark colours)
+            OnChanged(nameof(Appearance), nameof(Themes));
+        }
     }
 
     public List<Choice> Languages { get; }
@@ -399,10 +418,10 @@ public sealed class SettingsViewModel : Observable
     // music goes to the default one until it's back.
     public void RefreshOutputDevices()
     {
-        var list = new List<Choice> { new(L.T("Predefinita del sistema"), null) };
+        var list = new List<Choice> { new(L.T("System default"), null) };
         list.AddRange(AudioPlatform.OutputDevices().Select(d => new Choice(d.Name, d.Id)));
         if (S.OutputDevice is { } id && list.All(c => !Equals(c.Value, id)))
-            list.Add(new Choice(S.OutputDeviceName ?? id, id, L.T("non collegata")));
+            list.Add(new Choice(S.OutputDeviceName ?? id, id, L.T("not connected")));
         OutputDevices = list;
         OnChanged(nameof(OutputDevices), nameof(OutputDevice));
     }
@@ -466,8 +485,8 @@ public sealed class SettingsViewModel : Observable
 
     public List<Choice> SearchModes { get; } = new()
     {
-        new(L.T("Tutti insieme"), true, L.T("più risultati")),
-        new(L.T("Uno alla volta"), false, L.T("il successivo se il primo non trova niente")),
+        new(L.T("All at once"), true, L.T("more results")),
+        new(L.T("One at a time"), false, L.T("the next one if the first finds nothing")),
     };
 
     public Choice SearchMode
@@ -484,8 +503,8 @@ public sealed class SettingsViewModel : Observable
     }
 
     public string SearchModeHint => S.SearchParallel
-        ? L.T("Cerca su tutti i siti accesi nello stesso momento: i risultati arrivano mescolati, i migliori di ogni sito per primi.")
-        : L.T("Cerca sul primo sito; se non trova niente o non risponde passa al successivo, nell'ordine qui sopra.");
+        ? L.T("Searches every site that's on at the same time: the results come mixed, each site's best first.")
+        : L.T("Searches the first site; if it finds nothing or doesn't answer it moves to the next, in the order above.");
 
     // ------------------------------------------------------------------ lyrics (app)
 
@@ -511,7 +530,7 @@ public sealed class SettingsViewModel : Observable
             var all = _main.Library.Snapshot();
             int synced = all.Count(t => t.Lyrics == LyricsKind.Synced), plain = all.Count(t => t.Lyrics == LyricsKind.Plain);
             int missing = Lyrics.Missing().Count;
-            return L.F("{0} con il testo ({1} con i tempi) · {2} da cercare", synced + plain, synced, missing);
+            return L.F("{0} with lyrics ({1} synced) · {2} to look for", synced + plain, synced, missing);
         }
     }
 
@@ -539,7 +558,7 @@ public sealed class SettingsViewModel : Observable
 
     private async Task Browse()
     {
-        if (await Dialogs.PickFolderAsync(L.T("Dove salvare la musica scaricata"), S.MusicDir) is { } dir) MusicDir = dir;
+        if (await Dialogs.PickFolderAsync(L.T("Where to save downloaded music"), S.MusicDir) is { } dir) MusicDir = dir;
     }
 
     public List<Choice> AudioFormats { get; }
@@ -607,7 +626,7 @@ public sealed class SettingsViewModel : Observable
     private void BuildBrowsers()
     {
         var list = BrowserDetector.Find().Select(b => new Choice(b.Name, b.Spec, L.T(b.Hint))).ToList();
-        if (list.Count == 0) list.Add(new Choice("Firefox", "firefox", L.T("consigliato")));
+        if (list.Count == 0) list.Add(new Choice("Firefox", "firefox", L.T("recommended")));
         if (list.All(c => !Equals(c.Value, S.CookiesBrowser)))
         {
             var fallback = list.FirstOrDefault(c => ((string)c.Value!).StartsWith("firefox")) ?? list[0];
@@ -632,7 +651,7 @@ public sealed class SettingsViewModel : Observable
                 .GroupBy(t => t.Artist!.Trim(), StringComparer.CurrentCultureIgnoreCase)
                 .Where(g => words.All(w => Text.Normalize(g.Key).Contains(w)))
                 .OrderBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase)
-                .Select(g => new Choice(g.Key, g.Key, L.Count(g.Count(), "1 brano", "{0} brani")))
+                .Select(g => new Choice(g.Key, g.Key, L.Count(g.Count(), "1 song", "{0} songs")))
                 .ToList();
         }
     }
@@ -657,7 +676,7 @@ public sealed class SettingsViewModel : Observable
         if (SelectedArtist?.Value is not string from || string.IsNullOrWhiteSpace(NewArtistName)) return;
         var to = NewArtistName.Trim();
         if (to == from) return;
-        if (!await Dialogs.ConfirmAsync(L.T("Rinominare l'artista?"), L.F("«{0}» diventerà «{1}» su {2}.", from, to, SelectedArtist.Hint), L.T("Rinomina"), false)) return;
+        if (!await Dialogs.ConfirmAsync(L.T("Rename artist?"), L.F("“{0}” will become “{1}” on {2}.", from, to, SelectedArtist.Hint), L.T("Rename"), false)) return;
         _main.RenameArtist(from, to);
         _selectedArtist = null;
         NewArtistName = "";
@@ -677,8 +696,8 @@ public sealed class SettingsViewModel : Observable
     // One list instance, so the ComboBox finds the selected item.
     private void RefreshStartupChoices()
     {
-        var list = new List<Choice> { new(L.T("Chiedi quale profilo usare"), null) };
-        list.AddRange(_main.Host.Profiles.Profiles.Select(p => new Choice(L.F("Sempre «{0}»", p.Name), p.Id)));
+        var list = new List<Choice> { new(L.T("Ask which profile to use"), null) };
+        list.AddRange(_main.Host.Profiles.Profiles.Select(p => new Choice(L.F("Always “{0}”", p.Name), p.Id)));
         StartupChoices = list;
         OnChanged(nameof(StartupChoices), nameof(StartupProfile));
     }
@@ -722,14 +741,14 @@ public sealed class SettingsViewModel : Observable
     private async Task RefreshEngineInfo()
     {
         var yt = await Task.Run(() => Engines.VersionAsync(Engines.YtDlp));
-        var last = S.LastEngineUpdate is DateTime d ? " · " + L.F("ultimo controllo {0}", d.ToString("g", L.Culture)) : "";
+        var last = S.LastEngineUpdate is DateTime d ? " · " + L.F("last checked {0}", d.ToString("g", L.Culture)) : "";
         EngineInfo = $"yt-dlp {yt}{last}";
     }
 
     private async Task UpdateEngines()
     {
         _updating = true;
-        EngineInfo = L.T("Aggiornamento in corso…");
+        EngineInfo = L.T("Updating…");
         CommandManager.InvalidateRequerySuggested();
         var report = await _main.Host.UpdateEnginesAsync(force: true);
         await RefreshEngineInfo();
@@ -738,22 +757,22 @@ public sealed class SettingsViewModel : Observable
         CommandManager.InvalidateRequerySuggested();
     }
 
-    public string Version => L.F("Versione {0}", AppInfo.VersionText);
+    public string Version => L.F("Version {0}", AppInfo.VersionText);
     public string DataDir => AppPaths.DataDir;
 
     // ------------------------------------------------------------------ help (GitHub issues)
 
     // Pre-filled issue text: the questions to answer, then the app and Windows versions.
     private static string BugTemplate() => string.Join("\n",
-        "### " + L.T("Cosa è successo?"), "", "",
-        "### " + L.T("Cosa ti aspettavi che succedesse?"), "", "",
-        "### " + L.T("Come farlo succedere di nuovo"), "1. ", "2. ", "",
-        "_" + L.T("Se è comparso un errore, allega il file errori.log (Impostazioni → Aggiornamenti → Apri la cartella dei dati).") + "_",
+        "### " + L.T("What happened?"), "", "",
+        "### " + L.T("What did you expect to happen?"), "", "",
+        "### " + L.T("How to make it happen again"), "1. ", "2. ", "",
+        "_" + L.T("If an error showed up, attach the errors.log file (Settings → Updates → Open the data folder).") + "_",
         "", "---", SystemLine());
 
     private static string IdeaTemplate() => string.Join("\n",
-        "### " + L.T("La tua idea"), "", "",
-        "### " + L.T("A cosa ti servirebbe?"), "", "",
+        "### " + L.T("Your idea"), "", "",
+        "### " + L.T("What would you use it for?"), "", "",
         "---", SystemLine());
 
     private static string SystemLine()
@@ -766,47 +785,47 @@ public sealed class SettingsViewModel : Observable
     {
         RefreshStartupChoices();
         RefreshOutputDevices();
-        OnChanged(nameof(MusicDir), nameof(Themes), nameof(Artists), nameof(Language), nameof(TogetherCacheText), nameof(LyricsStats), nameof(StatsSummary),
+        OnChanged(nameof(MusicDir), nameof(Themes), nameof(Appearance), nameof(Artists), nameof(Language), nameof(CacheText), nameof(LyricsStats), nameof(StatsSummary),
             nameof(TopTracks));
     }
 
     // ------------------------------------------------------------------ listen together
 
-    public List<Choice> TogetherCacheChoices { get; } =
-        new[] { 3, 5, 10, 15, 20, 30, 50, 100, 200 }.Select(n => new Choice(L.F("{0} brani", n), n)).ToList();
+    public List<Choice> CacheChoices { get; } =
+        new[] { 3, 5, 10, 15, 20, 30, 50, 100, 200 }.Select(n => new Choice(L.F("{0} songs", n), n)).ToList();
 
-    public Choice TogetherCacheSize
+    public Choice CacheSize
     {
-        get => TogetherCacheChoices.FirstOrDefault(c => (int)c.Value! == S.TogetherCacheSize) ?? TogetherCacheChoices[2];
+        get => CacheChoices.FirstOrDefault(c => (int)c.Value! == S.CacheSize) ?? CacheChoices[2];
         set
         {
             if (value == null) return;
-            S.TogetherCacheSize = (int)value.Value!;
+            S.CacheSize = (int)value.Value!;
             Save();
         }
     }
 
-    public string TogetherCacheText
+    public string CacheText
     {
         get
         {
             var (count, bytes) = _main.Host.SongCache.Stats();
-            return count == 0 ? L.T("Ora è vuota.") : L.F("Ora: {0} · {1}.", L.Count(count, "1 brano", "{0} brani"), Text.Size(bytes));
+            return count == 0 ? L.T("It's empty now.") : L.F("Now: {0} · {1}.", L.Count(count, "1 song", "{0} songs"), Text.Size(bytes));
         }
     }
 
-    public ICommand ClearTogetherCacheCommand => new RelayCommand(() =>
+    public ICommand ClearCacheCommand => new RelayCommand(() =>
     {
         _main.Together.ClearCache();
-        OnChanged(nameof(TogetherCacheText));
-        _main.Toast(L.T("Memoria dei brani svuotata (quelli in coda restano)"));
+        OnChanged(nameof(CacheText));
+        _main.Toast(L.T("Song storage emptied (the ones in the queue stay)"));
     });
 
-    public ICommand OpenTogetherCacheCommand => new RelayCommand(() => MainViewModel.OpenFolder(_main.Host.SongCache.Dir));
+    public ICommand OpenCacheCommand => new RelayCommand(() => MainViewModel.OpenFolder(_main.Host.SongCache.Dir));
 
     // Songs of the queue got ready ahead, as a guest and as the host.
     public List<Choice> TogetherAheadChoices { get; } =
-        Enumerable.Range(1, TogetherSession.MaxAhead).Select(n => new Choice(L.Count(n, "1 brano", "{0} brani"), n)).ToList();
+        Enumerable.Range(1, TogetherSession.MaxAhead).Select(n => new Choice(L.Count(n, "1 song", "{0} songs"), n)).ToList();
 
     private Choice AheadChoice(int n) => TogetherAheadChoices.FirstOrDefault(c => (int)c.Value! == n) ?? TogetherAheadChoices[TogetherSession.DefaultAhead - 1];
 
@@ -885,8 +904,8 @@ public sealed class SettingsViewModel : Observable
 
     public List<Choice> RadioSourceChoices { get; } = new()
     {
-        new(L.T("Automatica"), RadioSources.Auto, L.T("dal sito del brano")),
-        new(L.T("Un po' da tutti"), RadioSources.Mix, L.T("a turno")),
+        new(L.T("Automatic"), RadioSources.Auto, L.T("from the song's site")),
+        new(L.T("A bit of everything"), RadioSources.Mix, L.T("taking turns")),
         new("YouTube Music", OnlineSearchServices.YouTubeMusic),
         new("SoundCloud", OnlineSearchServices.SoundCloud),
         new("Deezer", OnlineSearchServices.Deezer),
@@ -906,11 +925,11 @@ public sealed class SettingsViewModel : Observable
 
     public string RadioSourceHint => L.T(S.RadioSource switch
     {
-        RadioSources.Mix => "YouTube Music, SoundCloud e Deezer a turno: più varietà.",
-        OnlineSearchServices.YouTubeMusic => "La radio del brano di YouTube Music: i più simili, con album e copertine.",
-        OnlineSearchServices.SoundCloud => "I brani che SoundCloud collega a questo: remix e artisti indipendenti.",
-        OnlineSearchServices.Deezer => "La radio dell'artista di Deezer; l'audio arriva da YouTube Music.",
-        _ => "I brani di SoundCloud da SoundCloud, tutti gli altri dalla radio di YouTube Music. Se un sito non trova niente si prova il successivo.",
+        RadioSources.Mix => "YouTube Music, SoundCloud and Deezer taking turns: more variety.",
+        OnlineSearchServices.YouTubeMusic => "YouTube Music's song radio: the most similar ones, with albums and covers.",
+        OnlineSearchServices.SoundCloud => "The tracks SoundCloud relates to this one: remixes and independent artists.",
+        OnlineSearchServices.Deezer => "Deezer's artist radio; the audio comes from YouTube Music.",
+        _ => "SoundCloud songs from SoundCloud, all the others from YouTube Music's song radio. If a site finds nothing, the next one is tried.",
     });
 
     public Choice RadioAhead
@@ -932,9 +951,9 @@ public sealed class SettingsViewModel : Observable
         get
         {
             var stats = _main.Profile.StatsSnapshot().Where(kv => _main.Library.Get(kv.Key) != null).Select(kv => kv.Value).ToList();
-            return stats.Count == 0 ? L.T("Nessun ascolto contato, per ora.")
-                : L.F("{0} di ascolto · {1} · {2}", StatsViewModel.TimeText(stats.Sum(s => s.Seconds)),
-                    L.Count(stats.Sum(s => s.Plays), "1 ascolto", "{0} ascolti"), L.Count(stats.Count(s => s.Plays > 0), "1 brano ascoltato", "{0} brani ascoltati"));
+            return stats.Count == 0 ? L.T("No plays counted yet.")
+                : L.F("{0} listened · {1} · {2}", StatsViewModel.TimeText(stats.Sum(s => s.Seconds)),
+                    L.Count(stats.Sum(s => s.Plays), "1 play", "{0} plays"), L.Count(stats.Count(s => s.Plays > 0), "1 song played", "{0} songs played"));
         }
     }
 
@@ -969,7 +988,7 @@ public static class BrowserDetector
         void Gecko(string name, bool main, params string[] dirs)
         {
             if (dirs.Select(NewestProfile).FirstOrDefault(p => p != null) is not { } p) return;
-            list.Add(new Found(name, main ? "firefox" : "firefox:" + p, "consigliato"));
+            list.Add(new Found(name, main ? "firefox" : "firefox:" + p, "recommended"));
         }
         void Chromium(string name, string spec, string dir, string hint)
         {
@@ -997,10 +1016,10 @@ public static class BrowserDetector
             Gecko("Zen Browser", false, Path.Combine(support, "zen", "Profiles"));
             Gecko("Waterfox", false, Path.Combine(support, "Waterfox", "Profiles"));
             Gecko("Floorp", false, Path.Combine(support, "Floorp", "Profiles"));
-            Chromium("Safari", "safari", Path.Combine(home, "Library", "Safari"), "può non funzionare");
-            Chromium("Chrome", "chrome", Path.Combine(support, "Google", "Chrome"), "può non funzionare");
-            Chromium("Edge", "edge", Path.Combine(support, "Microsoft Edge"), "può non funzionare");
-            Chromium("Brave", "brave", Path.Combine(support, "BraveSoftware", "Brave-Browser"), "può non funzionare");
+            Chromium("Safari", "safari", Path.Combine(home, "Library", "Safari"), "may not work");
+            Chromium("Chrome", "chrome", Path.Combine(support, "Google", "Chrome"), "may not work");
+            Chromium("Edge", "edge", Path.Combine(support, "Microsoft Edge"), "may not work");
+            Chromium("Brave", "brave", Path.Combine(support, "BraveSoftware", "Brave-Browser"), "may not work");
             Chromium("Opera", "opera", Path.Combine(support, "com.operasoftware.Opera"), "");
             Chromium("Vivaldi", "vivaldi", Path.Combine(support, "Vivaldi"), "");
             Chromium("Chromium", "chromium", Path.Combine(support, "Chromium"), "");
@@ -1014,9 +1033,9 @@ public static class BrowserDetector
             Gecko("Zen Browser", false, Path.Combine(home, ".zen"), Path.Combine(home, ".var", "app", "app.zen_browser.zen", ".zen"));
             Gecko("Waterfox", false, Path.Combine(home, ".waterfox"));
             Gecko("Floorp", false, Path.Combine(home, ".floorp"));
-            Chromium("Chrome", "chrome", Path.Combine(config, "google-chrome"), "può non funzionare");
-            Chromium("Edge", "edge", Path.Combine(config, "microsoft-edge"), "può non funzionare");
-            Chromium("Brave", "brave", Path.Combine(config, "BraveSoftware", "Brave-Browser"), "può non funzionare");
+            Chromium("Chrome", "chrome", Path.Combine(config, "google-chrome"), "may not work");
+            Chromium("Edge", "edge", Path.Combine(config, "microsoft-edge"), "may not work");
+            Chromium("Brave", "brave", Path.Combine(config, "BraveSoftware", "Brave-Browser"), "may not work");
             Chromium("Opera", "opera", Path.Combine(config, "opera"), "");
             Chromium("Vivaldi", "vivaldi", Path.Combine(config, "vivaldi"), "");
             Chromium("Chromium", "chromium", Path.Combine(config, "chromium"), "");

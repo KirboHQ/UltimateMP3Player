@@ -69,7 +69,7 @@ public static class Engines
 
     public static async Task<string> VersionAsync(string exe, CancellationToken ct = default)
     {
-        if (!File.Exists(exe)) return L.T("mancante");
+        if (!File.Exists(exe)) return L.T("missing");
         try
         {
             var r = await ProcRunner.RunAsync(exe, new[] { "--version" }, ct: ct, timeout: TimeSpan.FromSeconds(20));
@@ -86,16 +86,16 @@ public static class Engines
         foreach (var (name, exe) in new[] { ("yt-dlp", YtDlp), ("gallery-dl", GalleryDl) })
         {
             if (!File.Exists(exe) && !GalleryDlNeeded) continue;
-            log?.Invoke(L.F("Aggiornamento di {0}…", name));
+            log?.Invoke(L.F("Updating {0}…", name));
             try
             {
                 var r = await ProcRunner.RunAsync(exe, new[] { "-U" }, ct: ct, timeout: TimeSpan.FromMinutes(5));
                 var text = (r.StdOut + "\n" + r.StdErr).Trim();
                 var last = text.Split('\n', StringSplitOptions.RemoveEmptyEntries).LastOrDefault()?.Trim() ?? "";
-                sb.AppendLine($"{name}: {(r.ExitCode == 0 ? "ok" : L.T("errore"))} – {last}");
+                sb.AppendLine($"{name}: {(r.ExitCode == 0 ? "ok" : L.T("error"))} – {last}");
             }
             catch (OperationCanceledException) { throw; }
-            catch (Exception ex) { sb.AppendLine(L.F("{0}: errore – {1}", name, ex.Message)); }
+            catch (Exception ex) { sb.AppendLine(L.F("{0}: error – {1}", name, ex.Message)); }
         }
         return sb.ToString().Trim();
     }
@@ -131,7 +131,7 @@ public static class Engines
         {
             if (!File.Exists(YtDlp))
             {
-                await Http.DownloadFileAsync(YtDlpUrl, YtDlp, null, (d, t) => progress(L.T("Download di yt-dlp"), Pct(d, t)), ct);
+                await Http.DownloadFileAsync(YtDlpUrl, YtDlp, null, (d, t) => progress(L.T("Downloading yt-dlp"), Pct(d, t)), ct);
                 MakeRunnable(YtDlp);
             }
             if (!File.Exists(GalleryDl) && GalleryDlNeeded)
@@ -145,7 +145,7 @@ public static class Engines
                 }
                 catch (OperationCanceledException) { throw; }
                 catch { }
-                await Http.DownloadFileAsync(url, GalleryDl, null, (d, t) => progress(L.T("Download di gallery-dl"), Pct(d, t)), ct);
+                await Http.DownloadFileAsync(url, GalleryDl, null, (d, t) => progress(L.T("Downloading gallery-dl"), Pct(d, t)), ct);
                 MakeRunnable(GalleryDl);
             }
             if (!File.Exists(Ffmpeg) || !File.Exists(Ffprobe))
@@ -153,8 +153,8 @@ public static class Engines
                 if (OperatingSystem.IsWindows())
                 {
                     var zip = Path.Combine(tmp, "ffmpeg.zip");
-                    await Http.DownloadFileAsync(FfmpegZip, zip, null, (d, t) => progress(L.T("Download di ffmpeg"), Pct(d, t)), ct);
-                    progress(L.T("Estrazione di ffmpeg"), null);
+                    await Http.DownloadFileAsync(FfmpegZip, zip, null, (d, t) => progress(L.T("Downloading ffmpeg"), Pct(d, t)), ct);
+                    progress(L.T("Extracting ffmpeg"), null);
                     using var za = ZipFile.OpenRead(zip);
                     foreach (var entry in za.Entries)
                     {
@@ -169,8 +169,8 @@ public static class Engines
                     {
                         if (File.Exists(target)) continue;
                         var zip = Path.Combine(tmp, tool + ".zip");
-                        await Http.DownloadFileAsync(MartinRiedl(tool), zip, null, (d, t) => progress(L.F("Download di {0}", tool), Pct(d, t)), ct);
-                        progress(L.F("Estrazione di {0}", tool), null);
+                        await Http.DownloadFileAsync(MartinRiedl(tool), zip, null, (d, t) => progress(L.F("Downloading {0}", tool), Pct(d, t)), ct);
+                        progress(L.F("Extracting {0}", tool), null);
                         using var za = ZipFile.OpenRead(zip);
                         za.Entries.First(e => e.Name == tool).ExtractToFile(target, true);
                         MakeRunnable(target);
@@ -179,8 +179,8 @@ public static class Engines
             if (!File.Exists(Deno))
             {
                 var zip = Path.Combine(tmp, "deno.zip");
-                await Http.DownloadFileAsync(DenoZip, zip, null, (d, t) => progress(L.T("Download di deno"), Pct(d, t)), ct);
-                progress(L.T("Estrazione di deno"), null);
+                await Http.DownloadFileAsync(DenoZip, zip, null, (d, t) => progress(L.T("Downloading deno"), Pct(d, t)), ct);
+                progress(L.T("Extracting deno"), null);
                 using var za = ZipFile.OpenRead(zip);
                 za.Entries.First(e => e.Name.Equals(Path.GetFileName(Deno), StringComparison.OrdinalIgnoreCase)).ExtractToFile(Deno, true);
                 MakeRunnable(Deno);
@@ -226,8 +226,8 @@ public static class ProcRunner
         }
         // gallery-dl isn't there: picture galleries are left out, the link goes on to the next way of reading it.
         if (Engines.Host != null && !File.Exists(exe))
-            throw name == Engines.GalleryDl ? new EngineException(L.T("Questo link non è supportato.")) { Unsupported = true }
-                : new EngineException(L.F("Impossibile avviare {0}.", Path.GetFileName(name)));
+            throw name == Engines.GalleryDl ? new EngineException(L.T("This link isn't supported.")) { Unsupported = true }
+                : new EngineException(L.F("Couldn't start {0}.", Path.GetFileName(name)));
         if (ChildProcess.Starter != null) return await RunChildAsync(exe, args, onOut, onErr, ct, captureOut, timeout, workDir).ConfigureAwait(false);
         var psi = new ProcessStartInfo(exe)
         {
@@ -270,7 +270,7 @@ public static class ProcRunner
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         if (timeout is { } t) cts.CancelAfter(t);
 
-        if (!p.Start()) throw new EngineException(L.F("Impossibile avviare {0}.", Path.GetFileName(exe)));
+        if (!p.Start()) throw new EngineException(L.F("Couldn't start {0}.", Path.GetFileName(exe)));
         try { p.StandardInput.Close(); } catch { }
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
@@ -282,7 +282,7 @@ public static class ProcRunner
         }
         ct.ThrowIfCancellationRequested();
         if (cts.IsCancellationRequested)
-            throw new EngineException(L.F("{0} non ha risposto in tempo.", Path.GetFileNameWithoutExtension(exe)));
+            throw new EngineException(L.F("{0} didn't respond in time.", Path.GetFileNameWithoutExtension(exe)));
         return new ProcResult(p.ExitCode, so.ToString(), se.ToString());
     }
 
@@ -294,7 +294,7 @@ public static class ProcRunner
         ChildProcess p;
         try { p = ChildProcess.Start(exe, args, workDir ?? Path.GetTempPath(), env); }
         catch (EngineException) { throw; }
-        catch (Exception ex) { throw new EngineException(L.F("Impossibile avviare {0}.", Path.GetFileName(exe)), ex.Message); }
+        catch (Exception ex) { throw new EngineException(L.F("Couldn't start {0}.", Path.GetFileName(exe)), ex.Message); }
         using (p)
         {
             p.LowerPriority();
@@ -323,7 +323,7 @@ public static class ProcRunner
             }
             ct.ThrowIfCancellationRequested();
             if (cts.IsCancellationRequested)
-                throw new EngineException(L.F("{0} non ha risposto in tempo.", Path.GetFileNameWithoutExtension(exe)));
+                throw new EngineException(L.F("{0} didn't respond in time.", Path.GetFileNameWithoutExtension(exe)));
             lock (so) lock (se) return new ProcResult(p.ExitCode, so.ToString(), se.ToString());
         }
     }

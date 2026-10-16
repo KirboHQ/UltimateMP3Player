@@ -182,9 +182,9 @@ public sealed class Selection : Observable
     public int Count => Items.Count(IsChecked);
     public string CountText => _kind switch
     {
-        "playlist" => L.Count(Count, "1 playlist selezionata", "{0} playlist selezionate"),
-        "download" => L.Count(Count, "1 download selezionato", "{0} download selezionati"),
-        _ => L.Count(Count, "1 brano selezionato", "{0} brani selezionati"),
+        "playlist" => L.Count(Count, "1 playlist selected", "{0} playlists selected"),
+        "download" => L.Count(Count, "1 download selected", "{0} downloads selected"),
+        _ => L.Count(Count, "1 song selected", "{0} songs selected"),
     };
     public bool AllChecked => Items.Where(SameKind).All(IsChecked) && Items.Any(SameKind);
 

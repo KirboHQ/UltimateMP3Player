@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:UltimateMP3Player"
              x:Class="UltimateMP3Player.App"
-             RequestedThemeVariant="Dark"
+             RequestedThemeVariant="Default"
              Name="Ultimate MP3 Player">
     <Application.Resources>
         <ResourceDictionary>
@@ -28,7 +28,7 @@
             <Setter Property="FontFamily" Value="{StaticResource IconFontFilled}"/>
         </Style>
         <Style Selector="TextBlock.field-label">
-            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Margin" Value="2,0,0,6"/>
@@ -39,12 +39,12 @@
             <Setter Property="Margin" Value="0,0,0,14"/>
         </Style>
         <Style Selector="TextBlock.small-caps">
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
         <Style Selector="TextBlock.hint">
-            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="LineHeight" Value="18"/>

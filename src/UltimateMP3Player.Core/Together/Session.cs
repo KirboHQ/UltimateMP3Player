@@ -164,7 +164,7 @@ public sealed class TogetherSession : IDisposable
     public void Create(RoomOptions o)
     {
         RoomId = Ids.New();
-        RoomName = Clean(o.Name, 60) is { Length: > 0 } n ? n : L.F("Stanza di {0}", Me.Name);
+        RoomName = Clean(o.Name, 60) is { Length: > 0 } n ? n : L.F("{0}'s room", Me.Name);
         Max = Math.Clamp(o.Max, 2, 32);
         _password = string.IsNullOrWhiteSpace(o.Password) ? null : o.Password.Trim();
         Locked = _password != null;
@@ -180,7 +180,7 @@ public sealed class TogetherSession : IDisposable
         Status = RoomStatus.Connected;
         StartDiscovery();
         StartTimer();
-        AddSystem("{0} ha creato la stanza", Me.Name);
+        AddSystem("{0} created the room", Me.Name);
         RefreshAd();
         RaiseAll();
     }
@@ -199,7 +199,7 @@ public sealed class TogetherSession : IDisposable
         }
         Shutdown();
         RaiseRoom();
-        return r.Redirect != null ? new JoinResult { Error = L.T("Questa stanza ora è ospitata da un altro computer: aggiorna l'elenco e riprova.") } : r;
+        return r.Redirect != null ? new JoinResult { Error = L.T("This room is now hosted by another computer: refresh the list and try again.") } : r;
     }
 
     private Member Hello()
@@ -216,8 +216,8 @@ public sealed class TogetherSession : IDisposable
         catch
         {
             return new JoinResult { Error = OperatingSystem.IsWindows()
-                ? L.T("Nessuna risposta: la stanza potrebbe essere chiusa, oppure il firewall di Windows blocca la connessione.")
-                : L.T("Nessuna risposta: la stanza potrebbe essere chiusa, oppure il firewall blocca la connessione.") };
+                ? L.T("No answer: the room may be closed, or Windows Firewall is blocking the connection.")
+                : L.T("No answer: the room may be closed, or the firewall is blocking the connection.") };
         }
         if (_disposed)
         {
@@ -236,9 +236,9 @@ public sealed class TogetherSession : IDisposable
         c.Close();
         return reply?.T switch
         {
-            "deny" => new JoinResult { Denied = true, Error = L.T(reply.Text ?? "Non puoi entrare in questa stanza."), NeedsPassword = reply.Flag },
+            "deny" => new JoinResult { Denied = true, Error = L.T(reply.Text ?? "You can't join this room."), NeedsPassword = reply.Flag },
             "redirect" => new JoinResult { Redirect = reply },
-            _ => new JoinResult { Error = L.T("La stanza non ha risposto.") },
+            _ => new JoinResult { Error = L.T("The room didn't answer.") },
         };
     }
 
@@ -481,7 +481,7 @@ public sealed class TogetherSession : IDisposable
         }
         if (m.Proto != Proto)
         {
-            Deny(c, "Versione diversa dell'app: aggiornate tutti all'ultima versione.");
+            Deny(c, "Different app version: everyone should update to the latest version.");
             return;
         }
         if (m.Me is not { Id.Length: > 0 } who)
@@ -491,7 +491,7 @@ public sealed class TogetherSession : IDisposable
         }
         if (Banned.Contains(who.Id))
         {
-            Deny(c, "Sei stato espulso da questa stanza.");
+            Deny(c, "You were kicked from this room.");
             return;
         }
         var existing = Members.FirstOrDefault(x => x.Id == who.Id);
@@ -499,12 +499,12 @@ public sealed class TogetherSession : IDisposable
         {
             if (Members.Count(x => !x.Away) >= Max)
             {
-                Deny(c, "La stanza è piena.");
+                Deny(c, "The room is full.");
                 return;
             }
             if (_password != null && m.Password != _password)
             {
-                Deny(c, m.Password == null ? "Questa stanza ha una password." : "Password sbagliata.", true);
+                Deny(c, m.Password == null ? "This room has a password." : "Wrong password.", true);
                 return;
             }
         }
@@ -535,7 +535,7 @@ public sealed class TogetherSession : IDisposable
         });
         foreach (var t in new[] { Current }.Concat(Queue).OfType<RoomTrack>().Take(40))
             if (Covers.TryGetValue(t.Id, out var cover)) c.Send(new Msg { T = "cover", Id = t.Id, Data = cover });
-        if (existing == null) AddSystem("{0} è entrato nella stanza", mem.Name);
+        if (existing == null) AddSystem("{0} joined the room", mem.Name);
         BroadcastMembers();
         PushFiles();
     }
@@ -582,7 +582,7 @@ public sealed class TogetherSession : IDisposable
                 RaiseFiles();
                 break;
             case "bye":
-                RemoveMember(id, "{0} è uscito dalla stanza");
+                RemoveMember(id, "{0} left the room");
                 break;
             case "fileReq":
                 if (m.Id != null) ServeFile(id, m.Id);
@@ -609,12 +609,12 @@ public sealed class TogetherSession : IDisposable
             if ((perms & p) == p) return true;
             Tell(from, p switch
             {
-                Perm.Add => "Non hai il permesso di aggiungere brani.",
-                Perm.Remove => "Non hai il permesso di togliere o spostare brani.",
-                Perm.Skip => "Non hai il permesso di saltare i brani.",
-                Perm.Pause => "Non hai il permesso di mettere in pausa o andare avanti e indietro.",
-                Perm.Speed => "Non hai il permesso di cambiare la velocità.",
-                _ => "Non hai il permesso.",
+                Perm.Add => "You're not allowed to add songs.",
+                Perm.Remove => "You're not allowed to remove or move songs.",
+                Perm.Skip => "You're not allowed to skip songs.",
+                Perm.Pause => "You're not allowed to pause or move forward and back.",
+                Perm.Speed => "You're not allowed to change the speed.",
+                _ => "You don't have permission.",
             });
             return false;
         }
@@ -631,7 +631,7 @@ public sealed class TogetherSession : IDisposable
                 if (m.Track is not { } t || !Allowed(Perm.Add) || (m.Flag && !Allowed(Perm.Remove))) return;
                 if (Queue.Count >= MaxQueue)
                 {
-                    Tell(from, "La coda della stanza è piena.");
+                    Tell(from, "The room's queue is full.");
                     return;
                 }
                 t.Id = Ids.New();
@@ -679,7 +679,7 @@ public sealed class TogetherSession : IDisposable
 
             case "skip":
                 if (Current == null || !Allowed(Perm.Skip)) return;
-                AddSystem("{0} ha saltato «{1}»", who.Name, Current.Title);
+                AddSystem("{0} skipped “{1}”", who.Name, Current.Title);
                 Advance();
                 break;
 
@@ -698,7 +698,7 @@ public sealed class TogetherSession : IDisposable
                 var looped = Play.Clone();
                 looped.Loop = m.Flag;
                 Play = looped;
-                AddSystem(m.Flag ? "{0} ha messo in loop il brano" : "{0} ha tolto il loop", who.Name);
+                AddSystem(m.Flag ? "{0} put the song on loop" : "{0} turned the loop off", who.Name);
                 BroadcastPlay();
                 break;
 
@@ -756,7 +756,7 @@ public sealed class TogetherSession : IDisposable
             c.Tag = null;
             _ = CloseSoon(c);
         }
-        RemoveMember(id, "{0} è stato espulso dalla stanza");
+        RemoveMember(id, "{0} was kicked from the room");
     }
 
     private void RemoveMember(string id, string? template)
@@ -782,7 +782,7 @@ public sealed class TogetherSession : IDisposable
     private async Task HandOver(string id)
     {
         if (Members.FirstOrDefault(x => x.Id == id) is not { Away: false } target) return;
-        AddSystem("{0} ha passato l'host a {1}", Me.Name, target.Name);
+        AddSystem("{0} made {1} the host", Me.Name, target.Name);
         var m = new Msg { T = "migrate", HostId = id, Flag = true, Password = _password, Banned = Banned.ToList() };
         foreach (var c in _peers.Values) c.Send(m);
         var peers = _peers.Values.ToList();
@@ -840,7 +840,7 @@ public sealed class TogetherSession : IDisposable
         }
         else if (waited > GiveUp || (total > 0 && failed == total))
         {
-            AddSystem("Nessuno è riuscito a preparare «{0}»: si passa al prossimo", Current.Title);
+            AddSystem("Nobody could get “{0}”: moving on to the next one", Current.Title);
             Advance();
         }
     }
@@ -921,7 +921,7 @@ public sealed class TogetherSession : IDisposable
             foreach (var (id, c) in _peers.ToList())
                 if (Environment.TickCount64 - c.LastHeard > PeerTimeout) c.Close();
             foreach (var (id, until) in _keepPlace.ToList())
-                if (now > until) RemoveMember(id, "{0} ha perso la connessione");
+                if (now > until) RemoveMember(id, "{0} lost the connection");
             foreach (var (id, since) in _uploading.ToList())
                 if (now - since > UploadTimeout) FailUpload(id);
             if (_filesDirty && now - _lastFilesPush > 300) PushFiles();
@@ -1015,7 +1015,7 @@ public sealed class TogetherSession : IDisposable
                 if (m.Text != null) Notice?.Invoke(m.Text);
                 break;
             case "kicked":
-                End("Sei stato espulso dalla stanza.");
+                End("You were kicked from the room.");
                 break;
             case "migrate":
                 if (m.HostId == null) break;
@@ -1089,7 +1089,7 @@ public sealed class TogetherSession : IDisposable
             }
             dead.Add(next.Id);
         }
-        if (!_disposed && Status == RoomStatus.Reconnecting) End("Connessione alla stanza persa.");
+        if (!_disposed && Status == RoomStatus.Reconnecting) End("Lost the connection to the room.");
     }
 
     private async Task<bool> Rejoin(Member target, string lost)
@@ -1099,7 +1099,7 @@ public sealed class TogetherSession : IDisposable
         if (r.Ok) return true;
         if (r.Denied)
         {
-            End(r.Error ?? "Non puoi entrare in questa stanza.");
+            End(r.Error ?? "You can't join this room.");
             return true;
         }
         // They know who the host is now.
@@ -1146,8 +1146,8 @@ public sealed class TogetherSession : IDisposable
         EnsureListener();
         StartDiscovery();
         StartTimer();
-        if (old != null && !keepOld) AddSystem("{0} è uscito dalla stanza", old.Name);
-        AddSystem("{0} ora è l'host della stanza", Me.Name);
+        if (old != null && !keepOld) AddSystem("{0} left the room", old.Name);
+        AddSystem("{0} is now the host of the room", Me.Name);
         RefreshAd();
         RaiseAll();
     }
@@ -1189,7 +1189,7 @@ public sealed class TogetherSession : IDisposable
     {
         if (IsHost) Apply(Me.Id, m);
         else if (_host != null && Status == RoomStatus.Connected) _host.Send(m);
-        else Notice?.Invoke("Riconnessione alla stanza in corso…");
+        else Notice?.Invoke("Reconnecting to the room…");
     }
 
     // How far this computer is with each song (the host decides from these when a song can start).

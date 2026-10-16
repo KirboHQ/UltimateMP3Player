@@ -18,54 +18,54 @@
                 <StackPanel>
                     <Grid ColumnDefinitions="Auto,*">
                         <Panel Width="96" Height="96" VerticalAlignment="Top">
-                            <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}">
-                                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="30" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                            <Border CornerRadius="10" Background="{DynamicResource PlaceholderGradient}">
+                                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="30" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                             </Border>
                             <views:CoverImage CornerRadius="10" Source="{Binding Thumb}"/>
                         </Panel>
                         <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
-                            <Border HorizontalAlignment="Left" CornerRadius="7" Padding="9,3" Background="{StaticResource Surface2Brush}">
+                            <Border HorizontalAlignment="Left" CornerRadius="7" Padding="9,3" Background="{DynamicResource Surface2Brush}">
                                 <StackPanel Orientation="Horizontal">
                                     <Ellipse Width="8" Height="8" Fill="{Binding SiteBrush}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding SiteName}" FontSize="12" FontWeight="SemiBold" Margin="7,0,0,0" Foreground="{StaticResource SubTextBrush}"/>
+                                    <TextBlock Text="{Binding SiteName}" FontSize="12" FontWeight="SemiBold" Margin="7,0,0,0" Foreground="{DynamicResource SubTextBrush}"/>
                                 </StackPanel>
                             </Border>
                             <TextBlock Text="{Binding Title}" FontSize="18" FontWeight="Bold" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" Margin="0,8,0,4"/>
-                            <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{StaticResource SubTextBrush}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Grid>
                     <Button Theme="{StaticResource LinkButton}" Margin="0,12,0,0" HorizontalAlignment="Left" Padding="0,6"
                             IsVisible="{Binding PartOfPlaylist}" Command="{Binding $parent[views:DownloadsPage].DataContext.WholePlaylistCommand}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="14"/>
-                            <TextBlock Text="{local:T 'Fa parte di una playlist: scarica tutta la playlist'}" Margin="8,0,0,0" TextWrapping="Wrap"/>
+                            <TextBlock Text="{local:T 'It\'s part of a playlist: download the whole playlist'}" Margin="8,0,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Button>
                     <ItemsControl ItemsSource="{Binding Notes}" Margin="0,8,0,0" IsVisible="{Binding HasNotes}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding}" FontSize="13" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding}" FontSize="13" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" Margin="0,0,0,4"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
                     <!-- where it goes -->
-                    <TextBlock Text="{local:T 'Nella playlist'}" Classes="field-label" Margin="4,18,0,8"/>
+                    <TextBlock Text="{local:T 'Into playlist'}" Classes="field-label" Margin="4,18,0,8"/>
                     <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="Playlist_Click">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="{Binding Playlist.Label}" FontWeight="Normal" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
                         </Grid>
                     </Button>
                     <StackPanel IsVisible="{Binding ShowNewName}">
-                        <TextBlock Text="{local:T 'Nome della nuova playlist'}" Classes="field-label" Margin="4,14,0,8"/>
-                        <TextBox Theme="{StaticResource TouchBox}" Text="{Binding NewName}" Watermark="{local:T 'Nome della playlist'}"/>
+                        <TextBlock Text="{local:T 'New playlist name'}" Classes="field-label" Margin="4,14,0,8"/>
+                        <TextBox Theme="{StaticResource TouchBox}" Text="{Binding NewName}" Watermark="{local:T 'Playlist name'}"/>
                     </StackPanel>
-                    <TextBlock Text="{local:T 'Tag dei brani'}" Classes="field-label" Margin="4,14,0,8" IsVisible="{Binding $parent[views:MainView].DataContext.HasTags}"/>
+                    <TextBlock Text="{local:T 'Song tags'}" Classes="field-label" Margin="4,14,0,8" IsVisible="{Binding $parent[views:MainView].DataContext.HasTags}"/>
                     <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="Tags_Click"
                             IsVisible="{Binding $parent[views:MainView].DataContext.HasTags}">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="{local:T 'Nessuno'}" FontWeight="Normal" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                            <TextBlock Text="{local:T None}" FontWeight="Normal" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
                                        IsVisible="{Binding !HasChosenTags}"/>
                             <ItemsControl ItemsSource="{Binding ChosenTags}" VerticalAlignment="Center" ClipToBounds="True" IsVisible="{Binding HasChosenTags}">
                                 <ItemsControl.ItemsPanel>
@@ -82,32 +82,32 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <TextBlock Grid.Column="1" Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                            <TextBlock Grid.Column="1" Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
                         </Grid>
                     </Button>
                     <!-- the audio downloaded onto the phone, or the songs only added (in the cloud): the last choice is kept -->
                     <CheckBox Theme="{StaticResource Switch}" Margin="4,16,2,0" IsChecked="{Binding SaveAudio}">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Salva l\'audio sul dispositivo'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Save the audio on your device'}" Classes="setting"/>
                             <TextBlock Text="{Binding SaveAudioHint}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
                     <CheckBox Theme="{StaticResource Switch}" Margin="4,16,2,0" IsChecked="{Binding WithVideo}" IsVisible="{Binding ShowVideoChoice}">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Anche il video'}" Classes="setting"/>
-                            <TextBlock Text="{local:T 'Lo vedrai nella schermata del brano (occupa più spazio)'}" Classes="setting-hint"/>
+                            <TextBlock Text="{local:T 'Video too'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'You\'ll see it on the song\'s screen (takes more space)'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
                     <!-- the quality of these songs (the one in Settings to start with): it stays theirs -->
                     <Button Theme="{StaticResource SettingRow}" Margin="0,10,0,0" Tag="audio" Click="Quality_Click">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Qualità dell\'audio'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Audio quality'}" Classes="setting"/>
                             <TextBlock Text="{Binding Audio.Label}" Classes="value"/>
                         </StackPanel>
                     </Button>
                     <Button Theme="{StaticResource SettingRow}" Tag="video" Click="Quality_Click" IsVisible="{Binding ShowVideoQuality}">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Qualità massima dei video'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Maximum video quality'}" Classes="setting"/>
                             <TextBlock Text="{Binding Video.Label}" Classes="value"/>
                         </StackPanel>
                     </Button>
@@ -124,19 +124,19 @@
                             Command="{Binding ListenCommand}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E768}" Classes="glyph"/>
-                            <TextBlock Text="{local:T 'Ascolta senza salvare'}" Margin="8,0,0,0"/>
+                            <TextBlock Text="{local:T 'Listen without saving'}" Margin="8,0,0,0"/>
                         </StackPanel>
                     </Button>
-                    <TextBlock Text="{local:T 'Resta per un po\' nella memoria temporanea, senza entrare nella libreria: se ti piace lo salvi quando vuoi.'}"
+                    <TextBlock Text="{local:T 'It stays in the temporary storage for a while, outside your library: if you like it, save it whenever you want.'}"
                                Classes="hint" FontSize="12.5" TextWrapping="Wrap" TextAlignment="Center" Margin="12,8,12,0"/>
 
                     <!-- the songs of a playlist / album: last, so the buttons above are at hand however long it is -->
                     <StackPanel IsVisible="{Binding IsCollection}" Margin="0,20,0,0">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="{Binding SelectionText}" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}" FontSize="13.5" Margin="4,0,0,0"/>
+                            <TextBlock Text="{Binding SelectionText}" VerticalAlignment="Center" Foreground="{DynamicResource SubTextBrush}" FontSize="13.5" Margin="4,0,0,0"/>
                             <Button Grid.Column="1" Theme="{StaticResource SmallGhost}" Command="{Binding ToggleAllCommand}" Content="{Binding ToggleAllLabel}"/>
                         </Grid>
-                        <Border Margin="0,10,0,0" CornerRadius="12" Background="{StaticResource BgBrush}" Padding="4" MaxHeight="520">
+                        <Border Margin="0,10,0,0" CornerRadius="12" Background="{DynamicResource BgBrush}" Padding="4" MaxHeight="520">
                             <ListBox Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}" ItemsSource="{Binding Items}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
@@ -144,17 +144,17 @@
                                             <Grid ColumnDefinitions="Auto,Auto,*,Auto">
                                                 <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
                                                 <Panel Grid.Column="1" Width="42" Height="42" Margin="8,0,0,0">
-                                                    <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}"/>
+                                                    <Border CornerRadius="6" Background="{DynamicResource PlaceholderGradient}"/>
                                                     <views:CoverImage CornerRadius="6" Source="{Binding Thumb}"/>
                                                 </Panel>
                                                 <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="14"/>
-                                                    <TextBlock Text="{Binding Meta}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}" Margin="0,2,0,0"
+                                                    <TextBlock Text="{Binding Meta}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{DynamicResource SubTextBrush}" Margin="0,2,0,0"
                                                                IsVisible="{Binding Meta, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                                 </StackPanel>
-                                                <Border Grid.Column="3" CornerRadius="7" Padding="7,2" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
+                                                <Border Grid.Column="3" CornerRadius="7" Padding="7,2" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center"
                                                         IsVisible="{Binding InLibrary}">
-                                                    <TextBlock Text="{local:T 'Già tuo'}" FontSize="11.5" Foreground="{StaticResource SuccessBrush}"/>
+                                                    <TextBlock Text="{local:T 'Already yours'}" FontSize="11.5" Foreground="{DynamicResource SuccessBrush}"/>
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -172,17 +172,17 @@
     <Grid RowDefinitions="*,Auto">
     <ScrollViewer x:Name="Scroller">
         <StackPanel Margin="16,12,16,24">
-            <TextBlock Text="{local:T 'Scarica musica'}" Classes="page-title" Margin="2,0,0,12"/>
+            <TextBlock Text="{local:T 'Download music'}" Classes="page-title" Margin="2,0,0,12"/>
 
             <!-- the link -->
-            <Border Height="50" CornerRadius="25" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+            <Border Height="50" CornerRadius="25" Background="{DynamicResource Surface2Brush}" BorderBrush="Transparent" BorderThickness="1"
                     Padding="16,0,4,0" Margin="0,0,0,14">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                    <TextBlock Text="{local:Icon E71B}" Classes="glyph" Foreground="{StaticResource SubTextBrush}" FontSize="17"/>
+                    <TextBlock Text="{local:Icon E71B}" Classes="glyph" Foreground="{DynamicResource SubTextBrush}" FontSize="17"/>
                     <TextBox x:Name="LinkBox" Grid.Column="1" Theme="{StaticResource BareTextBox}" FontSize="15" Margin="12,0,4,0"
-                             Watermark="{local:T 'Incolla il link di un brano o di una playlist'}"/>
+                             Watermark="{local:T 'Paste the link of a song or a playlist'}"/>
                     <Button x:Name="GoButton" Grid.Column="2" Theme="{StaticResource PillPrimaryButton}" Height="40" Padding="16,0" Click="Go_Click">
-                        <TextBlock x:Name="GoText" Text="{local:T Incolla}"/>
+                        <TextBlock x:Name="GoText" Text="{local:T Paste}"/>
                     </Button>
                 </Grid>
             </Border>
@@ -190,9 +190,9 @@
             <Panel Margin="0,0,0,8">
                 <Border Classes="card" Padding="18" IsVisible="{Binding ShowIntro}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Condividi o incolla un link'}" FontSize="17" FontWeight="SemiBold"/>
+                        <TextBlock Text="{local:T 'Share or paste a link'}" FontSize="17" FontWeight="SemiBold"/>
                         <TextBlock Classes="hint" Margin="0,6,0,14" FontSize="14" LineHeight="20"
-                                   Text="{local:T 'Da YouTube, Spotify, SoundCloud e quasi ogni altra app premi Condividi e scegli «Scarica con Ultimate MP3 Player». Brani, album e playlist intere: scegli in quale playlist salvarli. I brani che hai già non vengono riscaricati.'}"/>
+                                   Text="{local:T 'From YouTube, Spotify, SoundCloud and almost any other app tap Share and choose “Download with Ultimate MP3 Player”. Songs, albums and whole playlists: choose which playlist to save them in. Songs you already have aren\'t downloaded again.'}"/>
                         <ItemsControl ItemsSource="{Binding FeaturedSites}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -201,13 +201,13 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border CornerRadius="12" Padding="10,4" Margin="0,0,6,6" Background="{StaticResource Surface2Brush}">
-                                        <TextBlock Text="{Binding}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}"/>
+                                    <Border CornerRadius="12" Padding="10,4" Margin="0,0,6,6" Background="{DynamicResource Surface2Brush}">
+                                        <TextBlock Text="{Binding}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}"/>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Text="{local:T '…e centinaia di altri siti.'}" FontSize="12.5" Foreground="{StaticResource MutedBrush}" Margin="2,2,0,0"/>
+                        <TextBlock Text="{local:T '…and hundreds of other sites.'}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" Margin="2,2,0,0"/>
                     </StackPanel>
                 </Border>
 
@@ -215,25 +215,25 @@
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <Ellipse Classes="spinner" Width="30" Height="30"/>
                         <TextBlock Grid.Column="1" Text="{Binding AnalyzingText}" FontSize="15" VerticalAlignment="Center" Margin="14,0,8,0" TextWrapping="Wrap"/>
-                        <Button Grid.Column="2" Theme="{StaticResource SmallGhost}" Content="{local:T Annulla}" Command="{Binding CancelCommand}"/>
+                        <Button Grid.Column="2" Theme="{StaticResource SmallGhost}" Content="{local:T Cancel}" Command="{Binding CancelCommand}"/>
                     </Grid>
                 </Border>
 
-                <Border CornerRadius="16" Padding="16" Background="{StaticResource ErrorSoftBrush}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Border CornerRadius="16" Padding="16" Background="{DynamicResource ErrorSoftBrush}" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <Grid ColumnDefinitions="Auto,*,Auto">
-                        <TextBlock Text="{local:Icon EA39}" Classes="glyph" FontSize="22" Foreground="{StaticResource ErrorBrush}" VerticalAlignment="Top"/>
+                        <TextBlock Text="{local:Icon EA39}" Classes="glyph" FontSize="22" Foreground="{DynamicResource ErrorBrush}" VerticalAlignment="Top"/>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
                             <TextBlock Text="{Binding Error}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap"/>
                             <TextBlock Text="{Binding ErrorHint}" Classes="hint" Margin="0,6,0,0" IsVisible="{Binding ErrorHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                             <!-- a login is needed: the sites' logins, right here -->
                             <WrapPanel Margin="0,2,0,0">
-                                <Button Theme="{StaticResource SmallGhost}" Content="{local:T 'Accedi al sito'}" Margin="0,8,8,0"
+                                <Button Theme="{StaticResource SmallGhost}" Content="{local:T 'Sign in to the site'}" Margin="0,8,8,0"
                                         Click="Logins_Click" IsVisible="{Binding SuggestCookies}"/>
                                 <!-- protected (DRM), removed, private: the same song from YouTube Music -->
                                 <Button Theme="{StaticResource SmallGhost}" Margin="0,8,8,0" Command="{Binding TryYouTubeCommand}" IsVisible="{Binding CanTryYouTube}">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="12"/>
-                                        <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                                        <TextBlock Text="{local:T 'Retry with YouTube'}" Margin="7,0,0,0"/>
                                     </StackPanel>
                                 </Button>
                             </WrapPanel>
@@ -245,10 +245,10 @@
 
                 <ContentControl Content="{Binding Link}"/>
 
-                <Border CornerRadius="14" Padding="16,12" Background="#1A3A2E" IsVisible="{Binding Feedback, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Top">
+                <Border CornerRadius="14" Padding="16,12" Background="{DynamicResource SuccessSoftBrush}" IsVisible="{Binding Feedback, Converter={x:Static ObjectConverters.IsNotNull}}" VerticalAlignment="Top">
                     <Grid ColumnDefinitions="Auto,*">
-                        <TextBlock Text="{local:Icon E73E}" Classes="glyph" Foreground="{StaticResource SuccessBrush}"/>
-                        <TextBlock Grid.Column="1" Text="{Binding Feedback}" Margin="10,0,0,0" Foreground="{StaticResource SuccessBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{local:Icon E73E}" Classes="glyph" Foreground="{DynamicResource SuccessBrush}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Feedback}" Margin="10,0,0,0" Foreground="{DynamicResource SuccessBrush}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                     </Grid>
                 </Border>
             </Panel>
@@ -256,11 +256,11 @@
             <!-- the downloads -->
             <StackPanel IsVisible="{Binding Queue.HasJobs}" Margin="0,8,0,0">
                 <TextBlock Text="{local:T Download}" Classes="section-title" Margin="2,0,0,2"/>
-                <TextBlock Text="{Binding Queue.Summary}" Foreground="{StaticResource SubTextBrush}" Margin="2,0,0,10" FontSize="13.5" TextWrapping="Wrap"/>
-                <Border CornerRadius="14" Padding="14,10,8,10" Margin="0,0,0,10" Background="{StaticResource WarningSoftBrush}" IsVisible="{Binding Queue.IsThrottled}">
+                <TextBlock Text="{Binding Queue.Summary}" Foreground="{DynamicResource SubTextBrush}" Margin="2,0,0,10" FontSize="13.5" TextWrapping="Wrap"/>
+                <Border CornerRadius="14" Padding="14,10,8,10" Margin="0,0,0,10" Background="{DynamicResource WarningSoftBrush}" IsVisible="{Binding Queue.IsThrottled}">
                     <StackPanel>
-                        <TextBlock Text="{Binding Queue.ThrottleText}" Foreground="{StaticResource WarningBrush}" FontSize="13.5" TextWrapping="Wrap"/>
-                        <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,8,0,0" Content="{local:T 'Velocità normale'}"
+                        <TextBlock Text="{Binding Queue.ThrottleText}" Foreground="{DynamicResource WarningBrush}" FontSize="13.5" TextWrapping="Wrap"/>
+                        <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,8,0,0" Content="{local:T 'Normal speed'}"
                                 Command="{Binding Queue.NormalSpeedCommand}"/>
                     </StackPanel>
                 </Border>
@@ -268,31 +268,31 @@
                     <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.RetryFailedCommand}" IsVisible="{Binding Queue.HasFailed}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="13"/>
-                            <TextBlock Text="{local:T 'Riprova non riusciti'}" Margin="7,0,0,0"/>
+                            <TextBlock Text="{local:T 'Retry failed'}" Margin="7,0,0,0"/>
                         </StackPanel>
                     </Button>
                     <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.RetryFailedOnYouTubeCommand}" IsVisible="{Binding Queue.HasFailedForYouTube}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E721}" Classes="glyph" FontSize="13"/>
-                            <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                            <TextBlock Text="{local:T 'Retry with YouTube'}" Margin="7,0,0,0"/>
                         </StackPanel>
                     </Button>
                     <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.DiscardFailedCommand}" IsVisible="{Binding Queue.HasFailed}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E74D}" Classes="glyph" FontSize="13"/>
-                            <TextBlock Text="{local:T 'Scarta errori'}" Margin="7,0,0,0"/>
+                            <TextBlock Text="{local:T 'Discard errors'}" Margin="7,0,0,0"/>
                         </StackPanel>
                     </Button>
                     <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.ClearFinishedCommand}" IsVisible="{Binding Queue.HasDone}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="13"/>
-                            <TextBlock Text="{local:T 'Pulisci completati'}" Margin="7,0,0,0"/>
+                            <TextBlock Text="{local:T 'Clear completed'}" Margin="7,0,0,0"/>
                         </StackPanel>
                     </Button>
                     <Button Theme="{StaticResource SmallGhost}" Margin="0,0,8,8" Command="{Binding Queue.CancelAllCommand}" IsVisible="{Binding Queue.HasActive}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E711}" Classes="glyph" FontSize="13"/>
-                            <TextBlock Text="{local:T 'Annulla tutti'}" Margin="7,0,0,0"/>
+                            <TextBlock Text="{local:T 'Cancel all'}" Margin="7,0,0,0"/>
                         </StackPanel>
                     </Button>
                 </WrapPanel>
@@ -307,14 +307,14 @@
                                         <TextBlock Classes="glyph" Text="{local:Icon E73E}" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
                                     </Border>
                                     <Panel Grid.Column="1" Width="48" Height="48" VerticalAlignment="Top">
-                                        <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
-                                            <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                                        <Border CornerRadius="6" Background="{DynamicResource PlaceholderGradient}">
+                                            <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                                         </Border>
                                         <views:CoverImage CornerRadius="6" Source="{Binding Thumb}"/>
                                     </Panel>
                                     <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold" FontSize="14.5"/>
-                                        <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12.5" Foreground="{StaticResource MutedBrush}" Margin="0,1,0,0"/>
+                                        <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" Margin="0,1,0,0"/>
                                         <ProgressBar Margin="0,6,0,2" Value="{Binding Percent, Mode=OneWay}" IsIndeterminate="{Binding Indeterminate}" IsVisible="{Binding IsRunning}"/>
                                         <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusBrush}" FontSize="12.5" TextWrapping="Wrap" Margin="0,2,0,0"/>
                                         <WrapPanel>
@@ -322,14 +322,14 @@
                                             <Button Theme="{StaticResource SmallGhost}" Margin="0,8,8,0" Click="JobLogin_Click" IsVisible="{Binding NeedsLogin}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{local:Icon E72E}" Classes="glyph" FontSize="12"/>
-                                                    <TextBlock Text="{local:T 'Accedi al sito'}" Margin="7,0,0,0"/>
+                                                    <TextBlock Text="{local:T 'Sign in to the site'}" Margin="7,0,0,0"/>
                                                 </StackPanel>
                                             </Button>
                                             <Button Theme="{StaticResource SmallGhost}" Margin="0,8,8,0" Command="{Binding RetryYouTubeCommand}"
                                                     IsVisible="{Binding CanRetryYouTube}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{local:Icon E72C}" Classes="glyph" FontSize="12"/>
-                                                    <TextBlock Text="{local:T 'Riprova con YouTube'}" Margin="7,0,0,0"/>
+                                                    <TextBlock Text="{local:T 'Retry with YouTube'}" Margin="7,0,0,0"/>
                                                 </StackPanel>
                                             </Button>
                                         </WrapPanel>

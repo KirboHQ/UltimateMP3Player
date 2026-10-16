@@ -21,9 +21,9 @@
         </ControlTheme>
         <!-- Frosted pill floating on the stage. -->
         <ControlTheme x:Key="StagePill" TargetType="Button" BasedOn="{StaticResource PillButton}">
-            <Setter Property="Background" Value="#A6101318"/>
-            <Setter Property="BorderBrush" Value="#30FFFFFF"/>
-            <Setter Property="local:Ui.HoverBrush" Value="#E61D2129"/>
+            <Setter Property="Background" Value="{DynamicResource GlassBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource GlassBorderBrush}"/>
+            <Setter Property="local:Ui.HoverBrush" Value="{DynamicResource GlassHoverBrush}"/>
             <Setter Property="Padding" Value="14,7,8,7"/>
             <Setter Property="FontSize" Value="13"/>
         </ControlTheme>
@@ -58,7 +58,7 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="Border.qrow:pointerover">
-            <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
         </Style>
         <Style Selector="Border.qrow Button.rowplay, Border.qrow Button.rowremove">
             <Setter Property="Opacity" Value="0"/>
@@ -90,7 +90,7 @@
 
         <!-- ======================================================== stage -->
         <Panel x:Name="Stage" Margin="20,0,0,16" ClipToBounds="True">
-            <Border CornerRadius="16" Background="{StaticResource SurfaceBrush}"/>
+            <Border CornerRadius="16" Background="{DynamicResource SurfaceBrush}"/>
             <!-- backdrop: the cover, or the video itself blurred. All drawn straight (CoverImage), their opacity and blur baked
                  into the pictures (NowPlayingView.BakeCover, VideoView.Backdrop): an ImageBrush, an opacity or a blur effect
                  here cost an offscreen surface as big as the stage at every frame. -->
@@ -100,26 +100,12 @@
             <Border x:Name="StageVideo" CornerRadius="16" ClipToBounds="True" IsVisible="{Binding IsVideo}">
                 <views:CoverImage x:Name="BackdropVideo" Margin="-80"/>
             </Border>
-            <Border CornerRadius="16" IsVisible="{Binding !LyricsOverCover}">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                        <GradientStop Color="#550E1014" Offset="0"/>
-                        <GradientStop Color="#EE0E1014" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-            </Border>
-            <!-- over the cover's colour the lyrics keep more of it; the bottom stays dark for the title -->
-            <Border CornerRadius="16" IsVisible="{Binding LyricsOverCover}">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                        <GradientStop Color="#1A0E1014" Offset="0"/>
-                        <GradientStop Color="#330E1014" Offset="0.55"/>
-                        <GradientStop Color="#D90E1014" Offset="1"/>
-                    </LinearGradientBrush>
-                </Border.Background>
-            </Border>
+            <!-- (the page's background, see-through on top: Themes) -->
+            <Border CornerRadius="16" Background="{DynamicResource NowPlayingVeil}" IsVisible="{Binding !LyricsOverCover}"/>
+            <!-- over the cover's colour the lyrics keep more of it; the bottom stays solid for the title -->
+            <Border CornerRadius="16" Background="{DynamicResource NowPlayingVeilLyrics}" IsVisible="{Binding LyricsOverCover}"/>
             <!-- a moving video behind the lyrics: calmed down -->
-            <Border CornerRadius="16" Background="#590E1014" IsVisible="{Binding LyricsOverVideo}"/>
+            <Border CornerRadius="16" Background="{DynamicResource LyricsVeilBrush}" IsVisible="{Binding LyricsOverVideo}"/>
 
             <Grid Margin="28" RowDefinitions="*,Auto">
 
@@ -161,7 +147,7 @@
                             IsVisible="False" Opacity="0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E720}" Classes="glyph" FontSize="13"/>
-                            <TextBlock Text="{local:T 'Torna alla riga cantata'}" Margin="9,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{local:T 'Back to the current line'}" Margin="9,0,6,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </Panel>
@@ -169,23 +155,23 @@
                 <Grid Grid.Row="1" Margin="0,22,0,0" ColumnDefinitions="*,Auto">
                     <StackPanel x:Name="TitleBlock" Background="Transparent" local:Marquee.Host="True">
                         <TextBlock Text="{Binding Player.Current.Title}" FontSize="30" FontWeight="Bold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                        <TextBlock Text="{Binding Player.Current.Artist}" FontSize="17" Foreground="{StaticResource SubTextBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
+                        <TextBlock Text="{Binding Player.Current.Artist}" FontSize="17" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
                                    local:Marquee.IsEnabled="True"/>
-                        <TextBlock FontSize="12.5" Foreground="{StaticResource MutedBrush}" Margin="0,6,0,0"
+                        <TextBlock FontSize="12.5" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0"
                                    IsVisible="{Binding Player.ContextName, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <Run Text="{local:T 'In riproduzione da:'}"/>
-                            <Run Text="{Binding Player.ContextName, Mode=OneWay}" Foreground="{StaticResource SubTextBrush}"/>
+                            <Run Text="{local:T 'Playing from:'}"/>
+                            <Run Text="{Binding Player.ContextName, Mode=OneWay}" Foreground="{DynamicResource SubTextBrush}"/>
                         </TextBlock>
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0" IsVisible="{Binding Player.IsWaiting}">
                             <Ellipse Classes="spinner" Width="14" Height="14" StrokeThickness="1.6"/>
-                            <TextBlock Text="{Binding Player.WaitText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Player.WaitText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
-                        <Button x:Name="MoreButton" Theme="{StaticResource ControlButton}" Content="{local:Icon E712}" ToolTip.Tip="{local:T 'Altre opzioni'}"
+                        <Button x:Name="MoreButton" Theme="{StaticResource ControlButton}" Content="{local:Icon E712}" ToolTip.Tip="{local:T 'More options'}"
                                 IsVisible="{Binding Player.HasTrack}"/>
                         <ToggleButton Theme="{StaticResource ToggleIcon}" Width="NaN" Height="36" IsChecked="{Binding ShowVideo}" Margin="6,0,0,0"
-                                      IsVisible="{Binding HasVideo}" ToolTip.Tip="{local:T 'Mostra il video al posto della copertina'}">
+                                      IsVisible="{Binding HasVideo}" ToolTip.Tip="{local:T 'Show video instead of cover'}">
                             <StackPanel Orientation="Horizontal" Margin="8,0">
                                 <TextBlock Text="{local:Icon E714}" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center"/>
                                 <TextBlock Text="Video" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
@@ -193,10 +179,10 @@
                         </ToggleButton>
                         <!-- only when the song has lyrics -->
                         <ToggleButton Theme="{StaticResource ToggleIcon}" Width="NaN" Height="36" IsChecked="{Binding ShowLyrics}" Margin="6,0,0,0"
-                                      IsVisible="{Binding HasLyrics}" ToolTip.Tip="{local:T 'Mostra il testo al posto della copertina'}">
+                                      IsVisible="{Binding HasLyrics}" ToolTip.Tip="{local:T 'Show the lyrics instead of the cover'}">
                             <StackPanel Orientation="Horizontal" Margin="8,0">
                                 <TextBlock Text="{local:Icon E720}" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center"/>
-                                <TextBlock Text="{local:T Testo}" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{local:T Lyrics}" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ToggleButton>
                     </StackPanel>
@@ -205,10 +191,10 @@
 
             <!-- brings back "next up" when it's folded away (NowPlayingView.PlaceQueue) -->
             <Button x:Name="ShowQueueBtn" Theme="{StaticResource StagePill}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
-                    Command="{Binding ToggleQueueCommand}" IsVisible="False" Opacity="0" ToolTip.Tip="{local:T 'Mostra i successivi'}">
+                    Command="{Binding ToggleQueueCommand}" IsVisible="False" Opacity="0" ToolTip.Tip="{local:T 'Show up next'}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{local:Icon E8A0}" Classes="glyph" FontSize="13"/>
-                    <TextBlock Text="{local:T Successivi}" Margin="9,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{local:T 'Up next'}" Margin="9,0,0,0" VerticalAlignment="Center"/>
                     <Border CornerRadius="9" MinWidth="22" Height="18" Padding="6,0" Margin="8,0,0,0" Background="{DynamicResource AccentBrush}"
                             IsVisible="{Binding Player.UpcomingBadge, Converter={x:Static ObjectConverters.IsNotNull}}">
                         <TextBlock Text="{Binding Player.UpcomingBadge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"
@@ -225,8 +211,8 @@
                 <Grid RowDefinitions="Auto,*">
                     <Grid Margin="6,2,0,10" ColumnDefinitions="*,Auto">
                         <StackPanel>
-                            <TextBlock Text="{local:T Successivi}" FontSize="17" FontWeight="Bold"/>
-                            <TextBlock FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"
+                            <TextBlock Text="{local:T 'Up next'}" FontSize="17" FontWeight="Bold"/>
+                            <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"
                                        Text="{Binding Player.QueueHint}" IsVisible="{Binding Player.HasUpNext}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="8,-3,-4,0">
@@ -236,17 +222,17 @@
                                         IsVisible="{Binding Player.HasTrack}">
                                     <ToolTip.Tip>
                                         <StackPanel MaxWidth="260">
-                                            <TextBlock Text="{local:T 'Completa la coda (se è già piena, la rigenera da capo)'}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                            <TextBlock Text="{Binding Player.GenerateHint}" Foreground="{StaticResource SubTextBrush}" TextWrapping="Wrap"
+                                            <TextBlock Text="{local:T 'Complete the queue (if it\'s already full, generate it again from scratch)'}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Player.GenerateHint}" Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap"
                                                        IsVisible="{Binding Player.GenerateHint, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                                         </StackPanel>
                                     </ToolTip.Tip>
                                 </Button>
                                 <Button Theme="{StaticResource QueueIconButton}" Content="{local:Icon E74D}" Command="{Binding Player.ClearQueueCommand}"
-                                        IsVisible="{Binding Player.HasUpNext}" ToolTip.Tip="{local:T 'Svuota la coda: finito questo brano, la musica si ferma'}"/>
+                                        IsVisible="{Binding Player.HasUpNext}" ToolTip.Tip="{local:T 'Clear the queue: the music stops after this song'}"/>
                             </StackPanel>
                             <Button Theme="{StaticResource QueueIconButton}" Content="{local:Icon E89F}" Command="{Binding ToggleQueueCommand}"
-                                    ToolTip.Tip="{local:T 'Nascondi di lato'}"/>
+                                    ToolTip.Tip="{local:T 'Hide to the side'}"/>
                         </StackPanel>
                     </Grid>
                     <!-- at most 150 rows: no virtualization, so scrolling and dragging stay exact -->
@@ -280,10 +266,10 @@
                                             <!-- small round play over the cover, so the cover stays visible -->
                                             <Button Classes="rowplay" Theme="{StaticResource RowPlayButton}" Content="{local:Icon E768}"
                                                     HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                    Command="{Binding PlayCommand}" ToolTip.Tip="{local:T 'Riproduci ora'}"/>
+                                                    Command="{Binding PlayCommand}" ToolTip.Tip="{local:T 'Play now'}"/>
                                             <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
-                                                <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"
+                                                <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{DynamicResource SubTextBrush}"
                                                            local:Marquee.IsEnabled="True"/>
                                             </StackPanel>
                                             <!-- a suggested song: online, downloading, ready or not to be found (the remove button on hover) -->
@@ -291,9 +277,9 @@
                                                    Classes.busy="{Binding Radio.IsBusy, FallbackValue=False}" Classes.failed="{Binding Radio.IsFailed, FallbackValue=False}"
                                                    Grid.Column="2" Width="30" Height="30" Background="Transparent" ToolTip.Tip="{Binding Radio.StateTip, FallbackValue={x:Null}}"
                                                    IsVisible="{Binding IsRadio}">
-                                                <TextBlock Classes="glyph online" Text="{local:Icon E753}" FontSize="13" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"/>
-                                                <TextBlock Classes="glyph ready" Text="{local:Icon E73E}" FontSize="13" Foreground="{StaticResource SuccessBrush}" HorizontalAlignment="Center"/>
-                                                <TextBlock Classes="glyph failed" Text="{local:Icon E7BA}" FontSize="13" Foreground="{StaticResource WarningBrush}" HorizontalAlignment="Center"/>
+                                                <TextBlock Classes="glyph online" Text="{local:Icon E753}" FontSize="13" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center"/>
+                                                <TextBlock Classes="glyph ready" Text="{local:Icon E73E}" FontSize="13" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center"/>
+                                                <TextBlock Classes="glyph failed" Text="{local:Icon E7BA}" FontSize="13" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center"/>
                                                 <Panel Classes="busy">
                                                     <Ellipse Classes="spinner" Width="26" Height="26" StrokeThickness="2"/>
                                                     <TextBlock Text="{Binding Radio.PctText, FallbackValue={x:Null}}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -303,7 +289,7 @@
                                             <ContentControl Classes="cloudstate" Grid.Column="2" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"
                                                             IsVisible="{Binding ShowCloud}"/>
                                             <Button Classes="rowremove" Grid.Column="2" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="11"
-                                                    Content="{local:Icon E711}" Command="{Binding RemoveCommand}" ToolTip.Tip="{local:T 'Togli dai successivi'}"/>
+                                                    Content="{local:Icon E711}" Command="{Binding RemoveCommand}" ToolTip.Tip="{local:T 'Remove from Up next'}"/>
                                         </Grid>
                                     </Border>
                                 </StackPanel>
@@ -321,16 +307,16 @@
                             <TextBlock Text="{local:Icon E90B}" FontFamily="{StaticResource IconFont}" FontSize="30" Foreground="{DynamicResource AccentTextBrush}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Panel>
-                        <TextBlock Text="{local:T 'La coda è vuota'}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,16,0,0"/>
+                        <TextBlock Text="{local:T 'The queue is empty'}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,16,0,0"/>
                         <TextBlock Text="{Binding Player.QueueEndHint}" Classes="hint" TextAlignment="Center" Margin="0,6,0,0"/>
                         <Button Theme="{StaticResource PrimaryButton}" Command="{Binding Player.GenerateQueueCommand}" HorizontalAlignment="Center" Margin="0,18,0,0"
                                 IsVisible="{Binding Player.CanGenerate}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{local:Icon E895}" Classes="glyph" FontSize="13"/>
-                                <TextBlock Text="{local:T 'Genera coda'}" Margin="8,0,0,0"/>
+                                <TextBlock Text="{local:T 'Generate queue'}" Margin="8,0,0,0"/>
                             </StackPanel>
                         </Button>
-                        <TextBlock Text="{Binding Player.GenerateHint}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center"
+                        <TextBlock Text="{Binding Player.GenerateHint}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center"
                                    TextAlignment="Center" TextWrapping="Wrap" Margin="0,8,0,0" IsVisible="{Binding Player.CanGenerate}"/>
                     </StackPanel>
                 </Grid>

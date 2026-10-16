@@ -17,7 +17,27 @@ public static class AppPaths
             ? env
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ultimate MP3 Player");
         Directory.CreateDirectory(dir);
+        // Names of 3.7 and before.
+        Rename(Path.Combine(dir, "ascolta-insieme"), Path.Combine(dir, "cache"));
+        Rename(Path.Combine(dir, "errori.log"), Path.Combine(dir, "errors.log"));
         return dir;
+    }
+
+    // A file or folder that has another name since an older version: moved once to the new one.
+    public static void Rename(string from, string to)
+    {
+        try
+        {
+            if (Directory.Exists(from))
+            {
+                // A start where the move failed (a file still open) left the new folder made and empty: tried again.
+                // Delete refuses a folder with something in it.
+                if (Directory.Exists(to)) Directory.Delete(to);
+                Directory.Move(from, to);
+            }
+            else if (File.Exists(from) && !File.Exists(to)) File.Move(from, to);
+        }
+        catch { }
     }
 
     public static string LibraryFile => Path.Combine(DataDir, "library.json");
@@ -25,6 +45,9 @@ public static class AppPaths
     public static string ProfilesFile => Path.Combine(DataDir, "profiles.json");
     public static string CoversDir => Dir(Path.Combine(DataDir, "covers"));
     public static string LyricsDir => Dir(Path.Combine(DataDir, "lyrics"));
+    // Songs heard without saving them (SongCache).
+    public static string CacheDir => Path.Combine(DataDir, "cache");
+    public static string LogFile => Path.Combine(DataDir, "errors.log");
     // Not created here, so deleted profiles stay deleted.
     public static string ProfileDir(string id) => Path.Combine(DataDir, "profiles", id);
     public static string TempDir => Dir(Path.Combine(Path.GetTempPath(), "UltimateMP3Player"));
@@ -193,7 +216,7 @@ public sealed class AppSettings
     // "Listen together": who this installation is in rooms (kept, so a kicked person stays out),
     // how many songs of rooms are kept, the last choices when creating a room.
     public string? TogetherId { get; set; }
-    public int TogetherCacheSize { get; set; } = 10;
+    [JsonPropertyName("TogetherCacheSize")] public int CacheSize { get; set; } = 10;
     public int TogetherMax { get; set; } = 8;
     // Permissions of who joins (3.1: pause and seek became one, speed is new; the 3.0 value isn't read).
     public int TogetherRoomPerms { get; set; } = 1;

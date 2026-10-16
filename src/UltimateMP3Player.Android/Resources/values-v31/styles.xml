@@ -5,7 +5,7 @@
     <item name="android:windowBackground">@color/ump_bg</item>
     <item name="android:statusBarColor">@android:color/transparent</item>
     <item name="android:navigationBarColor">@android:color/transparent</item>
-    <item name="android:windowLightStatusBar">false</item>
+    <item name="android:windowLightStatusBar">@bool/ump_light_bars</item>
     <item name="android:windowSplashScreenBackground">@color/ump_bg</item>
     <item name="colorPrimary">@color/ump_accent</item>
     <item name="colorAccent">@color/ump_accent</item>

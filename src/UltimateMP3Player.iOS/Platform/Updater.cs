@@ -29,15 +29,15 @@ public sealed class Updater : Observable
         if (AppInfo.GitHubRepo.Length == 0) return false;
         try
         {
-            if (manual) Status = L.T("Controllo degli aggiornamenti…");
+            if (manual) Status = L.T("Checking for updates…");
             var latest = await LatestAsync();
             if (latest != null && Norm(latest) > Norm(AppInfo.Version))
-                Status = L.F("È uscita la versione {0}: aggiornala da SideStore (Le mie app › Aggiorna).", latest.ToString(3));
-            else Status = manual ? L.F("Hai già l'ultima versione ({0}).", AppInfo.VersionText) : null;
+                Status = L.F("Version {0} is out: update it from SideStore (My Apps › Update).", latest.ToString(3));
+            else Status = manual ? L.F("You already have the latest version ({0}).", AppInfo.VersionText) : null;
         }
         catch (Exception ex)
         {
-            Status = manual ? L.T("Aggiornamento non riuscito:") + " " + ex.Message : null;
+            Status = manual ? L.T("Update failed:") + " " + ex.Message : null;
         }
         return false;
     }

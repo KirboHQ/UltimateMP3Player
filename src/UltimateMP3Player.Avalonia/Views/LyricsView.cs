@@ -91,8 +91,16 @@ public sealed class LyricsView : Grid
         // A finger dragging the lyrics (the phone) is a scroll by hand too.
         AddHandler(Gestures.ScrollGestureEvent, (_, _) => UserScrolled(), RoutingStrategies.Bubble, true);
         SizeChanged += (_, _) => Relayout(false);
-        AttachedToVisualTree += (_, _) => UpdateTicking();
-        DetachedFromVisualTree += (_, _) => UpdateTicking();
+        AttachedToVisualTree += (_, _) =>
+        {
+            UpdateTicking();
+            Themes.Changed += Restyle;
+        };
+        DetachedFromVisualTree += (_, _) =>
+        {
+            UpdateTicking();
+            Themes.Changed -= Restyle;
+        };
     }
 
     public event Action<bool>? FollowingChanged;
@@ -120,7 +128,7 @@ public sealed class LyricsView : Grid
         _active = -2;
         SetFollowing(true);
         bool plain = lyrics is { Synced: false, Lines.Count: > 0 };
-        if (plain && _note == null) Children.Add(_note = Note(L.T("Testo senza tempi: scorri per leggerlo")));
+        if (plain && _note == null) Children.Add(_note = Note(L.T("Lyrics without timing: scroll to read them")));
         if (_note != null) _note.IsVisible = plain;
         if (lyrics == null || lyrics.Lines.Count == 0)
         {
@@ -139,12 +147,12 @@ public sealed class LyricsView : Grid
         }
         var credit = new TextBlock
         {
-            Text = L.T("Testo da LRCLIB"),
+            Text = L.T("Lyrics from LRCLIB"),
             // (like "Playing from:" under the title: the same size and colour)
             FontSize = 12.5,
-            Foreground = Ui.Res("MutedBrush"),
             Margin = new Thickness(2, 34, 0, 0),
         };
+        credit.Bind(TextBlock.ForegroundProperty, credit.GetResourceObservable("MutedBrush"));
         _panel.Children.Add(credit);
         _panel.Children.Add(_bottom);
         Relayout(true);
@@ -155,7 +163,7 @@ public sealed class LyricsView : Grid
 
     private void AddLine(LyricLine l, bool synced)
     {
-        var ink = new SolidColorBrush(Colors.White, synced ? Future : Plain);
+        var ink = new SolidColorBrush(Themes.Get("Text"), synced ? Future : Plain);
         var text = new TextBlock
         {
             Text = l.Text.Length == 0 ? " " : l.Text,
@@ -190,10 +198,21 @@ public sealed class LyricsView : Grid
         _panel.Children.Add(box);
     }
 
+    // The light or dark look: the same rows, their ink in its colour (how lit each one is stays).
+    private void Restyle()
+    {
+        var ink = Themes.Get("Text");
+        foreach (var r in _rows)
+        {
+            if (r.Ink != null) r.Ink.Color = ink;
+            foreach (var d in r.DotInks ?? Array.Empty<SolidColorBrush>()) d.Color = ink;
+        }
+    }
+
     // A pause in the singing: three dots that fill up while it lasts.
     private void AddGap(double from, double to)
     {
-        var inks = Enumerable.Range(0, 3).Select(_ => new SolidColorBrush(Colors.White, Future * 0.35)).ToArray();
+        var inks = Enumerable.Range(0, 3).Select(_ => new SolidColorBrush(Themes.Get("Text"), Future * 0.35)).ToArray();
         var dots = inks.Select(ink => new Ellipse { Fill = ink }).ToArray();
         var strip = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.Transparent };
         foreach (var d in dots) strip.Children.Add(d);
@@ -213,22 +232,27 @@ public sealed class LyricsView : Grid
     // "Lyrics without times", pinned at the top left over plain lyrics: the text scrolls away under it.
     private static Border Note(string text)
     {
-        var fg = new SolidColorBrush(Color.FromArgb(0xEE, 255, 255, 255));
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
-        var icon = new TextBlock { Text = Icons.Map(""), FontSize = 12, Foreground = fg, VerticalAlignment = VerticalAlignment.Center };
+        var icon = new TextBlock { Text = Icons.Map(""), FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         icon.Classes.Add("glyph");
-        sp.Children.Add(icon);
-        sp.Children.Add(new TextBlock { Text = text, FontSize = 12.5, Foreground = fg, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-        return new Border
+        var label = new TextBlock { Text = text, FontSize = 12.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        // (resource bindings: they follow the light and dark look)
+        foreach (var t in new[] { icon, label })
+        {
+            t.Bind(TextBlock.ForegroundProperty, t.GetResourceObservable("TextBrush"));
+            sp.Children.Add(t);
+        }
+        var note = new Border
         {
             Child = sp,
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(11, 5, 12, 5),
-            Background = new SolidColorBrush(Color.FromArgb(0x59, 0, 0, 0)),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
             IsHitTestVisible = false,
         };
+        note.Bind(Border.BackgroundProperty, note.GetResourceObservable("GlassBrush"));
+        return note;
     }
 
     // Transparent down to `from`, solid from `to` (shares of the height); the bottom always fades out.

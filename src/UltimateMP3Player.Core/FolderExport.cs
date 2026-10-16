@@ -82,7 +82,7 @@ public static class FolderExport
         var plan = Ffmpeg.ForAudio(source, probe, target, meta, cover, Path.Combine(dir, "song"));
         await Ffmpeg.RunAsync(plan.Args, probe.Duration ?? t.Duration, progress, ct);
         var output = plan.Args[^1];
-        if (!File.Exists(output)) throw new EngineException(L.T("La conversione non ha prodotto alcun file."));
+        if (!File.Exists(output)) throw new EngineException(L.T("The conversion didn't produce any file."));
         return output;
     }
 

@@ -63,7 +63,7 @@ public sealed class Track
     [System.Text.Json.Serialization.JsonIgnore] public bool CanUnsave => IsSaved && HasLink && !IsLocal;
     // A separate video file (not the audio's own file, as for a video added from the computer).
     [System.Text.Json.Serialization.JsonIgnore] public bool HasOwnVideo => HasVideo && !string.Equals(VideoPath, Path, StringComparison.OrdinalIgnoreCase);
-    public string DisplayArtist => string.IsNullOrWhiteSpace(Artist) ? L.T("Artista sconosciuto") : Artist!;
+    public string DisplayArtist => string.IsNullOrWhiteSpace(Artist) ? L.T("Unknown artist") : Artist!;
 }
 
 public static class Ids
@@ -273,7 +273,7 @@ public static class SongMeta
         if (info?.Track != null)
             return (info.Track, info.Artist ?? item.Artist ?? CleanChannel(info.Uploader), info.Album ?? item.Album, item.Year ?? info.Year);
 
-        var title = item.TitleIsGuess && info != null ? info.Title : Text.FirstNonEmpty(item.Title, info?.Title) ?? L.T("Brano");
+        var title = item.TitleIsGuess && info != null ? info.Title : Text.FirstNonEmpty(item.Title, info?.Title) ?? L.T("Song");
         var artist = item.Artist ?? info?.Artist;
         if (ArtistTitle.Match(title) is { Success: true } m &&
             (artist == null || ArtistKey(m.Groups[1].Value) == ArtistKey(artist)))

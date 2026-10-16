@@ -9,8 +9,8 @@
             <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Padding" Value="12,7"/>
             <Setter Property="Margin" Value="0,0,8,6"/>
-            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
     </UserControl.Resources>
@@ -31,14 +31,14 @@
                 <TextBlock Text="&#xE9D2;" Style="{StaticResource Glyph}" FontSize="56" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
             </Border>
             <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
-                <TextBlock Text="{local:T STATISTICHE}" Style="{StaticResource SmallCaps}" Foreground="{StaticResource SubTextBrush}"/>
-                <TextBlock Text="{local:T 'Statistiche di ascolto'}" FontSize="40" FontWeight="Bold" Margin="0,2,0,10" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{local:T STATISTICS}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource SubTextBrush}"/>
+                <TextBlock Text="{local:T 'Listening statistics'}" FontSize="40" FontWeight="Bold" Margin="0,2,0,10" TextTrimming="CharacterEllipsis"/>
                 <WrapPanel>
                     <Border Style="{StaticResource StatPill}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE916;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{DynamicResource AccentTextBrush}"/>
                             <TextBlock Text="{Binding TimeTotal}" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="{local:T 'di ascolto'}" Foreground="{StaticResource SubTextBrush}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{local:T listened}" Foreground="{DynamicResource SubTextBrush}" Margin="5,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource StatPill}">
@@ -51,14 +51,14 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE8D6;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{DynamicResource AccentTextBrush}"/>
                             <TextBlock Text="{Binding HeardTotal}" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="{local:T ascoltati}" Foreground="{StaticResource SubTextBrush}" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{local:T played}" Foreground="{DynamicResource SubTextBrush}" Margin="5,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
                 </WrapPanel>
-                <TextBlock Style="{StaticResource Hint}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0">
+                <TextBlock Style="{StaticResource Hint}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0">
                     <Run Text="{Binding SinceText, Mode=OneWay}"/>
                     <Run Text="·"/>
-                    <Run Text="{local:T 'solo per questo profilo.'}"/>
+                    <Run Text="{local:T 'for this profile only.'}"/>
                 </TextBlock>
             </StackPanel>
         </Grid>
@@ -68,18 +68,18 @@
             <!-- the forgotten ones in one click, to delete them -->
             <Button Style="{StaticResource GhostButton}" Margin="14,0,0,0" Padding="16,9" Click="SelectNever_Click"
                     Visibility="{Binding HasNever, Converter={StaticResource BoolVis}}"
-                    ToolTip="{local:T 'Poi Canc per eliminarli, o tasto destro per le altre azioni'}">
+                    ToolTip="{local:T 'Then press Delete to delete them, or right-click for the other actions'}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE762;" Style="{StaticResource Glyph}"/>
                     <TextBlock Text="{Binding NeverText}" Margin="8,0,0,0"/>
                 </StackPanel>
             </Button>
             <ComboBox DockPanel.Dock="Right" Width="200" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
-                      ToolTip="{local:T 'Ordina per'}" AutomationProperties.Name="{local:T 'Ordina per'}"/>
+                      ToolTip="{local:T 'Sort by'}" AutomationProperties.Name="{local:T 'Sort by'}"/>
             <Button DockPanel.Dock="Right" Style="{StaticResource TagFilterButton}" Margin="0,0,10,0" Click="TagFilter_Click"/>
             <TextBox DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="210" Margin="0,0,10,0" VerticalAlignment="Center"
-                     Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" Tag="{local:T 'Cerca nei brani'}" KeyDown="Filter_KeyDown"
-                     AutomationProperties.Name="{local:T 'Cerca nei brani'}"/>
+                     Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" Tag="{local:T 'Search songs'}" KeyDown="Filter_KeyDown"
+                     AutomationProperties.Name="{local:T 'Search songs'}"/>
         </DockPanel>
 
         <Grid Grid.Row="2" Margin="20,0,12,0">
@@ -92,10 +92,10 @@
             <views:SelectionBar Grid.Row="1" List="{Binding ElementName=List}" Panel.ZIndex="1"/>
             <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0" MaxWidth="480"
                         Visibility="{Binding IsEmpty, Converter={StaticResource BoolVis}}">
-                <TextBlock Text="{local:T 'Niente da mostrare'}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <TextBlock Text="{local:T 'Nothing to show'}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 <TextBlock Text="{Binding EmptyText}" Style="{StaticResource Hint}" Margin="0,8,0,0" TextAlignment="Center"/>
             </StackPanel>
-            <TextBlock Grid.Row="1" Text="{local:T 'Nessun brano corrisponde alla ricerca.'}" Style="{StaticResource Hint}" FontSize="14"
+            <TextBlock Grid.Row="1" Text="{local:T 'No songs match your search.'}" Style="{StaticResource Hint}" FontSize="14"
                        HorizontalAlignment="Center" Margin="0,40,0,0" Visibility="{Binding NoMatches, Converter={StaticResource BoolVis}}"/>
         </Grid>
     </Grid>

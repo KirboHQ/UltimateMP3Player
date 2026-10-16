@@ -47,7 +47,8 @@ public sealed class WaveformBar : FrameworkElement
     public double BarWidth { get => (double)GetValue(BarWidthProperty); set => SetValue(BarWidthProperty, value); }
     public ICommand? SeekCommand { get => (ICommand?)GetValue(SeekCommandProperty); set => SetValue(SeekCommandProperty, value); }
 
-    private static readonly Brush HoverBrush = Freeze(new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)));
+    // The stretch under the mouse: the text's colour, see-through (white when dark, black when light).
+    private static Brush HoverBrush => Freeze(new SolidColorBrush(Themes.Get("Text")) { Opacity = 70 / 255.0 });
 
     private readonly DrawingVisual _rest = new();
     private readonly DrawingVisual _hover = new();

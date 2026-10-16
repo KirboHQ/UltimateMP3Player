@@ -18,7 +18,7 @@ public partial class DownloadsPage : UserControl, IPage
         InitializeComponent();
         Selection.SetOwner(JobList, Picks);
         DataContextChanged += (_, _) => Attach();
-        LinkBox.TextChanged += (_, _) => GoText.Text = (LinkBox.Text ?? "").Trim().Length > 0 ? L.T("Leggi") : L.T("Incolla");
+        LinkBox.TextChanged += (_, _) => GoText.Text = (LinkBox.Text ?? "").Trim().Length > 0 ? L.T("Go") : L.T("Paste");
         LinkBox.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter) return;
@@ -47,7 +47,7 @@ public partial class DownloadsPage : UserControl, IPage
         if (text.Length == 0) text = (await Ui.ClipboardTextAsync())?.Trim() ?? "";
         if (text.Length == 0)
         {
-            App.Host.Session?.Toast(L.T("Negli appunti non c'è nessun link: copialo dall'app o dal sito e riprova."));
+            App.Host.Session?.Toast(L.T("There's no link in the clipboard: copy it from the app or the site and try again."));
             return;
         }
         LinkBox.Text = "";
@@ -58,7 +58,7 @@ public partial class DownloadsPage : UserControl, IPage
     private void Playlist_Click(object? sender, RoutedEventArgs e)
     {
         if (Vm?.Link is not { } link) return;
-        var menu = new SheetMenu { Title = L.T("Nella playlist"), Subtitle = link.Title };
+        var menu = new SheetMenu { Title = L.T("Into playlist"), Subtitle = link.Title };
         foreach (var c in link.PlaylistChoices)
         {
             var choice = c;
@@ -72,7 +72,7 @@ public partial class DownloadsPage : UserControl, IPage
     {
         if (Vm?.Link is not { } link || sender is not Control { Tag: string what }) return;
         bool audio = what == "audio";
-        var menu = new SheetMenu { Title = audio ? L.T("Qualità dell'audio") : L.T("Qualità massima dei video"), Subtitle = link.Title };
+        var menu = new SheetMenu { Title = audio ? L.T("Audio quality") : L.T("Maximum video quality"), Subtitle = link.Title };
         foreach (var c in audio ? link.AudioChoices : link.VideoChoices)
         {
             var choice = c;

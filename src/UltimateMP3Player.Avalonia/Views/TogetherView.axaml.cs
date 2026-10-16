@@ -49,8 +49,8 @@ public partial class TogetherView : UserControl
         // Radmin VPN and Windows' own firewall question exist only on Windows.
         if (!OperatingSystem.IsWindows())
         {
-            LobbyHint.Text = L.T("La stessa musica, nello stesso momento, per tutti nella stanza, con la chat. Funziona sulla stessa rete (Wi-Fi o cavo); da lontano entrate tutti nella stessa rete virtuale (per esempio ZeroTier o Tailscale).");
-            FirewallHint.Text = L.T("Se il sistema chiede se l'app può usare la rete, consenti l'accesso. Se gli altri non riescono a entrare, usa il pulsante qui accanto.");
+            LobbyHint.Text = L.T("The same music, at the same moment, for everyone in the room, with chat. Works on the same network (Wi-Fi or cable); from far away, all join the same virtual network (for example ZeroTier or Tailscale).");
+            FirewallHint.Text = L.T("If the system asks whether the app may use the network, allow it. If others can't get in, use the button next to this.");
         }
         DataContextChanged += (_, _) => Hook(DataContext as TogetherViewModel);
         DetachedFromVisualTree += (_, _) => Hook(null);

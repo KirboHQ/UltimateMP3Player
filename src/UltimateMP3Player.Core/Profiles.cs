@@ -85,7 +85,7 @@ public sealed class EqPreset
 public sealed class EqSettings
 {
     public bool Enabled { get; set; }
-    public string Preset { get; set; } = "Piatto";
+    public string Preset { get; set; } = "Flat";
     public double[] Gains { get; set; } = new double[Equalizer.BandCount];
     public List<EqPreset> Custom { get; set; } = new();
 }
@@ -164,6 +164,8 @@ public sealed class ProfileData
     public bool LibraryOnDevice { get; set; }
     // Theme id ("ultimate", "pink"...) or "profile".
     public string Theme { get; set; } = "ultimate";
+    // Light or dark look: ThemeColors.System (follows the device), Light or Dark.
+    public string Appearance { get; set; } = ThemeColors.System;
     public List<Tag> Tags { get; set; } = new();
     // Song id → ids of its tags.
     public Dictionary<string, List<string>> TrackTags { get; set; } = new();
@@ -198,7 +200,7 @@ public sealed class Profile
         Data = data;
         _saver = new DebouncedSaver(SaveNow, 800);
         if (Data.Playlists.All(p => !p.IsFavorites))
-            Data.Playlists.Insert(0, new Playlist { Id = Playlist.FavoritesId, Name = "Preferiti" });
+            Data.Playlists.Insert(0, new Playlist { Id = Playlist.FavoritesId, Name = "Favorites" });
         if (Data.Eq.Gains.Length != Equalizer.BandCount) Data.Eq.Gains = new double[Equalizer.BandCount];
         if (Data.LibraryOnDevice)
         {
@@ -236,6 +238,8 @@ public sealed class Profile
         {
             if (Open.TryGetValue(info.Id, out var p)) return p;
             var data = JsonStore.Load<ProfileData>(Path.Combine(AppPaths.ProfileDir(info.Id), "data.json"));
+            // (3.7 and before saved the built-in presets by their Italian name)
+            data.Eq.Preset = L.KeyOf(data.Eq.Preset);
             p = new Profile(info, data);
             Open[info.Id] = p;
             return p;
@@ -289,7 +293,7 @@ public sealed class Profile
 
     private string UniqueName(string name)
     {
-        name = string.IsNullOrWhiteSpace(name) ? L.T("Nuova playlist") : name.Trim();
+        name = string.IsNullOrWhiteSpace(name) ? L.T("New playlist") : name.Trim();
         lock (_lock)
         {
             var n = name;
@@ -454,7 +458,7 @@ public sealed class Profile
 
     private string UniqueTagName(string name, Tag? self)
     {
-        name = string.IsNullOrWhiteSpace(name) ? L.T("Nuovo tag") : name.Trim();
+        name = string.IsNullOrWhiteSpace(name) ? L.T("New tag") : name.Trim();
         var n = name;
         for (int i = 2; Data.Tags.Any(x => x != self && string.Equals(x.Name, n, StringComparison.CurrentCultureIgnoreCase)); i++)
             n = $"{name} ({i})";

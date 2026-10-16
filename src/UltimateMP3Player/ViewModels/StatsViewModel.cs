@@ -17,8 +17,8 @@ public sealed class StatsViewModel : Observable, ITrackList
         _main = main;
         Sorts = new List<Choice>
         {
-            new(L.T("Più ascoltati"), "most"), new(L.T("Meno ascoltati"), "least"), new(L.T("Più tempo di ascolto"), "time"),
-            new(L.T("Ascoltati di recente"), "recent"), new(L.T("Mai ascoltati"), "never"), new(L.T("Tutti i brani"), "all"),
+            new(L.T("Most played"), "most"), new(L.T("Least played"), "least"), new(L.T("Most time listened"), "time"),
+            new(L.T("Recently played"), "recent"), new(L.T("Never played"), "never"), new(L.T("All songs"), "all"),
         };
         _sort = Sorts[0];
         PlayCommand = new RelayCommand(() => _main.Player.PlayAll(this, false), () => _order.Count > 0);
@@ -26,7 +26,7 @@ public sealed class StatsViewModel : Observable, ITrackList
     }
 
     public string ContextId => "stats";
-    public string ContextName => L.T("Statistiche di ascolto");
+    public string ContextName => L.T("Listening statistics");
     public IReadOnlyList<TrackViewModel> PlayOrder => _order;
     public Playlist? Playlist => null;
     public TagFilter TagFilter { get; } = new();
@@ -47,7 +47,7 @@ public sealed class StatsViewModel : Observable, ITrackList
 
     public List<TrackRow> Rows { get; private set; } = new();
     public bool IsEmpty => _order.Count == 0;
-    public string EmptyText => IsNeverSort ? L.T("Hai ascoltato tutti i tuoi brani almeno una volta.") : L.T("Ascolta qualcosa: i brani compariranno qui.");
+    public string EmptyText => IsNeverSort ? L.T("You've played all your songs at least once.") : L.T("Listen to something: your songs will show up here.");
 
     private string _filter = "";
     public string Filter { get => _filter; set { if (Set(ref _filter, value)) ApplyFilter(); } }
@@ -66,7 +66,7 @@ public sealed class StatsViewModel : Observable, ITrackList
     // Never played among the songs the search and the tags let through.
     public int NeverCount { get; private set; }
     public bool HasNever => NeverCount > 0;
-    public string NeverText => L.Count(NeverCount, "Seleziona l'unico mai ascoltato", "Seleziona i {0} mai ascoltati");
+    public string NeverText => L.Count(NeverCount, "Select the only one never played", "Select the {0} never played");
 
     public void ApplyFilter()
     {
@@ -111,11 +111,11 @@ public sealed class StatsViewModel : Observable, ITrackList
     {
         var mine = stats.Values.ToList();
         TimeTotal = TimeText(mine.Sum(s => s.Seconds));
-        PlaysTotal = L.Count(mine.Sum(s => s.Plays), "1 ascolto", "{0} ascolti");
+        PlaysTotal = L.Count(mine.Sum(s => s.Plays), "1 play", "{0} plays");
         int heard = library.Count(t => stats.GetValueOrDefault(t.Id) is { Plays: > 0 });
-        HeardTotal = L.F("{0} brani su {1}", heard, library.Count) +
-                     (heardElsewhere > 0 ? " · " + L.Count(heardElsewhere, "1 fuori dalla libreria", "{0} fuori dalla libreria") : "");
-        SinceText = _main.Profile.Data.StatsSince is { } since ? L.F("Contati dal {0}", since.ToString("d MMMM yyyy", L.Culture)) : "";
+        HeardTotal = L.F("{0} songs of {1}", heard, library.Count) +
+                     (heardElsewhere > 0 ? " · " + L.Count(heardElsewhere, "1 outside your library", "{0} outside your library") : "");
+        SinceText = _main.Profile.Data.StatsSince is { } since ? L.F("Counted since {0}", since.ToString("d MMMM yyyy", L.Culture)) : "";
         OnChanged(nameof(TimeTotal), nameof(PlaysTotal), nameof(HeardTotal), nameof(SinceText));
     }
 
@@ -143,7 +143,7 @@ public sealed class StatsViewModel : Observable, ITrackList
     // "2 h 5 min", "12 min", "less than a minute".
     public static string TimeText(double seconds)
     {
-        if (seconds < 60) return seconds > 0 ? L.T("meno di un minuto") : L.F("{0} min", 0);
+        if (seconds < 60) return seconds > 0 ? L.T("less than a minute") : L.F("{0} min", 0);
         var t = TimeSpan.FromSeconds(seconds);
         return t.TotalHours >= 1 ? L.F("{0} h {1} min", (int)t.TotalHours, t.Minutes) : L.F("{0} min", t.Minutes);
     }
@@ -154,11 +154,11 @@ public sealed class StatsViewModel : Observable, ITrackList
         int days = (DateTime.Today - d.Date).Days;
         return days switch
         {
-            <= 0 => L.T("oggi"),
-            1 => L.T("ieri"),
-            < 7 => L.F("{0} giorni fa", days),
-            < 30 => L.Count(days / 7, "1 settimana fa", "{0} settimane fa"),
-            < 365 => L.Count(days / 30, "1 mese fa", "{0} mesi fa"),
+            <= 0 => L.T("today"),
+            1 => L.T("yesterday"),
+            < 7 => L.F("{0} days ago", days),
+            < 30 => L.Count(days / 7, "1 week ago", "{0} weeks ago"),
+            < 365 => L.Count(days / 30, "1 month ago", "{0} months ago"),
             _ => d.ToString("d MMM yyyy", L.Culture),
         };
     }

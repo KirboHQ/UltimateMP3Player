@@ -14,7 +14,7 @@ using Orientation = Android.Widget.Orientation;
 namespace UltimateMP3Player.Platform;
 
 // A site's own page inside the app, to sign in to it (SiteLogins): a bar on top (close, the page's title and whether the
-// login is done, "Fatto"), a thin line while the page loads, the page. Its cookies stay in the app's web pages; once it's
+// login is done, "Done"), a thin line while the page loads, the page. Its cookies stay in the app's web pages; once it's
 // closed SiteLogins writes them where the downloads find them. An Android screen of its own (not drawn by Avalonia): the
 // page is the system's web view.
 [Android.App.Activity(Name = "com.kirbohq.ultimatemp3player.LoginActivity", Exported = false, Theme = "@style/UmpTheme",
@@ -43,30 +43,30 @@ public sealed class LoginActivity : Android.App.Activity
         int Dp(double v) => (int)Math.Round(v * density);
 
         var root = new LinearLayout(this) { Orientation = Orientation.Vertical };
-        root.SetBackgroundColor(AColor.ParseColor("#0E1014"));
+        root.SetBackgroundColor(C("Bg"));
 
         // ---- the bar
         var bar = new LinearLayout(this) { Orientation = Orientation.Horizontal };
         bar.SetGravity(GravityFlags.CenterVertical);
-        bar.SetBackgroundColor(AColor.ParseColor("#161920"));
+        bar.SetBackgroundColor(C("Surface"));
         bar.SetPadding(Dp(4), 0, Dp(10), 0);
 
-        var close = new ImageButton(this) { ContentDescription = L.T("Chiudi") };
+        var close = new ImageButton(this) { ContentDescription = L.T("Close") };
         close.SetImageResource(Resource.Drawable.ic_close);
-        close.SetColorFilter(AColor.ParseColor("#C9CDD6"));
+        close.SetColorFilter(C("SubText"));
         close.Background = Ripple(AColor.Transparent, Dp(24));
         close.Click += (_, _) => Finish();
         bar.AddView(close, new LinearLayout.LayoutParams(Dp(48), Dp(48)));
 
         var texts = new LinearLayout(this) { Orientation = Orientation.Vertical };
-        _title = new TextView(this) { Text = siteName != null ? L.F("Accedi a {0}", siteName) : L.T("Accedi al sito") };
-        _title.SetTextColor(AColor.White);
+        _title = new TextView(this) { Text = siteName != null ? L.F("Sign in to {0}", siteName) : L.T("Sign in to the site") };
+        _title.SetTextColor(C("Text"));
         _title.SetTextSize(Android.Util.ComplexUnitType.Sp, 16);
         _title.SetTypeface(Typeface.DefaultBold, TypefaceStyle.Bold);
         _title.SetSingleLine(true);
         _title.Ellipsize = TextUtils.TruncateAt.End;
-        _status = new TextView(this) { Text = L.T("Accedi come fai di solito, poi tocca Fatto") };
-        _status.SetTextColor(AColor.ParseColor("#9AA0AC"));
+        _status = new TextView(this) { Text = L.T("Sign in as you always do, then tap Done") };
+        _status.SetTextColor(C("SubText"));
         _status.SetTextSize(Android.Util.ComplexUnitType.Sp, 12.5f);
         _status.SetSingleLine(true);
         _status.Ellipsize = TextUtils.TruncateAt.End;
@@ -74,12 +74,12 @@ public sealed class LoginActivity : Android.App.Activity
         texts.AddView(_status);
         bar.AddView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f) { LeftMargin = Dp(6), RightMargin = Dp(8) });
 
-        _done = new TextView(this) { Text = L.T("Fatto"), Gravity = GravityFlags.Center };
-        _done.SetTextColor(AColor.White);
+        _done = new TextView(this) { Text = L.T("Done"), Gravity = GravityFlags.Center };
+        _done.SetTextColor(C("Text"));
         _done.SetTextSize(Android.Util.ComplexUnitType.Sp, 14.5f);
         _done.SetTypeface(Typeface.DefaultBold, TypefaceStyle.Bold);
         _done.SetPadding(Dp(18), 0, Dp(18), 0);
-        _done.Background = Ripple(AColor.ParseColor("#2A2E38"), Dp(18));
+        _done.Background = Ripple(C("Surface3"), Dp(18));
         _done.Clickable = true;
         _done.Click += (_, _) => Finish();
         bar.AddView(_done, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WrapContent, Dp(36)));
@@ -92,7 +92,7 @@ public sealed class LoginActivity : Android.App.Activity
         root.AddView(_progress, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, Dp(3)) { TopMargin = -Dp(1) });
 
         _web = new WebView(this);
-        _web.SetBackgroundColor(AColor.ParseColor("#0E1014"));
+        _web.SetBackgroundColor(C("Bg"));
         root.AddView(_web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MatchParent, 0, 1f));
         SetContentView(root);
 
@@ -101,6 +101,9 @@ public sealed class LoginActivity : Android.App.Activity
         if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
         {
             Window?.SetDecorFitsSystemWindows(false);
+            // dark clock and battery over the light look
+            int lightBars = (int)(WindowInsetsControllerAppearance.LightStatusBars | WindowInsetsControllerAppearance.LightNavigationBars);
+            Window?.InsetsController?.SetSystemBarsAppearance(Themes.IsLight ? lightBars : 0, lightBars);
             root.SetOnApplyWindowInsetsListener(new EdgeInsets());
         }
         if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
@@ -143,20 +146,28 @@ public sealed class LoginActivity : Android.App.Activity
         var mask = new GradientDrawable();
         mask.SetColor(AColor.White);
         mask.SetCornerRadius(radius);
-        return new RippleDrawable(ColorStateList.ValueOf(AColor.Argb(48, 255, 255, 255)), shape, mask);
+        return new RippleDrawable(ColorStateList.ValueOf(Themes.IsLight ? AColor.Argb(30, 0, 0, 0) : AColor.Argb(48, 255, 255, 255)), shape, mask);
     }
 
-    // The site's login cookies are there: the bar says so and "Fatto" lights up.
+    // The app's light or dark look (Themes) on this screen of the system's own.
+    private static AColor C(string name)
+    {
+        var c = Themes.Get(name);
+        return AColor.Argb(c.A, c.R, c.G, c.B);
+    }
+
+    // The site's login cookies are there: the bar says so and "Done" lights up.
     private void CheckSignedIn()
     {
         if (_site == null || _done == null || _status == null) return;
         bool now = SiteLogins.SignedInNow(_site);
         if (now == _signedIn) return;
         _signedIn = now;
-        _status.Text = now ? L.T("Accesso fatto: tocca Fatto per tornare all'app") : L.T("Accedi come fai di solito, poi tocca Fatto");
-        _status.SetTextColor(now ? AColor.ParseColor("#4ADE80") : AColor.ParseColor("#9AA0AC"));
+        _status.Text = now ? L.T("Signed in: tap Done to go back to the app") : L.T("Sign in as you always do, then tap Done");
+        _status.SetTextColor(C(now ? "Success" : "SubText"));
+        _done.SetTextColor(C(now ? "OnAccent" : "Text"));
         float density = Resources?.DisplayMetrics?.Density ?? 2;
-        _done.Background = Ripple(now ? _accent : AColor.ParseColor("#2A2E38"), (int)(18 * density));
+        _done.Background = Ripple(now ? _accent : C("Surface3"), (int)(18 * density));
     }
 
     private void GoBack()

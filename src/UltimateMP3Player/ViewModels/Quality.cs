@@ -7,18 +7,18 @@ public static class QualityChoices
 {
     public static List<Choice> Audio() => new()
     {
-        new(L.T("MP3 · 320 kbps"), Quality.Mp3, L.T("si apre ovunque")),
+        new(L.T("MP3 · 320 kbps"), Quality.Mp3, L.T("plays everywhere")),
         new("MP3 · 256 kbps", "mp3-256"),
         new("MP3 · 192 kbps", "mp3-192"),
-        new("MP3 · 128 kbps", "mp3-128", L.T("occupa meno spazio")),
-        new(L.T("Originale (M4A/Opus)"), Quality.Original, L.T("nessuna conversione")),
+        new("MP3 · 128 kbps", "mp3-128", L.T("takes less space")),
+        new(L.T("Original (M4A/Opus)"), Quality.Original, L.T("no conversion")),
     };
 
     // (null: the best there is)
     public static List<Choice> Video() => new()
     {
-        new("360p", 360), new("480p", 480), new("720p", 720), new("1080p (Full HD)", 1080, L.T("consigliata")), new("1440p (2K)", 1440),
-        new("2160p (4K)", 2160), new(L.T("Massima disponibile"), null),
+        new("360p", 360), new("480p", 480), new("720p", 720), new("1080p (Full HD)", 1080, L.T("recommended|f")), new("1440p (2K)", 1440),
+        new("2160p (4K)", 2160), new(L.T("Best available"), null),
     };
 
     public static Choice Pick(List<Choice> list, object? value) => list.FirstOrDefault(c => Equals(c.Value, value)) ?? list[0];
@@ -48,8 +48,8 @@ public sealed class QualityPlan
     public bool CanVideo { get; }
     public bool WithVideo { get; set; }
     public bool Saved { get; }
-    public string OkText => Saved ? L.T("Scarica di nuovo") : L.T("Salva");
+    public string OkText => Saved ? L.T("Download again") : L.T("Save");
     public string Hint => Saved
-        ? L.T("I brani si scaricano di nuovo dal loro link in questa qualità e prendono il posto dei file di adesso: copertina, testo, statistiche e playlist restano.")
-        : L.T("Nel cloud: la qualità con cui li ascolti dal loro link, e con cui verranno salvati sul dispositivo.");
+        ? L.T("The songs are downloaded again from their link in this quality and take the place of their current files: cover, lyrics, statistics and playlists stay.")
+        : L.T("In the cloud: the quality you hear them with from their link, and the one they'll be saved on the device with.");
 }

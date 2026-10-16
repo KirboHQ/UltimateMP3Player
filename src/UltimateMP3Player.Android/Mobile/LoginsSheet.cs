@@ -8,8 +8,8 @@ using UltimateMP3Player.Platform;
 
 namespace UltimateMP3Player.Views;
 
-// Settings › Download › "Accessi ai siti": the sites the downloads can sign in to (SiteLogins), each with its state and
-// "Accedi" / "Esci", another site by its address, the switch that uses them or not, "esci da tutti".
+// Settings › Download › "Sign in to sites": the sites the downloads can sign in to (SiteLogins), each with its state and
+// "Sign in" / "Quit", another site by its address, the switch that uses them or not, "esci da tutti".
 public static class LoginsSheet
 {
     public static void Show()
@@ -17,15 +17,15 @@ public static class LoginsSheet
         if (App.Host.View?.Sheets is not { } sheets) return;
         var settings = App.Host.Settings;
         var body = new StackPanel { Margin = new Thickness(20, 4, 20, 18) };
-        body.Children.Add(new TextBlock { Text = L.T("Accessi ai siti"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 8) });
-        body.Children.Add(Ui.Text(L.T("Accedi a un sito nella sua pagina, dentro l'app, come fai di solito: i download useranno il tuo account, per i contenuti privati, per abbonati o con limite d'età. La password la vede solo il sito."),
+        body.Children.Add(new TextBlock { Text = L.T("Sign in to sites"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 8) });
+        body.Children.Add(Ui.Text(L.T("Sign in to a site on its own page, inside the app, as you always do: downloads will use your account, for private, members-only or age-restricted content. Only the site sees your password."),
             "hint", new Thickness(0, 0, 0, 10)));
 
         var list = new StackPanel();
         var use = new CheckBox { Theme = Ui.Theme("Switch"), IsChecked = settings.UseCookies, Margin = new Thickness(0, 4, 0, 10) };
         var useText = new StackPanel();
-        useText.Children.Add(new TextBlock { Text = L.T("Usa i miei accessi per scaricare"), Classes = { "setting" } });
-        useText.Children.Add(new TextBlock { Text = L.T("Spento, i download vanno senza account anche se hai fatto l'accesso"), Classes = { "setting-hint" } });
+        useText.Children.Add(new TextBlock { Text = L.T("Use my sign-ins for downloads"), Classes = { "setting" } });
+        useText.Children.Add(new TextBlock { Text = L.T("Off, downloads go without an account even if you're signed in"), Classes = { "setting-hint" } });
         use.Content = useText;
         use.IsCheckedChanged += (_, _) =>
         {
@@ -36,24 +36,24 @@ public static class LoginsSheet
         };
         body.Children.Add(use);
         body.Children.Add(list);
-        body.Children.Add(Ui.Text(L.T("Per YouTube meglio un account secondario: Google può limitare gli account usati per scaricare."), "hint", new Thickness(0, 12, 0, 0)));
+        body.Children.Add(Ui.Text(L.T("For YouTube, a secondary account is better: Google may restrict accounts used for downloading."), "hint", new Thickness(0, 12, 0, 0)));
 
         void Fill()
         {
             list.Children.Clear();
             var signed = SiteLogins.SignedIn();
             foreach (var site in SiteLogins.Sites) list.Children.Add(Row(site, signed.Contains(site.Name)));
-            var other = new Button { Theme = Ui.Theme("SheetItem"), Content = L.T("Un altro sito…"), Margin = new Thickness(-14, 4, -14, 0) };
+            var other = new Button { Theme = Ui.Theme("SheetItem"), Content = L.T("Another site…"), Margin = new Thickness(-14, 4, -14, 0) };
             Ui.SetGlyph(other, "");
             other.Click += async (_, _) =>
             {
-                var address = await Dialogs.PromptAsync(L.T("Un altro sito"), L.T("Indirizzo della pagina in cui accedere"), "https://");
+                var address = await Dialogs.PromptAsync(L.T("Another site"), L.T("Address of the sign-in page"), "https://");
                 if (string.IsNullOrWhiteSpace(address)) return;
                 address = address.Trim();
                 if (!address.Contains("://", StringComparison.Ordinal)) address = "https://" + address;
                 if (!Uri.TryCreate(address, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
                 {
-                    App.Host.Session?.Toast(L.T("Indirizzo non valido."));
+                    App.Host.Session?.Toast(L.T("Not a valid address."));
                     return;
                 }
                 await SiteLogins.OpenAsync(uri.ToString(), null);
@@ -61,12 +61,12 @@ public static class LoginsSheet
             list.Children.Add(other);
             if (SiteLogins.HasFile)
             {
-                var all = new Button { Theme = Ui.Theme("SheetItem"), Content = L.T("Esci da tutti i siti"), Margin = new Thickness(-14, 0, -14, 0) };
+                var all = new Button { Theme = Ui.Theme("SheetItem"), Content = L.T("Sign out of all sites"), Margin = new Thickness(-14, 0, -14, 0) };
                 Ui.SetGlyph(all, "");
                 all.Classes.Add("danger");
                 all.Click += async (_, _) =>
                 {
-                    if (!await Dialogs.ConfirmAsync(L.T("Esci da tutti i siti?"), L.T("L'app dimentica gli accessi fatti nelle pagine dei siti; i download andranno senza account."), L.T("Disconnetti"), true))
+                    if (!await Dialogs.ConfirmAsync(L.T("Sign out of all sites?"), L.T("The app forgets the sign-ins made on the sites' pages; downloads will go without an account."), L.T("Sign out"), true))
                         return;
                     await SiteLogins.SignOutAllAsync();
                 };
@@ -89,13 +89,13 @@ public static class LoginsSheet
         text.Children.Add(new TextBlock { Text = site.Name, FontSize = 15.5, FontWeight = FontWeight.SemiBold });
         var state = new TextBlock
         {
-            Text = signedIn ? L.T("Accesso fatto") : L.T("Accesso non fatto"), FontSize = 13,
+            Text = signedIn ? L.T("Signed in") : L.T("Not signed in"), FontSize = 13,
             Foreground = signedIn ? Ui.Res("SuccessBrush") : Ui.Res("MutedBrush"), Margin = new Thickness(0, 2, 0, 0),
         };
         text.Children.Add(state);
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
-        var action = new Button { Theme = Ui.Theme("SmallGhost"), Content = signedIn ? L.T("Disconnetti") : L.T("Accedi"), VerticalAlignment = VerticalAlignment.Center };
+        var action = new Button { Theme = Ui.Theme("SmallGhost"), Content = signedIn ? L.T("Sign out") : L.T("Sign in"), VerticalAlignment = VerticalAlignment.Center };
         action.Click += async (_, _) =>
         {
             if (!signedIn)
@@ -103,7 +103,7 @@ public static class LoginsSheet
                 await SiteLogins.OpenAsync(site.Url, site.Name);
                 return;
             }
-            if (!await Dialogs.ConfirmAsync(L.F("Esci da {0}?", site.Name), L.T("I download da questo sito andranno senza il tuo account."), L.T("Disconnetti"), true)) return;
+            if (!await Dialogs.ConfirmAsync(L.F("Sign out of {0}?", site.Name), L.T("Downloads from this site will go without your account."), L.T("Sign out"), true)) return;
             await SiteLogins.SignOutAsync(site);
         };
         Grid.SetColumn(action, 2);

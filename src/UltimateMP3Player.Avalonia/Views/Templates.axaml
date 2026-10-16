@@ -14,8 +14,8 @@
          surface at every frame in Avalonia's renderer); the placeholder only while there's no picture. -->
     <DataTemplate x:Key="TrackCoverSmall">
         <Panel>
-            <Border CornerRadius="5" Background="{StaticResource PlaceholderGradient}" IsVisible="{Binding Cover48, Converter={x:Static ObjectConverters.IsNull}}">
-                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="16" Foreground="{StaticResource MutedBrush}"/>
+            <Border CornerRadius="5" Background="{DynamicResource PlaceholderGradient}" IsVisible="{Binding Cover48, Converter={x:Static ObjectConverters.IsNull}}">
+                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="16" Foreground="{DynamicResource MutedBrush}"/>
             </Border>
             <views:CoverImage CornerRadius="5" Source="{Binding Cover48}"/>
         </Panel>
@@ -23,8 +23,8 @@
 
     <DataTemplate x:Key="TrackCoverMedium">
         <Panel>
-            <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}" IsVisible="{Binding Cover160, Converter={x:Static ObjectConverters.IsNull}}">
-                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="44" Foreground="{StaticResource MutedBrush}"/>
+            <Border CornerRadius="10" Background="{DynamicResource PlaceholderGradient}" IsVisible="{Binding Cover160, Converter={x:Static ObjectConverters.IsNull}}">
+                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="44" Foreground="{DynamicResource MutedBrush}"/>
             </Border>
             <views:CoverImage CornerRadius="10" Source="{Binding Cover160}"/>
         </Panel>
@@ -33,11 +33,11 @@
     <!-- Playlist cover: custom, favorites, mosaic or first cover. -->
     <DataTemplate x:Key="PlaylistCover">
         <Panel>
-            <Border CornerRadius="8" Background="{StaticResource PlaceholderGradient}" IsVisible="{Binding ShowPlaceholder}">
+            <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}" IsVisible="{Binding ShowPlaceholder}">
                 <Viewbox>
                     <Border Width="100" Height="100" Padding="30">
                         <Viewbox>
-                            <TextBlock Text="{local:Icon EC4F}" FontFamily="{StaticResource IconFont}" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBlock Text="{local:Icon EC4F}" FontFamily="{StaticResource IconFont}" Foreground="{DynamicResource MutedBrush}"/>
                         </Viewbox>
                     </Border>
                 </Viewbox>
@@ -110,19 +110,19 @@
             </Panel>
             <Panel Background="Transparent" ToolTip.Tip="{Binding CloudTip}" IsVisible="{Binding IsSaving}">
                 <views:ProgressRing Width="17" Height="17" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}"
-                                    Stroke="{DynamicResource AccentBrush}" Track="{StaticResource Surface3Brush}"/>
+                                    Stroke="{DynamicResource AccentBrush}" Track="{DynamicResource Surface3Brush}"/>
             </Panel>
         </Panel>
     </DataTemplate>
 
     <!-- A tag like a Discord role: coloured dot and name; a click opens its page. -->
     <DataTemplate x:Key="TagChip">
-        <Border CornerRadius="10" Padding="7,2,9,2" Margin="0,0,5,0" Background="{StaticResource Surface3Brush}" Cursor="Hand"
-                ToolTip.Tip="{local:T 'Apri il tag'}"
+        <Border CornerRadius="10" Padding="7,2,9,2" Margin="0,0,5,0" Background="{DynamicResource Surface3Brush}" Cursor="Hand"
+                ToolTip.Tip="{local:T 'Open the tag'}"
                 views:Click.Command="{Binding $parent[Window].DataContext.OpenTagCommand}">
             <StackPanel Orientation="Horizontal">
                 <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding Name}" FontSize="11.5" Margin="5,0,0,1" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
+                <TextBlock Text="{Binding Name}" FontSize="11.5" Margin="5,0,0,1" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}"/>
             </StackPanel>
         </Border>
     </DataTemplate>
@@ -135,7 +135,7 @@
                     <Setter Property="Background" Value="Transparent"/>
                 </Style>
                 <Style Selector="Border.choice:pointerover">
-                    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
                 </Style>
                 <Style Selector="Border.choice.off">
                     <Setter Property="Opacity" Value="0.5"/>
@@ -146,9 +146,9 @@
                 <ContentControl Grid.Column="1" Width="36" Height="36" Margin="12,0,0,0" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                 <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
-                    <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                    <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
                 </StackPanel>
-                <TextBlock Grid.Column="3" Text="{Binding Track.TagsText}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" MaxWidth="160"
+                <TextBlock Grid.Column="3" Text="{Binding Track.TagsText}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" MaxWidth="160"
                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
             </Grid>
         </Border>
@@ -162,7 +162,7 @@
                     <Setter Property="Background" Value="Transparent"/>
                 </Style>
                 <Style Selector="Border.pack:pointerover">
-                    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
                 </Style>
                 <Style Selector="Border.pack.out">
                     <Setter Property="Opacity" Value="0.4"/>
@@ -170,19 +170,19 @@
             </Border.Styles>
             <Grid ColumnDefinitions="Auto,*,Auto">
                 <Panel Width="34" Height="34">
-                    <Border CornerRadius="5" Background="{StaticResource PlaceholderGradient}">
-                        <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="15" Foreground="{StaticResource MutedBrush}"/>
+                    <Border CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
+                        <TextBlock Text="{local:Icon EC4F}" Classes="glyph" HorizontalAlignment="Center" FontSize="15" Foreground="{DynamicResource MutedBrush}"/>
                     </Border>
                     <views:CoverImage CornerRadius="5" Source="{Binding Cover}"/>
                 </Panel>
                 <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
-                    <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                    <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
                 </StackPanel>
-                <Border Grid.Column="2" CornerRadius="10" Padding="8,2,10,3" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
+                <Border Grid.Column="2" CornerRadius="10" Padding="8,2,10,3" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <Ellipse Width="7" Height="7" Fill="{Binding StateBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding StateText}" FontSize="11.5" Margin="6,0,0,1" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StateText}" FontSize="11.5" Margin="6,0,0,1" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -212,11 +212,11 @@
                 </Grid.ColumnDefinitions>
 
                 <Panel>
-                    <TextBlock Classes="num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
+                    <TextBlock Classes="num" Text="{Binding Number}" Foreground="{DynamicResource SubTextBrush}" FontSize="13"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <!-- play, or pause/resume on the song already playing; in a room "+" (into the room's queue) -->
                     <Button Classes="play" Theme="{StaticResource RowIconButton}" Command="{Binding PlayPauseCommand}"
-                            Foreground="{StaticResource TextBrush}" ToolTip.ShowOnDisabled="True"/>
+                            Foreground="{DynamicResource TextBrush}" ToolTip.ShowOnDisabled="True"/>
                 </Panel>
 
                 <Grid Grid.Column="1" Margin="4,0,12,0" ColumnDefinitions="40,*">
@@ -224,17 +224,17 @@
                     <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                         <views:InlinePanel>
                             <TextBlock Classes="title" Text="{Binding Track.Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                            <Border Margin="8,0,0,0" CornerRadius="4" Padding="5,0" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
-                                    IsVisible="{Binding Track.HasVideo}" ToolTip.Tip="{local:T 'Ha anche il video'}">
-                                <TextBlock Text="{local:Icon E714}" Classes="glyph" FontSize="11" Foreground="{StaticResource SubTextBrush}" Margin="0,2"/>
+                            <Border Margin="8,0,0,0" CornerRadius="4" Padding="5,0" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center"
+                                    IsVisible="{Binding Track.HasVideo}" ToolTip.Tip="{local:T 'Has video too'}">
+                                <TextBlock Text="{local:Icon E714}" Classes="glyph" FontSize="11" Foreground="{DynamicResource SubTextBrush}" Margin="0,2"/>
                             </Border>
                         </views:InlinePanel>
-                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
                                    local:Marquee.IsEnabled="True"/>
                     </StackPanel>
                 </Grid>
 
-                <TextBlock Grid.Column="2" Text="{Binding Track.AlbumText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <TextBlock Grid.Column="2" Text="{Binding Track.AlbumText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"
                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,12,0" local:Marquee.IsEnabled="True"/>
 
                 <!-- the chips get all the room they want inside the canvas, which clips them (soft right edge) -->
@@ -253,18 +253,19 @@
 
                 <Button Classes="heart" Grid.Column="5" Theme="{StaticResource RowIconButton}" Command="{Binding FavoriteCommand}"/>
 
-                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                 <Button Classes="more" Grid.Column="7" Theme="{StaticResource RowIconButton}" Content="{local:Icon E712}"
-                        Command="{x:Static views:Menus.MoreCommand}" CommandParameter="{Binding $self}" ToolTip.Tip="{local:T 'Altre opzioni'}"/>
+                        Command="{x:Static views:Menus.MoreCommand}" CommandParameter="{Binding $self}" ToolTip.Tip="{local:T 'More options'}"/>
             </Grid>
         </Border>
     </DataTemplate>
 
     <!-- Column titles above a track list. -->
     <DataTemplate x:Key="TrackHeader">
-        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,0,18,8" Margin="0,0,0,8">
+        <!-- the line under the header stops short of the edges; the header itself stays where it was -->
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,0,10,8" Margin="8,0,8,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="40"/>
@@ -277,10 +278,10 @@
                     <ColumnDefinition Width="36"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="#" Classes="small-caps" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Classes="small-caps" Margin="4,0,0,0"/>
+                <TextBlock Grid.Column="1" Text="{local:T TITLE}" Classes="small-caps" Margin="4,0,0,0"/>
                 <TextBlock Grid.Column="2" Text="ALBUM" Classes="small-caps"/>
-                <TextBlock Grid.Column="3" Text="{local:T TAG}" Classes="small-caps"/>
-                <TextBlock Grid.Column="6" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{StaticResource MutedBrush}"
+                <TextBlock Grid.Column="3" Text="{local:T TAGS}" Classes="small-caps"/>
+                <TextBlock Grid.Column="6" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{DynamicResource MutedBrush}"
                            HorizontalAlignment="Right" Margin="0,0,12,0"/>
             </Grid>
         </Border>
@@ -297,49 +298,49 @@
                 ToolTip.ShowDelay="900" local:Marquee.Host="True">
             <Grid ColumnDefinitions="40,2.6*,0.9*,0.9*,1*,32,36,64,36">
                 <Panel>
-                    <TextBlock Classes="num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
+                    <TextBlock Classes="num" Text="{Binding Number}" Foreground="{DynamicResource SubTextBrush}" FontSize="13"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    <Button Classes="play" Theme="{StaticResource RowIconButton}" Command="{Binding PlayPauseCommand}" Foreground="{StaticResource TextBrush}"/>
+                    <Button Classes="play" Theme="{StaticResource RowIconButton}" Command="{Binding PlayPauseCommand}" Foreground="{DynamicResource TextBrush}"/>
                 </Panel>
 
                 <Grid Grid.Column="1" Margin="4,0,12,0" ColumnDefinitions="40,*">
                     <ContentControl Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                     <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                         <TextBlock Classes="title" Text="{Binding Track.Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
                                    local:Marquee.IsEnabled="True"/>
                     </StackPanel>
                 </Grid>
 
                 <TextBlock Classes="plays" Grid.Column="2" Text="{Binding Track.PlaysText}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
-                <TextBlock Grid.Column="3" Text="{Binding Track.ListenedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                <TextBlock Grid.Column="3" Text="{Binding Track.ListenedText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
-                <TextBlock Grid.Column="4" Text="{Binding Track.LastPlayedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                <TextBlock Grid.Column="4" Text="{Binding Track.LastPlayedText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
 
                 <ContentControl Grid.Column="5" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
 
                 <Button Classes="heart" Grid.Column="6" Theme="{StaticResource RowIconButton}" Command="{Binding FavoriteCommand}"/>
 
-                <TextBlock Grid.Column="7" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <TextBlock Grid.Column="7" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                 <Button Classes="more" Grid.Column="8" Theme="{StaticResource RowIconButton}" Content="{local:Icon E712}"
-                        Command="{x:Static views:Menus.MoreCommand}" CommandParameter="{Binding $self}" ToolTip.Tip="{local:T 'Altre opzioni'}"/>
+                        Command="{x:Static views:Menus.MoreCommand}" CommandParameter="{Binding $self}" ToolTip.Tip="{local:T 'More options'}"/>
             </Grid>
         </Border>
     </DataTemplate>
 
     <DataTemplate x:Key="StatsHeader">
-        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,0,18,8" Margin="0,0,0,8">
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,0,10,8" Margin="8,0,8,8">
             <Grid ColumnDefinitions="40,2.6*,0.9*,0.9*,1*,32,36,64,36">
                 <TextBlock Text="#" Classes="small-caps" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Classes="small-caps" Margin="4,0,0,0"/>
-                <TextBlock Grid.Column="2" Text="{local:T ASCOLTI}" Classes="small-caps"/>
-                <TextBlock Grid.Column="3" Text="{local:T TEMPO}" Classes="small-caps"/>
-                <TextBlock Grid.Column="4" Text="{local:T 'ULTIMO ASCOLTO'}" Classes="small-caps"/>
-                <TextBlock Grid.Column="7" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{StaticResource MutedBrush}"
+                <TextBlock Grid.Column="1" Text="{local:T TITLE}" Classes="small-caps" Margin="4,0,0,0"/>
+                <TextBlock Grid.Column="2" Text="{local:T PLAYS}" Classes="small-caps"/>
+                <TextBlock Grid.Column="3" Text="{local:T TIME}" Classes="small-caps"/>
+                <TextBlock Grid.Column="4" Text="{local:T 'LAST PLAYED'}" Classes="small-caps"/>
+                <TextBlock Grid.Column="7" Text="{local:Icon E823}" Classes="glyph" FontSize="14" Foreground="{DynamicResource MutedBrush}"
                            HorizontalAlignment="Right" Margin="0,0,12,0"/>
             </Grid>
         </Border>
@@ -354,10 +355,10 @@
                 views:Rows.Menu="card" views:Click.Command="{Binding $parent[Window].DataContext.PlayTrackCommand}">
             <Border.Styles>
                 <Style Selector="Border.card">
-                    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
                 </Style>
                 <Style Selector="Border.card:pointerover">
-                    <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+                    <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                 </Style>
                 <Style Selector="Border.card:pointerover Border.disc, Border.card.playing Border.disc">
                     <Setter Property="Opacity" Value="1"/>
@@ -375,7 +376,7 @@
                     <Setter Property="Text" Value="{local:Icon E710}"/>
                 </Style>
                 <Style Selector="Border.card.room">
-                    <Setter Property="ToolTip.Tip" Value="{local:T 'Aggiungi alla coda della stanza'}"/>
+                    <Setter Property="ToolTip.Tip" Value="{local:T 'Add to the room\'s queue'}"/>
                 </Style>
                 <!-- selected with Ctrl or Shift + click -->
                 <Style Selector="ListBoxItem:selected Border.card">
@@ -403,7 +404,7 @@
                     </Panel>
                 </views:SquareBox>
                 <TextBlock Classes="title" Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
             </StackPanel>
         </Border>
     </DataTemplate>
@@ -413,10 +414,10 @@
                 views:Rows.Menu="playlist" views:Click.Command="{Binding $parent[Window].DataContext.OpenPlaylistCommand}">
             <Border.Styles>
                 <Style Selector="Border.card">
-                    <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
                 </Style>
                 <Style Selector="Border.card:pointerover">
-                    <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+                    <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                 </Style>
                 <Style Selector="Border.card:pointerover Button.disc">
                     <Setter Property="Opacity" Value="1"/>
@@ -433,11 +434,11 @@
                         <Button Classes="disc" Theme="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="17"
                                 Content="{Binding $parent[Window].DataContext.InRoom, Converter={StaticResource PlayOrAdd}, FallbackValue={local:Icon E768}}"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
-                                Command="{Binding $parent[Window].DataContext.PlayPlaylistCommand}" CommandParameter="{Binding}" ToolTip.Tip="{local:T Riproduci}"/>
+                                Command="{Binding $parent[Window].DataContext.PlayPlaylistCommand}" CommandParameter="{Binding}" ToolTip.Tip="{local:T Play}"/>
                     </Panel>
                 </views:SquareBox>
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
             </StackPanel>
         </Border>
     </DataTemplate>
@@ -445,7 +446,7 @@
     <!-- The big play / shuffle buttons of a page: in a room they put the whole list in the room's queue. -->
     <ControlTheme x:Key="HeaderPlayButton" TargetType="Button" BasedOn="{StaticResource BigPlayButton}">
         <Setter Property="Content" Value="{Binding $parent[Window].DataContext.InRoom, Converter={StaticResource PlayOrAdd}, FallbackValue={local:Icon E768}}"/>
-        <Setter Property="ToolTip.Tip" Value="{local:T Riproduci}"/>
+        <Setter Property="ToolTip.Tip" Value="{local:T Play}"/>
         <Setter Property="ToolTip.ShowOnDisabled" Value="True"/>
     </ControlTheme>
 
@@ -454,7 +455,7 @@
         <Setter Property="Height" Value="46"/>
         <Setter Property="FontSize" Value="18"/>
         <Setter Property="Content" Value="{local:Icon E8B1}"/>
-        <Setter Property="ToolTip.Tip" Value="{local:T 'Riproduci in ordine casuale'}"/>
+        <Setter Property="ToolTip.Tip" Value="{local:T 'Shuffle play'}"/>
     </ControlTheme>
 
     <!-- "Tag" filter pill above a song list (only once there are tags); highlighted while it filters. -->
@@ -462,7 +463,7 @@
         <Setter Property="Height" Value="38"/>
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="ToolTip.Tip" Value="{local:T 'Filtra per tag'}"/>
+        <Setter Property="ToolTip.Tip" Value="{local:T 'Filter by tag'}"/>
         <Setter Property="IsVisible" Value="{Binding $parent[Window].DataContext.HasTags, FallbackValue=False}"/>
         <Setter Property="Content" Value="{Binding TagFilter}"/>
         <Setter Property="ContentTemplate">

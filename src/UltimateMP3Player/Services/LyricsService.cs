@@ -88,7 +88,7 @@ public sealed class LyricsService : Observable
     public LyricsBatch? Scan { get => _scan; private set { if (Set(ref _scan, value)) OnChanged(nameof(IsScanning)); } }
     public bool IsScanning => Scan != null;
     public double ScanProgress => Scan is { Total: > 0 } s ? (double)s.Done / s.Total : 0;
-    public string ScanText => Scan is { } s ? L.F("Cerco {0} di {1}… · trovati {2}", Math.Min(s.Done + 1, s.Total), s.Total, s.Found) : "";
+    public string ScanText => Scan is { } s ? L.F("Looking for {0} of {1}… · {2} found", Math.Min(s.Done + 1, s.Total), s.Total, s.Found) : "";
 
     // Songs never searched, and the ones not found last time (the archive grows).
     public List<Track> Missing() => _host.Library.Snapshot().Where(t => Worth(t) && t.Lyrics is null or LyricsKind.None).ToList();
@@ -99,7 +99,7 @@ public sealed class LyricsService : Observable
         var todo = Missing().Where(t => !_queued.Contains(t.Id) && _busy != t.Id).ToList();
         if (todo.Count == 0)
         {
-            _host.Session?.Toast(L.T("Non ci sono testi da cercare."));
+            _host.Session?.Toast(L.T("There are no lyrics left to look for."));
             return;
         }
         var batch = new LyricsBatch { Total = todo.Count, Library = true };
@@ -126,8 +126,8 @@ public sealed class LyricsService : Observable
         Scan = null;
         OnScanChanged();
         _host.Session?.Toast(s.Canceled && s.FailedInRow >= 3
-            ? L.T("LRCLIB non risponde: controlla la connessione e riprova più tardi.")
-            : L.F("Testi: {0} trovati, {1} senza testo", s.Found, s.Missing));
+            ? L.T("LRCLIB isn't answering: check your connection and try again later.")
+            : L.F("Lyrics: {0} found, {1} without lyrics", s.Found, s.Missing));
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -187,7 +187,7 @@ public sealed class LyricsService : Observable
                 catch (Exception ex)
                 {
                     failed = true;
-                    try { File.AppendAllText(Path.Combine(AppPaths.DataDir, "errori.log"), $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] lyrics: {ex}\n\n"); } catch { }
+                    try { File.AppendAllText(AppPaths.LogFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] lyrics: {ex}\n\n"); } catch { }
                 }
                 _busy = null;
                 if (!failed && _host.Library.Get(t.Id) == t) _host.Library.Changed(t);

@@ -57,12 +57,12 @@ public static class PackDialogs
         var body = new StackPanel();
         var inputs = new StackPanel();
         body.Children.Add(inputs);
-        inputs.Children.Add(Hint(L.T("Scegli cosa mettere nel pacchetto: un file .ump da tenere come copia o da mandare a un amico. Si apre con un doppio clic (o trascinandolo nella finestra) e l'app aggiunge tutto, senza doppioni.")));
+        inputs.Children.Add(Hint(L.T("Choose what goes into the pack: a .ump file to keep as a backup or to send to a friend. It opens with a double click (or by dragging it into the window) and the app adds everything, without duplicates.")));
 
         // ---- playlists
         var listBoxes = new List<CheckBox>();
         var allLists = Link();
-        inputs.Children.Add(Header(L.T("Playlist"), lists.Count > 1 ? allLists : null, 16));
+        inputs.Children.Add(Header(L.T("Playlists"), lists.Count > 1 ? allLists : null, 16));
         var listPanel = new StackPanel();
         foreach (var p in lists)
         {
@@ -93,12 +93,12 @@ public static class PackDialogs
         var allTags = Link();
         if (tags.Count > 0)
         {
-            inputs.Children.Add(Header(L.T("Tag"), tags.Count > 1 ? allTags : null));
+            inputs.Children.Add(Header(L.T("Tags"), tags.Count > 1 ? allTags : null));
             var wrap = new WrapPanel();
             foreach (var t in tags)
             {
                 var chip = Chip(t.T.Name, t.Brush, t.Count.ToString(), pickedTags.Contains(t));
-                chip.ToolTip = L.F("Il tag e i suoi {0}", L.Count(t.Count, "1 brano", "{0} brani"));
+                chip.ToolTip = L.F("The tag and its {0}", L.Count(t.Count, "1 song", "{0} songs"));
                 chip.MouseLeftButtonDown += (_, e) =>
                 {
                     e.Handled = true;
@@ -121,11 +121,11 @@ public static class PackDialogs
         }
 
         // ---- the whole library
-        inputs.Children.Add(Label(L.T("Altro"), tags.Count > 0 ? 10 : 18));
+        inputs.Children.Add(Label(L.T("More"), tags.Count > 0 ? 10 : 18));
         var wholeBox = new CheckBox
         {
-            Content = TwoLines(L.T("Tutta la libreria"),
-                L.F("Anche i brani che non sono in nessuna playlist o tag ({0} in tutto): comodo per spostare tutto su un altro computer.", lib.Count)),
+            Content = TwoLines(L.T("The whole library"),
+                L.F("Also the songs that aren't in any playlist or tag ({0} in all): handy to move everything to another computer.", lib.Count)),
             VerticalContentAlignment = VerticalAlignment.Top,
         };
         wholeBox.Checked += (_, _) => { whole = true; changed(); };
@@ -133,13 +133,13 @@ public static class PackDialogs
         inputs.Children.Add(wholeBox);
 
         // ---- with the music or links only
-        inputs.Children.Add(Label(L.T("Brani")));
-        var (modeBar, withFiles, linksOnly) = Segmented(L.T("Con i file audio"), MusicGlyph, L.T("Solo i link"), LinkGlyph);
+        inputs.Children.Add(Label(L.T("Songs")));
+        var (modeBar, withFiles, linksOnly) = Segmented(L.T("With the audio files"), MusicGlyph, L.T("Links only"), LinkGlyph);
         withFiles.IsChecked = true;
         inputs.Children.Add(modeBar);
         var modeHint = Hint("", 8);
         inputs.Children.Add(modeHint);
-        var videoBox = new CheckBox { Content = L.T("Includi anche i video dei brani che li hanno"), Margin = new Thickness(0, 12, 0, 0) };
+        var videoBox = new CheckBox { Content = L.T("Include the videos of the songs that have one"), Margin = new Thickness(0, 12, 0, 0) };
         inputs.Children.Add(videoBox);
         withFiles.Checked += (_, _) => changed();
         linksOnly.Checked += (_, _) => changed();
@@ -152,12 +152,12 @@ public static class PackDialogs
         var (progress, bar, status) = Progress();
         body.Children.Add(progress);
 
-        var cancel = Dialogs.Button(L.T("Annulla"), "GhostButton", isCancel: true);
-        var ok = Dialogs.Button(L.T("Esporta…"), "PrimaryButton", isDefault: true);
+        var cancel = Dialogs.Button(L.T("Cancel"), "GhostButton", isCancel: true);
+        var ok = Dialogs.Button(L.T("Export…"), "PrimaryButton", isDefault: true);
         // The same songs as plain MP3s in a folder, for a USB stick, an SD card or the car (FolderExport).
-        var folder = Dialogs.Button(L.T("In una cartella (MP3)…"), "GhostButton");
-        folder.ToolTip = L.T("Per una chiavetta, una scheda SD o l'autoradio: un file MP3 per brano, chiamato «Artista - Titolo», con titolo, artista, album e copertina nei tag. I brani nel cloud vengono scaricati.");
-        var win = Dialogs.Frame(L.T("Esporta in un pacchetto"), Fit(body), 560, folder, cancel, ok);
+        var folder = Dialogs.Button(L.T("To a folder (MP3)…"), "GhostButton");
+        folder.ToolTip = L.T("For a USB stick, an SD card or the car stereo: one MP3 file per song, named “Artist - Title”, with title, artist, album and cover in its tags. Songs in the cloud are downloaded.");
+        var win = Dialogs.Frame(L.T("Export to a pack"), Fit(body), 560, folder, cancel, ok);
 
         PackExport Current() => new()
         {
@@ -172,11 +172,11 @@ public static class PackDialogs
         {
             var e = Current();
             var songs = PackWriter.Songs(lib, profile, e);
-            allLists.Content = listBoxes.All(b => b.IsChecked == true) ? L.T("Deseleziona tutte") : L.T("Seleziona tutte");
-            allTags.Content = pickedTags.Count == tags.Count ? L.T("Deseleziona tutti") : L.T("Seleziona tutti");
+            allLists.Content = listBoxes.All(b => b.IsChecked == true) ? L.T("Deselect all|f") : L.T("Select all|f");
+            allTags.Content = pickedTags.Count == tags.Count ? L.T("Deselect all|m") : L.T("Select all|m");
             modeHint.Text = e.Music
-                ? L.T("La musica è dentro il pacchetto: si importa anche senza internet e con i brani spariti dai siti. Pesa quanto i brani.")
-                : L.T("Pacchetto leggerissimo, perfetto da mandare su Discord: chi lo apre riscarica i brani dai loro link. Quelli senza link (file tuoi, mix del DJ) viaggiano comunque come file.");
+                ? L.T("The music is inside the pack: it imports even without internet and with songs gone from the sites. It's as big as the songs.")
+                : L.T("A tiny pack, perfect to send on Discord: whoever opens it downloads the songs again from their links. Those without a link (your own files, DJ mixes) still travel as files.");
             videoBox.Visibility = e.Music && songs.Any(t => t.HasVideo) ? Visibility.Visible : Visibility.Collapsed;
             ok.IsEnabled = folder.IsEnabled = !e.IsEmpty;
             (line1.Text, line2.Text) = PackWriter.Summary(songs, e, SizeOf);
@@ -202,12 +202,12 @@ public static class PackDialogs
             if (e.IsEmpty) return;
             var dlg = new SaveFileDialog
             {
-                Title = L.T("Salva il pacchetto"),
+                Title = L.T("Save the pack"),
                 FileName = DefaultName(profile, e),
                 DefaultExt = Pack.Extension,
                 AddExtension = true,
                 OverwritePrompt = true,
-                Filter = L.T("Pacchetto di Ultimate MP3 Player") + " (*" + Pack.Extension + ")|*" + Pack.Extension,
+                Filter = L.T("Ultimate MP3 Player pack") + " (*" + Pack.Extension + ")|*" + Pack.Extension,
             };
             if (dlg.ShowDialog(win) != true) return;
             var path = Pack.IsPack(dlg.FileName) ? dlg.FileName : dlg.FileName + Pack.Extension;
@@ -217,7 +217,7 @@ public static class PackDialogs
             ok.IsEnabled = false;
             progress.Visibility = Visibility.Visible;
             status.Foreground = B("SubTextBrush");
-            status.Text = L.T("Preparo il pacchetto…");
+            status.Text = L.T("Preparing the pack…");
             cts = new CancellationTokenSource();
             var report = Reporter(win, bar, status);
             try
@@ -227,12 +227,12 @@ public static class PackDialogs
                 saved = path;
                 bar.Value = 1;
                 status.Foreground = B("SuccessBrush");
-                status.Text = "✓ " + L.F("Pacchetto creato: {0} ({1})", System.IO.Path.GetFileName(path), Text.Size(PackWriter.SizeOf(path)));
-                line1.Text = L.Count(m.Tracks.Count, "1 brano", "{0} brani") + " · " + L.Count(m.Playlists.Count, "1 playlist", "{0} playlist") +
-                             " · " + L.Count(m.Tags.Count, "1 tag", "{0} tag");
-                ok.Content = L.T("Mostra nella cartella");
+                status.Text = "✓ " + L.F("Pack created: {0} ({1})", System.IO.Path.GetFileName(path), Text.Size(PackWriter.SizeOf(path)));
+                line1.Text = L.Count(m.Tracks.Count, "1 song", "{0} songs") + " · " + L.Count(m.Playlists.Count, "1 playlist", "{0} playlists") +
+                             " · " + L.Count(m.Tags.Count, "1 tag", "{0} tags");
+                ok.Content = L.T("Show in folder");
                 ok.IsEnabled = true;
-                cancel.Content = L.T("Chiudi");
+                cancel.Content = L.T("Close");
             }
             catch (OperationCanceledException)
             {
@@ -245,21 +245,21 @@ public static class PackDialogs
                 inputs.IsEnabled = true;
                 ok.IsEnabled = true;
                 status.Foreground = B("ErrorBrush");
-                status.Text = L.T("Esportazione non riuscita:") + " " + ex.Message;
+                status.Text = L.T("Export failed:") + " " + ex.Message;
             }
         };
         folder.Click += async (_, _) =>
         {
             var e = Current();
             if (stage != 0 || e.IsEmpty) return;
-            if (Dialogs.PickFolder(L.T("Dove mettere gli MP3 (una chiavetta, una scheda SD…)")) is not { } dir) return;
+            if (Dialogs.PickFolder(L.T("Where to put the MP3s (a USB stick, an SD card…)")) is not { } dir) return;
             var songs = PackWriter.Songs(lib, profile, e);
             stage = 1;
             inputs.IsEnabled = false;
             ok.IsEnabled = folder.IsEnabled = false;
             progress.Visibility = Visibility.Visible;
             status.Foreground = B("SubTextBrush");
-            status.Text = L.T("Preparo gli MP3…");
+            status.Text = L.T("Preparing the MP3s…");
             cts = new CancellationTokenSource();
             var report = Reporter(win, bar, status);
             var cookies = App.Host?.Settings.CookiesBrowserOrNull;
@@ -275,11 +275,11 @@ public static class PackDialogs
                 savedFolder = true;
                 bar.Value = 1;
                 status.Foreground = B(r.Written > 0 ? "SuccessBrush" : "WarningBrush");
-                status.Text = "✓ " + L.F("{0} in «{1}»", L.Count(r.Written, "1 MP3", "{0} MP3"), dir) +
-                              (r.Skipped > 0 ? " · " + L.Count(r.Skipped, "1 saltato (né audio né un link che funzioni)", "{0} saltati (né audio né un link che funzioni)") : "");
-                ok.Content = L.T("Mostra nella cartella");
+                status.Text = "✓ " + L.F("{0} in “{1}”", L.Count(r.Written, "1 MP3", "{0} MP3s"), dir) +
+                              (r.Skipped > 0 ? " · " + L.Count(r.Skipped, "1 skipped (no audio and no working link)", "{0} skipped (no audio and no working link)") : "");
+                ok.Content = L.T("Show in folder");
                 ok.IsEnabled = true;
-                cancel.Content = L.T("Chiudi");
+                cancel.Content = L.T("Close");
             }
             catch (OperationCanceledException)
             {
@@ -292,7 +292,7 @@ public static class PackDialogs
                 inputs.IsEnabled = true;
                 ok.IsEnabled = folder.IsEnabled = true;
                 status.Foreground = B("ErrorBrush");
-                status.Text = L.T("Esportazione non riuscita:") + " " + ex.Message;
+                status.Text = L.T("Export failed:") + " " + ex.Message;
             }
         };
         // Closing while it writes: it stops (the half-written file is deleted), then the dialog goes.
@@ -301,7 +301,7 @@ public static class PackDialogs
             if (stage != 1) return;
             e.Cancel = true;
             cts?.Cancel();
-            status.Text = L.T("Annullo…");
+            status.Text = L.T("Canceling…");
         };
         changed();
         return win;
@@ -310,10 +310,10 @@ public static class PackDialogs
     private static string DefaultName(Profile profile, PackExport e)
     {
         string name;
-        if (e.WholeLibrary) name = L.F("Libreria di {0}", profile.Info.Name) + " " + DateTime.Now.ToString("yyyy-MM-dd");
+        if (e.WholeLibrary) name = L.F("{0}'s library", profile.Info.Name) + " " + DateTime.Now.ToString("yyyy-MM-dd");
         else if (e.Playlists.Count == 1 && e.Tags.Count == 0) name = PlaylistViewModel.DisplayName(e.Playlists[0]);
         else if (e.Tags.Count == 1 && e.Playlists.Count == 0) name = e.Tags[0].Name;
-        else name = L.F("Musica di {0}", profile.Info.Name) + " " + DateTime.Now.ToString("yyyy-MM-dd");
+        else name = L.F("{0}'s music", profile.Info.Name) + " " + DateTime.Now.ToString("yyyy-MM-dd");
         return Text.SafeFileName(name) + Pack.Extension;
     }
 
@@ -333,7 +333,7 @@ public static class PackDialogs
         }
         catch (PackException ex)
         {
-            Dialogs.Alert(L.T("Impossibile aprire il pacchetto"), ex.Message);
+            Dialogs.Alert(L.T("Can't open the pack"), ex.Message);
             return;
         }
         PackImportResult? result = null;
@@ -342,7 +342,7 @@ public static class PackDialogs
             var m = pack.Manifest;
             if (m.Tracks.Count == 0 && m.Playlists.Count == 0 && m.Tags.Count == 0)
             {
-                Dialogs.Alert(L.T("Il pacchetto è vuoto"), L.F("«{0}» non contiene brani, playlist o tag.", pack.Name));
+                Dialogs.Alert(L.T("The pack is empty"), L.F("“{0}” contains no songs, playlists or tags.", pack.Name));
                 return;
             }
             var songs = await Task.Run(() => PackImporter.Analyze(pack, main.Library));
@@ -352,14 +352,14 @@ public static class PackDialogs
 
         main.QueuePackDownloads(result);
         var parts = new List<string>();
-        if (result.Added > 0) parts.Add(L.Count(result.Added, "1 brano aggiunto", "{0} brani aggiunti"));
-        if (result.Cloud > 0) parts.Add(L.F("{0} nel cloud", result.Cloud));
-        if (result.Present > 0) parts.Add(L.F("{0} già nella libreria", result.Present));
-        if (result.Downloads.Count > 0) parts.Add(L.F("{0} in download", result.Downloads.Count));
-        if (result.Missing + result.Failed > 0) parts.Add(L.Count(result.Missing + result.Failed, "1 non disponibile", "{0} non disponibili"));
-        if (result.NewPlaylists > 0) parts.Add(L.Count(result.NewPlaylists, "1 playlist nuova", "{0} playlist nuove"));
-        if (result.NewTags > 0) parts.Add(L.Count(result.NewTags, "1 tag nuovo", "{0} tag nuovi"));
-        main.Toast(L.T("Pacchetto importato") + (parts.Count > 0 ? ": " + string.Join(" · ", parts) : ""));
+        if (result.Added > 0) parts.Add(L.Count(result.Added, "1 song added", "{0} songs added"));
+        if (result.Cloud > 0) parts.Add(L.F("{0} in the cloud", result.Cloud));
+        if (result.Present > 0) parts.Add(L.F("{0} already in your library", result.Present));
+        if (result.Downloads.Count > 0) parts.Add(L.F("{0} downloading", result.Downloads.Count));
+        if (result.Missing + result.Failed > 0) parts.Add(L.Count(result.Missing + result.Failed, "1 not available", "{0} not available"));
+        if (result.NewPlaylists > 0) parts.Add(L.Count(result.NewPlaylists, "1 new playlist", "{0} new playlists"));
+        if (result.NewTags > 0) parts.Add(L.Count(result.NewTags, "1 new tag", "{0} new tags"));
+        main.Toast(L.T("Pack imported") + (parts.Count > 0 ? ": " + string.Join(" · ", parts) : ""));
 
         // One playlist (or only one tag): straight to it, once the lists have caught up.
         var ids = result.PlaylistIds.Distinct().ToList();
@@ -398,11 +398,11 @@ public static class PackDialogs
 
         int CountOf(PackSongState s) => songs.Count(x => x.State == s);
         var stats = new WrapPanel { Margin = new Thickness(0, 14, 0, 0) };
-        stats.Children.Add(Pill(L.Count(songs.Count, "1 brano", "{0} brani"), null));
-        if (CountOf(PackSongState.New) is > 0 and var n1) stats.Children.Add(Pill(L.Count(n1, "1 nuovo", "{0} nuovi"), B("AccentTextBrush")));
-        if (CountOf(PackSongState.InLibrary) is > 0 and var n2) stats.Children.Add(Pill(L.F("{0} già nella libreria", n2), B("SuccessBrush")));
-        if (CountOf(PackSongState.Download) is > 0 and var n3) stats.Children.Add(Pill(L.F("{0} da scaricare", n3), B("WarningBrush")));
-        if (CountOf(PackSongState.Missing) is > 0 and var n4) stats.Children.Add(Pill(L.Count(n4, "1 non disponibile", "{0} non disponibili"), B("ErrorBrush")));
+        stats.Children.Add(Pill(L.Count(songs.Count, "1 song", "{0} songs"), null));
+        if (CountOf(PackSongState.New) is > 0 and var n1) stats.Children.Add(Pill(L.Count(n1, "1 new", "{0} new"), B("AccentTextBrush")));
+        if (CountOf(PackSongState.InLibrary) is > 0 and var n2) stats.Children.Add(Pill(L.F("{0} already in your library", n2), B("SuccessBrush")));
+        if (CountOf(PackSongState.Download) is > 0 and var n3) stats.Children.Add(Pill(L.F("{0} to download", n3), B("WarningBrush")));
+        if (CountOf(PackSongState.Missing) is > 0 and var n4) stats.Children.Add(Pill(L.Count(n4, "1 not available", "{0} not available"), B("ErrorBrush")));
         body.Children.Add(stats);
 
         var inputs = new StackPanel();
@@ -413,7 +413,7 @@ public static class PackDialogs
         var allLists = Link();
         if (m.Playlists.Count > 0)
         {
-            inputs.Children.Add(Header(L.T("Playlist"), m.Playlists.Count > 1 ? allLists : null, 12));
+            inputs.Children.Add(Header(L.T("Playlists"), m.Playlists.Count > 1 ? allLists : null, 12));
             var listPanel = new StackPanel();
             foreach (var pp in m.Playlists)
             {
@@ -423,10 +423,10 @@ public static class PackDialogs
                 row.ColumnDefinitions.Add(new ColumnDefinition());
                 row.Children.Add(PlaylistCover(pack, pp));
                 var names = new StackPanel { Margin = new Thickness(12, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
-                names.Children.Add(new TextBlock { Text = pp.Favorites ? L.T("Preferiti") : pp.Name, FontSize = 13.5, TextTrimming = TextTrimming.CharacterEllipsis });
+                names.Children.Add(new TextBlock { Text = pp.Favorites ? L.T("Favorites") : pp.Name, FontSize = 13.5, TextTrimming = TextTrimming.CharacterEllipsis });
                 names.Children.Add(new TextBlock
                 {
-                    Text = L.Count(pp.Tracks.Count, "1 brano", "{0} brani") + (existing != null && !pp.Favorites ? " · " + L.T("ne hai già una con questo nome") : ""),
+                    Text = L.Count(pp.Tracks.Count, "1 song", "{0} songs") + (existing != null && !pp.Favorites ? " · " + L.T("you already have one with this name") : ""),
                     FontSize = 12, Foreground = B("MutedBrush"), TextTrimming = TextTrimming.CharacterEllipsis,
                 });
                 row.Children.Add(At(names, 1));
@@ -443,16 +443,16 @@ public static class PackDialogs
                 if (existing != null)
                 {
                     var choices = pp.Favorites
-                        ? new List<Choice> { new(L.T("Nei tuoi Preferiti"), true), new(L.T("Come playlist a parte"), false) }
-                        : new List<Choice> { new(L.T("Unisci alla tua"), true), new(L.T("Crea una copia"), false) };
+                        ? new List<Choice> { new(L.T("Into your Favorites"), true), new(L.T("As a separate playlist"), false) }
+                        : new List<Choice> { new(L.T("Merge into yours"), true), new(L.T("Make a copy"), false) };
                     var combo = new ComboBox { ItemsSource = choices, SelectedIndex = 0, Width = 190, Height = 32, FontSize = 13, VerticalAlignment = VerticalAlignment.Center };
                     combo.ToolTip = pp.Favorites
-                        ? L.T("I brani si aggiungono ai tuoi Preferiti, oppure diventano una playlist nuova.")
-                        : L.T("I brani mancanti si aggiungono alla tua playlist (senza doppioni), oppure ne viene creata un'altra.");
+                        ? L.T("The songs are added to your Favorites, or become a new playlist.")
+                        : L.T("The missing songs are added to your playlist (without duplicates), or another one is created.");
                     combo.SelectionChanged += (_, _) => { if (combo.SelectedItem is Choice c) merge[pp.Id] = (bool)c.Value!; };
                     line.Children.Add(At(combo, 1));
                 }
-                else line.Children.Add(At(new TextBlock { Text = L.T("Nuova"), FontSize = 12, Foreground = B("MutedBrush"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) }, 1));
+                else line.Children.Add(At(new TextBlock { Text = L.T("New|f"), FontSize = 12, Foreground = B("MutedBrush"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) }, 1));
                 listPanel.Children.Add(HoverRow(line));
             }
             inputs.Children.Add(Box(listPanel, 200));
@@ -468,17 +468,17 @@ public static class PackDialogs
         var allTags = Link();
         if (m.Tags.Count > 0)
         {
-            inputs.Children.Add(Header(L.T("Tag"), m.Tags.Count > 1 ? allTags : null));
+            inputs.Children.Add(Header(L.T("Tags"), m.Tags.Count > 1 ? allTags : null));
             var wrap = new WrapPanel();
             foreach (var pt in m.Tags)
             {
                 var mine = PackImporter.SameName(profile, pt);
                 var dot = Ui.BrushFrom(mine?.Color ?? pt.Color);
                 int count = m.Tracks.Count(t => t.Tags.Contains(pt.Id));
-                var chip = Chip(pt.Name, dot, count + (mine != null ? " · " + L.T("già tuo") : ""), true);
+                var chip = Chip(pt.Name, dot, count + (mine != null ? " · " + L.T("already yours") : ""), true);
                 chip.ToolTip = mine != null
-                    ? L.T("Hai già un tag con questo nome: i brani riceveranno il tuo.")
-                    : L.F("Un tag nuovo, sui suoi {0}", L.Count(count, "1 brano", "{0} brani"));
+                    ? L.T("You already have a tag with this name: the songs get yours.")
+                    : L.F("A new tag, on its {0}", L.Count(count, "1 song", "{0} songs"));
                 chip.MouseLeftButtonDown += (_, e) =>
                 {
                     e.Handled = true;
@@ -508,8 +508,8 @@ public static class PackDialogs
                 IsChecked = true,
                 Margin = new Thickness(0, m.Playlists.Count + m.Tags.Count > 0 ? 10 : 16, 0, 0),
                 VerticalContentAlignment = VerticalAlignment.Top,
-                Content = TwoLines(m.Playlists.Count + m.Tags.Count > 0 ? L.Count(loose.Count, "Un altro brano", "Gli altri {0} brani") : L.Count(loose.Count, "1 brano", "{0} brani"),
-                    L.T("Brani del pacchetto che non sono in nessuna playlist o tag.")),
+                Content = TwoLines(m.Playlists.Count + m.Tags.Count > 0 ? L.Count(loose.Count, "One more song", "The other {0} songs") : L.Count(loose.Count, "1 song", "{0} songs"),
+                    L.T("Songs of the pack that aren't in any playlist or tag.")),
             };
             othersBox.Checked += (_, _) => { others = true; changed(); };
             othersBox.Unchecked += (_, _) => { others = false; changed(); };
@@ -524,8 +524,8 @@ public static class PackDialogs
                 IsChecked = !cloud,
                 Margin = new Thickness(0, 12, 0, 0),
                 VerticalContentAlignment = VerticalAlignment.Top,
-                Content = TwoLines(L.T("Salva l'audio sul dispositivo"),
-                    L.T("Spento: i brani che nel pacchetto sono solo link vanno nella libreria nel cloud, senza scaricarli. Li ascolti dal loro link e li salvi quando vuoi.")),
+                Content = TwoLines(L.T("Save the audio on your device"),
+                    L.T("Off: the songs that are only links in the pack go into your library in the cloud, without downloading them. You listen from their link and save them whenever you like.")),
             };
             void SetCloud(bool on)
             {
@@ -554,7 +554,7 @@ public static class PackDialogs
                 Height = 236, CornerRadius = new CornerRadius(10), Background = B("BgBrush"), BorderBrush = B("BorderBrush"),
                 BorderThickness = new Thickness(1), Padding = new Thickness(4), Margin = new Thickness(0, 8, 0, 0), Child = list, Visibility = Visibility.Collapsed,
             };
-            void ToggleText() => toggle.Content = listBox.Visibility == Visibility.Visible ? "▴  " + L.T("Nascondi i brani") : "▾  " + L.T("Mostra i brani");
+            void ToggleText() => toggle.Content = listBox.Visibility == Visibility.Visible ? "▴  " + L.T("Hide the songs") : "▾  " + L.T("Show the songs");
             toggle.Click += (_, _) =>
             {
                 listBox.Visibility = listBox.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
@@ -570,9 +570,9 @@ public static class PackDialogs
         var (progress, bar, status) = Progress();
         body.Children.Add(progress);
 
-        var cancel = Dialogs.Button(L.T("Annulla"), "GhostButton", isCancel: true);
-        var ok = Dialogs.Button(L.T("Importa"), "PrimaryButton", isDefault: true);
-        var win = Dialogs.Frame(L.T("Importa un pacchetto"), Fit(body), 580, cancel, ok);
+        var cancel = Dialogs.Button(L.T("Cancel"), "GhostButton", isCancel: true);
+        var ok = Dialogs.Button(L.T("Import"), "PrimaryButton", isDefault: true);
+        var win = Dialogs.Frame(L.T("Import a pack"), Fit(body), 580, cancel, ok);
 
         PackImportPlan Plan() => new()
         {
@@ -588,8 +588,8 @@ public static class PackDialogs
             var plan = Plan();
             var chosen = PackImporter.Chosen(m, plan).Select(t => t.Id).ToHashSet();
             foreach (var r in rows) r.IsIncluded = chosen.Contains(r.Song.T.Id);
-            allLists.Content = listBoxes.All(b => b.IsChecked == true) ? L.T("Deseleziona tutte") : L.T("Seleziona tutte");
-            allTags.Content = pickedTags.Count == m.Tags.Count ? L.T("Deseleziona tutti") : L.T("Seleziona tutti");
+            allLists.Content = listBoxes.All(b => b.IsChecked == true) ? L.T("Deselect all|f") : L.T("Select all|f");
+            allTags.Content = pickedTags.Count == m.Tags.Count ? L.T("Deselect all|m") : L.T("Select all|m");
             int Count(PackSongState s) => rows.Count(r => r.IsIncluded && r.Song.State == s);
             int add = Count(PackSongState.New), get = Count(PackSongState.Download), have = Count(PackSongState.InLibrary), miss = Count(PackSongState.Missing);
             ok.IsEnabled = chosen.Count > 0 || plan.Playlists.Count > 0 || plan.Tags.Count > 0;
@@ -607,7 +607,7 @@ public static class PackDialogs
             ok.IsEnabled = false;
             progress.Visibility = Visibility.Visible;
             status.Foreground = B("SubTextBrush");
-            status.Text = L.T("Preparo l'importazione…");
+            status.Text = L.T("Getting the import ready…");
             cts = new CancellationTokenSource();
             var plan = Plan();
             var report = Reporter(win, bar, status);
@@ -630,7 +630,7 @@ public static class PackDialogs
                 inputs.IsEnabled = true;
                 ok.IsEnabled = true;
                 status.Foreground = B("ErrorBrush");
-                status.Text = L.T("Importazione non riuscita:") + " " + ex.Message;
+                status.Text = L.T("Import failed:") + " " + ex.Message;
             }
         };
         // Closing while it copies: it stops (the songs already copied stay), then the dialog goes.
@@ -639,7 +639,7 @@ public static class PackDialogs
             if (!busy) return;
             e.Cancel = true;
             cts?.Cancel();
-            status.Text = L.T("Annullo…");
+            status.Text = L.T("Canceling…");
         };
         changed();
         return win;
@@ -649,10 +649,10 @@ public static class PackDialogs
     {
         var parts = new List<string?>
         {
-            string.IsNullOrWhiteSpace(m.Author) ? null : L.F("di {0}", m.Author),
+            string.IsNullOrWhiteSpace(m.Author) ? null : L.F("by {0}", m.Author),
             m.Created.ToString("d MMM yyyy", L.Culture),
             Text.Size(size),
-            m.Music ? null : L.T("solo link"),
+            m.Music ? null : L.T("links only"),
         };
         return string.Join(" · ", parts.Where(p => !string.IsNullOrEmpty(p)));
     }
@@ -709,7 +709,7 @@ public static class PackDialogs
             win.Dispatcher.BeginInvoke(() =>
             {
                 bar.Value = f;
-                if (title != null) status.Text = L.F("Copio «{0}»…", title);
+                if (title != null) status.Text = L.F("Copying “{0}”…", title);
             });
         };
     }

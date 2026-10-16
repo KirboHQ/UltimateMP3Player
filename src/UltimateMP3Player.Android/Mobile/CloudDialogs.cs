@@ -99,7 +99,7 @@ public static partial class Dialogs
         Update();
 
         RemoveKind? result = null;
-        var no = Wide(L.T("Annulla"), "TouchGhost");
+        var no = Wide(L.T("Cancel"), "TouchGhost");
         no.Click += (_, _) => sheets.Close(body);
         ok.Click += (_, _) =>
         {
@@ -159,13 +159,13 @@ public static partial class Dialogs
             return panel;
         }
 
-        body.Children.Add(new TextBlock { Text = L.T("Qualità dell'audio"), FontSize = 15, FontWeight = FontWeight.SemiBold, Margin = new Thickness(4, 6, 4, 0) });
+        body.Children.Add(new TextBlock { Text = L.T("Audio quality"), FontSize = 15, FontWeight = FontWeight.SemiBold, Margin = new Thickness(4, 6, 4, 0) });
         body.Children.Add(Pills(plan.AudioChoices, () => plan.Audio, c => plan.Audio = c));
         if (plan.CanVideo)
         {
             var video = Pills(plan.VideoChoices, () => plan.Video, c => plan.Video = c);
             video.IsVisible = plan.WithVideo;
-            var with = new CheckBox { Theme = Ui.Theme("Switch"), IsChecked = plan.WithVideo, Margin = new Thickness(4, 12, 2, 0), Content = new TextBlock { Text = L.T("Anche il video"), FontSize = 15 } };
+            var with = new CheckBox { Theme = Ui.Theme("Switch"), IsChecked = plan.WithVideo, Margin = new Thickness(4, 12, 2, 0), Content = new TextBlock { Text = L.T("Video too"), FontSize = 15 } };
             with.IsCheckedChanged += (_, _) =>
             {
                 plan.WithVideo = with.IsChecked == true;
@@ -177,7 +177,7 @@ public static partial class Dialogs
         body.Children.Add(new TextBlock { Text = plan.Hint, TextWrapping = TextWrapping.Wrap, Foreground = Ui.Res("MutedBrush"), FontSize = 13, LineHeight = 18, Margin = new Thickness(4, 10, 4, 0) });
 
         bool confirmed = false;
-        var no = Wide(L.T("Annulla"), "TouchGhost");
+        var no = Wide(L.T("Cancel"), "TouchGhost");
         no.Click += (_, _) => sheets.Close(body);
         var ok = Wide(plan.OkText, "TouchPrimary");
         ok.Click += (_, _) =>
@@ -204,19 +204,19 @@ public static partial class Dialogs
         if (sheets == null) return null;
         var t = song.T;
         var body = new StackPanel { Margin = new Thickness(20, 4, 20, 18) };
-        body.Children.Add(new TextBlock { Text = L.T("Scegli il video"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(4, 0, 4, 4) });
+        body.Children.Add(new TextBlock { Text = L.T("Choose the video"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(4, 0, 4, 4) });
         body.Children.Add(new TextBlock
         {
             Text = $"{t.Title} · {t.DisplayArtist}" + (t.Duration > 0 ? " · " + Text.Duration(t.Duration) : ""),
             Foreground = Ui.Res("SubTextBrush"), FontSize = 14, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(4, 0, 4, 10),
         });
-        var status = new TextBlock { Text = L.T("Cerco su YouTube…"), Foreground = Ui.Res("MutedBrush"), FontSize = 14, Margin = new Thickness(4, 4, 4, 10), TextWrapping = TextWrapping.Wrap };
+        var status = new TextBlock { Text = L.T("Searching YouTube…"), Foreground = Ui.Res("MutedBrush"), FontSize = 14, Margin = new Thickness(4, 4, 4, 10), TextWrapping = TextWrapping.Wrap };
         body.Children.Add(status);
         var list = new StackPanel();
         body.Children.Add(list);
-        var ok = Wide(L.T("Scarica il video"), "TouchPrimary");
+        var ok = Wide(L.T("Download video"), "TouchPrimary");
         ok.IsEnabled = false;
-        var no = Wide(L.T("Annulla"), "TouchGhost");
+        var no = Wide(L.T("Cancel"), "TouchGhost");
         var buttons = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,*"), Margin = new Thickness(0, 12, 0, 0) };
         buttons.Children.Add(no);
         Grid.SetColumn(ok, 2);
@@ -245,16 +245,16 @@ public static partial class Dialogs
             try { found = await Task.Run(() => VideoFinder.SearchAsync(t.Title, t.Artist, t.Duration, CancellationToken.None)); }
             catch
             {
-                status.Text = L.T("La ricerca non è riuscita: controlla la connessione e riprova.");
+                status.Text = L.T("The search failed: check your connection and try again.");
                 return;
             }
             if (!open) return;
             if (found.Count == 0)
             {
-                status.Text = L.T("Nessun video trovato su YouTube per questo brano.");
+                status.Text = L.T("No video found on YouTube for this song.");
                 return;
             }
-            status.Text = L.T("Scegli quello giusto: il video va a tempo con l'audio, quindi deve essere la stessa versione.");
+            status.Text = L.T("Pick the right one: the video plays in time with the audio, so it must be the same version.");
             foreach (var c in found.Take(8))
             {
                 var thumb = new CoverImage { Width = 112, Height = 63, CornerRadius = new CornerRadius(8) };
@@ -267,7 +267,7 @@ public static partial class Dialogs
                 if (c.LengthDiffers(t.Duration))
                     info.Children.Add(new TextBlock
                     {
-                        Text = "⚠ " + L.T("Durata diversa dal brano: potrebbe andare fuori tempo"), Foreground = Ui.Res("WarningBrush"), FontSize = 12.5,
+                        Text = "⚠ " + L.T("Different length from the song: it may go out of sync"), Foreground = Ui.Res("WarningBrush"), FontSize = 12.5,
                         Margin = new Thickness(0, 3, 0, 0), TextWrapping = TextWrapping.Wrap,
                     });
                 var dock = new DockPanel();

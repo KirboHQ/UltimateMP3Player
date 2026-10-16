@@ -4,16 +4,13 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:local="clr-namespace:UltimateMP3Player">
 
-    <SolidColorBrush x:Key="NavBarBrush" Color="#F20A0C0F"/>
-    <SolidColorBrush x:Key="MiniPlayerBrush" Color="#FF1A1D25"/>
-    <SolidColorBrush x:Key="ScrimBrush" Color="#99000000"/>
-    <SolidColorBrush x:Key="SheetBrush" Color="#FF161920"/>
-    <SolidColorBrush x:Key="PressedBrush" Color="#1FFFFFFF"/>
+    <!-- (the bars, the sheets and the pressed tint, dark and light: NavBarBrush, MiniPlayerBrush, SheetBrush, ScrimBrush,
+         PressedBrush, from Core ThemeColors) -->
 
     <!-- A round icon button the size of a finger (the computer's ControlButton is 36). -->
     <ControlTheme x:Key="TouchIcon" TargetType="Button">
         <Setter Property="local:Ui.GrayText" Value="True"/>
-        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Width" Value="44"/>
         <Setter Property="Height" Value="44"/>
@@ -23,7 +20,7 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Grid Background="Transparent">
-                    <Ellipse Name="Bg" Fill="{StaticResource PressedBrush}" Opacity="0"/>
+                    <Ellipse Name="Bg" Fill="{DynamicResource PressedBrush}" Opacity="0"/>
                     <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Grid>
@@ -39,7 +36,7 @@
 
     <ControlTheme x:Key="TouchToggle" TargetType="ToggleButton">
         <Setter Property="local:Ui.GrayText" Value="True"/>
-        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Width" Value="44"/>
         <Setter Property="Height" Value="44"/>
@@ -49,7 +46,7 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Grid Background="Transparent">
-                    <Ellipse Name="Bg" Fill="{StaticResource PressedBrush}" Opacity="0"/>
+                    <Ellipse Name="Bg" Fill="{DynamicResource PressedBrush}" Opacity="0"/>
                     <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <Ellipse Name="Dot" Width="4" Height="4" Fill="{DynamicResource AccentTextBrush}" VerticalAlignment="Bottom" Margin="0,0,0,4" IsVisible="False"/>
                 </Grid>
@@ -72,7 +69,7 @@
     <!-- A tab of the bottom bar: the icon (filled when it's the open one) and its name. -->
     <ControlTheme x:Key="TabButton" TargetType="RadioButton">
         <Setter Property="local:Ui.GrayText" Value="True"/>
-        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="FocusAdorner" Value="{x:Null}"/>
@@ -99,7 +96,7 @@
             </ControlTemplate>
         </Setter>
         <Style Selector="^:checked">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         </Style>
         <Style Selector="^:checked /template/ Border#Pill">
             <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -112,7 +109,7 @@
     <!-- A part of a segmented choice (Songs · Playlists · Tags): parts of the same width, the content centred, no hover. -->
     <ControlTheme x:Key="TouchSegment" TargetType="RadioButton">
         <Setter Property="local:Ui.GrayText" Value="True"/>
-        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
@@ -130,7 +127,7 @@
             </ControlTemplate>
         </Setter>
         <Style Selector="^:checked">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         </Style>
         <Style Selector="^:checked /template/ Border#Bd">
             <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -142,7 +139,7 @@
 
     <!-- A row of a sheet's menu: icon and text, the whole width. -->
     <ControlTheme x:Key="SheetItem" TargetType="Button">
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -154,26 +151,26 @@
                     <Grid ColumnDefinitions="34,*,Auto">
                         <TextBlock Name="Ico" Text="{Binding $parent[Button].(local:Ui.Glyph), Converter={StaticResource Icon}}"
                                    FontFamily="{Binding $parent[Button].(local:Ui.Glyph), Converter={x:Static local:IconFontConverter.Instance}}"
-                                   FontSize="19" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                                   FontSize="19" VerticalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
                         <ContentPresenter Grid.Column="1" Name="PART_ContentPresenter" Content="{TemplateBinding Content}" VerticalAlignment="Center"
                                           Margin="4,0,0,0"/>
                         <TextBlock Name="Arrow" Grid.Column="2" Text="{local:Icon E76C}" FontFamily="{StaticResource IconFont}" FontSize="13"
-                                   VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" IsVisible="False"/>
+                                   VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" IsVisible="False"/>
                     </Grid>
                 </Border>
             </ControlTemplate>
         </Setter>
         <Style Selector="^:pressed /template/ Border#Bd">
-            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
         </Style>
         <Style Selector="^.sub /template/ TextBlock#Arrow">
             <Setter Property="IsVisible" Value="True"/>
         </Style>
         <Style Selector="^.danger">
-            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
         </Style>
         <Style Selector="^.danger /template/ TextBlock#Ico">
-            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
         </Style>
         <Style Selector="^.checked /template/ TextBlock#Ico">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
@@ -185,7 +182,7 @@
 
     <!-- What to do with the things chosen (the bar at the bottom while choosing, like a gallery's): icon over a short label. -->
     <ControlTheme x:Key="PickButton" TargetType="Button">
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="FocusAdorner" Value="{x:Null}"/>
@@ -197,7 +194,7 @@
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                         <TextBlock Name="Ico" Text="{Binding $parent[Button].(local:Ui.Glyph), Converter={StaticResource Icon}}"
                                    FontFamily="{Binding $parent[Button].(local:Ui.Glyph), Converter={x:Static local:IconFontConverter.Instance}}"
-                                   FontSize="20" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                                   FontSize="20" HorizontalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
                         <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" Margin="0,5,0,0"
                                           TextElement.FontSize="11.5"/>
                     </StackPanel>
@@ -205,13 +202,13 @@
             </ControlTemplate>
         </Setter>
         <Style Selector="^:pressed /template/ Border#Bd">
-            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
         </Style>
         <Style Selector="^.danger">
-            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
         </Style>
         <Style Selector="^.danger /template/ TextBlock#Ico">
-            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
         </Style>
         <Style Selector="^:disabled">
             <Setter Property="Opacity" Value="0.4"/>
@@ -220,7 +217,7 @@
 
     <!-- A setting's row that opens something (a page, a sheet of choices): text, value, arrow. -->
     <ControlTheme x:Key="SettingRow" TargetType="Button">
-        <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -232,13 +229,13 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1" Text="{local:Icon E76C}" FontFamily="{StaticResource IconFont}" FontSize="13" Margin="12,0,0,0"
-                                   VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                                   VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                     </Grid>
                 </Border>
             </ControlTemplate>
         </Setter>
         <Style Selector="^:pressed /template/ Border#Bd">
-            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
         </Style>
         <Style Selector="^:disabled">
             <Setter Property="Opacity" Value="0.45"/>
@@ -247,9 +244,9 @@
 
     <!-- A chip (filters, sites, tags): a small pill, tinted when chosen. -->
     <ControlTheme x:Key="Chip" TargetType="ToggleButton">
-        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
-        <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="FontSize" Value="13.5"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Height" Value="36"/>
@@ -266,7 +263,7 @@
             </ControlTemplate>
         </Setter>
         <Style Selector="^:checked">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         </Style>
         <Style Selector="^:checked /template/ Border#Bd">
             <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -289,7 +286,7 @@
                     <Thumb>
                         <Thumb.Template>
                             <ControlTemplate>
-                                <Border CornerRadius="2" Background="#55FFFFFF" Width="3"/>
+                                <Border CornerRadius="2" Background="{DynamicResource ScrollThumbHoverBrush}" Width="3"/>
                             </ControlTemplate>
                         </Thumb.Template>
                     </Thumb>
@@ -333,10 +330,10 @@
         <Setter Property="FontSize" Value="15"/>
         <Setter Property="Template">
             <ControlTemplate>
-                <Border Name="Bd" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}"
+                <Border Name="Bd" Background="{DynamicResource Surface2Brush}" BorderBrush="Transparent"
                         BorderThickness="1" CornerRadius="24" Padding="18,0" Height="48">
                     <Panel>
-                        <TextBlock Name="Placeholder" Text="{TemplateBinding Watermark}" Foreground="{StaticResource MutedBrush}"
+                        <TextBlock Name="Placeholder" Text="{TemplateBinding Watermark}" Foreground="{DynamicResource MutedBrush}"
                                    VerticalAlignment="Center" Margin="3,0,0,0" IsHitTestVisible="False" TextTrimming="CharacterEllipsis"
                                    IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                         <ScrollViewer Name="PART_ScrollViewer" VerticalAlignment="Center" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"
@@ -362,12 +359,12 @@
         <Setter Property="FontSize" Value="15"/>
         <Setter Property="Template">
             <ControlTemplate>
-                <Border Name="Bd" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}"
+                <Border Name="Bd" Background="{DynamicResource Surface2Brush}" BorderBrush="Transparent"
                         BorderThickness="1" CornerRadius="24" Padding="16,0,4,0" Height="48">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <TextBlock Name="Ico" Text="{local:Icon E721}" FontFamily="{StaticResource IconFont}" FontSize="17"
-                                   VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
-                        <TextBlock Name="Placeholder" Grid.Column="1" Text="{TemplateBinding Watermark}" Foreground="{StaticResource MutedBrush}"
+                                   VerticalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock Name="Placeholder" Grid.Column="1" Text="{TemplateBinding Watermark}" Foreground="{DynamicResource MutedBrush}"
                                    VerticalAlignment="Center" Margin="13,0,0,0" IsHitTestVisible="False" TextTrimming="CharacterEllipsis"
                                    IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
                         <ScrollViewer Name="PART_ScrollViewer" Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
@@ -388,7 +385,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
         </Style>
         <Style Selector="^:focus-within /template/ TextBlock#Ico">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         </Style>
     </ControlTheme>
 

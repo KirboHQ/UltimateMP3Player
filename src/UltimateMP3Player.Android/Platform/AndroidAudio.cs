@@ -53,16 +53,16 @@ public static class AudioPlatform
         var product = d.ProductName?.ToString()?.Trim() ?? "";
         (string Kind, string Name, bool Own)? k = d.Type switch
         {
-            AudioDeviceType.BuiltinSpeaker => ("speaker", L.T("Altoparlante del telefono"), false),
-            AudioDeviceType.WiredHeadset or AudioDeviceType.WiredHeadphones => ("wired", L.T("Cuffie con il filo"), false),
+            AudioDeviceType.BuiltinSpeaker => ("speaker", L.T("Phone speaker"), false),
+            AudioDeviceType.WiredHeadset or AudioDeviceType.WiredHeadphones => ("wired", L.T("Wired headphones"), false),
             AudioDeviceType.BluetoothA2dp or AudioDeviceType.BleHeadset or AudioDeviceType.BleSpeaker
                 => ("bluetooth", product.Length > 0 ? product : "Bluetooth", true),
             AudioDeviceType.UsbDevice or AudioDeviceType.UsbHeadset or AudioDeviceType.UsbAccessory
                 => ("usb", product.Length > 0 ? "USB · " + product : "USB", true),
             AudioDeviceType.Hdmi or AudioDeviceType.HdmiArc or AudioDeviceType.HdmiEarc => ("hdmi", "HDMI", false),
-            AudioDeviceType.LineAnalog or AudioDeviceType.LineDigital or AudioDeviceType.AuxLine => ("line", L.T("Uscita di linea"), false),
-            AudioDeviceType.Dock or AudioDeviceType.DockAnalog => ("dock", L.T("Base con altoparlante"), false),
-            AudioDeviceType.HearingAid => ("hearing", product.Length > 0 ? product : L.T("Apparecchio acustico"), true),
+            AudioDeviceType.LineAnalog or AudioDeviceType.LineDigital or AudioDeviceType.AuxLine => ("line", L.T("Line out"), false),
+            AudioDeviceType.Dock or AudioDeviceType.DockAnalog => ("dock", L.T("Speaker dock"), false),
+            AudioDeviceType.HearingAid => ("hearing", product.Length > 0 ? product : L.T("Hearing aid"), true),
             _ => null,
         };
         if (k is not { } kind) return null;

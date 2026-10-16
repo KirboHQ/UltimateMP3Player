@@ -29,8 +29,8 @@ public sealed class MediaControls : IDisposable
             if (e is MPChangePlaybackPositionCommandEvent p) Post(() => SeekRequested?.Invoke(TimeSpan.FromSeconds(p.PositionTime)));
             return MPRemoteCommandHandlerStatus.Success;
         })));
-        c.LikeCommand.LocalizedTitle = L.T("Aggiungi ai Preferiti");
-        c.LikeCommand.LocalizedShortTitle = L.T("Preferiti");
+        c.LikeCommand.LocalizedTitle = L.T("Add to Favorites");
+        c.LikeCommand.LocalizedShortTitle = L.T("Favorites");
         Publish();
     }
 

@@ -137,21 +137,21 @@ public partial class SelectionBar : UserControl
     {
         if (songs.Count == 0) return;
         var main = songs[0].Main;
-        CountText.Text = L.F("{0} selezionati", songs.Count);
+        CountText.Text = L.F("{0} selected", songs.Count);
         if (main.InRoom)
-            Add("", L.T("Aggiungi alla stanza"), main.CanAddToRoom ? L.T("Aggiungi i brani selezionati alla coda della stanza") : main.Together.Denied(Core.Together.Perm.Add),
+            Add("", L.T("Add to the room"), main.CanAddToRoom ? L.T("Add the selected songs to the room's queue") : main.Together.Denied(Core.Together.Perm.Add),
                 _ => main.Together.Add(songs), enabled: main.CanAddToRoom);
         else
         {
-            Add("", L.T("Riproduci"), L.T("Riproduci i brani selezionati"), _ => main.PlaySelection(songs));
-            Add("", L.T("In coda"), L.T("Aggiungi alla coda"), _ => main.Enqueue(songs));
+            Add("", L.T("Play"), L.T("Play selected songs"), _ => main.PlaySelection(songs));
+            Add("", L.T("Queued"), L.T("Add to queue"), _ => main.Enqueue(songs));
         }
         AddSave(main, songs);
-        Add("", "Playlist", L.T("Aggiungi a una playlist"), b => Menus.Open(Menus.AddManyToPlaylist(songs), b, true));
-        Add("", "Tag", L.T("Metti o togli un tag ai brani selezionati"), b => Menus.Open(Menus.TagMenu(songs), b, true));
+        Add("", "Playlist", L.T("Add to a playlist"), b => Menus.Open(Menus.AddManyToPlaylist(songs), b, true));
+        Add("", "Tag", L.T("Add or remove a tag on the selected songs"), b => Menus.Open(Menus.TagMenu(songs), b, true));
         if (owner != null)
-            Add("", L.T("Togli dalla playlist"), L.T("Togli dalla playlist (i brani restano nella libreria)"), _ => main.RemoveFromPlaylist(songs, owner));
-        Add("", L.T("Elimina"), L.T("Elimina… (Canc): il video, il testo, l'audio dal dispositivo o tutto"), b => _ = main.DeleteTracks(songs), danger: true);
+            Add("", L.T("Remove from playlist"), L.T("Remove from playlist (songs stay in your library)"), _ => main.RemoveFromPlaylist(songs, owner));
+        Add("", L.T("Delete"), L.T("Delete… (Del): the video, the lyrics, the audio from the device or everything"), b => _ = main.DeleteTracks(songs), danger: true);
     }
 
     // The ones in the cloud saved on the device (all, or how many of them).
@@ -159,8 +159,8 @@ public partial class SelectionBar : UserControl
     {
         var cloud = songs.Where(t => t.IsCloud && !t.IsSaving).ToList();
         if (cloud.Count == 0) return;
-        Add("", cloud.Count == songs.Count ? L.T("Salva") : L.F("Salva ({0})", cloud.Count),
-            L.Count(cloud.Count, "Salva sul dispositivo il brano nel cloud", "Salva sul dispositivo i {0} brani nel cloud"), b =>
+        Add("", cloud.Count == songs.Count ? L.T("Save") : L.F("Save ({0})", cloud.Count),
+            L.Count(cloud.Count, "Save the song in the cloud on your device", "Save the {0} songs in the cloud on your device"), b =>
             {
                 _ = main.SaveToDevice(cloud);
                 Rebuild();
@@ -175,15 +175,15 @@ public partial class SelectionBar : UserControl
         var main = rows[0].Track.Main;
         var places = rows.Select(r => r.Index).ToList();
         var songs = rows.Select(r => r.Track).Distinct().ToList();
-        CountText.Text = L.F("{0} selezionati", rows.Count);
-        Add("", L.T("In cima"), L.T("Sposta in cima ai successivi"), _ => { player.MoveUpcomingToTop(places); List?.UnselectAll(); });
-        Add("", L.T("In fondo"), L.T("Sposta in fondo ai successivi"), _ => { player.MoveUpcomingToBottom(places); List?.UnselectAll(); });
+        CountText.Text = L.F("{0} selected", rows.Count);
+        Add("", L.T("To top"), L.T("Move to the top of Up next"), _ => { player.MoveUpcomingToTop(places); List?.UnselectAll(); });
+        Add("", L.T("To bottom"), L.T("Move to the bottom of Up next"), _ => { player.MoveUpcomingToBottom(places); List?.UnselectAll(); });
         if (!player.InRoom)
         {
             AddSave(main, songs);
-            Add("", "Playlist", L.T("Aggiungi a una playlist"), b => Menus.Open(Menus.AddManyToPlaylist(songs), b, true));
+            Add("", "Playlist", L.T("Add to a playlist"), b => Menus.Open(Menus.AddManyToPlaylist(songs), b, true));
         }
-        Add("", L.T("Togli"), L.T("Togli dai successivi (Canc)"), _ => { player.RemoveUpcoming(places); List?.UnselectAll(); }, danger: true);
+        Add("", L.T("Remove"), L.T("Remove from Up next (Del)"), _ => { player.RemoveUpcoming(places); List?.UnselectAll(); }, danger: true);
     }
 
     // ------------------------------------------------------------------ downloads
@@ -192,13 +192,13 @@ public partial class SelectionBar : UserControl
     {
         if (App.Host?.Session is not { } main) return;
         var queue = main.Queue;
-        CountText.Text = L.Count(jobs.Count, "1 download", "{0} download");
+        CountText.Text = L.Count(jobs.Count, "1 download", "{0} downloads");
         int failed = jobs.Count(j => j.CanRetry), youTube = jobs.Count(j => j.CanRetryYouTube), active = jobs.Count(j => j.IsActive);
-        if (failed > 0) Add("", L.F("Riprova ({0})", failed), L.T("Riprova i download non riusciti"), _ => { queue.Retry(jobs); Rebuild(); });
+        if (failed > 0) Add("", L.F("Retry ({0})", failed), L.T("Retry the failed downloads"), _ => { queue.Retry(jobs); Rebuild(); });
         if (youTube > 0)
-            Add("", L.F("Su YouTube ({0})", youTube), L.T("Cerca su YouTube Music i brani non riusciti e scaricali da lì"), _ => { queue.RetryOnYouTube(jobs); Rebuild(); });
-        if (active > 0) Add("", L.F("Annulla ({0})", active), L.T("Ferma i download in corso o in coda"), _ => { queue.Cancel(jobs); Rebuild(); });
-        Add("", L.T("Togli dalla lista"), L.T("Togli dalla lista dei download (Canc): i brani già scaricati restano"), _ => queue.Remove(jobs), danger: true);
+            Add("", L.F("On YouTube ({0})", youTube), L.T("Look up the failed songs on YouTube Music and download them from there"), _ => { queue.RetryOnYouTube(jobs); Rebuild(); });
+        if (active > 0) Add("", L.F("Cancel ({0})", active), L.T("Stop the running or queued downloads"), _ => { queue.Cancel(jobs); Rebuild(); });
+        Add("", L.T("Remove from list"), L.T("Remove from the download list (Del): songs already downloaded stay"), _ => queue.Remove(jobs), danger: true);
     }
 
     // ------------------------------------------------------------------ playlists
@@ -206,17 +206,17 @@ public partial class SelectionBar : UserControl
     private void BuildPlaylists(List<PlaylistViewModel> lists)
     {
         if (App.Host?.Session is not { } main) return;
-        CountText.Text = L.Count(lists.Count, "1 playlist", "{0} playlist");
-        Add("", L.T("Riproduci"), L.T("Riproduci tutti i loro brani"), _ => main.PlayPlaylists(lists));
-        Add("", L.T("In coda"), L.T("Aggiungi tutti i loro brani alla coda"), _ => main.EnqueuePlaylists(lists));
+        CountText.Text = L.Count(lists.Count, "1 playlist", "{0} playlists");
+        Add("", L.T("Play"), L.T("Play all their songs"), _ => main.PlayPlaylists(lists));
+        Add("", L.T("Queued"), L.T("Add all their songs to the queue"), _ => main.EnqueuePlaylists(lists));
         int cloud = main.SongsOf(lists).Count(t => t.IsCloud && !t.IsSaving);
         if (cloud > 0)
-            Add("", L.F("Salva ({0})", cloud), L.Count(cloud, "Salva sul dispositivo il loro brano nel cloud", "Salva sul dispositivo i loro {0} brani nel cloud"),
+            Add("", L.F("Save ({0})", cloud), L.Count(cloud, "Save their song in the cloud on your device", "Save their {0} songs in the cloud on your device"),
                 b => { _ = main.SavePlaylists(lists); Rebuild(); });
-        Add("", "Tag", L.T("Metti o togli un tag alle playlist selezionate"), b => Menus.Open(Menus.PlaylistsTagMenu(lists), b, true));
-        Add("", L.T("Esporta"), L.T("Esporta in un file .ump"), _ => main.ExportPlaylists(lists));
+        Add("", "Tag", L.T("Add or remove a tag on the selected playlists"), b => Menus.Open(Menus.PlaylistsTagMenu(lists), b, true));
+        Add("", L.T("Export"), L.T("Export to a .ump file"), _ => main.ExportPlaylists(lists));
         if (lists.Any(p => !p.IsFavorites))
-            Add("", L.T("Elimina"), L.T("Elimina le playlist selezionate (Canc): i brani restano nella libreria"), b => _ = main.DeletePlaylists(lists), danger: true);
+            Add("", L.T("Delete"), L.T("Delete the selected playlists (Del): the songs stay in your library"), b => _ = main.DeletePlaylists(lists), danger: true);
     }
 
     // ------------------------------------------------------------------ keys

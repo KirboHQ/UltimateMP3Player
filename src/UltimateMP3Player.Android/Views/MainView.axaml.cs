@@ -2,8 +2,10 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using UltimateMP3Player.Core;
 using Avalonia.Media;
 using UltimateMP3Player.ViewModels;
@@ -36,6 +38,10 @@ public partial class MainView : UserControl
                 RoutingStrategies.Bubble, true);
         }
         Mini.OpenRequested += () => _session?.Navigate(_session.NowPlaying);
+        PageHost.AddHandler(PointerPressedEvent, SwipePressed, RoutingStrategies.Tunnel, true);
+        PageHost.AddHandler(PointerMovedEvent, SwipeMoved, RoutingStrategies.Tunnel, true);
+        PageHost.AddHandler(PointerReleasedEvent, SwipeReleased, RoutingStrategies.Tunnel, true);
+        PageHost.PointerCaptureLost += (_, _) => { if (_swipe == Swipe.Active) EndSwipe(false); };
         FullPlayer.CloseRequested += () =>
         {
             if (_session?.Page is NowPlayingViewModel) _session.BackCommand.Execute(null);
@@ -251,7 +257,7 @@ public partial class MainView : UserControl
         catch (Exception ex)
         {
             App.Log(ex);
-            Dialogs.Alert("Ultimate MP3 Player", L.T("Ultimate MP3 Player non è riuscito ad avviarsi:") + "\n\n" + ex.Message);
+            Dialogs.Alert("Ultimate MP3 Player", L.T("Ultimate MP3 Player couldn't start:") + "\n\n" + ex.Message);
         }
     }
 
@@ -259,8 +265,8 @@ public partial class MainView : UserControl
     // "Good evening" asks. Skipped, the profile stays "Me".
     private async Task AskName()
     {
-        if (_host.Profiles.Profiles is not [{ } only] || only.Name != L.T("Io")) return;
-        var name = (await Dialogs.PromptAsync(L.T("Come ti chiami?"), L.T("Il tuo nome"), ""))?.Trim();
+        if (_host.Profiles.Profiles is not [{ } only] || only.Name != L.T("Me")) return;
+        var name = (await Dialogs.PromptAsync(L.T("What's your name?"), L.T("Your name"), ""))?.Trim();
         if (string.IsNullOrEmpty(name)) return;
         only.Name = name.Length > 40 ? name[..40] : name;
         _host.Profiles.Save();
@@ -284,11 +290,11 @@ public partial class MainView : UserControl
     {
         if (!Services.Updater.WrongPackage) return;
         await Task.Delay(1200);
-        if (await Dialogs.ConfirmAsync(L.T("Versione per un altro processore"),
-                L.T("Hai installato la versione per telefoni (ARM), ma questo dispositivo è x86_64 (un emulatore o un Chromebook): l'app va molto più lenta e i download non funzionano. Scarica e installa quella giusta (UltimateMP3Player-android-x86_64.apk): musica e impostazioni restano."),
-                L.T("Installa quella giusta")))
+        if (await Dialogs.ConfirmAsync(L.T("Version for another processor"),
+                L.T("You installed the version for phones (ARM), but this device is x86_64 (an emulator or a Chromebook): the app runs much slower and downloads don't work. Download and install the right one (UltimateMP3Player-android-x86_64.apk): your music and settings stay."),
+                L.T("Install the right one")))
         {
-            _session?.Toast(L.T("Download della versione giusta per questo dispositivo…"));
+            _session?.Toast(L.T("Downloading the right version for this device…"));
             await _host.CheckAppUpdateNow();
             if (!_host.Updates.IsReady && _host.Updates.Status is { } status) _session?.Toast(status);
         }
@@ -407,6 +413,8 @@ public partial class MainView : UserControl
         {
             var old = _shown;
             var oldPage = _shownPage;
+            // Another page: the keyboard of the one before closes.
+            TopLevel.GetTopLevel(this)?.FocusManager?.ClearFocus();
             _shown = view;
             _shownPage = page;
             bool forward = Forward(oldPage, page);
@@ -421,7 +429,7 @@ public partial class MainView : UserControl
                 }
             view.RenderTransform = null;
             if (old != null) old.RenderTransform = null;
-            bool motion = animate && Ui.Animations && old != null;
+            bool motion = animate && Ui.Animations && old != null && !_swiped;
             (view as IPage)?.Shown();
             if (motion) _ = Slide(old!, view, forward, _slide = new CancellationTokenSource());
             else
@@ -429,7 +437,7 @@ public partial class MainView : UserControl
                 view.IsVisible = true;
                 if (old != null) old.IsVisible = false;
             }
-            ShowBackdrop(view is HomePage, motion);
+            ShowBackdrop(view is HomePage, motion || _swiped);
         }
         SyncTabs();
     }
@@ -468,7 +476,8 @@ public partial class MainView : UserControl
         });
     }
 
-    private static int TabOrder(string tab) => tab switch { "home" => 0, "search" => 1, "library" => 2, "downloads" => 3, _ => 4 };
+    private static readonly string[] TabNames = { "home", "search", "library", "downloads", "settings" };
+    private static int TabOrder(string tab) => Array.IndexOf(TabNames, tab);
 
     private bool Forward(object? from, object to)
     {
@@ -563,14 +572,7 @@ public partial class MainView : UserControl
     private void GoTab(string tab)
     {
         if (_session == null) return;
-        object root = tab switch
-        {
-            "search" => _session.Search,
-            "library" => Hub!,
-            "downloads" => _session.Downloads,
-            "settings" => _session.Settings,
-            _ => _session.Home,
-        };
+        object root = RootOf(tab);
         Sheets.CloseAll();
         if (_session.Page == root)
         {
@@ -579,6 +581,180 @@ public partial class MainView : UserControl
         }
         if (tab == "settings") _session.GoSettings();
         else _session.Navigate(root);
+    }
+
+    private object RootOf(string tab) => tab switch
+    {
+        "search" => _session!.Search,
+        "library" => Hub!,
+        "downloads" => _session!.Downloads,
+        "settings" => _session!.Settings,
+        _ => _session!.Home,
+    };
+
+    // ------------------------------------------------------------------ the swipe between tabs
+
+    // A finger moving sideways on a tab's own page turns to the tab beside it, the pages following the finger; on a page
+    // inside a tab (a playlist) a swipe to the right goes back. Not while what's under the finger moves sideways itself
+    // (a row of cards with room that way, a slider, a drag handle, a text box) or a list is scrolling up and down.
+    private enum Swipe { None, Pending, Active }
+    private Swipe _swipe;
+    private Point _swipeStart;
+    private double _swipeX, _swipeSpeed, _swipeLastX;
+    private ulong _swipeLastT;
+    // -1: the finger goes left (the new page comes from the right), 1: right.
+    private int _swipeDir;
+    private string? _swipeTab;
+    private Control? _swipeView;
+    private TranslateTransform? _swipeOut, _swipeIn;
+    // The new page is already in its place: ShowPage doesn't move it again.
+    private bool _swiped;
+
+    private void SwipePressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_swipe == Swipe.Active) return;
+        _swipe = e.Pointer.Type == PointerType.Touch && _session != null && _shown != null && _slide == null && !FullPlayer.IsOpen && !SheetLayer.IsOpen
+            ? Swipe.Pending : Swipe.None;
+        _swipeStart = e.GetPosition(PageHost);
+    }
+
+    private void SwipeMoved(object? sender, PointerEventArgs e)
+    {
+        if (_swipe == Swipe.None) return;
+        var p = e.GetPosition(PageHost);
+        double dx = p.X - _swipeStart.X, dy = p.Y - _swipeStart.Y;
+        if (_swipe == Swipe.Pending)
+        {
+            if (Math.Abs(dy) > 12 && Math.Abs(dy) >= Math.Abs(dx))
+            {
+                _swipe = Swipe.None;
+                return;
+            }
+            if (Math.Abs(dx) < 16 || Math.Abs(dx) < Math.Abs(dy) * 1.5) return;
+            if (!StartSwipe(dx < 0, e.Source as Visual))
+            {
+                _swipe = Swipe.None;
+                return;
+            }
+            _swipe = Swipe.Active;
+            // (from where the finger crossed the slop: no jump of its size)
+            _swipeStart = _swipeStart.WithX(_swipeStart.X + (dx < 0 ? -16 : 16));
+            _swipeLastX = p.X;
+            _swipeLastT = e.Timestamp;
+            _swipeSpeed = 0;
+            e.Pointer.Capture(PageHost);
+        }
+        e.PreventGestureRecognition();
+        e.Handled = true;
+        if (e.Timestamp > _swipeLastT)
+        {
+            // px per ms, smoothed a little
+            _swipeSpeed = 0.6 * (p.X - _swipeLastX) / (e.Timestamp - _swipeLastT) + 0.4 * _swipeSpeed;
+            _swipeLastX = p.X;
+            _swipeLastT = e.Timestamp;
+        }
+        double w = PageHost.Bounds.Width;
+        PlaceSwipe(_swipeDir < 0 ? Math.Clamp(p.X - _swipeStart.X, -w, 0) : Math.Clamp(p.X - _swipeStart.X, 0, w));
+    }
+
+    private void SwipeReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_swipe != Swipe.Active)
+        {
+            _swipe = Swipe.None;
+            return;
+        }
+        e.Handled = true;
+        double w = PageHost.Bounds.Width;
+        // A third of the way, or a quick flick that way (and not back).
+        bool go = _swipeX * _swipeDir > w / 3 && _swipeSpeed * _swipeDir > -0.3 || _swipeSpeed * _swipeDir > 0.5;
+        EndSwipe(go);
+        e.Pointer.Capture(null);
+    }
+
+    // Something under the finger that moves sideways itself.
+    private static bool MovesSideways(Visual? v, bool left)
+    {
+        for (; v != null; v = v.GetVisualParent())
+        {
+            if (v is Slider or TextBox || v is StyledElement { Classes: var c } && c.Contains("handle")) return true;
+            if (v is ScrollViewer sv && sv.Extent.Width > sv.Viewport.Width + 1 &&
+                (left ? sv.Offset.X < sv.Extent.Width - sv.Viewport.Width - 1 : sv.Offset.X > 1)) return true;
+        }
+        return false;
+    }
+
+    // The page that comes in, put beside this one.
+    private bool StartSwipe(bool left, Visual? source)
+    {
+        if (MovesSideways(source, left) || _shownPage is not { } page) return false;
+        object to;
+        if (IsRoot(page))
+        {
+            int i = TabOrder(TabOf(page)) + (left ? 1 : -1);
+            if (i < 0 || i >= TabNames.Length) return false;
+            _swipeTab = TabNames[i];
+            to = RootOf(_swipeTab);
+        }
+        else
+        {
+            if (left || _session!.BackPage is not { } back) return false;
+            _swipeTab = null;
+            to = back;
+        }
+        var view = ViewFor(to);
+        if (view == _shown) return false;
+        _swipeView = view;
+        _swipeDir = left ? -1 : 1;
+        _shown!.RenderTransform = _swipeOut = new TranslateTransform();
+        view.RenderTransform = _swipeIn = new TranslateTransform(-_swipeDir * PageHost.Bounds.Width, 0);
+        view.IsVisible = true;
+        (view as IPage)?.Shown();
+        _swipeX = 0;
+        return true;
+    }
+
+    private void PlaceSwipe(double x)
+    {
+        double w = Math.Max(1, PageHost.Bounds.Width);
+        _swipeX = x;
+        _swipeOut!.X = x;
+        _swipeIn!.X = x - _swipeDir * w;
+        // The glow behind the home page's top comes and goes with it.
+        double a = _shown is HomePage ? 1 : 0, b = _swipeView is HomePage ? 1 : 0;
+        if (a != b) Backdrop.Opacity = a + (b - a) * Math.Abs(x) / w;
+    }
+
+    // The rest of the way (to the new page, or back to this one), then the new page is the one shown.
+    private void EndSwipe(bool go)
+    {
+        _swipe = Swipe.None;
+        var from = _shown!;
+        var to = _swipeView!;
+        var tab = _swipeTab;
+        double x0 = _swipeX, end = go ? _swipeDir * PageHost.Bounds.Width : 0;
+        var cts = _slide = new CancellationTokenSource();
+        Ui.Tween(this, go ? 220 : 200, Ui.CubicOut, t =>
+        {
+            if (cts.IsCancellationRequested) return;
+            PlaceSwipe(x0 + (end - x0) * t);
+            if (t < 1) return;
+            if (_slide == cts) _slide = null;
+            if (!go)
+            {
+                to.IsVisible = false;
+                to.RenderTransform = null;
+                from.RenderTransform = null;
+                return;
+            }
+            _swiped = true;
+            try
+            {
+                if (tab != null) GoTab(tab);
+                else _session?.BackCommand.Execute(null);
+            }
+            finally { _swiped = false; }
+        });
     }
 
     // ------------------------------------------------------------------ back
@@ -655,7 +831,7 @@ public interface IPage
     void Shown() { }
 }
 
-// The "Libreria" tab: songs, playlists, tags.
+// The "Library" tab: songs, playlists, tags.
 public sealed class LibraryHub : Observable
 {
     public LibraryHub(MainViewModel main) => Main = main;

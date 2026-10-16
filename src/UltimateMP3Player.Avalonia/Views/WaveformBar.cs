@@ -33,7 +33,8 @@ public sealed class WaveformBar : Control
     public double BarWidth { get => GetValue(BarWidthProperty); set => SetValue(BarWidthProperty, value); }
     public ICommand? SeekCommand { get => GetValue(SeekCommandProperty); set => SetValue(SeekCommandProperty, value); }
 
-    private static readonly IBrush HoverBrush = new SolidColorBrush(Color.FromArgb(70, 255, 255, 255)).ToImmutable();
+    // The stretch under the mouse: the text's colour, see-through (white when dark, black when light).
+    private static IBrush HoverBrush => new SolidColorBrush(Themes.Get("Text"), 70 / 255.0).ToImmutable();
 
     private Geometry? _bars;
     private Size _barsSize;

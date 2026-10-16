@@ -13,7 +13,7 @@
         <Setter Property="FontFamily" Value="{StaticResource IconFontFilled}"/>
     </Style>
     <Style Selector="TextBlock.field-label">
-        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Margin" Value="4,0,0,8"/>
@@ -29,12 +29,12 @@
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
     </Style>
     <Style Selector="TextBlock.small-caps">
-        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="Bold"/>
     </Style>
     <Style Selector="TextBlock.hint">
-        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
         <Setter Property="FontSize" Value="13.5"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
         <Setter Property="LineHeight" Value="20"/>
@@ -44,7 +44,7 @@
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
     <Style Selector="TextBlock.setting-hint">
-        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
         <Setter Property="LineHeight" Value="18"/>
@@ -66,7 +66,7 @@
 
     <!-- A card of the settings and of the downloads. -->
     <Style Selector="Border.card">
-        <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
         <Setter Property="CornerRadius" Value="18"/>
         <Setter Property="Padding" Value="18,8"/>
         <Setter Property="Margin" Value="0,0,0,14"/>
@@ -77,7 +77,7 @@
         <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector="Border.row:pressed">
-        <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
     </Style>
     <Style Selector="Border.row.selected">
         <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -86,7 +86,7 @@
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
     <Style Selector="TextBlock.heart">
-        <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
     </Style>
     <Style Selector="TextBlock.heart.fav">
         <Setter Property="Foreground" Value="{DynamicResource PinkBrush}"/>
@@ -94,10 +94,10 @@
     </Style>
 
     <Style Selector="Border.tile">
-        <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
     </Style>
     <Style Selector="Border.tile:pressed">
-        <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
     </Style>
 
     <!-- Choosing several things (Selection.Tick on the row): a round tick on each, filled on the chosen ones. -->
@@ -107,8 +107,8 @@
         <Setter Property="Height" Value="24"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="BorderThickness" Value="2"/>
-        <Setter Property="BorderBrush" Value="{StaticResource MutedBrush}"/>
-        <Setter Property="Background" Value="#66000000"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource MutedBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
     <Style Selector="Border.tick > TextBlock">
@@ -140,12 +140,12 @@
 
     <!-- A song not saved on the device: a quiet cloud (only a sign), a warning sign when it's no longer online. -->
     <Style Selector="TextBlock.cloud">
-        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
     </Style>
     <Style Selector="TextBlock.cloud.gone">
-        <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
     </Style>
     <Style Selector="Border.row.gone TextBlock.title">
-        <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
     </Style>
 </Styles>

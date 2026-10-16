@@ -20,12 +20,12 @@ public sealed class RoomAdViewModel
     public string Name => Ad.Name;
     public string Initial => string.IsNullOrWhiteSpace(Ad.Host) ? "?" : char.ToUpper(Ad.Host.Trim()[0]).ToString();
     public Brush HostBrush => Ui.BrushFrom(Ad.HostColor ?? "#7C5CFF");
-    public string Detail => L.F("di {0}", Ad.Host) + " · " + L.F("{0} di {1} persone", Ad.Members, Ad.Max);
-    public string? Playing => Ad.Playing != null ? L.F("Sta suonando «{0}»", Ad.Playing) : null;
+    public string Detail => L.F("by {0}", Ad.Host) + " · " + L.F("{0} of {1} people", Ad.Members, Ad.Max);
+    public string? Playing => Ad.Playing != null ? L.F("Playing “{0}”", Ad.Playing) : null;
     public bool Locked => Ad.Locked;
     public bool IsFull => Ad.Members >= Ad.Max;
     public bool CanJoin => !IsFull;
-    public string JoinText => IsFull ? L.T("Piena") : L.T("Entra");
+    public string JoinText => IsFull ? L.T("Full") : L.T("Join");
     public string Key => $"{Ad.RoomId}|{Ad.Name}|{Ad.Members}|{Ad.Max}|{Ad.Playing}|{Ad.Ip}|{Ad.Port}|{Ad.Locked}";
 }
 
@@ -63,9 +63,9 @@ public sealed class MemberViewModel : Observable
     public bool IsMe => _owner.Session?.Me.Id == M.Id;
     public bool Away => M.Away;
     public bool NoP2P => M.NoP2P;
-    public string NameText => IsMe ? L.F("{0} (tu)", M.Name) : M.Name;
+    public string NameText => IsMe ? L.F("{0} (you)", M.Name) : M.Name;
 
-    public string RoleText => IsHost ? L.T("Host") : M.Perms == Perm.All ? L.T("Co-host") : (M.Perms & Perm.Add) != 0 ? "DJ" : L.T("Ascoltatore");
+    public string RoleText => IsHost ? L.T("Host") : M.Perms == Perm.All ? L.T("Co-host") : (M.Perms & Perm.Add) != 0 ? "DJ" : L.T("Listener");
 
     // The permissions, lit or dim.
     public bool PermAdd => IsHost || (M.Perms & Perm.Add) != 0;
@@ -73,7 +73,7 @@ public sealed class MemberViewModel : Observable
     public bool PermSkip => IsHost || (M.Perms & Perm.Skip) != 0;
     public bool PermPause => IsHost || (M.Perms & Perm.Pause) != 0;
     public bool PermSpeed => IsHost || (M.Perms & Perm.Speed) != 0;
-    public string PermsTip => IsHost ? L.T("L'host può fare tutto.") : TogetherViewModel.PermsText(M.Perms);
+    public string PermsTip => IsHost ? L.T("The host can do everything.") : TogetherViewModel.PermsText(M.Perms);
 
     // How far they are with the song playing and the next ones.
     public string StatusText { get; private set; } = "";
@@ -102,13 +102,13 @@ public sealed class MemberViewModel : Observable
         StatusPct = 0;
         if (M.Away)
         {
-            StatusText = L.T("Si sta ricollegando…");
+            StatusText = L.T("Reconnecting…");
             return;
         }
         var window = new[] { s.Current }.Concat(s.Queue.Take(s.AheadOf(M))).OfType<RoomTrack>().ToList();
         if (window.Count == 0)
         {
-            StatusText = L.T("Pronto");
+            StatusText = L.T("Ready");
             StatusReady = true;
             return;
         }
@@ -122,25 +122,25 @@ public sealed class MemberViewModel : Observable
             {
                 case FileState.Downloading:
                     StatusBusy = true;
-                    StatusText = current ? L.F("Scarica il brano attuale · {0:0}%", StatusPct) : L.F("Prepara «{0}» · {1:0}%", t.Title, StatusPct);
+                    StatusText = current ? L.F("Downloading the current song · {0:0}%", StatusPct) : L.F("Getting “{0}” · {1:0}%", t.Title, StatusPct);
                     return;
                 case FileState.Transfer:
                     StatusBusy = true;
-                    StatusText = current ? L.F("Riceve il brano attuale · {0:0}%", StatusPct) : L.F("Riceve «{0}» · {1:0}%", t.Title, StatusPct);
+                    StatusText = current ? L.F("Receiving the current song · {0:0}%", StatusPct) : L.F("Receiving “{0}” · {1:0}%", t.Title, StatusPct);
                     return;
                 case FileState.Failed:
                     StatusFailed = true;
-                    StatusText = L.F("Non riesce a scaricare «{0}»", t.Title);
+                    StatusText = L.F("Can't get “{0}”", t.Title);
                     return;
                 default:
                     if (!current) continue;
                     StatusBusy = true;
-                    StatusText = L.T("In attesa del brano…");
+                    StatusText = L.T("Waiting for the song…");
                     return;
             }
         }
         StatusReady = true;
-        StatusText = L.T("Pronto");
+        StatusText = L.T("Ready");
     }
 }
 
@@ -165,7 +165,7 @@ public sealed class RoomItemViewModel : Observable
     public string AddedByName => _owner.MemberName(Item.AddedBy);
     public Brush AddedByBrush => _owner.MemberBrush(Item.AddedBy);
     public string AddedByInitial => AddedByName.Length > 0 ? char.ToUpper(AddedByName[0]).ToString() : "?";
-    public string AddedByText => L.F("aggiunto da {0}", AddedByName);
+    public string AddedByText => L.F("added by {0}", AddedByName);
     public bool IsMine => _owner.Session?.Me.Id == Item.AddedBy;
 
     // This computer's copy of the file.
@@ -176,13 +176,13 @@ public sealed class RoomItemViewModel : Observable
     public bool IsFailed => State == FileState.Failed;
     public string StateTip => State switch
     {
-        FileState.Ready => _owner.InLibrary(Item.Id) ? L.T("Pronto: è nella tua libreria") : L.T("Pronto"),
-        FileState.Downloading => L.F("Lo stai scaricando · {0:0}%", Pct),
+        FileState.Ready => _owner.InLibrary(Item.Id) ? L.T("Ready: it's in your library") : L.T("Ready"),
+        FileState.Downloading => L.F("Downloading it · {0:0}%", Pct),
         FileState.Transfer when _owner.WaitingHost(Item.Id) => _owner.HostWaitText(Item.Id),
-        FileState.Transfer => L.F("Lo stai ricevendo da qualcuno nella stanza · {0:0}%", Pct),
-        FileState.Failed when !_owner.P2P => L.T("Non si riesce a scaricarlo dal suo link, e senza P2P nessuno può mandartelo"),
-        FileState.Failed => L.T("Non si riesce ad averlo: si riprova tra poco"),
-        _ => L.T("Verrà preparato quando si avvicina il suo turno"),
+        FileState.Transfer => L.F("Receiving it from someone in the room · {0:0}%", Pct),
+        FileState.Failed when !_owner.P2P => L.T("It can't be downloaded from its link, and without P2P nobody can send it to you"),
+        FileState.Failed => L.T("Can't get it: trying again shortly"),
+        _ => L.T("It'll be fetched when its turn gets close"),
     };
     public string PctText => IsBusy ? $"{Pct:0}%" : "";
     public bool InLibrary => _owner.InLibrary(Item.Id);
@@ -198,15 +198,15 @@ public sealed class RoomItemViewModel : Observable
     private bool AddsToLibrary => !InLibrary && TogetherViewModel.HasLink(Item);
     public bool ShowKeep => !SavedOnDevice;
     public string KeepGlyph => AddsToLibrary ? "" : "";
-    public string KeepTip => AddsToLibrary ? L.T("Aggiungi alla libreria (senza scaricarlo)") : L.T("Salva sul dispositivo");
-    public string KeepLabel => AddsToLibrary ? L.T("Libreria") : L.T("Salva");
+    public string KeepTip => AddsToLibrary ? L.T("Add to library (without downloading it)") : L.T("Save to device");
+    public string KeepLabel => AddsToLibrary ? L.T("Library") : L.T("Save");
     public ICommand KeepCommand => new RelayCommand(() =>
     {
         if (AddsToLibrary) _owner.AddToLibrary(this, null);
         else _ = _owner.Save(this, null);
     });
     public ICommand PlayNowCommand => new RelayCommand(() => _owner.PlayNow(Id));
-    public string RemoveTip => CanRemove ? L.T("Togli dalla coda") : L.T("Solo chi ha il permesso può togliere i brani degli altri");
+    public string RemoveTip => CanRemove ? L.T("Remove from queue") : L.T("Only people with permission can remove other people's songs");
 
     public void Update(RoomTrack item, int number, bool current)
     {
@@ -273,8 +273,8 @@ public sealed class TogetherViewModel : Observable
     {
         _main = main;
         var s = main.Host.Settings;
-        _newRoomName = L.F("Stanza di {0}", main.ProfileName);
-        MaxChoices = new[] { 2, 3, 4, 5, 6, 8, 10, 12, 16 }.Select(n => new Choice(L.F("{0} persone", n), n)).ToList();
+        _newRoomName = L.F("{0}'s room", main.ProfileName);
+        MaxChoices = new[] { 2, 3, 4, 5, 6, 8, 10, 12, 16 }.Select(n => new Choice(L.F("{0} people", n), n)).ToList();
         _maxChoice = MaxChoices.FirstOrDefault(c => (int)c.Value! == s.TogetherMax) ?? MaxChoices[5];
         _defaultPerms = (Perm)s.TogetherRoomPerms & Perm.All;
         _scanTimer.Tick += (_, _) => _ = Scan();
@@ -284,7 +284,7 @@ public sealed class TogetherViewModel : Observable
         JoinCommand = new RelayCommand(p => { if (p is RoomAdViewModel r && r.Ad.Ip != null) _ = Join(r.Ad.Ip, r.Ad.Port, r.Locked, r.Name); }, _ => !Busy);
         JoinByAddressCommand = new RelayCommand(JoinByAddress, () => !Busy);
         RefreshCommand = new RelayCommand(() => _ = Scan());
-        LeaveCommand = new RelayCommand(() => ConfirmLeave(null, L.T("Esci dalla stanza")));
+        LeaveCommand = new RelayCommand(() => ConfirmLeave(null, L.T("Leave the room")));
         SendCommand = new RelayCommand(Send, () => ChatInput.Trim().Length > 0);
         CopyAddressCommand = new RelayCommand(CopyAddress);
         FirewallCommand = new RelayCommand(() => _ = AllowFirewall());
@@ -319,7 +319,7 @@ public sealed class TogetherViewModel : Observable
     public ICommand KickSelectedCommand { get; }
     public ICommand ClearSelectionCommand { get; }
 
-    private TogetherCache Cache => _main.Host.SongCache;
+    private SongCache Cache => _main.Host.SongCache;
 
     // ------------------------------------------------------------------ page
 
@@ -406,16 +406,16 @@ public sealed class TogetherViewModel : Observable
         OnChanged(nameof(DefAdd), nameof(DefRemove), nameof(DefSkip), nameof(DefPause), nameof(DefSpeed));
     }
 
-    public static string PermsText(Perm p) => p == Perm.None ? L.T("Può solo ascoltare.") : L.T("Può") + " " + PermsList(p) + ".";
+    public static string PermsText(Perm p) => p == Perm.None ? L.T("Can only listen.") : L.T("Can") + " " + PermsList(p) + ".";
 
     private static string PermsList(Perm p)
     {
         var parts = new List<string>();
-        if ((p & Perm.Add) != 0) parts.Add(L.T("aggiungere brani"));
-        if ((p & Perm.Remove) != 0) parts.Add(L.T("togliere e spostare brani"));
-        if ((p & Perm.Skip) != 0) parts.Add(L.T("saltare"));
-        if ((p & Perm.Pause) != 0) parts.Add(L.T("mettere in pausa, andare avanti e indietro e ripetere il brano"));
-        if ((p & Perm.Speed) != 0) parts.Add(L.T("cambiare la velocità"));
+        if ((p & Perm.Add) != 0) parts.Add(L.T("add songs"));
+        if ((p & Perm.Remove) != 0) parts.Add(L.T("remove and move songs"));
+        if ((p & Perm.Skip) != 0) parts.Add(L.T("skip"));
+        if ((p & Perm.Pause) != 0) parts.Add(L.T("pause, move forward and back and loop the song"));
+        if ((p & Perm.Speed) != 0) parts.Add(L.T("change the speed"));
         return string.Join(", ", parts);
     }
 
@@ -434,7 +434,7 @@ public sealed class TogetherViewModel : Observable
         catch (Exception ex)
         {
             s.Dispose();
-            LobbyMessage = L.T("Impossibile creare la stanza:") + " " + ex.Message;
+            LobbyMessage = L.T("Couldn't create the room:") + " " + ex.Message;
             return;
         }
         LobbyMessage = null;
@@ -449,11 +449,11 @@ public sealed class TogetherViewModel : Observable
         string? password = null;
         if (locked)
         {
-            password = Dialogs.Prompt(L.T("Stanza con password"), L.F("Password di «{0}»", name ?? ip), "");
+            password = Dialogs.Prompt(L.T("Room with a password"), L.F("Password of “{0}”", name ?? ip), "");
             if (password == null) return;
         }
         Busy = true;
-        BusyText = L.F("Entro in «{0}»…", name ?? ip);
+        BusyText = L.F("Joining “{0}”…", name ?? ip);
         LobbyMessage = null;
         try
         {
@@ -470,11 +470,11 @@ public sealed class TogetherViewModel : Observable
                 // The room turned out to have a password: ask once.
                 if (r.NeedsPassword && attempt == 0)
                 {
-                    password = Dialogs.Prompt(L.T("Stanza con password"), r.Error ?? L.T("Password"), "");
+                    password = Dialogs.Prompt(L.T("Room with a password"), r.Error ?? L.T("Password"), "");
                     if (password == null) return;
                     continue;
                 }
-                LobbyMessage = r.Error ?? L.T("Non è stato possibile entrare nella stanza.");
+                LobbyMessage = r.Error ?? L.T("Couldn't join the room.");
                 return;
             }
         }
@@ -489,8 +489,8 @@ public sealed class TogetherViewModel : Observable
     private void JoinByAddress()
     {
         var settings = _main.Host.Settings;
-        var text = Dialogs.Prompt(L.T("Entra con l'indirizzo"),
-            L.T("Indirizzo del computer che ospita la stanza (per esempio 192.168.1.20, oppure quello di Radmin VPN)"),
+        var text = Dialogs.Prompt(L.T("Join by address"),
+            L.T("Address of the computer hosting the room (for example 192.168.1.20, or its Radmin VPN one)"),
             settings.TogetherLastAddress ?? "");
         if (string.IsNullOrWhiteSpace(text)) return;
         text = text.Trim();
@@ -535,7 +535,7 @@ public sealed class TogetherViewModel : Observable
         _joinedAddress = address;
         var settings = _main.Host.Settings;
         _fetcher = new TogetherFetcher(s, _main.Library, Cache,
-            () => new FetchOptions(settings.AudioFormat, settings.CookiesBrowserOrNull, Math.Clamp(settings.TogetherCacheSize, 1, 200),
+            () => new FetchOptions(settings.AudioFormat, settings.CookiesBrowserOrNull, Math.Clamp(settings.CacheSize, 1, 200),
                 AheadSetting(settings.TogetherAhead), AheadSetting(settings.TogetherHostAhead), settings.TogetherTakeFromHost, settings.TogetherP2P,
                 settings.MaxParallel));
         s.RoomChanged += OnRoom;
@@ -611,9 +611,9 @@ public sealed class TogetherViewModel : Observable
     public bool ConfirmLeave(string? why, string action)
     {
         if (!InRoom) return true;
-        var text = why ?? L.F("Uscirai da «{0}».", RoomName);
-        if (IsHost && _s!.Members.Count(m => !m.Away) > 1) text += "\n\n" + L.T("Sei l'host: la stanza passerà a chi ha più permessi (a parità, a chi è entrato per primo).");
-        if (!Dialogs.Confirm(L.T("Uscire dalla stanza?"), text, action, true)) return false;
+        var text = why ?? L.F("You'll leave “{0}”.", RoomName);
+        if (IsHost && _s!.Members.Count(m => !m.Away) > 1) text += "\n\n" + L.T("You're the host: the room will go to whoever has the most permissions (on a tie, whoever joined first).");
+        if (!Dialogs.Confirm(L.T("Leave the room?"), text, action, true)) return false;
         Leave();
         return true;
     }
@@ -647,8 +647,10 @@ public sealed class TogetherViewModel : Observable
     {
         var name = RoomName;
         Detach();
+        // (a room of an older version sends it in Italian)
+        reason = L.KeyOf(reason);
         LobbyMessage = L.T(reason);
-        _main.Toast(L.F("Sei uscito da «{0}»: {1}", name, L.T(reason)));
+        _main.Toast(L.F("You left “{0}”: {1}", name, L.T(reason)));
     }
 
     private void OnNotice(string key)
@@ -656,7 +658,7 @@ public sealed class TogetherViewModel : Observable
         // A burst of refusals (e.g. arrow keys held) shows once.
         if ((DateTime.Now - _lastDeny).TotalSeconds < 2) return;
         _lastDeny = DateTime.Now;
-        _main.Toast(L.T(key));
+        _main.Toast(L.T(L.KeyOf(key)));
     }
 
     // ------------------------------------------------------------------ room: header and people
@@ -671,11 +673,11 @@ public sealed class TogetherViewModel : Observable
         get
         {
             if (_s == null) return "";
-            var parts = new List<string> { L.F("{0} di {1} persone", MemberCount, _s.Max) };
-            if (IsHost) parts.Add(L.T("sei l'host"));
-            else if (HostName != null) parts.Add(L.F("ospitata da {0}", HostName));
-            if (_s.Locked) parts.Add(L.T("con password"));
-            if (!IsHost && _s.Latency > 0) parts.Add(L.F("ritardo {0} ms", _s.Latency));
+            var parts = new List<string> { L.F("{0} of {1} people", MemberCount, _s.Max) };
+            if (IsHost) parts.Add(L.T("you're the host"));
+            else if (HostName != null) parts.Add(L.F("hosted by {0}", HostName));
+            if (_s.Locked) parts.Add(L.T("with password"));
+            if (!IsHost && _s.Latency > 0) parts.Add(L.F("latency {0} ms", _s.Latency));
             return string.Join(" · ", parts);
         }
     }
@@ -686,11 +688,11 @@ public sealed class TogetherViewModel : Observable
         get
         {
             if (_s == null) return "";
-            if (!IsHost) return _joinedAddress != null ? L.F("Collegato a {0}", _joinedAddress) : "";
+            if (!IsHost) return _joinedAddress != null ? L.F("Connected to {0}", _joinedAddress) : "";
             var ips = Discovery.LocalAddresses();
             if (ips.Count == 0) return "";
             string port = _s.ListenPort == TogetherSession.FirstPort ? "" : ":" + _s.ListenPort;
-            return L.T("Indirizzo per entrare:") + " " + string.Join("  ·  ", ips.Take(3).Select(ip => ip + port));
+            return L.T("Address to join:") + " " + string.Join("  ·  ", ips.Take(3).Select(ip => ip + port));
         }
     }
 
@@ -734,7 +736,7 @@ public sealed class TogetherViewModel : Observable
         UpdateNowPlaying();
     }
 
-    public string MemberName(string id) => _s?.Members.FirstOrDefault(m => m.Id == id)?.Name ?? L.T("qualcuno che è uscito");
+    public string MemberName(string id) => _s?.Members.FirstOrDefault(m => m.Id == id)?.Name ?? L.T("someone who left");
     public Brush MemberBrush(string id) => Ui.BrushFrom(_s?.Members.FirstOrDefault(m => m.Id == id)?.Color ?? "#687084");
 
     // ------------------------------------------------------------------ permissions
@@ -747,10 +749,10 @@ public sealed class TogetherViewModel : Observable
     public bool CanSpeed => _s?.Can(Perm.Speed) == true;
     public bool CanRemoveItem(RoomTrack t) => CanRemove || _s?.Me.Id == t.AddedBy;
 
-    public string MyRoleText => _s == null ? "" : IsHost ? L.T("Sei l'host: puoi fare tutto e decidi cosa possono fare gli altri.") : PermsText(_s.MyPerms);
+    public string MyRoleText => _s == null ? "" : IsHost ? L.T("You're the host: you can do everything and decide what the others can do.") : PermsText(_s.MyPerms);
     public string AddHint => CanAdd
-        ? L.T("Nelle tue playlist e nelle librerie il tasto + (o il doppio clic) mette i brani qui.")
-        : L.T("Solo chi ha il permesso può aggiungere brani: lo decide l'host.");
+        ? L.T("In your playlists and libraries the + button (or a double-click) puts songs here.")
+        : L.T("Only people with permission can add songs: the host decides.");
 
     private void Deny(string key)
     {
@@ -759,17 +761,17 @@ public sealed class TogetherViewModel : Observable
 
     public string Denied(Perm p) => L.T(p switch
     {
-        Perm.Add => "Non hai il permesso di aggiungere brani alla stanza (lo decide l'host).",
-        Perm.Remove => "Non hai il permesso di togliere o spostare brani (lo decide l'host).",
-        Perm.Skip => "Non hai il permesso di saltare i brani (lo decide l'host).",
-        Perm.Pause => "Non hai il permesso di mettere in pausa o andare avanti e indietro (lo decide l'host).",
-        _ => "Non hai il permesso di cambiare la velocità (lo decide l'host).",
+        Perm.Add => "You're not allowed to add songs to the room (the host decides).",
+        Perm.Remove => "You're not allowed to remove or move songs (the host decides).",
+        Perm.Skip => "You're not allowed to skip songs (the host decides).",
+        Perm.Pause => "You're not allowed to pause or move forward and back (the host decides).",
+        _ => "You're not allowed to change the speed (the host decides).",
     });
 
     // Host: the people selected in the list.
     public List<MemberViewModel> SelectedMembers => Members.Where(m => m.IsSelected && !m.IsMe).ToList();
     public bool HasSelection => IsHost && SelectedMembers.Count > 0;
-    public string SelectionText => L.Count(SelectedMembers.Count, "1 persona selezionata", "{0} persone selezionate");
+    public string SelectionText => L.Count(SelectedMembers.Count, "1 person selected", "{0} people selected");
 
     // Tick = all the selected have it, dash = only some.
     public bool? SelAdd => SelState(Perm.Add);
@@ -810,15 +812,15 @@ public sealed class TogetherViewModel : Observable
     {
         if (_s == null || !IsHost || who.Count == 0) return;
         var names = string.Join(", ", who.Select(m => m.Name));
-        if (!Dialogs.Confirm(who.Count == 1 ? L.T("Espellere dalla stanza?") : L.F("Espellere {0} persone?", who.Count),
-                L.F("{0} verrà tolto dalla stanza e non potrà rientrarci finché resta aperta.", names), L.T("Espelli dalla stanza"), true)) return;
+        if (!Dialogs.Confirm(who.Count == 1 ? L.T("Kick from the room?") : L.F("Kick {0} people?", who.Count),
+                L.F("{0} will be removed from the room and can't come back while it stays open.", names), L.T("Kick from the room"), true)) return;
         foreach (var m in who) _s.KickMember(m.Id);
     }
 
     public void MakeHost(MemberViewModel m)
     {
         if (_s == null || !IsHost || m.IsMe) return;
-        if (!Dialogs.Confirm(L.T("Passare l'host?"), L.F("{0} diventerà l'host della stanza e deciderà i permessi. Tu resti nella stanza.", m.Name), L.T("Passa l'host"))) return;
+        if (!Dialogs.Confirm(L.T("Hand over the host?"), L.F("{0} will become the host of the room and decide the permissions. You stay in the room.", m.Name), L.T("Hand over"))) return;
         _s.Promote(m.Id);
     }
 
@@ -826,7 +828,7 @@ public sealed class TogetherViewModel : Observable
 
     public List<RoomItemViewModel> Queue { get; private set; } = new();
     public bool HasQueue => Queue.Count > 0;
-    public string QueueCountText => Queue.Count == 0 ? "" : L.Count(Queue.Count, "1 brano", "{0} brani");
+    public string QueueCountText => Queue.Count == 0 ? "" : L.Count(Queue.Count, "1 song", "{0} songs");
 
     private RoomItemViewModel? _currentItem;
     public RoomItemViewModel? CurrentItem { get => _currentItem; private set { if (Set(ref _currentItem, value)) OnChanged(nameof(HasCurrent)); } }
@@ -877,8 +879,8 @@ public sealed class TogetherViewModel : Observable
     {
         var st = _s?.StatusOf(_s.HostId, itemId);
         return st?.State is FileState.Downloading or FileState.Transfer
-            ? L.F("Arriverà dall'host: lo sta preparando · {0:0}%", st.Pct)
-            : L.T("Arriverà dall'host appena l'ha preparato");
+            ? L.F("Coming from the host: it's getting it ready · {0:0}%", st.Pct)
+            : L.T("Coming from the host as soon as it's ready there");
     }
     public bool InLibrary(string itemId) => _fetcher?.LibraryTrack(itemId) is { } t && _main.Library.Get(t.Id) != null;
 
@@ -953,12 +955,12 @@ public sealed class TogetherViewModel : Observable
         if (list.Count > room) list = list.Take(Math.Max(0, room)).ToList();
         if (list.Count == 0)
         {
-            _main.Toast(L.T("La coda della stanza è piena."));
+            _main.Toast(L.T("The room's queue is full."));
             return;
         }
-        if (list.Count > 12 && !Dialogs.Confirm(L.T("Aggiungere alla stanza?"),
-                L.F("{0} brani di «{1}» andranno nella coda della stanza{2}.", list.Count, listName, shuffle ? " " + L.T("in ordine casuale") : ""),
-                L.T("Aggiungi"))) return;
+        if (list.Count > 12 && !Dialogs.Confirm(L.T("Add to the room?"),
+                L.F("{0} songs from “{1}” will go into the room's queue{2}.", list.Count, listName, shuffle ? " " + L.T("shuffled") : ""),
+                L.T("Add"))) return;
         _ = AddAsync(list, false);
     }
 
@@ -971,8 +973,8 @@ public sealed class TogetherViewModel : Observable
         if (next) order.Reverse();
         foreach (var i in order) _s.Add(items[i], covers[i], next);
         _main.Toast(items.Count == 1
-            ? L.F(next ? "«{0}» sarà il prossimo nella stanza" : "«{0}» aggiunto alla coda della stanza", items[0].Title)
-            : L.F("{0} brani aggiunti alla coda della stanza", items.Count));
+            ? L.F(next ? "“{0}” will play next in the room" : "“{0}” added to the room's queue", items[0].Title)
+            : L.F("{0} songs added to the room's queue", items.Count));
     }
 
     // ------------------------------------------------------------------ random songs
@@ -1021,12 +1023,12 @@ public sealed class TogetherViewModel : Observable
         }
     }
 
-    public string RandomTitle => SuggestedSource ? L.T("Aggiungi brani consigliati") : L.T("Aggiungi brani a caso");
+    public string RandomTitle => SuggestedSource ? L.T("Add suggested songs") : L.T("Add random songs");
     public string RandomHint => SuggestedSource
-        ? L.T("Simili a quello in riproduzione nella stanza, trovati online come in «Riproduci brani simili»: premi ancora per averne altri.")
-        : L.T("Scelti a caso, senza quelli già nella stanza: premi ancora per aggiungerne altri.");
+        ? L.T("Like the song playing in the room, found online as with “Play similar songs”: press again for more.")
+        : L.T("Picked at random, skipping the ones already in the room: press again to add more.");
     public string RandomGlyph => SuggestedSource ? "" : "";
-    public string RandomAddText => RandomBusy ? L.T("Cerco brani simili…") : L.T("Aggiungi alla coda");
+    public string RandomAddText => RandomBusy ? L.T("Looking for similar songs…") : L.T("Add to queue");
 
     private void OnRandomChanged() => OnChanged(nameof(RandomTitle), nameof(RandomHint), nameof(RandomGlyph), nameof(RandomAddText));
 
@@ -1040,14 +1042,14 @@ public sealed class TogetherViewModel : Observable
 
     private void RefreshRandomSources()
     {
-        var list = new List<Choice> { new(L.T("Tutti i brani"), "library", L.Count(_main.Library.Count, "1 brano", "{0} brani")) };
+        var list = new List<Choice> { new(L.T("All songs"), "library", L.Count(_main.Library.Count, "1 song", "{0} songs")) };
         var seed = SuggestedSeed();
-        list.Add(new Choice("✦ " + L.T("Consigliati online"), Suggested,
-            seed != null ? L.F("simili a «{0}»", seed.Title.Length > 30 ? seed.Title[..30] + "…" : seed.Title) : L.T("simili al brano della stanza")));
+        list.Add(new Choice("✦ " + L.T("Suggested online"), Suggested,
+            seed != null ? L.F("like “{0}”", seed.Title.Length > 30 ? seed.Title[..30] + "…" : seed.Title) : L.T("like the room's song")));
         foreach (var p in _main.Playlists.Where(p => p.P.Tracks.Count > 0))
-            list.Add(new Choice(p.IsFavorites ? "♥ " + p.Name : p.Name, "playlist:" + p.Id, L.Count(p.P.Tracks.Count, "1 brano", "{0} brani")));
+            list.Add(new Choice(p.IsFavorites ? "♥ " + p.Name : p.Name, "playlist:" + p.Id, L.Count(p.P.Tracks.Count, "1 song", "{0} songs")));
         foreach (var t in _main.Tags.Where(t => t.Count > 0))
-            list.Add(new Choice("# " + t.Name, "tag:" + t.Id, L.Count(t.Count, "1 brano", "{0} brani")));
+            list.Add(new Choice("# " + t.Name, "tag:" + t.Id, L.Count(t.Count, "1 song", "{0} songs")));
         RandomSources = list;
         _randomSource = list.FirstOrDefault(c => (string)c.Value! == _lastRandomSource) ?? list[0];
         OnChanged(nameof(RandomSources), nameof(RandomSource));
@@ -1078,7 +1080,7 @@ public sealed class TogetherViewModel : Observable
         int want = Math.Min((int)RandomCount.Value!, TogetherSession.MaxQueue - _s.Queue.Count);
         if (want <= 0)
         {
-            _main.Toast(L.T("La coda della stanza è piena."));
+            _main.Toast(L.T("The room's queue is full."));
             return;
         }
         if (SuggestedSource)
@@ -1100,7 +1102,7 @@ public sealed class TogetherViewModel : Observable
         var pick = fresh.OrderBy(_ => Random.Shared.Next()).Where(t => t.HasSavedFile || t.HasLink).Take(want).Select(_main.Vm).ToList();
         if (pick.Count == 0)
         {
-            _main.Toast(L.T("In questa lista non ci sono altri brani da aggiungere."));
+            _main.Toast(L.T("There are no more songs to add from this list."));
             return;
         }
         foreach (var t in pick) _randomUsed.Add(t.Id);
@@ -1120,7 +1122,7 @@ public sealed class TogetherViewModel : Observable
         if (_s == null || RandomBusy) return;
         if (SuggestedSeed() is not { } from)
         {
-            _main.Toast(L.T("Nella stanza non c'è ancora un brano: i consigliati sono simili a quello in riproduzione."));
+            _main.Toast(L.T("There's no song in the room yet: suggestions are like the one playing."));
             return;
         }
         RandomBusy = true;
@@ -1153,7 +1155,7 @@ public sealed class TogetherViewModel : Observable
             if (_s == null) return;
             if (picks.Count == 0)
             {
-                _main.Toast(L.T("Nessun brano simile nuovo trovato online."));
+                _main.Toast(L.T("No new similar songs found online."));
                 return;
             }
             foreach (var p in picks) _suggestedUsed.Add(SongMeta.Key(p.Hit.Title, p.Hit.Artist));
@@ -1174,11 +1176,11 @@ public sealed class TogetherViewModel : Observable
             });
             if (_s == null) return;
             for (int i = 0; i < items.Count; i++) _s.Add(items[i], covers[i], false);
-            _main.Toast(L.Count(items.Count, "1 brano consigliato aggiunto alla coda della stanza", "{0} brani consigliati aggiunti alla coda della stanza"));
+            _main.Toast(L.Count(items.Count, "1 suggested song added to the room's queue", "{0} suggested songs added to the room's queue"));
         }
         catch
         {
-            _main.Toast(L.T("I siti non hanno risposto: controlla la connessione e riprova."));
+            _main.Toast(L.T("The sites didn't answer: check your connection and try again."));
         }
         finally { RandomBusy = false; }
     }
@@ -1198,7 +1200,7 @@ public sealed class TogetherViewModel : Observable
         var list = items.Take(Math.Max(0, TogetherSession.MaxQueue - _s.Queue.Count)).ToList();
         if (list.Count == 0)
         {
-            _main.Toast(L.T("La coda della stanza è piena."));
+            _main.Toast(L.T("The room's queue is full."));
             return;
         }
         _ = AddLinkAsync(list);
@@ -1239,7 +1241,7 @@ public sealed class TogetherViewModel : Observable
         });
         if (_s == null) return;
         for (int i = 0; i < tracks.Count; i++) _s.Add(tracks[i], covers[i], false);
-        _main.Toast(tracks.Count == 1 ? L.F("«{0}» aggiunto alla coda della stanza", tracks[0].Title) : L.F("{0} brani aggiunti alla coda della stanza", tracks.Count));
+        _main.Toast(tracks.Count == 1 ? L.F("“{0}” added to the room's queue", tracks[0].Title) : L.F("{0} songs added to the room's queue", tracks.Count));
     }
 
     // As a download would name it ("Janji - Heroes Tonight" on a channel: artist Janji), found again from its page.
@@ -1352,7 +1354,7 @@ public sealed class TogetherViewModel : Observable
         }
         if (_s.Current == null)
         {
-            _main.Toast(L.T("La coda della stanza è vuota."));
+            _main.Toast(L.T("The room's queue is empty."));
             return;
         }
         _s.SetPaused(_s.Play.State is PlayState.Playing or PlayState.Waiting);
@@ -1435,10 +1437,10 @@ public sealed class TogetherViewModel : Observable
     public bool NowBusy { get => _nowBusy; private set => Set(ref _nowBusy, value); }
     public string NowKicker => _s?.Play.State switch
     {
-        PlayState.Playing => L.T("IN RIPRODUZIONE"),
-        PlayState.Paused => L.T("IN PAUSA"),
-        PlayState.Waiting => L.T("STA PER INIZIARE"),
-        _ => L.T("NIENTE IN RIPRODUZIONE"),
+        PlayState.Playing => L.T("NOW PLAYING"),
+        PlayState.Paused => L.T("PAUSED"),
+        PlayState.Waiting => L.T("ABOUT TO START"),
+        _ => L.T("NOTHING PLAYING"),
     };
 
     private void OnPlayback()
@@ -1457,7 +1459,7 @@ public sealed class TogetherViewModel : Observable
         OnChanged(nameof(NowKicker), nameof(IsPlaying));
         if (s.Current is not { } cur)
         {
-            NowStatus = CanAdd ? L.T("La coda è vuota: aggiungi un brano con il tasto + dalle tue playlist.") : L.T("La coda è vuota: aspetta che qualcuno aggiunga un brano.");
+            NowStatus = CanAdd ? L.T("The queue is empty: add a song with the + button in your playlists.") : L.T("The queue is empty: wait for someone to add a song.");
             NowBusy = false;
             return;
         }
@@ -1467,14 +1469,14 @@ public sealed class TogetherViewModel : Observable
         NowBusy = mine?.State is FileState.Downloading or FileState.Transfer || s.Play.State == PlayState.Waiting;
         NowStatus = mine?.State switch
         {
-            FileState.Downloading => L.F("Lo stai scaricando · {0:0}%: appena finisce entri al punto giusto", mine.Pct),
+            FileState.Downloading => L.F("Downloading it · {0:0}%: once done you'll join at the right point", mine.Pct),
             FileState.Transfer when WaitingHost(cur.Id) => HostWaitText(cur.Id),
-            FileState.Transfer => L.F("Lo stai ricevendo da qualcuno nella stanza · {0:0}%", mine.Pct),
-            FileState.Failed when !P2P => L.T("Non si riesce a scaricare il brano dal suo link, e senza P2P nessuno può mandartelo"),
-            FileState.Failed => L.T("Non si riesce ad avere il brano: si riprova tra poco"),
-            _ when s.Play.State == PlayState.Waiting => L.F("Aspettiamo che tutti abbiano il brano · {0} di {1} pronti", ready, total),
-            _ when s.Play.State == PlayState.Paused => L.T("In pausa per tutti"),
-            _ => ready < total ? L.F("{0} di {1} lo stanno già ascoltando", ready, total) : L.T("Tutti lo stanno ascoltando"),
+            FileState.Transfer => L.F("Receiving it from someone in the room · {0:0}%", mine.Pct),
+            FileState.Failed when !P2P => L.T("The song can't be downloaded from its link, and without P2P nobody can send it to you"),
+            FileState.Failed => L.T("Can't get the song: trying again shortly"),
+            _ when s.Play.State == PlayState.Waiting => L.F("Waiting for everyone to have the song · {0} of {1} ready", ready, total),
+            _ when s.Play.State == PlayState.Paused => L.T("Paused for everyone"),
+            _ => ready < total ? L.F("{0} of {1} are already listening", ready, total) : L.T("Everyone is listening"),
         };
     }
 
@@ -1606,7 +1608,7 @@ public sealed class TogetherViewModel : Observable
         {
             if (!HasLink(r))
             {
-                _main.Toast(L.T("Questo brano non ha un link da cui riascoltarlo: puoi solo salvarlo sul dispositivo."));
+                _main.Toast(L.T("This song has no link to hear it again from: you can only save it on the device."));
                 return null;
             }
             t = new Track
@@ -1639,8 +1641,8 @@ public sealed class TogetherViewModel : Observable
         if (playlist != null) _main.Profile.AddTrack(playlist, t.Id);
         _fetcher?.UseLibrary(item.Id, t);
         item.Refresh();
-        _main.Toast(playlist != null ? L.F("«{0}» aggiunto a «{1}»", t.Title, PlaylistViewModel.DisplayName(playlist))
-            : added ? L.F("«{0}» aggiunto alla libreria senza salvarlo", t.Title) : L.T("È già nella tua libreria"));
+        _main.Toast(playlist != null ? L.F("“{0}” added to “{1}”", t.Title, PlaylistViewModel.DisplayName(playlist))
+            : added ? L.F("“{0}” added to your library without saving it", t.Title) : L.T("It's already in your library"));
         return t;
     }
 
@@ -1659,13 +1661,13 @@ public sealed class TogetherViewModel : Observable
         if (known is { HasSavedFile: true } have)
         {
             if (playlist != null) _main.AddToPlaylist(_main.Vm(have), playlist);
-            else _main.Toast(L.T("È già salvato sul dispositivo"));
+            else _main.Toast(L.T("It's already saved on the device"));
             return have;
         }
         var from = _fetcher?.PathFor(item.Id);
         if (from == null)
         {
-            _main.Toast(L.T("Il brano non è ancora arrivato su questo computer: aspetta che finisca di scaricarsi."));
+            _main.Toast(L.T("The song hasn't reached this computer yet: wait for it to finish downloading."));
             return null;
         }
         var r = item.Item;
@@ -1689,7 +1691,7 @@ public sealed class TogetherViewModel : Observable
                 _fetcher?.UseLibrary(r.Id, cloud);
                 if (Cache.Contains(from)) Cache.Forget(from);
                 item.Refresh();
-                _main.Toast(L.F("«{0}» salvato sul dispositivo", cloud.Title));
+                _main.Toast(L.F("“{0}” saved on your device", cloud.Title));
                 return cloud;
             }
             var t = new Track
@@ -1726,12 +1728,12 @@ public sealed class TogetherViewModel : Observable
             _fetcher?.UseLibrary(r.Id, t);
             if (Cache.Contains(from)) Cache.Forget(from);
             item.Refresh();
-            _main.Toast(playlist != null ? L.F("«{0}» salvato in «{1}»", t.Title, PlaylistViewModel.DisplayName(playlist)) : L.F("«{0}» salvato nella libreria", t.Title));
+            _main.Toast(playlist != null ? L.F("“{0}” saved to “{1}”", t.Title, PlaylistViewModel.DisplayName(playlist)) : L.F("“{0}” saved to your library", t.Title));
             return t;
         }
         catch (Exception ex)
         {
-            _main.Toast(L.T("Salvataggio non riuscito:") + " " + ex.Message);
+            _main.Toast(L.T("Saving failed:") + " " + ex.Message);
             return null;
         }
     }
@@ -1766,13 +1768,13 @@ public sealed class TogetherViewModel : Observable
         var text = IsHost ? string.Join(", ", Discovery.LocalAddresses().Take(3).Select(ip => _s!.ListenPort == TogetherSession.FirstPort ? ip : $"{ip}:{_s.ListenPort}")) : _joinedAddress;
         if (string.IsNullOrEmpty(text)) return;
         Ui.CopyText(text);
-        _main.Toast(L.T("Indirizzo copiato"));
+        _main.Toast(L.T("Address copied"));
     }
 
     private async Task AllowFirewall()
     {
         bool ok = await Task.Run(Firewall.Allow);
-        _main.Toast(ok ? Firewall.DoneMessage : L.T("Il firewall non è stato cambiato."));
+        _main.Toast(ok ? Firewall.DoneMessage : L.T("The firewall wasn't changed."));
     }
 
     // Cache in Settings (the files in use, by a room or by the suggested songs, stay).

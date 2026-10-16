@@ -25,13 +25,13 @@ public sealed class RadioItemViewModel : Observable
     public bool IsBusy => State == FileState.Downloading;
     public bool IsFailed => State == FileState.Failed;
     public string PctText => IsBusy ? $"{Pct:0}%" : "";
-    public string FromText => Song.FromLink ? L.F("Da {0}, non salvato", Song.Service) : L.F("Consigliato da {0}", Song.Service);
+    public string FromText => Song.FromLink ? L.F("From {0}, not saved", Song.Service) : L.F("Suggested by {0}", Song.Service);
     public string StateTip => State switch
     {
-        FileState.Ready => FromText + " · " + L.T("pronto"),
-        FileState.Downloading => FromText + " · " + L.F("lo sto scaricando, {0:0}%", Pct),
-        FileState.Failed => FromText + " · " + L.T("non si riesce a scaricarlo"),
-        _ => FromText + " · " + L.T("si scarica quando si avvicina il suo turno"),
+        FileState.Ready => FromText + " · " + L.T("ready"),
+        FileState.Downloading => FromText + " · " + L.F("downloading, {0:0}%", Pct),
+        FileState.Failed => FromText + " · " + L.T("can't be downloaded"),
+        _ => FromText + " · " + L.T("downloads when its turn comes near"),
     };
 
     public void Refresh(FileStatus? st)
@@ -71,7 +71,7 @@ public sealed class RadioViewModel : Observable
         var host = main.Host;
         var ui = Application.Current.Dispatcher;
         _fetcher = new RadioFetcher(host.SongCache,
-            () => new RadioFetchOptions(host.Settings.AudioFormat, host.Settings.CookiesBrowserOrNull, Math.Clamp(host.Settings.TogetherCacheSize, 1, 200),
+            () => new RadioFetchOptions(host.Settings.AudioFormat, host.Settings.CookiesBrowserOrNull, Math.Clamp(host.Settings.CacheSize, 1, 200),
                 host.Settings.MaxParallel), a => ui.BeginInvoke(a));
         _fetcher.Changed += OnFile;
         _fetcher.Replaced += OnReplaced;
@@ -435,7 +435,7 @@ public sealed class RadioViewModel : Observable
             _main.Library.Changed(t);
         }
         if (title != null)
-            _main.Toast(L.F("«{0}» non è più disponibile su {1}: lo trovi su {2}, e da ora si ascolta da lì", title, string.IsNullOrEmpty(from) ? L.T("il suo sito") : from, Sites.NameFor(url)));
+            _main.Toast(L.F("“{0}” is no longer available on {1}: it's on {2}, and from now on it plays from there", title, string.IsNullOrEmpty(from) ? L.T("its site") : from, Sites.NameFor(url)));
     }
 
     // Waveform and loudness, as for the songs saved (the volume is normalized the same way). Once per song and session (a
@@ -544,7 +544,7 @@ public sealed class RadioViewModel : Observable
     {
         var t = Keep(item, playlist);
         await _main.SaveToDevice(new[] { _main.Vm(t) }, quiet: playlist != null);
-        if (playlist != null) _main.Toast(L.F("«{0}» salvato in «{1}»", t.Title, PlaylistViewModel.DisplayName(playlist)));
+        if (playlist != null) _main.Toast(L.F("“{0}” saved to “{1}”", t.Title, PlaylistViewModel.DisplayName(playlist)));
         return t;
     }
 

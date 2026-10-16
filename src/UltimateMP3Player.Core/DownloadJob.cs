@@ -51,13 +51,13 @@ public sealed class DownloadJob
 
             if (Item.Source == SourceKind.Search)
             {
-                Report(JobPhase.Resolving, null, L.T("Ricerca del brano…"));
+                Report(JobPhase.Resolving, null, L.T("Searching for the song…"));
                 if (Item.SpotifyTrackId != null) await Spotify.EnrichAsync(Item, ct);
                 Item.Info ??= await MusicMatcher.FindAsync(Item, Options.CookiesBrowser, s => Report(JobPhase.Resolving, null, s), ct);
             }
             else if (Item.Source == SourceKind.YtDlp && Item.Info == null)
             {
-                Report(JobPhase.Resolving, null, L.T("Analisi…"));
+                Report(JobPhase.Resolving, null, L.T("Analyzing…"));
                 Item.Info = await YtDlp.GetInfoAsync(Item.Url, Options.CookiesBrowser, ct);
                 if (Item.Kind == MediaKind.Video && !Item.Info.HasVideo)
                 {
@@ -79,13 +79,13 @@ public sealed class DownloadJob
             else input = await DownloadDirect(temp, ct);
             ct.ThrowIfCancellationRequested();
 
-            Report(JobPhase.Converting, null, L.T("Preparazione…"));
+            Report(JobPhase.Converting, null, L.T("Preparing…"));
             bool isImage = target is ImageTarget;
             var probe = await Ffmpeg.ProbeAsync(input, ct, countPackets: isImage);
             if (target is VideoTarget && probe.Video == null && probe.Audio != null)
                 target = new AudioTarget(Options.Audio.Format, Options.Audio.Kbps, Options.Audio.SampleRate, Options.Audio.Channels, Options.Audio.BitDepth);
             if (target is ImageTarget && probe.Video == null)
-                throw new EngineException(L.T("Il file scaricato non è un'immagine."));
+                throw new EngineException(L.T("The downloaded file isn't an image."));
 
             var outBase = Path.Combine(temp, "out");
             var (produced, ext, summary) = AudioAnalysis.Native is { } native
@@ -98,7 +98,7 @@ public sealed class DownloadJob
             var final = Text.UniquePath(OutputDir, name, ext);
             File.Move(produced, final);
             ResultPath = final;
-            Report(JobPhase.Done, 100, L.T("Completato"));
+            Report(JobPhase.Done, 100, L.T("Completed"));
         }
         finally
         {
@@ -116,7 +116,7 @@ public sealed class DownloadJob
         {
             case VideoTarget vt:
                 {
-                    if (probe.Video == null) throw new EngineException(L.T("Il file scaricato non contiene né video né audio."));
+                    if (probe.Video == null) throw new EngineException(L.T("The downloaded file has neither video nor audio."));
                     string? meta = Options.EmbedMetadata ? Ffmpeg.WriteMetadata(temp, BuildTags()) : null;
                     plan = Ffmpeg.ForVideo(input, probe, vt, meta, outBase + "." + vt.Container);
                     break;
@@ -159,7 +159,7 @@ public sealed class DownloadJob
         double? dur = probe.Duration ?? Item.Duration;
         await Ffmpeg.RunAsync(plan.Args, dur, f => Report(JobPhase.Converting, f * 100, ConvertLabel(target)), ct);
         var produced = Path.ChangeExtension(outBase, plan.Ext);
-        if (!File.Exists(produced)) throw new EngineException(L.T("La conversione non ha prodotto alcun file."));
+        if (!File.Exists(produced)) throw new EngineException(L.T("The conversion didn't produce any file."));
         return (produced, plan.Ext, plan.Description);
     }
 
@@ -168,7 +168,7 @@ public sealed class DownloadJob
     private async Task<(string File, string Ext, string Description)> ConvertNativelyAsync(IMediaTools native, string input, ProbeInfo probe, Target target,
         string outBase, string temp, CancellationToken ct)
     {
-        if (target is not AudioTarget at) throw new EngineException(L.T("Su iPhone si scarica solo l'audio."));
+        if (target is not AudioTarget at) throw new EngineException(L.T("On iPhone only the audio is downloaded."));
         Tags? tags = null;
         string? cover = null;
         if (Options.EmbedMetadata)
@@ -183,16 +183,16 @@ public sealed class DownloadJob
         Report(JobPhase.Converting, 0, ConvertLabel(target));
         var (file, description) = await native.ConvertAudioAsync(input, probe, at, tags, cover, outBase,
             f => Report(JobPhase.Converting, f * 100, ConvertLabel(target)), ct);
-        if (!File.Exists(file)) throw new EngineException(L.T("La conversione non ha prodotto alcun file."));
+        if (!File.Exists(file)) throw new EngineException(L.T("The conversion didn't produce any file."));
         return (file, Path.GetExtension(file).TrimStart('.'), description);
     }
 
     private static string ConvertLabel(Target t) => t switch
     {
-        VideoTarget { Container: "gif" } => L.T("Creazione GIF"),
-        VideoTarget => L.T("Conversione video"),
-        AudioTarget => L.T("Conversione audio"),
-        _ => L.T("Conversione immagine"),
+        VideoTarget { Container: "gif" } => L.T("Creating GIF"),
+        VideoTarget => L.T("Converting video"),
+        AudioTarget => L.T("Converting audio"),
+        _ => L.T("Converting image"),
     };
 
     private async Task<string> DownloadWithYtDlp(YtInfo info, Target target, string temp, CancellationToken ct)
@@ -206,7 +206,7 @@ public sealed class DownloadJob
         if (sel == null)
         {
             if (target is VideoTarget) sel = FormatSelector.ForAudio(info, Options.Audio);
-            if (sel == null) throw new EngineException(L.T("Nessun formato scaricabile trovato."));
+            if (sel == null) throw new EngineException(L.T("No downloadable format found."));
         }
 
         var parts = new List<string>();
@@ -222,14 +222,14 @@ public sealed class DownloadJob
         {
             double? pct = p.Total > 0 ? p.Done * 100.0 / p.Total.Value : null;
             var details = new List<string>();
-            if (p.Total > 0) details.Add(L.F("{0} di {1}", Text.Size(p.Done), Text.Size(p.Total)));
+            if (p.Total > 0) details.Add(L.F("{0} of {1}", Text.Size(p.Done), Text.Size(p.Total)));
             else if (p.Done > 0) details.Add(Text.Size(p.Done));
             if (p.Speed > 0) details.Add(Text.Speed(p.Speed));
-            if (p.Eta is > 0 and < 360000) details.Add(L.F("mancano {0}", Text.Duration(p.Eta)));
+            if (p.Eta is > 0 and < 360000) details.Add(L.F("{0} left", Text.Duration(p.Eta)));
             Report(JobPhase.Downloading, pct, Label(p.FormatId) + (details.Count > 0 ? " · " + string.Join(" · ", details) : ""));
         }
 
-        Report(JobPhase.Downloading, null, L.T("Connessione…"));
+        Report(JobPhase.Downloading, null, L.T("Connecting…"));
         // The first try reads the analysis already made (its links are fresh); the next ones the page again.
         string? infoFile = null;
         if (info.Json is { } json)
@@ -251,7 +251,7 @@ public sealed class DownloadJob
                 {
                     // 403/5xx mid-download: a fresh extraction usually works.
                     ClearDir(temp);
-                    Report(JobPhase.Downloading, null, L.F("Errore temporaneo, nuovo tentativo ({0}/3)…", attempt + 1));
+                    Report(JobPhase.Downloading, null, L.F("Temporary error, retrying ({0}/3)…", attempt + 1));
                     await Task.Delay(1500 * attempt, ct);
                 }
             }
@@ -292,13 +292,13 @@ public sealed class DownloadJob
     {
         var ext = string.IsNullOrEmpty(Item.Ext) ? Direct.ExtOf(Item.Url) ?? "bin" : Item.Ext;
         var path = Path.Combine(temp, "media." + ext);
-        Report(JobPhase.Downloading, null, L.T("Connessione…"));
+        Report(JobPhase.Downloading, null, L.T("Connecting…"));
         try
         {
             await Http.DownloadFileAsync(Item.Url, path, null, (done, total) =>
             {
                 double? pct = total > 0 ? done * 100.0 / total.Value : null;
-                var text = total > 0 ? L.F("Download · {0} di {1}", Text.Size(done), Text.Size(total)) : $"Download · {Text.Size(done)}";
+                var text = total > 0 ? L.F("Download · {0} of {1}", Text.Size(done), Text.Size(total)) : $"Download · {Text.Size(done)}";
                 Report(JobPhase.Downloading, pct, text);
             }, ct, referer: Item.PageUrl);
             return path;
@@ -306,7 +306,7 @@ public sealed class DownloadJob
         catch (Exception ex) when (Item.GalleryUrl != null && ex is EngineException or HttpRequestException)
         {
             // Some hosts need cookies/headers: gallery-dl handles them.
-            Report(JobPhase.Downloading, null, L.T("Download tramite gallery-dl…"));
+            Report(JobPhase.Downloading, null, L.T("Downloading via gallery-dl…"));
             return await GalleryDl.DownloadOneAsync(Item.GalleryUrl, Item.GalleryIndex, temp, Options.CookiesBrowser, ct);
         }
     }

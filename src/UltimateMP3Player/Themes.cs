@@ -1,65 +1,85 @@
 using System.Windows;
 using System.Windows.Media;
+using Microsoft.Win32;
 using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player;
 
-public sealed record ThemeDef(string Id, string Name, string A, string B, string Heart)
-{
-    public Brush Swatch => Themes.Gradient(Themes.Parse(A), Themes.Parse(B));
-    public string Label => L.T(Name);
-}
-
-// Accent colours; views use them via DynamicResource.
+// The colours of the app (Core ThemeColors) as resources; views use them via DynamicResource. "Like the system" reads
+// Windows' app mode and follows it while the app is open.
 public static class Themes
 {
-    public const string ProfileId = "profile";
+    private static string? _id, _mode;
+    private static string _profileColor = ThemeColors.All[0].A;
+    private static Dictionary<string, uint> _colors = ThemeColors.Build(ThemeColors.All[0], false);
+    private static bool _watching;
 
-    public static readonly ThemeDef[] All =
+    // The light or dark look changed (another choice, Windows switched): what draws its own colours redraws.
+    public static event Action? Changed;
+
+    public static bool IsLight { get; private set; }
+
+    public static void Apply(string? id, string profileColor, string? mode)
     {
-        new("ultimate", "Ultimate", "#7C5CFF", "#FF4FA3", "#FF4FA3"),
-        new("pink", "Rosa", "#FF4FA3", "#FF8A5C", "#FF4FA3"),
-        new("green", "Verde", "#1DB954", "#12B5A5", "#1DB954"),
-        new("orange", "Arancione", "#FF7A1A", "#FF4F6D", "#FF7A1A"),
-        new("blue", "Blu", "#1E9BFF", "#7C5CFF", "#1E9BFF"),
-        new("red", "Rosso", "#E5484D", "#FF7A1A", "#E5484D"),
-        new("teal", "Turchese", "#12B5A5", "#1E9BFF", "#12B5A5"),
-        new("gold", "Oro", "#F5B400", "#FFE27A", "#F5B400"),
-    };
-
-    private static readonly Color Bg = Parse("#0E1014");
-
-    public static ThemeDef Resolve(string? id, string profileColor)
-    {
-        if (id == ProfileId)
-            return All.FirstOrDefault(t => t.A.Equals(profileColor, StringComparison.OrdinalIgnoreCase))
-                   ?? new ThemeDef(ProfileId, "Profilo", profileColor, Hex(Mix(Parse(profileColor), Parse("#FF4FA3"), 0.5)), profileColor);
-        return All.FirstOrDefault(t => t.Id == id) ?? All[0];
+        (_id, _profileColor, _mode) = (id, profileColor, mode);
+        if (!_watching)
+        {
+            _watching = true;
+            SystemEvents.UserPreferenceChanged += (_, e) =>
+            {
+                if (e.Category == UserPreferenceCategory.General)
+                    Application.Current?.Dispatcher.BeginInvoke(() => { if (IsLight != Light(_mode)) Apply(_id, _profileColor, _mode); });
+            };
+        }
+        IsLight = Light(mode);
+        _colors = ThemeColors.Build(ThemeColors.Resolve(id, profileColor), IsLight);
+        var r = Application.Current.Resources;
+        foreach (var (name, argb) in _colors)
+        {
+            r[name + "Color"] = ToColor(argb);
+            r[name + "Brush"] = Solid(ToColor(argb));
+        }
+        Color C(string name) => ToColor(_colors[name]);
+        Color a = C("Accent"), b = C("Accent2"), bg = C("Bg");
+        Point top = new(0, 0), bottom = new(0, 1);
+        r["AccentGradient"] = Gradient(a, b);
+        r["AccentGradientHover"] = Gradient(C("AccentHover"), C("Accent2Hover"));
+        r["ProgressGradient"] = Freeze(new LinearGradientBrush(a, b, top, new Point(1, 0)));
+        r["FavoritesGradient"] = Gradient(C("Fav1"), C("Fav2"));
+        r["PlaceholderGradient"] = Gradient(C("Placeholder1"), C("Placeholder2"));
+        r["HeaderGradient"] = Freeze(new LinearGradientBrush(C("HeaderTop"), bg, top, bottom));
+        // The song page over the blurred cover: the page's background, see-through on top, nearly solid at the bottom.
+        r["NowPlayingVeil"] = Stops(top, bottom, (bg, 0x55, 0), (bg, 0xEE, 1));
+        r["NowPlayingVeilLyrics"] = Stops(top, bottom, (bg, 0x1A, 0), (bg, 0x33, 0.55), (bg, 0xD9, 1));
+        r["LyricsVeilBrush"] = Solid(Color.FromArgb(0x59, bg.R, bg.G, bg.B));
+        r["PopupShadowColor"] = IsLight ? Color.FromArgb(0x59, 0, 0, 0) : Colors.Black;
+        foreach (Window w in Application.Current.Windows) Ui.DarkTitleBar(w);
+        Changed?.Invoke();
     }
 
-    public static void Apply(string? id, string profileColor)
+    // A colour of the look showing now (code that draws by itself).
+    public static Color Get(string name) => ToColor(_colors.TryGetValue(name, out var c) ? c : 0xFF808080);
+
+    public static Brush Swatch(AccentTheme t)
+        => IsLight ? Gradient(Parse(t.LightA), Parse(t.LightB)) : Gradient(Parse(t.A), Parse(t.B));
+
+    // Windows' "app mode" (Settings > Personalization > Colors); no value = light, as Windows does.
+    private static bool Light(string? mode)
     {
-        var t = Resolve(id, profileColor);
-        Color a = Parse(t.A), b = Parse(t.B), white = Colors.White, black = Colors.Black;
-        var r = Application.Current.Resources;
-        r["AccentColor"] = a;
-        r["Accent2Color"] = b;
-        r["AccentBrush"] = Solid(a);
-        r["AccentHoverBrush"] = Solid(Mix(a, white, 0.12));
-        r["AccentTextBrush"] = Solid(Mix(a, white, 0.35));
-        r["AccentTextHoverBrush"] = Solid(Mix(a, white, 0.6));
-        // Selected rows: a dark tint of the accent (mostly background), readable with any theme colour.
-        r["AccentSoftBrush"] = Solid(Mix(a, Bg, 0.76));
-        r["PinkBrush"] = Solid(Parse(t.Heart));
-        r["OnAccentBrush"] = Solid(Luminance(Mix(a, b, 0.5)) > 0.4 ? Parse("#0E1014") : white);
-        r["AccentGradient"] = Gradient(a, b);
-        r["AccentGradientHover"] = Gradient(Mix(a, white, 0.12), Mix(b, white, 0.12));
-        r["ProgressGradient"] = Freeze(new LinearGradientBrush(a, b, new Point(0, 0), new Point(1, 0)));
-        r["FavoritesGradient"] = Gradient(Mix(a, black, 0.25), Mix(a, white, 0.45));
-        r["HeaderGradient"] = Freeze(new LinearGradientBrush(Mix(a, Bg, 0.27), Bg, new Point(0, 0), new Point(0, 1)));
+        if (mode == ThemeColors.Light) return true;
+        if (mode == ThemeColors.Dark) return false;
+        try { return Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", 1) is not 0; }
+        catch { return false; }
     }
 
     public static Brush Gradient(Color a, Color b) => Freeze(new LinearGradientBrush(a, b, new Point(0, 0), new Point(1, 1)));
+
+    private static Brush Stops(Point from, Point to, params (Color C, byte A, double At)[] stops)
+    {
+        var g = new LinearGradientBrush { StartPoint = from, EndPoint = to };
+        foreach (var (c, alpha, at) in stops) g.GradientStops.Add(new GradientStop(Color.FromArgb(alpha, c.R, c.G, c.B), at));
+        return Freeze(g);
+    }
 
     public static Color Parse(string hex)
     {
@@ -67,20 +87,7 @@ public static class Themes
         catch { return Parse("#7C5CFF"); }
     }
 
-    private static string Hex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
-
-    private static Color Mix(Color a, Color b, double t)
-        => Color.FromRgb((byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
-
-    private static double Luminance(Color c)
-    {
-        static double Ch(byte v)
-        {
-            double s = v / 255.0;
-            return s <= 0.03928 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4);
-        }
-        return 0.2126 * Ch(c.R) + 0.7152 * Ch(c.G) + 0.0722 * Ch(c.B);
-    }
+    public static Color ToColor(uint argb) => Color.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb);
 
     private static SolidColorBrush Solid(Color c) => Freeze(new SolidColorBrush(c));
 

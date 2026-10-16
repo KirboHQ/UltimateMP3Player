@@ -154,7 +154,7 @@ public static class Firewall
         return false;
     }
 
-    public static string DoneMessage => L.T("Fatto: il firewall ora lascia entrare le connessioni degli altri su ogni rete.");
+    public static string DoneMessage => L.T("Done: the firewall now lets other people's connections in on every network.");
 
     private static bool Run(string program, params string[] args)
     {

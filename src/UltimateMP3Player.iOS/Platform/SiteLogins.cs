@@ -119,11 +119,21 @@ public static partial class SiteLogins
 }
 
 // A site's own page over the app, to sign in to it: a bar on top (close, the page's title and whether the login is done,
-// "Fatto"), a thin line while the page loads, the page. A screen of iOS's own (not drawn by Avalonia): the page is WebKit's.
+// "Done"), a thin line while the page loads, the page. A screen of iOS's own (not drawn by Avalonia): the page is WebKit's.
 internal sealed class LoginPage : UIViewController
 {
-    private static readonly UIColor Back = UIColor.FromRGB(0x0E, 0x10, 0x14), BarBack = UIColor.FromRGB(0x16, 0x19, 0x20),
-        Muted = UIColor.FromRGB(0x9A, 0xA0, 0xAC), Green = UIColor.FromRGB(0x4A, 0xDE, 0x80), Idle = UIColor.FromRGB(0x2A, 0x2E, 0x38);
+    // The app's light or dark look (Themes) on this screen of iOS's own.
+    private static UIColor C(string name)
+    {
+        var c = Themes.Get(name);
+        return UIColor.FromRGB(c.R, c.G, c.B);
+    }
+
+    private static UIColor Back => C("Bg");
+    private static UIColor BarBack => C("Surface");
+    private static UIColor Muted => C("SubText");
+    private static UIColor Green => C("Success");
+    private static UIColor Idle => C("Surface3");
 
     private readonly string _url;
     private readonly LoginSite? _site;
@@ -144,7 +154,7 @@ internal sealed class LoginPage : UIViewController
         ModalPresentationStyle = UIModalPresentationStyle.FullScreen;
     }
 
-    public override UIStatusBarStyle PreferredStatusBarStyle() => UIStatusBarStyle.LightContent;
+    public override UIStatusBarStyle PreferredStatusBarStyle() => Themes.IsLight ? UIStatusBarStyle.DarkContent : UIStatusBarStyle.LightContent;
 
     public override void ViewDidLoad()
     {
@@ -155,26 +165,26 @@ internal sealed class LoginPage : UIViewController
         // ---- the bar
         var bar = new UIView { BackgroundColor = BarBack, TranslatesAutoresizingMaskIntoConstraints = false };
         root.AddSubview(bar);
-        var close = new UIButton(UIButtonType.System) { TranslatesAutoresizingMaskIntoConstraints = false, TintColor = UIColor.FromRGB(0xC9, 0xCD, 0xD6) };
+        var close = new UIButton(UIButtonType.System) { TranslatesAutoresizingMaskIntoConstraints = false, TintColor = C("SubText") };
         close.SetImage(UIImage.GetSystemImage("xmark"), UIControlState.Normal);
-        close.AccessibilityLabel = L.T("Chiudi");
+        close.AccessibilityLabel = L.T("Close");
         close.TouchUpInside += (_, _) => Close();
         bar.AddSubview(close);
         _title = new UILabel
         {
-            Text = _site != null ? L.F("Accedi a {0}", _site.Name) : L.T("Accedi al sito"),
-            TextColor = UIColor.White, Font = UIFont.BoldSystemFontOfSize(16)!, TranslatesAutoresizingMaskIntoConstraints = false,
+            Text = _site != null ? L.F("Sign in to {0}", _site.Name) : L.T("Sign in to the site"),
+            TextColor = C("Text"), Font = UIFont.BoldSystemFontOfSize(16)!, TranslatesAutoresizingMaskIntoConstraints = false,
         };
         _status = new UILabel
         {
-            Text = L.T("Accedi come fai di solito, poi tocca Fatto"),
+            Text = L.T("Sign in as you always do, then tap Done"),
             TextColor = Muted, Font = UIFont.SystemFontOfSize(12.5f)!, TranslatesAutoresizingMaskIntoConstraints = false,
         };
         bar.AddSubview(_title);
         bar.AddSubview(_status);
         _done = new UIButton(UIButtonType.System) { TranslatesAutoresizingMaskIntoConstraints = false, BackgroundColor = Idle };
-        _done.SetTitle(L.T("Fatto"), UIControlState.Normal);
-        _done.SetTitleColor(UIColor.White, UIControlState.Normal);
+        _done.SetTitle(L.T("Done"), UIControlState.Normal);
+        _done.SetTitleColor(C("Text"), UIControlState.Normal);
         _done.TitleLabel!.Font = UIFont.BoldSystemFontOfSize(14.5f)!;
         _done.ContentEdgeInsets = new UIEdgeInsets(0, 18, 0, 18);
         _done.Layer.CornerRadius = 18;
@@ -243,16 +253,17 @@ internal sealed class LoginPage : UIViewController
         if (Uri.TryCreate(_url, UriKind.Absolute, out _)) _web.LoadRequest(new NSUrlRequest(new NSUrl(_url)));
     }
 
-    // The site's login cookies are there: the bar says so and "Fatto" lights up.
+    // The site's login cookies are there: the bar says so and "Done" lights up.
     private async void CheckSignedIn()
     {
         if (_site == null || _done == null || _status == null) return;
         bool now = await SiteLogins.SignedInNowAsync(_site);
         if (now == _signedIn || _closed) return;
         _signedIn = now;
-        _status.Text = now ? L.T("Accesso fatto: tocca Fatto per tornare all'app") : L.T("Accedi come fai di solito, poi tocca Fatto");
+        _status.Text = now ? L.T("Signed in: tap Done to go back to the app") : L.T("Sign in as you always do, then tap Done");
         _status.TextColor = now ? Green : Muted;
         _done.BackgroundColor = now ? _accent : Idle;
+        _done.SetTitleColor(C(now ? "OnAccent" : "Text"), UIControlState.Normal);
     }
 
     private void Close()

@@ -63,6 +63,7 @@ public partial class NowPlayingView : UserControl
     {
         _window = Window.GetWindow(this);
         if (_window != null) _window.StateChanged += OnWindowState;
+        Themes.Changed += BakeCover;
         Attach(DataContext as NowPlayingViewModel);
         WatchCover();
         Update();
@@ -74,6 +75,7 @@ public partial class NowPlayingView : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         if (_window != null) _window.StateChanged -= OnWindowState;
+        Themes.Changed -= BakeCover;
         Attach(null);
         CloseVideo();
         StopTicking();
@@ -156,8 +158,8 @@ public partial class NowPlayingView : UserControl
     {
         if (_vm == null) return;
         var p = _vm.Player;
-        LyricsPane.SetClock(p.Position, p.IsPlaying, p.Speed);
-        Captions.SetClock(p.Position, p.IsPlaying, p.Speed);
+        LyricsPane.SetClock(p.Position, p.Animate, p.Speed);
+        Captions.SetClock(p.Position, p.Animate, p.Speed);
     }
 
     private void Follow_Click(object sender, RoutedEventArgs e) => LyricsPane.Follow();
@@ -238,7 +240,7 @@ public partial class NowPlayingView : UserControl
             PushClock();
             if (_vm != null && _source != null && Math.Abs(Video.Position.TotalSeconds - _vm.Player.Position) > 1.5) Sync(true);
         }
-        else if (e.PropertyName == nameof(PlayerViewModel.Speed)) PushClock();
+        else if (e.PropertyName is nameof(PlayerViewModel.Speed) or nameof(PlayerViewModel.Animate)) PushClock();
     }
 
     private void Update()
@@ -435,18 +437,20 @@ public partial class NowPlayingView : UserControl
         LyricsBackdrop.ImageSource = BakeGlow(img);
     }
 
-    // Behind the lyrics, like Spotify: the cover's strongest colour, with a very blurred copy of the cover over it.
+    // Behind the lyrics, like Spotify: the cover's strongest colour, with a very blurred copy of the cover over it. In the
+    // light look the colour is a pale one and the page's background washes over the picture: dark text reads on it.
     private ImageSource BakeGlow(BitmapSource? img)
     {
         const int size = 120, spill = 40;
-        bool hasImage = img != null && img.PixelWidth > 0 && img.PixelHeight > 0;
+        bool hasImage = img != null && img.PixelWidth > 0 && img.PixelHeight > 0, light = Themes.IsLight;
         var fill = hasImage ? new ImageBrush(img) { Stretch = Stretch.UniformToFill } : (Brush)FindResource("PlaceholderGradient");
-        var mood = hasImage ? Mood(img!) : Darken(((SolidColorBrush)FindResource("AccentBrush")).Color);
+        var mood = hasImage ? Mood(img!, light) : Tone(Themes.Get("Accent"), light);
         // Larger than the picture, so the blur doesn't pull the edges in.
         var blob = new System.Windows.Shapes.Rectangle { Fill = fill, Margin = new Thickness(-spill), Opacity = 0.5,
             Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 34, KernelType = System.Windows.Media.Effects.KernelType.Gaussian } };
         var host = new Grid { Width = size, Height = size, ClipToBounds = true, Background = new SolidColorBrush(mood) };
         host.Children.Add(blob);
+        if (light) host.Children.Add(new Border { Background = new SolidColorBrush(Themes.Get("Bg")), Opacity = 0.45 });
         RenderOptions.SetBitmapScalingMode(host, BitmapScalingMode.HighQuality);
         host.Measure(new Size(size, size));
         host.Arrange(new Rect(0, 0, size, size));
@@ -457,7 +461,7 @@ public partial class NowPlayingView : UserControl
     }
 
     // The cover's colour: its pixels averaged, the vivid ones counting more (a grey sky doesn't win over a red dress).
-    private static Color Mood(BitmapSource img)
+    private static Color Mood(BitmapSource img, bool light)
     {
         try
         {
@@ -476,17 +480,17 @@ public partial class NowPlayingView : UserControl
                 b += px[i] * weight;
                 sum += weight;
             }
-            return Darken(Color.FromRgb((byte)(r / sum), (byte)(g / sum), (byte)(b / sum)));
+            return Tone(Color.FromRgb((byte)(r / sum), (byte)(g / sum), (byte)(b / sum)), light);
         }
-        catch { return Color.FromRgb(0x2A, 0x24, 0x3A); }
+        catch { return Tone(Color.FromRgb(0x2A, 0x24, 0x3A), light); }
     }
 
-    // Vivid enough to be a colour, dark enough for white text.
-    private static Color Darken(Color c)
+    // Vivid enough to be a colour, dark enough for white text (light enough for dark text in the light look).
+    private static Color Tone(Color c, bool light)
     {
         var (hue, s, _) = ToHsl(c.R / 255.0, c.G / 255.0, c.B / 255.0);
-        s = s < 0.08 ? s : Math.Clamp(s * 1.25, 0.3, 0.78);
-        return FromHsl(hue, s, 0.3);
+        s = s < 0.08 ? s : Math.Clamp(s * 1.25, 0.3, light ? 0.6 : 0.78);
+        return FromHsl(hue, s, light ? 0.86 : 0.3);
     }
 
     private static (double H, double S, double L) ToHsl(double r, double g, double b)

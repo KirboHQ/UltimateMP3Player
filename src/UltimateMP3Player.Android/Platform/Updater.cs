@@ -50,8 +50,8 @@ public sealed class Updater : Observable
     private ReleaseInfo? _ready;
     public ReleaseInfo? Ready { get => _ready; private set { if (Set(ref _ready, value)) OnChanged(nameof(IsReady), nameof(ReadyText)); } }
     public bool IsReady => Ready != null;
-    public string ReadyText => Ready == null ? "" : Norm(Ready.Version) <= Norm(AppInfo.Version) ? L.T("La versione giusta per questo dispositivo è pronta da installare.")
-        : L.F("Versione {0} pronta da installare.", Ready.Version.ToString(3));
+    public string ReadyText => Ready == null ? "" : Norm(Ready.Version) <= Norm(AppInfo.Version) ? L.T("The right version for this device is ready to install.")
+        : L.F("Version {0} ready to install.", Ready.Version.ToString(3));
 
     // 3.5 = 3.5.0 = 3.5.0.0 (a tag against the assembly's version).
     private static Version Norm(Version v) => new(v.Major, v.Minor, Math.Max(0, v.Build));
@@ -82,35 +82,35 @@ public sealed class Updater : Observable
         if (Ready != null) return true;
         if (!CanUpdate)
         {
-            if (manual) Status = AppInfo.GitHubRepo.Length == 0 ? L.T("Aggiornamenti non configurati in questa versione.") : L.T("Aggiornamenti disponibili solo nella versione installata.");
+            if (manual) Status = AppInfo.GitHubRepo.Length == 0 ? L.T("Updates aren't set up in this version.") : L.T("Updates are only available in the installed version.");
             return false;
         }
         try
         {
-            if (manual) Status = L.T("Controllo degli aggiornamenti…");
+            if (manual) Status = L.T("Checking for updates…");
             var release = await LatestAsync();
             // (the same version too, when it's the package for this device instead of the wrong one)
             if (release == null || Norm(release.Version) < Norm(AppInfo.Version) || (Norm(release.Version) == Norm(AppInfo.Version) && !WrongPackage))
             {
-                Status = manual ? L.F("Hai già l'ultima versione ({0}).", AppInfo.VersionText) : null;
+                Status = manual ? L.F("You already have the latest version ({0}).", AppInfo.VersionText) : null;
                 return false;
             }
             if (!manual && Metered)
             {
-                Status = L.F("È uscita la versione {0}: si scarica da sola con il Wi-Fi, oppure controlla gli aggiornamenti.", release.Version.ToString(3));
+                Status = L.F("Version {0} is out: it downloads by itself on Wi-Fi, or check for updates.", release.Version.ToString(3));
                 return false;
             }
             Directory.CreateDirectory(UpdateDir);
             var apk = Path.Combine(UpdateDir, release.FileName);
-            Status = L.F("Download della versione {0}…", release.Version.ToString(3));
+            Status = L.F("Downloading version {0}…", release.Version.ToString(3));
             await Http.DownloadFileAsync(release.Url, apk, null, (done, total) =>
             {
-                if (total > 0) Status = L.F("Download della versione {0}… {1:0}%", release.Version.ToString(3), done * 100.0 / total.Value);
+                if (total > 0) Status = L.F("Downloading version {0}… {1:0}%", release.Version.ToString(3), done * 100.0 / total.Value);
             }, CancellationToken.None);
             if (!Verify(apk, release))
             {
                 try { File.Delete(apk); } catch { }
-                Status = L.T("Aggiornamento scaricato male: riprova più tardi.");
+                Status = L.T("The update didn't download correctly: try again later.");
                 return false;
             }
             _apk = apk;
@@ -120,7 +120,7 @@ public sealed class Updater : Observable
         }
         catch (Exception ex)
         {
-            Status = manual ? L.T("Aggiornamento non riuscito:") + " " + ex.Message : null;
+            Status = manual ? L.T("Update failed:") + " " + ex.Message : null;
             return false;
         }
     }
@@ -164,7 +164,7 @@ public sealed class Updater : Observable
         var pm = Ctx.PackageManager!;
         if (Build.VERSION.SdkInt >= BuildVersionCodes.O && !pm.CanRequestPackageInstalls())
         {
-            Status = L.T("Permetti a Ultimate MP3 Player di installare app, poi torna qui e premi di nuovo Installa.");
+            Status = L.T("Allow Ultimate MP3 Player to install apps, then come back here and tap Install again.");
             try
             {
                 var intent = new Intent(Android.Provider.Settings.ActionManageUnknownAppSources, Android.Net.Uri.Parse("package:" + Ctx.PackageName))
@@ -192,12 +192,12 @@ public sealed class Updater : Observable
             var flags = PendingIntentFlags.UpdateCurrent | (Build.VERSION.SdkInt >= BuildVersionCodes.S ? PendingIntentFlags.Mutable : 0);
             var pi = PendingIntent.GetBroadcast(Ctx, 30, done, flags)!;
             session.Commit(pi.IntentSender);
-            Status = L.T("Installazione dell'aggiornamento…");
+            Status = L.T("Installing the update…");
             return true;
         }
         catch (Exception ex)
         {
-            Status = L.T("Aggiornamento non riuscito:") + " " + ex.Message;
+            Status = L.T("Update failed:") + " " + ex.Message;
             return false;
         }
     }
@@ -225,7 +225,7 @@ public sealed class InstallReceiver : BroadcastReceiver
         if (status != PackageInstallStatus.Success)
         {
             var msg = intent.GetStringExtra(PackageInstaller.ExtraStatusMessage);
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => App.Host?.Session?.Toast(L.T("Aggiornamento non installato.") + (msg != null ? " " + msg : "")));
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => App.Host?.Session?.Toast(L.T("Update not installed.") + (msg != null ? " " + msg : "")));
         }
     }
 }

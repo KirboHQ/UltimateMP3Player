@@ -150,7 +150,7 @@ public static class Text
 
     public static string Hz(int? hz) => hz is > 0 ? (hz.Value % 1000 == 0 ? $"{hz / 1000} kHz" : (hz.Value / 1000.0).ToString("0.#", It) + " kHz") : "";
 
-    public static string Channels(int? ch) => ch switch { 1 => "mono", 2 => "stereo", > 2 => L.F("{0} canali", ch), _ => "" };
+    public static string Channels(int? ch) => ch switch { 1 => "mono", 2 => "stereo", > 2 => L.F("{0} channels", ch), _ => "" };
 }
 
 // Engine error already turned into a user message.
@@ -167,6 +167,8 @@ public sealed class EngineException : Exception
     public bool Forbidden { get; init; }
     // The content is gone from the site (removed, never existed, DRM): asking again won't help.
     public bool Gone { get; init; }
+    // DRM-protected (also Gone): the song exists, its site only won't give it, so it's taken from YouTube Music at once.
+    public bool Drm { get; init; }
     // The site couldn't be reached at all (no connection).
     public bool Offline { get; init; }
     // Its link failed and the same song wasn't found on YouTube either (CloudSongs.DownloadAsync).
@@ -187,7 +189,7 @@ public static class ErrorText
         // Killed by the system without a word (139 = it crashed, 137 = killed, 134 = aborted): not the site's fault.
         if (exitCode is 134 or 137 or 139 or < 0 && !lines.Any(l => l.StartsWith("ERROR:", StringComparison.Ordinal)))
         {
-            var text = L.F("{0} si è chiuso per un errore (codice {1}).", engine, exitCode);
+            var text = L.F("{0} crashed (code {1}).", engine, exitCode);
             if (Engines.Host?.CrashHint?.Invoke() is { } hint) text += " " + hint;
             return new EngineException(text, stderr);
         }
@@ -195,7 +197,7 @@ public static class ErrorText
             lines.LastOrDefault(l => l.StartsWith("ERROR:", StringComparison.Ordinal)) ??
             lines.LastOrDefault(l => l.Contains("[error]", StringComparison.Ordinal)) ??
             lines.LastOrDefault(l => !l.StartsWith("WARNING", StringComparison.Ordinal) && !l.Contains("[warning]")) ??
-            L.F("{0} è terminato con codice {1}", engine, exitCode);
+            L.F("{0} exited with code {1}", engine, exitCode);
 
         string msg = raw;
         msg = Regex.Replace(msg, @"^ERROR:\s*", "");
@@ -207,39 +209,39 @@ public static class ErrorText
         bool Has(params string[] keys) => keys.Any(k => low.Contains(k));
 
         if (Has("unsupported url", "no suitable extractor"))
-            return new EngineException(L.T("Questo link non è supportato."), stderr) { Unsupported = true };
+            return new EngineException(L.T("This link isn't supported."), stderr) { Unsupported = true };
         if (Has("error 429", "(429)", "status code 429", "too many requests", "rate-limited", "rate limited", "rate limit", "try again later",
                 "please wait a few minutes") ||
             all.Contains("http error 429") || all.Contains("has been rate-limited"))
-            return new EngineException(L.T("Il sito sta limitando i download (troppe richieste in poco tempo)."), stderr) { RateLimited = true };
+            return new EngineException(L.T("The site is rate-limiting downloads (too many requests in a short time)."), stderr) { RateLimited = true };
         if (Has("confirm you're not a bot", "confirm you’re not a bot", "not a bot"))
-            return new EngineException(L.T("YouTube chiede di confermare che non sei un bot."), stderr) { NeedsLogin = true };
+            return new EngineException(L.T("YouTube is asking you to confirm you're not a bot."), stderr) { NeedsLogin = true };
         if (Has("confirm your age", "age-restricted", "age restricted", "inappropriate for some users"))
-            return new EngineException(L.T("Contenuto con limite d'età: serve l'accesso con il tuo account."), stderr) { NeedsLogin = true };
+            return new EngineException(L.T("Age-restricted content: you need to sign in with your account."), stderr) { NeedsLogin = true };
         if (Has("private video", "this video is private", "is private", "private account", "privateaccount"))
-            return new EngineException(L.T("Il contenuto è privato."), stderr) { NeedsLogin = true };
+            return new EngineException(L.T("This content is private."), stderr) { NeedsLogin = true };
         if (Has("login required", "log in", "login", "sign in", "authrequired", "authorizationerror", "401 unauthorized",
                 "use --cookies", "cookies", "not available to you", "members-only", "subscriber"))
-            return new EngineException(L.T("Il sito richiede l'accesso (login) per questo contenuto."), stderr) { NeedsLogin = true };
+            return new EngineException(L.T("The site requires you to sign in (login) for this content."), stderr) { NeedsLogin = true };
         if (Has("drm"))
-            return new EngineException(L.T("Il contenuto è protetto da DRM e non può essere scaricato."), stderr) { Gone = true };
+            return new EngineException(L.T("This content is DRM-protected and can't be downloaded."), stderr) { Gone = true, Drm = true };
         if (Has("requested format is not available", "requested format not available"))
-            return new EngineException(L.T("Il formato richiesto non è più disponibile."), stderr) { FormatUnavailable = true };
+            return new EngineException(L.T("The requested format is no longer available."), stderr) { FormatUnavailable = true };
         if (Has("no video formats found", "no video could be found", "there's no video", "no media found", "no video in this", "does not contain any video"))
-            return new EngineException(L.T("Nessun video trovato in questo link."), stderr) { NoMedia = true };
+            return new EngineException(L.T("No video found in this link."), stderr) { NoMedia = true };
         if (Has("video unavailable", "this video is unavailable", "not available", "has been removed", "no longer available", "does not exist",
                 "could not be found", "not found", "404"))
-            return new EngineException(L.T("Il contenuto non è disponibile (rimosso o inesistente)."), stderr) { Gone = true };
+            return new EngineException(L.T("This content isn't available (removed or doesn't exist)."), stderr) { Gone = true };
         if (Has("403", "forbidden"))
-            return new EngineException(L.T("Il sito ha negato l'accesso (errore 403)."), stderr) { Forbidden = true };
+            return new EngineException(L.T("The site denied access (error 403)."), stderr) { Forbidden = true };
         if (Has("getaddrinfo", "failed to resolve", "name or service not known", "timed out", "connection refused", "network is unreachable", "no connection"))
-            return new EngineException(L.T("Impossibile contattare il sito: controlla la connessione a Internet."), stderr) { Offline = true };
+            return new EngineException(L.T("Couldn't reach the site: check your internet connection."), stderr) { Offline = true };
         if (Has("is not a valid url", "invalid url"))
-            return new EngineException(L.T("Il link non è valido."), stderr);
+            return new EngineException(L.T("The link isn't valid."), stderr);
         if (Has("live event will begin", "premieres in", "this live event"))
-            return new EngineException(L.T("La diretta o la première non è ancora iniziata."), stderr);
+            return new EngineException(L.T("The live stream or premiere hasn't started yet."), stderr);
         if (Regex.IsMatch(msg.Trim(), @"^(KeyError: )?'[\w.-]+'$|^KeyError|^TypeError|^IndexError|^AttributeError"))
-            return new EngineException(L.T("Il sito ha risposto in modo inatteso: il contenuto potrebbe essere stato rimosso, richiedere l'accesso (cookie del browser) o servire un aggiornamento dei motori."), stderr);
+            return new EngineException(L.T("The site responded unexpectedly: the content may have been removed, may require signing in (browser cookies), or the engines may need an update."), stderr);
 
         if (msg.Length > 220) msg = msg[..220] + "…";
         return new EngineException(msg, stderr);

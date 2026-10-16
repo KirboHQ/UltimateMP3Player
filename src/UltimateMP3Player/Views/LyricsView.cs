@@ -89,7 +89,7 @@ public sealed class LyricsView : Grid
         _active = -2;
         SetFollowing(true);
         bool plain = lyrics is { Synced: false, Lines.Count: > 0 };
-        if (plain && _note == null) Children.Add(_note = Note(L.T("Testo senza tempi: scorri per leggerlo")));
+        if (plain && _note == null) Children.Add(_note = Note(L.T("Lyrics without timing: scroll to read them")));
         if (_note != null) _note.Visibility = plain ? Visibility.Visible : Visibility.Collapsed;
         if (lyrics == null || lyrics.Lines.Count == 0)
         {
@@ -108,12 +108,12 @@ public sealed class LyricsView : Grid
         }
         var credit = new TextBlock
         {
-            Text = L.T("Testo da LRCLIB"),
+            Text = L.T("Lyrics from LRCLIB"),
             // (like "Playing from:" under the title: the same size and colour)
             FontSize = 12.5,
-            Foreground = (Brush)FindResource("MutedBrush"),
             Margin = new Thickness(2, 34, 0, 0),
         };
+        credit.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         _panel.Children.Add(credit);
         _panel.Children.Add(_bottom);
         Relayout(true);
@@ -129,9 +129,10 @@ public sealed class LyricsView : Grid
             Text = l.Text.Length == 0 ? " " : l.Text,
             FontFamily = Display,
             FontWeight = FontWeights.Bold,
-            Foreground = Brushes.White,
             TextWrapping = TextWrapping.Wrap,
         };
+        // (a reference: the ink follows the light and dark look)
+        text.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush");
         var box = new Border
         {
             Child = text,
@@ -160,7 +161,8 @@ public sealed class LyricsView : Grid
     // A pause in the singing: three dots that fill up while it lasts.
     private void AddGap(double from, double to)
     {
-        var dots = Enumerable.Range(0, 3).Select(_ => new Ellipse { Fill = Brushes.White, Opacity = 0.35 }).ToArray();
+        var dots = Enumerable.Range(0, 3).Select(_ => new Ellipse { Opacity = 0.35 }).ToArray();
+        foreach (var d in dots) d.SetResourceReference(Shape.FillProperty, "TextBrush");
         var strip = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.Transparent };
         foreach (var d in dots) strip.Children.Add(d);
         strip.RenderTransformOrigin = new Point(0, 0.5);
@@ -174,20 +176,21 @@ public sealed class LyricsView : Grid
     // "Lyrics without times", pinned at the top left over plain lyrics: the text scrolls away under it.
     private Border Note(string text)
     {
-        var fg = new SolidColorBrush(Color.FromArgb(0xEE, 255, 255, 255));
         var sp = new StackPanel { Orientation = Orientation.Horizontal };
-        sp.Children.Add(new TextBlock { Text = "", FontFamily = (FontFamily)FindResource("IconFont"), FontSize = 12, Foreground = fg, VerticalAlignment = VerticalAlignment.Center });
-        sp.Children.Add(new TextBlock { Text = text, FontSize = 12.5, Foreground = fg, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-        return new Border
+        sp.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "TextBrush");
+        sp.Children.Add(new TextBlock { Text = "", FontFamily = (FontFamily)FindResource("IconFont"), FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
+        sp.Children.Add(new TextBlock { Text = text, FontSize = 12.5, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        var note = new Border
         {
             Child = sp,
             CornerRadius = new CornerRadius(12),
             Padding = new Thickness(11, 5, 12, 5),
-            Background = new SolidColorBrush(Color.FromArgb(0x59, 0, 0, 0)),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
             IsHitTestVisible = false,
         };
+        note.SetResourceReference(Border.BackgroundProperty, "GlassBrush");
+        return note;
     }
 
     // Transparent down to `from`, solid from `to` (shares of the height); the bottom always fades out.

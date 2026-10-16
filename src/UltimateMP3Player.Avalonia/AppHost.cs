@@ -28,12 +28,13 @@ public sealed class AppHost : Observable
     {
         Settings = AppSettings.Load();
         ApplyLanguage();
+        ApplyTheme();
         Library = Library.Load();
         Profiles = ProfileList.Load();
         if (Profiles.Profiles.Count == 0)
         {
             var name = Environment.UserName;
-            name = name.Length > 0 ? char.ToUpper(name[0]) + name[1..] : L.T("Io");
+            name = name.Length > 0 ? char.ToUpper(name[0]) + name[1..] : L.T("Me");
             Profiles.Profiles.Add(new ProfileInfo { Name = name, Color = ProfileInfo.Palette[0] });
             Profiles.Save();
         }
@@ -80,8 +81,8 @@ public sealed class AppHost : Observable
     public ICommand RestartToUpdateCommand { get; }
 
     // Songs of the rooms and suggested songs that aren't in the library (the folder keeps its 3.0 name).
-    private Core.Together.TogetherCache? _songCache;
-    public Core.Together.TogetherCache SongCache => _songCache ??= new Core.Together.TogetherCache(Path.Combine(AppPaths.DataDir, "ascolta-insieme"));
+    private SongCache? _songCache;
+    public SongCache SongCache => _songCache ??= new SongCache(AppPaths.CacheDir);
 
     // ------------------------------------------------------------------ terms of use
 
@@ -117,7 +118,7 @@ public sealed class AppHost : Observable
     {
         if (code == Settings.Language) return;
         // The window is rebuilt: a room can't come along.
-        if (Session != null && !Session.ConfirmLeaveRoom(L.T("Cambiando lingua la finestra si ricrea e uscirai dalla stanza."), L.T("Esci e cambia lingua")))
+        if (Session != null && !Session.ConfirmLeaveRoom(L.T("Changing the language rebuilds the window, so you'll leave the room."), L.T("Leave and change language")))
         {
             Session.Settings.Refresh();
             return;
@@ -131,7 +132,8 @@ public sealed class AppHost : Observable
 
     public void ApplyTheme()
     {
-        if (Session != null) Themes.Apply(Session.Profile.Data.Theme, Session.Profile.Info.Color);
+        // (before a profile is open, the profile picker: the device's look)
+        Themes.Apply(Session?.Profile.Data.Theme, Session?.Profile.Info.Color ?? ThemeColors.All[0].A, Session?.Profile.Data.Appearance);
     }
 
     // ------------------------------------------------------------------ profiles
@@ -167,7 +169,7 @@ public sealed class AppHost : Observable
     {
         var picked = ProfilePickerWindow.Pick(this, Window, false);
         if (picked != null && picked.Id != Session?.Profile.Info.Id &&
-            Session?.ConfirmLeaveRoom(L.T("Cambiando profilo uscirai dalla stanza."), L.T("Esci e cambia profilo")) == false) picked = null;
+            Session?.ConfirmLeaveRoom(L.T("Switching profile will make you leave the room."), L.T("Leave and switch profile")) == false) picked = null;
         if (picked != null && picked.Id != Session?.Profile.Info.Id) OpenProfile(picked);
         else if (Session != null && Window != null)
         {
@@ -271,10 +273,10 @@ public sealed class AppHost : Observable
     {
         if (_exiting) return true;
         if (!force && Downloads.HasActive &&
-            !Dialogs.Confirm(L.T("Ci sono download in corso"), L.T("Vuoi interromperli e chiudere Ultimate MP3 Player?"), L.T("Chiudi"), true))
+            !Dialogs.Confirm(L.T("Downloads are in progress"), L.T("Stop them and close Ultimate MP3 Player?"), L.T("Close"), true))
             return false;
         if (!force && Session?.InRoom == true &&
-            !Dialogs.Confirm(L.T("Uscire dalla stanza?"), L.F("Chiudendo l'app uscirai dalla stanza «{0}».", Session.Together.RoomName), L.T("Chiudi"), true))
+            !Dialogs.Confirm(L.T("Leave the room?"), L.F("Closing the app will make you leave “{0}”.", Session.Together.RoomName), L.T("Close"), true))
             return false;
         // The others are told (and a host hands the room over) before the app goes.
         if (Session?.InRoom == true) Session.Together.Shutdown();
@@ -285,6 +287,7 @@ public sealed class AppHost : Observable
         Session?.Player.Pause();
         Settings.Save();
         try { Library.Flush(); } catch { }
+        _songCache?.Flush();
         Profile.FlushAll();
         if (Updates.IsReady) Updates.Apply(false, null, false);
         Presence.Dispose();
@@ -392,7 +395,7 @@ public sealed class AppHost : Observable
     {
         if (!Updates.IsReady) return;
         if (Downloads.HasActive &&
-            !Dialogs.Confirm(L.T("Ci sono download in corso"), L.T("Vuoi interromperli e aggiornare adesso?"), L.T("Aggiorna"), false))
+            !Dialogs.Confirm(L.T("Downloads are in progress"), L.T("Stop them and update now?"), L.T("Update"), false))
             return;
         if (!Updates.Apply(true, Session?.Profile.Info.Id, background)) return;
         Exit(true);
@@ -414,14 +417,14 @@ public sealed class AppHost : Observable
     {
         try
         {
-            EngineStatus = L.T("Download dei motori di download…");
+            EngineStatus = L.T("Downloading download engines…");
             await Task.Run(() => Engines.InstallMissingAsync((text, pct) =>
                 Dispatcher.UIThread.Post(() => EngineStatus = text + (pct is double p ? $" · {p:0}%" : "…")), CancellationToken.None));
             EngineStatus = null;
         }
         catch (Exception ex)
         {
-            EngineStatus = L.F("Motori di download non disponibili: {0} (controlla la connessione e riavvia)", ex.Message);
+            EngineStatus = L.F("Download engines unavailable: {0} (check your connection and restart)", ex.Message);
             _installTask = null;
         }
     }
@@ -437,7 +440,7 @@ public sealed class AppHost : Observable
         if (Engines.Missing().Count > 0)
         {
             await EnsureEnginesAsync();
-            if (Engines.Missing().Count > 0) return L.T("Motori non disponibili.");
+            if (Engines.Missing().Count > 0) return L.T("Engines unavailable.");
         }
         try
         {
@@ -448,7 +451,7 @@ public sealed class AppHost : Observable
         }
         catch (Exception ex)
         {
-            return L.T("Aggiornamento non riuscito:") + " " + ex.Message;
+            return L.T("Update failed:") + " " + ex.Message;
         }
     }
 }

@@ -14,31 +14,24 @@
             <Setter Property="FontSize" Value="18"/>
         </Style>
     </UserControl.Styles>
-    <Panel x:Name="Root" Background="{StaticResource BgBrush}">
+    <Panel x:Name="Root" Background="{DynamicResource BgBrush}">
         <!-- the cover's colours behind the page (drawn straight, its 90 % already in the picture: an ImageBrush or an opacity
              would cost a surface as big as the screen at every frame) -->
         <views:CoverImage x:Name="Glow"/>
-        <Border IsHitTestVisible="False">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                    <GradientStop Color="#330E1014" Offset="0"/>
-                    <GradientStop Color="#990E1014" Offset="0.55"/>
-                    <GradientStop Color="#F20E1014" Offset="1"/>
-                </LinearGradientBrush>
-            </Border.Background>
-        </Border>
+        <!-- (the page's background, see-through on top: Themes) -->
+        <Border IsHitTestVisible="False" Background="{DynamicResource PlayerPageVeil}"/>
 
         <Grid x:Name="Body" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto">
             <!-- top: close, where it plays from, the song's menu -->
             <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto" Margin="6,4,6,0" Background="Transparent">
-                <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E70D}" FontSize="20" Foreground="{StaticResource TextBrush}" Click="Close_Click"/>
+                <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E70D}" FontSize="20" Foreground="{DynamicResource TextBrush}" Click="Close_Click"/>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="8,0">
-                    <TextBlock Text="{local:T 'IN RIPRODUZIONE DA'}" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Center"
+                    <TextBlock Text="{local:T 'PLAYING FROM'}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Center"
                                IsVisible="{Binding Player.ContextName, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                     <TextBlock Text="{Binding Player.ContextName}" FontSize="13.5" FontWeight="SemiBold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"
                                local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
                 </StackPanel>
-                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Foreground="{StaticResource TextBrush}" Click="More_Click"/>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Foreground="{DynamicResource TextBrush}" Click="More_Click"/>
             </Grid>
 
             <!-- the stage: cover, video or lyrics -->
@@ -68,7 +61,7 @@
                             Margin="0,0,0,8" IsVisible="False" Opacity="0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E8D6}" Classes="glyph" FontSize="13"/>
-                            <TextBlock Text="{local:T 'Torna alla riga cantata'}" Margin="8,0,0,0"/>
+                            <TextBlock Text="{local:T 'Back to the current line'}" Margin="8,0,0,0"/>
                         </StackPanel>
                     </Button>
                 </Panel>
@@ -84,12 +77,12 @@
                         <TextBlock DockPanel.Dock="Left" Classes="glyph cloud" Classes.gone="{Binding Player.Current.IsUnavailable, FallbackValue=False}"
                                    Text="{Binding Player.Current.CloudGlyph, Converter={x:Static views:Converters.Glyph}}" FontSize="14" Margin="0,0,7,0"
                                    VerticalAlignment="Center" IsVisible="{Binding Player.Current.IsCloud, FallbackValue=False}"/>
-                        <TextBlock Text="{Binding Player.Current.Artist}" FontSize="15" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                        <TextBlock Text="{Binding Player.Current.Artist}" FontSize="15" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
                                    local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
                     </DockPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0" IsVisible="{Binding Player.IsWaiting}">
                         <Ellipse Classes="spinner" Width="13" Height="13" StrokeThickness="1.8"/>
-                        <TextBlock Text="{Binding Player.WaitText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" Margin="8,0,0,0"/>
+                        <TextBlock Text="{Binding Player.WaitText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" Margin="8,0,0,0"/>
                     </StackPanel>
                 </StackPanel>
                 <!-- not saved on the phone: the library icon puts a suggested song (or one heard from a link) into the library, in
@@ -100,7 +93,7 @@
                         <TextBlock Text="{Binding Player.Current.SaveGlyph, Converter={x:Static views:Converters.Glyph}}" Classes="glyph" FontSize="23"
                                    IsVisible="{Binding Player.Current.ShowCloud, FallbackValue=False}"/>
                         <views:ProgressRing Width="24" Height="24" Value="{Binding Player.Current.SavePct}" IsIndeterminate="{Binding Player.Current.SaveIndeterminate}"
-                                            Stroke="{DynamicResource AccentBrush}" Track="{StaticResource Surface3Brush}"
+                                            Stroke="{DynamicResource AccentBrush}" Track="{DynamicResource Surface3Brush}"
                                             IsVisible="{Binding Player.Current.IsSaving, FallbackValue=False}"/>
                     </Panel>
                 </Button>
@@ -112,23 +105,23 @@
 
             <!-- where it is: the waveform -->
             <StackPanel x:Name="SeekBlock" Grid.Row="3" Margin="24,2,24,0">
-                <views:WaveformBar Height="46" Peaks="{Binding Player.Current.Wave}" Progress="{Binding Player.Progress}" IsPlaying="{Binding Player.IsPlaying}"
+                <views:WaveformBar Height="46" Peaks="{Binding Player.Current.Wave}" Progress="{Binding Player.Progress}" IsPlaying="{Binding Player.Animate}"
                                    Duration="{Binding Player.Duration}" Rate="{Binding Player.Speed}" BarWidth="3"
-                                   PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="#4DFFFFFF" SeekCommand="{Binding Player.SeekCommand}"/>
+                                   PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}" SeekCommand="{Binding Player.SeekCommand}"/>
                 <Grid ColumnDefinitions="*,*" Margin="0,6,0,0">
-                    <TextBlock Text="{Binding Player.PositionText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Player.DurationText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Right"/>
+                    <TextBlock Text="{Binding Player.PositionText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Player.DurationText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right"/>
                 </Grid>
             </StackPanel>
 
             <!-- the buttons -->
             <Grid x:Name="Buttons" Grid.Row="4" ColumnDefinitions="*,*,Auto,*,*" Margin="12,10,12,4">
                 <ToggleButton Theme="{StaticResource TouchToggle}" Content="{local:Icon E8B1}" IsChecked="{Binding Player.Shuffle}" HorizontalAlignment="Center"/>
-                <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="58" Height="58" FontSize="30" Foreground="{StaticResource TextBrush}"
+                <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="58" Height="58" FontSize="30" Foreground="{DynamicResource TextBrush}"
                         Content="{local:Icon E892}" Command="{Binding Player.PreviousCommand}" HorizontalAlignment="Center"/>
                 <Button Grid.Column="2" Theme="{StaticResource PlayButton}" Width="74" Height="74" FontSize="30"
                         Content="{Binding Player.PlayGlyph, Converter={StaticResource Icon}}" Command="{Binding Player.PlayPauseCommand}"/>
-                <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Width="58" Height="58" FontSize="30" Foreground="{StaticResource TextBrush}"
+                <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Width="58" Height="58" FontSize="30" Foreground="{DynamicResource TextBrush}"
                         Content="{local:Icon E893}" Command="{Binding Player.NextCommand}" HorizontalAlignment="Center"/>
                 <ToggleButton Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{Binding Player.RepeatGlyph, Converter={StaticResource Icon}}"
                               IsChecked="{Binding Player.RepeatOn, Mode=OneWay}" Command="{Binding Player.CycleRepeatCommand}" HorizontalAlignment="Center"/>
@@ -137,7 +130,7 @@
             <!-- what else: speed, lyrics, video, automatic queue, add to a playlist, next up -->
             <Grid x:Name="Extras" Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="14,4,14,10">
                 <Button x:Name="SpeedButton" Theme="{StaticResource PillButton}" Height="36" MinWidth="50" Padding="10,0" FontSize="13.5"
-                        Background="Transparent" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1.5" Content="{Binding Player.SpeedText}" Click="Speed_Click"/>
+                        Background="Transparent" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1.5" Content="{Binding Player.SpeedText}" Click="Speed_Click"/>
                 <ToggleButton Grid.Column="2" Theme="{StaticResource TouchToggle}" Content="{local:Icon E720}" IsChecked="{Binding ShowLyrics}"
                               IsVisible="{Binding HasLyrics}"/>
                 <ToggleButton Grid.Column="3" Theme="{StaticResource TouchToggle}" Content="{local:Icon E714}" IsChecked="{Binding ShowVideo}" IsVisible="{Binding HasVideo}"/>

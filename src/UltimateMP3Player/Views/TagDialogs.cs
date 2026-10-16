@@ -27,14 +27,14 @@ public static class TagDialogs
         var chosen = color;
         var body = new StackPanel();
 
-        body.Children.Add(new TextBlock { Text = L.T("Nome"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 4, 0, 6) });
-        var nameBox = new TextBox { Text = name ?? "", Style = (Style)Res["BoxTextBox"], Tag = L.T("Es. chill, anni 2000, palestra…") };
+        body.Children.Add(new TextBlock { Text = L.T("Name"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 4, 0, 6) });
+        var nameBox = new TextBox { Text = name ?? "", Style = (Style)Res["BoxTextBox"], Tag = L.T("E.g. chill, 2000s, gym…") };
         body.Children.Add(nameBox);
 
         var hexBox = new TextBox { Style = (Style)Res["BoxTextBox"], Width = 130, HorizontalAlignment = HorizontalAlignment.Left, Tag = "#RRGGBB", Text = color };
         var dot = new Ellipse { Width = 10, Height = 10, VerticalAlignment = VerticalAlignment.Center };
 
-        body.Children.Add(new TextBlock { Text = L.T("Colore"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 14, 0, 6) });
+        body.Children.Add(new TextBlock { Text = L.T("Color"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 14, 0, 6) });
         var swatches = new WrapPanel();
         var rings = new Dictionary<string, Ellipse>(StringComparer.OrdinalIgnoreCase);
         foreach (var hex in Core.Tag.Palette)
@@ -50,19 +50,19 @@ public static class TagDialogs
         body.Children.Add(swatches);
 
         var custom = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
-        custom.Children.Add(new TextBlock { Text = L.T("Personalizzato"), Foreground = B("SubTextBrush"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 12, 0) });
+        custom.Children.Add(new TextBlock { Text = L.T("Custom"), Foreground = B("SubTextBrush"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 12, 0) });
         custom.Children.Add(hexBox);
         body.Children.Add(custom);
 
-        body.Children.Add(new TextBlock { Text = L.T("Anteprima"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 16, 0, 8) });
+        body.Children.Add(new TextBlock { Text = L.T("Preview"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 16, 0, 8) });
         var chipText = new TextBlock { FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(7, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         var chipRow = new StackPanel { Orientation = Orientation.Horizontal };
         chipRow.Children.Add(dot);
         chipRow.Children.Add(chipText);
         body.Children.Add(new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(10, 4, 12, 4), Background = B("Surface3Brush"), HorizontalAlignment = HorizontalAlignment.Left, Child = chipRow });
 
-        var ok = Dialogs.Button(L.T(isNew ? "Crea" : "Salva"), "PrimaryButton", isDefault: true);
-        var win = Dialogs.Frame(L.T(isNew ? "Nuovo tag" : "Modifica tag"), body, 380, Dialogs.Button(L.T("Annulla"), "GhostButton", isCancel: true), ok);
+        var ok = Dialogs.Button(L.T(isNew ? "Create" : "Save"), "PrimaryButton", isDefault: true);
+        var win = Dialogs.Frame(L.T(isNew ? "New tag" : "Edit tag"), body, 380, Dialogs.Button(L.T("Cancel"), "GhostButton", isCancel: true), ok);
 
         void Pick(string hex, bool fromSwatch)
         {
@@ -73,7 +73,7 @@ public static class TagDialogs
         }
         void Refresh()
         {
-            chipText.Text = nameBox.Text.Trim().Length > 0 ? nameBox.Text.Trim() : L.T("Nome del tag");
+            chipText.Text = nameBox.Text.Trim().Length > 0 ? nameBox.Text.Trim() : L.T("Tag name");
             ok.IsEnabled = nameBox.Text.Trim().Length > 0;
         }
         hexBox.TextChanged += (_, _) => { if (ParseHex(hexBox.Text) is { } h && !h.Equals(chosen, StringComparison.OrdinalIgnoreCase)) Pick(h, false); };
@@ -112,17 +112,17 @@ public static class TagDialogs
 
         body.Children.Add(new TextBlock
         {
-            Text = L.T("Scegli i tag e i brani: puoi aggiungerli o toglierli a tutti insieme."),
+            Text = L.T("Choose the tags and the songs: you can add or remove them all at once."),
             Style = (Style)Res["Hint"], TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12),
         });
-        body.Children.Add(new TextBlock { Text = L.T("Tag"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 0, 0, 8) });
+        body.Children.Add(new TextBlock { Text = L.T("Tags"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 0, 0, 8) });
         var tagPanel = new WrapPanel();
         body.Children.Add(tagPanel);
 
         var header = new DockPanel { Margin = new Thickness(0, 14, 0, 8), LastChildFill = false };
         var toggleAll = new Button { Style = (Style)Res["GhostButton"], Padding = new Thickness(12, 5, 12, 5) };
         var countText = new TextBlock { Foreground = B("SubTextBrush"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
-        header.Children.Add(new TextBlock { Text = L.T("Brani"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center });
+        header.Children.Add(new TextBlock { Text = L.T("Songs"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center });
         header.Children.Add(toggleAll);
         header.Children.Add(countText);
         body.Children.Add(header);
@@ -134,15 +134,15 @@ public static class TagDialogs
             BorderThickness = new Thickness(1), Padding = new Thickness(6), Child = list,
         });
 
-        var add = Dialogs.Button(L.T("Aggiungi ai brani"), "PrimaryButton", isDefault: true);
-        var remove = Dialogs.Button(L.T("Togli dai brani"), "GhostButton");
-        var win = Dialogs.Frame(L.F("Tag sui brani di «{0}»", p.Name), body, 560, Dialogs.Button(L.T("Annulla"), "GhostButton", isCancel: true), remove, add);
+        var add = Dialogs.Button(L.T("Add to songs"), "PrimaryButton", isDefault: true);
+        var remove = Dialogs.Button(L.T("Remove from songs"), "GhostButton");
+        var win = Dialogs.Frame(L.F("Tags on the songs of “{0}”", p.Name), body, 560, Dialogs.Button(L.T("Cancel"), "GhostButton", isCancel: true), remove, add);
 
         void Update()
         {
             int n = choices.Count(c => c.IsSelected);
-            countText.Text = L.F("{0} di {1} selezionati", n, choices.Count);
-            toggleAll.Content = n == choices.Count ? L.T("Deseleziona tutti") : L.T("Seleziona tutti");
+            countText.Text = L.F("{0} of {1} selected", n, choices.Count);
+            toggleAll.Content = n == choices.Count ? L.T("Deselect all|m") : L.T("Select all|m");
             add.IsEnabled = remove.IsEnabled = n > 0 && chosenTags.Count > 0;
         }
         foreach (var t in main.Tags)

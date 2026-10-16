@@ -10,11 +10,11 @@
         <Panel DockPanel.Dock="Top" Height="56">
             <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto" Margin="4,0,6,0">
                 <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E72B}" Click="Back_Click"/>
-                <TextBlock Grid.Column="1" Text="{local:T 'Statistiche di ascolto'}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"
+                <TextBlock Grid.Column="1" Text="{local:T 'Listening statistics'}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"
                            TextTrimming="CharacterEllipsis"/>
                 <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Click="Select_Click"/>
             </Grid>
-            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="{StaticResource BgBrush}">
+            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="{DynamicResource BgBrush}">
                 <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" Command="{Binding #List.Picks.CancelCommand}"/>
                 <TextBlock Grid.Column="1" Text="{Binding #List.Picks.CountText}" FontSize="16.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"/>
                 <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Command="{Binding #List.Picks.AllCommand}"/>
@@ -28,13 +28,13 @@
                 <DataTemplate DataType="views:ListHeader">
                     <StackPanel Margin="18,0,16,6" DataContext="{Binding Page}">
                         <WrapPanel Margin="0,6,0,4">
-                            <Border CornerRadius="16" Padding="14,10" Margin="0,0,10,10" Background="{StaticResource SurfaceBrush}">
+                            <Border CornerRadius="16" Padding="14,10" Margin="0,0,10,10" Background="{DynamicResource SurfaceBrush}">
                                 <StackPanel>
                                     <TextBlock Text="{Binding TimeTotal}" FontSize="20" FontWeight="Bold"/>
-                                    <TextBlock Text="{local:T 'di ascolto'}" Classes="hint" FontSize="12.5"/>
+                                    <TextBlock Text="{local:T listened}" Classes="hint" FontSize="12.5"/>
                                 </StackPanel>
                             </Border>
-                            <Border CornerRadius="16" Padding="14,10" Margin="0,0,10,10" Background="{StaticResource SurfaceBrush}">
+                            <Border CornerRadius="16" Padding="14,10" Margin="0,0,10,10" Background="{DynamicResource SurfaceBrush}">
                                 <StackPanel>
                                     <TextBlock Text="{Binding PlaysTotal}" FontSize="20" FontWeight="Bold"/>
                                     <TextBlock Text="{Binding HeardTotal}" Classes="hint" FontSize="12.5"/>
@@ -66,11 +66,11 @@
                             <ContentControl Grid.Column="1" Width="52" Height="52" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                             <StackPanel Grid.Column="2" Margin="14,0,8,0" VerticalAlignment="Center">
                                 <TextBlock Classes="title" Text="{Binding Track.Title}" FontSize="15.5" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding Track.Artist}" FontSize="13" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                <TextBlock Text="{Binding Track.Artist}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                     <TextBlock Text="{Binding Track.PlaysText}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}"/>
-                                    <TextBlock Text="{Binding Track.ListenedText, StringFormat=' · {0}'}" FontSize="12.5" Foreground="{StaticResource MutedBrush}"/>
-                                    <TextBlock Text="{Binding Track.LastPlayedText, StringFormat=' · {0}'}" FontSize="12.5" Foreground="{StaticResource MutedBrush}"
+                                    <TextBlock Text="{Binding Track.ListenedText, StringFormat=' · {0}'}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}"/>
+                                    <TextBlock Text="{Binding Track.LastPlayedText, StringFormat=' · {0}'}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}"
                                                IsVisible="{Binding Track.LastPlayedText, Converter={StaticResource HasValue}}"/>
                                 </StackPanel>
                             </StackPanel>

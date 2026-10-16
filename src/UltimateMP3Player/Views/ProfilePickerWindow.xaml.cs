@@ -69,7 +69,7 @@ public partial class ProfilePickerWindow : Window
         SmoothScroll.Attach(this);
         Swatches.ItemsSource = _swatches;
         Remember.IsChecked = host.Settings.StartupProfile != null;
-        if (currentId != null) SubTitle.Text = L.T("Scegli un profilo, aggiungine uno o modifica quelli esistenti.");
+        if (currentId != null) SubTitle.Text = L.T("Pick a profile, add one or edit the existing ones.");
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key != Key.Escape) return;
@@ -93,7 +93,7 @@ public partial class ProfilePickerWindow : Window
             IsCurrent = p.Id == _currentId,
         }).ToList();
         if (tiles.Count < 12)
-            tiles.Add(new ProfileTile { Name = L.T("Aggiungi profilo"), Brush = (Brush)FindResource("Surface2Brush") });
+            tiles.Add(new ProfileTile { Name = L.T("Add profile"), Brush = (Brush)FindResource("Surface2Brush") });
         Tiles.ItemsSource = tiles;
     }
 
@@ -130,7 +130,7 @@ public partial class ProfilePickerWindow : Window
         _editColor = info.Color;
         _pendingAvatar = null;
         _removeAvatar = false;
-        EditTitle.Text = L.T(isNew ? "Nuovo profilo" : "Modifica profilo");
+        EditTitle.Text = L.T(isNew ? "New profile" : "Edit profile");
         NameBox.Text = info.Name;
         bool canDelete = _host.Profiles.Profiles.Count > 1;
         DeleteButton.Visibility = isNew ? Visibility.Collapsed : Visibility.Visible;
@@ -174,8 +174,8 @@ public partial class ProfilePickerWindow : Window
     {
         var dlg = new OpenFileDialog
         {
-            Title = L.T("Scegli una foto per il profilo"),
-            Filter = L.T("Immagini") + "|*.jpg;*.jpeg;*.png;*.webp;*.bmp;*.gif|" + L.T("Tutti i file") + "|*.*",
+            Title = L.T("Choose a profile photo"),
+            Filter = L.T("Images") + "|*.jpg;*.jpeg;*.png;*.webp;*.bmp;*.gif|" + L.T("All files") + "|*.*",
         };
         if (dlg.ShowDialog(this) != true) return;
         _pendingAvatar = dlg.FileName;
@@ -227,10 +227,10 @@ public partial class ProfilePickerWindow : Window
     {
         if (_editing is not { } p || _editingIsNew || _host.Profiles.Profiles.Count < 2) return;
         bool inUse = p.Id == _currentId;
-        if (!Dialogs.Confirm(L.T("Eliminare il profilo?"),
-                L.F("Il profilo «{0}» verrà eliminato con le sue playlist, i preferiti, la cronologia e l'equalizzatore. I brani scaricati restano nella libreria degli altri profili.", p.Name) +
-                (inUse ? "\n\n" + L.T("È il profilo in uso: dopo scegli con quale continuare.") : ""),
-                L.T("Elimina"), true)) return;
+        if (!Dialogs.Confirm(L.T("Delete this profile?"),
+                L.F("The profile “{0}” will be deleted along with its playlists, favorites, history and equalizer. Downloaded songs stay in the other profiles' libraries.", p.Name) +
+                (inUse ? "\n\n" + L.T("It's the profile in use: afterwards you'll choose which one to continue with.") : ""),
+                L.T("Delete"), true)) return;
         _host.Profiles.Profiles.Remove(p);
         _host.Profiles.Save();
         if (_host.Settings.StartupProfile == p.Id)
@@ -243,7 +243,7 @@ public partial class ProfilePickerWindow : Window
         {
             _currentDeleted = true;
             _currentId = null;
-            SubTitle.Text = L.T("Il profilo è stato eliminato: scegli con quale profilo continuare.");
+            SubTitle.Text = L.T("The profile was deleted: choose which profile to continue with.");
         }
         CloseEditor();
         Refresh();

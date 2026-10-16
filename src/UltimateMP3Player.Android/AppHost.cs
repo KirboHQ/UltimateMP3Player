@@ -26,6 +26,7 @@ public sealed class AppHost : Observable
     {
         Settings = AppSettings.Load();
         ApplyLanguage();
+        ApplyTheme();
         // The music folder of a phone is the app's own (a restored backup of another phone points elsewhere).
         if (!Writable(Settings.MusicDir))
         {
@@ -37,7 +38,7 @@ public sealed class AppHost : Observable
         Profiles = ProfileList.Load();
         if (Profiles.Profiles.Count == 0)
         {
-            Profiles.Profiles.Add(new ProfileInfo { Name = L.T("Io"), Color = ProfileInfo.Palette[0] });
+            Profiles.Profiles.Add(new ProfileInfo { Name = L.T("Me"), Color = ProfileInfo.Palette[0] });
             Profiles.Save();
         }
         Ui.Animations = Settings.Animations;
@@ -93,8 +94,8 @@ public sealed class AppHost : Observable
     public ICommand RestartToUpdateCommand { get; }
 
     // Suggested songs that aren't in the library (the folder keeps the name of the computer apps' 3.0).
-    private Core.Together.TogetherCache? _songCache;
-    public Core.Together.TogetherCache SongCache => _songCache ??= new Core.Together.TogetherCache(Path.Combine(AppPaths.DataDir, "ascolta-insieme"));
+    private SongCache? _songCache;
+    public SongCache SongCache => _songCache ??= new SongCache(AppPaths.CacheDir);
 
     private MainViewModel? _session;
     public MainViewModel? Session { get => _session; private set => Set(ref _session, value); }
@@ -142,7 +143,8 @@ public sealed class AppHost : Observable
 
     public void ApplyTheme()
     {
-        if (Session != null) Themes.Apply(Session.Profile.Data.Theme, Session.Profile.Info.Color);
+        // (before a profile is open, the profile picker: the device's look)
+        Themes.Apply(Session?.Profile.Data.Theme, Session?.Profile.Info.Color ?? ThemeColors.All[0].A, Session?.Profile.Data.Appearance);
     }
 
     // ------------------------------------------------------------------ profiles
@@ -233,6 +235,7 @@ public sealed class AppHost : Observable
             Session?.Player.SaveState();
             Settings.Save();
             try { Library.Flush(); } catch { }
+            _songCache?.Flush();
             Profile.FlushAll();
             Images.Release();
             // Memory given back while nothing plays (playing, it would stop the sound for as long as it takes).
@@ -347,11 +350,12 @@ public sealed class AppHost : Observable
     {
         if (!Updates.IsReady) return;
         if (Downloads.HasActive &&
-            !await Dialogs.ConfirmAsync(L.T("Ci sono download in corso"), L.T("Vuoi interromperli e aggiornare adesso?"), L.T("Aggiorna"), false))
+            !await Dialogs.ConfirmAsync(L.T("Downloads are in progress"), L.T("Stop them and update now?"), L.T("Update"), false))
             return;
         Session?.Player.SaveState();
         Settings.Save();
         try { Library.Flush(); } catch { }
+        _songCache?.Flush();
         Profile.FlushAll();
         Updates.Apply(true, Session?.Profile.Info.Id, background);
     }
@@ -372,7 +376,7 @@ public sealed class AppHost : Observable
     {
         try
         {
-            EngineStatus = L.T("Preparazione dei motori di download…");
+            EngineStatus = L.T("Preparing download engines…");
             await Task.Run(() => Engines.InstallMissingAsync((text, pct) =>
                 Dispatcher.UIThread.Post(() => EngineStatus = text + (pct is double p ? $" · {p:0}%" : "…")), CancellationToken.None));
             EngineStatus = null;
@@ -380,7 +384,7 @@ public sealed class AppHost : Observable
         catch (Exception ex)
         {
             App.Log(ex);
-            EngineStatus = L.F("Motori di download non disponibili: {0}", ex.Message);
+            EngineStatus = L.F("Download engines not available: {0}", ex.Message);
         }
         finally { _installTask = null; }
     }
@@ -396,7 +400,7 @@ public sealed class AppHost : Observable
         if (Engines.Missing().Count > 0)
         {
             await EnsureEnginesAsync();
-            if (Engines.Missing().Count > 0) return L.T("Motori non disponibili.");
+            if (Engines.Missing().Count > 0) return L.T("Engines unavailable.");
         }
         try
         {
@@ -407,7 +411,7 @@ public sealed class AppHost : Observable
         }
         catch (Exception ex)
         {
-            return L.T("Aggiornamento non riuscito:") + " " + ex.Message;
+            return L.T("Update failed:") + " " + ex.Message;
         }
     }
 }

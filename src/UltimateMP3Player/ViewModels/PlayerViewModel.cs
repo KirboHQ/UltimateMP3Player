@@ -77,7 +77,7 @@ public sealed class PlayerViewModel : Observable
         _queue.Repeat = d.Repeat;
         _queue.AutoFill = d.AutoQueue;
         // A song alone in its list (e.g. played from a card): the queue comes from the whole library.
-        _queue.Fallback = () => (_main.Library.Snapshot().OrderByDescending(t => t.Added).Select(t => t.Id).ToList(), "library", "Tutti i brani");
+        _queue.Fallback = () => (_main.Library.Snapshot().OrderByDescending(t => t.Added).Select(t => t.Id).ToList(), "library", "All songs");
         _volume = d.Volume;
         _muted = d.Muted;
         ApplyVolume();
@@ -146,7 +146,7 @@ public sealed class PlayerViewModel : Observable
         {
             // No saved queue yet: continue with the library.
             var ids = lib.Snapshot().OrderByDescending(t => t.Added).Select(t => t.Id).ToList();
-            _queue.Play(ids, ids.IndexOf(last.Id), "library", "Tutti i brani");
+            _queue.Play(ids, ids.IndexOf(last.Id), "library", "All songs");
         }
         if (_queue.Current == null || TrackOf(_queue.Current) is not { } track) return;
         Current = _main.Vm(track);
@@ -266,12 +266,12 @@ public sealed class PlayerViewModel : Observable
     public string SpeedText => SpeedLabel(Speed);
     // Big number in the speed panel ("1,25×").
     public string SpeedValueText => Speed.ToString("0.00", L.Culture) + "×";
-    public string SpeedTip => _room == null ? L.T("Velocità di riproduzione (tasti < e >)")
-        : _room.CanSpeed ? L.T("Velocità di riproduzione per tutti nella stanza (tasti < e >)")
-        : L.T("Solo chi ha il permesso può cambiare la velocità (lo decide l'host)");
-    public string SpeedHint => _room == null ? L.T("Vale per tutti i brani, finché non la cambi.")
-        : _room.CanSpeed ? L.T("Cambia la velocità per tutti nella stanza.")
-        : L.T("Solo chi ha il permesso può cambiare la velocità (lo decide l'host).");
+    public string SpeedTip => _room == null ? L.T("Playback speed (keys < and >)")
+        : _room.CanSpeed ? L.T("Playback speed for everyone in the room (keys < and >)")
+        : L.T("Only people with permission can change the speed (the host decides)");
+    public string SpeedHint => _room == null ? L.T("It applies to every song until you change it.")
+        : _room.CanSpeed ? L.T("Changes the speed for everyone in the room.")
+        : L.T("Only people with permission can change the speed (the host decides).");
 
     private List<SpeedPreset>? _presets;
     public List<SpeedPreset> SpeedPresets
@@ -378,11 +378,11 @@ public sealed class PlayerViewModel : Observable
     // Name of the list being played, in the current language.
     public string? ContextName => _queue.ContextId switch
     {
-        "library" => L.T("Tutti i brani"),
-        "unsorted" => L.T("Senza playlist"),
+        "library" => L.T("All songs"),
+        "unsorted" => L.T("Not in a playlist"),
         { } id when id.StartsWith("playlist:") && _main.Profile.GetPlaylist(id[9..]) is { } p => PlaylistViewModel.DisplayName(p),
-        { } id when id.StartsWith("radio:") => L.F("Brani simili a «{0}»", _queue.ContextName),
-        { } id when id.StartsWith("artist:") => L.F("Brani di {0}", _queue.ContextName),
+        { } id when id.StartsWith("radio:") => L.F("Songs like “{0}”", _queue.ContextName),
+        { } id when id.StartsWith("artist:") => L.F("Songs by {0}", _queue.ContextName),
         _ => _queue.ContextName,
     };
 
@@ -393,7 +393,7 @@ public sealed class PlayerViewModel : Observable
         private set
         {
             if (!Set(ref _isPlaying, value)) return;
-            OnChanged(nameof(PlayGlyph));
+            OnChanged(nameof(PlayGlyph), nameof(Animate));
             Current?.RefreshPlaying();
             UpdateTimer();
             UpdateListening();
@@ -492,14 +492,14 @@ public sealed class PlayerViewModel : Observable
     public string RepeatGlyph => _room != null || Repeat == RepeatMode.One ? "" : "";
     // "Repeat one" loops the song until it's turned off, as in the other players (skipping still moves on).
     public string RepeatTip => _room != null
-        ? !_room.CanPause ? L.T("Solo chi ha il permesso di mettere in pausa può ripetere il brano (lo decide l'host)")
-        : _room.RoomLoop ? L.T("Il brano si ripete per tutti (clicca per togliere il loop)")
-        : L.T("Ripeti questo brano per tutti nella stanza")
+        ? !_room.CanPause ? L.T("Only people allowed to pause can loop the song (the host decides)")
+        : _room.RoomLoop ? L.T("The song repeats for everyone (click to stop the loop)")
+        : L.T("Repeat this song for everyone in the room")
         : L.T(Repeat switch
         {
-            RepeatMode.All => "Ripeti la playlist (clicca per ripetere il brano)",
-            RepeatMode.One => "Ripeti questo brano all'infinito (clicca per disattivare)",
-            _ => "Ripeti: disattivato",
+            RepeatMode.All => "Repeat playlist (click to repeat song)",
+            RepeatMode.One => "Repeat this song forever (click to turn off)",
+            _ => "Repeat: off",
         });
 
     private void CycleRepeat() => Repeat = Repeat switch
@@ -584,12 +584,21 @@ public sealed class PlayerViewModel : Observable
     // ------------------------------------------------------------------ playback
 
     // The rest of the list follows unless "automatic queue" is off (alwaysQueue: it follows anyway, e.g. several selected songs).
+    // The song already playing doesn't start over: from its own list (or a search) it opens the player, from another list
+    // it goes on and what follows becomes that list.
     public void PlayFrom(ITrackList list, TrackViewModel track, bool alwaysQueue = false)
     {
         // In a room nothing plays on its own: the song goes into the room's queue.
         if (_room != null)
         {
             _room.Add(new[] { track });
+            return;
+        }
+        bool playing = Current?.Id == track.Id && (_opened || _waiting == track.Id);
+        if (playing && (list.ContextId == "search" || list.ContextId == _queue.ContextId))
+        {
+            Play();
+            _main.Navigate(_main.NowPlaying);
             return;
         }
         // A search only finds the song: what follows comes from all the songs, as in the other players.
@@ -606,7 +615,14 @@ public sealed class PlayerViewModel : Observable
             return;
         }
         _queue.Play(ids, index, list.ContextId, list.ContextName, alwaysQueue || AutoQueue);
-        _ = Load(track.T, true);
+        if (!playing)
+        {
+            _ = Load(track.T, true);
+            return;
+        }
+        OnChanged(nameof(ContextName));
+        _main.OnContextChanged();
+        Play();
     }
 
     public void PlayAll(ITrackList list, bool shuffle)
@@ -657,7 +673,7 @@ public sealed class PlayerViewModel : Observable
         _main.Radio.Begin(t, contextId);
         _queue.Play(new[] { t.Id }, 0, contextId, t.Title, radio: true);
         if (!playing) _ = Load(t, true);
-        if (announce) _main.Toast(L.F("Cerco brani simili a «{0}»…", t.Title));
+        if (announce) _main.Toast(L.F("Looking for songs like “{0}”…", t.Title));
     }
 
     // The song now (or on, if it's the one playing) and after it the songs of its artist found online, the most listened
@@ -669,7 +685,7 @@ public sealed class PlayerViewModel : Observable
         var artist = t.Artist?.Split(',')[0].Trim();
         if (string.IsNullOrEmpty(artist))
         {
-            _main.Toast(L.T("Questo brano non ha un artista da cercare."));
+            _main.Toast(L.T("This song has no artist to look for."));
             return;
         }
         var contextId = "artist:" + t.Id;
@@ -677,7 +693,7 @@ public sealed class PlayerViewModel : Observable
         _main.Radio.Begin(t, contextId);
         _queue.Play(new[] { t.Id }, 0, contextId, artist, radio: true);
         if (!playing) _ = Load(t, true);
-        _main.Toast(L.F("Cerco i brani di {0}…", artist));
+        _main.Toast(L.F("Looking for songs by {0}…", artist));
     }
 
     // The songs of a link heard without downloading them into the library (RadioViewModel.AddFromLink): each comes into
@@ -716,7 +732,7 @@ public sealed class PlayerViewModel : Observable
             return;
         }
         _queue.Enqueue(t.Id);
-        if (!quiet) _main.Toast(L.F("«{0}» aggiunto alla coda", t.Title));
+        if (!quiet) _main.Toast(L.F("“{0}” added to queue", t.Title));
     }
 
     public void PlayNext(TrackViewModel t)
@@ -727,14 +743,14 @@ public sealed class PlayerViewModel : Observable
             return;
         }
         _queue.PlayNextInQueue(t.Id);
-        _main.Toast(L.F("«{0}» sarà il prossimo brano", t.Title));
+        _main.Toast(L.F("“{0}” will play next", t.Title));
     }
 
     // Nothing after this song: it plays alone (Generate brings the list back).
     private void ClearQueue()
     {
         _queue.ClearAll();
-        _main.Toast(L.T("Coda svuotata"));
+        _main.Toast(L.T("Queue cleared"));
     }
 
     // Full queue: generated again from scratch; otherwise the missing songs of the list go at the end.
@@ -746,13 +762,13 @@ public sealed class PlayerViewModel : Observable
         if (_queue.Radio)
         {
             _queue.Generate();
-            _main.Toast(_main.Radio.More() ? L.T("Cerco altri brani simili…") : L.T("Sto già cercando altri brani simili…"));
+            _main.Toast(_main.Radio.More() ? L.T("Looking for more similar songs…") : L.T("Already looking for more similar songs…"));
             return;
         }
         var (added, regenerated) = _queue.Generate();
-        _main.Toast(added == 0 ? L.T("Non ci sono altri brani da mettere in coda.")
-            : regenerated ? L.T("Coda generata di nuovo da capo")
-            : L.Count(added, "1 brano aggiunto in fondo alla coda", "{0} brani aggiunti in fondo alla coda"));
+        _main.Toast(added == 0 ? L.T("There are no other songs to queue.")
+            : regenerated ? L.T("Queue generated again from scratch")
+            : L.Count(added, "1 song added to the end of the queue", "{0} songs added to the end of the queue"));
     }
 
     // Automatic queue (button next to the song): the rest of the list comes with a song, and at every new song
@@ -768,13 +784,13 @@ public sealed class PlayerViewModel : Observable
             _queue.AutoFill = value;
             if (value) _queue.TopUp();
             OnChanged(nameof(AutoQueue), nameof(AutoQueueTip), nameof(QueueEndHint));
-            _main.Toast(value ? L.T("Coda automatica attiva: si riempie da sola a ogni brano") : L.T("Coda automatica spenta: finita la coda, la musica si ferma"));
+            _main.Toast(value ? L.T("Automatic queue on: it refills itself at every song") : L.T("Automatic queue off: when the queue ends, the music stops"));
         }
     }
 
     public string AutoQueueTip => AutoQueue
-        ? L.T("Coda automatica attiva: a ogni brano i successivi si rigenerano (clicca per spegnerla)")
-        : L.T("Coda automatica spenta: cliccando un brano suona solo quello (clicca per accenderla)");
+        ? L.T("Automatic queue on: up next refills at every song (click to turn it off)")
+        : L.T("Automatic queue off: clicking a song plays just that one (click to turn it on)");
 
     private async Task Load(Track t, bool play, bool crossfade = false)
     {
@@ -784,7 +800,7 @@ public sealed class PlayerViewModel : Observable
             t.Path = "";
             t.VideoPath = t.HasVideo && File.Exists(t.VideoPath) ? t.VideoPath : null;
             _main.Library.Changed(t);
-            _main.Toast(L.F("Il file di «{0}» non c'è più: lo ascolti dal suo link, e puoi salvarlo di nuovo", t.Title));
+            _main.Toast(L.F("The file of “{0}” is gone: you listen to it from its link, and you can save it again", t.Title));
         }
         var path = t.AudioPath ?? _main.Radio.PathFor(t.Id);
         if (path == null && _main.Radio.Streams(t))
@@ -836,8 +852,8 @@ public sealed class PlayerViewModel : Observable
             _audio.Pause();
             IsPlaying = false;
             _main.Toast(ex is FileNotFoundException
-                ? L.F("Il file di «{0}» non esiste più: è stato spostato o eliminato.", t.Title)
-                : L.F("Impossibile riprodurre «{0}»: {1}", t.Title, ex.Message));
+                ? L.F("The file for “{0}” no longer exists: it was moved or deleted.", t.Title)
+                : L.F("Couldn't play “{0}”: {1}", t.Title, ex.Message));
         }
         _main.Host.OnTrackChanged();
     }
@@ -861,10 +877,10 @@ public sealed class PlayerViewModel : Observable
     private bool _waitPlay, _waitMore;
 
     public bool IsWaiting => _waiting != null || _waitMore;
-    public string? WaitText => _waitMore ? L.T("Cerco altri brani simili…")
+    public string? WaitText => _waitMore ? L.T("Looking for more similar songs…")
         : _waiting is not { } id ? null
-        : _main.Radio.StatusOf(id) is { State: Core.Together.FileState.Downloading } st ? L.F("Lo sto scaricando · {0:0}%", st.Pct)
-        : L.T("In arrivo…");
+        : _main.Radio.StatusOf(id) is { State: Core.Together.FileState.Downloading } st ? L.F("Downloading · {0:0}%", st.Pct)
+        : L.T("On its way…");
 
     private void OnWaitChanged() => OnChanged(nameof(IsWaiting), nameof(WaitText), nameof(PlayGlyph));
 
@@ -906,10 +922,10 @@ public sealed class PlayerViewModel : Observable
         _waiting = null;
         OnWaitChanged();
         var title = Current?.Title;
-        _main.Toast(_main.Radio.IsGone(id) ? L.F("«{0}» non è più disponibile online e non l'ho trovato altrove: passo al successivo.", title)
+        _main.Toast(_main.Radio.IsGone(id) ? L.F("“{0}” is no longer available online and I couldn't find it elsewhere: skipping to the next one.", title)
             : _main.Radio.IsOffline(id)
-                ? L.F("«{0}» non è salvato sul dispositivo e non riesco a scaricarlo: controlla la connessione. Passo al successivo.", title)
-            : L.F("Non si riesce a scaricare «{0}»: passo al successivo.", title));
+                ? L.F("“{0}” isn't saved on your device and I can't download it: check your connection. Skipping to the next one.", title)
+            : L.F("“{0}” can't be downloaded: on to the next one.", title));
         _queue.Forget(id);
         _ = Next(false);
     }
@@ -926,8 +942,8 @@ public sealed class PlayerViewModel : Observable
         {
             if (first)
                 _main.Toast(contextId.StartsWith("artist:", StringComparison.Ordinal)
-                    ? L.T("Nessun brano dell'artista trovato online: dopo questo continuano tutti i tuoi brani.")
-                    : L.T("Nessun brano simile trovato online: dopo questo continuano tutti i tuoi brani."));
+                    ? L.T("No songs by the artist found online: all your songs follow this one.")
+                    : L.T("No similar songs found online: all your songs follow this one."));
             _queue.UseFallback();
         }
         if (!_waitMore) return;
@@ -1168,7 +1184,7 @@ public sealed class PlayerViewModel : Observable
                 return;
             }
             Seek(0);
-            if (!auto && Current != null) _main.Toast(L.T("Nessun altro brano in coda."));
+            if (!auto && Current != null) _main.Toast(L.T("No more songs in the queue."));
             return;
         }
         await Load(t, true);
@@ -1321,10 +1337,19 @@ public sealed class PlayerViewModel : Observable
 
     public void SetVisible(bool visible)
     {
+        bool back = visible && !_visible;
         _visible = visible;
         UpdateTimer();
         if (visible) Tick();
+        OnChanged(nameof(Animate));
+        // What was heard while away: the statistics' page catches up (MainViewModel.OnListened waited).
+        if (back && _listenId is { } heard) _main.OnListened(heard, true);
     }
+
+    // Playing with the app on screen: only then the waveform's played part and the lyrics move by themselves every frame.
+    public bool Animate => IsPlaying && _visible;
+
+    public bool Shown => _visible;
 
     private void UpdateTimer()
     {
@@ -1478,7 +1503,7 @@ public sealed class PlayerViewModel : Observable
         {
             if (version != _loadVersion) return true;
             _roomLoaded = null;
-            _main.Toast(L.F("Impossibile riprodurre «{0}»: {1}", vm.Title, ex.Message));
+            _main.Toast(L.F("Couldn't play “{0}”: {1}", vm.Title, ex.Message));
             return false;
         }
     }
@@ -1512,14 +1537,14 @@ public sealed class PlayerViewModel : Observable
     }
 
     // Tooltips of the transport: in a room without permission they say why the button is greyed out.
-    public string PlayTip => _room != null && !_room.CanPause ? L.T("Solo chi ha il permesso può mettere in pausa (lo decide l'host)") : L.T("Riproduci / Pausa (Spazio)");
-    public string NextTip => _room != null && !_room.CanSkip ? L.T("Solo chi ha il permesso può saltare i brani (lo decide l'host)") : L.T("Successivo");
-    public string? SeekTip => _room != null && !_room.CanPause ? L.T("Solo chi ha il permesso può andare avanti o indietro (lo decide l'host)") : null;
-    public string PreviousTip => _room == null ? L.T("Precedente")
-        : _room.CanPause ? L.T("Dall'inizio") : L.T("Solo chi ha il permesso può andare avanti o indietro (lo decide l'host)");
-    public string QueueHint => _room == null ? L.T("Doppio clic per saltare a un brano, trascina per riordinare.")
-        : _room.CanRemove ? L.T("La coda della stanza: doppio clic per farlo partire, trascina per riordinare.")
-        : L.T("La coda della stanza, uguale per tutti.");
+    public string PlayTip => _room != null && !_room.CanPause ? L.T("Only people with permission can pause (the host decides)") : L.T("Play / Pause (Space)");
+    public string NextTip => _room != null && !_room.CanSkip ? L.T("Only people with permission can skip songs (the host decides)") : L.T("Next");
+    public string? SeekTip => _room != null && !_room.CanPause ? L.T("Only people with permission can skip forward or back (the host decides)") : null;
+    public string PreviousTip => _room == null ? L.T("Previous")
+        : _room.CanPause ? L.T("From the start") : L.T("Only people with permission can skip forward or back (the host decides)");
+    public string QueueHint => _room == null ? L.T("Double-click to jump to a song, drag to reorder.")
+        : _room.CanRemove ? L.T("The room's queue: double-click to play a song now, drag to reorder.")
+        : L.T("The room's queue, the same for everyone.");
 
     // ------------------------------------------------------------------ up next
 
@@ -1542,7 +1567,7 @@ public sealed class PlayerViewModel : Observable
             // The room's queue, the same for everyone.
             foreach (var t in _room.RoomQueue.Take(150))
             {
-                rows.Add(new QueueRow(index, _room.TrackFor(t), true, index == 0 ? L.F("Coda di «{0}»", _room.RoomName) : null, this));
+                rows.Add(new QueueRow(index, _room.TrackFor(t), true, index == 0 ? L.F("Queue of “{0}”", _room.RoomName) : null, this));
                 index++;
             }
             UpNext = rows;
@@ -1555,10 +1580,10 @@ public sealed class PlayerViewModel : Observable
             if (TrackOf(e.Id) is { } t)
             {
                 string? header = null;
-                if (e.Queued && !queuedHeader) { header = L.T("In coda"); queuedHeader = true; }
+                if (e.Queued && !queuedHeader) { header = L.T("Queued"); queuedHeader = true; }
                 else if (!e.Queued && !planHeader)
                 {
-                    header = _queue.Radio ? ContextName : ContextName != null ? L.F("Successivi da «{0}»", ContextName) : L.T("Successivi");
+                    header = _queue.Radio ? ContextName : ContextName != null ? L.F("Up next from “{0}”", ContextName) : L.T("Up next");
                     planHeader = true;
                 }
                 rows.Add(new QueueRow(index, _main.Vm(t), e.Queued, header, this, _main.Radio.Item(e.Id)));
@@ -1583,33 +1608,33 @@ public sealed class PlayerViewModel : Observable
     };
 
     // Under the list: the songs that don't fit in it.
-    public string? MoreText => (_room?.RoomQueue.Count ?? _queue.UpcomingCount) - UpNext.Count is var more and > 0 ? L.Count(more, "e un altro brano", "e altri {0} brani") : null;
+    public string? MoreText => (_room?.RoomQueue.Count ?? _queue.UpcomingCount) - UpNext.Count is var more and > 0 ? L.Count(more, "and 1 more song", "and {0} more songs") : null;
 
     // Where "Generate" takes the songs from.
     public string GenerateHint
     {
         get
         {
-            if (_queue.Radio) return _main.Radio.Busy ? L.T("Cerco altri brani simili…") : L.T("Altri brani simili, trovati online");
-            var name = _queue.CanGenerate ? ContextName : L.T("Tutti i brani");
-            if (name == null) return Shuffle ? L.T("In ordine casuale") : "";
-            return Shuffle ? L.F("Da «{0}», in ordine casuale", name) : L.F("Da «{0}»", name);
+            if (_queue.Radio) return _main.Radio.Busy ? L.T("Looking for more similar songs…") : L.T("More similar songs, found online");
+            var name = _queue.CanGenerate ? ContextName : L.T("All songs");
+            if (name == null) return Shuffle ? L.T("In random order") : "";
+            return Shuffle ? L.F("From “{0}”, in random order", name) : L.F("From “{0}”", name);
         }
     }
 
     // What happens when this song ends with nothing after it.
     public string QueueEndHint => _room != null
-        ? _room.CanAdd ? L.T("Aggiungi brani alla stanza con il tasto + dalle tue playlist.") : L.T("Aspetta che qualcuno aggiunga un brano alla stanza.")
+        ? _room.CanAdd ? L.T("Add songs to the room with the + button in your playlists.") : L.T("Wait for someone to add a song to the room.")
         : Current == null
-        ? L.T("Avvia un brano: quelli dopo di lui compariranno qui.")
+        ? L.T("Play a song: the ones after it will show up here.")
         : _queue.Radio && Repeat != RepeatMode.One && !_queue.Cleared
-        ? _main.Radio.Busy ? L.T("Cerco brani simili online…") : L.T("Finiti questi, ne arrivano altri simili.")
-        : AutoQueue && Repeat != RepeatMode.One ? L.T("Coda automatica attiva: si riempie da sola alla fine del brano.")
+        ? _main.Radio.Busy ? L.T("Looking for similar songs online…") : L.T("When these are over, more similar ones come.")
+        : AutoQueue && Repeat != RepeatMode.One ? L.T("Automatic queue on: it refills itself when the song ends.")
         : L.T(Repeat switch
         {
-            RepeatMode.One => "Il brano in riproduzione si ripete all'infinito.",
-            RepeatMode.All when _queue.Cleared || !_queue.CanGenerate => "Il brano in riproduzione ricomincerà da capo.",
-            RepeatMode.All => "Poi la lista ricomincia da capo.",
-            _ => "Finito questo brano, la musica si ferma.",
+            RepeatMode.One => "The current song repeats forever.",
+            RepeatMode.All when _queue.Cleared || !_queue.CanGenerate => "The current song will start over.",
+            RepeatMode.All => "Then the list starts over.",
+            _ => "When this song ends, the music stops.",
         });
 }

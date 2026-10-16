@@ -101,6 +101,7 @@ public partial class NowPlayingView : UserControl
     {
         _window = TopLevel.GetTopLevel(this) as Window;
         if (_window != null) _window.PropertyChanged += OnWindowState;
+        Themes.Changed += BakeCover;
         Attach(DataContext as NowPlayingViewModel);
         WatchCover();
         Update();
@@ -112,6 +113,7 @@ public partial class NowPlayingView : UserControl
     private void OnUnloaded()
     {
         if (_window != null) _window.PropertyChanged -= OnWindowState;
+        Themes.Changed -= BakeCover;
         Attach(null);
         CloseVideo();
         _ticking = false;
@@ -194,8 +196,8 @@ public partial class NowPlayingView : UserControl
     {
         if (_vm == null) return;
         var p = _vm.Player;
-        LyricsPane.SetClock(p.Position, p.IsPlaying, p.Speed);
-        Captions.SetClock(p.Position, p.IsPlaying, p.Speed);
+        LyricsPane.SetClock(p.Position, p.Animate, p.Speed);
+        Captions.SetClock(p.Position, p.Animate, p.Speed);
     }
 
     private void ShowFollowButton(bool following)
@@ -257,7 +259,7 @@ public partial class NowPlayingView : UserControl
             Update();
             ShowLyricsText();
         }
-        else if (e.PropertyName is nameof(PlayerViewModel.IsPlaying) or nameof(PlayerViewModel.Position) or nameof(PlayerViewModel.Speed)) PushClock();
+        else if (e.PropertyName is nameof(PlayerViewModel.IsPlaying) or nameof(PlayerViewModel.Animate) or nameof(PlayerViewModel.Position) or nameof(PlayerViewModel.Speed)) PushClock();
     }
 
     // The video plays only while the page shows it and the window isn't minimized.

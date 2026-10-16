@@ -13,7 +13,7 @@ public sealed class TrayIcon : IDisposable
 
     public TrayIcon(Action show, Action playPause, Action next, Action previous, Action exit)
     {
-        var menu = new ContextMenuStrip { Renderer = new DarkRenderer(), ShowImageMargin = false, Font = new Font("Segoe UI", 9.5f) };
+        var menu = new ContextMenuStrip { Renderer = new MenuRenderer(), ShowImageMargin = false, Font = new Font("Segoe UI", 9.5f) };
         _title = new ToolStripMenuItem("Ultimate MP3 Player") { Enabled = false };
         _playPause = new ToolStripMenuItem("", null, (_, _) => playPause());
         _next = new ToolStripMenuItem("", null, (_, _) => next());
@@ -21,8 +21,6 @@ public sealed class TrayIcon : IDisposable
         _open = new ToolStripMenuItem("", null, (_, _) => show());
         _exit = new ToolStripMenuItem("", null, (_, _) => exit());
         menu.Items.AddRange(new ToolStripItem[] { _title, new ToolStripSeparator(), _playPause, _next, _previous, new ToolStripSeparator(), _open, _exit });
-        foreach (ToolStripItem i in menu.Items) i.ForeColor = Color.FromArgb(0xEC, 0xEE, 0xF3);
-        _title.ForeColor = Color.FromArgb(0x9A, 0xA3, 0xB5);
         Relabel();
 
         var exe = Environment.ProcessPath ?? "";
@@ -38,11 +36,11 @@ public sealed class TrayIcon : IDisposable
 
     public void Relabel()
     {
-        _playPause.Text = L.T(_playing ? "Pausa" : "Riproduci");
-        _next.Text = L.T("Brano successivo");
-        _previous.Text = L.T("Brano precedente");
-        _open.Text = L.T("Apri Ultimate MP3 Player");
-        _exit.Text = L.T("Esci");
+        _playPause.Text = L.T(_playing ? "Pause" : "Play");
+        _next.Text = L.T("Next song");
+        _previous.Text = L.T("Previous song");
+        _open.Text = L.T("Open Ultimate MP3 Player");
+        _exit.Text = L.T("Quit");
     }
 
     public void Update(string? nowPlaying, bool playing)
@@ -51,7 +49,7 @@ public sealed class TrayIcon : IDisposable
         var text = nowPlaying == null ? "Ultimate MP3 Player" : (playing ? "▶ " : "⏸ ") + nowPlaying;
         _icon.Text = text.Length > 120 ? text[..120] : text;
         _title.Text = nowPlaying ?? "Ultimate MP3 Player";
-        _playPause.Text = L.T(playing ? "Pausa" : "Riproduci");
+        _playPause.Text = L.T(playing ? "Pause" : "Play");
     }
 
     // Tells once where the app went after closing the window.
@@ -59,7 +57,7 @@ public sealed class TrayIcon : IDisposable
     {
         if (_hintShown) return;
         _hintShown = true;
-        _icon.ShowBalloonTip(4000, "Ultimate MP3 Player", L.T("La musica continua in background. Clicca l'icona per riaprire il lettore."), ToolTipIcon.None);
+        _icon.ShowBalloonTip(4000, "Ultimate MP3 Player", L.T("Music keeps playing in the background. Click the icon to reopen the player."), ToolTipIcon.None);
     }
 
     public void Dispose()
@@ -68,22 +66,29 @@ public sealed class TrayIcon : IDisposable
         _icon.Dispose();
     }
 
-    private sealed class DarkRenderer : ToolStripProfessionalRenderer
+    // The look's colours (Themes), read each time the menu is drawn: it follows the light and dark look.
+    private static Color C(string name)
     {
-        public DarkRenderer() : base(new DarkColors()) { RoundedEdges = false; }
+        var c = Themes.Get(name);
+        return Color.FromArgb(c.R, c.G, c.B);
+    }
+
+    private sealed class MenuRenderer : ToolStripProfessionalRenderer
+    {
+        public MenuRenderer() : base(new MenuColors()) { RoundedEdges = false; }
 
         protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
         {
-            e.TextColor = e.Item.Enabled ? Color.FromArgb(0xEC, 0xEE, 0xF3) : Color.FromArgb(0x9A, 0xA3, 0xB5);
+            e.TextColor = C(e.Item.Enabled ? "Text" : "SubText");
             base.OnRenderItemText(e);
         }
     }
 
-    private sealed class DarkColors : ProfessionalColorTable
+    private sealed class MenuColors : ProfessionalColorTable
     {
-        private static readonly Color Bg = Color.FromArgb(0x1D, 0x21, 0x29);
-        private static readonly Color Hover = Color.FromArgb(0x2E, 0x33, 0x40);
-        private static readonly Color Line = Color.FromArgb(0x3A, 0x41, 0x50);
+        private static Color Bg => C("Popup");
+        private static Color Hover => C("Surface3");
+        private static Color Line => C("Border");
         public override Color ToolStripDropDownBackground => Bg;
         public override Color MenuBorder => Line;
         public override Color MenuItemBorder => Hover;

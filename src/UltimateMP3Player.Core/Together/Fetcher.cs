@@ -30,7 +30,7 @@ public sealed class TogetherFetcher : IDisposable
 
     private readonly TogetherSession _s;
     private readonly Library _lib;
-    private readonly TogetherCache _cache;
+    private readonly SongCache _cache;
     private readonly Func<FetchOptions> _options;
     private readonly Dictionary<string, FileStatus> _status = new();
     private readonly Dictionary<string, string> _paths = new();
@@ -52,7 +52,7 @@ public sealed class TogetherFetcher : IDisposable
     private long _lastReport;
     private System.Threading.Timer? _retry;
 
-    public TogetherFetcher(TogetherSession s, Library lib, TogetherCache cache, Func<FetchOptions> options)
+    public TogetherFetcher(TogetherSession s, Library lib, SongCache cache, Func<FetchOptions> options)
     {
         _s = s;
         _lib = lib;

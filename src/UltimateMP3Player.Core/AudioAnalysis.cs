@@ -85,7 +85,7 @@ public static class AudioAnalysis
         if (inBlock > 0) squares.Add(acc / inBlock);
         await p.WaitForExitAsync(ct);
         var err = await errTask;
-        if (squares.Count == 0) throw new EngineException(L.T("Il file audio non è leggibile."), err);
+        if (squares.Count == 0) throw new EngineException(L.T("The audio file can't be read."), err);
 
         double? lufs = null;
         var m = Regex.Matches(err, @"I:\s+(-?\d+(?:\.\d+)?)\s+LUFS");
@@ -125,7 +125,7 @@ public static class AudioAnalysis
         var r = await ProcRunner.RunAsync(Engines.Ffprobe,
             new[] { "-v", "error", "-print_format", "json", "-show_format", "-show_streams", file }, ct: ct, timeout: TimeSpan.FromMinutes(1));
         if (r.ExitCode != 0 || !r.StdOut.TrimStart().StartsWith('{'))
-            throw new EngineException(L.T("Il file non è un audio leggibile."), r.StdErr);
+            throw new EngineException(L.T("The file isn't readable audio."), r.StdErr);
         using var doc = JsonDocument.Parse(r.StdOut);
         var root = doc.RootElement;
         bool hasAudio = false, hasVideo = false, hasCover = false;
@@ -137,7 +137,7 @@ public static class AudioAnalysis
             else if (type == "video" && pic) hasCover = true;
             else if (type == "video" && s.Str("codec_name") is not ("mjpeg" or "png" or "bmp")) hasVideo = true;
         }
-        if (!hasAudio) throw new EngineException(L.T("Il file non contiene audio."));
+        if (!hasAudio) throw new EngineException(L.T("The file has no audio."));
         var fmt = root.Prop("format");
         var tags = fmt?.Prop("tags");
         string? Tag(params string[] names)

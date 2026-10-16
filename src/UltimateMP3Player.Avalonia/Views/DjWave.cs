@@ -93,6 +93,7 @@ public sealed class DjWave : Control
 
     public override void Render(DrawingContext dc)
     {
+        Inks();
         double w = Bounds.Width, h = Bounds.Height;
         dc.DrawRectangle(Ui.Res("BgBrush"), null, new Rect(0, 0, w, h), 8, 8);
         if (Deck is not { } deck) return;
@@ -102,7 +103,7 @@ public sealed class DjWave : Control
         if (a == null || dur <= 0)
         {
             if (Overview) return;
-            string msg = deck.IsLoading ? L.T("Analisi del brano…") : deck.HasTrack ? "" : deck.EmptyText;
+            string msg = deck.IsLoading ? L.T("Analyzing the song…") : deck.HasTrack ? "" : deck.EmptyText;
             if (msg.Length == 0) return;
             var ft = new FormattedText(msg, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
                 new Typeface(Ui.Find<FontFamily>("UiFont")), 13, Ui.Res("MutedBrush"));
@@ -129,7 +130,7 @@ public sealed class DjWave : Control
                 if (t > tEnd) break;
                 double x = w / 2 + (t - pos) / spp;
                 bool downbeat = k % 4 == 0;
-                dc.DrawLine(k == 0 ? _anchorPen! : downbeat ? BarPen : BeatPen, new Point(x, downbeat ? 0 : h * 0.2), new Point(x, downbeat ? h : h * 0.8));
+                dc.DrawLine(k == 0 ? _anchorPen! : downbeat ? _barPen : _beatPen, new Point(x, downbeat ? 0 : h * 0.2), new Point(x, downbeat ? h : h * 0.8));
             }
         }
 
@@ -140,14 +141,26 @@ public sealed class DjWave : Control
                 dc.DrawGeometry(Brushes.Orange, null, CueShape);
         double px = Overview ? pos / dur * w : w / 2;
         _drawnX = px;
-        dc.FillRectangle(Brushes.White, new Rect(px - 1, 0, 2, h));
+        dc.FillRectangle(_playhead, new Rect(px - 1, 0, 2, h));
     }
 
     private double _drawnX = double.NaN;
     private Pen? _anchorPen;
     private Color? _anchorColor;
-    private static readonly Pen BeatPen = new(new SolidColorBrush(Color.FromArgb(0x40, 255, 255, 255)).ToImmutable(), 1);
-    private static readonly Pen BarPen = new(new SolidColorBrush(Color.FromArgb(0xA0, 255, 255, 255)).ToImmutable(), 1.5);
+    // Beat lines and playhead in the colour of the text: white when dark, nearly black when light.
+    private static Color _ink;
+    private static Pen _beatPen = null!, _barPen = null!;
+    private static IBrush _playhead = null!;
+
+    private static void Inks()
+    {
+        var c = Themes.Get("Text");
+        if (c == _ink && _playhead != null) return;
+        _ink = c;
+        _beatPen = new Pen(new SolidColorBrush(Color.FromArgb(0x40, c.R, c.G, c.B)).ToImmutable(), 1);
+        _barPen = new Pen(new SolidColorBrush(Color.FromArgb(0xA0, c.R, c.G, c.B)).ToImmutable(), 1.5);
+        _playhead = new SolidColorBrush(c).ToImmutable();
+    }
     private static readonly Geometry CueShape = Geometry.Parse("M-5,0 h10 l-5,7 z");
 
     // ------------------------------------------------------------------ the bars

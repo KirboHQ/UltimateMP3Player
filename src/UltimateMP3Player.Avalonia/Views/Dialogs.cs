@@ -106,7 +106,7 @@ public static partial class Dialogs
     }
 
     public static string? Prompt(string title, string label, string initial)
-        => Show(title, null, new[] { (label, initial) }, L.T("Salva"), false)?[0];
+        => Show(title, null, new[] { (label, initial) }, L.T("Save"), false)?[0];
 
     private static IBrush Res(string key) => Application.Current!.FindResource(key) as IBrush ?? Brushes.Gray;
     private static T Res<T>(string key) where T : class => (Application.Current!.FindResource(key) as T)!;
@@ -121,15 +121,15 @@ public static partial class Dialogs
         var stack = new StackPanel();
         stack.Children.Add(new TextBlock
         {
-            Text = L.T("Ultimate MP3 Player è uno strumento: scarica soltanto quello che gli chiedi tu, attraverso programmi e siti di terze parti, e non ospita né distribuisce musica."),
+            Text = L.T("Ultimate MP3 Player is a tool: it only downloads what you ask it to, through third-party programs and sites, and it doesn't host or distribute any music."),
             TextWrapping = TextWrapping.Wrap, Foreground = sub, LineHeight = 20,
         });
-        stack.Children.Add(new TextBlock { Text = L.T("Usandolo dichiari che:"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 14, 0, 4) });
+        stack.Children.Add(new TextBlock { Text = L.T("By using it you declare that:"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 14, 0, 4) });
         foreach (var point in new[]
                  {
-                     "scaricherai solo brani, video e immagini che possiedi già legittimamente (per esempio musica che hai acquistato) o che hai comunque il diritto di scaricare, come contenuti liberi o con il permesso di chi li ha creati;",
-                     "sei l'unico responsabile di cosa scarichi, di come lo usi e di cosa condividi con gli altri (anche con Ascolta insieme), nel rispetto delle leggi sul diritto d'autore del tuo paese e delle condizioni dei siti da cui scarichi;",
-                     "l'autore dell'app non controlla i contenuti che scarichi e non risponde in alcun modo dell'uso che ne fai.",
+                     "you will only download songs, videos and images that you already lawfully own (for example music you bought) or that you otherwise have the right to download, such as free content or content its creators allow;",
+                     "you alone are responsible for what you download, how you use it and what you share with others (Listen together included), in compliance with the copyright laws of your country and the terms of the sites you download from;",
+                     "the author of the app doesn't control the content you download and is in no way liable for the use you make of it.",
                  })
         {
             var row = new DockPanel { Margin = new Thickness(2, 6, 0, 0) };
@@ -141,23 +141,23 @@ public static partial class Dialogs
         }
         if (!ask)
         {
-            var close = Button(L.T("Chiudi"), "PrimaryButton", isDefault: true, isCancel: true);
-            var info = Frame(L.T("Termini d'uso"), stack, 480, close);
+            var close = Button(L.T("Close"), "PrimaryButton", isDefault: true, isCancel: true);
+            var info = Frame(L.T("Terms of use"), stack, 480, close);
             close.Click += (_, _) => info.DialogResult = true;
             info.ShowDialog();
             return true;
         }
         stack.Children.Add(new TextBlock
         {
-            Text = L.T("Se non sei d'accordo, esci: l'app si chiude e puoi disinstallarla."), TextWrapping = TextWrapping.Wrap,
+            Text = L.T("If you don't agree, quit: the app closes and you can uninstall it."), TextWrapping = TextWrapping.Wrap,
             Foreground = Res("MutedBrush"), FontSize = 12.5, Margin = new Thickness(0, 14, 0, 0),
         });
-        var ok = Button(L.T("Accetto"), "PrimaryButton", isDefault: true);
+        var ok = Button(L.T("I accept"), "PrimaryButton", isDefault: true);
         ok.IsEnabled = false;
-        var check = new CheckBox { Content = L.T("Ho letto e accetto queste condizioni"), Margin = new Thickness(0, 16, 0, 0) };
+        var check = new CheckBox { Content = L.T("I have read and accept these terms"), Margin = new Thickness(0, 16, 0, 0) };
         check.IsCheckedChanged += (_, _) => ok.IsEnabled = check.IsChecked == true;
         stack.Children.Add(check);
-        var win = Frame(L.T("Prima di iniziare"), stack, 480, Button(L.T("Esci"), "GhostButton", isCancel: true), ok);
+        var win = Frame(L.T("Before you start"), stack, 480, Button(L.T("Quit"), "GhostButton", isCancel: true), ok);
         ok.Click += (_, _) => win.DialogResult = true;
         win.Opened += (_, _) => check.Focus();
         return win.ShowDialog() == true;
@@ -166,8 +166,8 @@ public static partial class Dialogs
     public static (string Title, string Artist, string Album, string Bpm)? EditTrack(Track t)
     {
         var bpm = t.Bpm?.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) ?? "";
-        var r = Show(L.T("Modifica informazioni"), null,
-            new[] { (L.T("Titolo"), t.Title), (L.T("Artista"), t.Artist ?? ""), (L.T("Album"), t.Album ?? ""), ("BPM", bpm) }, L.T("Salva"), false);
+        var r = Show(L.T("Edit info"), null,
+            new[] { (L.T("Title"), t.Title), (L.T("Artist"), t.Artist ?? ""), (L.T("Album"), t.Album ?? ""), ("BPM", bpm) }, L.T("Save"), false);
         return r == null ? null : (r[0], r[1], r[2], r[3]);
     }
 
@@ -201,7 +201,7 @@ public static partial class Dialogs
 
         string[]? result = null;
         var okButton = Button(ok, danger ? "DangerButton" : "PrimaryButton", isDefault: true);
-        var win = Frame(title, stack, 400, Button(L.T("Annulla"), "GhostButton", isCancel: true), okButton);
+        var win = Frame(title, stack, 400, Button(L.T("Cancel"), "GhostButton", isCancel: true), okButton);
         okButton.Click += (_, _) =>
         {
             result = boxes.Select(b => b.Text ?? "").ToArray();
@@ -293,7 +293,7 @@ public static partial class Dialogs
     {
         if (Storage is not { } storage) return null;
         var types = filters.Select(f => new FilePickerFileType(f.Name) { Patterns = f.Extensions.Select(e => "*" + e).ToList() }).ToList();
-        types.Add(new FilePickerFileType(L.T("Tutti i file")) { Patterns = new[] { "*" } });
+        types.Add(new FilePickerFileType(L.T("All files")) { Patterns = new[] { "*" } });
         var files = Wait(() => storage.OpenFilePickerAsync(new FilePickerOpenOptions { Title = title, AllowMultiple = multiple, FileTypeFilter = types }));
         var paths = files?.Select(f => f.TryGetLocalPath()).OfType<string>().ToArray();
         return paths is { Length: > 0 } ? paths : null;
@@ -304,7 +304,7 @@ public static partial class Dialogs
 
     public static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".jfif", ".avif" };
 
-    public static string? PickImage() => PickFile(L.T("Scegli un'immagine"), (L.T("Immagini"), ImageExtensions));
+    public static string? PickImage() => PickFile(L.T("Choose an image"), (L.T("Images"), ImageExtensions));
 
     public static string? PickFolder(string title, string? initial = null)
     {

@@ -31,22 +31,22 @@ public static class IosEngines
     {
         if (exe == PythonHost.Library && args.Count > 0 && args[0] == Engines.YtDlp)
             return new PythonProcess(args.Skip(1).ToList(), errors);
-        throw new EngineException(L.F("Impossibile avviare {0}.", Path.GetFileName(exe)), "iOS can't start programs");
+        throw new EngineException(L.F("Couldn't start {0}.", Path.GetFileName(exe)), "iOS can't start programs");
     }
 
     private static Task InstallAsync(Action<string, double?> progress, CancellationToken ct) => Task.Run(async () =>
     {
         if (!PythonHost.Bundled || !File.Exists(BundledYtDlp))
-            throw new EngineException(L.T("Questa versione dell'app non contiene i motori di download."));
+            throw new EngineException(L.T("This version of the app doesn't include the download engines."));
         if (!File.Exists(Engines.YtDlp))
         {
-            progress(L.T("Preparazione di yt-dlp"), null);
+            progress(L.T("Preparing yt-dlp"), null);
             Directory.CreateDirectory(Engines.Dir);
             var part = Engines.YtDlp + ".part";
             File.Copy(BundledYtDlp, part, true);
             File.Move(part, Engines.YtDlp, true);
         }
-        progress(L.T("Preparazione di Python"), null);
+        progress(L.T("Preparing Python"), null);
         await PythonHost.StartAsync();
     }, ct);
 }

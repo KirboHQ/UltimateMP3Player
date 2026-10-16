@@ -13,7 +13,7 @@
                 <ContentControl Width="200" Height="200" HorizontalAlignment="Center" Content="{Binding Vm}" ContentTemplate="{StaticResource PlaylistCover}"
                                 Margin="0,4,0,18"/>
                 <TextBlock Text="{Binding Vm.Name}" FontSize="25" FontWeight="Bold" TextWrapping="Wrap" Margin="18,0,18,4"/>
-                <TextBlock Text="{Binding TotalText}" FontSize="13.5" Foreground="{StaticResource SubTextBrush}" Margin="18,0,18,0" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding TotalText}" FontSize="13.5" Foreground="{DynamicResource SubTextBrush}" Margin="18,0,18,0" TextWrapping="Wrap"/>
                 <!-- some of its songs are in the cloud: all of them saved at once -->
                 <Button Theme="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="14,4,18,0" Padding="4,6" Command="{Binding SaveAllCommand}"
                         IsVisible="{Binding ShowSaveAll}">
@@ -47,7 +47,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border CornerRadius="12" Padding="9,3,11,4" Margin="0,0,6,6" Background="{StaticResource Surface3Brush}"
+                            <Border CornerRadius="12" Padding="9,3,11,4" Margin="0,0,6,6" Background="{DynamicResource Surface3Brush}"
                                     views:Touch.Tap="{Binding $parent[views:MainView].DataContext.OpenTagCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center"/>
@@ -77,7 +77,7 @@
                     </StackPanel>
                 </StackPanel>
                 <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" Margin="18,2,16,4">
-                    <TextBlock Text="{Binding CountText}" FontSize="13.5" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding CountText}" FontSize="13.5" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
                     <!-- inside the Library tab there's no bar on top: search and choose are here -->
                     <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Content="{local:Icon E721}" Click="Search_Click"
                             IsVisible="{Binding $parent[views:SongsPage].InlineTools}"/>
@@ -133,24 +133,24 @@
                 <TextBlock x:Name="BarTitle" Grid.Column="1" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0" Opacity="0"
                            TextTrimming="CharacterEllipsis"/>
                 <TextBox x:Name="FilterBox" Grid.Column="1" Theme="{StaticResource FilterBox}" Margin="6,0" IsVisible="False"
-                         Watermark="{local:T 'Cerca in questa lista'}"/>
+                         Watermark="{local:T 'Search in this list'}"/>
                 <Button x:Name="SearchButton" Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E721}" Click="Search_Click"/>
                 <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Click="Select_Click"/>
             </Grid>
             <!-- choosing songs -->
-            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="{StaticResource BgBrush}">
+            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="{DynamicResource BgBrush}">
                 <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" Command="{Binding #List.Picks.CancelCommand}"/>
                 <TextBlock Grid.Column="1" Text="{Binding #List.Picks.CountText}" FontSize="16.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"/>
                 <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Command="{Binding #List.Picks.AllCommand}"/>
                 <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Command="{Binding #List.Picks.MoreCommand}"/>
             </Grid>
             <!-- arranging a playlist ("Sposta"): drag a song by its handle, then "Fatto" -->
-            <Grid x:Name="ReorderBar" ColumnDefinitions="*,Auto" Margin="18,0,10,0" IsVisible="False" Background="{StaticResource BgBrush}">
+            <Grid x:Name="ReorderBar" ColumnDefinitions="*,Auto" Margin="18,0,10,0" IsVisible="False" Background="{DynamicResource BgBrush}">
                 <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="{local:T 'Sposta i brani'}" FontSize="16.5" FontWeight="SemiBold"/>
-                    <TextBlock Text="{local:T 'Trascina ≡ per cambiare posto a un brano'}" Classes="hint" FontSize="12.5"/>
+                    <TextBlock Text="{local:T 'Move songs'}" FontSize="16.5" FontWeight="SemiBold"/>
+                    <TextBlock Text="{local:T 'Drag ≡ to move a song'}" Classes="hint" FontSize="12.5"/>
                 </StackPanel>
-                <Button Grid.Column="1" Theme="{StaticResource SmallGhost}" Content="{local:T Fatto}" Click="ReorderDone_Click" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Theme="{StaticResource SmallGhost}" Content="{local:T Done}" Click="ReorderDone_Click" VerticalAlignment="Center"/>
             </Grid>
         </Panel>
 

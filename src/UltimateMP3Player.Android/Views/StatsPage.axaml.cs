@@ -91,7 +91,7 @@ public partial class StatsPage : UserControl, IPage
         List.Picks.SetItems(items, _vm);
         var all = new List<object> { _header };
         all.AddRange(items);
-        if (items.Count == 0) all.Add(new ListNote(L.T("Ancora niente"), _vm.EmptyText));
+        if (items.Count == 0) all.Add(new ListNote(L.T("Nothing yet"), _vm.EmptyText));
         List.ItemsSource = all;
         if (sv != null) Dispatcher.UIThread.Post(() => sv.Offset = offset, DispatcherPriority.Background);
         if (_selectNever)
@@ -112,7 +112,7 @@ public partial class StatsPage : UserControl, IPage
     private void Sort_Click(object? sender, RoutedEventArgs e)
     {
         if (_vm is not { } vm) return;
-        var menu = new SheetMenu { Title = L.T("Ordina per") };
+        var menu = new SheetMenu { Title = L.T("Sort by") };
         foreach (var s in vm.Sorts)
         {
             var choice = s;

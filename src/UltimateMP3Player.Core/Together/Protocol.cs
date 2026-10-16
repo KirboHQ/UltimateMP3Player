@@ -124,7 +124,7 @@ public sealed class ChatLine
     public bool System { get; set; }
     public List<string>? Args { get; set; }
 
-    public string Display => System ? L.F(Text, (Args ?? new List<string>()).Cast<object?>().ToArray()) : Text;
+    public string Display => System ? L.F(L.KeyOf(Text), (Args ?? new List<string>()).Cast<object?>().ToArray()) : Text;
 }
 
 public enum FileState { None, Downloading, Transfer, Ready, Failed }

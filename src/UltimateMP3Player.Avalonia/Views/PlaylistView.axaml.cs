@@ -80,7 +80,7 @@ public partial class PlaylistView : UserControl
             if (!Vm.IsCustomOrder)
             {
                 Vm.UseCustomOrder();
-                row.Track.Main.Toast(L.T("Ordine personalizzato della playlist"));
+                row.Track.Main.Toast(L.T("Playlist's custom order"));
             }
             int to = t < 0 ? p.Tracks.Count - 1 : DragVisuals.MoveIndex(from, t, after);
             profile.MoveTrack(p, from, Math.Clamp(to, 0, p.Tracks.Count - 1));
@@ -88,7 +88,7 @@ public partial class PlaylistView : UserControl
         else
         {
             profile.AddTrack(p, row.Track.Id, t < 0 ? null : after ? t + 1 : t);
-            row.Track.Main.Toast(L.F("Aggiunto a «{0}»", PlaylistViewModel.DisplayName(p)));
+            row.Track.Main.Toast(L.F("Added to “{0}”", PlaylistViewModel.DisplayName(p)));
         }
     }
 }

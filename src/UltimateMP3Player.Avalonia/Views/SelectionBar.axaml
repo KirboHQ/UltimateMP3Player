@@ -3,14 +3,14 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              x:Class="UltimateMP3Player.Views.SelectionBar"
              IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,16">
-    <Border CornerRadius="14" Padding="16,8,8,8" Background="{StaticResource Surface3Brush}" BorderBrush="{StaticResource BorderStrongBrush}"
-            BorderThickness="1" BoxShadow="0 4 20 0 #8C000000">
+    <Border CornerRadius="14" Padding="16,8,8,8" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1" BoxShadow="{DynamicResource PopupShadow}">
         <!-- the actions depend on what's selected (songs, songs of "next up", downloads, playlists): built in code -->
         <StackPanel Orientation="Horizontal">
             <TextBlock Name="CountText" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,14,0"/>
             <StackPanel Name="Buttons" Orientation="Horizontal"/>
             <Button Theme="{StaticResource IconButton}" Content="{local:Icon E711}" FontSize="12" Margin="6,0,0,0" Click="Clear_Click"
-                    ToolTip.Tip="{local:T 'Deseleziona (Esc)'}"/>
+                    ToolTip.Tip="{local:T 'Deselect (Esc)'}"/>
         </StackPanel>
     </Border>
 </UserControl>

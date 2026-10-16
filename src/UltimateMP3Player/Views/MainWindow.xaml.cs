@@ -140,11 +140,11 @@ public partial class MainWindow : Window
         var p = vm.Player;
         if (!p.CanSetSpeed)
         {
-            vm.Toast(L.T("Solo chi ha il permesso può cambiare la velocità (lo decide l'host)"));
+            vm.Toast(L.T("Only people with permission can change the speed (the host decides)"));
             return;
         }
         p.Speed += e.Text == ">" ? 0.25 : -0.25;
-        vm.Toast(L.F("Velocità: {0}", p.SpeedText));
+        vm.Toast(L.F("Speed: {0}", p.SpeedText));
     }
 
     private void Search_KeyDown(object sender, KeyEventArgs e)
@@ -166,8 +166,10 @@ public partial class MainWindow : Window
     private void Search_Focus(object sender, KeyboardFocusChangedEventArgs e)
     {
         bool focused = SearchBox.IsKeyboardFocused;
-        SearchPill.BorderBrush = (Brush)FindResource(focused ? "AccentBrush" : "BorderBrush");
-        SearchIcon.Foreground = (Brush)FindResource(focused ? "TextBrush" : "SubTextBrush");
+        // (references: they follow the light and dark look)
+        if (focused) SearchPill.SetResourceReference(Border.BorderBrushProperty, "AccentBrush");
+        else SearchPill.BorderBrush = Brushes.Transparent;
+        SearchIcon.SetResourceReference(TextBlock.ForegroundProperty, focused ? "TextBrush" : "SubTextBrush");
     }
 
     private void Volume_Wheel(object sender, MouseWheelEventArgs e)
@@ -318,7 +320,7 @@ public partial class MainWindow : Window
     private void ShowPackDrop(List<string> packs)
     {
         _dropHide.Stop();
-        PackDropName.Text = packs.Count == 1 ? Path.GetFileNameWithoutExtension(packs[0]) : L.F("{0} pacchetti", packs.Count);
+        PackDropName.Text = packs.Count == 1 ? Path.GetFileNameWithoutExtension(packs[0]) : L.F("{0} packs", packs.Count);
         PackDrop.Visibility = Visibility.Visible;
     }
 

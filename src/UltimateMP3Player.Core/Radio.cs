@@ -56,7 +56,7 @@ public sealed record RadioFetchOptions(string AudioFormat, string? Cookies, int 
 // the other way). The files of the songs still in the queue are never trimmed from the cache.
 public sealed class RadioFetcher : IDisposable
 {
-    private readonly TogetherCache _cache;
+    private readonly SongCache _cache;
     private readonly Func<RadioFetchOptions> _options;
     private readonly Action<Action> _post;
     private readonly Dictionary<string, FileStatus> _status = new();
@@ -67,7 +67,7 @@ public sealed class RadioFetcher : IDisposable
     private readonly Dictionary<string, CancellationTokenSource> _running = new();
     private bool _disposed;
 
-    public RadioFetcher(TogetherCache cache, Func<RadioFetchOptions> options, Action<Action> post)
+    public RadioFetcher(SongCache cache, Func<RadioFetchOptions> options, Action<Action> post)
     {
         _cache = cache;
         _options = options;

@@ -45,15 +45,15 @@ public sealed class RemovePlan
         int sameFile = lib.Count(t => t.HasVideo && !t.HasOwnVideo);
         long videoBytes = videos.Sum(t => SizeOf(t.VideoPath));
         string videoDetail = videos.Count > 0
-            ? one ? L.T("L'audio resta: senti il brano come prima, senza il video.")
-                : L.F("{0} hanno un video: resta l'audio.", L.Count(videos.Count, "1 brano", "{0} brani"))
-            : sameFile > 0 ? L.T("Il video è nello stesso file dell'audio (aggiunto dal computer): non si può togliere da solo.")
-            : one ? L.T("Il brano non ha un video.") : L.T("Nessuno di questi brani ha un video.");
+            ? one ? L.T("The audio stays: you hear the song as before, without the video.")
+                : L.F("{0} have a video: the audio stays.", L.Count(videos.Count, "1 song", "{0} songs"))
+            : sameFile > 0 ? L.T("The video is in the same file as the audio (added from the computer): it can't be removed on its own.")
+            : one ? L.T("The song has no video.") : L.T("None of these songs has a video.");
 
         int lyrics = tracks.Count(t => t.HasLyrics);
         string lyricsDetail = lyrics > 0
-            ? (one ? L.T("Lo puoi cercare di nuovo online quando vuoi.") : L.F("{0} hanno il testo: li puoi cercare di nuovo online quando vuoi.", L.Count(lyrics, "1 brano", "{0} brani")))
-            : one ? L.T("Il brano non ha un testo.") : L.T("Nessuno di questi brani ha un testo.");
+            ? (one ? L.T("You can look it up online again whenever you like.") : L.F("{0} have lyrics: you can look them up online again whenever you like.", L.Count(lyrics, "1 song", "{0} songs")))
+            : one ? L.T("The song has no lyrics.") : L.T("None of these songs has lyrics.");
 
         var device = lib.Where(t => t.CanUnsave).ToList();
         int cloud = tracks.Count(t => !t.T.IsSaved);
@@ -62,30 +62,30 @@ public sealed class RemovePlan
         string deviceDetail;
         if (device.Count == 0)
             deviceDetail = one
-                ? !tracks[0].T.IsSaved ? L.T("Non è salvato sul dispositivo: lo ascolti già dal suo link.")
-                    : L.T("Non ha un link da cui ascoltarlo di nuovo (un file aggiunto dal dispositivo o un mix del DJ): toglierlo vorrebbe dire perderlo.")
-                : L.T("Nessuno di questi brani si può togliere: non sono salvati, oppure non hanno un link da cui ascoltarli di nuovo.");
+                ? !tracks[0].T.IsSaved ? L.T("It isn't saved on your device: you already listen to it from its link.")
+                    : L.T("It has no link to play it from again (a file added from the device or a DJ mix): removing it would mean losing it.")
+                : L.T("None of these songs can be removed: they aren't saved, or they have no link to play them from again.");
         else
         {
-            deviceDetail = L.T("Resta nella libreria, nelle playlist, nei Preferiti e nelle statistiche con la nuvola: lo ascolti dal suo link e lo salvi di nuovo quando vuoi.");
+            deviceDetail = L.T("It stays in your library, playlists, Favorites and statistics with the cloud icon: you listen from its link and save it again whenever you like.");
             if (!one && noLink + cloud > 0)
-                deviceDetail += " " + L.F("Vale per {0}: gli altri non sono salvati o non hanno un link.", L.Count(device.Count, "1 brano", "{0} brani"));
+                deviceDetail += " " + L.F("Applies to {0}: the others aren't saved or have no link.", L.Count(device.Count, "1 song", "{0} songs"));
         }
 
         bool anyLocal = lib.Any(t => t.IsLocal);
         long allBytes = lib.Where(t => !t.IsLocal).Sum(t => SizeOf(t.Path) + (t.HasOwnVideo ? SizeOf(t.VideoPath) : 0));
         bool onlyHeard = lib.Count == 0;
         string allDetail = onlyHeard
-            ? L.T("Sparisce dagli ascoltati di recente e dalle statistiche.")
-            : L.T("Sparisce anche dalle playlist, dai Preferiti e dalle statistiche di tutti i profili.") +
-              (anyLocal ? " " + L.T("I file aggiunti dal dispositivo restano nella loro cartella.") : "");
+            ? L.T("It disappears from recently played and from statistics.")
+            : L.T("It also disappears from playlists, Favorites and statistics of every profile.") +
+              (anyLocal ? " " + L.T("Files added from the device stay in their folder.") : "");
 
         Options = new List<RemoveOption>
         {
-            new(RemoveKind.Video, L.T("Solo il video"), videoDetail, Text.Size(videoBytes), videos.Count > 0),
-            new(RemoveKind.Lyrics, L.T("Solo il testo"), lyricsDetail, null, lyrics > 0),
-            new(RemoveKind.Device, L.T("Dal dispositivo"), deviceDetail, Text.Size(deviceBytes), device.Count > 0),
-            new(RemoveKind.Everything, L.T("Completamente"), allDetail, Text.Size(allBytes), true),
+            new(RemoveKind.Video, L.T("Video only"), videoDetail, Text.Size(videoBytes), videos.Count > 0),
+            new(RemoveKind.Lyrics, L.T("Lyrics only"), lyricsDetail, null, lyrics > 0),
+            new(RemoveKind.Device, L.T("From the device"), deviceDetail, Text.Size(deviceBytes), device.Count > 0),
+            new(RemoveKind.Everything, L.T("Completely"), allDetail, Text.Size(allBytes), true),
         };
         var first = Options.First(o => o.Kind == (device.Count > 0 ? RemoveKind.Device : RemoveKind.Everything));
         first.IsChosen = true;
@@ -94,18 +94,18 @@ public sealed class RemovePlan
     public IReadOnlyList<TrackViewModel> Tracks { get; }
     public List<RemoveOption> Options { get; }
     public TrackViewModel First => Tracks[0];
-    public string Title => Tracks.Count == 1 ? L.T("Cosa vuoi eliminare?") : L.F("Cosa vuoi eliminare di {0} brani?", Tracks.Count);
+    public string Title => Tracks.Count == 1 ? L.T("What do you want to delete?") : L.F("What do you want to delete from {0} songs?", Tracks.Count);
     public string Subtitle => Tracks.Count == 1 ? $"{Tracks[0].Title} · {Tracks[0].Artist}" : string.Join(", ", Tracks.Take(3).Select(t => t.Title)) + (Tracks.Count > 3 ? "…" : "");
     public RemoveOption? Chosen => Options.FirstOrDefault(o => o.IsChosen && o.Enabled);
 
     // The button: what pressing it does.
     public string ButtonText(RemoveOption? o) => o?.Kind switch
     {
-        RemoveKind.Video => L.T("Elimina il video"),
-        RemoveKind.Lyrics => L.T("Elimina il testo"),
-        RemoveKind.Device => L.T("Togli dal dispositivo"),
-        RemoveKind.Everything => L.T("Elimina completamente"),
-        _ => L.T("Elimina"),
+        RemoveKind.Video => L.T("Delete video"),
+        RemoveKind.Lyrics => L.T("Delete lyrics"),
+        RemoveKind.Device => L.T("Remove from device"),
+        RemoveKind.Everything => L.T("Delete completely"),
+        _ => L.T("Delete"),
     };
 
     private static long SizeOf(string? path)

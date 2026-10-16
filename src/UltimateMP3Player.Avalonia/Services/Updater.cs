@@ -72,7 +72,7 @@ public sealed class Updater : Observable
     private ReleaseInfo? _ready;
     public ReleaseInfo? Ready { get => _ready; private set { if (Set(ref _ready, value)) OnChanged(nameof(IsReady), nameof(ReadyText)); } }
     public bool IsReady => Ready != null;
-    public string ReadyText => Ready == null ? "" : L.F("Versione {0} pronta: si installa alla chiusura, oppure riavvia ora.", Ready.Version.ToString(3));
+    public string ReadyText => Ready == null ? "" : L.F("Version {0} is ready: it'll install when you close the app, or restart now.", Ready.Version.ToString(3));
 
     public bool IsBusy => _running is { IsCompleted: false };
 
@@ -104,35 +104,35 @@ public sealed class Updater : Observable
         if (Ready != null) return true;
         if (!CanUpdate || Target == null)
         {
-            if (manual) Status = AppInfo.GitHubRepo.Length == 0 ? L.T("Aggiornamenti non configurati in questa versione.") : L.T("Aggiornamenti disponibili solo nella versione installata.");
+            if (manual) Status = AppInfo.GitHubRepo.Length == 0 ? L.T("Updates aren't set up in this version.") : L.T("Updates are only available in the installed version.");
             return false;
         }
         try
         {
-            if (manual) Status = L.T("Controllo degli aggiornamenti…");
+            if (manual) Status = L.T("Checking for updates…");
             var release = await LatestAsync();
             if (release == null || release.Version <= AppInfo.Version)
             {
-                Status = manual ? L.F("Hai già l'ultima versione ({0}).", AppInfo.VersionText) : null;
+                Status = manual ? L.F("You already have the latest version ({0}).", AppInfo.VersionText) : null;
                 return false;
             }
             var archive = Path.Combine(AppPaths.TempDir, release.FileName);
-            Status = L.F("Download della versione {0}…", release.Version.ToString(3));
+            Status = L.F("Downloading version {0}…", release.Version.ToString(3));
             await Http.DownloadFileAsync(release.Url, archive, null, (done, total) =>
             {
-                if (total > 0) Status = L.F("Download della versione {0}… {1:0}%", release.Version.ToString(3), done * 100.0 / total.Value);
+                if (total > 0) Status = L.F("Downloading version {0}… {1:0}%", release.Version.ToString(3), done * 100.0 / total.Value);
             }, CancellationToken.None);
             if (!Verify(archive, release))
             {
                 try { File.Delete(archive); } catch { }
-                Status = L.T("Aggiornamento scaricato male: riprova più tardi.");
+                Status = L.T("The update didn't download correctly: try again later.");
                 return false;
             }
             _extracted = await Task.Run(() => Extract(archive));
             try { File.Delete(archive); } catch { }
             if (_extracted == null)
             {
-                Status = L.T("Aggiornamento scaricato male: riprova più tardi.");
+                Status = L.T("The update didn't download correctly: try again later.");
                 return false;
             }
             Status = null;
@@ -141,7 +141,7 @@ public sealed class Updater : Observable
         }
         catch (Exception ex)
         {
-            Status = manual ? L.T("Aggiornamento non riuscito:") + " " + ex.Message : null;
+            Status = manual ? L.T("Update failed:") + " " + ex.Message : null;
             return false;
         }
     }

@@ -34,7 +34,7 @@ public static class AndroidEngines
             Install = InstallAsync,
             YtDlpArgs = YtDlpArgs,
             CrashHint = () => Services.Updater.WrongPackage
-                ? L.T("Questa è la versione dell'app per telefoni (ARM): su questo dispositivo x86_64 i motori non partono. Installa quella giusta da Impostazioni › Aggiornamenti › Controlla.")
+                ? L.T("This is the app's version for phones (ARM): on this x86_64 device the engines can't start. Install the right one from Settings › Updates › Check.")
                 : null,
         };
         // Programs started the way Android does it (see JavaProcess).
@@ -102,14 +102,14 @@ public static class AndroidEngines
 
     private static Task InstallAsync(Action<string, double?> progress, CancellationToken ct) => Task.Run(() =>
     {
-        Unpack("libpython.zip.so", "python", L.T("Preparazione di Python"), progress, ct);
-        Unpack("libffmpeg.zip.so", "ffmpeg", L.T("Preparazione di ffmpeg"), progress, ct);
+        Unpack("libpython.zip.so", "python", L.T("Preparing Python"), progress, ct);
+        Unpack("libffmpeg.zip.so", "ffmpeg", L.T("Preparing ffmpeg"), progress, ct);
         Directory.CreateDirectory(Bin);
         Links();
         var ytdlp = Path.Combine(Bin, "yt-dlp");
         if (!File.Exists(ytdlp))
         {
-            progress(L.T("Preparazione di yt-dlp"), null);
+            progress(L.T("Preparing yt-dlp"), null);
             var part = ytdlp + ".part";
             using (var asset = Ctx.Assets!.Open("yt-dlp"))
             using (var file = File.Create(part))
@@ -140,7 +140,7 @@ public static class AndroidEngines
         var zip = Path.Combine(NativeDir, zipName);
         var dir = Path.Combine(Base, dirName);
         var stampFile = dir + ".stamp";
-        if (!File.Exists(zip)) throw new EngineException(L.F("Impossibile avviare {0}.", dirName));
+        if (!File.Exists(zip)) throw new EngineException(L.F("Couldn't start {0}.", dirName));
         var stamp = Stamp(zipName);
         if (Directory.Exists(dir) && !Stale(zipName, dirName)) return;
         try { File.Delete(stampFile); } catch { }

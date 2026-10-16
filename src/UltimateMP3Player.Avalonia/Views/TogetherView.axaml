@@ -44,7 +44,7 @@
 
         <!-- a permission to switch on and off: a pill with its icon, tinted when on (dashed look when only some have it) -->
         <ControlTheme x:Key="PermChip" TargetType="ToggleButton">
-            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -52,8 +52,8 @@
             <Setter Property="Margin" Value="0,0,8,8"/>
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border Name="Bd" CornerRadius="16" Height="32" Padding="12,0" Background="{StaticResource Surface2Brush}"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    <Border Name="Bd" CornerRadius="16" Height="32" Padding="12,0" Background="{DynamicResource Surface2Brush}"
+                            BorderBrush="Transparent" BorderThickness="1">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Name="Ico" Text="{Binding $parent[ToggleButton].(local:Ui.Glyph), Converter={StaticResource Icon}}" FontFamily="{StaticResource IconFont}"
                                        FontSize="12" FontWeight="Normal" VerticalAlignment="Center"/>
@@ -63,10 +63,10 @@
                 </ControlTemplate>
             </Setter>
             <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="Background" Value="{StaticResource Surface3Brush}"/>
+                <Setter Property="Background" Value="{DynamicResource Surface3Brush}"/>
             </Style>
             <Style Selector="^:pointerover">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             </Style>
             <Style Selector="^:checked /template/ Border#Bd">
                 <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -76,7 +76,7 @@
                 <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
             </Style>
             <Style Selector="^:checked">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             </Style>
             <Style Selector="^:indeterminate /template/ Border#Bd">
                 <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
@@ -92,7 +92,7 @@
         <!-- a permission to switch on and off: just its icon in a circle, tinted when on (only the ring when some of the
              selected people have it); the name is in the tooltip -->
         <ControlTheme x:Key="PermToggle" TargetType="ToggleButton">
-            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
             <Setter Property="Width" Value="36"/>
             <Setter Property="Height" Value="36"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
@@ -101,17 +101,17 @@
             <Setter Property="ToolTip.ShowDelay" Value="250"/>
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border Name="Bd" CornerRadius="18" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    <Border Name="Bd" CornerRadius="18" Background="{DynamicResource Surface2Brush}" BorderBrush="Transparent" BorderThickness="1">
                         <TextBlock Name="Ico" Text="{Binding $parent[ToggleButton].(local:Ui.Glyph), Converter={StaticResource Icon}}" FontFamily="{StaticResource IconFont}"
                                    FontSize="14" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                 </ControlTemplate>
             </Setter>
             <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="Background" Value="{StaticResource Surface3Brush}"/>
+                <Setter Property="Background" Value="{DynamicResource Surface3Brush}"/>
             </Style>
             <Style Selector="^:pointerover">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             </Style>
             <Style Selector="^:checked /template/ Border#Bd">
                 <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -137,18 +137,15 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border Name="Bd" MinWidth="36" Height="32" CornerRadius="16" Margin="0,0,6,0" Padding="10,0" Background="{StaticResource Surface3Brush}"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                    <Border Name="Bd" MinWidth="36" Height="32" CornerRadius="16" Margin="0,0,6,0" Padding="10,0" Background="{DynamicResource Surface3Brush}"
+                            BorderBrush="Transparent" BorderThickness="1">
                         <TextBlock Name="Tx" Text="{Binding Label}" FontSize="12.5" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Foreground="{StaticResource SubTextBrush}"/>
+                                   Foreground="{DynamicResource SubTextBrush}"/>
                     </Border>
                 </ControlTemplate>
             </Setter>
-            <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
-            </Style>
             <Style Selector="^:pointerover /template/ TextBlock#Tx">
-                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             </Style>
             <Style Selector="^:selected /template/ Border#Bd">
                 <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -195,7 +192,7 @@
             <Setter Property="FontSize" Value="11.5"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,0,8,0"/>
-            <Setter Property="Foreground" Value="{StaticResource BorderStrongBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BorderStrongBrush}"/>
         </Style>
         <Style Selector="TextBlock.perm.on">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
@@ -208,19 +205,18 @@
             <Setter Property="IsHitTestVisible" Value="False"/>
         </Style>
         <Style Selector="Border.roomcard">
-            <Setter Property="Background" Value="{StaticResource BgBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource BgBrush}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
         <Style Selector="Border.roomcard:pointerover">
-            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
         </Style>
         <!-- a song of the room's queue -->
         <Style Selector="Border.qrow">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="Border.qrow:pointerover">
-            <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
         </Style>
         <Style Selector="Border.qrow:pointerover StackPanel.actions">
             <Setter Property="Opacity" Value="1"/>
@@ -249,16 +245,16 @@
             <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="Border.mrow:pointerover">
-            <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
         </Style>
         <Style Selector="Border.mrow.sel">
             <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
         </Style>
         <Style Selector="Border.mrow.ready TextBlock.status">
-            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
         </Style>
         <Style Selector="Border.mrow.failed TextBlock.status">
-            <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
         </Style>
         <Style Selector="Border.mrow.away Panel.face">
             <Setter Property="Opacity" Value="0.4"/>
@@ -273,14 +269,14 @@
             <Setter Property="Margin" Value="0,16,0,0"/>
         </Style>
         <Style Selector="Border.mrow.host Border.rolepill">
-            <Setter Property="Background" Value="#3A2F0C"/>
+            <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}"/>
         </Style>
         <Style Selector="Border.mrow.host TextBlock.roletext">
-            <Setter Property="Foreground" Value="#FFD24D"/>
+            <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
         </Style>
         <!-- a line of the chat said by the room itself -->
         <Style Selector="TextBlock.body.system">
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
             <Setter Property="FontStyle" Value="Italic"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="TextAlignment" Value="Center"/>
@@ -303,21 +299,21 @@
                         <TextBlock Text="{local:Icon E716}" Classes="glyph" FontSize="58" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
                     </Border>
                     <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
-                        <TextBlock Text="{local:T 'ASCOLTA INSIEME'}" Classes="small-caps" Foreground="{StaticResource SubTextBrush}"/>
-                        <TextBlock Text="{local:T 'Ascolta con gli amici'}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{local:T 'LISTEN TOGETHER'}" Classes="small-caps" Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock Text="{local:T 'Listen with friends'}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"/>
                         <TextBlock x:Name="LobbyHint" Classes="hint" FontSize="13.5" LineHeight="20" MaxWidth="820" HorizontalAlignment="Left"
-                                   Text="{local:T 'La stessa musica, nello stesso momento, per tutti nella stanza, con la chat. Funziona sulla stessa rete (Wi-Fi o cavo); da lontano entrate tutti nella stessa rete di Radmin VPN.'}"/>
+                                   Text="{local:T 'The same music, at the same moment, for everyone in the room, with a chat. It works on the same network (Wi-Fi or cable); from afar, all join the same Radmin VPN network.'}"/>
                     </StackPanel>
                 </Grid>
 
                 <!-- why the last room ended / a join failed -->
-                <Border Margin="0,0,0,16" CornerRadius="10" Padding="14,6,6,6" Background="{StaticResource WarningSoftBrush}"
+                <Border Margin="0,0,0,16" CornerRadius="10" Padding="14,6,6,6" Background="{DynamicResource WarningSoftBrush}"
                         IsVisible="{Binding LobbyMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="10" Content="{local:Icon E711}"
-                                Command="{Binding DismissMessageCommand}" ToolTip.Tip="{local:T Chiudi}"/>
-                        <TextBlock Text="{local:Icon E7BA}" Classes="glyph" Foreground="{StaticResource WarningBrush}"/>
-                        <TextBlock Text="{Binding LobbyMessage}" Margin="10,0,10,0" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{StaticResource WarningBrush}"/>
+                                Command="{Binding DismissMessageCommand}" ToolTip.Tip="{local:T Close}"/>
+                        <TextBlock Text="{local:Icon E7BA}" Classes="glyph" Foreground="{DynamicResource WarningBrush}"/>
+                        <TextBlock Text="{Binding LobbyMessage}" Margin="10,0,10,0" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
                     </DockPanel>
                 </Border>
 
@@ -337,13 +333,13 @@
                                     <TextBlock Text="{local:Icon E710}" Classes="glyph" FontSize="18" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
                                 </Grid>
                                 <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{local:T 'Crea una stanza'}" FontSize="17" FontWeight="Bold"/>
-                                    <TextBlock Text="{local:T 'Gli altri sulla rete la vedono e possono entrare.'}" Classes="hint" FontSize="12"/>
+                                    <TextBlock Text="{local:T 'Create a room'}" FontSize="17" FontWeight="Bold"/>
+                                    <TextBlock Text="{local:T 'Others on the network see it and can join.'}" Classes="hint" FontSize="12"/>
                                 </StackPanel>
                             </DockPanel>
-                            <TextBlock Text="{local:T 'Nome della stanza'}" Classes="field-label"/>
+                            <TextBlock Text="{local:T 'Room name'}" Classes="field-label"/>
                             <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding NewRoomName}" MaxLength="60"
-                                     AutomationProperties.Name="{local:T 'Nome della stanza'}"/>
+                                     AutomationProperties.Name="{local:T 'Room name'}"/>
                             <Grid Margin="0,14,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -351,33 +347,33 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="{local:T 'Persone al massimo'}" Classes="field-label"/>
-                                    <ComboBox ItemsSource="{Binding MaxChoices}" SelectedItem="{Binding MaxChoice}" AutomationProperties.Name="{local:T 'Persone al massimo'}"/>
+                                    <TextBlock Text="{local:T 'Max people'}" Classes="field-label"/>
+                                    <ComboBox ItemsSource="{Binding MaxChoices}" SelectedItem="{Binding MaxChoice}" AutomationProperties.Name="{local:T 'Max people'}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="{local:T 'Password (facoltativa)'}" Classes="field-label"/>
+                                    <TextBlock Text="{local:T 'Password (optional)'}" Classes="field-label"/>
                                     <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding NewPassword}" MaxLength="40"
-                                             Watermark="{local:T 'nessuna'}" AutomationProperties.Name="{local:T 'Password (facoltativa)'}"/>
+                                             Watermark="{local:T none}" AutomationProperties.Name="{local:T 'Password (optional)'}"/>
                                 </StackPanel>
                             </Grid>
-                            <TextBlock Text="{local:T 'Chi entra può'}" Classes="field-label" Margin="2,16,0,8"/>
+                            <TextBlock Text="{local:T 'People who join can'}" Classes="field-label" Margin="2,16,0,8"/>
                             <StackPanel Orientation="Horizontal">
                                 <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE710;" IsChecked="{Binding DefAdd}"
-                                              ToolTip.Tip="{local:T 'Aggiungere brani alla coda'}" AutomationProperties.Name="{local:T 'Aggiungere brani alla coda'}"/>
+                                              ToolTip.Tip="{local:T 'Add songs to the queue'}" AutomationProperties.Name="{local:T 'Add songs to the queue'}"/>
                                 <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE738;" IsChecked="{Binding DefRemove}"
-                                              ToolTip.Tip="{local:T 'Togliere e spostare i brani della coda'}" AutomationProperties.Name="{local:T 'Togliere e spostare i brani della coda'}"/>
+                                              ToolTip.Tip="{local:T 'Remove and move songs in the queue'}" AutomationProperties.Name="{local:T 'Remove and move songs in the queue'}"/>
                                 <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE893;" IsChecked="{Binding DefSkip}"
-                                              ToolTip.Tip="{local:T 'Saltare il brano in riproduzione'}" AutomationProperties.Name="{local:T 'Saltare il brano in riproduzione'}"/>
+                                              ToolTip.Tip="{local:T 'Skip the song playing'}" AutomationProperties.Name="{local:T 'Skip the song playing'}"/>
                                 <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE769;" IsChecked="{Binding DefPause}"
-                                              ToolTip.Tip="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"
-                                              AutomationProperties.Name="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"/>
+                                              ToolTip.Tip="{local:T 'Pause, move forward and back in the song and put it on loop'}"
+                                              AutomationProperties.Name="{local:T 'Pause, move forward and back in the song and put it on loop'}"/>
                                 <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE916;" IsChecked="{Binding DefSpeed}" Margin="0"
-                                              ToolTip.Tip="{local:T 'Cambiare la velocità di riproduzione per tutti'}" AutomationProperties.Name="{local:T 'Cambiare la velocità di riproduzione per tutti'}"/>
+                                              ToolTip.Tip="{local:T 'Change the playback speed for everyone'}" AutomationProperties.Name="{local:T 'Change the playback speed for everyone'}"/>
                             </StackPanel>
                             <Button Theme="{StaticResource PrimaryButton}" Margin="0,20,0,0" Padding="18,11" Command="{Binding CreateCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{local:Icon E716}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Crea la stanza'}" Margin="9,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Create the room'}" Margin="9,0,0,0"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -394,13 +390,13 @@
                             </Grid.RowDefinitions>
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Content="{local:Icon E72C}" VerticalAlignment="Top" Command="{Binding RefreshCommand}"
-                                        ToolTip.Tip="{local:T 'Cerca di nuovo'}" AutomationProperties.Name="{local:T 'Cerca di nuovo'}"/>
+                                        ToolTip.Tip="{local:T 'Search again'}" AutomationProperties.Name="{local:T 'Search again'}"/>
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{local:T 'Stanze sulla rete'}" FontSize="17" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{local:T 'Rooms on the network'}" FontSize="17" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                         <Ellipse Classes="spinner" Width="12" Height="12" StrokeThickness="2" Margin="0,0,7,0"
                                                  IsVisible="{Binding Scanning}"/>
-                                        <TextBlock Text="{local:T 'L\'elenco si aggiorna da solo.'}" Classes="hint" FontSize="12" TextWrapping="NoWrap"
+                                        <TextBlock Text="{local:T 'The list updates by itself.'}" Classes="hint" FontSize="12" TextWrapping="NoWrap"
                                                    TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -423,11 +419,11 @@
                                                 <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
                                                     <StackPanel Orientation="Horizontal">
                                                         <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="420"/>
-                                                        <TextBlock Text="{local:Icon E72E}" Classes="glyph" FontSize="12" Margin="8,0,0,0" Foreground="{StaticResource SubTextBrush}"
-                                                                   IsVisible="{Binding Locked}" ToolTip.Tip="{local:T 'Serve la password'}"/>
+                                                        <TextBlock Text="{local:Icon E72E}" Classes="glyph" FontSize="12" Margin="8,0,0,0" Foreground="{DynamicResource SubTextBrush}"
+                                                                   IsVisible="{Binding Locked}" ToolTip.Tip="{local:T 'Needs a password'}"/>
                                                     </StackPanel>
-                                                    <TextBlock Text="{Binding Detail}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBlock Text="{Binding Playing}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                                                    <TextBlock Text="{Binding Detail}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Playing}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
                                                                local:Marquee.IsEnabled="True" IsVisible="{Binding Playing, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                                                 </StackPanel>
                                                 <Button Grid.Column="2" Theme="{StaticResource PrimaryButton}" Padding="20,8" VerticalAlignment="Center" Content="{Binding JoinText}"
@@ -447,28 +443,28 @@
                                     <Ellipse Margin="14" Fill="{DynamicResource AccentSoftBrush}"/>
                                     <TextBlock Text="{local:Icon E701}" Classes="glyph" FontSize="28" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock Text="{local:T 'Nessuna stanza, per ora'}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,14,0,0"/>
+                                <TextBlock Text="{local:T 'No rooms yet'}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,14,0,0"/>
                                 <TextBlock Classes="hint" TextAlignment="Center" Margin="0,6,0,0"
-                                           Text="{local:T 'Chiedi a un amico di crearne una sulla stessa rete, oppure creala tu. Se una stanza non compare, entra con il suo indirizzo.'}"/>
+                                           Text="{local:T 'Ask a friend to create one on the same network, or create it yourself. If a room doesn\'t show up, join with its address.'}"/>
                             </StackPanel>
 
                             <!-- rooms the search doesn't find (another network, broadcasts blocked) -->
                             <Button Grid.Row="2" Theme="{StaticResource GhostButton}" Padding="14,7" Margin="0,12,0,0" HorizontalAlignment="Left"
-                                    Command="{Binding JoinByAddressCommand}" ToolTip.Tip="{local:T 'Se la stanza non compare: scrivi l\'indirizzo del computer che la ospita'}">
+                                    Command="{Binding JoinByAddressCommand}" ToolTip.Tip="{local:T 'If the room doesn\'t show up: type the address of the computer hosting it'}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{local:Icon E71B}" Classes="glyph" FontSize="13"/>
-                                    <TextBlock Text="{local:T 'Entra con l\'indirizzo'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Join by address'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
 
-                            <Border Grid.Row="3" Margin="0,14,0,0" CornerRadius="10" Background="{StaticResource BgBrush}" Padding="14,10">
+                            <Border Grid.Row="3" Margin="0,14,0,0" CornerRadius="10" Background="{DynamicResource BgBrush}" Padding="14,10">
                                 <DockPanel>
                                     <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Padding="12,6" FontSize="12.5" Margin="10,0,0,0" VerticalAlignment="Center"
-                                            Command="{Binding FirewallCommand}" Content="{local:T 'Consenti nel firewall'}"
-                                            ToolTip.Tip="{local:T 'Lascia entrare le connessioni degli altri su ogni rete (serve la conferma dell\'amministratore)'}"/>
-                                    <TextBlock Text="{local:Icon EA18}" Classes="glyph" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Top" Margin="0,2,10,0"/>
+                                            Command="{Binding FirewallCommand}" Content="{local:T 'Allow through the firewall'}"
+                                            ToolTip.Tip="{local:T 'Let other people\'s connections in on every network (needs administrator confirmation)'}"/>
+                                    <TextBlock Text="{local:Icon EA18}" Classes="glyph" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Top" Margin="0,2,10,0"/>
                                     <TextBlock x:Name="FirewallHint" Classes="hint" FontSize="12"
-                                               Text="{local:T 'La prima volta Windows chiede se l\'app può usare la rete: consenti l\'accesso. Con Radmin VPN spunta anche «Reti pubbliche», oppure usa il pulsante qui accanto.'}"/>
+                                               Text="{local:T 'The first time, Windows asks whether the app may use the network: allow access. With Radmin VPN also tick “Public networks”, or use the button next to this.'}"/>
                                 </DockPanel>
                             </Border>
                         </Grid>
@@ -494,7 +490,7 @@
                 <Button DockPanel.Dock="Right" Theme="{StaticResource DangerButton}" Padding="16,9" VerticalAlignment="Center" Command="{Binding LeaveCommand}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{local:Icon E89B}" Classes="glyph" FontSize="13"/>
-                        <TextBlock Text="{local:T 'Esci dalla stanza'}" Margin="8,0,0,0"/>
+                        <TextBlock Text="{local:T 'Leave the room'}" Margin="8,0,0,0"/>
                     </StackPanel>
                 </Button>
                 <Border x:Name="RoomIcon" Width="68" Height="68" CornerRadius="14" Background="{DynamicResource AccentGradient}">
@@ -502,22 +498,22 @@
                 </Border>
                 <StackPanel x:Name="RoomTitle" Margin="18,0,16,0" VerticalAlignment="Center">
                     <TextBlock x:Name="RoomNameText" Text="{Binding RoomName}" FontSize="28" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding RoomSubtitle}" Foreground="{StaticResource SubTextBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding RoomSubtitle}" Foreground="{DynamicResource SubTextBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                     <StackPanel x:Name="RoomAddress" Orientation="Horizontal" Margin="0,2,0,0" IsVisible="{Binding AddressText, Converter={x:Static ObjectConverters.IsNotNull}}">
-                        <TextBlock Text="{Binding AddressText}" FontSize="12" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding AddressText}" FontSize="12" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                         <Button Theme="{StaticResource IconButton}" Width="24" Height="24" FontSize="11" Content="{local:Icon E8C8}" Margin="4,0,0,0" Command="{Binding CopyAddressCommand}"
-                                ToolTip.Tip="{local:T 'Copia l\'indirizzo'}" AutomationProperties.Name="{local:T 'Copia l\'indirizzo'}"/>
+                                ToolTip.Tip="{local:T 'Copy the address'}" AutomationProperties.Name="{local:T 'Copy the address'}"/>
                     </StackPanel>
                 </StackPanel>
             </DockPanel>
 
             <!-- the host's PC went away: the room moves to someone else -->
-            <Border Grid.Row="1" Margin="0,0,8,14" CornerRadius="10" Padding="14,9" Background="{StaticResource WarningSoftBrush}"
+            <Border Grid.Row="1" Margin="0,0,8,14" CornerRadius="10" Padding="14,9" Background="{DynamicResource WarningSoftBrush}"
                     IsVisible="{Binding Reconnecting}">
                 <StackPanel Orientation="Horizontal">
-                    <Ellipse Classes="spinner" Width="16" Height="16" StrokeThickness="2.5" Stroke="{StaticResource WarningBrush}"/>
-                    <TextBlock Text="{local:T 'Connessione alla stanza persa: mi ricollego (se l\'host se n\'è andato, la stanza passa a un altro)…'}" Margin="10,0,0,0"
-                               Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                    <Ellipse Classes="spinner" Width="16" Height="16" StrokeThickness="2.5" Stroke="{DynamicResource WarningBrush}"/>
+                    <TextBlock Text="{local:T 'Lost the connection to the room: reconnecting (if the host left, the room moves to someone else)…'}" Margin="10,0,0,0"
+                               Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
 
@@ -537,7 +533,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <Border x:Name="CurrentCard" Theme="{StaticResource Card}" Padding="18,16" Background="{StaticResource SurfaceBrush}">
+                    <Border x:Name="CurrentCard" Theme="{StaticResource Card}" Padding="18,16" Background="{DynamicResource SurfaceBrush}">
                         <Grid local:Marquee.Host="True">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -548,8 +544,8 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Border x:Name="NowCover" Width="112" Height="112" VerticalAlignment="Top" CornerRadius="10" BoxShadow="0 5 20 0 #73000000"><Panel>
-                                <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}">
-                                    <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="38" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                                <Border CornerRadius="10" Background="{DynamicResource PlaceholderGradient}">
+                                    <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="38" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                                 </Border>
                                 <ContentControl Content="{Binding Main.Player.Current}" ContentTemplate="{StaticResource TrackCoverMedium}"
                                                   IsVisible="{Binding Main.Player.Current, Converter={x:Static ObjectConverters.IsNotNull}}"/>
@@ -571,15 +567,15 @@
                                         <!-- the room's loop and speed, when on (the buttons are in the player bar) -->
                                         <Border CornerRadius="9" Padding="7,1,8,1" Margin="0,0,6,0" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center"
                                                 IsVisible="{Binding RoomLoop}"
-                                                ToolTip.Tip="{local:T 'Il brano ricomincia da capo quando finisce, finché qualcuno toglie il loop'}">
+                                                ToolTip.Tip="{local:T 'The song starts over when it ends, until someone turns the loop off'}">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{local:Icon E8ED}" Classes="glyph" FontSize="10.5" Foreground="{DynamicResource AccentTextBrush}"/>
-                                                <TextBlock Text="{local:T 'In loop'}" FontSize="11" FontWeight="SemiBold" Margin="5,0,0,0" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                <TextBlock Text="{local:T 'On loop'}" FontSize="11" FontWeight="SemiBold" Margin="5,0,0,0" Foreground="{DynamicResource AccentTextBrush}"/>
                                             </StackPanel>
                                         </Border>
                                         <Border CornerRadius="9" Padding="7,1,8,1" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center"
                                                 IsVisible="{Binding HasSpeedBadge}"
-                                                ToolTip.Tip="{local:T 'Velocità di riproduzione della stanza'}">
+                                                ToolTip.Tip="{local:T 'The room\'s playback speed'}">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Text="{local:Icon E916}" Classes="glyph" FontSize="10.5" Foreground="{DynamicResource AccentTextBrush}"/>
                                                 <TextBlock Text="{Binding SpeedBadge}" FontSize="11" FontWeight="SemiBold" Margin="5,0,0,0" Foreground="{DynamicResource AccentTextBrush}"/>
@@ -589,14 +585,14 @@
                                 </DockPanel>
                                 <TextBlock Text="{Binding Main.Player.Current.Title}" FontSize="22" FontWeight="Bold" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
                                            local:Marquee.IsEnabled="True"/>
-                                <TextBlock Text="{Binding Main.Player.Current.Artist}" FontSize="14" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                                <TextBlock Text="{Binding Main.Player.Current.Artist}" FontSize="14" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
                                            local:Marquee.IsEnabled="True"/>
                                 <StackPanel x:Name="NowAddedBy" Orientation="Horizontal" Margin="0,8,0,0" IsVisible="{Binding HasCurrent}">
                                     <Grid Width="18" Height="18">
                                         <Ellipse Fill="{Binding CurrentItem.AddedByBrush}"/>
                                         <TextBlock Text="{Binding CurrentItem.AddedByInitial}" FontSize="9" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Grid>
-                                    <TextBlock Text="{Binding CurrentItem.AddedByText}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CurrentItem.AddedByText}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
                                     <Ellipse Classes="spinner" Width="13" Height="13" StrokeThickness="2" Margin="0,0,8,0"
@@ -619,21 +615,21 @@
                             <DockPanel Margin="6,2,4,10">
                                 <!-- a few songs at random from your songs, a playlist or a tag -->
                                 <ToggleButton DockPanel.Dock="Right" Theme="{StaticResource PermChip}" Margin="10,0,0,0" VerticalAlignment="Top" local:Ui.Glyph="&#xE8B1;"
-                                              Content="{local:T 'Brani casuali'}" IsChecked="{Binding ShowRandom, Mode=OneWay}" Command="{Binding ToggleRandomCommand}"
+                                              Content="{local:T 'Random songs'}" IsChecked="{Binding ShowRandom, Mode=OneWay}" Command="{Binding ToggleRandomCommand}"
                                               IsVisible="{Binding CanAdd}"
-                                              ToolTip.Tip="{local:T 'Aggiungi alla coda brani a caso da tutti i tuoi brani, da una playlist o da un tag, oppure brani consigliati online'}"/>
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding QueueCountText}" Foreground="{StaticResource MutedBrush}" FontSize="12.5" VerticalAlignment="Top" Margin="0,8,0,0"/>
+                                              ToolTip.Tip="{local:T 'Add random songs to the queue from all your songs, a playlist or a tag, or songs suggested online'}"/>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding QueueCountText}" Foreground="{DynamicResource MutedBrush}" FontSize="12.5" VerticalAlignment="Top" Margin="0,8,0,0"/>
                                 <StackPanel>
-                                    <TextBlock Text="{local:T 'In coda'}" FontSize="17" FontWeight="Bold"/>
+                                    <TextBlock Text="{local:T Queued}" FontSize="17" FontWeight="Bold"/>
                                     <TextBlock x:Name="QueueHint" Text="{Binding AddHint}" Classes="hint" FontSize="12" Margin="0,3,0,0"/>
                                 </StackPanel>
                             </DockPanel>
-                            <Border Grid.Row="1" Margin="2,0,2,12" CornerRadius="12" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}"
+                            <Border Grid.Row="1" Margin="2,0,2,12" CornerRadius="12" Background="{DynamicResource Surface2Brush}" BorderBrush="Transparent"
                                     BorderThickness="1" Padding="14,10,8,12" IsVisible="{Binding ShowRandom}">
                                 <StackPanel>
                                     <DockPanel>
                                         <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="10" Content="{local:Icon E711}"
-                                                Command="{Binding ToggleRandomCommand}" ToolTip.Tip="{local:T Chiudi}" AutomationProperties.Name="{local:T Chiudi}"/>
+                                                Command="{Binding ToggleRandomCommand}" ToolTip.Tip="{local:T Close}" AutomationProperties.Name="{local:T Close}"/>
                                         <TextBlock Text="{Binding RandomTitle}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     </DockPanel>
                                     <Grid Margin="0,8,6,0">
@@ -641,11 +637,11 @@
                                             <ColumnDefinition Width="*" MinWidth="150"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <ComboBox ItemsSource="{Binding RandomSources}" SelectedItem="{Binding RandomSource}" AutomationProperties.Name="{local:T 'Da dove'}"
-                                                  ToolTip.Tip="{local:T 'Da dove prenderli'}"/>
+                                        <ComboBox ItemsSource="{Binding RandomSources}" SelectedItem="{Binding RandomSource}" AutomationProperties.Name="{local:T From}"
+                                                  ToolTip.Tip="{local:T 'Where to take them from'}"/>
                                         <ListBox Grid.Column="1" Margin="10,0,0,0" Theme="{StaticResource CountPills}" ItemsSource="{Binding RandomCounts}"
-                                                 SelectedItem="{Binding RandomCount}" VerticalAlignment="Center" AutomationProperties.Name="{local:T Quanti}"
-                                                 ToolTip.Tip="{local:T 'Quanti brani'}"/>
+                                                 SelectedItem="{Binding RandomCount}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'How many'}"
+                                                 ToolTip.Tip="{local:T 'How many songs'}"/>
                                     </Grid>
                                     <DockPanel Margin="0,10,6,0">
                                         <Button DockPanel.Dock="Right" Theme="{StaticResource PrimaryButton}" Padding="16,7" Margin="10,0,0,0" Command="{Binding AddRandomCommand}">
@@ -663,7 +659,7 @@
                                     </DockPanel>
                                 </StackPanel>
                             </Border>
-                            <ListBox x:Name="QueueList" Grid.Row="2" Theme="{StaticResource PlainList}" ItemsSource="{Binding Queue}" AutomationProperties.Name="{local:T 'In coda'}"
+                            <ListBox x:Name="QueueList" Grid.Row="2" Theme="{StaticResource PlainList}" ItemsSource="{Binding Queue}" AutomationProperties.Name="{local:T Queued}"
                                      DragDrop.AllowDrop="True">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:RoomItemViewModel}">
@@ -678,15 +674,15 @@
                                                     <ColumnDefinition Width="34"/>
                                                     <ColumnDefinition Width="70"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Number}" Foreground="{DynamicResource SubTextBrush}" FontSize="12.5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                 <ContentControl Grid.Column="1" Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                                                 <StackPanel Grid.Column="2" Margin="12,0,10,0" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Track.Title}" FontSize="13.5" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                                                    <TextBlock Text="{Binding Track.Artist}" FontSize="12" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                                                    <TextBlock Text="{Binding Track.Artist}" FontSize="12" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
                                                                local:Marquee.IsEnabled="True"/>
                                                 </StackPanel>
                                                 <!-- who added it -->
-                                                <Border Grid.Column="3" CornerRadius="10" Padding="3,2" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
+                                                <Border Grid.Column="3" CornerRadius="10" Padding="3,2" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center"
                                                         Margin="0,0,8,0" ToolTip.Tip="{Binding AddedByText}" MaxWidth="130">
                                                     <StackPanel Orientation="Horizontal">
                                                         <Grid Width="16" Height="16">
@@ -700,16 +696,16 @@
                                                 <!-- this computer's copy: ready, on its way, or not yet -->
                                                 <Panel Classes="state" Classes.ready="{Binding IsReady}" Classes.busy="{Binding IsBusy}" Classes.failed="{Binding IsFailed}"
                                                        Grid.Column="4" Width="30" Height="30" ToolTip.Tip="{Binding StateTip}" Background="Transparent">
-                                                    <Ellipse Classes="dot" Width="6" Height="6" Fill="{StaticResource BorderStrongBrush}"/>
-                                                    <TextBlock Text="{local:Icon E73E}" Classes="glyph ready" FontSize="13" Foreground="{StaticResource SuccessBrush}" HorizontalAlignment="Center"/>
-                                                    <TextBlock Text="{local:Icon E7BA}" Classes="glyph failed" FontSize="13" Foreground="{StaticResource WarningBrush}" HorizontalAlignment="Center"/>
+                                                    <Ellipse Classes="dot" Width="6" Height="6" Fill="{DynamicResource BorderStrongBrush}"/>
+                                                    <TextBlock Text="{local:Icon E73E}" Classes="glyph ready" FontSize="13" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center"/>
+                                                    <TextBlock Text="{local:Icon E7BA}" Classes="glyph failed" FontSize="13" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center"/>
                                                     <Panel Classes="busy">
                                                         <Ellipse Classes="spinner" Width="26" Height="26" StrokeThickness="2"/>
                                                         <TextBlock Text="{Binding PctText}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     </Panel>
                                                 </Panel>
                                                 <!-- the length, or on hover the actions in its place -->
-                                                <TextBlock Classes="length" Grid.Column="5" Text="{Binding Track.DurationText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}"
+                                                <TextBlock Classes="length" Grid.Column="5" Text="{Binding Track.DurationText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}"
                                                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                                 <StackPanel Classes="actions" Grid.Column="5" Orientation="Horizontal" HorizontalAlignment="Right" Opacity="0">
                                                     <Button Theme="{StaticResource RowIconButton}" Content="{Binding KeepGlyph, Converter={StaticResource Icon}}" Command="{Binding KeepCommand}"
@@ -729,7 +725,7 @@
                                     <Ellipse Stroke="{DynamicResource AccentGradient}" StrokeThickness="1.5" Opacity="0.7"/>
                                     <TextBlock Text="{local:Icon E90B}" Classes="glyph" FontSize="28" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
                                 </Grid>
-                                <TextBlock Text="{local:T 'La coda è vuota'}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,14,0,0"/>
+                                <TextBlock Text="{local:T 'The queue is empty'}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,14,0,0"/>
                                 <TextBlock Text="{Binding AddHint}" Classes="hint" TextAlignment="Center" Margin="0,6,0,0"/>
                             </StackPanel>
                         </Grid>
@@ -755,11 +751,11 @@
                                 <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="30" Height="30" Content="{local:Icon E712}" VerticalAlignment="Top"
                                         Command="{Binding MemberMenuCommand}" CommandParameter="{Binding $self}"
                                         IsVisible="{Binding IsHost}"
-                                        ToolTip.Tip="{local:T 'Permessi, host ed espulsioni delle persone selezionate'}"/>
+                                        ToolTip.Tip="{local:T 'Permissions, host and kicks for the selected people'}"/>
                                 <StackPanel>
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{local:T Persone}" FontSize="17" FontWeight="Bold"/>
-                                        <Border Margin="8,0,0,0" CornerRadius="9" MinWidth="20" Height="18" Padding="6,0" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
+                                        <TextBlock Text="{local:T People}" FontSize="17" FontWeight="Bold"/>
+                                        <Border Margin="8,0,0,0" CornerRadius="9" MinWidth="20" Height="18" Padding="6,0" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding MemberCount}" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                     </StackPanel>
@@ -767,7 +763,7 @@
                                 </StackPanel>
                             </DockPanel>
                             <ListBox x:Name="MemberList" Grid.Row="1" Theme="{StaticResource PlainList}" ItemsSource="{Binding Members}" MaxHeight="300"
-                                     SelectionMode="Multiple" ItemContainerTheme="{StaticResource MemberItem}" AutomationProperties.Name="{local:T Persone}">
+                                     SelectionMode="Multiple" ItemContainerTheme="{StaticResource MemberItem}" AutomationProperties.Name="{local:T People}">
                                 <ListBox.Styles>
                                     <Style Selector="ListBoxItem">
                                         <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
@@ -788,7 +784,7 @@
                                                     <ContentControl Content="{Binding}" ContentTemplate="{StaticResource MemberAvatar}"/>
                                                     <ContentControl Classes="crown" Template="{StaticResource Crown}" Width="30" Height="25" HorizontalAlignment="Center" VerticalAlignment="Top"
                                                                     Margin="6,-22,-6,0" RenderTransformOrigin="50%,50%" Focusable="False" IsTabStop="False"
-                                                                    ToolTip.Tip="{local:T 'Host della stanza'}"
+                                                                    ToolTip.Tip="{local:T 'Host of the room'}"
                                                                     RenderTransform="rotate(14deg)">
                                                         <ContentControl.Effect>
                                                             <DropShadowEffect BlurRadius="5" OffsetX="0.5" OffsetY="1.4" Opacity="0.7" Color="Black"/>
@@ -797,8 +793,8 @@
                                                 </Panel>
                                                 <StackPanel Grid.Column="1" Margin="11,0,0,0">
                                                     <DockPanel>
-                                                        <Border Classes="rolepill" DockPanel.Dock="Right" CornerRadius="8" Padding="7,1" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
-                                                            <TextBlock Classes="roletext" Text="{Binding RoleText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}"/>
+                                                        <Border Classes="rolepill" DockPanel.Dock="Right" CornerRadius="8" Padding="7,1" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center">
+                                                            <TextBlock Classes="roletext" Text="{Binding RoleText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}"/>
                                                         </Border>
                                                         <TextBlock Text="{Binding NameText}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
                                                     </DockPanel>
@@ -808,16 +804,16 @@
                                                         <TextBlock Text="{local:Icon E893}" Classes="perm" Classes.on="{Binding PermSkip}"/>
                                                         <TextBlock Text="{local:Icon E769}" Classes="perm" Classes.on="{Binding PermPause}"/>
                                                         <TextBlock Text="{local:Icon E916}" Classes="perm" Classes.on="{Binding PermSpeed}"/>
-                                                        <Border CornerRadius="6" Padding="5,0,5,1" Margin="6,0,0,0" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
+                                                        <Border CornerRadius="6" Padding="5,0,5,1" Margin="6,0,0,0" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center"
                                                                 IsVisible="{Binding NoP2P}"
-                                                                ToolTip.Tip="{local:T 'Non scambia brani con gli altri: li prende solo dalla sua libreria o dai link (P2P spento)'}">
-                                                            <TextBlock Text="{local:T 'senza P2P'}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
+                                                                ToolTip.Tip="{local:T 'Doesn\'t exchange songs with the others: gets them only from their library or the links (P2P off)'}">
+                                                            <TextBlock Text="{local:T 'no P2P'}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/>
                                                         </Border>
                                                     </StackPanel>
                                                     <!-- their download: a thin bar while it comes -->
                                                     <ProgressBar Height="3" Maximum="100" Value="{Binding StatusPct, Mode=OneWay}" Margin="0,1,0,3"
                                                                  IsVisible="{Binding StatusBusy}"/>
-                                                    <TextBlock Classes="status" Text="{Binding StatusText}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Classes="status" Text="{Binding StatusText}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -826,37 +822,37 @@
                             </ListBox>
 
                             <!-- host: what the selected people may do -->
-                            <Border Grid.Row="2" Margin="0,8,0,0" CornerRadius="10" Background="{StaticResource Surface2Brush}" Padding="12,10,8,6"
+                            <Border Grid.Row="2" Margin="0,8,0,0" CornerRadius="10" Background="{DynamicResource Surface2Brush}" Padding="12,10,8,6"
                                     IsVisible="{Binding HasSelection}">
                                 <StackPanel>
                                     <DockPanel Margin="0,0,0,8">
                                         <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="26" Height="26" FontSize="10" Content="{local:Icon E711}"
-                                                Command="{Binding ClearSelectionCommand}" ToolTip.Tip="{local:T Deseleziona}"/>
+                                                Command="{Binding ClearSelectionCommand}" ToolTip.Tip="{local:T Deselect}"/>
                                         <TextBlock Text="{Binding SelectionText}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                     </DockPanel>
                                     <StackPanel Orientation="Horizontal">
                                         <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE710;" IsThreeState="True"
                                                       IsChecked="{Binding SelAdd, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Add"
-                                                      ToolTip.Tip="{local:T 'Aggiungere brani alla coda'}" AutomationProperties.Name="{local:T 'Aggiungere brani alla coda'}"/>
+                                                      ToolTip.Tip="{local:T 'Add songs to the queue'}" AutomationProperties.Name="{local:T 'Add songs to the queue'}"/>
                                         <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE738;" IsThreeState="True"
                                                       IsChecked="{Binding SelRemove, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Remove"
-                                                      ToolTip.Tip="{local:T 'Togliere e spostare i brani della coda'}" AutomationProperties.Name="{local:T 'Togliere e spostare i brani della coda'}"/>
+                                                      ToolTip.Tip="{local:T 'Remove and move songs in the queue'}" AutomationProperties.Name="{local:T 'Remove and move songs in the queue'}"/>
                                         <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE893;" IsThreeState="True"
                                                       IsChecked="{Binding SelSkip, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Skip"
-                                                      ToolTip.Tip="{local:T 'Saltare il brano in riproduzione'}" AutomationProperties.Name="{local:T 'Saltare il brano in riproduzione'}"/>
+                                                      ToolTip.Tip="{local:T 'Skip the song playing'}" AutomationProperties.Name="{local:T 'Skip the song playing'}"/>
                                         <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE769;" IsThreeState="True"
                                                       IsChecked="{Binding SelPause, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Pause"
-                                                      ToolTip.Tip="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"
-                                                      AutomationProperties.Name="{local:T 'Mettere in pausa, andare avanti e indietro nel brano e metterlo in loop'}"/>
+                                                      ToolTip.Tip="{local:T 'Pause, move forward and back in the song and put it on loop'}"
+                                                      AutomationProperties.Name="{local:T 'Pause, move forward and back in the song and put it on loop'}"/>
                                         <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE916;" IsThreeState="True" Margin="0"
                                                       IsChecked="{Binding SelSpeed, Mode=OneWay}" Command="{Binding TogglePermCommand}" CommandParameter="Speed"
-                                                      ToolTip.Tip="{local:T 'Cambiare la velocità di riproduzione per tutti'}" AutomationProperties.Name="{local:T 'Cambiare la velocità di riproduzione per tutti'}"/>
+                                                      ToolTip.Tip="{local:T 'Change the playback speed for everyone'}" AutomationProperties.Name="{local:T 'Change the playback speed for everyone'}"/>
                                     </StackPanel>
                                     <Button Theme="{StaticResource DangerButton}" Padding="12,5" FontSize="12.5" HorizontalAlignment="Left" Margin="0,10,0,4"
                                             Command="{Binding KickSelectedCommand}">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{local:Icon E8F8}" Classes="glyph" FontSize="12"/>
-                                            <TextBlock Text="{local:T 'Espelli…'}" Margin="7,0,0,0"/>
+                                            <TextBlock Text="{local:T 'Kick…'}" Margin="7,0,0,0"/>
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>
@@ -879,7 +875,7 @@
                                         <StackPanel Margin="6,0,6,5">
                                             <StackPanel x:Name="Head" Orientation="Horizontal" Margin="0,7,0,1" IsVisible="{Binding ShowName}">
                                                 <TextBlock Text="{Binding Name}" Foreground="{Binding Brush}" FontWeight="SemiBold" FontSize="12.5"/>
-                                                <TextBlock Text="{Binding Time}" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="7,0,0,0" VerticalAlignment="Bottom"/>
+                                                <TextBlock Text="{Binding Time}" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="7,0,0,0" VerticalAlignment="Bottom"/>
                                             </StackPanel>
                                             <TextBlock Classes="body" Classes.system="{Binding IsSystem}" Text="{Binding Text}" TextWrapping="Wrap" FontSize="13.5" LineHeight="19"/>
                                         </StackPanel>
@@ -892,9 +888,9 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBox x:Name="ChatBox" Theme="{StaticResource BoxTextBox}" Text="{Binding ChatInput}" MaxLength="500"
-                                         Watermark="{local:T 'Scrivi un messaggio…'}" AutomationProperties.Name="{local:T 'Scrivi un messaggio…'}"/>
+                                         Watermark="{local:T 'Write a message…'}" AutomationProperties.Name="{local:T 'Write a message…'}"/>
                                 <Button Grid.Column="1" Theme="{StaticResource PillPrimaryButton}" Width="38" Height="38" Padding="0" Margin="8,0,0,0" Command="{Binding SendCommand}"
-                                        ToolTip.Tip="{local:T 'Invia (Invio)'}" AutomationProperties.Name="{local:T Invia}">
+                                        ToolTip.Tip="{local:T 'Send (Enter)'}" AutomationProperties.Name="{local:T Send}">
                                     <TextBlock Text="{local:Icon E724}" Classes="glyph" FontSize="14"/>
                                 </Button>
                             </Grid>

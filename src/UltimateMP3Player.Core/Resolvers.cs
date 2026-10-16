@@ -15,14 +15,14 @@ public static class Spotify
     {
         var html = await Http.GetStringAsync($"https://open.spotify.com/embed/{type}/{id}", ct: ct);
         var m = Regex.Match(html, "<script id=\"__NEXT_DATA__\" type=\"application/json\">(.*?)</script>", RegexOptions.Singleline);
-        if (!m.Success) throw new EngineException(L.T("Spotify non ha restituito i dati di questo link."));
+        if (!m.Success) throw new EngineException(L.T("Spotify didn't return any data for this link."));
         return JsonDocument.Parse(m.Groups[1].Value);
     }
 
     private static JsonElement Entity(JsonDocument doc)
     {
         var e = doc.RootElement.Prop("props")?.Prop("pageProps")?.Prop("state")?.Prop("data")?.Prop("entity");
-        return e ?? throw new EngineException(L.T("Contenuto Spotify non trovato (link privato o rimosso?)."));
+        return e ?? throw new EngineException(L.T("Spotify content not found (private or removed link?)."));
     }
 
     private static string? Cover(JsonElement entity)
@@ -41,11 +41,11 @@ public static class Spotify
         if (Sites.HostOf(url) == "spotify.link")
             url = (await Http.ProbeAsync(url, ct)).Url;
         var m = UrlRx.Match(url);
-        if (!m.Success) throw new EngineException(L.T("Link Spotify non riconosciuto: usa il link di un brano, un album o una playlist."));
+        if (!m.Success) throw new EngineException(L.T("Spotify link not recognized: use a link to a song, album or playlist."));
         var type = m.Groups[1].Value.ToLowerInvariant();
         var id = m.Groups[2].Value;
         if (type is "episode" or "show")
-            throw new EngineException(L.T("I podcast di Spotify non si possono scaricare (sono protetti)."));
+            throw new EngineException(L.T("Spotify podcasts can't be downloaded (they're protected)."));
 
         using var doc = await EmbedAsync(type, id, ct);
         var ent = Entity(doc);
@@ -56,7 +56,7 @@ public static class Spotify
             var artists = ent.Arr("artists").Select(a => a.Str("name")).Where(n => n != null).ToList();
             var item = new MediaItem
             {
-                Title = ent.Str("name") ?? ent.Str("title") ?? L.T("Brano"),
+                Title = ent.Str("name") ?? ent.Str("title") ?? L.T("Song"),
                 Artist = string.Join(", ", artists),
                 Duration = ent.Num("duration") / 1000.0,
                 Year = ent.Prop("releaseDate")?.Str("isoString") is { Length: >= 4 } d ? d[..4] : null,
@@ -92,7 +92,7 @@ public static class Spotify
             if (trackId == null) continue; // podcast episodes, local files
             var item = new MediaItem
             {
-                Title = t.Str("title") ?? L.T("Brano"),
+                Title = t.Str("title") ?? L.T("Song"),
                 Artist = t.Str("subtitle")?.Replace(" ", " "),
                 Duration = t.Num("duration") / 1000.0,
                 Kind = MediaKind.Audio,
@@ -112,9 +112,9 @@ public static class Spotify
             }
             result.Items.Add(item);
         }
-        if (result.Items.Count == 0) throw new EngineException(L.T("Nessun brano scaricabile trovato in questo link Spotify."));
+        if (result.Items.Count == 0) throw new EngineException(L.T("No downloadable songs found in this Spotify link."));
         if (type == "playlist" && result.Items.Count >= 100)
-            result.Notes.Add(L.T("Spotify mostra al massimo 100 brani per le playlist condivise: sono elencati i primi 100."));
+            result.Notes.Add(L.T("Spotify shows at most 100 songs for shared playlists: the first 100 are listed."));
         return result;
     }
 
@@ -151,17 +151,17 @@ public static class Deezer
     {
         if (!UrlRx.IsMatch(url)) url = (await Http.ProbeAsync(url, ct)).Url;
         var m = UrlRx.Match(url);
-        if (!m.Success) throw new EngineException(L.T("Link Deezer non riconosciuto: usa il link di un brano, un album o una playlist."));
+        if (!m.Success) throw new EngineException(L.T("Deezer link not recognized: use a link to a song, album or playlist."));
         var type = m.Groups[1].Value.ToLowerInvariant();
         var id = m.Groups[2].Value;
         using var doc = JsonDocument.Parse(await Http.GetStringAsync($"https://api.deezer.com/{type}/{id}", ct: ct));
         var e = doc.RootElement;
-        if (e.Prop("error") != null) throw new EngineException(L.T("Contenuto Deezer non trovato."));
+        if (e.Prop("error") != null) throw new EngineException(L.T("Deezer content not found."));
 
         var result = new AnalysisResult { Site = "Deezer", SourceUrl = url, PreferAudio = true };
         MediaItem Track(JsonElement t, JsonElement? album, int? no) => new()
         {
-            Title = t.Str("title") ?? L.T("Brano"),
+            Title = t.Str("title") ?? L.T("Song"),
             Artist = t.Prop("artist")?.Str("name"),
             Album = (album ?? t.Prop("album"))?.Str("title"),
             CoverUrl = (album ?? t.Prop("album"))?.Str("cover_xl"),
@@ -196,7 +196,7 @@ public static class Deezer
             n++;
             result.Items.Add(type == "album" ? Track(t, e, n) : Track(t, null, null));
         }
-        if (result.Items.Count == 0) throw new EngineException(L.T("Nessun brano trovato in questo link Deezer."));
+        if (result.Items.Count == 0) throw new EngineException(L.T("No songs found in this Deezer link."));
         return result;
     }
 }
@@ -212,7 +212,7 @@ public static class AppleMusic
     {
         if (!UrlRx.IsMatch(url)) url = (await Http.ProbeAsync(url, ct)).Url;
         var m = UrlRx.Match(url);
-        if (!m.Success) throw new EngineException(L.T("Link Apple Music non riconosciuto: usa il link di un brano, un album o una playlist."));
+        if (!m.Success) throw new EngineException(L.T("Apple Music link not recognized: use the link of a song, an album or a playlist."));
         var country = m.Groups[1].Success ? m.Groups[1].Value.ToLowerInvariant() : "us";
         var type = m.Groups[2].Value.ToLowerInvariant();
         var id = m.Groups[3].Value;
@@ -231,7 +231,7 @@ public static class AppleMusic
         var songs = all.Where(r => r.Str("wrapperType") == "track" && r.Str("kind") is "song" or "music-video").ToList();
         if (type == "song")
         {
-            if (songs.Count == 0) throw new EngineException(L.T("Contenuto Apple Music non trovato (link privato o rimosso?)."));
+            if (songs.Count == 0) throw new EngineException(L.T("Apple Music content not found (private or removed link?)."));
             var item = Track(songs[0]);
             result.Title = item.Title;
             result.Uploader = item.Artist;
@@ -246,7 +246,7 @@ public static class AppleMusic
         result.Uploader = album.Str("artistName");
         if (Art(album.Str("artworkUrl100"), 300) is { } cover) result.Thumbnails.Add(cover);
         foreach (var t in songs.OrderBy(s => s.Int("discNumber") ?? 1).ThenBy(s => s.Int("trackNumber") ?? 0)) result.Items.Add(Track(t));
-        if (result.Items.Count == 0) throw new EngineException(L.T("Nessun brano trovato in questo link Apple Music."));
+        if (result.Items.Count == 0) throw new EngineException(L.T("No songs found in this Apple Music link."));
         return result;
     }
 
@@ -259,7 +259,7 @@ public static class AppleMusic
             if (doc.RootElement.Arr("results").Any()) return doc;
             doc.Dispose();
         }
-        throw new EngineException(L.T("Contenuto Apple Music non trovato (link privato o rimosso?)."));
+        throw new EngineException(L.T("Apple Music content not found (private or removed link?)."));
     }
 
     private static MediaItem Track(JsonElement t)
@@ -267,7 +267,7 @@ public static class AppleMusic
         var url = Regex.Replace(t.Str("trackViewUrl") ?? "", @"[?&]uo=\d+", "");
         var item = new MediaItem
         {
-            Title = t.Str("trackName") ?? L.T("Brano"),
+            Title = t.Str("trackName") ?? L.T("Song"),
             Artist = t.Str("artistName"),
             Album = t.Str("collectionName"),
             Year = t.Str("releaseDate") is { Length: >= 4 } d ? d[..4] : null,
@@ -289,7 +289,7 @@ public static class AppleMusic
     {
         var html = await Http.GetStringAsync(url, ct: ct);
         var m = Regex.Match(html, "<script type=\"application/json\" id=\"serialized-server-data\">(.*?)</script>", RegexOptions.Singleline);
-        if (!m.Success) throw new EngineException(L.T("Apple Music non ha restituito i dati di questo link."));
+        if (!m.Success) throw new EngineException(L.T("Apple Music didn't return the data of this link."));
         using var doc = JsonDocument.Parse(m.Groups[1].Value);
         var sections = doc.RootElement.Arr("data").FirstOrDefault().Prop("data")?.Arr("sections") ?? Enumerable.Empty<JsonElement>();
         result.IsCollection = true;
@@ -310,7 +310,7 @@ public static class AppleMusic
                 var link = t.Prop("contentDescriptor")?.Str("url") ?? url;
                 var item = new MediaItem
                 {
-                    Title = t.Str("title") ?? L.T("Brano"),
+                    Title = t.Str("title") ?? L.T("Song"),
                     Artist = t.Str("artistName") ?? string.Join(", ", t.Arr("subtitleLinks").Select(l => l.Str("title")).OfType<string>()),
                     Album = t.Arr("tertiaryLinks").Select(l => l.Str("title")).FirstOrDefault(n => n != null),
                     Duration = t.Num("duration") / 1000.0,
@@ -325,11 +325,11 @@ public static class AppleMusic
                 result.Items.Add(item);
             }
         }
-        if (result.Items.Count == 0) throw new EngineException(L.T("Nessun brano trovato in questo link Apple Music."));
+        if (result.Items.Count == 0) throw new EngineException(L.T("No songs found in this Apple Music link."));
         if (result.Thumbnails.Count == 0) result.Thumbnails = result.Items[0].Thumbnails.ToList();
         // A long playlist: the page has only its first songs.
         if (Regex.Match(html, "\"numTracks\":\\s*(\\d+)") is { Success: true } total && int.Parse(total.Groups[1].Value) > result.Items.Count)
-            result.Notes.Add(L.F("Apple Music mostra solo i primi {0} brani di questa playlist: sono elencati quelli.", result.Items.Count));
+            result.Notes.Add(L.F("Apple Music only shows the first {0} songs of this playlist: those are listed.", result.Items.Count));
         return result;
     }
 
@@ -349,7 +349,7 @@ public static class Giphy
     {
         if (Sites.HostOf(url) == "gph.is") url = (await Http.ProbeAsync(url, ct)).Url;
         var m = IdRx.Match(url);
-        if (!m.Success) throw new EngineException(L.T("Link Giphy non riconosciuto: apri la GIF e copia il suo link."));
+        if (!m.Success) throw new EngineException(L.T("Giphy link not recognized: open the GIF and copy its link."));
         var id = new[] { m.Groups[1], m.Groups[2], m.Groups[3] }.First(g => g.Success).Value;
 
         string title = "GIF " + id;
@@ -508,7 +508,7 @@ public static class OpenGraph
         return new AnalysisResult
         {
             Title = title, Site = item.SiteName, SourceUrl = url, Thumbnails = item.Thumbnails.ToList(), Items = { item },
-            Notes = { L.T("Il sito non è supportato direttamente: è stato trovato il contenuto principale della pagina.") },
+            Notes = { L.T("This site isn't directly supported: the page's main content was found instead.") },
         };
     }
 

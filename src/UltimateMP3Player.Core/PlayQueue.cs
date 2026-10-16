@@ -55,7 +55,10 @@ public sealed class PlayQueue
         Radio = radio;
         if (Context.Count == 0) return;
         string first = start >= 0 && start < tracks.Count ? tracks[start] : Context[_rng.Next(Context.Count)];
-        SetCurrent(first, false);
+        // The song playing going on in another list isn't heard twice in the history; one waiting in the queue leaves it.
+        if (first == Current && _history.Count > 0 && _history[^1].Id == first) _currentQueued = false;
+        else SetCurrent(first, false);
+        UpNext.Remove(first);
         Cleared = !fill;
         _plan = new();
         if (fill) Deal(first, AutoFill);

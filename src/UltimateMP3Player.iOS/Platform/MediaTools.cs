@@ -21,7 +21,7 @@ public sealed class MediaTools : IMediaTools
     {
         using var asset = AVAsset.FromUrl(NSUrl.FromFilename(file));
         if (asset.TracksWithMediaType(AVMediaTypes.Audio.GetConstant()!).Length == 0)
-            throw new EngineException(L.T("Il file non contiene audio."));
+            throw new EngineException(L.T("The file has no audio."));
         bool video = asset.TracksWithMediaType(AVMediaTypes.Video.GetConstant()!).Length > 0;
         string? title = null, artist = null, album = null, year = null;
         bool cover = false;
@@ -122,7 +122,7 @@ public sealed class MediaTools : IMediaTools
     {
         using var asset = AVAsset.FromUrl(NSUrl.FromFilename(file));
         var audio = asset.TracksWithMediaType(AVMediaTypes.Audio.GetConstant()!);
-        if (audio.Length == 0) throw new EngineException(L.F("Questo formato non si può ascoltare su iPhone ({0}).", Path.GetExtension(file)));
+        if (audio.Length == 0) throw new EngineException(L.F("This format can't be played on iPhone ({0}).", Path.GetExtension(file)));
         var format = audio[0].FormatDescriptions.OfType<CMAudioFormatDescription>().FirstOrDefault()?.AudioStreamBasicDescription;
         var video = asset.TracksWithMediaType(AVMediaTypes.Video.GetConstant()!);
         double seconds = asset.Duration.Seconds;
@@ -177,7 +177,7 @@ public sealed class MediaTools : IMediaTools
     public async Task<(string File, string Description)> ConvertAudioAsync(string input, ProbeInfo probe, AudioTarget target, Tags? tags, string? coverJpg,
         string output, Action<double>? progress, CancellationToken ct)
     {
-        var source = probe.Audio ?? throw new EngineException(L.T("Il file scaricato non contiene audio."));
+        var source = probe.Audio ?? throw new EngineException(L.T("The downloaded file has no audio."));
         var family = Codecs.Family(source.Codec);
         var cover = coverJpg != null && File.Exists(coverJpg) ? await File.ReadAllBytesAsync(coverJpg, ct) : null;
         bool copy = FormatSelector.CanCopyAudio(family, new AudioOptions(target.Format, target.Kbps, target.SampleRate, target.Channels, target.BitDepth),
@@ -202,9 +202,9 @@ public sealed class MediaTools : IMediaTools
                 File.Copy(input, file, true);
             }
             progress?.Invoke(1);
-            return (file, L.T("audio originale senza perdita"));
+            return (file, L.T("original lossless audio"));
         }
-        if (target.Format != Quality.Mp3) throw new EngineException(L.F("Formato non supportato su iPhone: {0}", target.Format));
+        if (target.Format != Quality.Mp3) throw new EngineException(L.F("Format not supported on iPhone: {0}", target.Format));
         var mp3 = Path.ChangeExtension(output, "mp3");
         var decode = input;
         if (family is "aac" or "alac")
@@ -225,12 +225,12 @@ public sealed class MediaTools : IMediaTools
     {
         using var asset = AVAsset.FromUrl(NSUrl.FromFilename(input));
         var track = asset.TracksWithMediaType(AVMediaTypes.Audio.GetConstant()!).FirstOrDefault()
-                    ?? throw new EngineException(L.T("Il file scaricato non contiene audio."));
+                    ?? throw new EngineException(L.T("The downloaded file has no audio."));
         // Only the audio: an M4A can't hold the video an MP4 may have.
         using var composition = new AVMutableComposition();
         var audio = composition.AddMutableTrack(AVMediaTypes.Audio.GetConstant()!, 0);
         if (audio == null || !audio.InsertTimeRange(track.TimeRange, track, CMTime.Zero, out var error))
-            throw new EngineException(L.T("Conversione non riuscita") + ".", "insert");
+            throw new EngineException(L.T("Conversion failed") + ".", "insert");
         using var session = new AVAssetExportSession(composition, AVAssetExportSessionPreset.Passthrough);
         session.OutputUrl = NSUrl.FromFilename(output);
         session.OutputFileType = AVFileTypes.AppleM4a.GetConstant();
@@ -242,7 +242,7 @@ public sealed class MediaTools : IMediaTools
             await session.ExportTaskAsync();
         ct.ThrowIfCancellationRequested();
         if (session.Status != AVAssetExportSessionStatus.Completed || !File.Exists(output))
-            throw new EngineException(L.T("Conversione non riuscita") + ".", session.Error?.LocalizedDescription ?? session.Status.ToString());
+            throw new EngineException(L.T("Conversion failed") + ".", session.Error?.LocalizedDescription ?? session.Status.ToString());
     }
 
     // The tags as AVFoundation's common keys (an M4A gets them as iTunes's).
@@ -269,7 +269,7 @@ public sealed class MediaTools : IMediaTools
     {
         AppleTrackSource source;
         try { source = new AppleTrackSource(file); }
-        catch (Exception ex) { throw new EngineException(L.T("Il file audio non è leggibile."), ex.Message); }
+        catch (Exception ex) { throw new EngineException(L.T("The audio file can't be read."), ex.Message); }
         using (source)
         {
             int rate = source.Rate, ch = source.Channels;
@@ -308,7 +308,7 @@ public sealed class MediaTools : IMediaTools
                 total += got;
             }
             if (inBlock > 0) blocks.Add(acc / inBlock);
-            if (blocks.Count == 0) throw new EngineException(L.T("Il file audio non è leggibile."));
+            if (blocks.Count == 0) throw new EngineException(L.T("The audio file can't be read."));
             return new AnalysisOutput(AudioAnalysis.ToBars(blocks), loudness.Integrated(), peak > 0 ? 20 * Math.Log10(peak) : null, total / (double)rate);
         }
     }, ct);

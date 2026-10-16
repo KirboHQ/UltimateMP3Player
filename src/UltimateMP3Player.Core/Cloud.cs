@@ -162,13 +162,13 @@ public static class CloudSongs
     {
         try
         {
-            return (await TogetherCache.DownloadAsync(url, audioFormat, cookies, dir, progress, ct), null);
+            return (await SongCache.DownloadAsync(url, audioFormat, cookies, dir, progress, ct), null);
         }
         catch (EngineException ex) when (ex.LinkProblem && !ct.IsCancellationRequested)
         {
             var info = await FindForAsync(ex, title, artist, duration, url, cookies, ct);
             if (info == null) throw new EngineException(ex.Message, ex.Details) { Gone = ex.Gone, NeedsLogin = ex.NeedsLogin, NotFoundElsewhere = true };
-            return (await TogetherCache.DownloadAsync(info.WebpageUrl, audioFormat, cookies, dir, progress, ct), info);
+            return (await SongCache.DownloadAsync(info.WebpageUrl, audioFormat, cookies, dir, progress, ct), info);
         }
     }
 }

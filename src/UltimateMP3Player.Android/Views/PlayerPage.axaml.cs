@@ -31,6 +31,9 @@ public partial class PlayerPage : UserControl
         _coverIn = new Tweener(this, v => CoverArea.Opacity = v, 1);
         _follow = new Tweener(this, v => FollowBtn.Opacity = v);
         DataContextChanged += (_, _) => Attach(DataContext as NowPlayingViewModel);
+        // the glow behind the page is baked in the colours of the light or dark look
+        AttachedToVisualTree += (_, _) => Themes.Changed += Bake;
+        DetachedFromVisualTree += (_, _) => Themes.Changed -= Bake;
         Video.Clock = () => _vm?.Player.EnginePosition ?? TimeSpan.Zero;
         Video.MediaOpened += FitVideo;
         Stage.SizeChanged += (_, _) =>
@@ -174,7 +177,7 @@ public partial class PlayerPage : UserControl
             UpdateVideo();
             ShowLyricsText();
         }
-        else if (e.PropertyName is nameof(PlayerViewModel.IsPlaying) or nameof(PlayerViewModel.Position) or nameof(PlayerViewModel.Speed)) PushClock();
+        else if (e.PropertyName is nameof(PlayerViewModel.IsPlaying) or nameof(PlayerViewModel.Animate) or nameof(PlayerViewModel.Position) or nameof(PlayerViewModel.Speed)) PushClock();
     }
 
     // ------------------------------------------------------------------ cover
@@ -275,8 +278,8 @@ public partial class PlayerPage : UserControl
     {
         if (_vm == null || !_open) return;
         var p = _vm.Player;
-        LyricsPane.SetClock(p.Position, p.IsPlaying, p.Speed);
-        Captions.SetClock(p.Position, p.IsPlaying, p.Speed);
+        LyricsPane.SetClock(p.Position, p.Animate, p.Speed);
+        Captions.SetClock(p.Position, p.Animate, p.Speed);
     }
 
     private void ShowFollowButton(bool following)

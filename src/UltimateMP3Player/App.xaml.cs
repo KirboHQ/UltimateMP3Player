@@ -58,7 +58,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Log(ex);
-            MessageBox.Show(L.T("Ultimate MP3 Player non è riuscito ad avviarsi:") + "\n\n" + ex.Message, "Ultimate MP3 Player",
+            MessageBox.Show(L.T("Ultimate MP3 Player couldn't start:") + "\n\n" + ex.Message, "Ultimate MP3 Player",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
             return;
@@ -116,7 +116,7 @@ public partial class App : Application
     {
         try
         {
-            var log = Path.Combine(AppPaths.DataDir, "errori.log");
+            var log = AppPaths.LogFile;
             File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
         }
         catch { }
@@ -126,7 +126,7 @@ public partial class App : Application
     {
         Log(e.Exception);
         e.Handled = true;
-        try { Host?.Session?.Toast(L.T("Si è verificato un errore imprevisto:") + " " + e.Exception.Message); }
+        try { Host?.Session?.Toast(L.T("An unexpected error occurred:") + " " + e.Exception.Message); }
         catch { }
     }
 }

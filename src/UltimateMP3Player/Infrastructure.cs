@@ -335,19 +335,21 @@ public static class Ui
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 
-    // Dark frame, rounded corners on Windows 11.
+    // Frame in the colours of the look (dark or light), rounded corners on Windows 11.
     public static void DarkTitleBar(Window w)
     {
         try
         {
             var h = new WindowInteropHelper(w).Handle;
-            int on = 1;
+            if (h == IntPtr.Zero) return;
+            int on = Themes.IsLight ? 0 : 1;
             if (DwmSetWindowAttribute(h, 20, ref on, sizeof(int)) != 0) DwmSetWindowAttribute(h, 19, ref on, sizeof(int));
-            int caption = 0x000F0C0A; // COLORREF of #0A0C0F
+            static int ColorRef(Color c) => c.R | c.G << 8 | c.B << 16;
+            int caption = ColorRef(Themes.Get("TitleBar"));
             DwmSetWindowAttribute(h, 35, ref caption, sizeof(int));
-            int text = 0x00F3EEEC;
+            int text = ColorRef(Themes.Get("Text"));
             DwmSetWindowAttribute(h, 36, ref text, sizeof(int));
-            int border = 0x00362C27;
+            int border = ColorRef(Themes.Get("Border"));
             DwmSetWindowAttribute(h, 34, ref border, sizeof(int));
             int round = 2;
             DwmSetWindowAttribute(h, 33, ref round, sizeof(int));

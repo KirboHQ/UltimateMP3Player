@@ -180,7 +180,7 @@ public sealed unsafe class AppleTrackSource : ITrackSource, ISampleProvider
     public AppleTrackSource(string path)
     {
         using var url = NSUrl.FromFilename(path);
-        _file = ExtAudioFile.OpenUrl(url, out var error) ?? throw new NotSupportedException(L.F("Questo formato non si può ascoltare su iPhone ({0}).", Path.GetExtension(path)));
+        _file = ExtAudioFile.OpenUrl(url, out var error) ?? throw new NotSupportedException(L.F("This format can't be played on iPhone ({0}).", Path.GetExtension(path)));
         var format = _file.FileDataFormat;
         _rate = format.SampleRate is > 0 and <= 384000 ? (int)format.SampleRate : 44100;
         _channels = format.ChannelsPerFrame == 1 ? 1 : 2;

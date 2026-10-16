@@ -23,7 +23,7 @@ public static class TrackDownloader
         var keys = WithExtra(SourceKeys.ForItem(item), req);
         Track? target = null;
         if (req.AttachTo != null)
-            target = lib.Get(req.AttachTo) ?? throw new EngineException(L.T("Il brano non è più nella libreria."));
+            target = lib.Get(req.AttachTo) ?? throw new EngineException(L.T("The song is no longer in your library."));
         var known = target ?? lib.FindByKeys(keys);
         if (known == null && item.Source == SourceKind.Search) known = lib.FindSimilar(item.Title, item.Artist, item.Duration);
         // Already on the device (a song in the cloud gets its audio saved instead).
@@ -50,7 +50,7 @@ public static class TrackDownloader
             }
             if (other != null)
             {
-                progress(new JobProgress(JobPhase.Resolving, null, L.T("In attesa dello stesso brano in download…")));
+                progress(new JobProgress(JobPhase.Resolving, null, L.T("Waiting for the same song to finish downloading…")));
                 await other.WaitAsync(ct);
                 continue;
             }
@@ -110,13 +110,13 @@ public static class TrackDownloader
     {
         if (item.Source == SourceKind.Search)
         {
-            progress(new JobProgress(JobPhase.Resolving, null, L.T("Ricerca del brano…")));
+            progress(new JobProgress(JobPhase.Resolving, null, L.T("Searching for the song…")));
             if (item.SpotifyTrackId != null) await Spotify.EnrichAsync(item, ct);
             item.Info ??= await MusicMatcher.FindAsync(item, cookies, s => progress(new JobProgress(JobPhase.Resolving, null, s)), ct);
         }
         else if (item.Source == SourceKind.YtDlp && item.Info == null)
         {
-            progress(new JobProgress(JobPhase.Resolving, null, L.T("Analisi…")));
+            progress(new JobProgress(JobPhase.Resolving, null, L.T("Analyzing…")));
             item.Info = await YtDlp.GetInfoAsync(item.Url, cookies, ct);
             if (item.Kind == MediaKind.Video && !item.Info.HasVideo) item.Kind = MediaKind.Audio;
             if (item.Thumbnails.Count == 0) item.Thumbnails = item.Info.Thumbnails;
@@ -133,7 +133,7 @@ public static class TrackDownloader
         if (existing != null && req.VideoOnly)
         {
             // A video found for the song (from its own link, or another one chosen among the search results).
-            if (!videoAvailable) throw new EngineException(L.T("Nessun video trovato in questo link.")) { NoMedia = true };
+            if (!videoAvailable) throw new EngineException(L.T("No video found in this link.")) { NoMedia = true };
             existing.VideoPath = await DownloadVideoAsync(req, progress, ct);
             lib.Changed(existing);
             return new TrackResult(existing, TrackOutcome.VideoAdded);
@@ -202,10 +202,10 @@ public static class TrackDownloader
                     track.VideoPath = await DownloadVideoAsync(req, progress, ct);
                     created.Add(track.VideoPath);
                 }
-                catch (EngineException ex) { note = L.T("Video non scaricato:") + " " + ex.Message; }
+                catch (EngineException ex) { note = L.T("Video not downloaded:") + " " + ex.Message; }
             }
 
-            progress(new JobProgress(JobPhase.Converting, null, L.T("Analisi della traccia…")));
+            progress(new JobProgress(JobPhase.Converting, null, L.T("Analyzing track…")));
             var coverPath = AppPaths.TrackCover(track.Id);
             if (File.Exists(coverTmp))
             {
@@ -227,10 +227,10 @@ public static class TrackDownloader
 
             // Paid tracks sometimes come as a 30 s preview.
             if (duration is > 60 && track.Duration is > 0 and < 45 && track.Duration < duration * 0.6)
-                throw new EngineException(L.F("Il sito ha dato solo un'anteprima di {0:0} secondi (brano a pagamento o bloccato).", track.Duration));
+                throw new EngineException(L.F("The site only gave a {0:0}-second preview (paid or blocked song).", track.Duration));
 
             lib.Add(track);
-            progress(new JobProgress(JobPhase.Done, 100, L.T("Completato")));
+            progress(new JobProgress(JobPhase.Done, 100, L.T("Completed")));
             return new TrackResult(track, TrackOutcome.Downloaded, note);
         }
         catch
@@ -269,13 +269,13 @@ public static class TrackDownloader
         var path = audio.ResultPath!;
         try
         {
-            progress(new JobProgress(JobPhase.Converting, null, L.T("Analisi della traccia…")));
+            progress(new JobProgress(JobPhase.Converting, null, L.T("Analyzing track…")));
             double? expected = t.Duration > 0 ? t.Duration : item.Info?.Duration ?? item.Duration;
             AnalysisOutput? a = null;
             try { a = await AudioAnalysis.AnalyzeAsync(path, ct); }
             catch (EngineException) { }
             if (expected is > 60 && a?.Duration is > 0 and < 45 && a.Duration < expected * 0.6)
-                throw new EngineException(L.F("Il sito ha dato solo un'anteprima di {0:0} secondi (brano a pagamento o bloccato).", a.Duration));
+                throw new EngineException(L.F("The site only gave a {0:0}-second preview (paid or blocked song).", a.Duration));
             if (!t.HasCover)
             {
                 var coverPath = AppPaths.TrackCover(t.Id);
@@ -307,7 +307,7 @@ public static class TrackDownloader
         t.Path = path;
         t.CachePath = null;
         t.Unavailable = false;
-        progress(new JobProgress(JobPhase.Done, 100, L.T("Completato")));
+        progress(new JobProgress(JobPhase.Done, 100, L.T("Completed")));
     }
 
     // "Download again": new files in the quality asked take the place of the song's own (a song in the cloud gets its first one).

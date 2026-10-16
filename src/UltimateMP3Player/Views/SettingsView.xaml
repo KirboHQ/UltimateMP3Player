@@ -15,19 +15,19 @@
         </Style>
         <!-- Big button with an icon and two lines (help card). -->
         <Style x:Key="SupportTile" TargetType="Button">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" CornerRadius="12" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}"
+                        <Border x:Name="Bd" CornerRadius="12" Background="{DynamicResource BgBrush}" BorderBrush="Transparent"
                                 BorderThickness="1" Padding="14">
                             <ContentPresenter/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
@@ -55,24 +55,24 @@
         <Grid Margin="0,0,10,0">
             <DockPanel Margin="28,6,28,20" MaxWidth="1640">
                 <TextBox x:Name="SearchBox" DockPanel.Dock="Right" Style="{StaticResource FilterBox}" Width="300" VerticalAlignment="Center"
-                         Tag="{local:T 'Cerca nelle impostazioni'}" AutomationProperties.Name="{local:T 'Cerca nelle impostazioni'}"
+                         Tag="{local:T 'Search settings'}" AutomationProperties.Name="{local:T 'Search settings'}"
                          TextChanged="Search_TextChanged" KeyDown="Search_KeyDown"/>
-                <TextBlock Text="{local:T Impostazioni}" FontSize="30" FontWeight="Bold" VerticalAlignment="Center"/>
+                <TextBlock Text="{local:T Settings}" FontSize="30" FontWeight="Bold" VerticalAlignment="Center"/>
             </DockPanel>
         </Grid>
     <ScrollViewer x:Name="Scroller" Grid.Row="1" VerticalScrollBarVisibility="Auto" Focusable="False">
         <StackPanel Margin="28,0,28,28" MaxWidth="1640">
-            <TextBlock x:Name="NoResults" Text="{local:T 'Nessuna impostazione corrisponde alla ricerca.'}" Style="{StaticResource Hint}" FontSize="14"
+            <TextBlock x:Name="NoResults" Text="{local:T 'No setting matches the search.'}" Style="{StaticResource Hint}" FontSize="14"
                        HorizontalAlignment="Center" Margin="0,30,0,0" Visibility="Collapsed"/>
 
             <!-- SettingsView.Keywords: extra words (in the app language) the search box finds; Tag="whole": the card is shown or hidden as a whole -->
             <views:MasonryPanel x:Name="Cards" ColumnWidth="500" MaxColumns="3" Gap="16">
 
                 <!-- ==================================================== appearance -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'tema colori lingua inglese italiano animazioni scorrimento rotella mouse copertina 3d'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'theme colors light dark night mode language english italian animations scrolling mouse wheel cover 3d parallax'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T Aspetto}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Tema (per questo profilo)'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T Appearance}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Theme (for this profile)'}" Style="{StaticResource FieldLabel}"/>
                         <ItemsControl ItemsSource="{Binding Themes}" Margin="0,2,0,14">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -88,7 +88,7 @@
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
                                                 <Grid Background="Transparent">
-                                                    <Ellipse x:Name="Ring" Stroke="{StaticResource TextBrush}" StrokeThickness="2" Opacity="0"/>
+                                                    <Ellipse x:Name="Ring" Stroke="{DynamicResource TextBrush}" StrokeThickness="2" Opacity="0"/>
                                                     <Ellipse Margin="5" Fill="{Binding Swatch}"/>
                                                 </Grid>
                                                 <ControlTemplate.Triggers>
@@ -106,26 +106,30 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <TextBlock Text="{local:T 'Lingua'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T 'Light or dark'}" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding Appearances}" SelectedItem="{Binding Appearance}"
+                                  Margin="0,0,0,18" AutomationProperties.Name="{local:T 'Light or dark'}"/>
+
+                        <TextBlock Text="{local:T Language}" Style="{StaticResource FieldLabel}"/>
                         <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}"
                                   Margin="0,0,0,18" AutomationProperties.Name="Language"/>
 
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding Animations}">
                             <StackPanel>
-                                <TextBlock Text="{local:T Animazioni}"/>
-                                <TextBlock Text="{local:T 'Passaggi morbidi tra le schede. Spegnile se preferisci tutto istantaneo.'}" Style="{StaticResource Hint}"/>
+                                <TextBlock Text="{local:T Animations}"/>
+                                <TextBlock Text="{local:T 'Smooth transitions between tabs. Turn them off if you prefer everything instant.'}" Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding SmoothScrolling}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Scorrimento fluido'}"/>
-                                <TextBlock Text="{local:T 'La rotella del mouse scorre le liste in modo morbido.'}" Style="{StaticResource Hint}"/>
+                                <TextBlock Text="{local:T 'Smooth scrolling'}"/>
+                                <TextBlock Text="{local:T 'The mouse wheel scrolls lists smoothly.'}" Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding CoverTilt}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Copertina in 3D'}"/>
-                                <TextBlock Text="{local:T 'Nella schermata del brano la copertina si inclina seguendo il mouse.'}" Style="{StaticResource Hint}"/>
+                                <TextBlock Text="{local:T '3D cover'}"/>
+                                <TextBlock Text="{local:T 'In the song view, the cover tilts to follow your mouse.'}" Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
                     </StackPanel>
@@ -133,14 +137,14 @@
 
                 <!-- ==================================================== equalizer -->
                 <Border Style="{StaticResource Card}" Padding="22" DataContext="{Binding Equalizer}" Tag="whole"
-                        views:SettingsView.Keywords="{local:T 'equalizzatore eq bassi medi alti frequenze preset suono audio'}">
+                        views:SettingsView.Keywords="{local:T 'equalizer eq bass mids treble frequencies preset sound audio'}">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,6">
                             <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding Enabled}" VerticalAlignment="Center"
-                                      AutomationProperties.Name="{local:T Equalizzatore}"/>
+                                      AutomationProperties.Name="{local:T Equalizer}"/>
                             <StackPanel>
-                                <TextBlock Text="{local:T Equalizzatore}" FontSize="17" FontWeight="Bold"/>
-                                <TextBlock Text="{local:T 'Regola bassi, medi e alti. Doppio clic su una banda per azzerarla.'}"
+                                <TextBlock Text="{local:T Equalizer}" FontSize="17" FontWeight="Bold"/>
+                                <TextBlock Text="{local:T 'Adjust bass, mids and treble. Double-click a band to reset it.'}"
                                            Style="{StaticResource Hint}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </DockPanel>
@@ -158,20 +162,20 @@
                             <WrapPanel Margin="0,14,0,10">
                                 <ComboBox Width="200" ItemsSource="{Binding Presets}" SelectedItem="{Binding Preset}" Margin="0,0,8,8"
                                           AutomationProperties.Name="Preset"/>
-                                <Button Style="{StaticResource GhostButton}" Command="{Binding SaveCommand}" Margin="0,0,8,8" ToolTip="{local:T 'Salva come preset'}">
+                                <Button Style="{StaticResource GhostButton}" Command="{Binding SaveCommand}" Margin="0,0,8,8" ToolTip="{local:T 'Save as preset'}">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE74E;" Style="{StaticResource Glyph}"/>
-                                        <TextBlock Text="{local:T Salva}" Margin="8,0,0,0"/>
+                                        <TextBlock Text="{local:T Save}" Margin="8,0,0,0"/>
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource GhostButton}" Command="{Binding DeleteCommand}" Margin="0,0,8,8"
-                                        Visibility="{Binding IsCustomPreset, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Elimina preset'}">
+                                        Visibility="{Binding IsCustomPreset, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Delete preset'}">
                                     <TextBlock Text="&#xE74D;" Style="{StaticResource Glyph}"/>
                                 </Button>
-                                <Button Style="{StaticResource SubtleButton}" Content="{local:T Azzera}" Command="{Binding ResetCommand}" Margin="0,0,8,8"/>
+                                <Button Style="{StaticResource SubtleButton}" Content="{local:T Reset}" Command="{Binding ResetCommand}" Margin="0,0,8,8"/>
                             </WrapPanel>
 
-                            <Border CornerRadius="12" Background="{StaticResource BgBrush}" Padding="10,12">
+                            <Border CornerRadius="12" Background="{DynamicResource BgBrush}" Padding="10,12">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
@@ -183,9 +187,9 @@
                                         <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
                                     <Grid Grid.Row="1" Margin="0,0,6,0">
-                                        <TextBlock Text="+12" FontSize="11" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Top"/>
-                                        <TextBlock Text="0" FontSize="11" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                                        <TextBlock Text="-12" FontSize="11" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Bottom"/>
+                                        <TextBlock Text="+12" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Top"/>
+                                        <TextBlock Text="0" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                                        <TextBlock Text="-12" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Bottom"/>
                                     </Grid>
                                     <ItemsControl Grid.Column="1" ItemsSource="{Binding Bands}" Margin="0,0,0,6">
                                         <ItemsControl.ItemsPanel>
@@ -195,11 +199,11 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type vm:EqBandViewModel}">
-                                                <TextBlock Text="{Binding GainText}" FontSize="11.5" HorizontalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                                                <TextBlock Text="{Binding GainText}" FontSize="11.5" HorizontalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <Border Grid.Row="1" Grid.Column="1" Height="1" Background="{StaticResource BorderStrongBrush}" VerticalAlignment="Center" Margin="4,0"/>
+                                    <Border Grid.Row="1" Grid.Column="1" Height="1" Background="{DynamicResource BorderStrongBrush}" VerticalAlignment="Center" Margin="4,0"/>
                                     <views:EqCurve Grid.Row="1" Grid.Column="1" Gains="{Binding Gains}" Version="{Binding CurveVersion}"
                                                    Stroke="{DynamicResource AccentTextBrush}" IsHitTestVisible="False"/>
                                     <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Bands}">
@@ -228,7 +232,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <TextBlock Grid.Row="2" Text="Hz" FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,8,6,0"/>
+                                    <TextBlock Grid.Row="2" Text="Hz" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,8,6,0"/>
                                 </Grid>
                             </Border>
                         </StackPanel>
@@ -236,22 +240,22 @@
                 </Border>
 
                 <!-- ==================================================== playback -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'riproduzione volume dissolvenza sfumatura normalizza uscita dispositivo casse cuffie altoparlanti'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'playback volume crossfade fade normalize output device speakers headphones'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T Riproduzione}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Uscita audio'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T Playback}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Audio output'}" Style="{StaticResource FieldLabel}"/>
                         <ComboBox ItemsSource="{Binding OutputDevices}" SelectedItem="{Binding OutputDevice}" Margin="0,0,0,18"
-                                  AutomationProperties.Name="{local:T 'Uscita audio'}"/>
+                                  AutomationProperties.Name="{local:T 'Audio output'}"/>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding Normalize}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Normalizza il volume'}"/>
-                                <TextBlock Text="{local:T 'Tutti i brani allo stesso volume, anche se presi da siti diversi.'}" Style="{StaticResource Hint}"/>
+                                <TextBlock Text="{local:T 'Normalize volume'}"/>
+                                <TextBlock Text="{local:T 'All songs at the same volume, even if they come from different sites.'}" Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
-                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Crossfade}" AutomationProperties.Name="{local:T 'Dissolvenza tra i brani'}">
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Crossfade}" AutomationProperties.Name="{local:T Crossfade}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Dissolvenza tra i brani'}"/>
-                                <TextBlock Text="{local:T 'Il brano successivo entra mentre il primo sfuma, senza silenzi.'}" Style="{StaticResource Hint}"/>
+                                <TextBlock Text="{local:T Crossfade}"/>
+                                <TextBlock Text="{local:T 'The next song fades in as the current one fades out, with no silence.'}" Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
                         <Grid Margin="0,12,0,0" Visibility="{Binding Crossfade, Converter={StaticResource BoolVis}}">
@@ -260,15 +264,15 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{local:T Durata}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <TextBlock Text="{local:T Duration}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
                             <Slider Grid.Column="1" Minimum="1" Maximum="12" SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1"
-                                    Value="{Binding CrossfadeSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Durata dissolvenza'}"/>
+                                    Value="{Binding CrossfadeSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Crossfade duration'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding CrossfadeText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
                         </Grid>
-                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BpmMatch}" Margin="0,14,0,0" AutomationProperties.Name="{local:T 'Passaggio a tempo di BPM'}">
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BpmMatch}" Margin="0,14,0,0" AutomationProperties.Name="{local:T 'BPM-matched transition'}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Passaggio a tempo di BPM'}"/>
-                                <TextBlock Text="{local:T 'Negli ultimi secondi il brano rallenta o accelera fino ai BPM di quello dopo (senza cambiare tono), così entrano a tempo. Solo quando i BPM di entrambi sono noti e vicini.'}"
+                                <TextBlock Text="{local:T 'BPM-matched transition'}"/>
+                                <TextBlock Text="{local:T 'In its last seconds the song slows down or speeds up to the next one\'s BPM (without changing key), so they meet on the beat. Only when both BPMs are known and close.'}"
                                            Style="{StaticResource Hint}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </CheckBox>
@@ -278,9 +282,9 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="{local:T Durata}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <TextBlock Text="{local:T Duration}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
                             <Slider Grid.Column="1" Minimum="2" Maximum="30" SmallChange="1" LargeChange="2" IsSnapToTickEnabled="True" TickFrequency="1"
-                                    Value="{Binding BpmMatchSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Durata del passaggio a tempo'}"/>
+                                    Value="{Binding BpmMatchSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Length of the BPM-matched transition'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding BpmMatchText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
                         </Grid>
                     </StackPanel>
@@ -288,22 +292,22 @@
 
                 <!-- ==================================================== listening statistics -->
                 <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
-                        views:SettingsView.Keywords="{local:T 'statistiche ascolti ascoltati più meno tempo classifica pulizia elimina'}">
+                        views:SettingsView.Keywords="{local:T 'statistics plays played most least time chart top clean up delete'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Statistiche di ascolto'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Quante volte e per quanto hai ascoltato ogni brano, solo per questo profilo.'}"
+                        <TextBlock Text="{local:T 'Listening statistics'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'How many times and how long you\'ve listened to each song, for this profile only.'}"
                                    Style="{StaticResource Hint}" Margin="0,-8,0,12"/>
                         <TextBlock Text="{Binding StatsSummary}" Margin="0,0,0,12" TextWrapping="Wrap"/>
                         <ItemsControl ItemsSource="{Binding TopTracks}" Focusable="False" Margin="0,0,0,10">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:TrackViewModel}">
                                     <DockPanel Margin="0,0,0,8">
-                                        <TextBlock DockPanel.Dock="Right" Text="{Binding PlaysText}" FontSize="12.5" Foreground="{StaticResource MutedBrush}"
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding PlaysText}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}"
                                                    VerticalAlignment="Center" Margin="10,0,0,0"/>
                                         <ContentPresenter Width="38" Height="38" Content="{Binding}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                                         <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                     </DockPanel>
                                 </DataTemplate>
@@ -312,20 +316,20 @@
                         <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding OpenStatsCommand}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE9D2;" Style="{StaticResource Glyph}"/>
-                                <TextBlock Text="{local:T 'Tutte le statistiche'}" Margin="8,0,0,0"/>
+                                <TextBlock Text="{local:T 'All statistics'}" Margin="8,0,0,0"/>
                             </StackPanel>
                         </Button>
-                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,12,0,0" Foreground="{StaticResource MutedBrush}"
-                                   Text="{local:T 'Per fare pulizia ordinale per i meno ascoltati: selezionali e premi Canc per eliminarli.'}"/>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,12,0,0" Foreground="{DynamicResource MutedBrush}"
+                                   Text="{local:T 'To clean up, sort them by least played: select them and press Delete to delete them.'}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- ==================================================== downloads -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'download formato mp3 m4a opus flac qualità video cookie browser chrome firefox edge cartella musica'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'downloads format mp3 m4a opus flac quality video cookies browser chrome firefox edge folder music'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Download}" Style="{StaticResource CardTitle}"/>
 
-                        <TextBlock Text="{local:T 'Cartella della musica (condivisa da tutti i profili)'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T 'Music folder (shared by all profiles)'}" Style="{StaticResource FieldLabel}"/>
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -333,59 +337,59 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox Style="{StaticResource BoxTextBox}" Text="{Binding MusicDir, Mode=OneWay}" IsReadOnly="True"/>
-                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="{local:T 'Sfoglia…'}" Margin="8,0,0,0" Command="{Binding BrowseCommand}"/>
-                            <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="{local:T Apri}" Margin="8,0,0,0" Command="{Binding OpenMusicDirCommand}"/>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="{local:T 'Browse…'}" Margin="8,0,0,0" Command="{Binding BrowseCommand}"/>
+                            <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="{local:T Open}" Margin="8,0,0,0" Command="{Binding OpenMusicDirCommand}"/>
                         </Grid>
 
                         <UniformGrid Columns="2" Margin="0,0,0,4">
                             <StackPanel Margin="0,0,8,12">
-                                <TextBlock Text="{local:T 'Formato audio'}" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{local:T 'Audio format'}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding AudioFormats}" SelectedItem="{Binding AudioFormat}"/>
                             </StackPanel>
                             <StackPanel Margin="8,0,0,12">
-                                <TextBlock Text="{local:T 'Qualità massima dei video'}" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{local:T 'Maximum video quality'}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding VideoQualities}" SelectedItem="{Binding VideoQuality}"/>
                             </StackPanel>
                             <StackPanel Margin="0,0,8,12">
-                                <TextBlock Text="{local:T 'Download contemporanei'}" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{local:T 'Simultaneous downloads'}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding ParallelChoices}" SelectedItem="{Binding Parallel}"/>
                             </StackPanel>
                         </UniformGrid>
 
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding PreferAudioOnly}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Preferisci solo l\'audio'}"/>
-                                <TextBlock Text="{local:T 'Il video si può sempre scegliere al momento del download.'}" Style="{StaticResource Hint}"/>
+                                <TextBlock Text="{local:T 'Prefer audio only'}"/>
+                                <TextBlock Text="{local:T 'You can always choose the video when downloading.'}" Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
 
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding UseCookies}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Usa i cookie del browser'}"/>
+                                <TextBlock Text="{local:T 'Use browser cookies'}"/>
                                 <TextBlock Style="{StaticResource Hint}"
-                                           Text="{local:T 'Per contenuti che richiedono l\'accesso (Instagram, TikTok, limite d\'età, playlist private). Disattivato di norma.'}"/>
+                                           Text="{local:T 'For content that requires signing in (Instagram, TikTok, age-restricted, private playlists). Off by default.'}"/>
                             </StackPanel>
                         </CheckBox>
                         <StackPanel Width="280" HorizontalAlignment="Left" Margin="0,12,0,0" Visibility="{Binding UseCookies, Converter={StaticResource BoolVis}}">
-                            <TextBlock Text="{local:T 'Browser (quelli installati)'}" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Text="{local:T 'Browser (installed ones)'}" Style="{StaticResource FieldLabel}"/>
                             <ComboBox ItemsSource="{Binding BrowserChoices}" SelectedItem="{Binding Browser}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- ==================================================== online search -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'ricerca online cerca siti youtube music soundcloud deezer spotify ordine'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'online search find sites youtube music soundcloud deezer spotify order'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Ricerca online'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Online search'}" Style="{StaticResource CardTitle}"/>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding OnlineSearch}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Cerca anche sui siti di musica'}"/>
-                                <TextBlock Text="{local:T 'La barra in alto trova anche i brani che non hai: cliccane uno per scaricarlo, come un link incollato.'}"
+                                <TextBlock Text="{local:T 'Also search music sites'}"/>
+                                <TextBlock Text="{local:T 'The bar at the top also finds songs you don\'t have: click one to download it, like a pasted link.'}"
                                            Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
                         <StackPanel IsEnabled="{Binding OnlineSearch}">
-                            <TextBlock Text="{local:T 'Siti, in ordine di preferenza'}" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Text="{local:T 'Sites, in order of preference'}" Style="{StaticResource FieldLabel}"/>
                             <!-- dragged to another place like the songs of a playlist (SettingsView.Service_MouseMove) -->
                             <ListBox x:Name="ServiceList" ItemsSource="{Binding SearchServices}" Style="{StaticResource PlainList}" Focusable="False" Margin="0,0,0,10"
                                      AllowDrop="True" DragOver="Services_DragOver" VirtualizingPanel.IsVirtualizing="False" ScrollViewer.CanContentScroll="False">
@@ -396,16 +400,16 @@
                                 </ListBox.Template>
                                 <ListBox.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:SearchServiceOption}">
-                                        <Border x:Name="Row" CornerRadius="10" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                        <Border x:Name="Row" CornerRadius="10" Background="{DynamicResource BgBrush}" BorderBrush="Transparent" BorderThickness="1"
                                                 Padding="12,8,6,8" Margin="0,0,0,6" PreviewMouseLeftButtonDown="Service_MouseDown" MouseMove="Service_MouseMove">
                                             <DockPanel>
-                                                <TextBlock DockPanel.Dock="Right" Text="&#xE700;" Style="{StaticResource Glyph}" FontSize="14" Foreground="{StaticResource MutedBrush}"
+                                                <TextBlock DockPanel.Dock="Right" Text="&#xE700;" Style="{StaticResource Glyph}" FontSize="14" Foreground="{DynamicResource MutedBrush}"
                                                            Background="Transparent" Cursor="SizeAll" VerticalAlignment="Center" Padding="10,6,8,6"
-                                                           ToolTip="{local:T 'Trascina per cambiare l\'ordine: i siti più in alto vengono cercati prima'}"/>
+                                                           ToolTip="{local:T 'Drag to change the order: the sites higher up are searched first'}"/>
                                                 <CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}">
                                                     <StackPanel Margin="2,0,0,0">
                                                         <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="{Binding Number}" Foreground="{StaticResource MutedBrush}" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                                                            <TextBlock Text="{Binding Number}" Foreground="{DynamicResource MutedBrush}" FontWeight="SemiBold" Margin="0,0,8,0"/>
                                                             <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
                                                             <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                                                         </StackPanel>
@@ -417,64 +421,64 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
-                            <TextBlock Text="{local:T 'Come cercare'}" Style="{StaticResource FieldLabel}"/>
+                            <TextBlock Text="{local:T 'How to search'}" Style="{StaticResource FieldLabel}"/>
                             <ComboBox ItemsSource="{Binding SearchModes}" SelectedItem="{Binding SearchMode}" Width="280" HorizontalAlignment="Left"
-                                      AutomationProperties.Name="{local:T 'Come cercare'}"/>
+                                      AutomationProperties.Name="{local:T 'How to search'}"/>
                             <TextBlock Text="{Binding SearchModeHint}" Style="{StaticResource Hint}" FontSize="12" Margin="2,8,0,0"/>
-                            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,10,0,0" Foreground="{StaticResource MutedBrush}"
-                                       Text="{local:T 'Spotify non permette di cercare senza un account: Deezer ha lo stesso catalogo, e l\'audio arriva da YouTube Music come per i link di Spotify.'}"/>
+                            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,10,0,0" Foreground="{DynamicResource MutedBrush}"
+                                       Text="{local:T 'Spotify doesn\'t allow searching without an account: Deezer has the same catalogue, and the audio comes from YouTube Music as for Spotify links.'}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
                 <!-- ==================================================== suggested songs -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'consigliati consigli simili radio coda automatica online scopri brani nuovi anticipo'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'suggested suggestions similar radio automatic queue online discover new songs ahead'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Brani consigliati'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Suggested songs'}" Style="{StaticResource CardTitle}"/>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding RadioAfterSingle}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Fuori da una playlist, continua con brani simili'}"/>
+                                <TextBlock Text="{local:T 'Outside a playlist, go on with similar songs'}"/>
                                 <TextBlock Style="{StaticResource Hint}"
-                                           Text="{local:T 'Un brano avviato dai download, dalla ricerca o da solo è seguito da brani simili trovati online (con la coda automatica accesa). Spento: lo seguono tutti i tuoi brani.'}"/>
+                                           Text="{local:T 'A song started from the downloads, the search or on its own is followed by similar songs found online (with the automatic queue on). Off: all your songs follow it.'}"/>
                             </StackPanel>
                         </CheckBox>
                         <UniformGrid Columns="2">
                             <StackPanel Margin="0,0,8,0">
-                                <TextBlock Text="{local:T 'Da dove arrivano'}" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{local:T 'Where they come from'}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding RadioSourceChoices}" SelectedItem="{Binding RadioSource}"
-                                          AutomationProperties.Name="{local:T 'Da dove arrivano i brani consigliati'}"/>
+                                          AutomationProperties.Name="{local:T 'Where suggested songs come from'}"/>
                             </StackPanel>
                             <StackPanel Margin="8,0,0,0">
-                                <TextBlock Text="{local:T 'Preparati in anticipo'}" Style="{StaticResource FieldLabel}"/>
+                                <TextBlock Text="{local:T 'Ready ahead'}" Style="{StaticResource FieldLabel}"/>
                                 <ComboBox ItemsSource="{Binding TogetherAheadChoices}" SelectedItem="{Binding RadioAhead}"
-                                          AutomationProperties.Name="{local:T 'Brani consigliati preparati in anticipo'}"/>
+                                          AutomationProperties.Name="{local:T 'Suggested songs ready ahead'}"/>
                             </StackPanel>
                         </UniformGrid>
                         <TextBlock Text="{Binding RadioSourceHint}" Style="{StaticResource Hint}" FontSize="12" Margin="2,8,0,0"/>
-                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,12,0,0" Foreground="{StaticResource MutedBrush}"
-                                   Text="{local:T 'Da qualsiasi brano: tasto destro → Riproduci brani simili. Si scaricano poco prima del loro turno, come in Ascolta insieme e nella stessa memoria, e non entrano nella libreria: per tenerne uno, tasto destro → Salva nella libreria.'}"/>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,12,0,0" Foreground="{DynamicResource MutedBrush}"
+                                   Text="{local:T 'From any song: right-click → Play similar songs. They\'re downloaded shortly before their turn, as in Listen together and into the same storage, and don\'t go into your library: to keep one, right-click → Save to library.'}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- ==================================================== lyrics -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'testi testo lyrics parole karaoke lrclib sincronizzati tempi'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'lyrics text words karaoke lrclib synced timing'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Testi delle canzoni'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Song lyrics'}" Style="{StaticResource CardTitle}"/>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding AutoLyrics}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Cerca i testi da solo'}"/>
-                                <TextBlock Text="{local:T 'Per i brani appena scaricati e per quelli che ascolti, se non sono mai stati cercati. Se il testo c\'è, nella schermata del brano compare il pulsante Testo.'}"
+                                <TextBlock Text="{local:T 'Find lyrics automatically'}"/>
+                                <TextBlock Text="{local:T 'For newly downloaded songs and for the ones you play, if they were never searched. When a song has lyrics, the Lyrics button appears on its page.'}"
                                            Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
-                        <TextBlock Text="{local:T 'Nella libreria'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T 'In your library'}" Style="{StaticResource FieldLabel}"/>
                         <TextBlock Text="{Binding LyricsStats}" Margin="0,0,0,12" TextWrapping="Wrap"/>
                         <!-- the missing ones of the whole library, one at a time -->
                         <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding ScanLyricsCommand}"
                                 Visibility="{Binding Lyrics.IsScanning, Converter={StaticResource InvBoolVis}}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE720;" Style="{StaticResource Glyph}"/>
-                                <TextBlock Text="{local:T 'Cerca i testi mancanti'}" Margin="8,0,0,0"/>
+                                <TextBlock Text="{local:T 'Find missing lyrics'}" Margin="8,0,0,0"/>
                             </StackPanel>
                         </Button>
                         <Grid Visibility="{Binding Lyrics.IsScanning, Converter={StaticResource BoolVis}}">
@@ -483,21 +487,21 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
-                                <TextBlock Text="{Binding Lyrics.ScanText}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Lyrics.ScanText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
                                 <ProgressBar Maximum="1" Value="{Binding Lyrics.ScanProgress, Mode=OneWay}" Margin="0,7,0,0"/>
                             </StackPanel>
-                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="{local:T Ferma}" Command="{Binding Lyrics.StopScanCommand}"/>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="{local:T Stop}" Command="{Binding Lyrics.StopScanCommand}"/>
                         </Grid>
-                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,14,0,0" Foreground="{StaticResource MutedBrush}"
-                                   Text="{local:T 'I testi arrivano da LRCLIB, un archivio libero e gratuito. Quelli con i tempi si illuminano riga per riga mentre ascolti; per una canzone sola usa il tasto destro → Testo, per più brani selezionali e usa il tasto destro.'}"/>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,14,0,0" Foreground="{DynamicResource MutedBrush}"
+                                   Text="{local:T 'Lyrics come from LRCLIB, a free and open archive. Synced lyrics light up line by line as you listen; for one song right-click → Lyrics, for several songs select them and right-click.'}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- ==================================================== tags -->
-                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'tag etichette colore colori'}">
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'tags labels color colors'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T Tag}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Etichette colorate solo per questo profilo: mettile ai brani e alle playlist col tasto destro, o selezionando più brani.'}"
+                        <TextBlock Text="{local:T Tags}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Colored labels for this profile only: put them on songs and playlists with a right-click, or by selecting several songs.'}"
                                    Style="{StaticResource Hint}" Margin="0,-8,0,12"/>
                         <ItemsControl ItemsSource="{Binding DataContext.Tags, RelativeSource={RelativeSource AncestorType=Window}}" Focusable="False">
                             <ItemsControl.ItemTemplate>
@@ -506,11 +510,11 @@
                                         <DockPanel>
                                             <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="&#xE74D;"
                                                     Command="{Binding DataContext.DeleteTagCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
-                                                    ToolTip="{local:T 'Elimina tag'}" AutomationProperties.Name="{local:T 'Elimina tag'}"/>
+                                                    ToolTip="{local:T 'Delete tag'}" AutomationProperties.Name="{local:T 'Delete tag'}"/>
                                             <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="&#xE70F;"
                                                     Command="{Binding DataContext.EditTagCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}"
-                                                    ToolTip="{local:T 'Modifica nome e colore'}" AutomationProperties.Name="{local:T 'Modifica tag'}"/>
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" FontSize="12.5" Foreground="{StaticResource MutedBrush}"
+                                                    ToolTip="{local:T 'Edit name and color'}" AutomationProperties.Name="{local:T 'Edit tag'}"/>
+                                            <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}"
                                                        VerticalAlignment="Center" Margin="10,0,8,0"/>
                                             <Ellipse Width="12" Height="12" Fill="{Binding Brush}" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding Name}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -518,47 +522,47 @@
                                     </Border>
                                     <DataTemplate.Triggers>
                                         <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Row" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                                            <Setter TargetName="Row" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                                         </Trigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Text="{local:T 'Nessun tag, per ora.'}" Style="{StaticResource Hint}" Margin="2,0,0,4"
+                        <TextBlock Text="{local:T 'No tags yet.'}" Style="{StaticResource Hint}" Margin="2,0,0,4"
                                    Visibility="{Binding DataContext.HasTags, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InvBoolVis}}"/>
                         <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,12,0,0"
                                 Command="{Binding DataContext.NewTagCommand, RelativeSource={RelativeSource AncestorType=Window}}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}"/>
-                                <TextBlock Text="{local:T 'Nuovo tag'}" Margin="8,0,0,0"/>
+                                <TextBlock Text="{local:T 'New tag'}" Margin="8,0,0,0"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
                 </Border>
 
                 <!-- ==================================================== bulk edit -->
-                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'artista artisti rinomina nomi modifica'}">
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'artist artists rename names edit'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Modifica di massa'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Un artista scaricato con il nome sbagliato? Sceglilo e rinominalo su tutti i suoi brani.'}"
+                        <TextBlock Text="{local:T 'Bulk edit'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Downloaded an artist with the wrong name? Pick it and rename it across all its songs.'}"
                                    Style="{StaticResource Hint}" Margin="0,-8,0,12"/>
                         <TextBox Style="{StaticResource FilterBox}" Text="{Binding ArtistFilter, UpdateSourceTrigger=PropertyChanged}"
-                                 Tag="{local:T 'Cerca un artista'}" AutomationProperties.Name="{local:T 'Cerca un artista'}"/>
-                        <Border Margin="0,8,0,10" CornerRadius="10" Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}"
+                                 Tag="{local:T 'Search for an artist'}" AutomationProperties.Name="{local:T 'Search for an artist'}"/>
+                        <Border Margin="0,8,0,10" CornerRadius="10" Background="{DynamicResource BgBrush}" BorderBrush="Transparent"
                                 BorderThickness="1" Padding="4" Height="190">
                             <ListBox Style="{StaticResource PlainList}" ItemsSource="{Binding Artists}" SelectedItem="{Binding SelectedArtist}"
-                                     AutomationProperties.Name="{local:T Artisti}">
+                                     AutomationProperties.Name="{local:T Artists}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate DataType="{x:Type local:Choice}">
                                         <Border x:Name="Row" CornerRadius="7" Padding="10,6" Background="Transparent">
                                             <DockPanel>
-                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Hint}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="10,0,0,0"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Hint}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="10,0,0,0"/>
                                                 <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
                                             </DockPanel>
                                         </Border>
                                         <DataTemplate.Triggers>
                                             <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Row" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                                             </Trigger>
                                             <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                                                 <Setter TargetName="Row" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -574,91 +578,119 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBox Style="{StaticResource BoxTextBox}" Text="{Binding NewArtistName, UpdateSourceTrigger=PropertyChanged}"
-                                     Tag="{local:T 'Nuovo nome dell\'artista'}" AutomationProperties.Name="{local:T 'Nuovo nome dell\'artista'}"/>
-                            <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="{local:T Rinomina}" Margin="8,0,0,0"
+                                     Tag="{local:T 'New artist name'}" AutomationProperties.Name="{local:T 'New artist name'}"/>
+                            <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="{local:T Rename}" Margin="8,0,0,0"
                                     Command="{Binding RenameArtistCommand}"/>
                         </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- ==================================================== library -->
-                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'importa aggiungi file cartella computer'}">
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'import add files folder computer'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Musica già sul computer'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Aggiungi file audio o video che hai già: restano dove sono. Puoi anche trascinarli nella finestra.'}"
+                        <TextBlock Text="{local:T 'Music already on your computer'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Add audio or video files you already have: they stay where they are. You can also drag them into the window.'}"
                                    Style="{StaticResource Hint}" Margin="0,-8,0,14"/>
                         <WrapPanel>
                             <Button Style="{StaticResource GhostButton}" Command="{Binding ImportFilesCommand}" Margin="0,0,10,0">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE8E5;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Aggiungi file…'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Add files…'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource GhostButton}" Command="{Binding ImportFolderCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE8B7;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Aggiungi una cartella…'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Add a folder…'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                         </WrapPanel>
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== storage -->
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'storage space cache suggested cloud unsaved clear empty'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Temporary storage (unsaved songs)'}" Style="{StaticResource CardTitle}"/>
+                        <StackPanel>
+                            <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding CacheChoices}" SelectedItem="{Binding CacheSize}"
+                                      AutomationProperties.Name="{local:T 'Temporary storage (unsaved songs)'}"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                       Text="{local:T 'Songs you play without having saved them on your device (in the cloud, suggested, in rooms) stay ready for next time; beyond this number the oldest are deleted (never those in the queue). Saving one moves it out of here.'}"/>
+                            <TextBlock Text="{Binding CacheText}" Style="{StaticResource Hint}" Margin="0,4,0,10"/>
+                            <WrapPanel>
+                                <Button Style="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ClearCacheCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE74D;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T Empty}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource GhostButton}" Command="{Binding OpenCacheCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE838;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T 'Open the folder'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== .ump packs -->
                 <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
-                        views:SettingsView.Keywords="{local:T 'esporta importa pacchetto pacchetti ump condividi backup copia sposta trasferisci amici playlist tag libreria'}">
+                        views:SettingsView.Keywords="{local:T 'export import pack packs ump share backup copy move transfer friends playlist tag library'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Esporta e importa'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Metti playlist, tag o tutta la libreria in un file .ump: per tenerne una copia, passarla su un altro computer o mandarla a un amico.'}"
+                        <TextBlock Text="{local:T 'Export and import'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Put playlists, tags or the whole library into a .ump file: to keep a backup, move it to another computer or send it to a friend.'}"
                                    Style="{StaticResource Hint}" Margin="0,-8,0,14"/>
                         <UniformGrid Columns="2">
                             <Button Style="{StaticResource SupportTile}" Command="{Binding ExportPackCommand}" Margin="0,0,6,0"
-                                    AutomationProperties.Name="{local:T 'Esporta…'}">
+                                    AutomationProperties.Name="{local:T 'Export…'}">
                                 <StackPanel>
                                     <Grid Width="38" Height="38" HorizontalAlignment="Left">
                                         <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
                                         <TextBlock Text="&#xEDE1;" Style="{StaticResource Glyph}" FontSize="17" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
                                     </Grid>
-                                    <TextBlock Text="{local:T 'Esporta…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'Scegli cosa mettere nel pacchetto'}" Style="{StaticResource Hint}" FontSize="12"/>
+                                    <TextBlock Text="{local:T 'Export…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                    <TextBlock Text="{local:T 'Choose what goes into the pack'}" Style="{StaticResource Hint}" FontSize="12"/>
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource SupportTile}" Command="{Binding ImportPackCommand}" Margin="6,0,0,0"
-                                    AutomationProperties.Name="{local:T 'Importa un pacchetto…'}">
+                                    AutomationProperties.Name="{local:T 'Import a pack…'}">
                                 <StackPanel>
                                     <Image Source="{StaticResource PackImage}" Width="38" Height="38" HorizontalAlignment="Left"/>
-                                    <TextBlock Text="{local:T 'Importa un pacchetto…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'I brani che hai già non si doppiano'}" Style="{StaticResource Hint}" FontSize="12"/>
+                                    <TextBlock Text="{local:T 'Import a pack…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                    <TextBlock Text="{local:T 'Songs you already have aren\'t duplicated'}" Style="{StaticResource Hint}" FontSize="12"/>
                                 </StackPanel>
                             </Button>
                         </UniformGrid>
-                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,14,0,0" Foreground="{StaticResource MutedBrush}"
-                                   Text="{local:T 'Un file .ump si apre anche con un doppio clic o trascinandolo nella finestra. Una playlist o un tag si esportano anche col tasto destro.'}"/>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,14,0,0" Foreground="{DynamicResource MutedBrush}"
+                                   Text="{local:T 'A .ump file also opens with a double click or by dragging it into the window. A playlist or a tag can also be exported with a right-click.'}"/>
                     </StackPanel>
                 </Border>
 
                 <!-- ==================================================== profiles & app -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'profilo profili avvio icona orologio chiudi sottofondo'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'profile profiles startup tray icon clock close background'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Profili e avvio'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'All\'avvio'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T 'Profiles and startup'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'At startup'}" Style="{StaticResource FieldLabel}"/>
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <ComboBox ItemsSource="{Binding StartupChoices}" SelectedItem="{Binding StartupProfile}" AutomationProperties.Name="{local:T 'All\'avvio'}"/>
+                            <ComboBox ItemsSource="{Binding StartupChoices}" SelectedItem="{Binding StartupProfile}" AutomationProperties.Name="{local:T 'At startup'}"/>
                             <Button Grid.Column="1" Style="{StaticResource GhostButton}" Margin="10,0,0,0" Command="{Binding ManageProfilesCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE716;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Gestisci profili'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Manage profiles'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                         </Grid>
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding CloseToTray}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Chiudendo la finestra, continua a suonare'}"/>
-                                <TextBlock Text="{local:T 'Resta vicino all\'orologio e usa pochissime risorse; i tasti multimediali funzionano anche lì.'}"
+                                <TextBlock Text="{local:T 'Keep playing when you close the window'}"/>
+                                <TextBlock Text="{local:T 'It stays next to the clock and uses very few resources; media keys work there too.'}"
                                            Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
@@ -666,13 +698,13 @@
                 </Border>
 
                 <!-- ==================================================== integrations -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'discord stato attività'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'discord status activity rich presence'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T Integrazioni}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T Integrations}" Style="{StaticResource CardTitle}"/>
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DiscordPresence}" IsEnabled="{Binding DiscordAvailable}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Mostra su Discord cosa ascolti'}"/>
-                                <TextBlock Text="{local:T 'Titolo, artista, copertina e avanzamento del brano nel tuo profilo Discord (con Discord aperto).'}"
+                                <TextBlock Text="{local:T 'Show what you\'re listening to on Discord'}"/>
+                                <TextBlock Text="{local:T 'Song title, artist, cover and progress on your Discord profile (while Discord is open).'}"
                                            Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
@@ -680,33 +712,33 @@
                 </Border>
 
                 <!-- ==================================================== listen together -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'ascolta insieme stanza stanze amici rete lan radmin vpn memoria cache firewall p2p host anticipo'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'listen together room rooms friends network lan radmin vpn firewall p2p host ahead'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Ascolta insieme'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Brani preparati in anticipo'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T 'Listen together'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Songs got ready ahead'}" Style="{StaticResource FieldLabel}"/>
                         <StackPanel Margin="0,0,0,16">
                             <WrapPanel>
                                 <StackPanel Width="200" Margin="0,0,12,0">
-                                    <TextBlock Text="{local:T 'Quando ascolti'}" Style="{StaticResource Hint}" FontSize="12" Margin="2,0,0,4"/>
+                                    <TextBlock Text="{local:T 'When you listen'}" Style="{StaticResource Hint}" FontSize="12" Margin="2,0,0,4"/>
                                     <ComboBox ItemsSource="{Binding TogetherAheadChoices}" SelectedItem="{Binding TogetherAhead}"
-                                              AutomationProperties.Name="{local:T 'Brani preparati in anticipo quando ascolti'}"/>
+                                              AutomationProperties.Name="{local:T 'Songs got ready ahead when you listen'}"/>
                                 </StackPanel>
                                 <StackPanel Width="200">
-                                    <TextBlock Text="{local:T 'Quando sei l\'host'}" Style="{StaticResource Hint}" FontSize="12" Margin="2,0,0,4"/>
+                                    <TextBlock Text="{local:T 'When you\'re the host'}" Style="{StaticResource Hint}" FontSize="12" Margin="2,0,0,4"/>
                                     <ComboBox ItemsSource="{Binding TogetherAheadChoices}" SelectedItem="{Binding TogetherHostAhead}"
-                                              AutomationProperties.Name="{local:T 'Brani preparati in anticipo quando sei l\'host'}"/>
+                                              AutomationProperties.Name="{local:T 'Songs got ready ahead when you\'re the host'}"/>
                                 </StackPanel>
                             </WrapPanel>
                             <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
-                                       Text="{local:T 'Quanti brani della coda scaricare prima che tocchi a loro, oltre a quello in riproduzione.'}"/>
+                                       Text="{local:T 'How many songs of the queue to download before their turn, besides the one playing.'}"/>
                         </StackPanel>
-                        <TextBlock Text="{local:T 'Brani passati tra computer (P2P)'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T 'Songs passed between computers (P2P)'}" Style="{StaticResource FieldLabel}"/>
                         <StackPanel Margin="0,0,0,16">
                             <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding TogetherP2P}" Margin="0,0,0,12">
                                 <StackPanel>
-                                    <TextBlock Text="{local:T 'Scambia i brani con gli altri'}"/>
+                                    <TextBlock Text="{local:T 'Exchange songs with the others'}"/>
                                     <TextBlock Style="{StaticResource Hint}"
-                                               Text="{local:T 'Spento: questo computer non riceve brani da nessuno e non ne manda, nemmeno da host (e da host nessuno se li passa). Ognuno li prende dalla sua libreria, dalla memoria o dal link: chi non trova un brano non lo sente.'}"/>
+                                               Text="{local:T 'Off: this computer doesn\'t receive songs from anyone and doesn\'t send any, not even as the host (and as the host nobody passes them through you). Everyone gets them from their library, the storage or the link: whoever can\'t find a song doesn\'t hear it.'}"/>
                                 </StackPanel>
                             </CheckBox>
                             <StackPanel IsEnabled="{Binding TogetherP2P}">
@@ -721,50 +753,28 @@
                                 </StackPanel.Style>
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding TogetherSendAsHost}" Margin="0,0,0,12">
                                     <StackPanel>
-                                        <TextBlock Text="{local:T 'Quando sei l\'host, invia tu i brani'}"/>
+                                        <TextBlock Text="{local:T 'When you\'re the host, send the songs yourself'}"/>
                                         <TextBlock Style="{StaticResource Hint}"
-                                                   Text="{local:T 'Chi ha acceso «Ricevi i brani dall\'host» li riceve da te invece di scaricarli da internet: conviene se hai una connessione veloce. Gli altri li scaricano come sempre.'}"/>
+                                                   Text="{local:T 'Whoever turned on “Take the songs from the host” gets them from you instead of downloading them from the internet: worth it if your connection is fast. The others download them as usual.'}"/>
                                     </StackPanel>
                                 </CheckBox>
                                 <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding TogetherTakeFromHost}">
                                     <StackPanel>
-                                        <TextBlock Text="{local:T 'Ricevi i brani dall\'host'}"/>
+                                        <TextBlock Text="{local:T 'Take the songs from the host'}"/>
                                         <TextBlock Style="{StaticResource Hint}"
-                                                   Text="{local:T 'Se l\'host li invia, quelli che prepara lui arrivano da lui; gli altri li scarichi tu e, se non si trovano, aspetti l\'host. Spento (o se l\'host non li invia): prima dal link, poi da chi nella stanza ce l\'ha.'}"/>
+                                                   Text="{local:T 'If the host sends them, the ones it gets ready come from it; you download the others and, if they can\'t be found, wait for the host. Off (or if the host doesn\'t send them): from the link first, then from whoever in the room has it.'}"/>
                                     </StackPanel>
                                 </CheckBox>
                             </StackPanel>
                         </StackPanel>
-                        <TextBlock Text="{local:T 'Memoria temporanea (brani non salvati)'}" Style="{StaticResource FieldLabel}"/>
-                        <StackPanel Margin="0,0,0,16">
-                            <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding TogetherCacheChoices}" SelectedItem="{Binding TogetherCacheSize}"
-                                      AutomationProperties.Name="{local:T 'Memoria temporanea (brani non salvati)'}"/>
-                            <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
-                                       Text="{local:T 'I brani che ascolti senza averli salvati sul dispositivo (nel cloud, consigliati, nelle stanze) restano pronti per la prossima volta; oltre questo numero i più vecchi si cancellano (mai quelli in coda). Salvandone uno esce da qui.'}"/>
-                            <TextBlock Text="{Binding TogetherCacheText}" Style="{StaticResource Hint}" Margin="0,4,0,10"/>
-                            <WrapPanel>
-                                <Button Style="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ClearTogetherCacheCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE74D;" Style="{StaticResource Glyph}"/>
-                                        <TextBlock Text="{local:T Svuota}" Margin="8,0,0,0"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource GhostButton}" Command="{Binding OpenTogetherCacheCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE838;" Style="{StaticResource Glyph}"/>
-                                        <TextBlock Text="{local:T 'Apri la cartella'}" Margin="8,0,0,0"/>
-                                    </StackPanel>
-                                </Button>
-                            </WrapPanel>
-                        </StackPanel>
-                        <TextBlock Text="{local:T 'Rete'}" Style="{StaticResource FieldLabel}"/>
+                        <TextBlock Text="{local:T Network}" Style="{StaticResource FieldLabel}"/>
                         <StackPanel>
                             <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10"
-                                       Text="{local:T 'Se gli altri non riescono a entrare nella tua stanza (o tu nella loro), di solito è il firewall di Windows: consenti l\'app su tutte le reti (serve la conferma dell\'amministratore).'}"/>
+                                       Text="{local:T 'If others can\'t join your room (or you theirs), it\'s usually Windows Firewall: allow the app on every network (needs administrator confirmation).'}"/>
                             <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding FirewallCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xEA18;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Consenti nel firewall'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Allow through the firewall'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -772,20 +782,20 @@
                 </Border>
 
                 <!-- ==================================================== updates -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'aggiornamenti aggiorna versione github motori yt-dlp gallery-dl dati'}">
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'updates update version github engines yt-dlp gallery-dl data'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T Aggiornamenti}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T Updates}" Style="{StaticResource CardTitle}"/>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding AutoUpdateApp}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Aggiorna automaticamente l\'app'}"/>
-                                <TextBlock Text="{local:T 'Scarica da sola l\'ultima versione e la installa alla chiusura.'}" Style="{StaticResource Hint}"/>
+                                <TextBlock Text="{local:T 'Update the app automatically'}"/>
+                                <TextBlock Text="{local:T 'Downloads the latest version by itself and installs it when you close the app.'}" Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
                         <DockPanel Margin="0,0,0,16">
                             <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Command="{Binding CheckAppUpdateCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE777;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Aggiorna ora'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Update now'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                             <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
@@ -796,53 +806,53 @@
                         </DockPanel>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding AutoUpdateEngines}">
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Aggiorna i motori di download'}"/>
-                                <TextBlock Text="{local:T 'I siti cambiano spesso: yt-dlp e gallery-dl si aggiornano una volta al giorno.'}" Style="{StaticResource Hint}"/>
+                                <TextBlock Text="{local:T 'Update download engines'}"/>
+                                <TextBlock Text="{local:T 'Sites change often: yt-dlp and gallery-dl update once a day.'}" Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Command="{Binding UpdateEnginesCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE895;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Aggiorna motori'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Update engines'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
-                            <TextBlock Text="{Binding EngineInfo}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding EngineInfo}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                         </DockPanel>
-                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,18"/>
-                        <Button Style="{StaticResource LinkButton}" Content="{local:T 'Apri la cartella dei dati'}" Command="{Binding OpenDataDirCommand}"
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,18"/>
+                        <Button Style="{StaticResource LinkButton}" Content="{local:T 'Open data folder'}" Command="{Binding OpenDataDirCommand}"
                                 HorizontalAlignment="Left"/>
                     </StackPanel>
                 </Border>
 
                 <!-- ==================================================== help -->
                 <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
-                        views:SettingsView.Keywords="{local:T 'aiuto supporto segnala problema bug errore github issue idea suggerimento contatto termini uso condizioni diritto autore copyright'}">
+                        views:SettingsView.Keywords="{local:T 'help support report problem bug error github issue idea suggestion feature contact terms use conditions copyright'}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Aiuto e supporto'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Qualcosa non va o ti manca una funzione? Scrivilo su GitHub: prima guarda se qualcuno l\'ha già segnalato.'}"
+                        <TextBlock Text="{local:T 'Help &amp; support'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Something wrong, or a feature you miss? Tell us on GitHub: first check whether someone has already reported it.'}"
                                    Style="{StaticResource Hint}" Margin="0,-8,0,14"/>
                         <UniformGrid Columns="2">
                             <Button Style="{StaticResource SupportTile}" Command="{Binding ReportProblemCommand}" Margin="0,0,6,0"
-                                    AutomationProperties.Name="{local:T 'Segnala un problema'}">
+                                    AutomationProperties.Name="{local:T 'Report a problem'}">
                                 <StackPanel>
                                     <Grid Width="38" Height="38" HorizontalAlignment="Left">
-                                        <Ellipse Fill="{StaticResource ErrorSoftBrush}"/>
-                                        <TextBlock Text="&#xEBE8;" Style="{StaticResource Glyph}" FontSize="17" Foreground="{StaticResource ErrorBrush}" HorizontalAlignment="Center"/>
+                                        <Ellipse Fill="{DynamicResource ErrorSoftBrush}"/>
+                                        <TextBlock Text="&#xEBE8;" Style="{StaticResource Glyph}" FontSize="17" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Center"/>
                                     </Grid>
-                                    <TextBlock Text="{local:T 'Segnala un problema'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'Qualcosa non funziona come dovrebbe'}" Style="{StaticResource Hint}" FontSize="12"/>
+                                    <TextBlock Text="{local:T 'Report a problem'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                    <TextBlock Text="{local:T 'Something doesn\'t work as it should'}" Style="{StaticResource Hint}" FontSize="12"/>
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource SupportTile}" Command="{Binding SuggestIdeaCommand}" Margin="6,0,0,0"
-                                    AutomationProperties.Name="{local:T 'Suggerisci un\'idea'}">
+                                    AutomationProperties.Name="{local:T 'Suggest an idea'}">
                                 <StackPanel>
                                     <Grid Width="38" Height="38" HorizontalAlignment="Left">
-                                        <Ellipse Fill="{StaticResource WarningSoftBrush}"/>
-                                        <TextBlock Text="&#xEA80;" Style="{StaticResource Glyph}" FontSize="17" Foreground="{StaticResource WarningBrush}" HorizontalAlignment="Center"/>
+                                        <Ellipse Fill="{DynamicResource WarningSoftBrush}"/>
+                                        <TextBlock Text="&#xEA80;" Style="{StaticResource Glyph}" FontSize="17" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center"/>
                                     </Grid>
-                                    <TextBlock Text="{local:T 'Suggerisci un\'idea'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'Una funzione che ti manca'}" Style="{StaticResource Hint}" FontSize="12"/>
+                                    <TextBlock Text="{local:T 'Suggest an idea'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                    <TextBlock Text="{local:T 'A feature you\'d like'}" Style="{StaticResource Hint}" FontSize="12"/>
                                 </StackPanel>
                             </Button>
                         </UniformGrid>
@@ -850,20 +860,20 @@
                             <Button Style="{StaticResource GhostButton}" Command="{Binding OpenIssuesCommand}" Margin="0,0,8,8">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE721;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Segnalazioni già aperte'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Existing reports'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource GhostButton}" Command="{Binding OpenRepoCommand}" Margin="0,0,8,8">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE8A7;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Pagina del progetto'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Project page'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                         </WrapPanel>
-                        <TextBlock Text="{local:T 'Si apre GitHub nel browser (serve un account gratuito). Versione dell\'app e di Windows sono già scritte nella segnalazione.'}"
-                                   Style="{StaticResource Hint}" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
-                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,16"/>
-                        <Button Style="{StaticResource LinkButton}" Content="{local:T 'Termini d\'uso'}" Command="{Binding ShowTermsCommand}" HorizontalAlignment="Left"/>
+                        <TextBlock Text="{local:T 'GitHub opens in your browser (a free account is needed). The app and Windows versions are already filled in.'}"
+                                   Style="{StaticResource Hint}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16"/>
+                        <Button Style="{StaticResource LinkButton}" Content="{local:T 'Terms of use'}" Command="{Binding ShowTermsCommand}" HorizontalAlignment="Left"/>
                     </StackPanel>
                 </Border>
             </views:MasonryPanel>

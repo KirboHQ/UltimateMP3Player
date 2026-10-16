@@ -10,8 +10,8 @@
     <!-- Song cover, or a note on a gradient. -->
     <DataTemplate x:Key="TrackCoverSmall" DataType="{x:Type vm:TrackViewModel}">
         <Grid>
-            <Border CornerRadius="5" Background="{StaticResource PlaceholderGradient}">
-                <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="15" Foreground="{StaticResource MutedBrush}"/>
+            <Border CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
+                <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="15" Foreground="{DynamicResource MutedBrush}"/>
             </Border>
             <Border CornerRadius="5" Visibility="{Binding Cover48, Converter={StaticResource NotNullVis}}">
                 <Border.Background>
@@ -23,8 +23,8 @@
 
     <DataTemplate x:Key="TrackCoverMedium" DataType="{x:Type vm:TrackViewModel}">
         <Grid>
-            <Border CornerRadius="10" Background="{StaticResource PlaceholderGradient}">
-                <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="42" Foreground="{StaticResource MutedBrush}"/>
+            <Border CornerRadius="10" Background="{DynamicResource PlaceholderGradient}">
+                <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="42" Foreground="{DynamicResource MutedBrush}"/>
             </Border>
             <Border CornerRadius="10" Visibility="{Binding Cover160, Converter={StaticResource NotNullVis}}">
                 <Border.Background>
@@ -37,11 +37,11 @@
     <!-- Playlist cover: custom, favorites, mosaic or first cover. -->
     <DataTemplate x:Key="PlaylistCover" DataType="{x:Type vm:PlaylistViewModel}">
         <Grid>
-            <Border x:Name="Placeholder" CornerRadius="8" Background="{StaticResource PlaceholderGradient}" Visibility="Collapsed">
+            <Border x:Name="Placeholder" CornerRadius="8" Background="{DynamicResource PlaceholderGradient}" Visibility="Collapsed">
                 <Viewbox>
                     <Border Width="100" Height="100" Padding="30">
                         <Viewbox>
-                            <TextBlock Text="&#xEC4F;" FontFamily="{StaticResource IconFont}" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBlock Text="&#xEC4F;" FontFamily="{StaticResource IconFont}" Foreground="{DynamicResource MutedBrush}"/>
                         </Viewbox>
                     </Border>
                 </Viewbox>
@@ -137,32 +137,32 @@
     <DataTemplate x:Key="TrackCloudCell" DataType="{x:Type vm:TrackViewModel}">
         <Grid Width="32" Height="32">
             <Grid Background="Transparent" ToolTip="{Binding CloudTip}" Visibility="{Binding ShowCloud, Converter={StaticResource BoolVis}}">
-                <TextBlock x:Name="Cloud" Text="{Binding CloudGlyph}" Style="{StaticResource Glyph}" FontSize="15" Foreground="{StaticResource MutedBrush}"
+                <TextBlock x:Name="Cloud" Text="{Binding CloudGlyph}" Style="{StaticResource Glyph}" FontSize="15" Foreground="{DynamicResource MutedBrush}"
                            HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding CloudTip}"/>
             </Grid>
             <Grid Background="Transparent" ToolTip="{Binding CloudTip}" Visibility="{Binding IsSaving, Converter={StaticResource BoolVis}}">
                 <views:ProgressRing Width="17" Height="17" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}"
-                                    Stroke="{DynamicResource AccentBrush}" Track="{StaticResource Surface3Brush}"/>
+                                    Stroke="{DynamicResource AccentBrush}" Track="{DynamicResource Surface3Brush}"/>
             </Grid>
         </Grid>
         <DataTemplate.Triggers>
             <DataTrigger Binding="{Binding IsUnavailable}" Value="True">
-                <Setter TargetName="Cloud" Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                <Setter TargetName="Cloud" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
     <!-- A tag like a Discord role: coloured dot and name; a click opens its page. -->
     <DataTemplate x:Key="TagChip" DataType="{x:Type vm:TagViewModel}">
-        <Border CornerRadius="10" Padding="7,2,9,2" Margin="0,0,5,0" Background="{StaticResource Surface3Brush}" Cursor="Hand"
-                ToolTip="{local:T 'Apri il tag'}">
+        <Border CornerRadius="10" Padding="7,2,9,2" Margin="0,0,5,0" Background="{DynamicResource Surface3Brush}" Cursor="Hand"
+                ToolTip="{local:T 'Open the tag'}">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenTagCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                               CommandParameter="{Binding}"/>
             </Border.InputBindings>
             <StackPanel Orientation="Horizontal">
                 <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding Name}" FontSize="11.5" Margin="5,0,0,1" VerticalAlignment="Center" Foreground="{StaticResource TextBrush}"/>
+                <TextBlock Text="{Binding Name}" FontSize="11.5" Margin="5,0,0,1" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}"/>
             </StackPanel>
         </Border>
     </DataTemplate>
@@ -181,15 +181,15 @@
                 <ContentPresenter Grid.Column="1" Width="36" Height="36" Margin="12,0,0,0" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                 <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
-                    <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                    <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
                 </StackPanel>
-                <TextBlock Grid.Column="3" Text="{Binding Track.TagsText}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" MaxWidth="160"
+                <TextBlock Grid.Column="3" Text="{Binding Track.TagsText}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" MaxWidth="160"
                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
             </Grid>
         </Border>
         <DataTemplate.Triggers>
             <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                <Setter TargetName="Row" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                <Setter TargetName="Row" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
             </Trigger>
             <DataTrigger Binding="{Binding IsSelected}" Value="False">
                 <Setter TargetName="Row" Property="Opacity" Value="0.5"/>
@@ -207,8 +207,8 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Grid Width="34" Height="34">
-                    <Border CornerRadius="5" Background="{StaticResource PlaceholderGradient}">
-                        <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="14" Foreground="{StaticResource MutedBrush}"/>
+                    <Border CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
+                        <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="14" Foreground="{DynamicResource MutedBrush}"/>
                     </Border>
                     <Border CornerRadius="5" Visibility="{Binding Cover, Converter={StaticResource NotNullVis}}">
                         <Border.Background>
@@ -218,19 +218,19 @@
                 </Grid>
                 <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontSize="13.5"/>
-                    <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{StaticResource SubTextBrush}"/>
+                    <TextBlock Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
                 </StackPanel>
-                <Border Grid.Column="2" CornerRadius="10" Padding="8,2,10,3" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
+                <Border Grid.Column="2" CornerRadius="10" Padding="8,2,10,3" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <Ellipse Width="7" Height="7" Fill="{Binding StateBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Text="{Binding StateText}" FontSize="11.5" Margin="6,0,0,1" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding StateText}" FontSize="11.5" Margin="6,0,0,1" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
             </Grid>
         </Border>
         <DataTemplate.Triggers>
             <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                <Setter TargetName="Row" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                <Setter TargetName="Row" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
             </Trigger>
             <DataTrigger Binding="{Binding IsIncluded}" Value="False">
                 <Setter TargetName="Row" Property="Opacity" Value="0.4"/>
@@ -258,11 +258,11 @@
                 </Grid.ColumnDefinitions>
 
                 <Grid>
-                    <TextBlock x:Name="Num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
+                    <TextBlock x:Name="Num" Text="{Binding Number}" Foreground="{DynamicResource SubTextBrush}" FontSize="13"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <!-- play, or pause/resume on the song already playing; in a room "+" (into the room's queue) -->
                     <Button x:Name="PlayBtn" Style="{StaticResource RowIconButton}" Content="&#xE768;" Command="{Binding PlayPauseCommand}"
-                            Foreground="{StaticResource TextBrush}" Visibility="Collapsed" ToolTip="{local:T Riproduci}" AutomationProperties.Name="{local:T 'Riproduci brano'}"
+                            Foreground="{DynamicResource TextBrush}" Visibility="Collapsed" ToolTip="{local:T Play}" AutomationProperties.Name="{local:T 'Play song'}"
                             ToolTipService.ShowOnDisabled="True"/>
                 </Grid>
 
@@ -275,17 +275,17 @@
                     <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                         <views:InlinePanel>
                             <TextBlock x:Name="Title" Text="{Binding Track.Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                            <Border Margin="8,0,0,0" CornerRadius="4" Padding="5,0" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center"
-                                    Visibility="{Binding Track.HasVideo, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Ha anche il video'}">
-                                <TextBlock Text="&#xE714;" Style="{StaticResource Glyph}" FontSize="10" Foreground="{StaticResource SubTextBrush}" Margin="0,2"/>
+                            <Border Margin="8,0,0,0" CornerRadius="4" Padding="5,0" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center"
+                                    Visibility="{Binding Track.HasVideo, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Has video too'}">
+                                <TextBlock Text="&#xE714;" Style="{StaticResource Glyph}" FontSize="10" Foreground="{DynamicResource SubTextBrush}" Margin="0,2"/>
                             </Border>
                         </views:InlinePanel>
-                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
                                    local:Marquee.IsEnabled="True"/>
                     </StackPanel>
                 </Grid>
 
-                <TextBlock Grid.Column="2" Text="{Binding Track.AlbumText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <TextBlock Grid.Column="2" Text="{Binding Track.AlbumText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"
                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,12,0" local:Marquee.IsEnabled="True"/>
 
                 <!-- the chips get all the room they want inside the canvas, which clips them (soft right edge); they scroll on hover -->
@@ -304,18 +304,18 @@
                 <ContentPresenter Grid.Column="4" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
 
                 <Button x:Name="Heart" Grid.Column="5" Style="{StaticResource RowIconButton}" Content="&#xEB51;" Command="{Binding FavoriteCommand}"
-                        Visibility="Hidden" ToolTip="{local:T 'Aggiungi ai Preferiti'}"/>
+                        Visibility="Hidden" ToolTip="{local:T 'Add to Favorites'}"/>
 
-                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <TextBlock Grid.Column="6" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                 <Button x:Name="More" Grid.Column="7" Style="{StaticResource RowIconButton}" Content="&#xE712;" Click="More_Click"
-                        Visibility="Hidden" ToolTip="{local:T 'Altre opzioni'}" AutomationProperties.Name="{local:T 'Altre opzioni'}"/>
+                        Visibility="Hidden" ToolTip="{local:T 'More options'}" AutomationProperties.Name="{local:T 'More options'}"/>
             </Grid>
         </Border>
         <DataTemplate.Triggers>
             <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                <Setter TargetName="Row" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                <Setter TargetName="Row" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                 <Setter TargetName="PlayBtn" Property="Visibility" Value="Visible"/>
                 <Setter TargetName="Num" Property="Visibility" Value="Hidden"/>
                 <Setter TargetName="Heart" Property="Visibility" Value="Visible"/>
@@ -334,17 +334,17 @@
                     <Condition Binding="{Binding Track.IsUnavailable}" Value="True"/>
                     <Condition Binding="{Binding Track.IsCloud}" Value="True"/>
                 </MultiDataTrigger.Conditions>
-                <Setter TargetName="Title" Property="Foreground" Value="{StaticResource MutedBrush}"/>
+                <Setter TargetName="Title" Property="Foreground" Value="{DynamicResource MutedBrush}"/>
             </MultiDataTrigger>
             <DataTrigger Binding="{Binding Track.IsPlaying}" Value="True">
                 <Setter TargetName="PlayBtn" Property="Content" Value="&#xE769;"/>
-                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T Pausa}"/>
-                <Setter TargetName="PlayBtn" Property="AutomationProperties.Name" Value="{local:T Pausa}"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T Pause}"/>
+                <Setter TargetName="PlayBtn" Property="AutomationProperties.Name" Value="{local:T Pause}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
                 <Setter TargetName="PlayBtn" Property="Content" Value="&#xE710;"/>
-                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T 'Aggiungi alla coda della stanza (anche doppio clic)'}"/>
-                <Setter TargetName="PlayBtn" Property="AutomationProperties.Name" Value="{local:T 'Aggiungi alla coda della stanza'}"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T 'Add to the room\'s queue (double-click works too)'}"/>
+                <Setter TargetName="PlayBtn" Property="AutomationProperties.Name" Value="{local:T 'Add to the room\'s queue'}"/>
             </DataTrigger>
             <MultiDataTrigger>
                 <MultiDataTrigger.Conditions>
@@ -352,20 +352,21 @@
                     <Condition Binding="{Binding DataContext.CanAddToRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="False"/>
                 </MultiDataTrigger.Conditions>
                 <Setter TargetName="PlayBtn" Property="IsEnabled" Value="False"/>
-                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T 'Solo chi ha il permesso può aggiungere brani alla stanza (lo decide l\'host)'}"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T 'Only people with permission can add songs to the room (the host decides)'}"/>
             </MultiDataTrigger>
             <DataTrigger Binding="{Binding Track.IsFavorite}" Value="True">
                 <Setter TargetName="Heart" Property="Visibility" Value="Visible"/>
                 <Setter TargetName="Heart" Property="Content" Value="&#xEB52;"/>
                 <Setter TargetName="Heart" Property="Foreground" Value="{DynamicResource PinkBrush}"/>
-                <Setter TargetName="Heart" Property="ToolTip" Value="{local:T 'Togli dai Preferiti'}"/>
+                <Setter TargetName="Heart" Property="ToolTip" Value="{local:T 'Remove from Favorites'}"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
     <!-- Column titles above a track list. -->
     <DataTemplate x:Key="TrackHeader">
-        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,0,18,8" Margin="0,0,0,8">
+        <!-- the line under the header stops short of the edges; the header itself stays where it was -->
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,0,10,8" Margin="8,0,8,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="40"/>
@@ -378,10 +379,10 @@
                     <ColumnDefinition Width="36"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="#" Style="{StaticResource SmallCaps}" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Style="{StaticResource SmallCaps}" Margin="4,0,0,0"/>
+                <TextBlock Grid.Column="1" Text="{local:T TITLE}" Style="{StaticResource SmallCaps}" Margin="4,0,0,0"/>
                 <TextBlock Grid.Column="2" Text="ALBUM" Style="{StaticResource SmallCaps}"/>
-                <TextBlock Grid.Column="3" Text="{local:T TAG}" Style="{StaticResource SmallCaps}"/>
-                <TextBlock Grid.Column="6" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource MutedBrush}"
+                <TextBlock Grid.Column="3" Text="{local:T TAGS}" Style="{StaticResource SmallCaps}"/>
+                <TextBlock Grid.Column="6" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{DynamicResource MutedBrush}"
                            HorizontalAlignment="Right" Margin="0,0,12,0"/>
             </Grid>
         </Border>
@@ -409,10 +410,10 @@
                 </Grid.ColumnDefinitions>
 
                 <Grid>
-                    <TextBlock x:Name="Num" Text="{Binding Number}" Foreground="{StaticResource SubTextBrush}" FontSize="13"
+                    <TextBlock x:Name="Num" Text="{Binding Number}" Foreground="{DynamicResource SubTextBrush}" FontSize="13"
                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <Button x:Name="PlayBtn" Style="{StaticResource RowIconButton}" Content="&#xE768;" Command="{Binding PlayPauseCommand}"
-                            Foreground="{StaticResource TextBrush}" Visibility="Collapsed" ToolTip="{local:T Riproduci}" AutomationProperties.Name="{local:T 'Riproduci brano'}"/>
+                            Foreground="{DynamicResource TextBrush}" Visibility="Collapsed" ToolTip="{local:T Play}" AutomationProperties.Name="{local:T 'Play song'}"/>
                 </Grid>
 
                 <Grid Grid.Column="1" Margin="4,0,12,0">
@@ -423,33 +424,33 @@
                     <ContentPresenter Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                     <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                         <TextBlock x:Name="Title" Text="{Binding Track.Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
+                        <TextBlock Text="{Binding Track.Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"
                                    local:Marquee.IsEnabled="True"/>
                     </StackPanel>
                 </Grid>
 
                 <TextBlock x:Name="Plays" Grid.Column="2" Text="{Binding Track.PlaysText}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
-                <TextBlock Grid.Column="3" Text="{Binding Track.ListenedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                <TextBlock Grid.Column="3" Text="{Binding Track.ListenedText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
-                <TextBlock Grid.Column="4" Text="{Binding Track.LastPlayedText}" FontSize="13" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center"
+                <TextBlock Grid.Column="4" Text="{Binding Track.LastPlayedText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
 
                 <ContentPresenter Grid.Column="5" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"/>
 
                 <Button x:Name="Heart" Grid.Column="6" Style="{StaticResource RowIconButton}" Content="&#xEB51;" Command="{Binding FavoriteCommand}"
-                        Visibility="Hidden" ToolTip="{local:T 'Aggiungi ai Preferiti'}"/>
+                        Visibility="Hidden" ToolTip="{local:T 'Add to Favorites'}"/>
 
-                <TextBlock Grid.Column="7" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{StaticResource SubTextBrush}"
+                <TextBlock Grid.Column="7" Text="{Binding Track.DurationText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"
                            HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
 
                 <Button x:Name="More" Grid.Column="8" Style="{StaticResource RowIconButton}" Content="&#xE712;" Click="More_Click"
-                        Visibility="Hidden" ToolTip="{local:T 'Altre opzioni'}" AutomationProperties.Name="{local:T 'Altre opzioni'}"/>
+                        Visibility="Hidden" ToolTip="{local:T 'More options'}" AutomationProperties.Name="{local:T 'More options'}"/>
             </Grid>
         </Border>
         <DataTemplate.Triggers>
             <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
-                <Setter TargetName="Row" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                <Setter TargetName="Row" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                 <Setter TargetName="PlayBtn" Property="Visibility" Value="Visible"/>
                 <Setter TargetName="Num" Property="Visibility" Value="Hidden"/>
                 <Setter TargetName="Heart" Property="Visibility" Value="Visible"/>
@@ -464,27 +465,27 @@
             </DataTrigger>
             <DataTrigger Binding="{Binding Track.IsPlaying}" Value="True">
                 <Setter TargetName="PlayBtn" Property="Content" Value="&#xE769;"/>
-                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T Pausa}"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T Pause}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding Track.Plays}" Value="0">
-                <Setter TargetName="Plays" Property="Foreground" Value="{StaticResource MutedBrush}"/>
+                <Setter TargetName="Plays" Property="Foreground" Value="{DynamicResource MutedBrush}"/>
                 <Setter TargetName="Plays" Property="FontWeight" Value="Normal"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
                 <Setter TargetName="PlayBtn" Property="Content" Value="&#xE710;"/>
-                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T 'Aggiungi alla coda della stanza (anche doppio clic)'}"/>
+                <Setter TargetName="PlayBtn" Property="ToolTip" Value="{local:T 'Add to the room\'s queue (double-click works too)'}"/>
             </DataTrigger>
             <DataTrigger Binding="{Binding Track.IsFavorite}" Value="True">
                 <Setter TargetName="Heart" Property="Visibility" Value="Visible"/>
                 <Setter TargetName="Heart" Property="Content" Value="&#xEB52;"/>
                 <Setter TargetName="Heart" Property="Foreground" Value="{DynamicResource PinkBrush}"/>
-                <Setter TargetName="Heart" Property="ToolTip" Value="{local:T 'Togli dai Preferiti'}"/>
+                <Setter TargetName="Heart" Property="ToolTip" Value="{local:T 'Remove from Favorites'}"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
     <DataTemplate x:Key="StatsHeader">
-        <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Padding="8,0,18,8" Margin="0,0,0,8">
+        <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="0,0,10,8" Margin="8,0,8,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="40"/>
@@ -498,11 +499,11 @@
                     <ColumnDefinition Width="36"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="#" Style="{StaticResource SmallCaps}" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="1" Text="{local:T TITOLO}" Style="{StaticResource SmallCaps}" Margin="4,0,0,0"/>
-                <TextBlock Grid.Column="2" Text="{local:T ASCOLTI}" Style="{StaticResource SmallCaps}"/>
-                <TextBlock Grid.Column="3" Text="{local:T TEMPO}" Style="{StaticResource SmallCaps}"/>
-                <TextBlock Grid.Column="4" Text="{local:T 'ULTIMO ASCOLTO'}" Style="{StaticResource SmallCaps}"/>
-                <TextBlock Grid.Column="7" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{StaticResource MutedBrush}"
+                <TextBlock Grid.Column="1" Text="{local:T TITLE}" Style="{StaticResource SmallCaps}" Margin="4,0,0,0"/>
+                <TextBlock Grid.Column="2" Text="{local:T PLAYS}" Style="{StaticResource SmallCaps}"/>
+                <TextBlock Grid.Column="3" Text="{local:T TIME}" Style="{StaticResource SmallCaps}"/>
+                <TextBlock Grid.Column="4" Text="{local:T 'LAST PLAYED'}" Style="{StaticResource SmallCaps}"/>
+                <TextBlock Grid.Column="7" Text="&#xE823;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{DynamicResource MutedBrush}"
                            HorizontalAlignment="Right" Margin="0,0,12,0"/>
             </Grid>
         </Border>
@@ -511,7 +512,7 @@
     <!-- ============================================================ cards -->
 
     <DataTemplate x:Key="TrackCard" DataType="{x:Type vm:TrackViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{StaticResource SurfaceBrush}"
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}"
                 Cursor="Hand" MouseRightButtonUp="Card_RightClick" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -538,12 +539,12 @@
                     </Grid>
                 </views:SquareBox>
                 <TextBlock x:Name="Title" Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
             </StackPanel>
         </Border>
         <DataTemplate.Triggers>
             <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
-                <Setter TargetName="Card" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                <Setter TargetName="Card" Property="Background" Value="{DynamicResource Surface2Brush}"/>
                 <Setter TargetName="PlayDisc" Property="Opacity" Value="1"/>
             </Trigger>
             <!-- selected with Ctrl or Shift + click -->
@@ -560,13 +561,13 @@
             <!-- in a room the card puts the song in the room's queue -->
             <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
                 <Setter TargetName="PlayIco" Property="Text" Value="&#xE710;"/>
-                <Setter TargetName="Card" Property="ToolTip" Value="{local:T 'Aggiungi alla coda della stanza'}"/>
+                <Setter TargetName="Card" Property="ToolTip" Value="{local:T 'Add to the room\'s queue'}"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
     <DataTemplate x:Key="PlaylistCard" DataType="{x:Type vm:PlaylistViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{StaticResource SurfaceBrush}"
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}"
                 Cursor="Hand" MouseRightButtonUp="Playlist_RightClick" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -579,16 +580,16 @@
                         <Button x:Name="PlayDisc" Style="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="16" Content="&#xE768;"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
                                 Command="{Binding DataContext.PlayPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{Binding}" ToolTip="{local:T Riproduci}"/>
+                                CommandParameter="{Binding}" ToolTip="{local:T Play}"/>
                     </Grid>
                 </views:SquareBox>
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
             </StackPanel>
         </Border>
         <DataTemplate.Triggers>
             <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
-                <Setter TargetName="Card" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                <Setter TargetName="Card" Property="Background" Value="{DynamicResource Surface2Brush}"/>
                 <Setter TargetName="PlayDisc" Property="Opacity" Value="1"/>
             </Trigger>
             <!-- selected with Ctrl or Shift + click -->
@@ -597,7 +598,7 @@
             </DataTrigger>
             <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
                 <Setter TargetName="PlayDisc" Property="Content" Value="&#xE710;"/>
-                <Setter TargetName="PlayDisc" Property="ToolTip" Value="{local:T 'Aggiungi tutti alla coda della stanza'}"/>
+                <Setter TargetName="PlayDisc" Property="ToolTip" Value="{local:T 'Add all to the room\'s queue'}"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
@@ -605,14 +606,14 @@
     <!-- The big play / shuffle buttons of a page: in a room they put the whole list in the room's queue. -->
     <Style x:Key="HeaderPlayButton" TargetType="Button" BasedOn="{StaticResource BigPlayButton}">
         <Setter Property="Content" Value="&#xE768;"/>
-        <Setter Property="ToolTip" Value="{local:T Riproduci}"/>
-        <Setter Property="AutomationProperties.Name" Value="{local:T 'Riproduci tutto'}"/>
+        <Setter Property="ToolTip" Value="{local:T Play}"/>
+        <Setter Property="AutomationProperties.Name" Value="{local:T 'Play all'}"/>
         <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
         <Style.Triggers>
             <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
                 <Setter Property="Content" Value="&#xE710;"/>
-                <Setter Property="ToolTip" Value="{local:T 'Aggiungi tutti alla coda della stanza'}"/>
-                <Setter Property="AutomationProperties.Name" Value="{local:T 'Aggiungi tutti alla coda della stanza'}"/>
+                <Setter Property="ToolTip" Value="{local:T 'Add all to the room\'s queue'}"/>
+                <Setter Property="AutomationProperties.Name" Value="{local:T 'Add all to the room\'s queue'}"/>
             </DataTrigger>
         </Style.Triggers>
     </Style>
@@ -622,11 +623,11 @@
         <Setter Property="Height" Value="46"/>
         <Setter Property="FontSize" Value="17"/>
         <Setter Property="Content" Value="&#xE8B1;"/>
-        <Setter Property="ToolTip" Value="{local:T 'Riproduci in ordine casuale'}"/>
-        <Setter Property="AutomationProperties.Name" Value="{local:T 'Riproduci in ordine casuale'}"/>
+        <Setter Property="ToolTip" Value="{local:T 'Shuffle play'}"/>
+        <Setter Property="AutomationProperties.Name" Value="{local:T 'Shuffle play'}"/>
         <Style.Triggers>
             <DataTrigger Binding="{Binding DataContext.InRoom, RelativeSource={RelativeSource AncestorType=Window}, FallbackValue=False}" Value="True">
-                <Setter Property="ToolTip" Value="{local:T 'Aggiungi tutti alla coda della stanza, in ordine casuale'}"/>
+                <Setter Property="ToolTip" Value="{local:T 'Add all to the room\'s queue, shuffled'}"/>
             </DataTrigger>
         </Style.Triggers>
     </Style>
@@ -636,8 +637,8 @@
         <Setter Property="Height" Value="38"/>
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="ToolTip" Value="{local:T 'Filtra per tag'}"/>
-        <Setter Property="AutomationProperties.Name" Value="{local:T 'Filtra per tag'}"/>
+        <Setter Property="ToolTip" Value="{local:T 'Filter by tag'}"/>
+        <Setter Property="AutomationProperties.Name" Value="{local:T 'Filter by tag'}"/>
         <Setter Property="Visibility" Value="{Binding DataContext.HasTags, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolVis}}"/>
         <Setter Property="Content" Value="{Binding TagFilter}"/>
         <Setter Property="ContentTemplate">

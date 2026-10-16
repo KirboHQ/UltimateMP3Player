@@ -77,9 +77,9 @@ public static unsafe class PythonHost
 
     private static void Initialize()
     {
-        if (!Bundled) throw new EngineException(L.T("Questa versione dell'app non contiene i motori di download."), Library);
+        if (!Bundled) throw new EngineException(L.T("This version of the app doesn't include the download engines."), Library);
         _lib = Dlfcn.dlopen(Library, RtldNow | RtldGlobal);
-        if (_lib == IntPtr.Zero) throw new EngineException(L.T("Python non si avvia."), Dlfcn.dlerror() ?? Library);
+        if (_lib == IntPtr.Zero) throw new EngineException(L.T("Python doesn't start."), Dlfcn.dlerror() ?? Library);
         _configCreate = (delegate* unmanaged<IntPtr>)Symbol("PyInitConfig_Create");
         _configFree = (delegate* unmanaged<IntPtr, void>)Symbol("PyInitConfig_Free");
         _configGetError = (delegate* unmanaged<IntPtr, byte**, int>)Symbol("PyInitConfig_GetError");
@@ -101,7 +101,7 @@ public static unsafe class PythonHost
 
         var caches = NSFileManager.DefaultManager.GetUrls(NSSearchPathDirectory.CachesDirectory, NSSearchPathDomain.User)[0].Path!;
         var config = _configCreate();
-        if (config == IntPtr.Zero) throw new EngineException(L.T("Python non si avvia."), "PyInitConfig_Create");
+        if (config == IntPtr.Zero) throw new EngineException(L.T("Python doesn't start."), "PyInitConfig_Create");
         try
         {
             // As the iOS embedding guide asks: UTF-8 everywhere, the output unbuffered, the signals (a write to a closed pipe
@@ -116,7 +116,7 @@ public static unsafe class PythonHost
             SetInt(config, "write_bytecode", 1);
             SetStr(config, "pycache_prefix", Path.Combine(caches, "python"));
             if (Has(config, "use_system_logger")) SetInt(config, "use_system_logger", 1);
-            if (_initialize(config) < 0) throw new EngineException(L.T("Python non si avvia."), Error(config));
+            if (_initialize(config) < 0) throw new EngineException(L.T("Python doesn't start."), Error(config));
         }
         finally { _configFree(config); }
 
@@ -145,7 +145,7 @@ public static unsafe class PythonHost
                 w.WriteString("cache", caches);
             }));
             using var doc = JsonDocument.Parse(answer);
-            if (doc.RootElement.TryGetProperty("error", out var error)) throw new EngineException(L.T("Python non si avvia."), error.GetString());
+            if (doc.RootElement.TryGetProperty("error", out var error)) throw new EngineException(L.T("Python doesn't start."), error.GetString());
         }
         finally { _saveThread(); }
     }
@@ -153,7 +153,7 @@ public static unsafe class PythonHost
     private static IntPtr Symbol(string name)
     {
         var p = Dlfcn.dlsym(_lib, name);
-        if (p == IntPtr.Zero) throw new EngineException(L.T("Python non si avvia."), "symbol missing: " + name);
+        if (p == IntPtr.Zero) throw new EngineException(L.T("Python doesn't start."), "symbol missing: " + name);
         return p;
     }
 
@@ -172,14 +172,14 @@ public static unsafe class PythonHost
     private static void SetInt(IntPtr config, string name, long value)
     {
         fixed (byte* n = Utf8(name))
-            if (_configSetInt(config, n, value) < 0) throw new EngineException(L.T("Python non si avvia."), name + ": " + Error(config));
+            if (_configSetInt(config, n, value) < 0) throw new EngineException(L.T("Python doesn't start."), name + ": " + Error(config));
     }
 
     private static void SetStr(IntPtr config, string name, string value)
     {
         fixed (byte* n = Utf8(name))
         fixed (byte* v = Utf8(value))
-            if (_configSetStr(config, n, v) < 0) throw new EngineException(L.T("Python non si avvia."), name + ": " + Error(config));
+            if (_configSetStr(config, n, v) < 0) throw new EngineException(L.T("Python doesn't start."), name + ": " + Error(config));
     }
 
     private static string Error(IntPtr config)
@@ -217,7 +217,7 @@ public static unsafe class PythonHost
     private static void Fail(string what)
     {
         _errPrint();
-        throw new EngineException(L.T("Python non si avvia."), what);
+        throw new EngineException(L.T("Python doesn't start."), what);
     }
 
     // ump_ios.call with a JSON request, from any thread; its JSON answer.
@@ -239,7 +239,7 @@ public static unsafe class PythonHost
         if (result == IntPtr.Zero)
         {
             _errPrint();
-            throw new EngineException(L.T("Errore interno di Python."));
+            throw new EngineException(L.T("Python internal error."));
         }
         try
         {
@@ -248,7 +248,7 @@ public static unsafe class PythonHost
             if (text == null)
             {
                 _errPrint();
-                throw new EngineException(L.T("Errore interno di Python."));
+                throw new EngineException(L.T("Python internal error."));
             }
             return Encoding.UTF8.GetString(text, (int)size);
         }

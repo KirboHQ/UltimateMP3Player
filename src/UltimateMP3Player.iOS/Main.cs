@@ -29,7 +29,7 @@ public static class Startup
     public static void Configure()
     {
         // The library, the settings, the covers and the lyrics in Library/Application Support (out of sight, in the
-        // iCloud backup); the music in Documents/Music and errori.log in Documents, both in the Files app (On My iPhone ›
+        // iCloud backup); the music in Documents/Music and errors.log in Documents, both in the Files app (On My iPhone ›
         // Ultimate MP3 Player). Removing the app removes them.
         var support = Folder(NSSearchPathDirectory.ApplicationSupportDirectory);
         var documents = Folder(NSSearchPathDirectory.DocumentDirectory);
@@ -38,7 +38,8 @@ public static class Startup
         Directory.CreateDirectory(data);
         Environment.SetEnvironmentVariable("UMP_DATA", data);
         AppPaths.MusicDirOverride = Path.Combine(documents, "Music");
-        App.LogFile = Path.Combine(documents, "errori.log");
+        App.LogFile = Path.Combine(documents, "errors.log");
+        AppPaths.Rename(Path.Combine(documents, "errori.log"), App.LogFile);
         // The app's folder takes another name with some updates: the songs' paths saved before follow it.
         _home = Path.GetDirectoryName(documents.TrimEnd('/')) ?? "";
         AppPaths.MovedPath = MovedPath;
@@ -46,7 +47,11 @@ public static class Startup
         Images.ThumbDir = Path.Combine(caches, "thumbs");
         // The songs heard without saving them (suggested, in the cloud) stay out of the iCloud backup: they come back by
         // themselves.
-        ExcludeFromBackup(Path.Combine(data, "ascolta-insieme"));
+        ExcludeFromBackup(AppPaths.CacheDir);
+        // Dark clock and battery over the light look (Info.plist's style is the dark look's; the app sets it, not each screen).
+#pragma warning disable CA1422, CS0618
+        Themes.Changed += () => UIApplication.SharedApplication.SetStatusBarStyle(Themes.IsLight ? UIStatusBarStyle.DarkContent : UIStatusBarStyle.LightContent, false);
+#pragma warning restore CA1422, CS0618
         AudioAnalysis.Native = new MediaTools();
         SiteLogins.Configure(data);
         IosEngines.Configure(data);

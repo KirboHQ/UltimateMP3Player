@@ -89,6 +89,7 @@ public sealed class DjWave : FrameworkElement
 
     protected override void OnRender(DrawingContext dc)
     {
+        Inks();
         var res = Application.Current.Resources;
         double w = ActualWidth, h = ActualHeight;
         dc.DrawRoundedRectangle((Brush)res["BgBrush"], null, new Rect(0, 0, w, h), 8, 8);
@@ -99,7 +100,7 @@ public sealed class DjWave : FrameworkElement
         if (a == null || dur <= 0)
         {
             if (Overview) return;
-            string msg = deck.IsLoading ? L.T("Analisi del brano…") : deck.HasTrack ? "" : deck.EmptyText;
+            string msg = deck.IsLoading ? L.T("Analyzing the song…") : deck.HasTrack ? "" : deck.EmptyText;
             var ft = new FormattedText(msg, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
                 new Typeface((FontFamily)res["UiFont"], FontStyles.Normal, FontWeights.Normal, FontStretches.Normal), 13, (Brush)res["MutedBrush"],
                 VisualTreeHelper.GetDpi(this).PixelsPerDip);
@@ -122,7 +123,7 @@ public sealed class DjWave : FrameworkElement
                 if (t > tEnd) break;
                 double x = w / 2 + (t - pos) / spp;
                 bool downbeat = k % 4 == 0;
-                dc.DrawLine(k == 0 ? _anchorPen : downbeat ? BarPen : BeatPen, new Point(x, downbeat ? 0 : h * 0.2), new Point(x, downbeat ? h : h * 0.8));
+                dc.DrawLine(k == 0 ? _anchorPen : downbeat ? _barPen : _beatPen, new Point(x, downbeat ? 0 : h * 0.2), new Point(x, downbeat ? h : h * 0.8));
             }
         }
 
@@ -136,13 +137,25 @@ public sealed class DjWave : FrameworkElement
         }
         double px = Overview ? pos / dur * w : w / 2;
         _drawnX = px;
-        dc.DrawRectangle(Brushes.White, null, new Rect(px - 1, 0, 2, h));
+        dc.DrawRectangle(_playhead, null, new Rect(px - 1, 0, 2, h));
     }
 
     private double _drawnX = double.NaN;
     private Pen? _anchorPen;
-    private static readonly Pen BeatPen = FrozenPen(Color.FromArgb(0x40, 255, 255, 255), 1);
-    private static readonly Pen BarPen = FrozenPen(Color.FromArgb(0xA0, 255, 255, 255), 1.5);
+    // Beat lines and playhead in the colour of the text: white when dark, nearly black when light.
+    private static Color _ink;
+    private static Pen _beatPen = null!, _barPen = null!;
+    private static Brush _playhead = null!;
+
+    private static void Inks()
+    {
+        var c = Themes.Get("Text");
+        if (c == _ink && _playhead != null) return;
+        _ink = c;
+        _beatPen = FrozenPen(Color.FromArgb(0x40, c.R, c.G, c.B), 1);
+        _barPen = FrozenPen(Color.FromArgb(0xA0, c.R, c.G, c.B), 1.5);
+        _playhead = Frozen(new SolidColorBrush(c));
+    }
     private static readonly Geometry CueShape = Frozen(Geometry.Parse("M-5,0 h10 l-5,7 z"));
 
     private static T Frozen<T>(T f) where T : Freezable

@@ -40,7 +40,7 @@ public sealed class DjDeckViewModel : Observable
     public string Title { get; private set; } = "";
     public string Artist { get; private set; } = "";
     public bool HasTrack { get; private set; }
-    public string EmptyText => L.F("Deck {0}: carica un brano", Name);
+    public string EmptyText => L.F("Deck {0}: load a song", Name);
     // The player of the "Tap BPM" tab (not a deck of the mixer).
     public bool IsTapper => this == Dj.Tapper;
 
@@ -56,7 +56,7 @@ public sealed class DjDeckViewModel : Observable
         Eject();
         int id = ++_loadId;
         Title = t.Title;
-        Artist = L.T("Lo scarico dal suo link…");
+        Artist = L.T("Downloading it from its link…");
         Song = t;
         IsLoading = true;
         OnChanged(nameof(Title), nameof(Artist), nameof(Song));
@@ -68,7 +68,7 @@ public sealed class DjDeckViewModel : Observable
     internal void FetchProgress(int id, double pct)
     {
         if (!IsFetching(id)) return;
-        Artist = L.F("Lo scarico dal suo link… {0:0}%", pct);
+        Artist = L.F("Downloading it from its link… {0:0}%", pct);
         OnChanged(nameof(Artist));
     }
 
@@ -89,7 +89,7 @@ public sealed class DjDeckViewModel : Observable
     {
         int id = ++_loadId;
         // Another song: what was locked together no longer is.
-        if (Held) Dj.Unlock(L.T("Lucchetto tolto: hai cambiato una traccia."));
+        if (Held) Dj.Unlock(L.T("Padlock off: you changed a track."));
         Engine.Playing = false;
         // A new song on the deck: the tap tab no longer plays the old one.
         if (!IsTapper && Dj.TapSource == this) Dj.StopTap();
@@ -135,7 +135,7 @@ public sealed class DjDeckViewModel : Observable
 
     public void Eject()
     {
-        if (Held) Dj.Unlock(L.T("Lucchetto tolto: hai cambiato una traccia."));
+        if (Held) Dj.Unlock(L.T("Padlock off: you changed a track."));
         _loadId++;
         Engine.Unload();
         HasTrack = false;
@@ -202,9 +202,9 @@ public sealed class DjDeckViewModel : Observable
     public bool IsTapping => _taps.Count > 0;
     public bool HasTapBpm => _tapBpm != null;
     public string TapText => _tapBpm is { } b ? b.ToString("0.0", CultureInfo.CurrentCulture) : "—";
-    public string TapCountText => _taps.Count == 0 ? L.T("Clicca o premi T a tempo con la musica")
-        : _taps.Count < 4 ? L.T("continua… (almeno 4 colpi)") : L.F("{0} colpi (una pausa di 2 secondi ricomincia)", _taps.Count);
-    public string TapRoundText => _tapBpm is { } b ? L.F("Usa {0}", Math.Round(b).ToString(CultureInfo.CurrentCulture)) : "";
+    public string TapCountText => _taps.Count == 0 ? L.T("Click or press T in time with the music")
+        : _taps.Count < 4 ? L.T("keep going… (at least 4 taps)") : L.F("{0} taps (a 2-second pause starts over)", _taps.Count);
+    public string TapRoundText => _tapBpm is { } b ? L.F("Use {0}", Math.Round(b).ToString(CultureInfo.CurrentCulture)) : "";
     public string TapExactText => _tapBpm is { } b ? Math.Round(b, 2).ToString("0.##", CultureInfo.CurrentCulture) : "";
 
     public void SaveTaps(bool round)
@@ -217,7 +217,7 @@ public sealed class DjDeckViewModel : Observable
         }
         Bpm = round ? Math.Round(b) : Math.Round(b, 2);
         ResetTaps();
-        Dj.Main.Toast(Track != null ? L.F("BPM salvati: {0}", BpmInput) : L.F("BPM impostati: {0}", BpmInput));
+        Dj.Main.Toast(Track != null ? L.F("BPM saved: {0}", BpmInput) : L.F("BPM set: {0}", BpmInput));
     }
 
     // ------------------------------------------------------------------ transport
@@ -445,7 +445,7 @@ public sealed class DjDeckViewModel : Observable
     // What the analysis measured, offered when the BPM in the box differs (e.g. a song sped up on upload).
     public double? DetectedBpm => Analysis?.Bpm;
     public bool ShowDetected => DetectedBpm is { } d && _bpm is { } b && Math.Abs(d - b) >= 0.05;
-    public string DetectedText => DetectedBpm is { } d ? L.F("rilevati {0} — usa", d.ToString("0.##", CultureInfo.CurrentCulture)) : "";
+    public string DetectedText => DetectedBpm is { } d ? L.F("detected {0} — use", d.ToString("0.##", CultureInfo.CurrentCulture)) : "";
 
     public void UseDetected()
     {
@@ -467,7 +467,7 @@ public sealed class DjDeckViewModel : Observable
     public double? PlayedBpm => _bpm * Rate;
     // With « / » held it shows the nudged speed, so you see it working.
     public string BpmText => PlayedBpm is { } b ? (b * (1 + _bend)).ToString("0.0", CultureInfo.CurrentCulture) : "—";
-    public string OriginalBpmText => _bpm is { } b ? L.F("originale {0}", b.ToString("0.0", CultureInfo.CurrentCulture)) : L.T("BPM sconosciuti");
+    public string OriginalBpmText => _bpm is { } b ? L.F("original {0}", b.ToString("0.0", CultureInfo.CurrentCulture)) : L.T("Unknown BPM");
 
     private double _rate = 1;
     // The deck's speed, from 0.5× to 2× (1 = the song as it is).
@@ -525,7 +525,7 @@ public sealed class DjDeckViewModel : Observable
             }
             if (value && (_bpm == null || Other.PlayedBpm == null))
             {
-                Dj.Status = L.T("Servono i BPM di entrambe le tracce.");
+                Dj.Status = L.T("Both decks need their BPM.");
                 value = false;
             }
             if (!Set(ref _synced, value)) return;
@@ -570,7 +570,7 @@ public sealed class DjDeckViewModel : Observable
         }
     }
 
-    public string KeyText => _semitones == 0 ? L.T("Tonalità originale") : (_semitones > 0 ? "+" : "") + L.F("{0} semitoni", _semitones);
+    public string KeyText => _semitones == 0 ? L.T("Original key") : (_semitones > 0 ? "+" : "") + L.F("{0} semitones", _semitones);
 
     // Moves this deck by less than a beat so its grid (counted from its first beat) falls on the other's.
     private void AlignPhase()
@@ -650,13 +650,13 @@ public sealed class DjViewModel : Observable
             if (value == _locked) return;
             if (value && (!A.HasTrack || !B.HasTrack))
             {
-                Status = L.T("Per bloccarle insieme servono due tracce, una per deck.");
+                Status = L.T("To lock them together you need two tracks, one per deck.");
                 OnChanged();
                 return;
             }
             if (value && A.IsPlaying != B.IsPlaying)
             {
-                Status = L.T("Per bloccarle insieme le due tracce devono suonare entrambe o essere ferme entrambe.");
+                Status = L.T("To lock them together both tracks must be playing, or both stopped.");
                 OnChanged();
                 return;
             }
@@ -683,7 +683,7 @@ public sealed class DjViewModel : Observable
         Status = why;
     }
 
-    public void LockedNotice() => Status = L.T("Le tracce sono bloccate insieme: togli il lucchetto per cambiarlo.");
+    public void LockedNotice() => Status = L.T("The tracks are locked together: take the padlock off to change it.");
 
     // Locked: this deck goes to `seconds`, the other where it keeps the same distance (both on the same sample).
     public void MoveLocked(DjDeckViewModel deck, double seconds)
@@ -949,7 +949,7 @@ public sealed class DjViewModel : Observable
             _ = deck.LoadAsync(path, t.Title, t.T.Artist, t.T, t);
             return;
         }
-        if (!t.T.HasLink) { Main.Toast(L.T("Il file non esiste più.")); return; }
+        if (!t.T.HasLink) { Main.Toast(L.T("The file no longer exists.")); return; }
         _ = LoadFromLink(t, deck);
     }
 
@@ -967,7 +967,7 @@ public sealed class DjViewModel : Observable
             var file = cache.Find(song.Keys);
             if (file == null)
             {
-                var got = await Task.Run(() => Core.Together.TogetherCache.DownloadAsync(song.Url, s.AudioFormat, s.CookiesBrowserOrNull, cache.TempDir,
+                var got = await Task.Run(() => SongCache.DownloadAsync(song.Url, s.AudioFormat, s.CookiesBrowserOrNull, cache.TempDir,
                     pct => ui.BeginInvoke(() => deck.FetchProgress(id, pct)), CancellationToken.None));
                 file = cache.Adopt(song.Keys, song.Title, song.Artist, got);
             }
@@ -979,7 +979,7 @@ public sealed class DjViewModel : Observable
         {
             if (!deck.IsFetching(id)) return;
             deck.FetchFailed(id);
-            Main.Toast(L.F("Non riesco a scaricare «{0}» per il DJ: {1}", t.Title, ex.Message));
+            Main.Toast(L.F("Can't download “{0}” for the DJ: {1}", t.Title, ex.Message));
         }
     }
 
@@ -988,7 +988,7 @@ public sealed class DjViewModel : Observable
         if (Main.Player.Current is { } cur) Load(cur, deck);
     }
 
-    // "Carica": the song browser (library, playlists, tags, the song playing, a file); the song goes on the deck chosen there.
+    // "Load": the song browser (library, playlists, tags, the song playing, a file); the song goes on the deck chosen there.
     public void Pick(DjDeckViewModel deck)
     {
         if (Views.DjSongPicker.Show(this, deck) is not { } r) return;
@@ -1026,7 +1026,7 @@ public sealed class DjViewModel : Observable
             return;
         }
 
-        Status = L.T("Salvataggio del mix…");
+        Status = L.T("Saving the mix…");
         try
         {
             string name = string.Join("_", $"{choice.Artist} - {choice.Title}".Trim(' ', '-').Split(Path.GetInvalidFileNameChars()));
@@ -1052,9 +1052,9 @@ public sealed class DjViewModel : Observable
             var target = choice.NewPlaylist != null ? Main.Profile.CreatePlaylist(choice.NewPlaylist) : choice.Playlist;
             if (target != null) Main.Profile.AddTrack(target, t.Id);
             Status = null;
-            Main.Toast(L.F("Mix «{0}» salvato nella libreria", t.Title));
+            Main.Toast(L.F("Mix “{0}” saved to the library", t.Title));
         }
-        catch (Exception ex) { Status = L.T("Mix non riuscito:") + " " + ex.Message; }
+        catch (Exception ex) { Status = L.T("Mix failed:") + " " + ex.Message; }
         finally { try { File.Delete(wav); } catch { } }
     }
 }

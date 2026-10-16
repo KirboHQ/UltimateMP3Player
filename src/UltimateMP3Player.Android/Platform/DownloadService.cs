@@ -167,7 +167,7 @@ public sealed class DownloadService : Service
         if (Build.VERSION.SdkInt < BuildVersionCodes.O) return;
         var m = (NotificationManager?)ctx.GetSystemService(NotificationService);
         if (m?.GetNotificationChannel(Channel) != null) return;
-        var ch = new NotificationChannel(Channel, L.T("Download"), NotificationImportance.Low) { Description = L.T("I brani che si stanno scaricando") };
+        var ch = new NotificationChannel(Channel, L.T("Download"), NotificationImportance.Low) { Description = L.T("The songs being downloaded") };
         ch.SetShowBadge(false);
         m?.CreateNotificationChannel(ch);
     }
@@ -187,10 +187,10 @@ public sealed class DownloadService : Service
         }
         _cancelIcon ??= Android.Graphics.Drawables.Icon.CreateWithResource(this, Resource.Drawable.ic_close);
         using var b = Build.VERSION.SdkInt >= BuildVersionCodes.O ? new Notification.Builder(this, Channel) : new Notification.Builder(this);
-        using var actionBuilder = new Notification.Action.Builder(_cancelIcon, L.T("Annulla tutti"), _cancel);
+        using var actionBuilder = new Notification.Action.Builder(_cancelIcon, L.T("Cancel all"), _cancel);
         using var action = actionBuilder.Build();
         b.SetSmallIcon(Resource.Drawable.ic_download)
-            .SetContentTitle(L.T("Download in corso"))
+            .SetContentTitle(L.T("Downloading"))
             .SetContentText(summary ?? "")
             .SetOngoing(true)
             .SetOnlyAlertOnce(true)

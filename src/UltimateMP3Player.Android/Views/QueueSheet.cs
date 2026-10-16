@@ -26,7 +26,7 @@ public static class QueueSheet
         var head = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), Margin = new Thickness(20, 0, 10, 4) };
         DockPanel.SetDock(head, Dock.Top);
         var title = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        title.Children.Add(new TextBlock { Text = L.T("Successivi"), FontSize = 20, FontWeight = FontWeight.Bold });
+        title.Children.Add(new TextBlock { Text = L.T("Up next"), FontSize = 20, FontWeight = FontWeight.Bold });
         var hint = new TextBlock { Classes = { "hint" }, FontSize = 13, Margin = new Thickness(0, 2, 0, 0) };
         title.Children.Add(hint);
         head.Children.Add(title);
@@ -91,7 +91,7 @@ public static class QueueSheet
                 rows.Children.Add(new ContentControl { Content = r, ContentTemplate = template });
             }
             if (player.UpNext.Count == 0)
-                rows.Children.Add(new TextBlock { Text = L.T("Nessun brano dopo questo."), Classes = { "hint" }, FontSize = 14.5, Margin = new Thickness(20, 20, 20, 8), TextAlignment = TextAlignment.Center });
+                rows.Children.Add(new TextBlock { Text = L.T("No songs after this one."), Classes = { "hint" }, FontSize = 14.5, Margin = new Thickness(20, 20, 20, 8), TextAlignment = TextAlignment.Center });
             foot.Text = string.Join("\n", new[] { player.MoreText, player.QueueEndHint }.Where(s => !string.IsNullOrEmpty(s)));
         }
 
@@ -121,7 +121,7 @@ public static class SpeedSheet
         var sheets = App.Host.View?.Sheets;
         if (sheets == null) return;
         var body = new StackPanel { Margin = new Thickness(22, 4, 22, 20), DataContext = player };
-        body.Children.Add(new TextBlock { Text = L.T("Velocità di riproduzione"), FontSize = 15, FontWeight = FontWeight.SemiBold, Foreground = Ui.Res("SubTextBrush") });
+        body.Children.Add(new TextBlock { Text = L.T("Playback speed"), FontSize = 15, FontWeight = FontWeight.SemiBold, Foreground = Ui.Res("SubTextBrush") });
         body.Children.Add(new TextBlock
         {
             FontSize = 36, FontWeight = FontWeight.Bold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 6, 0, 10),
@@ -154,8 +154,8 @@ public static class SpeedSheet
             [!ToggleButtonBase.IsCheckedProperty] = new Avalonia.Data.Binding(nameof(PlayerViewModel.SpeedPitch), Avalonia.Data.BindingMode.TwoWay),
         };
         var text = new StackPanel();
-        text.Children.Add(new TextBlock { Text = L.T("Cambia anche il tono"), FontSize = 15 });
-        text.Children.Add(Ui.Text(L.T("Più veloce = più acuto, come un disco girato più in fretta."), "hint"));
+        text.Children.Add(new TextBlock { Text = L.T("Change the pitch too"), FontSize = 15 });
+        text.Children.Add(Ui.Text(L.T("Faster = higher, like a record spun faster."), "hint"));
         pitch.Content = text;
         body.Children.Add(pitch);
         body.Children.Add(Ui.Text(player.SpeedHint, "hint", new Thickness(0, 14, 0, 0)));

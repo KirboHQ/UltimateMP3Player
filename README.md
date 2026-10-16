@@ -50,13 +50,31 @@
   <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · songs in the cloud · a player that feels like Spotify · synced lyrics · a queue that fills itself · DJ mode · playlists, favorites and tags · on all your devices · listen together">
 </picture>
 
-## 🆕 What's new in 3.7.3
+## 🆕 What's new in 3.8
+
+- **Light theme** (Settings › Appearance › *Light or dark*): light, dark or the same as the system, following it when it
+  changes. Each profile has its own, and every accent colour has a light version.
+- **A cleaner look**, closer to the iPhone's: no more outlines around cards, buttons and fields, thinner separators,
+  menus and pop-ups that float on a soft shadow.
+- **Android and iPhone: swipe sideways** to move to the tab beside, the pages following the finger; inside a playlist a
+  swipe to the right goes back. Not over what already moves sideways (rows of cards, sliders, text boxes).
+- Tapping the song that's already playing no longer starts it over: from its own list it opens the player, from another
+  list it goes on and what follows becomes that list.
+- Easier on the battery: the waveform and the synced lyrics stand still while the app is minimized, in the tray or in
+  the background.
+- The data folder's names are in English: `errori.log` is now `errors.log` and `ascolta-insieme` is now `cache` (moved
+  by themselves at the first start).
+
+<details>
+<summary>3.7.3</summary>
 
 - **Faster downloads** on every platform: each song's page is read once instead of twice (the download uses the
   analysis just made). On Android yt-dlp also stays ready between songs, as on iPhone, instead of starting from scratch
   every time: after the first download, each song starts noticeably sooner.
 - Lighter: the song changes more smoothly on Linux/macOS (the glow behind the lyrics no longer re-reads the whole cover),
   and search results' pictures are decoded once instead of twice.
+
+</details>
 
 <details>
 <summary>3.7.2</summary>
@@ -423,13 +441,13 @@ for the core (downloads, import, queue, shuffle).
 | Path | Content |
 |---|---|
 | `Music\Ultimate MP3 Player` | Songs saved on the device (MP3/M4A with tags and cover) and videos |
-| `%LOCALAPPDATA%\Ultimate MP3 Player` | Library, covers, lyrics, profiles, settings, `errori.log` |
-| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Temporary storage: cloud songs, suggested songs and songs of *Listen together* rooms you've played, kept for next time |
+| `%LOCALAPPDATA%\Ultimate MP3 Player` | Library, covers, lyrics, profiles, settings, `errors.log` |
+| `%LOCALAPPDATA%\Ultimate MP3 Player\cache` | Temporary storage: cloud songs, suggested songs and songs of *Listen together* rooms you've played, kept for next time |
 
 On Linux the data is in `~/.local/share/Ultimate MP3 Player` and on macOS in `~/Library/Application Support/Ultimate MP3 Player`
 (there also the engines, in `engines`); the songs go to `~/Music/Ultimate MP3 Player`. On Android the songs are in the
 app's folder `Android/data/com.kirbohq.ultimatemp3player/files/Music` (visible from a computer), the rest inside the
-app. On iPhone the songs and `errori.log` are in the Files app (*On My iPhone › Ultimate MP3 Player*), the rest inside
+app. On iPhone the songs and `errors.log` are in the Files app (*On My iPhone › Ultimate MP3 Player*), the rest inside
 the app.
 
 ## 🙏 Third-party software

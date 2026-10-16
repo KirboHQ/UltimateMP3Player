@@ -97,14 +97,14 @@ public sealed class TrackViewModel : Observable
     public bool SaveIndeterminate => SaveJob is { } j && (j.Indeterminate || !j.IsRunning);
 
     private string? SavingTip => SaveJob is { } job
-        ? job.IsRunning ? L.F("Lo sto salvando sul dispositivo · {0:0}%", job.Percent) : L.T("In coda per essere salvato sul dispositivo")
+        ? job.IsRunning ? L.F("Saving it on your device · {0:0}%", job.Percent) : L.T("Waiting to be saved on your device")
         : null;
 
     // What the cloud sign means.
     public string CloudTip => SavingTip
-        ?? (IsUnavailable ? L.T("Non è più disponibile online e non è salvato sul dispositivo.")
-            : Main.Radio.Has(Id) ? L.T("Non è nella libreria: lo ascolti dal suo link.")
-            : L.T("Nel cloud: non è salvato sul dispositivo, lo ascolti dal suo link."));
+        ?? (IsUnavailable ? L.T("No longer available online and not saved on your device.")
+            : Main.Radio.Has(Id) ? L.T("Not in your library: you listen to it from its link.")
+            : L.T("In the cloud: not saved on your device, you listen to it from its link."));
 
     // In the library (false: a suggested song, one heard from a link).
     public bool InLibrary => !Main.Radio.Has(Id);
@@ -112,8 +112,8 @@ public sealed class TrackViewModel : Observable
     // The button next to the heart in the player: the library icon into the library (in the cloud, nothing downloaded) for a
     // song not in it, the download arrow for one of the library in the cloud ("+" stays "add to a playlist").
     public string SaveGlyph => InLibrary ? "" : "";
-    public string SaveTip => SavingTip ?? (!InLibrary ? L.T("Aggiungi alla libreria (senza scaricarlo)")
-        : IsUnavailable ? L.T("Riprova a salvarlo sul dispositivo") : L.T("Salva sul dispositivo"));
+    public string SaveTip => SavingTip ?? (!InLibrary ? L.T("Add to library (without downloading it)")
+        : IsUnavailable ? L.T("Try saving it on your device again") : L.T("Save to device"));
 
     public void RefreshCloud() => OnChanged(nameof(IsSaved), nameof(IsCloud), nameof(IsUnavailable), nameof(ShowCloud), nameof(CloudGlyph), nameof(CloudTip),
         nameof(SaveTip), nameof(SaveGlyph), nameof(InLibrary), nameof(IsSaving), nameof(SavePct), nameof(SaveIndeterminate));
@@ -133,7 +133,7 @@ public sealed class TrackViewModel : Observable
     // How much it was listened to on this profile (the statistics page).
     public TrackStats? Stats => Main.Profile.StatsOf(Id);
     public int Plays => Stats?.Plays ?? 0;
-    public string PlaysText => Plays == 0 ? L.T("mai") : L.Count(Plays, "1 ascolto", "{0} ascolti");
+    public string PlaysText => Plays == 0 ? L.T("never") : L.Count(Plays, "1 play", "{0} plays");
     public string ListenedText => Stats?.Seconds is > 0 and var s ? StatsViewModel.TimeText(s) : "–";
     public string LastPlayedText => Stats?.Last is { } d ? StatsViewModel.AgoText(d) : "";
 
@@ -191,11 +191,11 @@ public sealed class PlaylistViewModel : Observable
     public string Name => DisplayName(P);
     public bool IsFavorites => P.IsFavorites;
 
-    // Favorites are stored as "Preferiti" but shown in the app language.
-    public static string DisplayName(Playlist p) => p.IsFavorites ? L.T("Preferiti") : p.Name;
+    // Favorites are stored as "Favorites" but shown in the app language.
+    public static string DisplayName(Playlist p) => p.IsFavorites ? L.T("Favorites") : p.Name;
 
     public int Count => P.Tracks.Count(id => _main.Library.Get(id) != null);
-    public string CountText => L.Count(Count, "1 brano", "{0} brani");
+    public string CountText => L.Count(Count, "1 song", "{0} songs");
     public string Subtitle => "Playlist · " + CountText;
     // Its songs not saved on the device.
     public int CloudCount => P.Tracks.Count(id => _main.Library.Get(id) is { IsSaved: false });
@@ -207,9 +207,9 @@ public sealed class PlaylistViewModel : Observable
             var secs = P.Tracks.Select(id => _main.Library.Get(id)?.Duration ?? 0).Sum();
             var t = TimeSpan.FromSeconds(secs);
             var dur = t.TotalHours >= 1 ? L.F("{0} h {1} min", (int)t.TotalHours, t.Minutes) : L.F("{0} min {1} s", t.Minutes, t.Seconds);
-            if (Count == 0) return L.T("Nessun brano");
+            if (Count == 0) return L.T("No songs");
             int cloud = CloudCount;
-            return $"{CountText} · {dur}" + (cloud == 0 ? "" : cloud == Count ? " · " + L.T("tutti nel cloud") : " · " + L.F("{0} nel cloud", cloud));
+            return $"{CountText} · {dur}" + (cloud == 0 ? "" : cloud == Count ? " · " + L.T("all in the cloud") : " · " + L.F("{0} in the cloud", cloud));
         }
     }
 

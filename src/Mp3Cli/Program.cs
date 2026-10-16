@@ -53,7 +53,15 @@ switch (args[0])
             Console.WriteLine("elimina F:         " + Show());
             while (q.Next(true) is { } id) Console.Write(id + " ");
             Console.WriteLine("(fine, ripeti off)");
-            return 0;
+            // The song playing tapped in another list goes on: what follows is that list, it leaves the queue, one step back.
+            var s = new PlayQueue();
+            s.Play(new[] { "A", "B", "C" }, 0, "one", "One");
+            s.Next(false);
+            s.Enqueue("B");
+            s.Play(new[] { "P", "B", "R" }, 1, "two", "Two");
+            bool ok = s.Current == "B" && s.ContextId == "two" && s.UpNext.Count == 0 && s.PeekNext() == "R" && s.Previous() == "A";
+            Console.WriteLine("stesso brano, altra lista: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
         }
 
     case "same":

@@ -77,10 +77,10 @@ public static class Http
         if (!resp.IsSuccessStatusCode)
             throw new EngineException(resp.StatusCode switch
             {
-                HttpStatusCode.Forbidden => L.T("Il sito ha negato l'accesso al file (errore 403)."),
-                HttpStatusCode.NotFound => L.T("Il file non esiste più (errore 404)."),
-                HttpStatusCode.Unauthorized => L.T("Il sito richiede l'accesso (login) per questo file."),
-                _ => L.F("Download non riuscito (HTTP {0}).", (int)resp.StatusCode),
+                HttpStatusCode.Forbidden => L.T("The site denied access to the file (error 403)."),
+                HttpStatusCode.NotFound => L.T("The file no longer exists (error 404)."),
+                HttpStatusCode.Unauthorized => L.T("The site requires you to sign in (login) for this file."),
+                _ => L.F("Download failed (HTTP {0}).", (int)resp.StatusCode),
             }, url);
         long? total = resp.Content.Headers.ContentLength;
         var tmp = path + ".part";

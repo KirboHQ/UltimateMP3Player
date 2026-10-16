@@ -5,8 +5,8 @@
         xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
         xmlns:views="clr-namespace:UltimateMP3Player.Views"
         Title="Ultimate MP3 Player" Width="1280" Height="820" MinWidth="980" MinHeight="640"
-        WindowStartupLocation="CenterScreen" Background="{StaticResource TitleBarBrush}"
-        Foreground="{StaticResource TextBrush}" FontFamily="{StaticResource UiFont}" FontSize="14"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource TitleBarBrush}"
+        Foreground="{DynamicResource TextBrush}" FontFamily="{StaticResource UiFont}" FontSize="14"
         AllowDrop="True" UseLayoutRounding="True" Icon="/app.ico">
 
     <Window.Resources>
@@ -23,7 +23,7 @@
 
         <!-- the speed in the player bar ("1×"): a small outlined pill, coloured when it isn't the normal speed -->
         <Style x:Key="SpeedToggle" TargetType="ToggleButton">
-            <Setter Property="Foreground" Value="{StaticResource SubTextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
             <Setter Property="Height" Value="28"/>
             <Setter Property="MinWidth" Value="40"/>
             <Setter Property="Padding" Value="8,0"/>
@@ -34,7 +34,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                        <Border x:Name="Bd" CornerRadius="14" Background="Transparent" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1.5"
+                        <Border x:Name="Bd" CornerRadius="14" Background="Transparent" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1.5"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -44,11 +44,11 @@
                                 <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                             </DataTrigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Surface3Brush}"/>
-                                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Surface3Brush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource Surface3Brush}"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Surface3Brush}"/>
                                 <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -80,29 +80,30 @@
         </Grid.RowDefinitions>
 
         <!-- ============================================================ title bar -->
-        <Grid Background="{StaticResource TitleBarBrush}">
+        <Grid Background="{DynamicResource TitleBarBrush}">
             <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
                 <Image Source="{StaticResource LogoImage}" Width="16" Height="16"/>
-                <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}" Margin="9,0,0,1"
+                <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" Margin="9,0,0,1"
                            VerticalAlignment="Center"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="MinButton" Style="{StaticResource TitleBarButton}" Content="&#xE921;" ToolTip="{local:T 'Riduci a icona'}"
-                        AutomationProperties.Name="{local:T 'Riduci a icona'}"/>
-                <Button x:Name="MaxButton" Style="{StaticResource TitleBarButton}" Content="&#xE922;" AutomationProperties.Name="{local:T 'Ingrandisci'}"/>
-                <Button x:Name="CloseButton" Style="{StaticResource TitleBarCloseButton}" Content="&#xE8BB;" ToolTip="{local:T Chiudi}"
-                        AutomationProperties.Name="{local:T Chiudi}"/>
+                <Button x:Name="MinButton" Style="{StaticResource TitleBarButton}" Content="&#xE921;" ToolTip="{local:T Minimize}"
+                        AutomationProperties.Name="{local:T Minimize}"/>
+                <Button x:Name="MaxButton" Style="{StaticResource TitleBarButton}" Content="&#xE922;" AutomationProperties.Name="{local:T Maximize}"/>
+                <Button x:Name="CloseButton" Style="{StaticResource TitleBarCloseButton}" Content="&#xE8BB;" ToolTip="{local:T Close}"
+                        AutomationProperties.Name="{local:T Close}"/>
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" Background="{StaticResource BgBrush}">
+        <Grid Grid.Row="1" Background="{DynamicResource BgBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="248"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- ======================================================== sidebar -->
-            <Border Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+            <!-- no line against the page: its own tone is enough -->
+            <Border Background="{DynamicResource SidebarBrush}">
                 <!-- the menu keeps its size; below it the playlists get 2/3 of what is left and the tags 1/3, so both shrink with the window -->
                 <Grid Margin="14,14,14,12">
                     <Grid.RowDefinitions>
@@ -113,9 +114,9 @@
                     </Grid.RowDefinitions>
                     <StackPanel>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE80F;" Content="{local:T Home}" IsChecked="{Binding IsHome}"/>
-                        <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8F1;" Content="{local:T 'Tutti i brani'}" IsChecked="{Binding IsLibrary}"/>
-                        <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8B7;" Content="{local:T 'Senza playlist'}" IsChecked="{Binding IsUnsorted}"
-                                     ToolTip="{local:T 'Brani che non sono in nessuna playlist'}"/>
+                        <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8F1;" Content="{local:T 'All songs'}" IsChecked="{Binding IsLibrary}"/>
+                        <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8B7;" Content="{local:T 'Not in a playlist'}" IsChecked="{Binding IsUnsorted}"
+                                     ToolTip="{local:T 'Songs that aren\'t in any playlist'}"/>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE896;" IsChecked="{Binding IsDownloads}"
                                      AutomationProperties.Name="{local:T Download}">
                             <StackPanel Orientation="Horizontal">
@@ -127,25 +128,25 @@
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE716;" IsChecked="{Binding IsTogether}"
-                                     AutomationProperties.Name="{local:T 'Ascolta insieme'}" ToolTip="{local:T 'Ascolta la stessa musica con gli amici, sulla stessa rete'}">
+                                     AutomationProperties.Name="{local:T 'Listen together'}" ToolTip="{local:T 'Listen to the same music with friends on the same network'}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{local:T 'Ascolta insieme'}"/>
+                                <TextBlock Text="{local:T 'Listen together'}"/>
                                 <!-- in a room: how many are listening -->
-                                <Border Margin="8,0,0,0" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Background="{StaticResource SuccessBrush}"
+                                <Border Margin="8,0,0,0" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Background="{DynamicResource SuccessBrush}"
                                         Visibility="{Binding Together.InRoom, Converter={StaticResource BoolVis}}">
-                                    <TextBlock Text="{Binding Together.MemberCount}" FontSize="11" FontWeight="Bold" Foreground="#0E1014" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Together.MemberCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BgBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                             </StackPanel>
                         </RadioButton>
                         <!-- the least used one, last before the settings -->
                         <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8D6;" Content="DJ" IsChecked="{Binding IsDj}"
-                                     ToolTip="{local:T 'Mixa due brani: tempo, pitch, taglio e volume'}"/>
-                        <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE713;" Content="{local:T Impostazioni}" IsChecked="{Binding IsSettings}"/>
+                                     ToolTip="{local:T 'Mix two songs: tempo, pitch, trim and volume'}"/>
+                        <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE713;" Content="{local:T Settings}" IsChecked="{Binding IsSettings}"/>
                     </StackPanel>
 
                     <!-- profile -->
                     <Button Grid.Row="3" Style="{StaticResource SubtleButton}" Padding="8,8" HorizontalContentAlignment="Stretch"
-                            Command="{Binding SwitchProfileCommand}" ToolTip="{local:T 'Cambia o gestisci i profili'}" Margin="0,10,0,0">
+                            Command="{Binding SwitchProfileCommand}" ToolTip="{local:T 'Switch or manage profiles'}" Margin="0,10,0,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -162,10 +163,10 @@
                                 </Ellipse>
                             </Grid>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding ProfileName}" Foreground="{StaticResource TextBrush}" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{local:T 'Cambia profilo'}" FontSize="11.5" FontWeight="Normal" Foreground="{StaticResource MutedBrush}"/>
+                                <TextBlock Text="{Binding ProfileName}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{local:T 'Switch profile'}" FontSize="11.5" FontWeight="Normal" Foreground="{DynamicResource MutedBrush}"/>
                             </StackPanel>
-                            <TextBlock Grid.Column="2" Text="&#xE748;" Style="{StaticResource Glyph}" Foreground="{StaticResource MutedBrush}"/>
+                            <TextBlock Grid.Column="2" Text="&#xE748;" Style="{StaticResource Glyph}" Foreground="{DynamicResource MutedBrush}"/>
                         </Grid>
                     </Button>
 
@@ -173,10 +174,10 @@
                     <DockPanel Grid.Row="2" Margin="0,6,0,0">
                         <DockPanel DockPanel.Dock="Top" Margin="8,6,0,4">
                             <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
-                                    Command="{Binding NewTagCommand}" ToolTip="{local:T 'Nuovo tag'}" AutomationProperties.Name="{local:T 'Nuovo tag'}"/>
-                            <TextBlock Text="{local:T TAG}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
+                                    Command="{Binding NewTagCommand}" ToolTip="{local:T 'New tag'}" AutomationProperties.Name="{local:T 'New tag'}"/>
+                            <TextBlock Text="{local:T TAGS}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
                         </DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="{local:T 'Etichette colorate per raggruppare brani e playlist a modo tuo.'}" Style="{StaticResource Hint}"
+                        <TextBlock DockPanel.Dock="Top" Text="{local:T 'Colored labels to group songs and playlists your way.'}" Style="{StaticResource Hint}"
                                    FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" Visibility="{Binding HasTags, Converter={StaticResource InvBoolVis}}"/>
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
                             <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
@@ -190,17 +191,17 @@
                                                               CommandParameter="{Binding}"/>
                                             </Border.InputBindings>
                                             <DockPanel>
-                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
                                                 <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
                                                 <TextBlock x:Name="Name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" local:Marquee.IsEnabled="True"/>
                                             </DockPanel>
                                         </Border>
                                         <DataTemplate.Triggers>
                                             <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="Item" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                                                <Setter TargetName="Item" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                                             </Trigger>
                                             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                <Setter TargetName="Item" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                                                <Setter TargetName="Item" Property="Background" Value="{DynamicResource Surface2Brush}"/>
                                             </DataTrigger>
                                         </DataTemplate.Triggers>
                                     </DataTemplate>
@@ -212,8 +213,8 @@
                     <DockPanel Grid.Row="1">
                     <DockPanel DockPanel.Dock="Top" Margin="8,22,0,8">
                         <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
-                                Command="{Binding NewPlaylistCommand}" ToolTip="{local:T 'Nuova playlist'}"/>
-                        <TextBlock Text="{local:T 'LE TUE PLAYLIST'}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
+                                Command="{Binding NewPlaylistCommand}" ToolTip="{local:T 'New playlist'}"/>
+                        <TextBlock Text="{local:T 'YOUR PLAYLISTS'}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
                     </DockPanel>
 
                     <ListBox x:Name="PlaylistList" Style="{StaticResource PlainList}" ItemsSource="{Binding Playlists}"
@@ -236,7 +237,7 @@
                                         <ContentPresenter Width="42" Height="42" Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                                             <TextBlock x:Name="Name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
-                                            <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{StaticResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
                                         </StackPanel>
                                         <TextBlock Grid.Column="2" Text="&#xE995;" Style="{StaticResource Glyph}" Foreground="{DynamicResource AccentTextBrush}"
                                                    FontSize="12" Margin="6,0,2,0" Visibility="{Binding IsPlayingFrom, Converter={StaticResource BoolVis}}"/>
@@ -244,10 +245,10 @@
                                 </Border>
                                 <DataTemplate.Triggers>
                                     <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Item" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                                        <Setter TargetName="Item" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                                     </Trigger>
                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                        <Setter TargetName="Item" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                                        <Setter TargetName="Item" Property="Background" Value="{DynamicResource Surface2Brush}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsPlayingFrom}" Value="True">
                                         <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
@@ -274,11 +275,11 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button Style="{StaticResource ControlButton}" Content="&#xE72B;" Command="{Binding BackCommand}" AutomationProperties.Name="{local:T Indietro}"
-                            ToolTip="{local:T Indietro}" Margin="0,0,10,0"/>
+                    <Button Style="{StaticResource ControlButton}" Content="&#xE72B;" Command="{Binding BackCommand}" AutomationProperties.Name="{local:T Back}"
+                            ToolTip="{local:T Back}" Margin="0,0,10,0"/>
 
-                    <Border x:Name="SearchPill" Grid.Column="1" Height="44" CornerRadius="22" Background="{StaticResource SurfaceBrush}"
-                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" Padding="16,0,4,0">
+                    <Border x:Name="SearchPill" Grid.Column="1" Height="44" CornerRadius="22" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="Transparent" BorderThickness="1" Padding="16,0,4,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
@@ -286,47 +287,47 @@
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="SearchIcon" Text="&#xE721;" Style="{StaticResource Glyph}" Foreground="{StaticResource SubTextBrush}" FontSize="15"/>
-                            <TextBox x:Name="SearchBox" AutomationProperties.Name="{local:T Cerca}" Grid.Column="1" Style="{StaticResource BareTextBox}" Margin="12,0,6,0"
-                                     Tag="{local:T 'Cerca nei tuoi brani e online, oppure incolla un link da scaricare (YouTube, Spotify, SoundCloud, TikTok…)'}"
+                            <TextBlock x:Name="SearchIcon" Text="&#xE721;" Style="{StaticResource Glyph}" Foreground="{DynamicResource SubTextBrush}" FontSize="15"/>
+                            <TextBox x:Name="SearchBox" AutomationProperties.Name="{local:T Search}" Grid.Column="1" Style="{StaticResource BareTextBox}" Margin="12,0,6,0"
+                                     Tag="{local:T 'Search your songs and online, or paste a link to download (YouTube, Spotify, SoundCloud, TikTok…)'}"
                                      Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                      GotKeyboardFocus="Search_Focus" LostKeyboardFocus="Search_Focus" KeyDown="Search_KeyDown"/>
                             <Button Grid.Column="2" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="11" Content="&#xE711;"
-                                    Command="{Binding ClearSearchCommand}" ToolTip="{local:T Cancella}"
+                                    Command="{Binding ClearSearchCommand}" ToolTip="{local:T Clear}"
                                     Visibility="{Binding HasSearchText, Converter={StaticResource BoolVis}}"/>
                             <Button Grid.Column="3" Style="{StaticResource PillPrimaryButton}" Margin="4,0,0,0"
-                                    Command="{Binding SubmitSearchCommand}" AutomationProperties.Name="{local:T 'Scarica link'}"
+                                    Command="{Binding SubmitSearchCommand}" AutomationProperties.Name="{local:T 'Download link'}"
                                     Visibility="{Binding IsLink, Converter={StaticResource BoolVis}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" FontSize="13"/>
-                                    <TextBlock Text="{local:T Scarica}" Margin="7,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Download|verb'}" Margin="7,0,0,0"/>
                                 </StackPanel>
                             </Button>
                         </Grid>
                     </Border>
 
                     <Button Grid.Column="2" Style="{StaticResource GhostButton}" Margin="10,0,0,0" Height="44" Padding="18,0"
-                            Command="{Binding PasteLinkCommand}" ToolTip="{local:T 'Incolla un link dagli appunti e scaricalo'}"
-                            AutomationProperties.Name="{local:T 'Incolla link'}">
+                            Command="{Binding PasteLinkCommand}" ToolTip="{local:T 'Paste a link from the clipboard and download it'}"
+                            AutomationProperties.Name="{local:T 'Paste link'}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE77F;" Style="{StaticResource Glyph}" FontSize="14"/>
-                            <TextBlock Text="{local:T 'Incolla link'}" Margin="8,0,0,0"/>
+                            <TextBlock Text="{local:T 'Paste link'}" Margin="8,0,0,0"/>
                         </StackPanel>
                     </Button>
                 </Grid>
 
                 <StackPanel Grid.Row="1" Margin="20,0,20,0">
-                    <Border Margin="0,0,0,8" CornerRadius="10" Padding="14,8" Background="{StaticResource WarningSoftBrush}"
+                    <Border Margin="0,0,0,8" CornerRadius="10" Padding="14,8" Background="{DynamicResource WarningSoftBrush}"
                             Visibility="{Binding Host.EngineStatus, Converter={StaticResource NotNullVis}, FallbackValue=Collapsed}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Foreground="{StaticResource WarningBrush}"/>
-                            <TextBlock Text="{Binding Host.EngineStatus}" Margin="10,0,0,0" Foreground="{StaticResource WarningBrush}" FontSize="13"/>
+                            <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}" Foreground="{DynamicResource WarningBrush}"/>
+                            <TextBlock Text="{Binding Host.EngineStatus}" Margin="10,0,0,0" Foreground="{DynamicResource WarningBrush}" FontSize="13"/>
                         </StackPanel>
                     </Border>
                     <Border Margin="0,0,0,8" CornerRadius="10" Padding="14,6,6,6" Background="{DynamicResource AccentSoftBrush}"
                             Visibility="{Binding Host.Updates.IsReady, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}">
                         <DockPanel>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Padding="12,5" Content="{local:T 'Riavvia ora'}"
+                            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Padding="12,5" Content="{local:T 'Restart now'}"
                                     Command="{Binding Host.RestartToUpdateCommand}"/>
                             <TextBlock Text="&#xE777;" Style="{StaticResource Glyph}" Foreground="{DynamicResource AccentTextBrush}"/>
                             <TextBlock Text="{Binding Host.Updates.ReadyText}" Margin="10,0,10,0" VerticalAlignment="Center" FontSize="13" TextTrimming="CharacterEllipsis"/>
@@ -338,10 +339,10 @@
 
                 <!-- toast -->
                 <Border x:Name="ToastBox" Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18" CornerRadius="10"
-                        Padding="16,10" Background="{StaticResource Surface3Brush}" BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1"
+                        Padding="16,10" Background="{DynamicResource PopupBrush}"
                         Visibility="{Binding ToastText, Converter={StaticResource NotNullVis}}" IsHitTestVisible="False" MaxWidth="640">
                     <Border.Effect>
-                        <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.45" Color="Black"/>
+                        <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.45" Color="{DynamicResource PopupShadowColor}"/>
                     </Border.Effect>
                     <TextBlock Text="{Binding ToastText}" TextWrapping="Wrap"/>
                 </Border>
@@ -349,7 +350,7 @@
         </Grid>
 
         <!-- ============================================================ player bar -->
-        <Border Grid.Row="2" Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
+        <Border Grid.Row="2" Background="{DynamicResource SidebarBrush}"
                 Padding="14,10" DataContext="{Binding Player}"
                 Visibility="{Binding DataContext.ShowPlayerBar, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolVis}}">
             <Grid x:Name="PlayerGrid" SizeChanged="PlayerBar_SizeChanged">
@@ -368,8 +369,8 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <Button Style="{StaticResource SubtleButton}" Padding="0" Width="58" Height="58"
-                            Command="{Binding DataContext.GoNowPlayingCommand, RelativeSource={RelativeSource AncestorType=Window}}" ToolTip="{local:T 'Apri la schermata del brano'}"
-                            AutomationProperties.Name="{local:T 'Apri la schermata del brano'}">
+                            Command="{Binding DataContext.GoNowPlayingCommand, RelativeSource={RelativeSource AncestorType=Window}}" ToolTip="{local:T 'Open song view'}"
+                            AutomationProperties.Name="{local:T 'Open song view'}">
                         <ContentPresenter Width="58" Height="58" Content="{Binding Current}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                     </Button>
                     <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
@@ -377,21 +378,21 @@
                         <!-- the artist; before it a small cloud when the song isn't saved on the device (only a sign) -->
                         <DockPanel Margin="0,2,0,0">
                             <TextBlock DockPanel.Dock="Left" Text="{Binding Current.CloudGlyph}" FontFamily="{StaticResource IconFont}" FontSize="12"
-                                       Foreground="{StaticResource MutedBrush}" Margin="0,0,6,0" VerticalAlignment="Center" ToolTip="{Binding Current.CloudTip}"
+                                       Foreground="{DynamicResource MutedBrush}" Margin="0,0,6,0" VerticalAlignment="Center" ToolTip="{Binding Current.CloudTip}"
                                        Visibility="{Binding Current.IsCloud, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}"/>
-                            <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                            <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
                         </DockPanel>
                         <!-- a suggested song still downloading (it starts by itself), or more of them on their way -->
                         <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Visibility="{Binding IsWaiting, Converter={StaticResource BoolVis}}">
                             <Ellipse Style="{StaticResource Spinner}" Width="12" Height="12" StrokeThickness="1.5"/>
-                            <TextBlock Text="{Binding WaitText}" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" Margin="7,0,0,0" VerticalAlignment="Center"
+                            <TextBlock Text="{Binding WaitText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" Margin="7,0,0,0" VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
                         <!-- in a room: which one (green dot), a click opens it -->
                         <Button Style="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="0,3,0,0" FontSize="11.5" Command="{Binding OpenRoomCommand}"
-                                Visibility="{Binding InRoom, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Sei in una stanza di Ascolta insieme: aprila'}">
+                                Visibility="{Binding InRoom, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'You\'re in a Listen together room: open it'}">
                             <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="7" Height="7" Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center"/>
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding RoomName}" Margin="6,0,0,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
@@ -405,12 +406,12 @@
                                 <TextBlock Text="{Binding Current.SaveGlyph}" FontFamily="{StaticResource IconFont}" FontSize="16"
                                            Visibility="{Binding Current.ShowCloud, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}"/>
                                 <views:ProgressRing Width="18" Height="18" Value="{Binding Current.SavePct}" IsIndeterminate="{Binding Current.SaveIndeterminate}"
-                                                    Stroke="{DynamicResource AccentBrush}" Track="{StaticResource Surface3Brush}"
+                                                    Stroke="{DynamicResource AccentBrush}" Track="{DynamicResource Surface3Brush}"
                                                     Visibility="{Binding Current.IsSaving, Converter={StaticResource BoolVis}, FallbackValue=Collapsed}"/>
                             </Grid>
                         </Button>
-                        <Button x:Name="HeartButton" AutomationProperties.Name="{local:T Preferiti}" Style="{StaticResource ControlButton}" Command="{Binding FavoriteCommand}"
-                                ToolTip="{local:T Preferiti}">
+                        <Button x:Name="HeartButton" AutomationProperties.Name="{local:T Favorites}" Style="{StaticResource ControlButton}" Command="{Binding FavoriteCommand}"
+                                ToolTip="{local:T Favorites}">
                             <TextBlock x:Name="HeartGlyph" FontFamily="{StaticResource IconFont}" FontSize="15">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
@@ -425,11 +426,11 @@
                                 </TextBlock.Style>
                             </TextBlock>
                         </Button>
-                        <Button Style="{StaticResource ControlButton}" Content="&#xE710;" Click="AddCurrentToPlaylist_Click" AutomationProperties.Name="{local:T 'Aggiungi a playlist'}"
-                                ToolTip="{local:T 'Aggiungi a una playlist'}"/>
+                        <Button Style="{StaticResource ControlButton}" Content="&#xE710;" Click="AddCurrentToPlaylist_Click" AutomationProperties.Name="{local:T 'Add to playlist'}"
+                                ToolTip="{local:T 'Add to a playlist'}"/>
                         <!-- automatic queue: lit = "next up" refills itself at every song (in a room the room's queue rules) -->
                         <ToggleButton Style="{StaticResource ToggleIcon}" Content="&#xE90B;" IsChecked="{Binding AutoQueue}"
-                                      ToolTip="{Binding AutoQueueTip}" AutomationProperties.Name="{local:T 'Coda automatica'}"
+                                      ToolTip="{Binding AutoQueueTip}" AutomationProperties.Name="{local:T 'Automatic queue'}"
                                       Visibility="{Binding InRoom, Converter={StaticResource InvBoolVis}}"/>
                     </StackPanel>
                 </Grid>
@@ -438,15 +439,15 @@
                 <StackPanel Grid.Column="1" Margin="16,0" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <!-- in a room shuffle and repeat don't apply (dimmed); prev/play/next need the host's permission (greyed out, the tooltip says why) -->
-                        <ToggleButton Style="{StaticResource ToggleIcon}" Content="&#xE8B1;" IsChecked="{Binding Shuffle}" AutomationProperties.Name="{local:T Casuale}"
-                                      ToolTip="{local:T 'Riproduzione casuale'}" IsEnabled="{Binding NotInRoom}"/>
-                        <Button Style="{StaticResource ControlButton}" Content="&#xE892;" Command="{Binding PreviousCommand}" AutomationProperties.Name="{local:T Precedente}"
+                        <ToggleButton Style="{StaticResource ToggleIcon}" Content="&#xE8B1;" IsChecked="{Binding Shuffle}" AutomationProperties.Name="{local:T Shuffle}"
+                                      ToolTip="{local:T Shuffle}" IsEnabled="{Binding NotInRoom}"/>
+                        <Button Style="{StaticResource ControlButton}" Content="&#xE892;" Command="{Binding PreviousCommand}" AutomationProperties.Name="{local:T Previous}"
                                 Margin="8,0,0,0" ToolTip="{Binding PreviousTip}" ToolTipService.ShowOnDisabled="True"/>
                         <Button Style="{StaticResource PlayButton}" Content="{Binding PlayGlyph}" Command="{Binding PlayPauseCommand}"
-                                AutomationProperties.Name="{local:T 'Riproduci/Pausa'}" Margin="12,0" ToolTip="{Binding PlayTip}" ToolTipService.ShowOnDisabled="True"/>
-                        <Button Style="{StaticResource ControlButton}" Content="&#xE893;" Command="{Binding NextCommand}" AutomationProperties.Name="{local:T Successivo}"
+                                AutomationProperties.Name="{local:T 'Play/Pause'}" Margin="12,0" ToolTip="{Binding PlayTip}" ToolTipService.ShowOnDisabled="True"/>
+                        <Button Style="{StaticResource ControlButton}" Content="&#xE893;" Command="{Binding NextCommand}" AutomationProperties.Name="{local:T Next}"
                                 Margin="0,0,8,0" ToolTip="{Binding NextTip}" ToolTipService.ShowOnDisabled="True"/>
-                        <ToggleButton Style="{StaticResource ToggleIcon}" Content="{Binding RepeatGlyph}" AutomationProperties.Name="{local:T Ripeti}"
+                        <ToggleButton Style="{StaticResource ToggleIcon}" Content="{Binding RepeatGlyph}" AutomationProperties.Name="{local:T Repeat}"
                                       IsChecked="{Binding RepeatOn, Mode=OneWay}" Command="{Binding CycleRepeatCommand}" ToolTip="{Binding RepeatTip}"/>
                     </StackPanel>
                     <Grid Margin="0,6,0,0">
@@ -455,12 +456,12 @@
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="44"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="{Binding PositionText}" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock Text="{Binding PositionText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <views:WaveformBar Grid.Column="1" Height="30" Peaks="{Binding Current.Wave}" Progress="{Binding Progress}"
-                                           IsPlaying="{Binding IsPlaying}" Duration="{Binding Duration}" Rate="{Binding Speed}"
-                                           PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{StaticResource WaveBrush}"
+                                           IsPlaying="{Binding Animate}" Duration="{Binding Duration}" Rate="{Binding Speed}"
+                                           PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}"
                                            SeekCommand="{Binding SeekCommand}" ToolTip="{Binding SeekTip}"/>
-                        <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontSize="11.5" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </Grid>
                 </StackPanel>
 
@@ -468,7 +469,7 @@
                 <StackPanel x:Name="RightBlock" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <ToggleButton Style="{StaticResource PillToggle}" IsChecked="{Binding DataContext.IsNowPlaying, Mode=OneWay, RelativeSource={RelativeSource AncestorType=Window}}"
                                   Command="{Binding DataContext.GoNowPlayingCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                  ToolTip="{local:T 'Video e successivi'}" AutomationProperties.Name="{local:T 'Video e successivi'}">
+                                  ToolTip="{local:T 'Video and up next'}" AutomationProperties.Name="{local:T 'Video and up next'}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE714;" VerticalAlignment="Center"/>
                             <TextBlock Text="&#xE8FD;" VerticalAlignment="Center" Margin="12,0,0,0"/>
@@ -480,16 +481,16 @@
                                       IsChecked="{Binding IsOpen, ElementName=SpeedPopup, Mode=TwoWay}"
                                       IsHitTestVisible="{Binding IsOpen, ElementName=SpeedPopup, Converter={StaticResource Not}}"
                                       PreviewMouseWheel="Speed_Wheel" SizeChanged="PlayerBar_SizeChanged"
-                                      AutomationProperties.Name="{local:T 'Velocità di riproduzione'}"/>
+                                      AutomationProperties.Name="{local:T 'Playback speed'}"/>
                         <Popup x:Name="SpeedPopup" PlacementTarget="{Binding ElementName=SpeedButton}" Placement="Top" StaysOpen="False"
                                AllowsTransparency="True" PopupAnimation="Fade" HorizontalOffset="-150" VerticalOffset="-4">
-                            <Border Margin="10" Width="312" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderStrongBrush}"
+                            <Border Margin="10" Width="312" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1" CornerRadius="16" Padding="18,14,18,16">
                                 <Border.Effect>
-                                    <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="Black"/>
+                                    <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
                                 </Border.Effect>
                                 <StackPanel>
-                                    <TextBlock Text="{local:T 'Velocità di riproduzione'}" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}" FontSize="12.5"/>
+                                    <TextBlock Text="{local:T 'Playback speed'}" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" FontSize="12.5"/>
                                     <TextBlock Text="{Binding SpeedValueText}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,4,0,8"/>
                                     <StackPanel IsEnabled="{Binding CanSetSpeed}">
                                         <Grid>
@@ -499,14 +500,14 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <Button Style="{StaticResource ControlButton}" Width="32" Height="32" FontSize="12" Content="&#xE738;"
-                                                    Command="{Binding SpeedStepCommand}" CommandParameter="-0.05" ToolTip="{local:T 'Più lento'}"
-                                                    AutomationProperties.Name="{local:T 'Più lento'}"/>
+                                                    Command="{Binding SpeedStepCommand}" CommandParameter="-0.05" ToolTip="{local:T Slower}"
+                                                    AutomationProperties.Name="{local:T Slower}"/>
                                             <Slider Grid.Column="1" Style="{StaticResource KnobSlider}" Margin="6,0" Minimum="0.5" Maximum="2" Value="{Binding Speed}"
                                                     SmallChange="0.05" LargeChange="0.25" IsSnapToTickEnabled="True" TickFrequency="0.05" VerticalAlignment="Center"
-                                                    PreviewMouseWheel="Speed_Wheel" AutomationProperties.Name="{local:T 'Velocità di riproduzione'}"/>
+                                                    PreviewMouseWheel="Speed_Wheel" AutomationProperties.Name="{local:T 'Playback speed'}"/>
                                             <Button Grid.Column="2" Style="{StaticResource ControlButton}" Width="32" Height="32" FontSize="12" Content="&#xE710;"
-                                                    Command="{Binding SpeedStepCommand}" CommandParameter="0.05" ToolTip="{local:T 'Più veloce'}"
-                                                    AutomationProperties.Name="{local:T 'Più veloce'}"/>
+                                                    Command="{Binding SpeedStepCommand}" CommandParameter="0.05" ToolTip="{local:T Faster}"
+                                                    AutomationProperties.Name="{local:T Faster}"/>
                                         </Grid>
                                         <ItemsControl ItemsSource="{Binding SpeedPresets}" Margin="-3,12,-3,0" Focusable="False">
                                             <ItemsControl.ItemsPanel>
@@ -522,20 +523,20 @@
                                         </ItemsControl>
                                         <CheckBox Margin="0,16,0,0" IsChecked="{Binding SpeedPitch}" VerticalContentAlignment="Top">
                                             <StackPanel>
-                                                <TextBlock Text="{local:T 'Cambia anche il tono'}"/>
-                                                <TextBlock Text="{local:T 'Più veloce = più acuto, come un disco girato più in fretta.'}" Style="{StaticResource Hint}" FontSize="12"/>
+                                                <TextBlock Text="{local:T 'Change the pitch too'}"/>
+                                                <TextBlock Text="{local:T 'Faster = higher, like a record spun faster.'}" Style="{StaticResource Hint}" FontSize="12"/>
                                             </StackPanel>
                                         </CheckBox>
                                     </StackPanel>
-                                    <TextBlock Text="{Binding SpeedHint}" Style="{StaticResource Hint}" FontSize="12" Margin="0,12,0,0" Foreground="{StaticResource MutedBrush}"/>
+                                    <TextBlock Text="{Binding SpeedHint}" Style="{StaticResource Hint}" FontSize="12" Margin="0,12,0,0" Foreground="{DynamicResource MutedBrush}"/>
                                 </StackPanel>
                             </Border>
                         </Popup>
                     </Grid>
-                    <Button Style="{StaticResource ControlButton}" Content="&#xE9E9;" ToolTip="{local:T Equalizzatore}" AutomationProperties.Name="{local:T Equalizzatore}"
+                    <Button Style="{StaticResource ControlButton}" Content="&#xE9E9;" ToolTip="{local:T Equalizer}" AutomationProperties.Name="{local:T Equalizer}"
                             Command="{Binding DataContext.GoSettingsCommand, RelativeSource={RelativeSource AncestorType=Window}}" Margin="2,0,0,0"/>
-                    <Button Style="{StaticResource ControlButton}" Content="{Binding VolumeGlyph}" AutomationProperties.Name="{local:T Muto}" Command="{Binding ToggleMuteCommand}"
-                            Margin="2,0,0,0" ToolTip="{local:T Muto}"/>
+                    <Button Style="{StaticResource ControlButton}" Content="{Binding VolumeGlyph}" AutomationProperties.Name="{local:T Mute}" Command="{Binding ToggleMuteCommand}"
+                            Margin="2,0,0,0" ToolTip="{local:T Mute}"/>
                     <Slider x:Name="VolumeSlider" Width="110" Minimum="0" Maximum="1" Value="{Binding Volume}" Margin="4,0,0,0" VerticalAlignment="Center"
                             SmallChange="0.02" LargeChange="0.1" PreviewMouseWheel="Volume_Wheel" ToolTip="{local:T Volume}" AutomationProperties.Name="{local:T Volume}"/>
                 </StackPanel>
@@ -543,16 +544,16 @@
         </Border>
 
         <!-- ============================================================ a .ump pack dragged over the window -->
-        <Border x:Name="PackDrop" Grid.Row="1" Grid.RowSpan="2" Background="#C40A0C0F" IsHitTestVisible="False" Visibility="Collapsed">
+        <Border x:Name="PackDrop" Grid.Row="1" Grid.RowSpan="2" Background="{DynamicResource VeilBrush}" IsHitTestVisible="False" Visibility="Collapsed">
             <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Border CornerRadius="24" Background="{StaticResource SurfaceBrush}" Padding="48,32,48,30" MinWidth="360">
+                <Border CornerRadius="24" Background="{DynamicResource SurfaceBrush}" Padding="48,32,48,30" MinWidth="360">
                     <Border.Effect>
-                        <DropShadowEffect BlurRadius="34" ShadowDepth="8" Opacity="0.6" Color="Black"/>
+                        <DropShadowEffect BlurRadius="34" ShadowDepth="8" Opacity="0.6" Color="{DynamicResource PopupShadowColor}"/>
                     </Border.Effect>
                     <StackPanel>
                         <Image Source="{StaticResource PackImage}" Width="104" Height="104" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{local:T 'Rilascia per importare'}" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,18,0,4"/>
-                        <TextBlock x:Name="PackDropName" Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Center" MaxWidth="420"
+                        <TextBlock Text="{local:T 'Drop to import'}" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,18,0,4"/>
+                        <TextBlock x:Name="PackDropName" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Center" MaxWidth="420"
                                    TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </Border>

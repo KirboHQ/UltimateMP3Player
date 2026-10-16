@@ -181,7 +181,7 @@ public sealed class AudioEngine : IDisposable
         {
             ResetOutput();
             _playing = false;
-            Failed?.Invoke(L.T("Impossibile usare il dispositivo audio:") + " " + ex.Message);
+            Failed?.Invoke(L.T("Couldn't use the audio device:") + " " + ex.Message);
         }
     }
 

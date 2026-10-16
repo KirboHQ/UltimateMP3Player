@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:UltimateMP3Player"
         xmlns:views="clr-namespace:UltimateMP3Player.Views"
         Title="Ultimate MP3 Player" Width="820" Height="600" MinWidth="620" MinHeight="480"
-        Background="{StaticResource TitleBarBrush}" Foreground="{StaticResource TextBrush}"
+        Background="{DynamicResource TitleBarBrush}" Foreground="{DynamicResource TextBrush}"
         FontFamily="{StaticResource UiFont}" FontSize="14" UseLayoutRounding="True">
     <local:DialogWindow.Styles>
         <Style Selector="Button.tile Ellipse.ring">
@@ -39,7 +39,7 @@
         <ControlTheme x:Key="TileButton" TargetType="Button">
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FocusAdorner" Value="{x:Null}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border Name="Bd" Padding="12,14" CornerRadius="14" Background="Transparent">
@@ -48,36 +48,36 @@
                 </ControlTemplate>
             </Setter>
             <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
             </Style>
             <Style Selector="^:focus-visible /template/ Border#Bd">
-                <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
             </Style>
         </ControlTheme>
     </local:DialogWindow.Resources>
 
     <Panel x:Name="Root">
         <Grid RowDefinitions="32,*">
-            <Grid x:Name="TitleBar" Background="{StaticResource TitleBarBrush}">
+            <Grid x:Name="TitleBar" Background="{DynamicResource TitleBarBrush}">
                 <StackPanel x:Name="TitleText" Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
                     <Image Source="/Assets/app-256.png" Width="16" Height="16" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                    <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}" Margin="9,0,0,1"
+                    <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" Margin="9,0,0,1"
                                VerticalAlignment="Center"/>
                 </StackPanel>
                 <Button x:Name="CloseButton" Theme="{StaticResource TitleBarCloseButton}" Content="{local:Icon E8BB}" HorizontalAlignment="Right"
-                        ToolTip.Tip="{local:T Chiudi}"/>
+                        ToolTip.Tip="{local:T Close}"/>
             </Grid>
 
-            <Panel Grid.Row="1" Background="{StaticResource BgBrush}">
+            <Panel Grid.Row="1" Background="{DynamicResource BgBrush}">
                 <Border Height="300" VerticalAlignment="Top" Background="{DynamicResource HeaderGlowStrong}"/>
 
                 <!-- ======================================================== picker -->
                 <Grid x:Name="PickerPanel" Margin="40,28,40,28" RowDefinitions="Auto,*,Auto">
                     <StackPanel HorizontalAlignment="Center">
                         <Image Source="/Assets/app-256.png" Width="48" Height="48" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                        <TextBlock Text="{local:T 'Chi sta ascoltando?'}" FontSize="30" FontWeight="Bold" Margin="0,14,0,4" HorizontalAlignment="Center"/>
-                        <TextBlock x:Name="SubTitle" Text="{local:T 'Ogni profilo ha le sue playlist, i suoi preferiti e il suo equalizzatore.'}"
-                                   Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{local:T 'Who\'s listening?'}" FontSize="30" FontWeight="Bold" Margin="0,14,0,4" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="SubTitle" Text="{local:T 'Each profile has its own playlists, favorites and equalizer.'}"
+                                   Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Center"/>
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,28,0,0">
@@ -95,18 +95,18 @@
                                                 <Ellipse Fill="{Binding Brush}"/>
                                                 <TextBlock Text="{Binding Initial}" FontSize="42" FontWeight="Bold" Foreground="White"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !IsAdd}"/>
-                                                <TextBlock Text="{local:Icon E710}" FontFamily="{StaticResource IconFont}" FontSize="34" Foreground="{StaticResource SubTextBrush}"
+                                                <TextBlock Text="{local:Icon E710}" FontFamily="{StaticResource IconFont}" FontSize="34" Foreground="{DynamicResource SubTextBrush}"
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsAdd}"/>
                                                 <!-- the photo sits inside a ring of the profile colour -->
                                                 <views:CoverImage Margin="5" IsCircle="True" Source="{Binding Avatar}"/>
                                                 <Ellipse Classes="ring" Stroke="White" StrokeThickness="3" Margin="-5"/>
                                                 <Button Classes="edit" Theme="{StaticResource PlayButton}" Width="34" Height="34" FontSize="13" Content="{local:Icon E70F}"
                                                         HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="Edit_Click"
-                                                        ToolTip.Tip="{local:T 'Modifica o elimina il profilo'}" IsVisible="{Binding !IsAdd}"/>
+                                                        ToolTip.Tip="{local:T 'Edit or delete profile'}" IsVisible="{Binding !IsAdd}"/>
                                             </Panel>
                                             <TextBlock Text="{Binding Name}" HorizontalAlignment="Center" Margin="0,12,0,0" FontSize="15" FontWeight="SemiBold"
                                                        TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{local:T 'in uso'}" HorizontalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource AccentTextBrush}"
+                                            <TextBlock Text="{local:T 'in use'}" HorizontalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource AccentTextBrush}"
                                                        IsVisible="{Binding IsCurrent}"/>
                                         </StackPanel>
                                     </Button>
@@ -116,13 +116,13 @@
                     </ScrollViewer>
 
                     <StackPanel Grid.Row="2" HorizontalAlignment="Center" Margin="0,16,0,0">
-                        <TextBlock Text="{local:T 'La matita modifica o elimina un profilo.'}" Classes="hint" HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                        <CheckBox x:Name="Remember" HorizontalAlignment="Center" Content="{local:T 'Avvia sempre con il profilo scelto'}"/>
+                        <TextBlock Text="{local:T 'The pencil edits or deletes a profile.'}" Classes="hint" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                        <CheckBox x:Name="Remember" HorizontalAlignment="Center" Content="{local:T 'Always start with the chosen profile'}"/>
                     </StackPanel>
                 </Grid>
 
                 <!-- ======================================================== editor -->
-                <Panel x:Name="EditPanel" Background="#E60E1014" IsVisible="False">
+                <Panel x:Name="EditPanel" Background="{DynamicResource VeilBrush}" IsVisible="False">
                     <Border Width="460" VerticalAlignment="Center" Theme="{StaticResource Card}" Padding="26">
                         <StackPanel>
                             <TextBlock x:Name="EditTitle" FontSize="20" FontWeight="Bold" Margin="0,0,0,18"/>
@@ -136,18 +136,18 @@
                                     <Button Theme="{StaticResource GhostButton}" HorizontalAlignment="Left" Click="PickAvatar_Click">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{local:Icon EB9F}" Classes="glyph"/>
-                                            <TextBlock Text="{local:T 'Scegli una foto…'}" Margin="8,0,0,0"/>
+                                            <TextBlock Text="{local:T 'Choose a photo…'}" Margin="8,0,0,0"/>
                                         </StackPanel>
                                     </Button>
-                                    <Button x:Name="RemoveAvatarButton" Theme="{StaticResource LinkButton}" Content="{local:T 'Rimuovi foto'}" Margin="4,10,0,0"
+                                    <Button x:Name="RemoveAvatarButton" Theme="{StaticResource LinkButton}" Content="{local:T 'Remove photo'}" Margin="4,10,0,0"
                                             HorizontalAlignment="Left" Click="RemoveAvatar_Click"/>
                                 </StackPanel>
                             </Grid>
 
-                            <TextBlock Text="{local:T Nome}" Classes="field-label"/>
+                            <TextBlock Text="{local:T Name}" Classes="field-label"/>
                             <TextBox x:Name="NameBox" Theme="{StaticResource BoxTextBox}" TextChanged="NameBox_Changed" MaxLength="30"/>
 
-                            <TextBlock Text="{local:T Colore}" Classes="field-label" Margin="2,16,0,8"/>
+                            <TextBlock Text="{local:T Color}" Classes="field-label" Margin="2,16,0,8"/>
                             <ItemsControl x:Name="Swatches">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -158,7 +158,7 @@
                                     <DataTemplate>
                                         <Panel Classes="swatch" Classes.sel="{Binding IsSelected}" Width="38" Height="38" Margin="0,0,6,6" Cursor="Hand" Background="Transparent"
                                                PointerReleased="Swatch_Click">
-                                            <Ellipse Classes="ring" Stroke="{StaticResource TextBrush}" StrokeThickness="2"/>
+                                            <Ellipse Classes="ring" Stroke="{DynamicResource TextBrush}" StrokeThickness="2"/>
                                             <Ellipse Margin="5" Fill="{Binding Brush}"/>
                                             <TextBlock Classes="check" Text="{local:Icon E73E}" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="White"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -168,12 +168,12 @@
                             </ItemsControl>
 
                             <DockPanel Margin="0,18,0,0" LastChildFill="False">
-                                <Button x:Name="DeleteButton" Theme="{StaticResource DangerButton}" Content="{local:T 'Elimina profilo'}" Click="Delete_Click"/>
-                                <Button DockPanel.Dock="Right" Theme="{StaticResource PrimaryButton}" Content="{local:T Salva}" MinWidth="96" Margin="10,0,0,0" Click="Save_Click" IsDefault="True"/>
-                                <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Content="{local:T Annulla}" MinWidth="96" Click="Cancel_Click"/>
+                                <Button x:Name="DeleteButton" Theme="{StaticResource DangerButton}" Content="{local:T 'Delete profile'}" Click="Delete_Click"/>
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource PrimaryButton}" Content="{local:T Save}" MinWidth="96" Margin="10,0,0,0" Click="Save_Click" IsDefault="True"/>
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Content="{local:T Cancel}" MinWidth="96" Click="Cancel_Click"/>
                             </DockPanel>
                             <TextBlock x:Name="DeleteHint" Classes="hint" Margin="2,10,0,0" IsVisible="False"
-                                       Text="{local:T 'È l\'unico profilo: per eliminarlo creane prima un altro.'}"/>
+                                       Text="{local:T 'It\'s the only profile: create another one before deleting it.'}"/>
                         </StackPanel>
                     </Border>
                 </Panel>

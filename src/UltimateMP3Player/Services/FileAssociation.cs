@@ -28,7 +28,7 @@ public static class FileAssociation
             using var classes = Registry.CurrentUser.CreateSubKey(@"Software\Classes");
             using (var prog = classes.CreateSubKey(ProgId))
             {
-                changed |= Set(prog, "", L.T("Pacchetto di Ultimate MP3 Player"));
+                changed |= Set(prog, "", L.T("Ultimate MP3 Player pack"));
                 using (var di = prog.CreateSubKey("DefaultIcon"))
                     changed |= Set(di, "", icon != null ? $"\"{icon}\",0" : $"\"{exe}\",0");
                 using (var cmd = prog.CreateSubKey(@"shell\open\command"))

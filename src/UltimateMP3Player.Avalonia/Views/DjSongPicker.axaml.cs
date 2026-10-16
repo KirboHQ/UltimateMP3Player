@@ -11,7 +11,7 @@ using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
 
-// "Carica" on a deck: the songs with cover, BPM and length, from the library, a playlist or a tag; the chosen one
+// "Load" on a deck: the songs with cover, BPM and length, from the library, a playlist or a tag; the chosen one
 // goes on deck A or B (the deck the button belongs to is the default).
 public partial class DjSongPicker : UserControl
 {
@@ -31,13 +31,13 @@ public partial class DjSongPicker : UserControl
         _dj = dj;
         _deck = deck;
         var main = dj.Main;
-        var sources = new List<Choice> { new(L.T("Tutti i brani"), "all") };
+        var sources = new List<Choice> { new(L.T("All songs"), "all") };
         sources.AddRange(main.Playlists.Select(p => new Choice(p.Name, p, L.T("playlist"))));
         sources.AddRange(main.Tags.Select(t => new Choice("#" + t.Name, t, L.T("tag"))));
         Source.SelectionChanged += (_, _) => SourceChanged();
         Source.ItemsSource = sources;
         Source.SelectedIndex = 0;
-        Hint.Text = L.F("Doppio clic o Invio: sul deck {0}. Oppure scegli il deck con i pulsanti qui sotto.", deck.Name);
+        Hint.Text = L.F("Double-click or Enter: onto deck {0}. Or pick the deck with the buttons below.", deck.Name);
         Filter.TextChanged += (_, _) => ApplyFilter();
         Filter.AddHandler(KeyDownEvent, FilterKeyDown, RoutingStrategies.Tunnel);
         List.SelectionChanged += (_, _) =>
@@ -61,20 +61,20 @@ public partial class DjSongPicker : UserControl
             this.Quick.Children.Add(b);
         }
         if (main.Player.Current is { } cur && (cur.T.AudioPath != null || cur.T.HasLink) && dj.Decks.All(d => d.Track != cur.T))
-            Quick("", L.F("In riproduzione: {0}", cur.Title), () => Close(new Result(deck, cur)));
+            Quick("", L.F("Now playing: {0}", cur.Title), () => Close(new Result(deck, cur)));
         var other = deck.Other;
         if (other.HasTrack && other.FilePath != null)
-            Quick("", L.F("Come il deck {0}: {1}", other.Name, other.Title), () => Close(new Result(deck, FromDeck: other)));
-        Quick("", L.T("Un file dal computer…"), PickFile);
+            Quick("", L.F("Same as deck {0}: {1}", other.Name, other.Title), () => Close(new Result(deck, FromDeck: other)));
+        Quick("", L.T("A file from your computer…"), PickFile);
     }
 
     public static Result? Show(DjViewModel dj, DjDeckViewModel deck)
     {
         var picker = new DjSongPicker(dj, deck);
-        var buttons = new List<Button> { Dialogs.Button(L.T("Annulla"), "GhostButton", isCancel: true) };
+        var buttons = new List<Button> { Dialogs.Button(L.T("Cancel"), "GhostButton", isCancel: true) };
         foreach (var d in dj.Decks)
         {
-            var b = Dialogs.Button(L.F("Carica sul deck {0}", d.Name), "PrimaryButton", isDefault: d == deck);
+            var b = Dialogs.Button(L.F("Load on deck {0}", d.Name), "PrimaryButton", isDefault: d == deck);
             b.Background = d.Brush;
             Ui.SetHoverBrush(b, Lighter(d.Color));
             b.IsEnabled = false;
@@ -83,7 +83,7 @@ public partial class DjSongPicker : UserControl
             picker._deckButtons.Add(b);
             buttons.Add(b);
         }
-        var win = Dialogs.Frame(L.T("Scegli il brano"), picker, 780, buttons.ToArray());
+        var win = Dialogs.Frame(L.T("Choose a song"), picker, 780, buttons.ToArray());
         picker._win = win;
         win.Opened += (_, _) => picker.Filter.Focus();
         win.ShowDialog();
@@ -146,7 +146,7 @@ public partial class DjSongPicker : UserControl
 
     private void PickFile()
     {
-        if (Dialogs.PickFile(L.T("Scegli un file audio"), (L.T("Audio e video"), Importer.Extensions)) is { } file)
+        if (Dialogs.PickFile(L.T("Choose an audio file"), (L.T("Audio and video"), Importer.Extensions)) is { } file)
             Close(new Result(_deck, File: file));
     }
 

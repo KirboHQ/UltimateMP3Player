@@ -22,13 +22,13 @@ public static partial class Dialogs
         => await ShowAsync(title, message, Array.Empty<(string, string)>(), ok, danger) != null;
 
     public static async Task<string?> PromptAsync(string title, string label, string initial)
-        => (await ShowAsync(title, null, new[] { (label, initial) }, L.T("Salva"), false))?[0];
+        => (await ShowAsync(title, null, new[] { (label, initial) }, L.T("Save"), false))?[0];
 
     public static async Task<(string Title, string Artist, string Album, string Bpm)?> EditTrackAsync(Track t)
     {
         var bpm = t.Bpm?.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) ?? "";
-        var r = await ShowAsync(L.T("Modifica informazioni"), null,
-            new[] { (L.T("Titolo"), t.Title), (L.T("Artista"), t.Artist ?? ""), (L.T("Album"), t.Album ?? ""), ("BPM", bpm) }, L.T("Salva"), false);
+        var r = await ShowAsync(L.T("Edit info"), null,
+            new[] { (L.T("Title"), t.Title), (L.T("Artist"), t.Artist ?? ""), (L.T("Album"), t.Album ?? ""), ("BPM", bpm) }, L.T("Save"), false);
         return r == null ? null : (r[0], r[1], r[2], r[3]);
     }
 
@@ -56,7 +56,7 @@ public static partial class Dialogs
         var row = new Grid { ColumnDefinitions = cancel ? new ColumnDefinitions("*,12,*") : new ColumnDefinitions("*"), Margin = new Thickness(0, 22, 0, 0) };
         if (cancel)
         {
-            var no = new Button { Content = L.T("Annulla"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+            var no = new Button { Content = L.T("Cancel"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
             no.Click += (_, _) => sheets.Close(body);
             row.Children.Add(no);
             Grid.SetColumn(okButton, 2);
@@ -102,16 +102,16 @@ public static partial class Dialogs
         var stack = new StackPanel();
         stack.Children.Add(new TextBlock
         {
-            Text = L.T("Ultimate MP3 Player è uno strumento: scarica soltanto quello che gli chiedi tu, attraverso programmi e siti di terze parti, e non ospita né distribuisce musica."),
+            Text = L.T("Ultimate MP3 Player is a tool: it only downloads what you ask it to, through third-party programs and sites, and it doesn't host or distribute any music."),
             TextWrapping = TextWrapping.Wrap, Foreground = sub, LineHeight = 21, FontSize = 14.5,
         });
-        stack.Children.Add(new TextBlock { Text = L.T("Usandolo dichiari che:"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 14, 0, 4), FontSize = 14.5 });
+        stack.Children.Add(new TextBlock { Text = L.T("By using it you declare that:"), FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 14, 0, 4), FontSize = 14.5 });
         foreach (var point in new[]
                  {
-                     "scaricherai solo brani, video e immagini che possiedi già legittimamente (per esempio musica che hai acquistato) o che hai comunque il diritto di scaricare, come contenuti liberi o con il permesso di chi li ha creati;",
+                     "you will only download songs, videos and images that you already lawfully own (for example music you bought) or that you otherwise have the right to download, such as free content or content its creators allow;",
                      // The phone has no "Listen together": what goes to others here is the .ump packs.
-                     "sei l'unico responsabile di cosa scarichi, di come lo usi e di cosa condividi con gli altri (anche con i pacchetti .ump), nel rispetto delle leggi sul diritto d'autore del tuo paese e delle condizioni dei siti da cui scarichi;",
-                     "l'autore dell'app non controlla i contenuti che scarichi e non risponde in alcun modo dell'uso che ne fai.",
+                     "you alone are responsible for what you download, how you use it and what you share with others (.ump packs included), in compliance with the copyright laws of your country and the terms of the sites you download from;",
+                     "the author of the app doesn't control the content you download and is in no way liable for the use you make of it.",
                  })
         {
             var row = new DockPanel { Margin = new Thickness(2, 8, 0, 0) };
@@ -129,22 +129,22 @@ public static partial class Dialogs
         var sheets = Sheets;
         if (sheets == null) return false;
         var body = new StackPanel { Margin = new Thickness(24, 4, 24, 18) };
-        body.Children.Add(new TextBlock { Text = L.T(ask ? "Prima di iniziare" : "Termini d'uso"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 12) });
+        body.Children.Add(new TextBlock { Text = L.T(ask ? "Before you start" : "Terms of use"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 12) });
         body.Children.Add(TermsText());
         bool accepted = false;
         if (!ask)
         {
-            var close = new Button { Content = L.T("Chiudi"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0) };
+            var close = new Button { Content = L.T("Close"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0) };
             close.Click += (_, _) => sheets.Close(body);
             body.Children.Add(close);
             await sheets.Show(new ScrollViewer { Content = body });
             return true;
         }
-        body.Children.Add(new TextBlock { Text = L.T("Se non sei d'accordo, esci: l'app si chiude e puoi disinstallarla."), Classes = { "hint" }, Foreground = Ui.Res("MutedBrush"), Margin = new Thickness(0, 14, 0, 0) });
-        var check = new CheckBox { Content = new TextBlock { Text = L.T("Ho letto e accetto queste condizioni"), TextWrapping = TextWrapping.Wrap, FontSize = 15 }, Margin = new Thickness(0, 16, 0, 0) };
+        body.Children.Add(new TextBlock { Text = L.T("If you don't agree, quit: the app closes and you can uninstall it."), Classes = { "hint" }, Foreground = Ui.Res("MutedBrush"), Margin = new Thickness(0, 14, 0, 0) });
+        var check = new CheckBox { Content = new TextBlock { Text = L.T("I have read and accept these terms"), TextWrapping = TextWrapping.Wrap, FontSize = 15 }, Margin = new Thickness(0, 16, 0, 0) };
         body.Children.Add(check);
-        var ok = new Button { Content = L.T("Accetto"), Theme = Ui.Theme("TouchPrimary"), IsEnabled = false, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
-        var exit = new Button { Content = L.T("Esci"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var ok = new Button { Content = L.T("I accept"), Theme = Ui.Theme("TouchPrimary"), IsEnabled = false, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var exit = new Button { Content = L.T("Quit"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
         check.IsCheckedChanged += (_, _) => ok.IsEnabled = check.IsChecked == true;
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,*"), Margin = new Thickness(0, 20, 0, 0) };
         row.Children.Add(exit);
@@ -214,7 +214,7 @@ public static partial class Dialogs
     public static async Task<string?> PickFileAsync(string title, params (string Name, IEnumerable<string> Extensions)[] filters)
         => (await PickFilesAsync(title, false, filters))?.FirstOrDefault();
 
-    public static Task<string?> PickImageAsync() => PickFileAsync(L.T("Scegli un'immagine"), (L.T("Immagini"), ImageExtensions));
+    public static Task<string?> PickImageAsync() => PickFileAsync(L.T("Choose an image"), (L.T("Images"), ImageExtensions));
 
     // A folder of music: its songs (also in the folders inside it) copied into the app's music folder.
     public static async Task<string?> PickFolderAsync(string title, string? initial = null)
@@ -231,7 +231,7 @@ public static partial class Dialogs
                 else if (item is IStorageFolder sub && depth < 6) await Walk(sub, depth + 1);
             }
         }
-        App.Host.Session?.Toast(L.T("Copia dei brani della cartella…"));
+        App.Host.Session?.Toast(L.T("Copying the folder's songs…"));
         await Walk(folder, 0);
         if (files.Count == 0) return null;
         var dir = Path.Combine(ImportDir, string.Join("_", folder.Name.Split(Path.GetInvalidFileNameChars())));

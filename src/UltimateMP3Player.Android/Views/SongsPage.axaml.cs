@@ -56,7 +56,7 @@ public partial class SongsPage : UserControl, IPage
         List.Picks.ReorderRequested += StartReorder;
     }
 
-    // Inside the library's tab "Brani": no title or back of its own (the tab has them).
+    // Inside the library's tab "Songs": no title or back of its own (the tab has them).
     public bool Embedded
     {
         get => GetValue(EmbeddedProperty);
@@ -190,12 +190,12 @@ public partial class SongsPage : UserControl, IPage
         {
             bool empty = DataContext switch { PlaylistPageViewModel p => p.IsEmpty, LibraryViewModel l => l.IsEmpty, _ => true };
             var storage = DataContext switch { PlaylistPageViewModel p => p.Storage, LibraryViewModel l => l.Storage, _ => null };
-            if (!empty) all.Add(new ListNote(L.T("Nessun brano trovato"), L.T("Prova con altre parole o togli il filtro dei tag.")));
+            if (!empty) all.Add(new ListNote(L.T("No songs found"), L.T("Try other words or remove the tag filter.")));
             // songs there, all hidden by the "on the phone / in the cloud" filter
             else if (storage is { HidesAll: true }) all.Add(new ListNote(storage.EmptyTitle, storage.EmptyText));
-            else if (DataContext is PlaylistPageViewModel pp) all.Add(new ListNote(L.T("La playlist è vuota"), L.T("Aggiungi brani dal menu ⋮ di un brano, oppure scegli questa playlist quando scarichi un link.")));
+            else if (DataContext is PlaylistPageViewModel pp) all.Add(new ListNote(L.T("This playlist is empty"), L.T("Add songs from a song's ⋮ menu, or choose this playlist when you download a link.")));
             else if (DataContext is LibraryViewModel lib) all.Add(new ListNote(lib.EmptyTitle, lib.IsTagPage || lib.Unsorted ? lib.EmptyText
-                : L.T("Condividi un link da un'altra app (YouTube, Spotify…) oppure incollalo nella scheda Download.")));
+                : L.T("Share a link from another app (YouTube, Spotify…) or paste it in the Download tab.")));
         }
         _filled = rows.Count;
         if (_shown != null && List.ItemsSource == _shown && Same(_shown, all))
@@ -258,10 +258,10 @@ public partial class SongsPage : UserControl, IPage
         ShowTopPanel();
     }
 
-    // ------------------------------------------------------------------ arranging a playlist ("Sposta")
+    // ------------------------------------------------------------------ arranging a playlist ("Move")
 
     // Its own order by hand, like on the computer: every row gets the handle (≡); dragging one, a copy of the song follows
-    // the finger and a line says where it lands; near the edges the list scrolls by itself. "Fatto" (or back) ends it.
+    // the finger and a line says where it lands; near the edges the list scrolls by itself. "Done" (or back) ends it.
     private bool _reordering;
     private SongItem? _dragged, _dropOn;
     private bool _dropAfter;
@@ -276,7 +276,7 @@ public partial class SongsPage : UserControl, IPage
         if (!page.IsCustomOrder)
         {
             page.UseCustomOrder();
-            App.Host.Session?.Toast(L.T("Ordine personalizzato della playlist"));
+            App.Host.Session?.Toast(L.T("Playlist's custom order"));
         }
         _reordering = true;
         List.Reordering = true;
@@ -518,7 +518,7 @@ public partial class SongsPage : UserControl, IPage
             _ => ((List<Choice>?)null, (Choice?)null, (Action<Choice>?)null),
         };
         if (sorts == null || current == null || pick == null) return;
-        var menu = new SheetMenu { Title = L.T("Ordina per") };
+        var menu = new SheetMenu { Title = L.T("Sort by") };
         foreach (var s in sorts)
         {
             var choice = s;

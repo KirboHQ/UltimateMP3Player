@@ -29,7 +29,7 @@
     </array>
     <key>XSAppIconAssets</key>
     <string>Assets.xcassets/AppIcon.appiconset</string>
-    <!-- Light clock and battery on the app's dark screen. -->
+    <!-- Light clock and battery on the app's dark look (Startup switches them to dark over the light one). -->
     <key>UIStatusBarStyle</key>
     <string>UIStatusBarStyleLightContent</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
@@ -39,7 +39,7 @@
     <array>
         <string>audio</string>
     </array>
-    <!-- The app's Documents (the music, errori.log) in the Files app, and files opened from there in place. -->
+    <!-- The app's Documents (the music, errors.log) in the Files app, and files opened from there in place. -->
     <key>UIFileSharingEnabled</key>
     <true/>
     <key>LSSupportsOpeningDocumentsInPlace</key>

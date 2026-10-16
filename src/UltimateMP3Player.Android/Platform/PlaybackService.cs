@@ -151,9 +151,9 @@ public sealed class PlaybackService : Service
         if (Build.VERSION.SdkInt < BuildVersionCodes.O) return;
         var m = (NotificationManager?)ctx.GetSystemService(NotificationService);
         if (m?.GetNotificationChannel(Channel) != null) return;
-        var ch = new NotificationChannel(Channel, L.T("Riproduzione"), NotificationImportance.Low)
+        var ch = new NotificationChannel(Channel, L.T("Playback"), NotificationImportance.Low)
         {
-            Description = L.T("Il brano in riproduzione, con i pulsanti per controllarlo"),
+            Description = L.T("The song playing, with the buttons to control it"),
             LockscreenVisibility = NotificationVisibility.Public,
         };
         ch.SetShowBadge(false);
@@ -177,11 +177,11 @@ public sealed class PlaybackService : Service
         if (c?.Art != null) b.SetLargeIcon(c.Art);
         if (c?.HasTrack == true)
         {
-            b.AddAction(Button(Resource.Drawable.ic_previous, L.T("Precedente"), ActionPrevious, 1));
-            b.AddAction(c.IsPlaying ? Button(Resource.Drawable.ic_pause, L.T("Pausa"), ActionPlayPause, 2) : Button(Resource.Drawable.ic_play, L.T("Riproduci"), ActionPlayPause, 2));
-            b.AddAction(Button(Resource.Drawable.ic_next, L.T("Successivo"), ActionNext, 3));
+            b.AddAction(Button(Resource.Drawable.ic_previous, L.T("Previous"), ActionPrevious, 1));
+            b.AddAction(c.IsPlaying ? Button(Resource.Drawable.ic_pause, L.T("Pause"), ActionPlayPause, 2) : Button(Resource.Drawable.ic_play, L.T("Play"), ActionPlayPause, 2));
+            b.AddAction(Button(Resource.Drawable.ic_next, L.T("Next"), ActionNext, 3));
             b.AddAction(Button(c.IsFavorite ? Resource.Drawable.ic_heart : Resource.Drawable.ic_heart_outline,
-                L.T(c.IsFavorite ? "Togli dai Preferiti" : "Aggiungi ai Preferiti"), ActionFavorite, 4));
+                L.T(c.IsFavorite ? "Remove from Favorites" : "Add to Favorites"), ActionFavorite, 4));
             // Not saved on the phone: the library icon into the library (in the cloud), or the download arrow for one already in it.
             if (c.IsTemporary) b.AddAction(Button(c.SaveIcon, c.SaveLabel, ActionSave, 6));
         }

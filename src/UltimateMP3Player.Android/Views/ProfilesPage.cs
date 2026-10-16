@@ -34,18 +34,18 @@ public sealed class ProfilesPage : UserControl
             stack.Children.Add(back);
         }
         stack.Children.Add(new Image { Source = new Avalonia.Media.Imaging.Bitmap(Avalonia.Platform.AssetLoader.Open(new Uri("avares://UltimateMP3Player/Assets/app-256.png"))), Width = 64, Height = 64 });
-        stack.Children.Add(new TextBlock { Text = L.T("Chi sta ascoltando?"), FontSize = 26, FontWeight = FontWeight.Bold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 18, 0, 6) });
+        stack.Children.Add(new TextBlock { Text = L.T("Who's listening?"), FontSize = 26, FontWeight = FontWeight.Bold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 18, 0, 6) });
         _subtitle = new TextBlock
         {
-            Text = startup ? L.T("Ognuno ha le sue playlist, i preferiti, la cronologia e l'equalizzatore; i brani sono di tutti.")
-                : L.T("Scegli un profilo, aggiungine uno o modifica quelli esistenti."),
+            Text = startup ? L.T("Everyone has their own playlists, favorites, history and equalizer; the songs belong to everyone.")
+                : L.T("Pick a profile, add one or edit the existing ones."),
             Classes = { "hint" }, TextAlignment = TextAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center, MaxWidth = 420, Margin = new Thickness(0, 0, 0, 28),
         };
         stack.Children.Add(_subtitle);
         stack.Children.Add(_tiles);
         _remember = new CheckBox
         {
-            Content = new TextBlock { Text = L.T("Apri sempre questo profilo all'avvio"), TextWrapping = TextWrapping.Wrap },
+            Content = new TextBlock { Text = L.T("Always open this profile at startup"), TextWrapping = TextWrapping.Wrap },
             IsChecked = host.Settings.StartupProfile != null, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 18, 0, 0),
         };
         stack.Children.Add(_remember);
@@ -93,7 +93,7 @@ public sealed class ProfilesPage : UserControl
         }
         var name = new TextBlock
         {
-            Text = p?.Name ?? L.T("Aggiungi profilo"), FontSize = 15, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center,
+            Text = p?.Name ?? L.T("Add profile"), FontSize = 15, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis, MaxWidth = 120, Margin = new Thickness(0, 10, 0, 0),
             Foreground = p == null ? Ui.Res("SubTextBrush") : Ui.Res("TextBrush"),
         };
@@ -107,7 +107,7 @@ public sealed class ProfilesPage : UserControl
             var pen = new TextBlock { Text = Icons.Map(""), FontSize = 13 };
             pen.Classes.Add("glyph");
             row.Children.Add(pen);
-            row.Children.Add(new TextBlock { Text = L.T("Modifica"), Margin = new Thickness(6, 0, 0, 0) });
+            row.Children.Add(new TextBlock { Text = L.T("Edit"), Margin = new Thickness(6, 0, 0, 0) });
             edit.Content = row;
             edit.Click += (_, _) => _ = Edit(p, false);
             col.Children.Add(edit);
@@ -138,7 +138,7 @@ public sealed class ProfilesPage : UserControl
         string? pendingAvatar = null;
         bool removeAvatar = false;
         var body = new StackPanel { Margin = new Thickness(24, 4, 24, 18) };
-        body.Children.Add(new TextBlock { Text = L.T(isNew ? "Nuovo profilo" : "Modifica profilo"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 14) });
+        body.Children.Add(new TextBlock { Text = L.T(isNew ? "New profile" : "Edit profile"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 14) });
 
         var disc = new Ellipse { Width = 84, Height = 84 };
         var initial = new TextBlock { FontSize = 32, FontWeight = FontWeight.Bold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
@@ -149,16 +149,16 @@ public sealed class ProfilesPage : UserControl
         preview.Children.Add(avatar);
         body.Children.Add(preview);
         var photoRow = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 12, 0, 0) };
-        var pick = new Button { Theme = Ui.Theme("SmallGhost"), Content = L.T("Scegli una foto…") };
-        var remove = new Button { Theme = Ui.Theme("SmallGhost"), Content = L.T("Togli la foto"), Margin = new Thickness(8, 0, 0, 0) };
+        var pick = new Button { Theme = Ui.Theme("SmallGhost"), Content = L.T("Choose a photo…") };
+        var remove = new Button { Theme = Ui.Theme("SmallGhost"), Content = L.T("Remove the picture"), Margin = new Thickness(8, 0, 0, 0) };
         photoRow.Children.Add(pick);
         photoRow.Children.Add(remove);
         body.Children.Add(photoRow);
 
-        body.Children.Add(Ui.Text(L.T("Nome"), "field-label", new Thickness(4, 16, 0, 8)));
-        var nameBox = new TextBox { Theme = Ui.Theme("TouchBox"), Text = p.Name, Watermark = L.T("Il tuo nome") };
+        body.Children.Add(Ui.Text(L.T("Name"), "field-label", new Thickness(4, 16, 0, 8)));
+        var nameBox = new TextBox { Theme = Ui.Theme("TouchBox"), Text = p.Name, Watermark = L.T("Your name") };
         body.Children.Add(nameBox);
-        body.Children.Add(Ui.Text(L.T("Colore"), "field-label", new Thickness(4, 16, 0, 8)));
+        body.Children.Add(Ui.Text(L.T("Color"), "field-label", new Thickness(4, 16, 0, 8)));
         var swatches = new SwatchGrid();
         var rings = new Dictionary<string, Ellipse>(StringComparer.OrdinalIgnoreCase);
         void Update()
@@ -198,8 +198,8 @@ public sealed class ProfilesPage : UserControl
             Update();
         };
 
-        var save = new Button { Theme = Ui.Theme("TouchPrimary"), Content = L.T("Salva"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
-        var cancel = new Button { Theme = Ui.Theme("TouchGhost"), Content = L.T("Annulla"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var save = new Button { Theme = Ui.Theme("TouchPrimary"), Content = L.T("Save"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var cancel = new Button { Theme = Ui.Theme("TouchGhost"), Content = L.T("Cancel"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,*"), Margin = new Thickness(0, 20, 0, 0) };
         row.Children.Add(cancel);
         Grid.SetColumn(save, 2);
@@ -209,7 +209,7 @@ public sealed class ProfilesPage : UserControl
         {
             var delete = new Button
             {
-                Theme = Ui.Theme("TouchDanger"), Content = L.T("Elimina il profilo"), HorizontalAlignment = HorizontalAlignment.Stretch,
+                Theme = Ui.Theme("TouchDanger"), Content = L.T("Delete profile"), HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 12, 0, 0), IsEnabled = _host.Profiles.Profiles.Count > 1,
             };
             delete.Click += async (_, _) =>
@@ -219,7 +219,7 @@ public sealed class ProfilesPage : UserControl
             };
             body.Children.Add(delete);
             if (_host.Profiles.Profiles.Count < 2)
-                body.Children.Add(Ui.Text(L.T("È l'unico profilo: per eliminarlo creane prima un altro."), "hint", new Thickness(4, 8, 0, 0)));
+                body.Children.Add(Ui.Text(L.T("It's the only profile: create another one before deleting it."), "hint", new Thickness(4, 8, 0, 0)));
         }
         Update();
         bool saved = false;
@@ -263,10 +263,10 @@ public sealed class ProfilesPage : UserControl
     {
         if (_host.Profiles.Profiles.Count < 2) return;
         bool inUse = p.Id == _currentId;
-        if (!await Dialogs.ConfirmAsync(L.T("Eliminare il profilo?"),
-                L.F("Il profilo «{0}» verrà eliminato con le sue playlist, i preferiti, la cronologia e l'equalizzatore. I brani scaricati restano nella libreria degli altri profili.", p.Name) +
-                (inUse ? "\n\n" + L.T("È il profilo in uso: dopo scegli con quale continuare.") : ""),
-                L.T("Elimina"), true)) return;
+        if (!await Dialogs.ConfirmAsync(L.T("Delete this profile?"),
+                L.F("The profile “{0}” will be deleted along with its playlists, favorites, history and equalizer. Downloaded songs stay in the other profiles' libraries.", p.Name) +
+                (inUse ? "\n\n" + L.T("It's the profile in use: afterwards you'll choose which one to continue with.") : ""),
+                L.T("Delete"), true)) return;
         _host.Profiles.Profiles.Remove(p);
         _host.Profiles.Save();
         if (_host.Settings.StartupProfile == p.Id)
@@ -279,7 +279,7 @@ public sealed class ProfilesPage : UserControl
         {
             _currentDeleted = true;
             _currentId = null;
-            _subtitle.Text = L.T("Il profilo è stato eliminato: scegli con quale profilo continuare.");
+            _subtitle.Text = L.T("The profile was deleted: choose which profile to continue with.");
         }
         Refresh();
     }

@@ -91,7 +91,7 @@ public static partial class Dialogs
         }
         Update();
 
-        var win = Frame(plan.Title, body, 460, Button(L.T("Annulla"), "GhostButton", isCancel: true), ok);
+        var win = Frame(plan.Title, body, 460, Button(L.T("Cancel"), "GhostButton", isCancel: true), ok);
         RemoveKind? result = null;
         ok.Click += (_, _) =>
         {
@@ -122,23 +122,23 @@ public static partial class Dialogs
     {
         var body = new StackPanel();
         body.Children.Add(new TextBlock { Text = plan.Subtitle, Foreground = Res("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, -4, 0, 12) });
-        body.Children.Add(new TextBlock { Text = L.T("Qualità dell'audio"), Classes = { "field-label" }, Margin = new Thickness(2, 4, 0, 6) });
+        body.Children.Add(new TextBlock { Text = L.T("Audio quality"), Classes = { "field-label" }, Margin = new Thickness(2, 4, 0, 6) });
         var audio = new ComboBox { ItemsSource = plan.AudioChoices, SelectedItem = plan.Audio, HorizontalAlignment = HorizontalAlignment.Stretch };
         body.Children.Add(audio);
         CheckBox? withVideo = null;
         ComboBox? video = null;
         if (plan.CanVideo)
         {
-            withVideo = new CheckBox { Content = L.T("Anche il video"), IsChecked = plan.WithVideo, Margin = new Thickness(0, 16, 0, 0) };
+            withVideo = new CheckBox { Content = L.T("Video too"), IsChecked = plan.WithVideo, Margin = new Thickness(0, 16, 0, 0) };
             body.Children.Add(withVideo);
-            body.Children.Add(new TextBlock { Text = L.T("Qualità massima dei video"), Classes = { "field-label" }, Margin = new Thickness(2, 10, 0, 6) });
+            body.Children.Add(new TextBlock { Text = L.T("Maximum video quality"), Classes = { "field-label" }, Margin = new Thickness(2, 10, 0, 6) });
             video = new ComboBox { ItemsSource = plan.VideoChoices, SelectedItem = plan.Video, IsEnabled = plan.WithVideo, HorizontalAlignment = HorizontalAlignment.Stretch };
             withVideo.IsCheckedChanged += (_, _) => video.IsEnabled = withVideo.IsChecked == true;
             body.Children.Add(video);
         }
         body.Children.Add(new TextBlock { Text = plan.Hint, TextWrapping = TextWrapping.Wrap, Foreground = Res("MutedBrush"), FontSize = 12.5, LineHeight = 18, Margin = new Thickness(2, 14, 0, 0) });
         var ok = Button(plan.OkText, "PrimaryButton", isDefault: true);
-        var win = Frame(plan.Title, body, 420, Button(L.T("Annulla"), "GhostButton", isCancel: true), ok);
+        var win = Frame(plan.Title, body, 420, Button(L.T("Cancel"), "GhostButton", isCancel: true), ok);
         ok.Click += (_, _) => win.DialogResult = true;
         win.Opened += (_, _) => ok.Focus();
         if (win.ShowDialog() != true) return false;
@@ -161,14 +161,14 @@ public static partial class Dialogs
             Text = $"{t.Title} · {t.DisplayArtist}" + (t.Duration > 0 ? " · " + Text.Duration(t.Duration) : ""),
             Foreground = Res("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, -4, 0, 12),
         });
-        var status = new TextBlock { Text = L.T("Cerco su YouTube…"), Foreground = Res("MutedBrush"), Margin = new Thickness(2, 6, 0, 6), TextWrapping = TextWrapping.Wrap };
+        var status = new TextBlock { Text = L.T("Searching YouTube…"), Foreground = Res("MutedBrush"), Margin = new Thickness(2, 6, 0, 6), TextWrapping = TextWrapping.Wrap };
         body.Children.Add(status);
         var list = new StackPanel();
         body.Children.Add(new ScrollViewer { Content = list, MaxHeight = 420, VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto });
 
-        var ok = Button(L.T("Scarica il video"), "PrimaryButton", isDefault: true);
+        var ok = Button(L.T("Download video"), "PrimaryButton", isDefault: true);
         ok.IsEnabled = false;
-        var win = Frame(L.T("Scegli il video"), body, 520, Button(L.T("Annulla"), "GhostButton", isCancel: true), ok);
+        var win = Frame(L.T("Choose the video"), body, 520, Button(L.T("Cancel"), "GhostButton", isCancel: true), ok);
         VideoCandidate? chosen = null;
         var rows = new List<(VideoCandidate C, Border Row)>();
 
@@ -190,16 +190,16 @@ public static partial class Dialogs
             try { found = await Task.Run(() => VideoFinder.SearchAsync(t.Title, t.Artist, t.Duration, CancellationToken.None)); }
             catch
             {
-                status.Text = L.T("La ricerca non è riuscita: controlla la connessione e riprova.");
+                status.Text = L.T("The search failed: check your connection and try again.");
                 return;
             }
             if (!win.IsVisible) return;
             if (found.Count == 0)
             {
-                status.Text = L.T("Nessun video trovato su YouTube per questo brano.");
+                status.Text = L.T("No video found on YouTube for this song.");
                 return;
             }
-            status.Text = L.T("Scegli quello giusto: il video va a tempo con l'audio, quindi deve essere la stessa versione.");
+            status.Text = L.T("Pick the right one: the video plays in time with the audio, so it must be the same version.");
             foreach (var c in found.Take(8))
             {
                 var thumb = new CoverImage { Width = 120, Height = 68, CornerRadius = new CornerRadius(8) };
@@ -212,7 +212,7 @@ public static partial class Dialogs
                 if (c.LengthDiffers(t.Duration))
                     info.Children.Add(new TextBlock
                     {
-                        Text = "⚠ " + L.T("Durata diversa dal brano: potrebbe andare fuori tempo"), Foreground = Res("WarningBrush"), FontSize = 12,
+                        Text = "⚠ " + L.T("Different length from the song: it may go out of sync"), Foreground = Res("WarningBrush"), FontSize = 12,
                         Margin = new Thickness(0, 3, 0, 0), TextWrapping = TextWrapping.Wrap,
                     });
                 var dock = new DockPanel();

@@ -105,7 +105,7 @@ public partial class SearchPage : UserControl, IPage
         items.AddRange(_vm.PlaylistResults);
         items.AddRange(_vm.Rows);
         Picks.SetItems(items, _vm);
-        if (items.Count == 0) items.Add(new ListNote(L.T("Nessun risultato"), _vm.LocalEmptyHint));
+        if (items.Count == 0) items.Add(new ListNote(L.T("No results"), _vm.LocalEmptyHint));
         LocalList.ItemsSource = items;
     }
 
@@ -143,5 +143,10 @@ public partial class SearchPage : UserControl, IPage
         return true;
     }
 
-    public void ScrollToTop() => Box.Focus();
+    // A tap on the tab already open: back to the top. The keyboard only opens with a tap on the box.
+    public void ScrollToTop()
+    {
+        Intro.Offset = default;
+        if (LocalList.ItemCount > 0) LocalList.ScrollIntoView(0);
+    }
 }

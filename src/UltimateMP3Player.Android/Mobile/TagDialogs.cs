@@ -24,13 +24,13 @@ public static class TagDialogs
         bool isNew = name == null;
         var chosen = color;
         var body = new StackPanel { Margin = new Thickness(24, 4, 24, 18) };
-        body.Children.Add(new TextBlock { Text = L.T(isNew ? "Nuovo tag" : "Modifica tag"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 8) });
+        body.Children.Add(new TextBlock { Text = L.T(isNew ? "New tag" : "Edit tag"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 8) });
 
-        body.Children.Add(Ui.Text(L.T("Nome"), "field-label", new Thickness(4, 8, 0, 8)));
-        var nameBox = new TextBox { Text = name ?? "", Theme = Ui.Theme("TouchBox"), Watermark = L.T("Es. chill, anni 2000, palestra…") };
+        body.Children.Add(Ui.Text(L.T("Name"), "field-label", new Thickness(4, 8, 0, 8)));
+        var nameBox = new TextBox { Text = name ?? "", Theme = Ui.Theme("TouchBox"), Watermark = L.T("E.g. chill, 2000s, gym…") };
         body.Children.Add(nameBox);
 
-        body.Children.Add(Ui.Text(L.T("Colore"), "field-label", new Thickness(4, 16, 0, 8)));
+        body.Children.Add(Ui.Text(L.T("Color"), "field-label", new Thickness(4, 16, 0, 8)));
         var swatches = new SwatchGrid();
         var rings = new Dictionary<string, Ellipse>(StringComparer.OrdinalIgnoreCase);
         var dot = new Ellipse { Width = 11, Height = 11, VerticalAlignment = VerticalAlignment.Center };
@@ -55,21 +55,21 @@ public static class TagDialogs
         }
         body.Children.Add(swatches);
         var custom = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
-        var customLabel = new TextBlock { Text = L.T("Personalizzato"), Foreground = B("SubTextBrush"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 12, 0) };
+        var customLabel = new TextBlock { Text = L.T("Custom"), Foreground = B("SubTextBrush"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(4, 0, 12, 0) };
         DockPanel.SetDock(customLabel, Dock.Left);
         custom.Children.Add(customLabel);
         custom.Children.Add(hexBox);
         body.Children.Add(custom);
 
-        body.Children.Add(Ui.Text(L.T("Anteprima"), "field-label", new Thickness(4, 16, 0, 8)));
+        body.Children.Add(Ui.Text(L.T("Preview"), "field-label", new Thickness(4, 16, 0, 8)));
         var chipText = new TextBlock { FontSize = 14, FontWeight = FontWeight.SemiBold, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         var chipRow = new StackPanel { Orientation = Orientation.Horizontal };
         chipRow.Children.Add(dot);
         chipRow.Children.Add(chipText);
         body.Children.Add(new Border { CornerRadius = new CornerRadius(14), Padding = new Thickness(12, 6, 14, 6), Background = B("Surface3Brush"), HorizontalAlignment = HorizontalAlignment.Left, Child = chipRow });
 
-        var ok = new Button { Content = L.T(isNew ? "Crea" : "Salva"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
-        var cancel = new Button { Content = L.T("Annulla"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var ok = new Button { Content = L.T(isNew ? "Create" : "Save"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var cancel = new Button { Content = L.T("Cancel"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,*"), Margin = new Thickness(0, 22, 0, 0) };
         row.Children.Add(cancel);
         Grid.SetColumn(ok, 2);
@@ -79,7 +79,7 @@ public static class TagDialogs
         void Refresh()
         {
             var n = (nameBox.Text ?? "").Trim();
-            chipText.Text = n.Length > 0 ? n : L.T("Nome del tag");
+            chipText.Text = n.Length > 0 ? n : L.T("Tag name");
             ok.IsEnabled = n.Length > 0;
         }
         hexBox.TextChanged += (_, _) => { if (ParseHex(hexBox.Text ?? "") is { } h && !h.Equals(chosen, StringComparison.OrdinalIgnoreCase)) Pick(h, false); };
@@ -114,8 +114,8 @@ public static class TagDialogs
 
         var top = new StackPanel();
         DockPanel.SetDock(top, Dock.Top);
-        top.Children.Add(new TextBlock { Text = L.F("Tag sui brani di «{0}»", p.Name), FontSize = 19, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 0, 4, 6) });
-        top.Children.Add(Ui.Text(L.T("Scegli i tag e i brani: puoi aggiungerli o toglierli a tutti insieme."), "hint", new Thickness(4, 0, 4, 12)));
+        top.Children.Add(new TextBlock { Text = L.F("Tags on the songs of “{0}”", p.Name), FontSize = 19, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 0, 4, 6) });
+        top.Children.Add(Ui.Text(L.T("Choose the tags and the songs: you can add or remove them all at once."), "hint", new Thickness(4, 0, 4, 12)));
         var tagPanel = new WrapPanel { Margin = new Thickness(0, 0, 0, 4) };
         top.Children.Add(tagPanel);
         var header = new DockPanel { Margin = new Thickness(4, 10, 0, 8) };
@@ -127,8 +127,8 @@ public static class TagDialogs
         top.Children.Add(header);
         body.Children.Add(top);
 
-        var add = new Button { Content = L.T("Aggiungi ai brani"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
-        var remove = new Button { Content = L.T("Togli dai brani"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var add = new Button { Content = L.T("Add to songs"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var remove = new Button { Content = L.T("Remove from songs"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
         var buttons = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,*"), Margin = new Thickness(0, 14, 0, 0) };
         DockPanel.SetDock(buttons, Dock.Bottom);
         buttons.Children.Add(remove);
@@ -142,8 +142,8 @@ public static class TagDialogs
         void Update()
         {
             int n = choices.Count(c => c.IsSelected);
-            countText.Text = L.F("{0} di {1} selezionati", n, choices.Count);
-            toggleAll.Content = n == choices.Count ? L.T("Deseleziona tutti") : L.T("Seleziona tutti");
+            countText.Text = L.F("{0} of {1} selected", n, choices.Count);
+            toggleAll.Content = n == choices.Count ? L.T("Deselect all|m") : L.T("Select all|m");
             add.IsEnabled = remove.IsEnabled = n > 0 && chosenTags.Count > 0;
         }
         foreach (var t in main.Tags)

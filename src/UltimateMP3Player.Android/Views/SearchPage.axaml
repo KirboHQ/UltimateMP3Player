@@ -10,13 +10,13 @@
     <Grid RowDefinitions="*,Auto">
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Margin="16,12,16,8">
-            <TextBlock Text="{local:T Cerca}" Classes="page-title" Margin="2,0,0,12"/>
-            <Border Height="50" CornerRadius="25" Background="{StaticResource Surface2Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+            <TextBlock Text="{local:T Search}" Classes="page-title" Margin="2,0,0,12"/>
+            <Border Height="50" CornerRadius="25" Background="{DynamicResource Surface2Brush}" BorderBrush="Transparent" BorderThickness="1"
                     Padding="16,0,4,0">
                 <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                    <TextBlock Text="{local:Icon E721}" Classes="glyph" Foreground="{StaticResource SubTextBrush}" FontSize="17"/>
+                    <TextBlock Text="{local:Icon E721}" Classes="glyph" Foreground="{DynamicResource SubTextBrush}" FontSize="17"/>
                     <TextBox x:Name="Box" Grid.Column="1" Theme="{StaticResource BareTextBox}" FontSize="15.5" Margin="12,0,4,0"
-                             Watermark="{local:T 'Brani, artisti, oppure un link'}"/>
+                             Watermark="{local:T 'Songs, artists, or a link'}"/>
                     <Button x:Name="ClearButton" Grid.Column="2" Theme="{StaticResource TouchIcon}" Width="40" Height="40" FontSize="13" Content="{local:Icon E711}"
                             Click="Clear_Click" IsVisible="False"/>
                     <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Width="42" Height="42" FontSize="17" Content="{local:Icon E77F}" Click="Paste_Click"/>
@@ -27,11 +27,11 @@
                     IsVisible="False" Click="Download_Click">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{local:Icon E896}" Classes="glyph"/>
-                    <TextBlock Text="{local:T 'Scarica questo link'}" Margin="8,0,0,0"/>
+                    <TextBlock Text="{local:T 'Download this link'}" Margin="8,0,0,0"/>
                 </StackPanel>
             </Button>
             <!-- your songs / the music sites -->
-            <Border x:Name="Tabs" Margin="0,12,0,0" CornerRadius="22" Padding="4" Background="{StaticResource SurfaceBrush}" MaxWidth="560"
+            <Border x:Name="Tabs" Margin="0,12,0,0" CornerRadius="22" Padding="4" Background="{DynamicResource SurfaceBrush}" MaxWidth="560"
                     IsVisible="False">
                 <UniformGrid Rows="1">
                     <RadioButton Theme="{StaticResource TouchSegment}" GroupName="SearchTabs" local:Ui.Glyph="&#xE8F1;" Content="{Binding LocalTabText}"
@@ -46,12 +46,12 @@
             <!-- nothing written yet -->
             <ScrollViewer x:Name="Intro">
                 <StackPanel Margin="20,20,20,24">
-                    <TextBlock Text="{local:T 'Cerca nei tuoi brani e online'}" FontSize="18" FontWeight="SemiBold"/>
+                    <TextBlock Text="{local:T 'Search your songs and online'}" FontSize="18" FontWeight="SemiBold"/>
                     <TextBlock Classes="hint" Margin="0,8,0,0" FontSize="14"
-                               Text="{local:T 'Scrivi il titolo o l\'artista: trovi i brani che hai già e quelli dei siti di musica, da scaricare con un tocco. Puoi anche incollare il link di un brano o di una playlist.'}"/>
+                               Text="{local:T 'Type the title or the artist: you find the songs you already have and those on music sites, to download with a tap. You can also paste the link of a song or a playlist.'}"/>
                     <TextBlock Classes="hint" Margin="0,14,0,0" FontSize="14"
-                               Text="{local:T 'Da YouTube, Spotify, SoundCloud e quasi ogni altra app: premi Condividi e scegli «Scarica con Ultimate MP3 Player».'}"/>
-                    <TextBlock Classes="hint" Margin="0,14,0,0" FontSize="14" Text="{local:T 'Con #nome trovi i brani con quel tag.'}"/>
+                               Text="{local:T 'From YouTube, Spotify, SoundCloud and almost any other app: tap Share and choose “Download with Ultimate MP3 Player”.'}"/>
+                    <TextBlock Classes="hint" Margin="0,14,0,0" FontSize="14" Text="{local:T 'With #name you find the songs with that tag.'}"/>
                 </StackPanel>
             </ScrollViewer>
 
@@ -89,7 +89,7 @@
                                         <StackPanel Orientation="Horizontal">
                                             <Ellipse Width="8" Height="8" Fill="{Binding Brush}" Margin="0,0,7,0" VerticalAlignment="Center" IsVisible="{Binding HasDot}"/>
                                             <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Count}" Foreground="{StaticResource MutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Count}" Foreground="{DynamicResource MutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                     </ToggleButton>
                                 </DataTemplate>
@@ -108,28 +108,28 @@
                                 <Border Classes="row" Padding="16,7,12,7" views:Touch.Tap="{Binding DownloadCommand}">
                                     <Grid ColumnDefinitions="52,*,Auto">
                                         <Panel Width="52" Height="52">
-                                            <Border CornerRadius="6" Background="{StaticResource PlaceholderGradient}">
-                                                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="18" HorizontalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+                                            <Border CornerRadius="6" Background="{DynamicResource PlaceholderGradient}">
+                                                <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="18" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                                             </Border>
                                             <views:CoverImage CornerRadius="6" Source="{Binding Thumb}"/>
                                         </Panel>
                                         <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
                                             <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{StaticResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
                                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                                 <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Service}" FontSize="12" Margin="6,0,10,0" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding DurationText}" FontSize="12" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
-                                                <Border CornerRadius="7" Padding="6,0" Margin="10,0,0,0" Background="#1E3A2F" VerticalAlignment="Center" IsVisible="{Binding InLibrary}">
+                                                <TextBlock Text="{Binding Service}" FontSize="12" Margin="6,0,10,0" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding DurationText}" FontSize="12" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <Border CornerRadius="7" Padding="6,0" Margin="10,0,0,0" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center" IsVisible="{Binding InLibrary}">
                                                     <StackPanel Orientation="Horizontal">
-                                                        <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="9" Foreground="{StaticResource SuccessBrush}"/>
-                                                        <TextBlock Text="{local:T 'nella libreria'}" FontSize="11" FontWeight="SemiBold" Margin="4,0,0,1" Foreground="{StaticResource SuccessBrush}"/>
+                                                        <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="9" Foreground="{DynamicResource SuccessBrush}"/>
+                                                        <TextBlock Text="{local:T 'in library'}" FontSize="11" FontWeight="SemiBold" Margin="4,0,0,1" Foreground="{DynamicResource SuccessBrush}"/>
                                                     </StackPanel>
                                                 </Border>
                                             </StackPanel>
                                         </StackPanel>
-                                        <Border Grid.Column="2" Width="40" Height="40" CornerRadius="20" Background="{StaticResource Surface3Brush}" VerticalAlignment="Center">
-                                            <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="16" Foreground="{StaticResource TextBrush}" HorizontalAlignment="Center"/>
+                                        <Border Grid.Column="2" Width="40" Height="40" CornerRadius="20" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center">
+                                            <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="16" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center"/>
                                         </Border>
                                     </Grid>
                                 </Border>
@@ -138,7 +138,7 @@
                     </ListBox>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="28,40,28,0" IsVisible="{Binding NoOnlineResults}">
                         <TextBlock Text="{Binding NoOnlineText}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
-                        <TextBlock Text="{local:T 'Prova con il titolo e l\'artista, oppure incolla direttamente il link del brano.'}" Classes="hint"
+                        <TextBlock Text="{local:T 'Try the title and the artist, or paste the song\'s link directly.'}" Classes="hint"
                                    Margin="0,8,0,0" TextAlignment="Center"/>
                     </StackPanel>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,48,0,0" Orientation="Horizontal">
@@ -149,7 +149,7 @@
                             </MultiBinding>
                         </StackPanel.IsVisible>
                         <Ellipse Classes="spinner" Width="20" Height="20" StrokeThickness="3"/>
-                        <TextBlock Text="{local:T 'Cerco online…'}" FontSize="14" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource SubTextBrush}"/>
+                        <TextBlock Text="{local:T 'Searching online…'}" FontSize="14" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
                     </StackPanel>
                 </Panel>
             </DockPanel>

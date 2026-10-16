@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <color name="ump_bg">#0E1014</color>
+  <!-- The app's background while it starts (the device's light look; values-night: the dark one), no white or black flash. -->
+  <color name="ump_bg">#F4F5F8</color>
+  <bool name="ump_light_bars">true</bool>
   <color name="ump_accent">#7C5CFF</color>
   <color name="ump_icon_bg">#8A4CF8</color>
 </resources>

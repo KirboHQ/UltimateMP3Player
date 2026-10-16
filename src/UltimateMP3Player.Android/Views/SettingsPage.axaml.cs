@@ -49,7 +49,7 @@ public partial class SettingsPage : UserControl, IPage
         // still from here), the music is in the Files app.
         foreach (var c in new Control[] { OutputRow, OutputLine, AutoUpdateSwitch })
             c.IsVisible = false;
-        MusicDirHint.Text = L.T("Nell'app File: Sul mio iPhone › Ultimate MP3 Player › Music. Se disinstalli l'app, la musica viene cancellata.");
+        MusicDirHint.Text = L.T("In the Files app: On My iPhone › Ultimate MP3 Player › Music. If you uninstall the app, the music is deleted.");
 #endif
     }
 
@@ -219,16 +219,17 @@ public partial class SettingsPage : UserControl, IPage
         if (what == "OutputDevice") vm.RefreshOutputDevices();
         (string Title, List<Choice> Items, Choice? Current, Action<Choice> Set)? c = what switch
         {
-            "OutputDevice" => (L.T("Uscita audio"), vm.OutputDevices, vm.OutputDevice, x => vm.OutputDevice = x),
-            "Language" => (L.T("Lingua"), vm.Languages, vm.Language, x => vm.Language = x),
-            "StartupProfile" => (L.T("All'avvio"), vm.StartupChoices, vm.StartupProfile, x => vm.StartupProfile = x),
-            "RadioSource" => (L.T("Da dove arrivano i brani simili"), vm.RadioSourceChoices, vm.RadioSource, x => vm.RadioSource = x),
-            "RadioAhead" => (L.T("Brani simili preparati in anticipo"), vm.TogetherAheadChoices, vm.RadioAhead, x => vm.RadioAhead = x),
-            "SearchMode" => (L.T("Come cercare"), vm.SearchModes, vm.SearchMode, x => vm.SearchMode = x),
-            "AudioFormat" => (L.T("Formato dell'audio"), vm.AudioFormats, vm.AudioFormat, x => vm.AudioFormat = x),
-            "VideoQuality" => (L.T("Qualità massima dei video"), vm.VideoQualities, vm.VideoQuality, x => vm.VideoQuality = x),
-            "Parallel" => (L.T("Download insieme"), vm.ParallelChoices, vm.Parallel, x => vm.Parallel = x),
-            "TogetherCacheSize" => (L.T("Memoria temporanea (brani non salvati)"), vm.TogetherCacheChoices, vm.TogetherCacheSize, x => vm.TogetherCacheSize = x),
+            "OutputDevice" => (L.T("Audio output"), vm.OutputDevices, vm.OutputDevice, x => vm.OutputDevice = x),
+            "Appearance" => (L.T("Light or dark"), vm.Appearances, vm.Appearance, x => vm.Appearance = x),
+            "Language" => (L.T("Language"), vm.Languages, vm.Language, x => vm.Language = x),
+            "StartupProfile" => (L.T("At startup"), vm.StartupChoices, vm.StartupProfile, x => vm.StartupProfile = x),
+            "RadioSource" => (L.T("Where similar songs come from"), vm.RadioSourceChoices, vm.RadioSource, x => vm.RadioSource = x),
+            "RadioAhead" => (L.T("Similar songs prepared ahead"), vm.TogetherAheadChoices, vm.RadioAhead, x => vm.RadioAhead = x),
+            "SearchMode" => (L.T("How to search"), vm.SearchModes, vm.SearchMode, x => vm.SearchMode = x),
+            "AudioFormat" => (L.T("Audio format"), vm.AudioFormats, vm.AudioFormat, x => vm.AudioFormat = x),
+            "VideoQuality" => (L.T("Maximum video quality"), vm.VideoQualities, vm.VideoQuality, x => vm.VideoQuality = x),
+            "Parallel" => (L.T("Downloads at once"), vm.ParallelChoices, vm.Parallel, x => vm.Parallel = x),
+            "CacheSize" => (L.T("Temporary storage (unsaved songs)"), vm.CacheChoices, vm.CacheSize, x => vm.CacheSize = x),
             _ => null,
         };
         if (c is not { } choice) return;
@@ -256,7 +257,7 @@ public partial class SettingsPage : UserControl, IPage
         if (Vm?.Equalizer is not { } eq || App.Host.View?.Sheets is not { } sheets) return;
         var body = new StackPanel { Margin = new Thickness(20, 4, 20, 18), DataContext = eq };
         var head = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        head.Children.Add(new TextBlock { Text = L.T("Equalizzatore"), FontSize = 20, FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center });
+        head.Children.Add(new TextBlock { Text = L.T("Equalizer"), FontSize = 20, FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center });
         var on = new CheckBox { Theme = Ui.Theme("Switch"), [!ToggleButton.IsCheckedProperty] = new Binding(nameof(EqualizerViewModel.Enabled)) };
         Grid.SetColumn(on, 1);
         head.Children.Add(on);
@@ -274,7 +275,7 @@ public partial class SettingsPage : UserControl, IPage
         preset[!IsEnabledProperty] = new Binding(nameof(EqualizerViewModel.Enabled));
         preset.Click += (_, _) =>
         {
-            var menu = new SheetMenu { Title = L.T("Preset") };
+            var menu = new SheetMenu { Title = L.T("Presets") };
             foreach (var p in eq.Presets)
             {
                 var pp = p;
@@ -322,7 +323,7 @@ public partial class SettingsPage : UserControl, IPage
         body.Children.Add(labels);
 
         var buttons = new WrapPanel { Margin = new Thickness(0, 18, 0, 0) };
-        foreach (var (text, cmd) in new[] { (L.T("Azzera"), eq.ResetCommand), (L.T("Salva come preset…"), eq.SaveCommand), (L.T("Elimina preset"), eq.DeleteCommand) })
+        foreach (var (text, cmd) in new[] { (L.T("Reset"), eq.ResetCommand), (L.T("Save as preset…"), eq.SaveCommand), (L.T("Delete preset"), eq.DeleteCommand) })
             buttons.Children.Add(new Button { Theme = Ui.Theme("SmallGhost"), Content = text, Command = cmd, Margin = new Thickness(0, 0, 8, 8) });
         body.Children.Add(buttons);
         _ = sheets.Show(new ScrollViewer { Content = body });
@@ -336,17 +337,17 @@ public partial class SettingsPage : UserControl, IPage
         var body = new DockPanel { Margin = new Thickness(20, 4, 20, 18), DataContext = vm };
         var top = new StackPanel();
         DockPanel.SetDock(top, Dock.Top);
-        top.Children.Add(new TextBlock { Text = L.T("Rinomina un artista"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 8) });
-        top.Children.Add(Ui.Text(L.T("Scegli l'artista, scrivi il nome giusto: cambia su tutti i suoi brani."), "hint", new Thickness(0, 0, 0, 12)));
-        var filter = new TextBox { Theme = Ui.Theme("FilterBox"), Watermark = L.T("Cerca un artista"), [!TextBox.TextProperty] = new Binding(nameof(SettingsViewModel.ArtistFilter), BindingMode.TwoWay) };
+        top.Children.Add(new TextBlock { Text = L.T("Rename an artist"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 8) });
+        top.Children.Add(Ui.Text(L.T("Choose the artist, type the right name: it changes on all their songs."), "hint", new Thickness(0, 0, 0, 12)));
+        var filter = new TextBox { Theme = Ui.Theme("FilterBox"), Watermark = L.T("Search for an artist"), [!TextBox.TextProperty] = new Binding(nameof(SettingsViewModel.ArtistFilter), BindingMode.TwoWay) };
         top.Children.Add(filter);
         body.Children.Add(top);
 
         var bottom = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
         DockPanel.SetDock(bottom, Dock.Bottom);
-        bottom.Children.Add(Ui.Text(L.T("Nuovo nome"), "field-label", new Thickness(4, 0, 0, 8)));
+        bottom.Children.Add(Ui.Text(L.T("New name"), "field-label", new Thickness(4, 0, 0, 8)));
         bottom.Children.Add(new TextBox { Theme = Ui.Theme("TouchBox"), [!TextBox.TextProperty] = new Binding(nameof(SettingsViewModel.NewArtistName), BindingMode.TwoWay) });
-        var ok = new Button { Theme = Ui.Theme("TouchPrimary"), Content = L.T("Rinomina"), Command = vm.RenameArtistCommand, HorizontalAlignment = HorizontalAlignment.Stretch,
+        var ok = new Button { Theme = Ui.Theme("TouchPrimary"), Content = L.T("Rename"), Command = vm.RenameArtistCommand, HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 14, 0, 0) };
         bottom.Children.Add(ok);
         body.Children.Add(bottom);

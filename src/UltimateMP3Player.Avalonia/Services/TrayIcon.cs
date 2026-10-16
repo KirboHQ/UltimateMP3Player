@@ -77,11 +77,11 @@ public sealed class TrayIcon : IDisposable
 
     public void Relabel()
     {
-        _playPause.Header = L.T(_playing ? "Pausa" : "Riproduci");
-        _next.Header = L.T("Brano successivo");
-        _previous.Header = L.T("Brano precedente");
-        _open.Header = L.T("Apri Ultimate MP3 Player");
-        _exit.Header = L.T("Esci");
+        _playPause.Header = L.T(_playing ? "Pause" : "Play");
+        _next.Header = L.T("Next song");
+        _previous.Header = L.T("Previous song");
+        _open.Header = L.T("Open Ultimate MP3 Player");
+        _exit.Header = L.T("Quit");
     }
 
     public void Update(string? nowPlaying, bool playing)
@@ -90,7 +90,7 @@ public sealed class TrayIcon : IDisposable
         var text = nowPlaying == null ? "Ultimate MP3 Player" : (playing ? "▶ " : "⏸ ") + nowPlaying;
         if (_icon != null) _icon.ToolTipText = text.Length > 120 ? text[..120] : text;
         _title.Header = nowPlaying ?? "Ultimate MP3 Player";
-        _playPause.Header = L.T(playing ? "Pausa" : "Riproduci");
+        _playPause.Header = L.T(playing ? "Pause" : "Play");
     }
 
     // Tells once where the app went after closing the window (as a toast of the system where there is one).
@@ -100,7 +100,7 @@ public sealed class TrayIcon : IDisposable
     {
         if (_hintShown) return;
         _hintShown = true;
-        var text = L.T("La musica continua in background. Clicca l'icona per riaprire il lettore.");
+        var text = L.T("Music keeps playing in the background. Click the icon to reopen the player.");
         try
         {
             if (OperatingSystem.IsLinux())

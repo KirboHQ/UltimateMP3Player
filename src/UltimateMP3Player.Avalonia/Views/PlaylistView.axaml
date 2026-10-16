@@ -12,20 +12,20 @@
                     <ContentControl Content="{Binding Vm}" ContentTemplate="{StaticResource PlaylistCover}"/>
                     <Button x:Name="CoverButton" Theme="{StaticResource OverlayButton}" Command="{Binding CoverCommand}" Opacity="0"
                             HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                            ToolTip.Tip="{local:T 'Cambia immagine'}">
+                            ToolTip.Tip="{local:T 'Change image'}">
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="{local:Icon EB9F}" Classes="glyph" FontSize="30" HorizontalAlignment="Center"/>
-                            <TextBlock Text="{local:T 'Cambia immagine'}" Margin="0,8,0,0" FontSize="12.5"/>
+                            <TextBlock Text="{local:T 'Change image'}" Margin="0,8,0,0" FontSize="12.5"/>
                         </StackPanel>
                     </Button>
                 </Panel>
             </Border>
             <StackPanel Grid.Column="1" Margin="24,0,0,0" VerticalAlignment="Bottom">
-                <TextBlock Text="PLAYLIST" Classes="small-caps" Foreground="{StaticResource SubTextBrush}"/>
+                <TextBlock Text="PLAYLIST" Classes="small-caps" Foreground="{DynamicResource SubTextBrush}"/>
                 <TextBlock x:Name="NameText" Text="{Binding Vm.Name}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" Cursor="Hand"
-                           ToolTip.Tip="{local:T 'Clicca per rinominare'}"/>
+                           ToolTip.Tip="{local:T 'Click to rename'}"/>
                 <WrapPanel>
-                    <TextBlock Text="{Binding TotalText}" Foreground="{StaticResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <TextBlock Text="{Binding TotalText}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
                     <!-- some of its songs are in the cloud: all of them saved at once -->
                     <Button Theme="{StaticResource LinkButton}" Command="{Binding SaveAllCommand}" IsVisible="{Binding ShowSaveAll}">
                         <StackPanel Orientation="Horizontal">
@@ -44,10 +44,10 @@
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
                     <Button x:Name="TagsButton" Theme="{StaticResource SubtleButton}" Padding="9,3" FontSize="12.5" VerticalAlignment="Center"
-                            ToolTip.Tip="{local:T 'Tag della playlist, e come metterli sui suoi brani'}">
+                            ToolTip.Tip="{local:T 'The playlist\'s tags, and how to put them on its songs'}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{local:Icon E8EC}" Classes="glyph" FontSize="12"/>
-                            <TextBlock Text="{local:T 'Tag…'}" Margin="6,0,0,0"/>
+                            <TextBlock Text="{local:T 'Tags…'}" Margin="6,0,0,0"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -58,16 +58,16 @@
         <local:ToolbarPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
             <!-- its own order (saved, arranged by dragging), or sorted; choosing it again brings its own order back -->
             <ComboBox DockPanel.Dock="Right" Width="200" Margin="10,0,0,0" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
-                      ToolTip.Tip="{local:T 'Ordina per (l\'ordine personalizzato resta salvato)'}"/>
+                      ToolTip.Tip="{local:T 'Sort by (the custom order stays saved)'}"/>
             <Button x:Name="TagFilterButton" DockPanel.Dock="Right" Theme="{StaticResource TagFilterButton}" Margin="10,0,0,0"/>
             <Button x:Name="StorageFilterButton" DockPanel.Dock="Right" Theme="{StaticResource StorageFilterButton}" Margin="10,0,0,0"
                     Classes.on="{Binding Storage.IsActive}"/>
             <TextBox x:Name="FilterBox" DockPanel.Dock="Right" Theme="{StaticResource FilterBox}" Width="260" MinWidth="140" local:ToolbarPanel.Shrink="True"
                      VerticalAlignment="Center"
-                     Text="{Binding Filter}" Watermark="{local:T 'Cerca nella playlist'}"/>
+                     Text="{Binding Filter}" Watermark="{local:T 'Search in playlist'}"/>
             <Button Theme="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
             <Button Theme="{StaticResource HeaderShuffleButton}" Margin="12,0,0,0" Command="{Binding ShuffleCommand}"/>
-            <Button x:Name="MoreButton" Theme="{StaticResource ControlButton}" Content="{local:Icon E712}" Margin="10,0,0,0" ToolTip.Tip="{local:T 'Altre opzioni'}"
+            <Button x:Name="MoreButton" Theme="{StaticResource ControlButton}" Content="{local:Icon E712}" Margin="10,0,0,0" ToolTip.Tip="{local:T 'More options'}"
                     IsVisible="{Binding !Vm.IsFavorites}"/>
         </local:ToolbarPanel>
 
@@ -81,7 +81,7 @@
                 <TextBlock Text="{Binding EmptyTitle}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                 <TextBlock Text="{Binding EmptyText}" Classes="hint" Margin="0,8,0,0" TextAlignment="Center"/>
             </StackPanel>
-            <TextBlock Grid.Row="1" Text="{local:T 'Nessun brano della playlist corrisponde alla ricerca.'}" Classes="hint" FontSize="14"
+            <TextBlock Grid.Row="1" Text="{local:T 'No songs in this playlist match your search.'}" Classes="hint" FontSize="14"
                        HorizontalAlignment="Center" Margin="0,40,0,0" IsVisible="{Binding NoMatches}"/>
         </Grid>
     </Grid>

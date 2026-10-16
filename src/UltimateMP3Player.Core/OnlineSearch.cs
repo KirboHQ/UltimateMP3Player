@@ -201,7 +201,7 @@ public static class OnlineSearchServices
                 var m = Regex.Match(js, @"client_id\s*:\s*""([0-9A-Za-z]{32})""");
                 if (m.Success) return _scClient = m.Groups[1].Value;
             }
-            throw new EngineException(L.T("SoundCloud non ha risposto come previsto."));
+            throw new EngineException(L.T("SoundCloud didn't answer as expected."));
         }
         finally { ScGate.Release(); }
     }

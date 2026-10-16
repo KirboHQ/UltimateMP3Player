@@ -68,23 +68,23 @@ public static class Equalizer
 
     public static readonly EqPreset[] BuiltIn =
     {
-        P("Piatto", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-        P("Bassi potenziati", 6, 5, 4, 2, 0.5, 0, 0, 0, 0, 0),
-        P("Bassi ridotti", -6, -5, -4, -2, -0.5, 0, 0, 0, 0, 0),
-        P("Alti potenziati", 0, 0, 0, 0, 0, 1, 2, 4, 5, 6),
-        P("Alti ridotti", 0, 0, 0, 0, 0, -1, -2, -4, -5, -6),
-        P("Voce", -3, -2, -1, 0, 2, 4, 4, 3, 1, 0),
-        P("Acustica", 4, 4, 3, 1, 2, 2, 3, 3, 3, 2),
-        P("Elettronica", 4, 4, 1, 0, -2, 2, 1, 2, 4, 5),
+        P("Flat", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+        P("Bass boost", 6, 5, 4, 2, 0.5, 0, 0, 0, 0, 0),
+        P("Bass reducer", -6, -5, -4, -2, -0.5, 0, 0, 0, 0, 0),
+        P("Treble boost", 0, 0, 0, 0, 0, 1, 2, 4, 5, 6),
+        P("Treble reducer", 0, 0, 0, 0, 0, -1, -2, -4, -5, -6),
+        P("Vocal", -3, -2, -1, 0, 2, 4, 4, 3, 1, 0),
+        P("Acoustic", 4, 4, 3, 1, 2, 2, 3, 3, 3, 2),
+        P("Electronic", 4, 4, 1, 0, -2, 2, 1, 2, 4, 5),
         P("Dance", 5, 6, 4, 0, 1, 2, 3, 3, 2, 0),
         P("Hip-hop", 5, 4, 2, 3, -1, -1, 1, -1, 2, 3),
         P("Pop", -1, -1, 0, 2, 4, 4, 2, 0, -1, -1),
         P("Rock", 5, 4, 3, 1, -1, -1, 1, 3, 4, 5),
         P("Jazz", 4, 3, 1, 2, -2, -2, 0, 1, 3, 4),
-        P("Classica", 5, 4, 3, 2, -1, -1, 0, 2, 3, 4),
+        P("Classical", 5, 4, 3, 2, -1, -1, 0, 2, 3, 4),
         P("Piano", 3, 2, 0, 2, 3, 1, 3, 4, 3, 3),
         P("Loudness", 6, 4, 0, 0, -2, 0, -1, -5, 5, 1),
-        P("Serale", 3, 2, 1, 0, 0, -1, -2, -3, -4, -5),
+        P("Late night", 3, 2, 1, 0, 0, -1, -2, -3, -4, -5),
     };
 
     private static EqPreset P(string name, params double[] g) => new() { Name = name, Gains = g };

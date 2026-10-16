@@ -6,17 +6,17 @@
     <UserControl.RenderTransform>
         <TranslateTransform x:Name="Shift"/>
     </UserControl.RenderTransform>
-    <Border CornerRadius="14" Padding="16,8,8,8" Background="{StaticResource Surface3Brush}" BorderBrush="{StaticResource BorderStrongBrush}"
+    <Border CornerRadius="14" Padding="16,8,8,8" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}"
             BorderThickness="1">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.55" Color="Black"/>
+            <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.55" Color="{DynamicResource PopupShadowColor}"/>
         </Border.Effect>
         <!-- the actions depend on what's selected (songs, songs of "next up", downloads, playlists): built in code -->
         <StackPanel Orientation="Horizontal">
             <TextBlock x:Name="CountText" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,14,0"/>
             <StackPanel x:Name="Buttons" Orientation="Horizontal"/>
             <Button Style="{StaticResource IconButton}" Content="&#xE711;" FontSize="11" Margin="6,0,0,0" Click="Clear_Click"
-                    ToolTip="{local:T 'Deseleziona (Esc)'}" AutomationProperties.Name="{local:T Deseleziona}"/>
+                    ToolTip="{local:T 'Deselect (Esc)'}" AutomationProperties.Name="{local:T Deselect}"/>
         </StackPanel>
     </Border>
 </UserControl>

@@ -16,7 +16,7 @@ public static class Analyzer
         else if (Regex.IsMatch(s, @"^[\w-]+(\.[\w-]+)+(/\S*)?$")) s = "https://" + s;
         if (!s.StartsWith("spotify:", StringComparison.OrdinalIgnoreCase) &&
             (!Uri.TryCreate(s, UriKind.Absolute, out var u) || (u.Scheme != "http" && u.Scheme != "https")))
-            throw new EngineException(L.T("Questo non sembra un link valido. Copia l'indirizzo completo (https://…)."));
+            throw new EngineException(L.T("This doesn't look like a valid link. Copy the full address (https://…)."));
         return s;
     }
 
@@ -69,7 +69,7 @@ public static class Analyzer
               ?? errors.FirstOrDefault(e => !e.Unsupported && !e.NoMedia)
               ?? errors.FirstOrDefault(e => e.NoMedia)
               ?? errors.FirstOrDefault()
-              ?? new EngineException(L.T("Nessun contenuto scaricabile trovato in questo link."));
+              ?? new EngineException(L.T("No downloadable content found in this link."));
     }
 
     private static async Task<AnalysisResult?> TryAsync(Func<Task<AnalysisResult>> f, List<EngineException> errors)
@@ -105,7 +105,7 @@ public static class Analyzer
                 var item = e.Prop("formats") != null ? ItemFromInfo(YtInfo.Parse(e), siteName) : ItemFromFlat(e, siteName);
                 if (item != null) result.Items.Add(item);
             }
-            if (result.Items.Count == 0) throw new EngineException(L.T("La playlist è vuota o non accessibile.")) { NoMedia = true };
+            if (result.Items.Count == 0) throw new EngineException(L.T("The playlist is empty or not accessible.")) { NoMedia = true };
             if (result.Thumbnails.Count == 0 && result.Items[0].Thumbnails.Count > 0) result.Thumbnails = result.Items[0].Thumbnails.ToList();
             if (result.Items.Count == 1 && root.Str("_type") == "multi_video") result.IsCollection = false;
             if (!result.IsCollection) { result.Title = result.Items[0].Title; }
@@ -113,7 +113,7 @@ public static class Analyzer
         }
 
         var info = YtInfo.Parse(root);
-        if (info.Formats.Count == 0) throw new EngineException(L.T("Nessun formato scaricabile trovato.")) { NoMedia = true };
+        if (info.Formats.Count == 0) throw new EngineException(L.T("No downloadable format found.")) { NoMedia = true };
         var single = ItemFromInfo(info, siteName);
         result.Title = single.Title;
         result.Uploader = single.Artist ?? info.Uploader;
@@ -121,7 +121,7 @@ public static class Analyzer
         result.Items.Add(single);
         result.PartOfPlaylist = playlistInVideo && !req.WholePlaylist;
         if (!info.HasVideo) result.PreferAudio = true;
-        if (info.IsLive) result.Notes.Add(L.T("È una diretta: verrà registrata da adesso fino alla fine della trasmissione."));
+        if (info.IsLive) result.Notes.Add(L.T("It's a live stream: it'll be recorded from now until the broadcast ends."));
         return result;
     }
 
@@ -219,7 +219,7 @@ public static class Analyzer
             catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or EngineException or OperationCanceledException) { }
         }
         title = Text.FirstNonEmpty(title, TitleFromUrl(url));
-        if (title == null) throw new EngineException(L.T("Non trovo titolo e artista di questo link: cerca il brano dalla pagina Cerca."));
+        if (title == null) throw new EngineException(L.T("Can't find this link's title and artist: look the song up from the Search page."));
         if (cover != null && !cover.StartsWith("http", StringComparison.OrdinalIgnoreCase)) cover = null;
         var found = new MediaItem { Title = title, Artist = artist, CoverUrl = cover, Kind = MediaKind.Audio, Url = url, PageUrl = url, SiteName = site };
         if (cover != null) found.Thumbnails.Add(cover);
@@ -227,7 +227,7 @@ public static class Analyzer
         var result = new AnalysisResult
         {
             Site = "YouTube Music", SourceUrl = url, PreferAudio = true, Title = item.Title, Uploader = item.Artist, Thumbnails = item.Thumbnails.ToList(),
-            Notes = { L.F("Da {0} non si può scaricare: verrà cercato lo stesso brano su YouTube Music.", site) },
+            Notes = { L.F("It can't be downloaded from {0}: the same song will be looked up on YouTube Music.", site) },
         };
         result.Items.Add(item);
         return result;
@@ -350,7 +350,7 @@ public static class MusicMatcher
     {
         var artist = item.Artist?.Split(',')[0].Trim() ?? "";
         var query = $"{artist} {item.Title}".Trim();
-        status(L.T("Ricerca su YouTube Music…"));
+        status(L.T("Searching YouTube Music…"));
 
         var candidates = new List<(string Id, double Score)>();
         try
@@ -373,7 +373,7 @@ public static class MusicMatcher
         }
         if (best != null && bestScore > 0.3) return best;
 
-        status(L.T("Ricerca su YouTube…"));
+        status(L.T("Searching YouTube…"));
         var yt = await YtDlp.SearchYouTubeAsync($"{artist} - {item.Title} audio", 5, cookies, ct);
         var pick = yt
             .Select((r, i) => (r, s: TitleScore(item.Title, artist, r.Title) + DurationScore(item.Duration, r.Duration) +
@@ -382,7 +382,7 @@ public static class MusicMatcher
             .FirstOrDefault();
         if (pick.r.Id != null && (best == null || pick.s > bestScore))
             return await YtDlp.GetInfoAsync("https://www.youtube.com/watch?v=" + pick.r.Id, cookies, ct);
-        return best ?? throw new EngineException(L.T("Brano non trovato su YouTube Music."));
+        return best ?? throw new EngineException(L.T("Song not found on YouTube Music."));
     }
 
     // Only a close match (the same title and artist, the length within a few seconds when known), or null: for a song whose

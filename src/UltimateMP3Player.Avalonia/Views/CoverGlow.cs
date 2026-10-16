@@ -11,11 +11,13 @@ namespace UltimateMP3Player.Views;
 public static class CoverGlow
 {
     // veil: the page's background over it at 10 % (the phone: what the element's opacity did, without a layer at every frame).
+    // In the light look the colour is a pale one and the page's background washes over the picture: dark text reads on it.
     public static Bitmap Bake(Bitmap? img, bool veil = false)
     {
         const int size = 120, spill = 40;
-        bool hasImage = img is { PixelSize.Width: > 0, PixelSize.Height: > 0 };
-        var mood = hasImage ? Mood(img!) : Darken((Ui.Res("AccentBrush") as ISolidColorBrush)?.Color ?? Colors.MediumPurple);
+        bool hasImage = img is { PixelSize.Width: > 0, PixelSize.Height: > 0 }, light = Themes.IsLight;
+        var mood = hasImage ? Mood(img!, light) : Tone(Themes.Get("Accent"), light);
+        var page = Themes.Get("Bg");
         using var surface = SKSurface.Create(new SKImageInfo(size, size, SKColorType.Bgra8888, SKAlphaType.Premul));
         var canvas = surface.Canvas;
         canvas.Clear(new SKColor(mood.R, mood.G, mood.B, mood.A));
@@ -42,11 +44,11 @@ public static class CoverGlow
         else
         {
             paint.Shader = SKShader.CreateLinearGradient(new SKPoint(dest.Left, dest.Top), new SKPoint(dest.Right, dest.Bottom),
-                new[] { new SKColor(0x2A, 0x2F, 0x3A), new SKColor(0x1B, 0x1E, 0x25) }, SKShaderTileMode.Clamp);
+                new[] { Sk(Themes.Get("Placeholder1")), Sk(Themes.Get("Placeholder2")) }, SKShaderTileMode.Clamp);
             canvas.DrawRect(dest, paint);
         }
-        if (veil)
-            using (var bg = new SKPaint { Color = new SKColor(0x0E, 0x10, 0x14, 26) })
+        if (veil || light)
+            using (var bg = new SKPaint { Color = Sk(page).WithAlpha((byte)((light ? 115 : 0) + (veil ? 26 : 0))) })
                 canvas.DrawRect(new SKRect(0, 0, size, size), bg);
         using var image = surface.Snapshot();
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
@@ -74,7 +76,9 @@ public static class CoverGlow
     }
 
     // The cover's colour: its pixels averaged, the vivid ones counting more (a grey sky doesn't win over a red dress).
-    private static Color Mood(Bitmap img)
+    private static SKColor Sk(Color c) => new(c.R, c.G, c.B, c.A);
+
+    private static Color Mood(Bitmap img, bool light)
     {
         try
         {
@@ -97,17 +101,17 @@ public static class CoverGlow
                 b += bb * weight;
                 sum += weight;
             }
-            return Darken(Color.FromRgb((byte)(r / sum), (byte)(g / sum), (byte)(b / sum)));
+            return Tone(Color.FromRgb((byte)(r / sum), (byte)(g / sum), (byte)(b / sum)), light);
         }
-        catch { return Color.FromRgb(0x2A, 0x24, 0x3A); }
+        catch { return Tone(Color.FromRgb(0x2A, 0x24, 0x3A), light); }
     }
 
-    // Vivid enough to be a colour, dark enough for white text.
-    private static Color Darken(Color c)
+    // Vivid enough to be a colour, dark enough for white text (light enough for dark text in the light look).
+    private static Color Tone(Color c, bool light)
     {
         var (hue, s, _) = ToHsl(c.R / 255.0, c.G / 255.0, c.B / 255.0);
-        s = s < 0.08 ? s : Math.Clamp(s * 1.25, 0.3, 0.78);
-        return FromHsl(hue, s, 0.3);
+        s = s < 0.08 ? s : Math.Clamp(s * 1.25, 0.3, light ? 0.6 : 0.78);
+        return FromHsl(hue, s, light ? 0.86 : 0.3);
     }
 
     private static (double H, double S, double L) ToHsl(double r, double g, double b)

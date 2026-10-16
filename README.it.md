@@ -50,13 +50,32 @@
   <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · brani nel cloud · un lettore come Spotify · testi sincronizzati · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · su tutti i tuoi dispositivi · ascolta insieme">
 </picture>
 
-## 🆕 Novità della 3.7.3
+## 🆕 Novità della 3.8
+
+- **Tema chiaro** (Impostazioni › Aspetto › *Chiaro o scuro*): chiaro, scuro o come il sistema, che segue quando
+  cambia. Ogni profilo ha il suo, e ogni colore d'accento ha la sua versione chiara.
+- **Un aspetto più pulito**, più vicino a quello di iPhone: niente più bordi intorno a schede, pulsanti e campi,
+  separatori più sottili, menu e finestre che galleggiano su un'ombra morbida.
+- **Android e iPhone: scorri di lato** per passare alla scheda accanto, con le pagine che seguono il dito; dentro una
+  playlist uno scorrimento verso destra torna indietro. Non sopra ciò che si muove già di lato (file di copertine,
+  cursori, caselle di testo).
+- Toccare il brano già in riproduzione non lo fa più ripartire da capo: dalla sua lista apre il lettore, da un'altra
+  lista continua e quello che segue diventa quella lista.
+- Consuma meno batteria: la forma d'onda e il testo sincronizzato restano fermi quando l'app è ridotta a icona, vicino
+  all'orologio o in background.
+- I nomi nella cartella dei dati sono in inglese: `errori.log` ora è `errors.log` e `ascolta-insieme` ora è `cache`
+  (spostati da soli al primo avvio).
+
+<details>
+<summary>3.7.3</summary>
 
 - **Download più veloci** su tutte le piattaforme: la pagina di ogni brano viene letta una volta invece di due (il
   download usa l'analisi appena fatta). Su Android inoltre yt-dlp resta pronto tra un brano e l'altro, come su iPhone,
   invece di ripartire da zero ogni volta: dopo il primo download, ogni brano parte sensibilmente prima.
 - Più leggera: il cambio di brano è più fluido su Linux/macOS (l'alone dietro il testo non rilegge più tutta la
   copertina) e le immagini dei risultati di ricerca vengono decodificate una volta sola invece di due.
+
+</details>
 
 <details>
 <summary>3.7.2</summary>
@@ -436,13 +455,13 @@ da riga di comando per provare il core (download, import, coda, casuale).
 | Percorso | Contenuto |
 |---|---|
 | `Musica\Ultimate MP3 Player` | Brani salvati sul dispositivo (MP3/M4A con tag e copertina) e video |
-| `%LOCALAPPDATA%\Ultimate MP3 Player` | Libreria, copertine, testi, profili, impostazioni, `errori.log` |
-| `%LOCALAPPDATA%\Ultimate MP3 Player\ascolta-insieme` | Memoria temporanea: brani nel cloud, consigliati e delle stanze di *Ascolta insieme* che hai ascoltato, tenuti per la prossima volta |
+| `%LOCALAPPDATA%\Ultimate MP3 Player` | Libreria, copertine, testi, profili, impostazioni, `errors.log` |
+| `%LOCALAPPDATA%\Ultimate MP3 Player\cache` | Memoria temporanea: brani nel cloud, consigliati e delle stanze di *Ascolta insieme* che hai ascoltato, tenuti per la prossima volta |
 
 Su Linux i dati sono in `~/.local/share/Ultimate MP3 Player` e su macOS in `~/Library/Application Support/Ultimate MP3 Player`
 (lì ci sono anche i motori, in `engines`); i brani vanno in `~/Music/Ultimate MP3 Player`. Su Android i brani sono nella
 cartella dell'app `Android/data/com.kirbohq.ultimatemp3player/files/Music` (visibile dal computer), il resto dentro
-l'app. Su iPhone i brani e `errori.log` sono nell'app File (*Sul mio iPhone › Ultimate MP3 Player*), il resto dentro
+l'app. Su iPhone i brani e `errors.log` sono nell'app File (*Sul mio iPhone › Ultimate MP3 Player*), il resto dentro
 l'app.
 
 ## 🙏 Software di terze parti

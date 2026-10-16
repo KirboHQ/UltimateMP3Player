@@ -154,13 +154,13 @@ public static class PackWriter
     // The export dialog's two lines under the choices (the same on every platform).
     public static (string, string) Summary(List<Track> songs, PackExport e, Func<string?, long> sizeOf)
     {
-        if (e.IsEmpty) return (L.T("Scegli almeno una playlist, un tag o tutta la libreria."), "");
-        var parts = new List<string> { L.Count(songs.Count, "1 brano", "{0} brani") };
-        if (e.Playlists.Count > 0) parts.Add(L.Count(e.Playlists.Count, "1 playlist", "{0} playlist"));
-        if (e.Tags.Count > 0) parts.Add(L.Count(e.Tags.Count, "1 tag", "{0} tag"));
-        var more = new List<string> { L.F("circa {0}", Text.Size(Math.Max(EstimateSize(songs, e, sizeOf), 1024))) };
+        if (e.IsEmpty) return (L.T("Choose at least one playlist, a tag or the whole library."), "");
+        var parts = new List<string> { L.Count(songs.Count, "1 song", "{0} songs") };
+        if (e.Playlists.Count > 0) parts.Add(L.Count(e.Playlists.Count, "1 playlist", "{0} playlists"));
+        if (e.Tags.Count > 0) parts.Add(L.Count(e.Tags.Count, "1 tag", "{0} tags"));
+        var more = new List<string> { L.F("about {0}", Text.Size(Math.Max(EstimateSize(songs, e, sizeOf), 1024))) };
         int files = songs.Count(t => !Pack.HasLink(t));
-        if (!e.Music && files > 0) more.Add(L.Count(files, "1 brano senza link viaggia come file", "{0} brani senza link viaggiano come file"));
+        if (!e.Music && files > 0) more.Add(L.Count(files, "1 song without a link travels as a file", "{0} songs without a link travel as files"));
         return (string.Join(" · ", parts), string.Join(" · ", more));
     }
 
@@ -355,13 +355,13 @@ public sealed class PackFile : IDisposable
             fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             long size = fs.Length;
             zip = new ZipArchive(fs, ZipArchiveMode.Read);
-            var entry = zip.GetEntry(Pack.ManifestName) ?? throw new PackException(L.T("Il file non è un pacchetto di Ultimate MP3 Player."));
+            var entry = zip.GetEntry(Pack.ManifestName) ?? throw new PackException(L.T("The file isn't an Ultimate MP3 Player pack."));
             PackManifest? m;
             using (var s = entry.Open())
                 m = JsonSerializer.Deserialize<PackManifest>(s, JsonStore.Options);
-            if (m == null || m.Format != Pack.FormatId) throw new PackException(L.T("Il file non è un pacchetto di Ultimate MP3 Player."));
+            if (m == null || m.Format != Pack.FormatId) throw new PackException(L.T("The file isn't an Ultimate MP3 Player pack."));
             if (m.Version > Pack.FormatVersion)
-                throw new PackException(L.T("Il pacchetto è stato creato con una versione più nuova dell'app: aggiorna Ultimate MP3 Player per aprirlo."));
+                throw new PackException(L.T("The pack was made with a newer version of the app: update Ultimate MP3 Player to open it."));
             m.Tracks.RemoveAll(t => string.IsNullOrEmpty(t.Id));
             return new PackFile(path, zip, m, size);
         }
@@ -371,8 +371,8 @@ public sealed class PackFile : IDisposable
             fs?.Dispose();
             if (ex is PackException) throw;
             if (ex is IOException or UnauthorizedAccessException)
-                throw new PackException(L.T("Impossibile leggere il file:") + " " + ex.Message);
-            throw new PackException(L.T("Il file è danneggiato o non è un pacchetto di Ultimate MP3 Player."));
+                throw new PackException(L.T("Can't read the file:") + " " + ex.Message);
+            throw new PackException(L.T("The file is damaged or isn't an Ultimate MP3 Player pack."));
         }
     }
 
@@ -586,15 +586,15 @@ public static class PackImporter
     // they go (null on the phone, where it isn't shown).
     public static (string, string) Summary(bool any, int chosen, int add, int get, int have, int miss, bool cloud, string? folder)
     {
-        if (!any) return (L.T("Scegli cosa importare."), "");
+        if (!any) return (L.T("Choose what to import."), "");
         var line1 = add + get == 0
-            ? (chosen > 0 ? L.T("Nessun brano da copiare: li hai già tutti") : L.T("Nessun brano da aggiungere"))
-            : L.Count(add + get, "Verrà aggiunto 1 brano", "Verranno aggiunti {0} brani");
+            ? (chosen > 0 ? L.T("No songs to copy: you already have them all") : L.T("No songs to add"))
+            : L.Count(add + get, "1 song will be added", "{0} songs will be added");
         var more = new List<string>();
-        if (get > 0) more.Add(cloud ? L.F("{0} nel cloud, senza scaricarli", get) : L.F("{0} da scaricare", get));
-        if (have > 0) more.Add(L.F("{0} già nella libreria", have));
-        if (miss > 0) more.Add(L.Count(miss, "1 non disponibile", "{0} non disponibili"));
-        if (add > 0 && folder != null) more.Add(L.F("nella cartella {0}", folder));
+        if (get > 0) more.Add(cloud ? L.F("{0} in the cloud, without downloading them", get) : L.F("{0} to download", get));
+        if (have > 0) more.Add(L.F("{0} already in your library", have));
+        if (miss > 0) more.Add(L.Count(miss, "1 not available", "{0} not available"));
+        if (add > 0 && folder != null) more.Add(L.F("into {0}", folder));
         return (line1, string.Join(" · ", more));
     }
 
@@ -710,7 +710,7 @@ public static class PackImporter
             Playlist? target = merge ? SameName(profile, pp) : null;
             if (target == null)
             {
-                var name = pp.Favorites ? L.F("Preferiti di {0}", string.IsNullOrWhiteSpace(m.Author) ? "?" : m.Author) : pp.Name;
+                var name = pp.Favorites ? L.F("{0}'s Favorites", string.IsNullOrWhiteSpace(m.Author) ? "?" : m.Author) : pp.Name;
                 target = profile.CreatePlaylist(name, pp.SourceUrl);
                 res.NewPlaylists++;
                 if (pp.HasCover)

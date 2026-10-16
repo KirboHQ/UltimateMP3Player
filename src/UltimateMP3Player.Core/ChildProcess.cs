@@ -48,7 +48,7 @@ public abstract class ChildProcess : IDisposable
             foreach (var a in args) psi.ArgumentList.Add(a);
             if (env != null)
                 foreach (var kv in env) psi.Environment[kv.Key] = kv.Value;
-            _p = Process.Start(psi) ?? throw new EngineException(L.F("Impossibile avviare {0}.", Path.GetFileName(exe)));
+            _p = Process.Start(psi) ?? throw new EngineException(L.F("Couldn't start {0}.", Path.GetFileName(exe)));
             try { _p.StandardInput.Close(); } catch { }
             StandardError = errors ? _p.StandardError.BaseStream : Stream.Null;
         }

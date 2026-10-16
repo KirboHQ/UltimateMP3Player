@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:UltimateMP3Player"
         xmlns:views="clr-namespace:UltimateMP3Player.Views"
         Title="Ultimate MP3 Player" Width="820" Height="600" MinWidth="620" MinHeight="480"
-        WindowStartupLocation="CenterScreen" Background="{StaticResource TitleBarBrush}" Foreground="{StaticResource TextBrush}"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource TitleBarBrush}" Foreground="{DynamicResource TextBrush}"
         FontFamily="{StaticResource UiFont}" FontSize="14" UseLayoutRounding="True" Icon="/app.ico" ResizeMode="CanResize">
     <Grid x:Name="Root">
         <Grid.RowDefinitions>
@@ -12,17 +12,17 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Background="{StaticResource TitleBarBrush}">
+        <Grid Background="{DynamicResource TitleBarBrush}">
             <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
                 <Image Source="{StaticResource LogoImage}" Width="16" Height="16"/>
-                <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource SubTextBrush}" Margin="9,0,0,1"
+                <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" Margin="9,0,0,1"
                            VerticalAlignment="Center"/>
             </StackPanel>
             <Button x:Name="CloseButton" Style="{StaticResource TitleBarCloseButton}" Content="&#xE8BB;" HorizontalAlignment="Right"
-                    ToolTip="{local:T Chiudi}" AutomationProperties.Name="{local:T Chiudi}"/>
+                    ToolTip="{local:T Close}" AutomationProperties.Name="{local:T Close}"/>
         </Grid>
 
-        <Grid Grid.Row="1" Background="{StaticResource BgBrush}">
+        <Grid Grid.Row="1" Background="{DynamicResource BgBrush}">
             <Border Height="300" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.6"/>
 
             <!-- ======================================================== picker -->
@@ -34,9 +34,9 @@
                 </Grid.RowDefinitions>
                 <StackPanel HorizontalAlignment="Center">
                     <Image Source="{StaticResource LogoImage}" Width="48" Height="48"/>
-                    <TextBlock Text="{local:T 'Chi sta ascoltando?'}" FontSize="30" FontWeight="Bold" Margin="0,14,0,4" HorizontalAlignment="Center"/>
-                    <TextBlock x:Name="SubTitle" Text="{local:T 'Ogni profilo ha le sue playlist, i suoi preferiti e il suo equalizzatore.'}"
-                               Foreground="{StaticResource SubTextBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{local:T 'Who\'s listening?'}" FontSize="30" FontWeight="Bold" Margin="0,14,0,4" HorizontalAlignment="Center"/>
+                    <TextBlock x:Name="SubTitle" Text="{local:T 'Each profile has its own playlists, favorites and equalizer.'}"
+                               Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Center"/>
                 </StackPanel>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,28,0,0">
@@ -49,7 +49,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type views:ProfileTile}">
                                 <Button x:Name="Tile" Width="150" Margin="8" Click="Tile_Click" AutomationProperties.Name="{Binding Name}" Cursor="Hand"
-                                        FocusVisualStyle="{x:Null}" Foreground="{StaticResource TextBrush}">
+                                        FocusVisualStyle="{x:Null}" Foreground="{DynamicResource TextBrush}">
                                     <Button.Template>
                                         <ControlTemplate TargetType="Button">
                                             <Border x:Name="Bd" Padding="12,14" CornerRadius="14" Background="Transparent">
@@ -57,10 +57,10 @@
                                             </Border>
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
                                                 </Trigger>
                                                 <Trigger Property="IsKeyboardFocused" Value="True">
-                                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                                                    <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -70,7 +70,7 @@
                                             <Ellipse Fill="{Binding Brush}"/>
                                             <TextBlock Text="{Binding Initial}" FontSize="42" FontWeight="Bold" Foreground="White"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsAdd, Converter={StaticResource InvBoolVis}}"/>
-                                            <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="34" Foreground="{StaticResource SubTextBrush}"
+                                            <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="34" Foreground="{DynamicResource SubTextBrush}"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsAdd, Converter={StaticResource BoolVis}}"/>
                                             <!-- the photo sits inside a ring of the profile colour -->
                                             <Ellipse Margin="5" Visibility="{Binding Avatar, Converter={StaticResource NotNullVis}}">
@@ -81,13 +81,13 @@
                                             <Ellipse x:Name="Ring" Stroke="White" StrokeThickness="3" Margin="-5" Opacity="0"/>
                                             <Button x:Name="Edit" Style="{StaticResource PlayButton}" Width="34" Height="34" FontSize="13" Content="&#xE70F;"
                                                     HorizontalAlignment="Right" VerticalAlignment="Bottom" Click="Edit_Click" Opacity="0.85"
-                                                    ToolTip="{local:T 'Modifica o elimina il profilo'}"
+                                                    ToolTip="{local:T 'Edit or delete profile'}"
                                                     AutomationProperties.Name="{Binding Name, StringFormat={}{0} ✎}"
                                                     Visibility="{Binding IsAdd, Converter={StaticResource InvBoolVis}}"/>
                                         </Grid>
                                         <TextBlock Text="{Binding Name}" HorizontalAlignment="Center" Margin="0,12,0,0" FontSize="15" FontWeight="SemiBold"
                                                    TextTrimming="CharacterEllipsis"/>
-                                        <TextBlock Text="{local:T 'in uso'}" HorizontalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource AccentTextBrush}"
+                                        <TextBlock Text="{local:T 'in use'}" HorizontalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource AccentTextBrush}"
                                                    Visibility="{Binding IsCurrent, Converter={StaticResource BoolVis}}"/>
                                     </StackPanel>
                                 </Button>
@@ -103,14 +103,14 @@
                 </ScrollViewer>
 
                 <StackPanel Grid.Row="2" HorizontalAlignment="Center" Margin="0,16,0,0">
-                    <TextBlock Text="{local:T 'La matita modifica o elimina un profilo.'}" Style="{StaticResource Hint}"
+                    <TextBlock Text="{local:T 'The pencil edits or deletes a profile.'}" Style="{StaticResource Hint}"
                                HorizontalAlignment="Center" Margin="0,0,0,12"/>
-                    <CheckBox x:Name="Remember" HorizontalAlignment="Center" Content="{local:T 'Avvia sempre con il profilo scelto'}"/>
+                    <CheckBox x:Name="Remember" HorizontalAlignment="Center" Content="{local:T 'Always start with the chosen profile'}"/>
                 </StackPanel>
             </Grid>
 
             <!-- ======================================================== editor -->
-            <Grid x:Name="EditPanel" Background="#E60E1014" Visibility="Collapsed">
+            <Grid x:Name="EditPanel" Background="{DynamicResource VeilBrush}" Visibility="Collapsed">
                 <Border Width="460" VerticalAlignment="Center" Style="{StaticResource Card}" Padding="26">
                     <StackPanel>
                         <TextBlock x:Name="EditTitle" FontSize="20" FontWeight="Bold" Margin="0,0,0,18"/>
@@ -128,18 +128,18 @@
                                 <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Click="PickAvatar_Click">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xEB9F;" Style="{StaticResource Glyph}"/>
-                                        <TextBlock Text="{local:T 'Scegli una foto…'}" Margin="8,0,0,0"/>
+                                        <TextBlock Text="{local:T 'Choose a photo…'}" Margin="8,0,0,0"/>
                                     </StackPanel>
                                 </Button>
-                                <Button x:Name="RemoveAvatarButton" Style="{StaticResource LinkButton}" Content="{local:T 'Rimuovi foto'}" Margin="4,10,0,0"
+                                <Button x:Name="RemoveAvatarButton" Style="{StaticResource LinkButton}" Content="{local:T 'Remove photo'}" Margin="4,10,0,0"
                                         HorizontalAlignment="Left" Click="RemoveAvatar_Click"/>
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="{local:T Nome}" Style="{StaticResource FieldLabel}"/>
-                        <TextBox x:Name="NameBox" Style="{StaticResource BoxTextBox}" TextChanged="NameBox_Changed" MaxLength="30" AutomationProperties.Name="{local:T Nome}"/>
+                        <TextBlock Text="{local:T Name}" Style="{StaticResource FieldLabel}"/>
+                        <TextBox x:Name="NameBox" Style="{StaticResource BoxTextBox}" TextChanged="NameBox_Changed" MaxLength="30" AutomationProperties.Name="{local:T Name}"/>
 
-                        <TextBlock Text="{local:T Colore}" Style="{StaticResource FieldLabel}" Margin="2,16,0,8"/>
+                        <TextBlock Text="{local:T Color}" Style="{StaticResource FieldLabel}" Margin="2,16,0,8"/>
                         <ItemsControl x:Name="Swatches">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -150,7 +150,7 @@
                                 <DataTemplate DataType="{x:Type views:ColorSwatch}">
                                     <Grid x:Name="Swatch" Width="38" Height="38" Margin="0,0,6,6" Cursor="Hand" Background="Transparent"
                                           MouseLeftButtonUp="Swatch_Click">
-                                        <Ellipse x:Name="Ring" Stroke="{StaticResource TextBrush}" StrokeThickness="2" Opacity="0"/>
+                                        <Ellipse x:Name="Ring" Stroke="{DynamicResource TextBrush}" StrokeThickness="2" Opacity="0"/>
                                         <Ellipse Margin="5" Fill="{Binding Brush}"/>
                                         <TextBlock x:Name="Check" Text="&#xE73E;" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="White"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
@@ -169,13 +169,13 @@
                         </ItemsControl>
 
                         <DockPanel Margin="0,18,0,0" LastChildFill="False">
-                            <Button x:Name="DeleteButton" Style="{StaticResource DangerButton}" Content="{local:T 'Elimina profilo'}" Click="Delete_Click"
-                                    AutomationProperties.Name="{local:T 'Elimina profilo'}"/>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Content="{local:T Salva}" MinWidth="96" Margin="10,0,0,0" Click="Save_Click" IsDefault="True"/>
-                            <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Content="{local:T Annulla}" MinWidth="96" Click="Cancel_Click"/>
+                            <Button x:Name="DeleteButton" Style="{StaticResource DangerButton}" Content="{local:T 'Delete profile'}" Click="Delete_Click"
+                                    AutomationProperties.Name="{local:T 'Delete profile'}"/>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}" Content="{local:T Save}" MinWidth="96" Margin="10,0,0,0" Click="Save_Click" IsDefault="True"/>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Content="{local:T Cancel}" MinWidth="96" Click="Cancel_Click"/>
                         </DockPanel>
                         <TextBlock x:Name="DeleteHint" Style="{StaticResource Hint}" Margin="2,10,0,0" Visibility="Collapsed"
-                                   Text="{local:T 'È l\'unico profilo: per eliminarlo creane prima un altro.'}"/>
+                                   Text="{local:T 'It\'s the only profile: create another one before deleting it.'}"/>
                     </StackPanel>
                 </Border>
             </Grid>

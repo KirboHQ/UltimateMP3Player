@@ -25,7 +25,7 @@ public static partial class SiteLogins
         new("SoundCloud", "#FF5500", "https://soundcloud.com/signin", new[] { "soundcloud.com" }, new[] { "oauth_token" }),
         new("Instagram", "#E1306C", "https://www.instagram.com/accounts/login/", new[] { "instagram.com" }, new[] { "sessionid" }),
         new("TikTok", "#FE2C55", "https://www.tiktok.com/login", new[] { "tiktok.com" }, new[] { "sessionid", "sessionid_ss" }),
-        new("X / Twitter", "#E7E9EA", "https://x.com/i/flow/login", new[] { "x.com", "twitter.com" }, new[] { "auth_token" }),
+        new("X / Twitter", "#8B93A7", "https://x.com/i/flow/login", new[] { "x.com", "twitter.com" }, new[] { "auth_token" }),
         new("Facebook", "#1877F2", "https://m.facebook.com/login/", new[] { "facebook.com" }, new[] { "c_user" }),
         new("Reddit", "#FF4500", "https://www.reddit.com/login/", new[] { "reddit.com" }, new[] { "reddit_session" }),
         new("Twitch", "#9146FF", "https://www.twitch.tv/login", new[] { "twitch.tv" }, new[] { "auth-token" }),
@@ -92,9 +92,9 @@ public static partial class SiteLogins
     public static string Summary()
     {
         var signed = SignedIn();
-        if (signed.Count == 0) return HasFile ? L.T("Nessun sito della lista (forse un altro)") : L.T("Nessuno");
+        if (signed.Count == 0) return HasFile ? L.T("None of the listed sites (maybe another one)") : L.T("None");
         var names = string.Join(", ", Sites.Where(s => signed.Contains(s.Name)).Select(s => s.Name));
-        return App.Host?.Settings.UseCookies == false ? names + " · " + L.T("non usati (spento)") : names;
+        return App.Host?.Settings.UseCookies == false ? names + " · " + L.T("not used (off)") : names;
     }
 
     private static void Write(List<Cookie> cookies)

@@ -20,7 +20,7 @@ public static class Mp3
         using var source = new AppleTrackSource(input);
         int rate = source.WaveFormat.SampleRate;
         var gf = Lame.Init();
-        if (gf == IntPtr.Zero) throw new EngineException(L.T("Conversione non riuscita") + ".", "lame_init");
+        if (gf == IntPtr.Zero) throw new EngineException(L.T("Conversion failed") + ".", "lame_init");
         try
         {
             // Always two channels in (a mono source comes doubled, which costs nothing in joint stereo).
@@ -39,7 +39,7 @@ public static class Mp3
             {
                 ct.ThrowIfCancellationRequested();
                 int n = Lame.Encode(gf, pcm, got, mp3);
-                if (n < 0) throw new EngineException(L.T("Conversione non riuscita") + ".", "lame_encode " + n);
+                if (n < 0) throw new EngineException(L.T("Conversion failed") + ".", "lame_encode " + n);
                 file.Write(mp3, 0, n);
                 done += got;
                 progress?.Invoke(Math.Min(1, done / total));
@@ -92,13 +92,13 @@ internal static unsafe class Lame
         lock (Gate)
         {
             if (_lib != IntPtr.Zero) return;
-            if (!File.Exists(Library)) throw new EngineException(L.T("Questa versione dell'app non sa creare MP3: scegli «Originale» come qualità dell'audio."), Library);
+            if (!File.Exists(Library)) throw new EngineException(L.T("This version of the app can't make MP3s: choose “Original” as the audio quality."), Library);
             var lib = Dlfcn.dlopen(Library, RtldNow);
-            if (lib == IntPtr.Zero) throw new EngineException(L.T("Conversione non riuscita") + ".", Dlfcn.dlerror() ?? Library);
+            if (lib == IntPtr.Zero) throw new EngineException(L.T("Conversion failed") + ".", Dlfcn.dlerror() ?? Library);
             IntPtr Symbol(string name)
             {
                 var p = Dlfcn.dlsym(lib, name);
-                return p != IntPtr.Zero ? p : throw new EngineException(L.T("Conversione non riuscita") + ".", "symbol missing: " + name);
+                return p != IntPtr.Zero ? p : throw new EngineException(L.T("Conversion failed") + ".", "symbol missing: " + name);
             }
             _init = (delegate* unmanaged<IntPtr>)Symbol("lame_init");
             _setNumChannels = (delegate* unmanaged<IntPtr, int, int>)Symbol("lame_set_num_channels");
@@ -128,7 +128,7 @@ internal static unsafe class Lame
         _setWriteVbrTag(gf, 1);
         _setWriteId3TagAutomatic(gf, 0);
         int r = _initParams(gf);
-        if (r < 0) throw new EngineException(L.T("Conversione non riuscita") + ".", "lame_init_params " + r);
+        if (r < 0) throw new EngineException(L.T("Conversion failed") + ".", "lame_init_params " + r);
     }
 
     // frames: stereo frames in pcm (interleaved, -1..1); the bytes of MP3 written into mp3.

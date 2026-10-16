@@ -30,7 +30,7 @@ public partial class App : Application
                     {
                         Log(e.Exception);
                         e.Handled = true;
-                        try { Host?.Session?.Toast(L.T("Si è verificato un errore imprevisto:") + " " + e.Exception.Message); }
+                        try { Host?.Session?.Toast(L.T("An unexpected error occurred:") + " " + e.Exception.Message); }
                         catch { }
                     };
                     CleanTemp();
@@ -52,7 +52,7 @@ public partial class App : Application
             catch (Exception ex)
             {
                 Log(ex);
-                single.MainView = new TextBlock { Text = L.T("Ultimate MP3 Player non è riuscito ad avviarsi:") + "\n\n" + ex.Message, Margin = new Thickness(24, 80) };
+                single.MainView = new TextBlock { Text = L.T("Ultimate MP3 Player couldn't start:") + "\n\n" + ex.Message, Margin = new Thickness(24, 80) };
             }
         }
         base.OnFrameworkInitializationCompleted();
@@ -107,7 +107,7 @@ public partial class App : Application
     {
         try
         {
-            var log = LogFile ?? Path.Combine(AppPaths.DataDir, "errori.log");
+            var log = LogFile ?? AppPaths.LogFile;
             File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
 #if ANDROID_APP
             Android.Util.Log.Error("UltimateMP3Player", ex.ToString());

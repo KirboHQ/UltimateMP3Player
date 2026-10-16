@@ -1,6 +1,6 @@
 namespace UltimateMP3Player.Core;
 
-// Featured = shown as a music source on the download page.
+// Featured = shown as a music source on the download page. Black-and-white brands get a grey dot (it shows on light and dark).
 public sealed record SiteInfo(string Name, string Color, string[] Domains, bool Music = false, bool GalleryFirst = false, bool Featured = false);
 
 public static class Sites
@@ -15,7 +15,7 @@ public static class Sites
         new("TikTok", "#FE2C55", new[] { "tiktok.com" }, Featured: true),
         new("Instagram", "#E1306C", new[] { "instagram.com", "instagr.am" }, GalleryFirst: true, Featured: true),
         new("Facebook", "#1877F2", new[] { "facebook.com", "fb.watch", "fb.com" }, Featured: true),
-        new("X / Twitter", "#E7E9EA", new[] { "twitter.com", "x.com", "t.co" }, GalleryFirst: true, Featured: true),
+        new("X / Twitter", "#8B93A7", new[] { "twitter.com", "x.com", "t.co" }, GalleryFirst: true, Featured: true),
         new("Reddit", "#FF4500", new[] { "reddit.com", "redd.it" }, GalleryFirst: true, Featured: true),
         new("Twitch", "#9146FF", new[] { "twitch.tv" }, Featured: true),
         new("Imgur", "#1BB76E", new[] { "imgur.com" }, GalleryFirst: true),
@@ -39,13 +39,13 @@ public static class Sites
         new("Rumble", "#85C742", new[] { "rumble.com" }),
         new("Audiomack", "#FFA200", new[] { "audiomack.com" }, Music: true, Featured: true),
         new("Wallhaven", "#8C7AE6", new[] { "wallhaven.cc" }, GalleryFirst: true),
-        new("Unsplash", "#E7E9EA", new[] { "unsplash.com" }, GalleryFirst: true),
+        new("Unsplash", "#8B93A7", new[] { "unsplash.com" }, GalleryFirst: true),
         new("Imgbb", "#2A7AE2", new[] { "imgbb.com", "ibb.co" }, GalleryFirst: true),
         new("Postimages", "#3C8DBC", new[] { "postimg.cc", "postimages.org" }, GalleryFirst: true),
-        new("VSCO", "#E7E9EA", new[] { "vsco.co" }, GalleryFirst: true),
+        new("VSCO", "#8B93A7", new[] { "vsco.co" }, GalleryFirst: true),
         new("Weibo", "#E6162D", new[] { "weibo.com", "weibo.cn" }, GalleryFirst: true),
-        new("Threads", "#E7E9EA", new[] { "threads.net", "threads.com" }),
-        new("9GAG", "#E7E9EA", new[] { "9gag.com" }),
+        new("Threads", "#8B93A7", new[] { "threads.net", "threads.com" }),
+        new("9GAG", "#8B93A7", new[] { "9gag.com" }),
         new("Snapchat", "#FFFC00", new[] { "snapchat.com" }),
         new("LinkedIn", "#0A66C2", new[] { "linkedin.com" }),
     };

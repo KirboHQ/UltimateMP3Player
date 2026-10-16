@@ -53,7 +53,7 @@ public sealed class PythonProcess : ChildProcess
     private static unsafe (int Read, int Write) Pipe()
     {
         int* fds = stackalloc int[2];
-        if (pipe(fds) != 0) throw new EngineException(L.F("Impossibile avviare {0}.", "yt-dlp"), "pipe: " + Marshal.GetLastPInvokeError());
+        if (pipe(fds) != 0) throw new EngineException(L.F("Couldn't start {0}.", "yt-dlp"), "pipe: " + Marshal.GetLastPInvokeError());
         return (fds[0], fds[1]);
     }
 

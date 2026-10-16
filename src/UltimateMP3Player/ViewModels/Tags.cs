@@ -21,7 +21,7 @@ public sealed class TagViewModel : Observable
     public string SearchName => Text.Normalize(T.Name);
 
     public int Count => _main.Profile.CountTagged(Id);
-    public string CountText => L.Count(Count, "1 brano", "{0} brani");
+    public string CountText => L.Count(Count, "1 song", "{0} songs");
 
     private bool _isSelected;
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
@@ -41,7 +41,7 @@ public sealed class TagFilter : Observable
 
     public IReadOnlyCollection<string> Ids => _ids;
     public bool IsActive => _ids.Count > 0;
-    public string Label => _ids.Count == 0 ? L.T("Tag") : L.F("Tag · {0}", _ids.Count);
+    public string Label => _ids.Count == 0 ? L.T("Tags") : L.F("Tags · {0}", _ids.Count);
 
     private bool _matchAll = true;
     public bool MatchAll

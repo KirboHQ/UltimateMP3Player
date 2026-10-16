@@ -81,31 +81,31 @@ public sealed class StorageFilterViewModel : Observable
     // The pill above the list: what it shows now.
     public string Label => Value switch
     {
-        StorageFilter.Device => L.T("Sul dispositivo"),
-        StorageFilter.Cloud => L.T("Solo nel cloud"),
-        _ => L.T("Dispositivo e cloud"),
+        StorageFilter.Device => L.T("On device"),
+        StorageFilter.Cloud => L.T("Cloud only"),
+        _ => L.T("Device and cloud"),
     };
     public string Glyph => GlyphOf(Value);
-    public string Tip => L.T("Mostra tutti i brani, solo quelli salvati sul dispositivo o solo quelli nel cloud");
+    public string Tip => L.T("Show all songs, only the ones saved on your device or only the ones in the cloud");
     // After the count of the songs: the ones it hides.
     public string HiddenText => HiddenCount == 0 ? ""
-        : Value == StorageFilter.Device ? L.F("{0} nel cloud nascosti", HiddenCount) : L.F("{0} sul dispositivo nascosti", HiddenCount);
+        : Value == StorageFilter.Device ? L.F("{0} in the cloud hidden", HiddenCount) : L.F("{0} on the device hidden", HiddenCount);
 
     // The choices of its menu: books (all the songs, like "All songs"), the download arrow (on the device), the cloud.
     public static readonly StorageFilter[] Choices = { StorageFilter.All, StorageFilter.Device, StorageFilter.Cloud };
     public static string GlyphOf(StorageFilter f) => f switch { StorageFilter.Device => "", StorageFilter.Cloud => "", _ => "" };
     public string NameOf(StorageFilter f) => f switch
     {
-        StorageFilter.Device => L.F("Sul dispositivo · {0}", SavedCount),
-        StorageFilter.Cloud => L.F("Solo nel cloud · {0}", CloudCount),
-        _ => L.F("Tutti i brani · {0}", Total),
+        StorageFilter.Device => L.F("On device · {0}", SavedCount),
+        StorageFilter.Cloud => L.F("Cloud only · {0}", CloudCount),
+        _ => L.F("All songs · {0}", Total),
     };
 
     // An empty page because of it: what to say.
-    public string EmptyTitle => Value == StorageFilter.Device ? L.T("Nessun brano salvato sul dispositivo") : L.T("Nessun brano nel cloud");
+    public string EmptyTitle => Value == StorageFilter.Device ? L.T("No songs saved on your device") : L.T("No songs in the cloud");
     public string EmptyText => Value == StorageFilter.Device
-        ? L.T("Qui sono tutti nel cloud: scegli «Dispositivo e cloud» nel filtro per vederli.")
-        : L.T("Qui sono tutti salvati sul dispositivo: scegli «Dispositivo e cloud» nel filtro per vederli.");
+        ? L.T("They're all in the cloud here: pick “Device and cloud” in the filter to see them.")
+        : L.T("They're all saved on your device here: pick “Device and cloud” in the filter to see them.");
 
     // Counts the page's songs and keeps the ones to show.
     public List<T> Apply<T>(IReadOnlyCollection<T> all, Func<T, bool> isSaved)
@@ -139,7 +139,7 @@ public sealed class HomeViewModel : Observable
         get
         {
             int h = DateTime.Now.Hour;
-            var g = h is >= 5 and < 13 ? "Buongiorno" : h is >= 13 and < 18 ? "Buon pomeriggio" : "Buonasera";
+            var g = h is >= 5 and < 13 ? "Good morning" : h is >= 13 and < 18 ? "Good afternoon" : "Good evening";
             return $"{L.T(g)}, {_main.ProfileName}";
         }
     }
@@ -162,9 +162,9 @@ public sealed class HomeViewModel : Observable
     public void Refresh()
     {
         Recent = _main.Profile.RecentTracks(RecentCount, id => Heard(id) != null).Select(id => _main.Vm(Heard(id)!)).ToList();
-        RecentList = new TrackListSource("recent", L.T("Ascoltati di recente"), Recent);
+        RecentList = new TrackListSource("recent", L.T("Recently played"), Recent);
         var added = _main.Library.Snapshot().OrderByDescending(t => t.Added).Take(8).Select(_main.Vm).ToList();
-        var addedList = new TrackListSource("added", L.T("Aggiunti di recente"), added);
+        var addedList = new TrackListSource("added", L.T("Recently added"), added);
         RecentlyAdded = added.Select((t, i) => new TrackRow(i + 1, t, addedList)).ToList();
         OnChanged(nameof(Greeting), nameof(Recent), nameof(RecentlyAdded), nameof(PlaylistCards), nameof(HasRecent), nameof(HasRecentlyAdded),
             nameof(IsEmpty), nameof(RecentList));
@@ -193,8 +193,8 @@ public sealed class LibraryViewModel : Observable, ITrackList
         TagFilter.Changed += ApplyFilter;
         Sorts = new List<Choice>
         {
-            new(L.T("Aggiunti di recente"), "added"), new(L.T("Titolo"), "title"), new(L.T("Artista"), "artist"),
-            new(L.T("Album"), "album"), new(L.T("Durata"), "duration"),
+            new(L.T("Recently added"), "added"), new(L.T("Title"), "title"), new(L.T("Artist"), "artist"),
+            new(L.T("Album"), "album"), new(L.T("Duration"), "duration"),
         };
         _sort = Sorts.FirstOrDefault(s => (string)s.Value! == main.Profile.Data.LibrarySort) ?? Sorts[0];
         PlayCommand = new RelayCommand(() => _main.Player.PlayAll(this, false), () => _order.Count > 0);
@@ -214,7 +214,7 @@ public sealed class LibraryViewModel : Observable, ITrackList
     public bool HasCloud => CloudCount > 0;
     // Next to the count of the songs, while some are in the cloud (and shown): saving them all.
     public bool ShowSaveAll => HasCloud && Storage.Value != StorageFilter.Device;
-    public string SaveAllLabel => L.Count(CloudCount, "Salva quello nel cloud", "Salva tutti quelli nel cloud");
+    public string SaveAllLabel => L.Count(CloudCount, "Save the one in the cloud", "Save all those in the cloud");
 
     public bool Unsorted { get; }
     public TagViewModel? Tag { get; }
@@ -225,27 +225,27 @@ public sealed class LibraryViewModel : Observable, ITrackList
     public ICommand ShuffleCommand { get; }
 
     public string ContextId => Tag != null ? "tag:" + Tag.Id : Unsorted ? "unsorted" : "library";
-    public string ContextName => Tag?.Name ?? L.T(Unsorted ? "Senza playlist" : "Tutti i brani");
+    public string ContextName => Tag?.Name ?? L.T(Unsorted ? "Not in a playlist" : "All songs");
     public IReadOnlyList<TrackViewModel> PlayOrder => _order;
     public Playlist? Playlist => null;
 
     public string Title => ContextName;
-    public string Kicker => Tag != null ? L.T("TAG") : L.T(Unsorted ? "DA SISTEMARE" : "LIBRERIA");
+    public string Kicker => Tag != null ? L.T("TAGS") : L.T(Unsorted ? "TO SORT" : "LIBRARY");
     public string Glyph => Tag != null ? "" : Unsorted ? "" : "";
     public string Hint => Tag != null
-        ? L.T("Metti o togli il tag dal menu … di un brano, oppure selezionandone più di uno.")
+        ? L.T("Add or remove the tag from a song's … menu, or by selecting several songs.")
         : L.T(Unsorted
-            ? "Brani che non sono in nessuna playlist (né nei Preferiti): selezionali per aggiungerli a una playlist o eliminarli."
-            : "Ctrl o Maiusc + clic per selezionare più brani (Ctrl+A tutti), poi Canc o tasto destro per eliminarli o spostarli.");
+            ? "Songs that aren't in any playlist (or in Favorites): select them to add them to a playlist or delete them."
+            : "Ctrl or Shift + click to select several songs (Ctrl+A for all), then Del or right-click to delete or move them.");
     // (songs there, all hidden by the "on the device / in the cloud" filter: that's what it says)
     public string EmptyTitle => Storage.HidesAll ? Storage.EmptyTitle
-        : Tag != null ? L.T("Nessun brano con questo tag") : L.T(Unsorted ? "Tutto in ordine" : "Nessun brano, per ora");
+        : Tag != null ? L.T("No songs with this tag") : L.T(Unsorted ? "All sorted" : "No songs yet");
     public string EmptyText => Storage.HidesAll ? Storage.EmptyText
         : Tag != null
-        ? L.T("Tasto destro su un brano → Tag, oppure seleziona più brani e premi Tag.")
+        ? L.T("Right-click a song → Tags, or select several songs and press Tags.")
         : L.T(Unsorted
-            ? "Ogni brano è in almeno una playlist."
-            : "Incolla un link nella barra in alto per scaricare musica, oppure aggiungi file dal computer.");
+            ? "Every song is in at least one playlist."
+            : "Paste a link in the bar at the top to download music, or add files from your computer.");
 
     // A tag page also lists the playlists with that tag.
     public List<PlaylistViewModel> TaggedPlaylists { get; private set; } = new();
@@ -307,10 +307,10 @@ public sealed class LibraryViewModel : Observable, ITrackList
         // it hides them all).
         var parts = new List<string>();
         if (_order.Count > 0)
-            parts.Add(L.Count(_order.Count, "1 brano", "{0} brani") + " · " +
+            parts.Add(L.Count(_order.Count, "1 song", "{0} songs") + " · " +
                       (total.TotalHours >= 1 ? L.F("{0} h {1} min", (int)total.TotalHours, total.Minutes) : L.F("{0} min", total.Minutes)));
         if (Storage.IsActive) parts.Add(Storage.HiddenText);
-        else if (CloudCount > 0) parts.Add(L.F("{0} nel cloud", CloudCount));
+        else if (CloudCount > 0) parts.Add(L.F("{0} in the cloud", CloudCount));
         CountText = string.Join(" · ", parts.Where(p => p.Length > 0));
         ApplyFilter();
         OnChanged(nameof(CountText), nameof(IsEmpty), nameof(CloudCount), nameof(HasCloud), nameof(ShowSaveAll), nameof(SaveAllLabel), nameof(EmptyTitle),
@@ -342,8 +342,8 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
         Storage = new StorageFilterViewModel(main);
         Sorts = new List<Choice>
         {
-            new(L.T("Ordine personalizzato"), "custom"), new(L.T("Titolo"), "title"), new(L.T("Artista"), "artist"), new(L.T("Album"), "album"),
-            new(L.T("Durata"), "duration"), new(L.T("Aggiunti alla libreria"), "added"),
+            new(L.T("Custom order"), "custom"), new(L.T("Title"), "title"), new(L.T("Artist"), "artist"), new(L.T("Album"), "album"),
+            new(L.T("Duration"), "duration"), new(L.T("Added to library"), "added"),
         };
         _sort = Sorts.FirstOrDefault(s => (string)s.Value! == (vm.P.Sort ?? "custom")) ?? Sorts[0];
         TagFilter.Changed += ApplyFilter;
@@ -380,7 +380,7 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
     public ICommand SaveAllCommand { get; }
     public int CloudCount => Storage.CloudCount;
     public bool ShowSaveAll => CloudCount > 0 && Storage.Value != StorageFilter.Device;
-    public string SaveAllLabel => L.Count(CloudCount, "Salva quello nel cloud", "Salva tutti quelli nel cloud");
+    public string SaveAllLabel => L.Count(CloudCount, "Save the one in the cloud", "Save all those in the cloud");
 
     // Its songs and how long; with the filter hiding some, the ones shown and the hidden ones.
     public string TotalText
@@ -391,11 +391,11 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
             if (_order.Count == 0) return Storage.HiddenText;
             var t = TimeSpan.FromSeconds(_order.Sum(s => s.T.Duration));
             var dur = t.TotalHours >= 1 ? L.F("{0} h {1} min", (int)t.TotalHours, t.Minutes) : L.F("{0} min {1} s", t.Minutes, t.Seconds);
-            return $"{L.Count(_order.Count, "1 brano", "{0} brani")} · {dur} · {Storage.HiddenText}";
+            return $"{L.Count(_order.Count, "1 song", "{0} songs")} · {dur} · {Storage.HiddenText}";
         }
     }
 
-    public string EmptyTitle => Storage.HidesAll ? Storage.EmptyTitle : L.T("La playlist è vuota");
+    public string EmptyTitle => Storage.HidesAll ? Storage.EmptyTitle : L.T("This playlist is empty");
 
     // Rebuilt when shown again after the filter changed elsewhere.
     private bool _dirty;
@@ -435,8 +435,8 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
     }
 
     public string EmptyText => Storage.HidesAll ? Storage.EmptyText : L.T(Vm.IsFavorites
-        ? "Premi il cuore accanto a un brano per aggiungerlo ai preferiti."
-        : "Aggiungi brani dal menu … di un brano, trascinandoli qui, oppure scegli questa playlist quando scarichi un link.");
+        ? "Click the heart next to a song to add it to your favorites."
+        : "Add songs from a song's … menu, by dragging them here, or pick this playlist when you download a link.");
 
     public void Rebuild()
     {
@@ -551,7 +551,7 @@ public sealed class SearchViewModel : Observable, ITrackList
     }
 
     public string ContextId => "search";
-    public string ContextName => L.F("Ricerca «{0}»", Query);
+    public string ContextName => L.F("Search “{0}”", Query);
     public IReadOnlyList<TrackViewModel> PlayOrder => _order;
     public Playlist? Playlist => null;
 
@@ -560,7 +560,7 @@ public sealed class SearchViewModel : Observable, ITrackList
     public List<PlaylistViewModel> PlaylistResults { get; private set; } = new();
     public bool HasPlaylists => PlaylistResults.Count > 0;
     public bool NoResults => Rows.Count == 0 && PlaylistResults.Count == 0;
-    public string Title => L.F("Risultati per «{0}»", Query);
+    public string Title => L.F("Results for “{0}”", Query);
 
     public ICommand ShowLocalCommand { get; }
     public ICommand ShowOnlineCommand { get; }
@@ -607,8 +607,8 @@ public sealed class SearchViewModel : Observable, ITrackList
     public bool LocalMode => !OnlineMode;
     public bool ShowLocalEmpty => LocalMode && NoResults;
     public string LocalEmptyHint => OnlineEnabled
-        ? L.T("Cerca per titolo, artista o album. Per un brano che non hai guarda nella scheda Online, oppure incolla il suo link.")
-        : L.T("Cerca per titolo, artista o album. Per scaricare un brano nuovo incolla il suo link.");
+        ? L.T("Search by title, artist or album. For a song you don't have, look in the Online tab or paste its link.")
+        : L.T("Search by title, artist or album. To download a new song, paste its link.");
 
     private void PickTab(bool online)
     {
@@ -628,7 +628,7 @@ public sealed class SearchViewModel : Observable, ITrackList
         _onlineCts?.Cancel();
     }
 
-    public string LocalTabText => L.F("Nei tuoi brani · {0}", Rows.Count);
+    public string LocalTabText => L.F("Your songs · {0}", Rows.Count);
     public string OnlineTabText => _allHits.Count > 0 ? L.F("Online · {0}", _allHits.Count) : L.T("Online");
 
     private CancellationTokenSource? _onlineCts;
@@ -647,9 +647,9 @@ public sealed class SearchViewModel : Observable, ITrackList
     private string? _onlineStatus;
     public string? OnlineStatus { get => _onlineStatus; private set => Set(ref _onlineStatus, value); }
     public bool NoOnlineResults => !OnlineBusy && _allHits.Count == 0 && _onlineQuery.Length > 0;
-    public string NoOnlineText => !Searchable(Query) ? L.T("Scrivi almeno due lettere per cercare online.")
-        : _failed.Count > 0 && _byService.Count == 0 ? L.T("I siti non hanno risposto: controlla la connessione e riprova.")
-        : L.T("Nessun brano trovato online.");
+    public string NoOnlineText => !Searchable(Query) ? L.T("Type at least two letters to search online.")
+        : _failed.Count > 0 && _byService.Count == 0 ? L.T("The sites didn't answer: check your connection and try again.")
+        : L.T("No songs found online.");
 
     private void ScheduleOnline()
     {
@@ -694,7 +694,7 @@ public sealed class SearchViewModel : Observable, ITrackList
     private async Task SearchOnline(string query, List<string> services, bool parallel, CancellationTokenSource cts)
     {
         OnlineBusy = true;
-        OnlineStatus = L.F("Cerco su {0}…", parallel ? string.Join(", ", services) : services[0]);
+        OnlineStatus = L.F("Searching {0}…", parallel ? string.Join(", ", services) : services[0]);
         try
         {
             if (parallel) await Task.WhenAll(services.Select(s => SearchOne(s, query, cts)));
@@ -703,7 +703,7 @@ public sealed class SearchViewModel : Observable, ITrackList
                 foreach (var s in services)
                 {
                     if (cts.IsCancellationRequested) return;
-                    OnlineStatus = L.F("Cerco su {0}…", s);
+                    OnlineStatus = L.F("Searching {0}…", s);
                     await SearchOne(s, query, cts);
                     if (_byService.TryGetValue(s, out var got) && got.Count > 0) break;
                 }
@@ -713,7 +713,7 @@ public sealed class SearchViewModel : Observable, ITrackList
             if (_onlineCts == cts)
             {
                 OnlineBusy = false;
-                OnlineStatus = _failed.Count > 0 ? L.F("Non hanno risposto: {0}", string.Join(", ", _failed)) : null;
+                OnlineStatus = _failed.Count > 0 ? L.F("No answer from: {0}", string.Join(", ", _failed)) : null;
                 OnChanged(nameof(NoOnlineText));
             }
         }
@@ -740,7 +740,7 @@ public sealed class SearchViewModel : Observable, ITrackList
         _allHits = order.SelectMany(s => _byService[s]).OrderBy(h => h.Rank).ThenBy(h => order.IndexOf(h.Service))
             .Select(h => new OnlineHitViewModel(h, _main)).ToList();
         if (_serviceFilter != null && !_byService.ContainsKey(_serviceFilter)) _serviceFilter = null;
-        var tabs = new List<ServiceTab> { new(null, L.T("Tutti"), _allHits.Count) };
+        var tabs = new List<ServiceTab> { new(null, L.T("All"), _allHits.Count) };
         tabs.AddRange(order.Where(s => _byService[s].Count > 0).Select(s => new ServiceTab(s, s, _byService[s].Count)));
         foreach (var t in tabs) t.IsSelected = t.Service == _serviceFilter;
         ServiceTabs = tabs;

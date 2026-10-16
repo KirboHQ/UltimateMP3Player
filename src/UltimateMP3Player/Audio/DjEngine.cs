@@ -74,7 +74,7 @@ public sealed class DjDeckEngine : ISampleProvider
         var temp = Path.Combine(AppPaths.TempDir, "dj-" + Ids.New() + ".wav");
         var r = await ProcRunner.RunAsync(Engines.Ffmpeg, new[] { "-v", "error", "-y", "-i", path, "-vn", "-ac", "2", "-ar", SampleRate.ToString(), temp },
             captureOut: false, timeout: TimeSpan.FromMinutes(3));
-        if (r.ExitCode != 0 || !File.Exists(temp)) throw new EngineException(L.T("File non leggibile:") + " " + Path.GetFileName(path));
+        if (r.ExitCode != 0 || !File.Exists(temp)) throw new EngineException(L.T("Unreadable file:") + " " + Path.GetFileName(path));
         WaveStream reader = new WaveFileReader(temp);
         ISampleProvider sp = reader.ToSampleProvider();
         if (sp.WaveFormat.Channels == 1) sp = new MonoToStereoSampleProvider(sp);

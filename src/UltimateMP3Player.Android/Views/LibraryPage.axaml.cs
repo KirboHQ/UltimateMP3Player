@@ -82,13 +82,13 @@ public partial class LibraryPage : UserControl, IPage
     private void Add_Click(object? sender, RoutedEventArgs e)
     {
         if (_hub?.Main is not { } main) return;
-        var menu = new SheetMenu { Title = L.T("Aggiungi") };
-        menu.Add(new(L.T("Nuova playlist…"), "", () => _ = main.NewPlaylist(null)));
-        menu.Add(new(L.T("Nuovo tag…"), "", () => _ = main.NewTag()));
+        var menu = new SheetMenu { Title = L.T("Add") };
+        menu.Add(new(L.T("New playlist…"), "", () => _ = main.NewPlaylist(null)));
+        menu.Add(new(L.T("New tag…"), "", () => _ = main.NewTag()));
         menu.Line();
-        menu.Add(new(L.T("Brani dal telefono…"), "", () => _ = main.ImportDialog(false)));
-        menu.Add(new(L.T("Una cartella di musica…"), "", () => _ = main.ImportDialog(true)));
-        menu.Add(new(L.T("Importa un pacchetto .ump…"), "", () => _ = main.PickPack()));
+        menu.Add(new(L.T("Songs from your phone…"), "", () => _ = main.ImportDialog(false)));
+        menu.Add(new(L.T("A music folder…"), "", () => _ = main.ImportDialog(true)));
+        menu.Add(new(L.T("Import a .ump pack…"), "", () => _ = main.PickPack()));
         Menus.Open(menu);
     }
 
