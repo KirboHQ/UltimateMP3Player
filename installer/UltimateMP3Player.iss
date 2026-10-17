@@ -1,11 +1,16 @@
 ; Inno Setup script. Built by ..\build.ps1 -Installer (or -Release), which first publishes the
 ; self-contained app into .\staging together with the engines: nothing else is needed on the target PC.
+; Once per processor (/DArch=x64, /DArch=arm64).
 
 #define AppName "Ultimate MP3 Player"
 #ifndef AppVersion
   #define AppVersion "1.0.0"
 #endif
 #define AppExe "UltimateMP3Player.exe"
+; "x64" or "arm64" (build.ps1 makes one setup each). Same AppId: the ARM setup upgrades an x64 install in place.
+#ifndef Arch
+  #define Arch "x64"
+#endif
 
 [Setup]
 AppId={{3F6C2A71-9D4E-4B8A-A1C5-7E2D90B4F618}
@@ -18,12 +23,13 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 ; Per-user install: no admin rights, and the app can update itself and its engines.
 PrivilegesRequired=lowest
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
-MinVersion=10.0
+ArchitecturesAllowed={#Arch == "arm64" ? "arm64" : "x64compatible"}
+ArchitecturesInstallIn64BitMode={#Arch == "arm64" ? "arm64" : "x64compatible"}
+; The engines are x64 on both: an ARM PC runs them emulated, which only Windows 11 can.
+MinVersion={#Arch == "arm64" ? "10.0.22000" : "10.0"}
 OutputDir=Output
 ; Named like the other systems' files of the release (UltimateMP3Player-linux-x64.tar.gz, -android-arm64-v8a.apk...).
-OutputBaseFilename=UltimateMP3Player-windows-x64-setup
+OutputBaseFilename=UltimateMP3Player-windows-{#Arch}-setup
 SetupIconFile=..\src\UltimateMP3Player\app.ico
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}

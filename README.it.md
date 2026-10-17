@@ -179,7 +179,8 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 
 **Windows**
 
-1. Scarica **`UltimateMP3Player-windows-x64-setup.exe`** dall'[ultima release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
+1. Scarica **`UltimateMP3Player-windows-x64-setup.exe`** (o `-arm64-setup.exe` per Windows 11 su ARM, come i portatili
+   Snapdragon) dall'[ultima release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
 2. Avvialo: niente diritti di amministratore e nient'altro da installare. Ti chiede la lingua (italiano o inglese,
    si cambia poi dalle impostazioni).
 3. Fatto: l'app si aggiorna da sola dalle release.
@@ -270,8 +271,8 @@ Serve il .NET 8 SDK, e per l'installer Inno Setup 6. I programmi esterni vanno i
 | Comando | Risultato |
 |---|---|
 | `.\build.ps1` | App portatile in `app\` e collegamento sul Desktop |
-| `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-windows-x64-setup.exe` |
-| `.\build.ps1 -Release` | `dist\`: i file da allegare a una release di GitHub: `UltimateMP3Player-windows-x64-setup.exe` (più `UltimateMP3Player-windows-x64.exe`, facoltativo, per aggiornamenti più leggeri, e `legacy\UltimateMP3Player.exe`, lo stesso exe con il nome che cercano le versioni fino alla 3.6), i pacchetti per Linux e macOS e gli APK per Android (`-WindowsOnly` salta entrambi, `-NoAndroid` solo gli APK) |
+| `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-windows-x64-setup.exe` e `-windows-arm64-setup.exe` |
+| `.\build.ps1 -Release` | `dist\`: i file da allegare a una release di GitHub: `UltimateMP3Player-windows-x64-setup.exe` e `-windows-arm64-setup.exe` (più `UltimateMP3Player-windows-x64.exe` e `-windows-arm64.exe`, facoltativi, per aggiornamenti più leggeri, e `legacy\UltimateMP3Player.exe`, l'exe x64 con il nome che cercano le versioni fino alla 3.6), i pacchetti per Linux e macOS e gli APK per Android (`-WindowsOnly` salta entrambi, `-NoAndroid` solo gli APK) |
 | `.\build-unix.ps1` | Solo i pacchetti per Linux e macOS in `dist\`: `UltimateMP3Player-linux-x64.tar.gz`, `-linux-arm64.tar.gz`, `UltimateMP3Player-macos-x64.zip`, `-macos-arm64.zip` (`-Targets linux-x64,…` per farne solo alcuni) |
 | `.\build-android.ps1` | Solo gli APK per Android in `dist\android\`: `UltimateMP3Player-android-arm64-v8a.apk`, `-armeabi-v7a.apk`, `-x86_64.apk` (`-Out <cartella>` per metterli altrove) |
 
@@ -299,8 +300,9 @@ workflow. Su Windows `dotnet build src\UltimateMP3Player.iOS` con l'SDK .NET 10 
 Due impostazioni in `src\UltimateMP3Player\UltimateMP3Player.csproj` (e le stesse due nel progetto Avalonia):
 
 - `<GitHubRepo>proprietario/repo</GitHubRepo>`: dove l'app cerca gli aggiornamenti e apre le segnalazioni. L'ultima
-  release deve contenere il setup; se contiene anche `UltimateMP3Player-windows-x64.exe`, gli aggiornamenti scaricano solo
-  quello (70 MB invece dell'intero setup). Le versioni fino alla 3.6 conoscono solo i vecchi nomi: per qualche release
+  release deve contenere i setup; se contiene anche `UltimateMP3Player-windows-x64.exe` e `-arm64.exe`, gli aggiornamenti
+  scaricano solo quelli (70-80 MB invece dell'intero setup). Ogni PC prende i file del suo processore (un'installazione x64
+  su un PC ARM passa a quelli ARM). Le versioni fino alla 3.6 conoscono solo i vecchi nomi: per qualche release
   allega anche `dist\legacy\UltimateMP3Player.exe`, così si aggiornano.
 - `<DiscordAppId>…</DiscordAppId>`: l'applicazione Discord usata per lo stato.
 

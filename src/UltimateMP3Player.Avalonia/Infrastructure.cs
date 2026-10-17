@@ -254,7 +254,7 @@ public static class Ui
     // Any resource of the app (templates, themes of the controls), the colours of the look showing now too: a plain
     // FindResource skips the light and dark dictionaries (the sheets came out without a background).
     public static TRes Find<TRes>(string key) where TRes : class
-        => (Application.Current is { } app && app.TryFindResource(key, app.ActualThemeVariant, out var v) ? v as TRes : null)!;
+        => (Application.Current is { } app && app.TryFindResource(key, app.ActualThemeVariant, out var v) ? Themes.Live(key, v) as TRes : null)!;
     public static Avalonia.Styling.ControlTheme Theme(string key) => Find<Avalonia.Styling.ControlTheme>(key);
 
     public static readonly Cursor Hand = new(StandardCursorType.Hand);

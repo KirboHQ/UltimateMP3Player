@@ -176,7 +176,8 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 
 **Windows**
 
-1. Download **`UltimateMP3Player-windows-x64-setup.exe`** from the [latest release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
+1. Download **`UltimateMP3Player-windows-x64-setup.exe`** (or `-arm64-setup.exe` for Windows 11 on ARM, like the
+   Snapdragon laptops) from the [latest release](https://github.com/KirboHQ/UltimateMP3Player/releases/latest).
 2. Run it: no administrator rights and nothing else to install. It asks for your language (English or Italiano,
    you can change it later in Settings).
 3. That's it: the app keeps itself up to date from the releases.
@@ -264,8 +265,8 @@ Requirements: .NET 8 SDK, and for the installer Inno Setup 6. Put the external p
 | Command | Result |
 |---|---|
 | `.\build.ps1` | Portable app in `app\` and a Desktop shortcut |
-| `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-windows-x64-setup.exe` |
-| `.\build.ps1 -Release` | `dist\`: the files to attach to a GitHub release: `UltimateMP3Player-windows-x64-setup.exe` (plus `UltimateMP3Player-windows-x64.exe`, optional, for lighter updates, and `legacy\UltimateMP3Player.exe`, the same exe under the name versions up to 3.6 look for), the Linux and macOS packages and the Android APKs (`-WindowsOnly` skips both, `-NoAndroid` only the APKs) |
+| `.\build.ps1 -Installer` | `installer\Output\UltimateMP3Player-windows-x64-setup.exe` and `-windows-arm64-setup.exe` |
+| `.\build.ps1 -Release` | `dist\`: the files to attach to a GitHub release: `UltimateMP3Player-windows-x64-setup.exe` and `-windows-arm64-setup.exe` (plus `UltimateMP3Player-windows-x64.exe` and `-windows-arm64.exe`, optional, for lighter updates, and `legacy\UltimateMP3Player.exe`, the x64 exe under the name versions up to 3.6 look for), the Linux and macOS packages and the Android APKs (`-WindowsOnly` skips both, `-NoAndroid` only the APKs) |
 | `.\build-unix.ps1` | Only the Linux and macOS packages in `dist\`: `UltimateMP3Player-linux-x64.tar.gz`, `-linux-arm64.tar.gz`, `UltimateMP3Player-macos-x64.zip`, `-macos-arm64.zip` (`-Targets linux-x64,…` for some of them) |
 | `.\build-android.ps1` | Only the Android APKs in `dist\android\`: `UltimateMP3Player-android-arm64-v8a.apk`, `-armeabi-v7a.apk`, `-x86_64.apk` (`-Out <folder>` elsewhere) |
 
@@ -293,8 +294,9 @@ workflow. On Windows, `dotnet build src\UltimateMP3Player.iOS` with the .NET 10 
 Two settings in `src\UltimateMP3Player\UltimateMP3Player.csproj` (and the same two in the Avalonia project):
 
 - `<GitHubRepo>owner/repo</GitHubRepo>`: where the app looks for updates and opens issues. The latest release must
-  contain the setup; if it also contains `UltimateMP3Player-windows-x64.exe`, updates download only that (70 MB instead
-  of the whole setup). Versions up to 3.6 only know the old names: attach `dist\legacy\UltimateMP3Player.exe` too for a
+  contain the setups; if it also contains `UltimateMP3Player-windows-x64.exe` and `-arm64.exe`, updates download only
+  those (70-80 MB instead of the whole setup). Each PC takes its processor's files (an x64 install on an ARM PC moves to
+  the ARM ones). Versions up to 3.6 only know the old names: attach `dist\legacy\UltimateMP3Player.exe` too for a
   few releases, so they can update.
 - `<DiscordAppId>…</DiscordAppId>`: the Discord application used for Rich Presence.
 

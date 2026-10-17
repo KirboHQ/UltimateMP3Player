@@ -28,7 +28,7 @@ namespace System.Windows
         // Not nullable, like WPF's (the shared code casts what it reads).
         public object this[string key]
         {
-            get => (Avalonia.Application.Current is { } app && app.TryGetResource(key, app.ActualThemeVariant, out var v) ? v : null)!;
+            get => (Avalonia.Application.Current is { } app && app.TryGetResource(key, app.ActualThemeVariant, out var v) ? UltimateMP3Player.Themes.Live(key, v) : null)!;
             set
             {
                 if (Avalonia.Application.Current is { } app) app.Resources[key] = value;

@@ -34,12 +34,56 @@ public static class Themes
         if (!_watching)
         {
             _watching = true;
-            app.ActualThemeVariantChanged += (_, _) => Changed?.Invoke();
+            app.ActualThemeVariantChanged += (_, _) => Restyle();
         }
         _followsDevice = mode != ThemeColors.Light && mode != ThemeColors.Dark;
         var variant = mode == ThemeColors.Light ? ThemeVariant.Light : mode == ThemeColors.Dark ? ThemeVariant.Dark : DeviceLook?.Invoke() ?? ThemeVariant.Default;
         app.RequestedThemeVariant = variant;
+        Restyle();
+    }
+
+    // (the live brushes first: what redraws on Changed may read them)
+    private static void Restyle()
+    {
+        if (Application.Current is { } app)
+            foreach (var (key, live) in _live)
+                if (app.TryFindResource(key, app.ActualThemeVariant, out var v) && v is IBrush now) Copy(now, live);
         Changed?.Invoke();
+    }
+
+    // Brushes looked up by code (the phone's sheets and pages built in code, the dialogs) don't follow a DynamicResource and
+    // stayed in the old look while open: each key hands out one brush that takes the new colours in place.
+    private static readonly Dictionary<string, IBrush> _live = new();
+
+    public static object? Live(string key, object? found)
+    {
+        if (found is not IBrush b || !Avalonia.Threading.Dispatcher.UIThread.CheckAccess()) return found;
+        if (!_live.TryGetValue(key, out var live)) _live[key] = live = Copy(b, null);
+        return live;
+    }
+
+    // Copies a brush's colours into a changeable one (a new one when there's none yet); other kinds stay as they are.
+    private static IBrush Copy(IBrush from, IBrush? into)
+    {
+        switch (from)
+        {
+            case ISolidColorBrush s:
+                var solid = into as SolidColorBrush ?? new SolidColorBrush();
+                solid.Color = s.Color;
+                solid.Opacity = s.Opacity;
+                return solid;
+            case ILinearGradientBrush g:
+                var linear = into as LinearGradientBrush ?? new LinearGradientBrush();
+                linear.StartPoint = g.StartPoint;
+                linear.EndPoint = g.EndPoint;
+                linear.Opacity = g.Opacity;
+                var stops = new GradientStops();
+                foreach (var stop in g.GradientStops) stops.Add(new GradientStop(stop.Color, stop.Offset));
+                linear.GradientStops = stops;
+                return linear;
+            default:
+                return into ?? from;
+        }
     }
 
     // The device switched light or dark (Android): the app follows when the profile says "same as the device".

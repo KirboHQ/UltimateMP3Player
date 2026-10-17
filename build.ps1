@@ -1,13 +1,15 @@
 ﻿# Build script.
 #   .\build.ps1               portable app in .\app plus a Desktop shortcut
 #   .\build.ps1 -NoShortcut   same, without touching the Desktop
-#   .\build.ps1 -Installer    only the installer: installer\Output\UltimateMP3Player-windows-x64-setup.exe
-#   .\build.ps1 -Release      the files for a GitHub release in .\dist: the installer UltimateMP3Player-windows-x64-setup.exe
-#                             (enough on its own), UltimateMP3Player-windows-x64.exe (optional: if attached, updates download
-#                             70 MB instead of the whole setup) and dist\legacy\UltimateMP3Player.exe, the same exe under the
-#                             name the versions up to 3.6.x look for (attach it too for a few releases, so they update)
-#                             the Linux and macOS packages (build-unix.ps1) and the Android APKs (build-android.ps1);
-#                             -WindowsOnly skips both, -NoAndroid only the APKs
+#   .\build.ps1 -Installer    only the installers: installer\Output\UltimateMP3Player-windows-x64-setup.exe and
+#                             -windows-arm64-setup.exe (Windows 11 on ARM)
+#   .\build.ps1 -Release      the files for a GitHub release in .\dist: the installers UltimateMP3Player-windows-x64-setup.exe
+#                             and -windows-arm64-setup.exe (enough on their own), UltimateMP3Player-windows-x64.exe and
+#                             -windows-arm64.exe (optional: if attached, updates download 70-80 MB instead of the whole setup)
+#                             and dist\legacy\UltimateMP3Player.exe, the x64 exe under the name the versions up to 3.6.x look
+#                             for (attach it too for a few releases, so they update), the Linux and macOS packages
+#                             (build-unix.ps1) and the Android APKs (build-android.ps1); -WindowsOnly skips both, -NoAndroid
+#                             only the APKs
 # -Installer and -Release first update yt-dlp/gallery-dl in .\engines and need Inno Setup 6.
 # Engines are copied into .\app\engines only when missing, so versions updated by the app are kept.
 param([switch]$NoShortcut, [switch]$Installer, [switch]$Release, [switch]$WindowsOnly, [switch]$NoAndroid)
@@ -16,7 +18,7 @@ $root = $PSScriptRoot
 $app = Join-Path $root 'app'
 $csproj = "$root\src\UltimateMP3Player\UltimateMP3Player.csproj"
 # ReadyToRun: the code comes already compiled, so the start and the first pages don't wait for the JIT.
-$publishArgs = @('-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=true',
+$publishArgs = @('-c', 'Release', '--self-contained', 'true', '-p:PublishSingleFile=true',
     '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:EnableCompressionInSingleFile=true', '-p:PublishReadyToRun=true', '-p:DebugType=none', '--nologo', '-v', 'q')
 
 # A .NET 8 SDK from PATH, otherwise the local copy in %LOCALAPPDATA%\dotnet-sdk.
@@ -44,28 +46,35 @@ if ($Installer -or $Release) {
     $missing = 'yt-dlp.exe', 'gallery-dl.exe', 'ffmpeg.exe', 'ffprobe.exe', 'deno.exe' | Where-Object { -not (Test-Path "$root\engines\$_") }
     if ($missing) { throw "Missing engines in .\engines: $($missing -join ', ')" }
 
-    $staging = "$root\installer\staging"
-    if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
-    & $dotnet publish $csproj @publishArgs -o $staging
-    if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
-    New-Item -ItemType Directory -Force "$staging\engines" | Out-Null
-    Copy-Item "$root\engines\*" "$staging\engines" -Recurse -Exclude README.md
-    Get-ChildItem "$staging\engines" -Filter '*.old' | Remove-Item -Force
-
     $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") |
         Where-Object { Test-Path $_ } | Select-Object -First 1
     if (-not $iscc) { throw 'Inno Setup 6 not found (winget install JRSoftware.InnoSetup)' }
     $outDir = if ($Release) { Join-Path $root 'dist' } else { Join-Path $root 'installer\Output' }
     if ($Release -and (Test-Path $outDir)) { Remove-Item $outDir -Recurse -Force }
     New-Item -ItemType Directory -Force $outDir | Out-Null
-    Write-Host "Building installer $version..."
-    & $iscc /Q "/DAppVersion=$version" "/O$outDir" "$root\installer\UltimateMP3Player.iss"
-    if ($LASTEXITCODE -ne 0) { throw 'Installer build failed' }
-    if ($Release) {
-        Copy-Item "$staging\UltimateMP3Player.exe" "$outDir\UltimateMP3Player-windows-x64.exe"
-        # Up to 3.6.x the updater only knows this name.
-        New-Item -ItemType Directory -Force "$outDir\legacy" | Out-Null
-        Copy-Item "$staging\UltimateMP3Player.exe" "$outDir\legacy\UltimateMP3Player.exe"
+
+    # One app and setup per processor. The ARM one gets the same x64 engines: Windows 11 on ARM runs them emulated.
+    $staging = "$root\installer\staging"
+    foreach ($arch in 'x64', 'arm64') {
+        if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
+        Write-Host "Publishing $arch..."
+        & $dotnet publish $csproj @publishArgs -r "win-$arch" -o $staging
+        if ($LASTEXITCODE -ne 0) { throw "Publish failed ($arch)" }
+        New-Item -ItemType Directory -Force "$staging\engines" | Out-Null
+        Copy-Item "$root\engines\*" "$staging\engines" -Recurse -Exclude README.md
+        Get-ChildItem "$staging\engines" -Filter '*.old' | Remove-Item -Force
+
+        Write-Host "Building installer $version ($arch)..."
+        & $iscc /Q "/DAppVersion=$version" "/DArch=$arch" "/O$outDir" "$root\installer\UltimateMP3Player.iss"
+        if ($LASTEXITCODE -ne 0) { throw "Installer build failed ($arch)" }
+        if ($Release) {
+            Copy-Item "$staging\UltimateMP3Player.exe" "$outDir\UltimateMP3Player-windows-$arch.exe"
+            # Up to 3.6.x the updater only knows this name (and x64 only).
+            if ($arch -eq 'x64') {
+                New-Item -ItemType Directory -Force "$outDir\legacy" | Out-Null
+                Copy-Item "$staging\UltimateMP3Player.exe" "$outDir\legacy\UltimateMP3Player.exe"
+            }
+        }
     }
     Remove-Item $staging -Recurse -Force
     Get-ChildItem "$outDir\*.exe", "$outDir\legacy\*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
@@ -73,12 +82,12 @@ if ($Installer -or $Release) {
     }
     if ($Release -and -not $WindowsOnly) { & "$root\build-unix.ps1" -Out $outDir }
     if ($Release -and -not $WindowsOnly -and -not $NoAndroid) { & "$root\build-android.ps1" -Out $outDir }
-    if ($Release) { Write-Host "`nNew GitHub release tagged v$version with the setup (optionally also UltimateMP3Player-windows-x64.exe for lighter updates, and legacy\UltimateMP3Player.exe so 3.6.x installs update), the Linux/macOS packages and the Android APKs." }
+    if ($Release) { Write-Host "`nNew GitHub release tagged v$version with the two setups (x64, arm64; optionally also UltimateMP3Player-windows-x64.exe and -arm64.exe for lighter updates, and legacy\UltimateMP3Player.exe so 3.6.x installs update), the Linux/macOS packages and the Android APKs." }
     return
 }
 
 # Self-contained single file: runs on any Windows 10/11 x64 without installing .NET.
-& $dotnet publish $csproj @publishArgs -o $app
+& $dotnet publish $csproj @publishArgs -r win-x64 -o $app
 if ($LASTEXITCODE -ne 0) { throw 'Build failed (is Ultimate MP3 Player running? Close it, also from the tray icon, and retry)' }
 
 $engines = Join-Path $app 'engines'

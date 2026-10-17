@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -16,10 +17,14 @@ public sealed record ReleaseInfo(Version Version, string Tag, string Url, string
 public sealed class Updater : Observable
 {
     // The installed exe. In the releases (3.7 on) the bare exe is UltimateMP3Player-windows-x64.exe and the setup
-    // UltimateMP3Player-windows-x64-setup.exe, named like the other systems' files; the old names are still accepted.
+    // UltimateMP3Player-windows-x64-setup.exe, named like the other systems' files (3.8.2 on also -arm64); the old names
+    // are still accepted.
     public const string AssetName = "UltimateMP3Player.exe";
-    private const string ReleaseExe = "UltimateMP3Player-windows-x64.exe", ReleaseSetup = "UltimateMP3Player-windows-x64-setup.exe";
     private const string SetupPrefix = "UltimateMP3Player-Setup";
+    private static string ReleaseExe(string arch) => $"UltimateMP3Player-windows-{arch}.exe";
+    private static string ReleaseSetup(string arch) => $"UltimateMP3Player-windows-{arch}-setup.exe";
+    // The PC's processor, not the process's: an x64 copy running emulated on an ARM PC moves to the ARM one.
+    private static bool Arm => RuntimeInformation.OSArchitecture == Architecture.Arm64;
     private const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\{3F6C2A71-9D4E-4B8A-A1C5-7E2D90B4F618}_is1";
 
     private Task<bool>? _running;
@@ -50,8 +55,8 @@ public sealed class Updater : Observable
         try { File.Delete(NewExe); } catch { }
         try
         {
-            foreach (var f in Directory.EnumerateFiles(AppPaths.TempDir, SetupPrefix + "*.exe")) File.Delete(f);
-            File.Delete(Path.Combine(AppPaths.TempDir, ReleaseSetup));
+            foreach (var pattern in new[] { SetupPrefix + "*.exe", ReleaseSetup("*") })
+                foreach (var f in Directory.EnumerateFiles(AppPaths.TempDir, pattern)) File.Delete(f);
         }
         catch { }
     }
@@ -100,7 +105,20 @@ public sealed class Updater : Observable
         }
     }
 
-    // The bare exe if attached (smaller download), otherwise the setup.
+    // Which file of the release suits this PC, best first (-1: none): its processor's (on an ARM PC the x64 ones only if a
+    // release has no ARM ones), and the bare exe (smaller download) before the setup.
+    private static int Rank(string name)
+    {
+        bool Is(string n) => name.Equals(n, StringComparison.OrdinalIgnoreCase);
+        int x64 = Arm ? 2 : 0;
+        if (Arm && Is(ReleaseExe("arm64"))) return 0;
+        if (Arm && Is(ReleaseSetup("arm64"))) return 1;
+        if (Is(ReleaseExe("x64")) || Is(AssetName)) return x64;
+        if (Is(ReleaseSetup("x64")) || name.StartsWith(SetupPrefix, StringComparison.OrdinalIgnoreCase) && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            return x64 + 1;
+        return -1;
+    }
+
     private static async Task<ReleaseInfo?> LatestAsync()
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{AppInfo.GitHubRepo}/releases/latest");
@@ -113,20 +131,18 @@ public sealed class Updater : Observable
         var root = doc.RootElement;
         var tag = root.GetProperty("tag_name").GetString() ?? "";
         if (!Version.TryParse(tag.TrimStart('v', 'V'), out var version)) return null;
-        ReleaseInfo? setup = null;
+        ReleaseInfo? best = null;
+        int bestRank = int.MaxValue;
         foreach (var a in root.GetProperty("assets").EnumerateArray())
         {
             var name = a.GetProperty("name").GetString() ?? "";
-            bool exe = name.Equals(ReleaseExe, StringComparison.OrdinalIgnoreCase) || name.Equals(AssetName, StringComparison.OrdinalIgnoreCase);
-            bool isSetup = name.Equals(ReleaseSetup, StringComparison.OrdinalIgnoreCase) ||
-                           name.StartsWith(SetupPrefix, StringComparison.OrdinalIgnoreCase) && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
-            if (!exe && !isSetup) continue;
+            int rank = Rank(name);
+            if (rank < 0 || rank >= bestRank) continue;
             string? sha = a.TryGetProperty("digest", out var d) && d.GetString() is { } dg && dg.StartsWith("sha256:") ? dg[7..] : null;
-            var info = new ReleaseInfo(version, tag, a.GetProperty("browser_download_url").GetString()!, name, a.GetProperty("size").GetInt64(), sha, isSetup);
-            if (exe) return info;
-            setup = info;
+            best = new ReleaseInfo(version, tag, a.GetProperty("browser_download_url").GetString()!, name, a.GetProperty("size").GetInt64(), sha, rank % 2 == 1); // odd ranks: the setups
+            bestRank = rank;
         }
-        return setup;
+        return best;
     }
 
     private static bool Verify(string file, ReleaseInfo r)

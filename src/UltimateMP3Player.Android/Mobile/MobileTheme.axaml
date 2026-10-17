@@ -354,7 +354,8 @@
         </Style>
     </ControlTheme>
 
-    <!-- A search field as tall as a finger: the magnifier in front, an × to empty it once something is written. -->
+    <!-- A search field as tall as a finger: the magnifier in front, an × to empty it once something is written (bound
+         compiled: on the iPhone, without a JIT, the method bound by name did nothing). -->
     <ControlTheme x:Key="TouchSearchBox" TargetType="TextBox" BasedOn="{StaticResource BareTextBox}">
         <Setter Property="FontSize" Value="15"/>
         <Setter Property="Template">
@@ -375,7 +376,7 @@
                                            CaretBrush="{TemplateBinding CaretBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                         </ScrollViewer>
                         <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Width="40" Height="40" FontSize="13" Content="{local:Icon E711}"
-                                Command="{Binding $parent[TextBox].Clear}" Focusable="False"
+                                Command="{CompiledBinding $parent[TextBox].Clear}" Focusable="False"
                                 IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </Grid>
                 </Border>
