@@ -47,7 +47,7 @@
   <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/readme/highlights-en-dark-mobile.svg">
   <source media="(max-width: 640px)" srcset="assets/readme/highlights-en-light-mobile.svg">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/highlights-en-dark.svg">
-  <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · songs in the cloud · a player that feels like Spotify · synced lyrics · a queue that fills itself · DJ mode · playlists, favorites and tags · on all your devices · listen together">
+  <img src="assets/readme/highlights-en-light.svg" width="100%" alt="Highlights: paste a link, get the music · songs in the cloud · a player that feels like Spotify · synced lyrics · a queue that fills itself · DJ mode · playlists, favorites and tags · on all your devices · listen together · your phone as a remote">
 </picture>
 
 <img src="assets/readme/screens/hero.webp" width="100%" alt="The app on Windows and Android: the home page, the player on the phone">
@@ -123,17 +123,22 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 
 <img src="assets/readme/screens/together.webp" width="100%" alt="A room with three people: the song playing, the queue with who added each song, the chat">
 
-- Rooms found by themselves on the same network (Wi-Fi or cable); from afar, everyone joins the same Radmin VPN
-  network. Rooms can have a password and a maximum number of people; you can also join by address.
-- Everyone hears the same song at the same point: the host's clock leads, each computer follows it (volume and
+- Rooms found by themselves on the same network (Wi-Fi or cable), **with computers and phones** (Android and iPhone)
+  in the same room; from afar, everyone joins the same Radmin VPN network. Rooms can have a password and a maximum
+  number of people; you can also join by address.
+- Everyone hears the same song at the same point: the host's clock leads, each device follows it (volume and
   equalizer stay your own)
-- Each computer gets the playing song and the next two: from its library, from the room cache, from the song's link,
+- Each device gets the playing song and the next two: from its library, from the room cache, from the song's link,
   or sent by someone in the room. A song starts when everyone has it (or after a few seconds for those who have it);
   late ones join in at the right point.
 - The host decides who can add, remove and move, skip, pause, and seek; greyed-out buttons for the others. In a room
-  the play buttons of your lists become **+**, and a double click adds the song to the room.
-- Chat, who added each song, everyone's download progress, kick, hand over the host. If the host leaves or their PC
-  goes off, the room passes to the person with the most permissions (on a tie, who joined first).
+  the play buttons of your lists become **+**, and a double click adds the song to the room; on the phone a tap on a
+  song adds it (press and hold it for more).
+- Chat, who added each song, everyone's download progress, kick, hand over the host. If the host leaves or their
+  device goes off, the room passes to the person with the most permissions (on a tie, who joined first).
+- On the phone, the **Together** tab: the rooms nearby or one of your own, then the queue, the people and the chat.
+  When another app takes the sound (a video, a call), the room goes on silenced on the phone: press play to hear it
+  again.
 - Songs heard in rooms stay in a cache (10 by default, shared with the suggested songs); save the ones you like to
   your library or a playlist
 - P2P can be switched off in Settings: songs then come only from your library, the cache or their link
@@ -158,9 +163,25 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 <img src="assets/readme/screens/phone.webp" width="100%" alt="On Android: the library, synced lyrics, online search and the download card">
 
 - The same library, playlists, tags, lyrics, equalizer and downloads on Android (and iPhone, in preview)
+- Search and download in one tab: type to find your songs and the music online, paste a link to download it
 - Share a link from YouTube, Spotify, SoundCloud or almost any other app with *Download with Ultimate MP3 Player*
 - Swipe sideways to move between tabs; inside a playlist a swipe to the right goes back
 - Sign in to the sites inside the app for private playlists; the song on the lock screen and the headphones' buttons
+- *Listen together* in its own tab, with computers and other phones
+
+### Your phone as a remote
+
+- On the phone open *Settings › Connect to computer*, on the computer *Settings › Connect phone* and choose it. On the
+  same Wi-Fi the phone allows it once; with the cable there's nothing to allow (Android: turn on USB tethering;
+  iPhone: Apple Devices or iTunes on Windows, `usbmuxd` on Linux, nothing to add on a Mac).
+- The phone drives the computer's player: play, skip, seek, the queue and the computer's volume, also from the lock
+  screen. The music plays on the computer and the phone stays silent.
+- The phone's songs play on the computer too, sent through the network or the cable when the computer doesn't have
+  them
+- Saving a song while they're connected asks where: on the phone, on the computer or both
+- **To the phone** in the computer's export window sends playlists and tags to the phone, which takes only the songs it
+  doesn't have
+- A dropped connection comes back by itself; joining a room or opening the DJ disconnects the phone
 
 ### And also
 
@@ -246,7 +267,8 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 > most 3 sideloaded apps can be active, SideStore included. Your songs are in the Files app (*On My iPhone › Ultimate MP3
 > Player › Music*): add more from there with Settings › Library. Uninstalling the app deletes them: keep a `.ump` pack.
 > Downloads need the app open: iOS gives an app in the background only about half a minute to finish them. To send a
-> link from another app, make a Shortcut that takes the shared URL and opens `ump://add?url=` followed by it.
+> link from another app, make a Shortcut that takes the shared URL and opens `ump://add?url=` followed by it. The first
+> time you look for rooms or connect to a computer, iOS asks to find devices on your local network: allow it.
 
 ## 💬 Help & feedback
 

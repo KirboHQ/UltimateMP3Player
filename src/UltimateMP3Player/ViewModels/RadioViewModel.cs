@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Link;
 using UltimateMP3Player.Core.Together;
 
 namespace UltimateMP3Player.ViewModels;
@@ -165,6 +166,71 @@ public sealed class RadioViewModel : Observable
         return ids;
     }
 
+    // ------------------------------------------------------------------ the connected phone's songs (Connect phone)
+
+    // Gets a song of the phone from the phone (PhoneLinkViewModel).
+    public Func<RadioSong, string, Action<double>, CancellationToken, Task<string?>>? FromPhone { set => _fetcher.FromPhone = value; }
+
+    // The songs of the connected phone: one this computer already has (the same link, or saved here from the phone
+    // before) plays as its own; the others come into the queue like the songs of a link, the phone's saved ones from
+    // the phone and the ones in its cloud downloaded here from their links. One of this computer's songs the phone shows
+    // ("pc-" + its id) is that one. The ids to play, in order.
+    public List<string> AddFromPhone(IEnumerable<LinkTrack> tracks, string phone)
+    {
+        var ids = new List<string>();
+        foreach (var lt in tracks)
+        {
+            if (lt.Id.StartsWith("pc-", StringComparison.Ordinal))
+            {
+                var own = lt.Id[3..];
+                if (_main.Library.Get(own) != null || _items.ContainsKey(own)) ids.Add(own);
+                continue;
+            }
+            var keys = lt.Keys.Append(LinkTrack.PhoneKey(lt.Id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var song = new RadioSong
+            {
+                Id = RadioSong.Prefix + Ids.New(), Title = lt.Title, Artist = lt.Artist, Album = lt.Album, Duration = lt.Duration,
+                Url = lt.SourceUrl ?? "", Service = phone, Keys = keys, FromLink = true, Quality = lt.Quality, Phone = lt.File ? lt.Id : null,
+                // (its cover comes from the phone)
+                Thumb = lt.Cover ? null : lt.ArtUrl,
+            };
+            if (Known(song, false) is { } have) ids.Add(have.Id);
+            else if (_items.Values.FirstOrDefault(i => i.Song.Keys.Intersect(keys, StringComparer.OrdinalIgnoreCase).Any()) is { } same)
+            {
+                // (heard before: now its file may be on the phone)
+                same.Song.Phone ??= song.Phone;
+                ids.Add(same.Id);
+            }
+            else
+            {
+                var t = Add(song).T;
+                t.Wave = lt.Wave;
+                t.Loudness = lt.Loudness;
+                t.Peak = lt.Peak;
+                t.Bpm = lt.Bpm;
+                t.CachePath = _main.Host.SongCache.Find(keys);
+                ids.Add(song.Id);
+            }
+        }
+        return ids;
+    }
+
+    // A cover that came from the phone.
+    public void CoverArrived(string id)
+    {
+        if (!_items.TryGetValue(id, out var item)) return;
+        item.T.HasCover = true;
+        item.T.CoverVersion++;
+        _main.Vm(item.T).Refresh();
+        if (_main.Player.Current?.Id == id) _main.Host.OnTrackChanged();
+    }
+
+    // The phone is back: its songs that couldn't come meanwhile are tried again.
+    public void RetryPhone()
+    {
+        foreach (var i in _items.Values.Where(i => i.Song.Phone != null && _fetcher.IsFailed(i.Id)).ToList()) _fetcher.Retry(i.Id);
+    }
+
     // ------------------------------------------------------------------ heard in a room
 
     // A song of a room that isn't in the library, just heard: kept like the songs of a link, so it's among the recently
@@ -271,7 +337,7 @@ public sealed class RadioViewModel : Observable
     public void Refresh()
     {
         var p = _main.Player;
-        if (p.InRoom)
+        if (p.InRoom || p.IsRemote)
         {
             _fetcher.Want(Array.Empty<RadioSong>());
             return;

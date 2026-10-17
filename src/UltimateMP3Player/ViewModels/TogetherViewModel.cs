@@ -280,11 +280,11 @@ public sealed class TogetherViewModel : Observable
         _scanTimer.Tick += (_, _) => _ = Scan();
         _follow.Tick += (_, _) => Follow();
 
-        CreateCommand = new RelayCommand(Create, () => !Busy);
+        CreateCommand = new RelayCommand(() => _ = Create(), () => !Busy);
         JoinCommand = new RelayCommand(p => { if (p is RoomAdViewModel r && r.Ad.Ip != null) _ = Join(r.Ad.Ip, r.Ad.Port, r.Locked, r.Name); }, _ => !Busy);
-        JoinByAddressCommand = new RelayCommand(JoinByAddress, () => !Busy);
+        JoinByAddressCommand = new RelayCommand(() => _ = JoinByAddress(), () => !Busy);
         RefreshCommand = new RelayCommand(() => _ = Scan());
-        LeaveCommand = new RelayCommand(() => ConfirmLeave(null, L.T("Leave the room")));
+        LeaveCommand = new RelayCommand(() => _ = ConfirmLeaveAsync(null, L.T("Leave the room")));
         SendCommand = new RelayCommand(Send, () => ChatInput.Trim().Length > 0);
         CopyAddressCommand = new RelayCommand(CopyAddress);
         FirewallCommand = new RelayCommand(() => _ = AllowFirewall());
@@ -419,9 +419,9 @@ public sealed class TogetherViewModel : Observable
         return string.Join(", ", parts);
     }
 
-    private void Create()
+    private async Task Create()
     {
-        if (InRoom) return;
+        if (InRoom || !await ConfirmUnlinkAsync() || InRoom) return;
         var settings = _main.Host.Settings;
         settings.TogetherMax = (int)MaxChoice.Value!;
         settings.TogetherRoomPerms = (int)_defaultPerms;
@@ -443,13 +443,28 @@ public sealed class TogetherViewModel : Observable
 
     // ------------------------------------------------------------------ lobby: join
 
+    // A room drives the player for everyone: not with a phone driving it too, nor while this phone drives a computer.
+    private async Task<bool> ConfirmUnlinkAsync()
+    {
+        if (_main.ComputerLinked)
+        {
+            var computer = _main.ComputerLink;
+            if (!await Dialogs.ConfirmAsync(L.T("Disconnect from the computer?"),
+                    L.F("In a room the player is the room's: this phone will be disconnected from {0}.", computer.ComputerName), L.T("Disconnect and continue"), true)) return false;
+            await computer.Disconnect();
+            return true;
+        }
+        return await _main.ConfirmUnlinkPhoneAsync(L.T("In a room the player is the room's: the phone connected to this computer will be disconnected."),
+            L.T("Disconnect and continue"));
+    }
+
     private async Task Join(string ip, int port, bool locked, string? name)
     {
-        if (InRoom || Busy) return;
+        if (InRoom || Busy || !await ConfirmUnlinkAsync() || InRoom || Busy) return;
         string? password = null;
         if (locked)
         {
-            password = Dialogs.Prompt(L.T("Room with a password"), L.F("Password of “{0}”", name ?? ip), "");
+            password = await Dialogs.PromptAsync(L.T("Room with a password"), L.F("Password of “{0}”", name ?? ip), "");
             if (password == null) return;
         }
         Busy = true;
@@ -470,7 +485,7 @@ public sealed class TogetherViewModel : Observable
                 // The room turned out to have a password: ask once.
                 if (r.NeedsPassword && attempt == 0)
                 {
-                    password = Dialogs.Prompt(L.T("Room with a password"), r.Error ?? L.T("Password"), "");
+                    password = await Dialogs.PromptAsync(L.T("Room with a password"), r.Error ?? L.T("Password"), "");
                     if (password == null) return;
                     continue;
                 }
@@ -486,10 +501,10 @@ public sealed class TogetherViewModel : Observable
     }
 
     // Rooms not found by the search (another network, broadcasts blocked): by address.
-    private void JoinByAddress()
+    private async Task JoinByAddress()
     {
         var settings = _main.Host.Settings;
-        var text = Dialogs.Prompt(L.T("Join by address"),
+        var text = await Dialogs.PromptAsync(L.T("Join by address"),
             L.T("Address of the computer hosting the room (for example 192.168.1.20, or its Radmin VPN one)"),
             settings.TogetherLastAddress ?? "");
         if (string.IsNullOrWhiteSpace(text)) return;
@@ -504,7 +519,7 @@ public sealed class TogetherViewModel : Observable
         }
         settings.TogetherLastAddress = text;
         settings.Save();
-        _ = Join(host, port, false, host);
+        await Join(host, port, false, host);
     }
 
     private TogetherSession NewSession()
@@ -611,11 +626,25 @@ public sealed class TogetherViewModel : Observable
     public bool ConfirmLeave(string? why, string action)
     {
         if (!InRoom) return true;
-        var text = why ?? L.F("You'll leave “{0}”.", RoomName);
-        if (IsHost && _s!.Members.Count(m => !m.Away) > 1) text += "\n\n" + L.T("You're the host: the room will go to whoever has the most permissions (on a tie, whoever joined first).");
-        if (!Dialogs.Confirm(L.T("Leave the room?"), text, action, true)) return false;
+        if (!Dialogs.Confirm(L.T("Leave the room?"), LeaveText(why), action, true)) return false;
         Leave();
         return true;
+    }
+
+    // The same for the phones, whose dialogs are sheets.
+    public async Task<bool> ConfirmLeaveAsync(string? why, string action)
+    {
+        if (!InRoom) return true;
+        if (!await Dialogs.ConfirmAsync(L.T("Leave the room?"), LeaveText(why), action, true) || !InRoom) return !InRoom;
+        Leave();
+        return true;
+    }
+
+    private string LeaveText(string? why)
+    {
+        var text = why ?? L.F("You'll leave “{0}”.", RoomName);
+        if (IsHost && _s!.Members.Count(m => !m.Away) > 1) text += "\n\n" + L.T("You're the host: the room will go to whoever has the most permissions (on a tie, whoever joined first).");
+        return text;
     }
 
     // Leaves now; the goodbye to the others (or the handover of the room) finishes in the background.
@@ -751,7 +780,11 @@ public sealed class TogetherViewModel : Observable
 
     public string MyRoleText => _s == null ? "" : IsHost ? L.T("You're the host: you can do everything and decide what the others can do.") : PermsText(_s.MyPerms);
     public string AddHint => CanAdd
+#if ANDROID_APP || IOS_APP
+        ? L.T("Tap a song anywhere in the app to add it here (press and hold it for more).")
+#else
         ? L.T("In your playlists and libraries the + button (or a double-click) puts songs here.")
+#endif
         : L.T("Only people with permission can add songs: the host decides.");
 
     private void Deny(string key)
@@ -806,22 +839,23 @@ public sealed class TogetherViewModel : Observable
         _s.SetPerm(who.Select(m => m.Id), Perm.All, on);
     }
 
-    private void KickSelected() => Kick(SelectedMembers);
+    private void KickSelected() => _ = Kick(SelectedMembers);
 
-    public void Kick(IReadOnlyList<MemberViewModel> who)
+    public async Task Kick(IReadOnlyList<MemberViewModel> who)
     {
         if (_s == null || !IsHost || who.Count == 0) return;
         var names = string.Join(", ", who.Select(m => m.Name));
-        if (!Dialogs.Confirm(who.Count == 1 ? L.T("Kick from the room?") : L.F("Kick {0} people?", who.Count),
+        if (!await Dialogs.ConfirmAsync(who.Count == 1 ? L.T("Kick from the room?") : L.F("Kick {0} people?", who.Count),
                 L.F("{0} will be removed from the room and can't come back while it stays open.", names), L.T("Kick from the room"), true)) return;
+        if (_s == null) return;
         foreach (var m in who) _s.KickMember(m.Id);
     }
 
-    public void MakeHost(MemberViewModel m)
+    public async Task MakeHost(MemberViewModel m)
     {
         if (_s == null || !IsHost || m.IsMe) return;
-        if (!Dialogs.Confirm(L.T("Hand over the host?"), L.F("{0} will become the host of the room and decide the permissions. You stay in the room.", m.Name), L.T("Hand over"))) return;
-        _s.Promote(m.Id);
+        if (!await Dialogs.ConfirmAsync(L.T("Hand over the host?"), L.F("{0} will become the host of the room and decide the permissions. You stay in the room.", m.Name), L.T("Hand over"))) return;
+        _s?.Promote(m.Id);
     }
 
     // ------------------------------------------------------------------ queue
@@ -941,7 +975,7 @@ public sealed class TogetherViewModel : Observable
     }
 
     // A whole list (play buttons of playlists and pages): asks first when it's a lot.
-    public void AddAll(IReadOnlyList<TrackViewModel> tracks, string listName, bool shuffle)
+    public async void AddAll(IReadOnlyList<TrackViewModel> tracks, string listName, bool shuffle)
     {
         if (_s == null || tracks.Count == 0) return;
         if (!CanAdd)
@@ -958,9 +992,10 @@ public sealed class TogetherViewModel : Observable
             _main.Toast(L.T("The room's queue is full."));
             return;
         }
-        if (list.Count > 12 && !Dialogs.Confirm(L.T("Add to the room?"),
+        if (list.Count > 12 && !await Dialogs.ConfirmAsync(L.T("Add to the room?"),
                 L.F("{0} songs from “{1}” will go into the room's queue{2}.", list.Count, listName, shuffle ? " " + L.T("shuffled") : ""),
                 L.T("Add"))) return;
+        if (_s == null) return;
         _ = AddAsync(list, false);
     }
 
@@ -1525,7 +1560,7 @@ public sealed class TogetherViewModel : Observable
             return;
         }
         var audio = p.Audio;
-        double lead = Lead * speed;
+        double lead = (Lead + AudioEngine.DeviceLatencyMs / 1000.0) * speed;
         if (playing)
         {
             if (!audio.IsPlaying)

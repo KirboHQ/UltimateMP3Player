@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using UltimateMP3Player.Core.Link;
 
 namespace UltimateMP3Player.Core.Together;
 
@@ -193,6 +194,12 @@ public sealed class Msg
     public Dictionary<string, FileStatus>? Files { get; set; }
     public Dictionary<string, Dictionary<string, FileStatus>>? AllFiles { get; set; }
     public List<string>? Banned { get; set; }
+    // "Connect phone" (Core/Link).
+    public LinkState? State { get; set; }
+    public List<LinkTrack>? Tracks { get; set; }
+    public List<LinkRow>? Rows { get; set; }
+    public PackManifest? Pack { get; set; }
+    public PhoneAd? Ad { get; set; }
 
     public static readonly JsonSerializerOptions Json = new()
     {

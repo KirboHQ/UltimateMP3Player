@@ -23,6 +23,26 @@ public static partial class Dialogs
         win.ShowDialog();
     }
 
+    // A question with a few answers, a button each (the first is the main one, on the right): its index, or -1.
+    public static int Choose(string title, string message, params string[] answers)
+    {
+        var text = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)Application.Current.Resources["SubTextBrush"], LineHeight = 20 };
+        var buttons = new List<Button> { Button(L.T("Cancel"), "GhostButton", isCancel: true) };
+        for (int i = answers.Length - 1; i >= 0; i--) buttons.Add(Button(answers[i], i == 0 ? "PrimaryButton" : "GhostButton", isDefault: i == 0));
+        var win = Frame(title, text, 520, buttons.ToArray());
+        int chosen = -1;
+        for (int i = 0; i < answers.Length; i++)
+        {
+            int n = i;
+            buttons[answers.Length - i].Click += (_, _) =>
+            {
+                chosen = n;
+                win.DialogResult = true;
+            };
+        }
+        return win.ShowDialog() == true ? chosen : -1;
+    }
+
     public static string? Prompt(string title, string label, string initial)
         => Show(title, null, new[] { (label, initial) }, L.T("Save"), false)?[0];
 
@@ -121,6 +141,7 @@ public static partial class Dialogs
     // can't hold the code up). Here they're the ones above.
     public static Task<bool> ConfirmAsync(string title, string message, string ok, bool danger = false) => Task.FromResult(Confirm(title, message, ok, danger));
     public static Task<string?> PromptAsync(string title, string label, string initial) => Task.FromResult(Prompt(title, label, initial));
+    public static Task<int> ChooseAsync(string title, string message, params string[] answers) => Task.FromResult(Choose(title, message, answers));
     public static Task<(string Title, string Artist, string Album, string Bpm)?> EditTrackAsync(Track t) => Task.FromResult(EditTrack(t));
     public static Task<string?> PickImageAsync() => Task.FromResult(PickImage());
     public static Task<string?> PickFolderAsync(string title, string? initial = null) => Task.FromResult(PickFolder(title, initial));

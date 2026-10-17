@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using UltimateMP3Player.Audio;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Link;
 
 namespace UltimateMP3Player.ViewModels;
 
@@ -101,13 +102,14 @@ public sealed class PlayerViewModel : Observable
         // In a room: loop of the song playing, for everyone (with the pause permission).
         CycleRepeatCommand = new RelayCommand(() => { if (_room != null) _room.ToggleLoop(); else CycleRepeat(); }, () => _room == null || _room.CanPause);
         ToggleMuteCommand = new RelayCommand(() => Muted = !Muted);
-        FavoriteCommand = new RelayCommand(() => { if (Current != null) _main.ToggleFavorite(Current); }, () => Current != null);
+        // (a song of the connected computer isn't one of this phone's: no heart for it)
+        FavoriteCommand = new RelayCommand(() => { if (Current != null && !KeepLinked(true)) _main.ToggleFavorite(Current); }, () => Current != null);
         SeekCommand = new RelayCommand(p => { if (p is double f) SeekFraction(f); }, _ => _room == null || _room.CanPause);
         SpeedStepCommand = new RelayCommand(p => { if (p is string s && double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)) Speed += d; },
             _ => CanSetSpeed);
         SetSpeedCommand = new RelayCommand(p => { if (p is string s && double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)) Speed = d; },
             _ => CanSetSpeed);
-        ClearQueueCommand = new RelayCommand(ClearQueue, () => _room == null && _queue.UpcomingCount > 0);
+        ClearQueueCommand = new RelayCommand(ClearQueue, () => _remote != null ? _remote.State.Upcoming > 0 : _room == null && _queue.UpcomingCount > 0);
         GenerateQueueCommand = new RelayCommand(GenerateQueue, () => _room == null && Current != null);
         SaveCurrentCommand = new RelayCommand(SaveCurrent, () => IsTemporary);
 
@@ -166,8 +168,8 @@ public sealed class PlayerViewModel : Observable
 
     public void SaveState()
     {
-        // In a room the saved song is still your own one, from before.
-        if (_room != null) return;
+        // In a room (or driving a computer) the saved song is still your own one, from before.
+        if (_room != null || _remote != null) return;
         double pos = 0;
         if (Current != null && Current.Id == _queue.Current) pos = _opened ? _audio.Position.TotalSeconds : _resumeAt;
         _main.Profile.Data.Queue = _queue.Save(pos);
@@ -218,12 +220,13 @@ public sealed class PlayerViewModel : Observable
 
     public double Speed
     {
-        get => _room != null ? _roomSpeedDraft ?? _room.RoomSpeed : _main.Profile.Data.Speed;
+        get => _remote != null ? _remote.State.Speed : _room != null ? _roomSpeedDraft ?? _room.RoomSpeed : _main.Profile.Data.Speed;
         set
         {
             value = Math.Round(Math.Clamp(value, 0.5, 2) * 20) / 20;
             if (Math.Abs(value - Speed) < 0.001) return;
-            if (_room != null)
+            if (_remote != null) _remote.Do("speed", pos: value, flag: SpeedPitch);
+            else if (_room != null)
             {
                 if (!_room.CanSpeed) return;
                 _roomSpeedDraft = value;
@@ -241,11 +244,12 @@ public sealed class PlayerViewModel : Observable
 
     public bool SpeedPitch
     {
-        get => _room != null ? _roomPitchDraft ?? _room.RoomPitch : _main.Profile.Data.SpeedPitch;
+        get => _remote != null ? _remote.State.Pitch : _room != null ? _roomPitchDraft ?? _room.RoomPitch : _main.Profile.Data.SpeedPitch;
         set
         {
             if (value == SpeedPitch) return;
-            if (_room != null)
+            if (_remote != null) _remote.Do("speed", pos: Speed, flag: value);
+            else if (_room != null)
             {
                 if (!_room.CanSpeed) return;
                 _roomPitchDraft = value;
@@ -370,20 +374,22 @@ public sealed class PlayerViewModel : Observable
         _main.Host.OnTrackChanged();
     }
     // The song block of the player bar: also in a room with nothing playing (it shows the room's name).
-    public bool ShowNowPlaying => Current != null || _room != null;
+    public bool ShowNowPlaying => Current != null || _room != null || _remote != null || _main.PhoneLinked;
     // "Generate queue" (the song page): your own queue only.
     public bool CanGenerate => Current != null && _room == null;
     public string? ContextId => _queue.ContextId;
 
     // Name of the list being played, in the current language.
-    public string? ContextName => _queue.ContextId switch
+    public string? ContextName => _room != null ? _room.RoomName : _remote != null ? _remote.State.Context : NameOf(_queue.ContextId, _queue.ContextName);
+
+    private string? NameOf(string? contextId, string? name) => contextId switch
     {
         "library" => L.T("All songs"),
         "unsorted" => L.T("Not in a playlist"),
         { } id when id.StartsWith("playlist:") && _main.Profile.GetPlaylist(id[9..]) is { } p => PlaylistViewModel.DisplayName(p),
-        { } id when id.StartsWith("radio:") => L.F("Songs like “{0}”", _queue.ContextName),
-        { } id when id.StartsWith("artist:") => L.F("Songs by {0}", _queue.ContextName),
-        _ => _queue.ContextName,
+        { } id when id.StartsWith("radio:") => L.F("Songs like “{0}”", name),
+        { } id when id.StartsWith("artist:") => L.F("Songs by {0}", name),
+        _ => name,
     };
 
     private bool _isPlaying;
@@ -430,10 +436,18 @@ public sealed class PlayerViewModel : Observable
     private double _volume;
     public double Volume
     {
-        get => _volume;
+        get => _remote?.State.Volume ?? _volume;
         set
         {
             value = Math.Clamp(value, 0, 1);
+            if (_remote != null)
+            {
+                // The computer's volume.
+                if (Math.Abs(value - Volume) < 0.001) return;
+                _remote.Do("volume", pos: value);
+                OnChanged(nameof(Volume), nameof(Muted), nameof(VolumeGlyph));
+                return;
+            }
             if (!Set(ref _volume, value)) return;
             if (value > 0 && Muted) Muted = false;
             _main.Profile.Data.Volume = value;
@@ -446,9 +460,16 @@ public sealed class PlayerViewModel : Observable
     private bool _muted;
     public bool Muted
     {
-        get => _muted;
+        get => _remote?.State.Muted ?? _muted;
         set
         {
+            if (_remote != null)
+            {
+                if (value == Muted) return;
+                _remote.Do("mute", flag: value);
+                OnChanged(nameof(Muted), nameof(VolumeGlyph));
+                return;
+            }
             if (!Set(ref _muted, value)) return;
             _main.Profile.Data.Muted = value;
             _main.Profile.Save();
@@ -459,13 +480,43 @@ public sealed class PlayerViewModel : Observable
 
     public string VolumeGlyph => Muted || Volume <= 0 ? "" : Volume < 0.34 ? "" : Volume < 0.67 ? "" : "";
 
-    private void ApplyVolume() => _audio.Volume = Muted ? 0 : (float)Math.Pow(_volume, 2);
+    private void ApplyVolume() => _audio.Volume = Muted || _silenced ? 0 : (float)Math.Pow(_volume, 2);
+
+    // Phones in a room: headphones pulled out, a call, another app's music silence only this phone (the room goes on for
+    // the others) until the play button, in the app or on the lock screen. Not kept like the mute (phones have no mute button).
+    private bool _silenced;
+    public bool Silenced => _silenced;
+
+    public void SilenceInRoom()
+    {
+        if (_room == null || _silenced) return;
+        _silenced = true;
+        ApplyVolume();
+        _main.Toast(L.T("Silenced on this phone while the room goes on: press play to hear it again."));
+    }
+
+    // The play button while silenced: the sound comes back; true = that was all (the room was playing).
+    private bool Unsilence()
+    {
+        if (!_silenced) return false;
+        _silenced = false;
+        ApplyVolume();
+        _main.Host.OnPlaybackChanged();
+        return IsPlaying;
+    }
 
     public bool Shuffle
     {
-        get => _queue.Shuffle;
+        get => _remote?.State.Shuffle ?? _queue.Shuffle;
         set
         {
+            if (_remote != null)
+            {
+                if (value == Shuffle) return;
+                _remote.Do("shuffle", flag: value);
+                OnChanged(nameof(Shuffle), nameof(GenerateHint));
+                return;
+            }
             if (_queue.Shuffle == value || _room != null) return;
             _queue.Shuffle = value;
             _main.Profile.Data.Shuffle = value;
@@ -476,9 +527,15 @@ public sealed class PlayerViewModel : Observable
 
     public RepeatMode Repeat
     {
-        get => _queue.Repeat;
-        private set
+        get => _remote?.State.Repeat ?? _queue.Repeat;
+        internal set
         {
+            if (_remote != null)
+            {
+                _remote.Do("repeat", index: (int)value);
+                OnChanged(nameof(Repeat), nameof(RepeatOn), nameof(RepeatGlyph), nameof(RepeatTip), nameof(QueueEndHint));
+                return;
+            }
             _queue.Repeat = value;
             _main.Profile.Data.Repeat = value;
             _main.Profile.Save();
@@ -594,6 +651,21 @@ public sealed class PlayerViewModel : Observable
             _room.Add(new[] { track });
             return;
         }
+        // Driving a computer: the list plays there.
+        if (_remote != null && list.ContextId != "search")
+        {
+            if (Current?.Id == track.Id)
+            {
+                Play();
+                _main.Navigate(_main.NowPlaying);
+                return;
+            }
+            var songs = list.PlayOrder.Select(t => t.T).ToList();
+            int at = songs.FindIndex(t => t.Id == track.Id);
+            if (at < 0) PlaySingle(track.T);
+            else _remote.PlayList(songs, at, NameOf(list.ContextId, list.ContextName), alwaysQueue);
+            return;
+        }
         bool playing = Current?.Id == track.Id && (_opened || _waiting == track.Id);
         if (playing && (list.ContextId == "search" || list.ContextId == _queue.ContextId))
         {
@@ -632,6 +704,11 @@ public sealed class PlayerViewModel : Observable
             _room.AddAll(list.PlayOrder, list.ContextName, shuffle);
             return;
         }
+        if (_remote != null)
+        {
+            _remote.PlayList(list.PlayOrder.Select(t => t.T), -1, NameOf(list.ContextId, list.ContextName), shuffle);
+            return;
+        }
         var ids = list.PlayOrder.Select(t => t.Id).ToList();
         if (ids.Count == 0) return;
         if (shuffle)
@@ -651,6 +728,11 @@ public sealed class PlayerViewModel : Observable
             _room.Add(new[] { _main.Vm(t) });
             return;
         }
+        if (_remote != null)
+        {
+            _remote.PlaySingle(t);
+            return;
+        }
         if (RadioAfterSingle)
         {
             PlayRadio(_main.Vm(t), false);
@@ -667,6 +749,12 @@ public sealed class PlayerViewModel : Observable
     public void PlayRadio(TrackViewModel seed, bool announce = true)
     {
         if (_room != null) return;
+        if (_remote != null)
+        {
+            _remote.PlayRadio(seed.T, false);
+            if (announce) _main.Toast(L.F("Looking for songs like “{0}”…", seed.Title));
+            return;
+        }
         var t = seed.T;
         var contextId = "radio:" + t.Id;
         bool playing = Current?.Id == t.Id && (_opened || _waiting == t.Id);
@@ -681,6 +769,11 @@ public sealed class PlayerViewModel : Observable
     public void PlayArtist(TrackViewModel seed)
     {
         if (_room != null) return;
+        if (_remote != null)
+        {
+            _remote.PlayRadio(seed.T, true);
+            return;
+        }
         var t = seed.T;
         var artist = t.Artist?.Split(',')[0].Trim();
         if (string.IsNullOrEmpty(artist))
@@ -702,6 +795,11 @@ public sealed class PlayerViewModel : Observable
     public void PlayStream(IReadOnlyList<string> ids, string name)
     {
         if (_room != null || ids.Count == 0 || TrackOf(ids[0]) is not { } first) return;
+        if (_remote != null)
+        {
+            _remote.PlayList(ids.Select(TrackOf).OfType<Track>(), 0, name, true);
+            return;
+        }
         if (ids.Count == 1)
         {
             if (RadioAfterSingle)
@@ -720,8 +818,32 @@ public sealed class PlayerViewModel : Observable
     private void SaveCurrent()
     {
         if (Current == null) return;
+        if (KeepLinked(false)) return;
         if (!Current.InLibrary) _main.AddToLibrary(Current);
         else _ = _main.SaveToDevice(new[] { Current });
+    }
+
+    // Connect phone: a song neither device has kept goes where you say (this one, the other one or both); from the phone's
+    // lock screen (ask false), where nothing can be asked, onto the phone.
+    private bool KeepLinked(bool favorite, bool ask = true)
+    {
+        if (Current is not { InLibrary: false } t) return false;
+        if (_remote != null)
+        {
+            _ = _remote.Keep(t, favorite, ask);
+            return true;
+        }
+        if (!ask || !_main.PhoneLinked || t.T.Keys.Any(k => k.StartsWith("phone:", StringComparison.Ordinal))) return false;
+        _ = _main.PhoneLink.Keep(t, favorite);
+        return true;
+    }
+
+    // The heart and the save button of the lock screen and the notification.
+    public void KeepFromSystem(bool favorite)
+    {
+        if (KeepLinked(favorite, ask: false)) return;
+        var command = favorite ? FavoriteCommand : SaveCurrentCommand;
+        if (command.CanExecute(null)) command.Execute(null);
     }
 
     public void Enqueue(TrackViewModel t, bool quiet = false)
@@ -731,7 +853,8 @@ public sealed class PlayerViewModel : Observable
             _room.Add(new[] { t });
             return;
         }
-        _queue.Enqueue(t.Id);
+        if (_remote != null) _remote.Enqueue(t.T, false);
+        else _queue.Enqueue(t.Id);
         if (!quiet) _main.Toast(L.F("“{0}” added to queue", t.Title));
     }
 
@@ -742,14 +865,16 @@ public sealed class PlayerViewModel : Observable
             _room.Add(new[] { t }, next: true);
             return;
         }
-        _queue.PlayNextInQueue(t.Id);
+        if (_remote != null) _remote.Enqueue(t.T, true);
+        else _queue.PlayNextInQueue(t.Id);
         _main.Toast(L.F("“{0}” will play next", t.Title));
     }
 
     // Nothing after this song: it plays alone (Generate brings the list back).
     private void ClearQueue()
     {
-        _queue.ClearAll();
+        if (_remote != null) _remote.Do("clear");
+        else _queue.ClearAll();
         _main.Toast(L.T("Queue cleared"));
     }
 
@@ -758,6 +883,11 @@ public sealed class PlayerViewModel : Observable
     private void GenerateQueue()
     {
         if (Current == null) return;
+        if (_remote != null)
+        {
+            _remote.Do("generate");
+            return;
+        }
         // Suggested songs: the ones already found come back (an emptied queue), and more of them, from the last one.
         if (_queue.Radio)
         {
@@ -775,9 +905,17 @@ public sealed class PlayerViewModel : Observable
     // the missing ones go back at the end, so the queue stays full.
     public bool AutoQueue
     {
-        get => _main.Profile.Data.AutoQueue;
+        get => _remote?.State.AutoQueue ?? _main.Profile.Data.AutoQueue;
         set
         {
+            if (_remote != null)
+            {
+                if (value == AutoQueue) return;
+                _remote.Do("auto", flag: value);
+                OnChanged(nameof(AutoQueue), nameof(AutoQueueTip), nameof(QueueEndHint));
+                _main.Toast(value ? L.T("Automatic queue on: it refills itself at every song") : L.T("Automatic queue off: when the queue ends, the music stops"));
+                return;
+            }
             if (_main.Profile.Data.AutoQueue == value || _room != null) return;
             _main.Profile.Data.AutoQueue = value;
             _main.Profile.Save();
@@ -876,8 +1014,9 @@ public sealed class PlayerViewModel : Observable
     private string? _waiting;
     private bool _waitPlay, _waitMore;
 
-    public bool IsWaiting => _waiting != null || _waitMore;
-    public string? WaitText => _waitMore ? L.T("Looking for more similar songs…")
+    public bool IsWaiting => _remote != null ? _remote.State.Waiting || _remote.State.WaitMore : _waiting != null || _waitMore;
+    public string? WaitText => _remote != null ? RemoteWaitText
+        : _waitMore ? L.T("Looking for more similar songs…")
         : _waiting is not { } id ? null
         : _main.Radio.StatusOf(id) is { State: Core.Together.FileState.Downloading } st ? L.F("Downloading · {0:0}%", st.Pct)
         : L.T("On its way…");
@@ -935,7 +1074,7 @@ public sealed class PlayerViewModel : Observable
     // Suggestions arrived for this list. None new (offline, nothing found): all your songs follow.
     internal void ExtendRadio(string contextId, List<string> ids, bool first)
     {
-        if (_room != null || _queue.ContextId != contextId || !_queue.Radio) return;
+        if (_room != null || _remote != null || _queue.ContextId != contextId || !_queue.Radio) return;
         int before = _queue.Context.Count;
         if (ids.Count > 0) _queue.Extend(ids);
         if (_queue.Context.Count == before && (first || _queue.UpcomingCount == 0))
@@ -1100,7 +1239,12 @@ public sealed class PlayerViewModel : Observable
     {
         if (_room != null)
         {
-            _room.TogglePause();
+            if (!Unsilence()) _room.TogglePause();
+            return;
+        }
+        if (_remote != null)
+        {
+            if (Current != null || _remote.State.Upcoming > 0) _remote.Do("toggle");
             return;
         }
         if (Current == null)
@@ -1133,13 +1277,15 @@ public sealed class PlayerViewModel : Observable
 
     public void Play()
     {
-        if (_room != null) _room.SetPaused(false);
+        if (_room != null) { if (!Unsilence()) _room.SetPaused(false); }
+        else if (_remote != null) _remote.Do("playing", flag: true);
         else if (!IsPlaying) PlayPause();
     }
 
     public void Pause()
     {
-        if (_room != null) _room.SetPaused(true);
+        if (_room != null) { if (!Unsilence()) _room.SetPaused(true); }
+        else if (_remote != null) _remote.Do("playing", flag: false);
         else if (IsPlaying) PlayPause();
     }
 
@@ -1171,6 +1317,11 @@ public sealed class PlayerViewModel : Observable
             if (!auto) _room.Skip();
             return;
         }
+        if (_remote != null)
+        {
+            if (!auto) _remote.Do("next");
+            return;
+        }
         var t = NextPlayable(() => _queue.Next(auto));
         if (t == null)
         {
@@ -1200,6 +1351,11 @@ public sealed class PlayerViewModel : Observable
             _room.Restart();
             return;
         }
+        if (_remote != null)
+        {
+            _remote.Do("prev", flag: restart);
+            return;
+        }
         if (restart && Position > 3 || Current == null)
         {
             Seek(0);
@@ -1216,8 +1372,8 @@ public sealed class PlayerViewModel : Observable
 
     private void OnEnded()
     {
-        // In a room the host's clock decides when the next song starts.
-        if (_room != null) return;
+        // In a room the host's clock decides when the next song starts (driving a computer, the computer does).
+        if (_room != null || _remote != null) return;
         if (Repeat == RepeatMode.One && Current != null)
         {
             CountListening();
@@ -1232,7 +1388,7 @@ public sealed class PlayerViewModel : Observable
     // Crossfade: next song starts while this one fades (a suggested one still downloading waits for the end).
     private void OnNearEnd()
     {
-        if (_room != null || !IsPlaying || Repeat == RepeatMode.One || _audio.CrossfadeSeconds <= 0) return;
+        if (_room != null || _remote != null || !IsPlaying || Repeat == RepeatMode.One || _audio.CrossfadeSeconds <= 0) return;
         if (_queue.PeekNext() is { } next && TrackOf(next) is { } coming && _main.Radio.Streams(coming) && coming.AudioPath == null &&
             _main.Radio.PathFor(next) == null) return;
         var t = NextPlayable(() => _queue.Next(true));
@@ -1246,6 +1402,11 @@ public sealed class PlayerViewModel : Observable
             _room.PlayNowAt(index);
             return;
         }
+        if (_remote != null)
+        {
+            _remote.Do("jump", index: index);
+            return;
+        }
         var t = NextPlayable(() => _queue.JumpTo(index), picked: true);
         if (t != null)
         {
@@ -1257,12 +1418,14 @@ public sealed class PlayerViewModel : Observable
     public void RemoveUpcoming(int index)
     {
         if (_room != null) _room.RemoveAt(index);
+        else if (_remote != null) _remote.Do("remove", index: index);
         else _queue.RemoveAt(index);
     }
 
     public void MoveUpcoming(int from, int to)
     {
         if (_room != null) _room.MoveAt(from, to);
+        else if (_remote != null) _remote.Do("move", index: from, max: to);
         else _queue.Move(from, to);
     }
 
@@ -1280,7 +1443,7 @@ public sealed class PlayerViewModel : Observable
 
     public void MoveUpcomingToBottom(IReadOnlyCollection<int> indexes)
     {
-        int to = (_room?.RoomQueue.Count ?? _queue.UpcomingCount) - 1;
+        int to = (_remote?.State.Upcoming ?? _room?.RoomQueue.Count ?? _queue.UpcomingCount) - 1;
         foreach (var i in indexes.Distinct().OrderByDescending(i => i)) MoveUpcoming(i, to--);
     }
 
@@ -1292,6 +1455,14 @@ public sealed class PlayerViewModel : Observable
             return;
         }
         if (Current == null) return;
+        if (_remote != null)
+        {
+            seconds = Math.Clamp(seconds, 0, Math.Max(0, Duration - 0.25));
+            _remote.Do("seek", pos: seconds);
+            Position = seconds;
+            _main.Host.OnSeek();
+            return;
+        }
         if (!_opened)
         {
             // Not opened yet: remembered for the first play.
@@ -1307,14 +1478,15 @@ public sealed class PlayerViewModel : Observable
 
     public void SeekFraction(double f) => Seek(f * Duration);
 
-    public TimeSpan EnginePosition => _audio.Position;
+    // (driving a computer: where its song is)
+    public TimeSpan EnginePosition => _remote != null ? TimeSpan.FromSeconds(_remote.Position) : _audio.Position;
 
     // Deleting the playing song moves to the next one.
     public async Task RemoveTracks(IReadOnlyCollection<string> trackIds)
     {
         bool wasCurrent = Current != null && trackIds.Contains(Current.Id);
         foreach (var id in trackIds) _queue.Forget(id);
-        if (!wasCurrent || _room != null) return;
+        if (!wasCurrent || _room != null || _remote != null) return;
         bool wasPlaying = IsPlaying;
         var t = NextPlayable(() => _queue.Next(false));
         if (t != null && !trackIds.Contains(t.Id))
@@ -1359,7 +1531,8 @@ public sealed class PlayerViewModel : Observable
 
     private void Tick()
     {
-        if (_room != null) Position = _opened && _roomLoaded == _room.Session?.Current?.Id ? _audio.Position.TotalSeconds : _room.TargetPosition;
+        if (_remote != null) Position = _remote.Position;
+        else if (_room != null) Position = _opened && _roomLoaded == _room.Session?.Current?.Id ? _audio.Position.TotalSeconds : _room.TargetPosition;
         else if (_opened) Position = _audio.Position.TotalSeconds;
     }
 
@@ -1390,6 +1563,9 @@ public sealed class PlayerViewModel : Observable
         _waiting = null;
         _waitMore = false;
         _room = room;
+#if IOS_APP
+        _audio.KeepAwake = true;
+#endif
         _roomLoaded = null;
         ApplyCrossfade();
         // The room's speed from now on (Follow sets it).
@@ -1413,6 +1589,11 @@ public sealed class PlayerViewModel : Observable
         CountListening();
         NewListen();
         _room = null;
+#if IOS_APP
+        _audio.KeepAwake = false;
+#endif
+        _silenced = false;
+        ApplyVolume();
         _roomLoaded = null;
         _loadVersion++;
         _audio.Pause();
@@ -1434,7 +1615,7 @@ public sealed class PlayerViewModel : Observable
 
     private void OnRoomChanged()
     {
-        OnChanged(nameof(InRoom), nameof(NotInRoom), nameof(RoomName), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(PlayTip), nameof(NextTip), nameof(PreviousTip),
+        OnChanged(nameof(InRoom), nameof(NotInRoom), nameof(RoomName), nameof(ContextName), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(PlayTip), nameof(NextTip), nameof(PreviousTip),
             nameof(SeekTip), nameof(QueueHint), nameof(RepeatOn), nameof(RepeatGlyph), nameof(RepeatTip), nameof(CanSetSpeed), nameof(SpeedTip), nameof(SpeedHint));
         OnSpeedChanged();
         RefreshUpNext();
@@ -1546,6 +1727,164 @@ public sealed class PlayerViewModel : Observable
         : _room.CanRemove ? L.T("The room's queue: double-click to play a song now, drag to reorder.")
         : L.T("The room's queue, the same for everyone.");
 
+    // ------------------------------------------------------------------ connect phone: this phone drives a computer
+
+    // Connected to a computer (ComputerLinkViewModel): its player is the one shown and driven here, the songs play there
+    // and this phone stays silent. Your own queue waits untouched and comes back, paused, when the computer goes.
+    private ComputerLinkViewModel? _remote;
+
+    public bool IsRemote => _remote != null;
+    // Over the player: where the music plays.
+    public string? RemoteText => _remote == null ? null
+        : _remote.IsReconnecting ? L.F("Reconnecting to {0}…", _remote.ComputerName) : L.F("Playing on {0}", _remote.ComputerName);
+    public ICommand OpenRemoteCommand => new RelayCommand(() => _remote?.Open());
+
+    private string RemoteWaitText => _remote!.State.WaitMore ? L.T("Looking for more similar songs…")
+        : _remote.State.WaitPct > 0 ? L.F("Downloading · {0:0}%", _remote.State.WaitPct) : L.T("On its way…");
+
+    public void EnterRemote(ComputerLinkViewModel link)
+    {
+        if (_remote != null || _room != null) return;
+        SaveState();
+        CountListening();
+        NewListen();
+        _loadVersion++;
+        _audio.Pause();
+        _audio.Close();
+        _opened = false;
+        _waiting = null;
+        _waitMore = false;
+        _remote = link;
+        Current = null;
+        Position = 0;
+        Duration = 0;
+        IsPlaying = false;
+#if IOS_APP
+        // iOS keeps an app running in the background only while it plays: silence, so the connection and the lock
+        // screen's buttons stay alive.
+        _audio.Play();
+#endif
+        OnRemoteChanged();
+        OnWaitChanged();
+        _main.OnCurrentChanged();
+        _main.Radio.Refresh();
+    }
+
+#if IOS_APP
+    // After a call (an interruption) iOS has stopped the output: on again, driving a computer (the silence that keeps the
+    // app and the link alive) or in a room (the music goes on for the others, here too).
+    public void Wake() => _audio.Wake();
+
+#endif
+    public void LeaveRemote()
+    {
+        if (_remote == null) return;
+        _remote = null;
+        _loadVersion++;
+        _audio.Pause();
+        _audio.Close();
+        _opened = false;
+        IsPlaying = false;
+        Current = null;
+        Position = 0;
+        Duration = 0;
+        // Back to your own song, paused where you left it.
+        Restore(false);
+        OnRemoteChanged();
+        OnWaitChanged();
+        _main.OnCurrentChanged();
+        _main.Radio.Refresh();
+    }
+
+    private void OnRemoteChanged()
+    {
+        OnRemoteLink();
+        OnChanged(nameof(IsRemote), nameof(ShowNowPlaying), nameof(IsTemporary), nameof(Volume), nameof(Muted), nameof(VolumeGlyph));
+        OnRemoteValues();
+        RefreshUpNext();
+        _main.Host.OnTrackChanged();
+    }
+
+    // Connected, reconnecting: what's said over the player.
+    internal void OnRemoteLink() => OnChanged(nameof(RemoteText));
+
+    private void OnRemoteValues()
+    {
+        OnChanged(nameof(ContextName), nameof(Shuffle), nameof(Repeat), nameof(RepeatOn), nameof(RepeatGlyph), nameof(RepeatTip), nameof(AutoQueue),
+            nameof(AutoQueueTip), nameof(QueueEndHint), nameof(GenerateHint), nameof(UpcomingBadge), nameof(MoreText));
+        OnSpeedChanged();
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    // The computer's player changed (or one of this phone's buttons changed it).
+    internal void RemoteState(TrackViewModel? current, LinkState s)
+    {
+        if (_remote == null) return;
+        if (Current != current)
+        {
+            Current = current;
+            _main.OnCurrentChanged();
+            _main.Host.OnTrackChanged();
+        }
+        Duration = s.Duration > 0 ? s.Duration : current?.T.Duration ?? 0;
+        IsPlaying = s.Playing;
+        Position = _remote.Position;
+        OnChanged(nameof(Volume), nameof(Muted), nameof(VolumeGlyph));
+        OnRemoteValues();
+        OnWaitChanged();
+        _main.Host.OnSeek();
+    }
+
+    internal void OnRemoteQueue() => RefreshUpNext();
+
+    // ------------------------------------------------------------------ connect phone: a phone drives this player
+
+    // Under the song of the player bar: the phone connected (also with nothing playing), a click opens its window.
+    public bool PhoneLinked => _main.PhoneLinked;
+    public string? PhoneName => _main.PhoneLinked ? _main.PhoneLink.PhoneName : null;
+    public string? PhoneTip => _main.PhoneLinked ? _main.PhoneLink.BarTip : null;
+    public bool PhoneAway => _main.PhoneLinked && _main.PhoneLink.IsReconnecting;
+    public ICommand OpenPhoneCommand => new RelayCommand(() => PhoneLinkViewModel.ShowWindow?.Invoke(_main));
+
+    internal void OnPhoneLink() => OnChanged(nameof(ShowNowPlaying), nameof(PhoneLinked), nameof(PhoneName), nameof(PhoneTip), nameof(PhoneAway));
+
+    internal string? WaitingId => _waiting;
+    internal bool WaitingMore => _waitMore;
+    // Playing, or about to (a song still on its way that starts by itself).
+    internal bool PlaysSoon => IsPlaying || _waiting != null && _waitPlay;
+    // Where the song is right now, also with the window away (the timer that moves Position stops then).
+    internal double LivePosition => _room == null && _opened ? _audio.Position.TotalSeconds : Position;
+    internal bool RadioQueue => _queue.Radio;
+    internal int UpcomingCount => _queue.UpcomingCount;
+    internal List<(string Id, bool Queued)> UpcomingIds(int max) => _queue.Upcoming(max).Select(e => (e.Id, e.Queued)).ToList();
+    internal Track? TrackFor(string id) => TrackOf(id);
+
+    // Songs of the connected phone (RadioViewModel.AddFromPhone), as its list said: from that one (all: the rest follows
+    // anyway), or the whole list from its start (index -1; all: shuffled).
+    internal void PlayPhone(List<string> ids, int index, string name, bool all)
+    {
+        if (_room != null || ids.Count == 0) return;
+        var contextId = "phone:" + Ids.New();
+        if (index < 0)
+        {
+            if (all)
+            {
+                Shuffle = true;
+                _queue.PlayShuffled(ids, contextId, name);
+            }
+            else _queue.Play(ids, 0, contextId, name);
+        }
+        else _queue.Play(ids, Math.Min(index, ids.Count - 1), contextId, name, all || AutoQueue);
+        if (_queue.Current is not { } id || TrackOf(id) is not { } t) return;
+        if (Current?.Id == t.Id && (_opened || _waiting == t.Id))
+        {
+            OnChanged(nameof(ContextName));
+            _main.OnContextChanged();
+            Play();
+        }
+        else _ = Load(t, true);
+    }
+
     // ------------------------------------------------------------------ up next
 
     public List<QueueRow> UpNext { get; private set; } = new();
@@ -1575,6 +1914,26 @@ public sealed class PlayerViewModel : Observable
                 nameof(GenerateHint), nameof(QueueEndHint), nameof(QueueHint));
             return;
         }
+        if (_remote != null)
+        {
+            // The computer's "next up", with its own places in it.
+            foreach (var (row, track) in _remote.Rows())
+            {
+                string? header = null;
+                if (row.Queued && !queuedHeader) { header = L.T("Queued"); queuedHeader = true; }
+                else if (!row.Queued && !planHeader)
+                {
+                    header = _remote.State.Radio ? ContextName : ContextName != null ? L.F("Up next from “{0}”", ContextName) : L.T("Up next");
+                    planHeader = true;
+                }
+                rows.Add(new QueueRow(row.Index, track, row.Queued, header, this));
+            }
+            UpNext = rows;
+            OnChanged(nameof(UpNext), nameof(UpNextCount), nameof(ContextName), nameof(HasUpNext), nameof(UpcomingBadge), nameof(MoreText),
+                nameof(GenerateHint), nameof(QueueEndHint));
+            CommandManager.InvalidateRequerySuggested();
+            return;
+        }
         foreach (var e in _queue.Upcoming(150))
         {
             if (TrackOf(e.Id) is { } t)
@@ -1600,7 +1959,7 @@ public sealed class PlayerViewModel : Observable
     public bool HasUpNext => UpNext.Count > 0;
 
     // Count on the "show next up" button when the panel is folded away.
-    public string? UpcomingBadge => (_room?.RoomQueue.Count ?? _queue.UpcomingCount) switch
+    public string? UpcomingBadge => (_remote?.State.Upcoming ?? _room?.RoomQueue.Count ?? _queue.UpcomingCount) switch
     {
         0 => null,
         > 999 => "999+",
@@ -1608,15 +1967,16 @@ public sealed class PlayerViewModel : Observable
     };
 
     // Under the list: the songs that don't fit in it.
-    public string? MoreText => (_room?.RoomQueue.Count ?? _queue.UpcomingCount) - UpNext.Count is var more and > 0 ? L.Count(more, "and 1 more song", "and {0} more songs") : null;
+    public string? MoreText => (_remote?.State.Upcoming ?? _room?.RoomQueue.Count ?? _queue.UpcomingCount) - UpNext.Count is var more and > 0 ? L.Count(more, "and 1 more song", "and {0} more songs") : null;
 
     // Where "Generate" takes the songs from.
     public string GenerateHint
     {
         get
         {
-            if (_queue.Radio) return _main.Radio.Busy ? L.T("Looking for more similar songs…") : L.T("More similar songs, found online");
-            var name = _queue.CanGenerate ? ContextName : L.T("All songs");
+            if (_remote != null && _remote.State.Radio) return L.T("More similar songs, found online");
+            if (_remote == null && _queue.Radio) return _main.Radio.Busy ? L.T("Looking for more similar songs…") : L.T("More similar songs, found online");
+            var name = _remote != null || _queue.CanGenerate ? ContextName : L.T("All songs");
             if (name == null) return Shuffle ? L.T("In random order") : "";
             return Shuffle ? L.F("From “{0}”, in random order", name) : L.F("From “{0}”", name);
         }
@@ -1627,7 +1987,9 @@ public sealed class PlayerViewModel : Observable
         ? _room.CanAdd ? L.T("Add songs to the room with the + button in your playlists.") : L.T("Wait for someone to add a song to the room.")
         : Current == null
         ? L.T("Play a song: the ones after it will show up here.")
-        : _queue.Radio && Repeat != RepeatMode.One && !_queue.Cleared
+        : _remote != null && _remote.State.Radio && Repeat != RepeatMode.One
+        ? L.T("When these are over, more similar ones come.")
+        : _remote == null && _queue.Radio && Repeat != RepeatMode.One && !_queue.Cleared
         ? _main.Radio.Busy ? L.T("Looking for similar songs online…") : L.T("When these are over, more similar ones come.")
         : AutoQueue && Repeat != RepeatMode.One ? L.T("Automatic queue on: it refills itself when the song ends.")
         : L.T(Repeat switch

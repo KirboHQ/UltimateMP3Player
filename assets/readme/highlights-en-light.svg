@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="972" viewBox="0 0 880 972" role="img" aria-label="Paste a link, get the music · Songs in the cloud · A player that feels like Spotify · Synced lyrics · A queue that fills itself · DJ mode · Playlists, favorites and tags · On all your devices · Listen together">
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="1188" viewBox="0 0 880 1188" role="img" aria-label="Paste a link, get the music · Songs in the cloud · A player that feels like Spotify · Synced lyrics · A queue that fills itself · DJ mode · Playlists, favorites and tags · On all your devices · Listen together · Your phone as a remote">
   <defs>
     <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#7C5CFF"/>
@@ -52,25 +52,33 @@
     <text class="body" x="26" y="99"><tspan x="26" dy="0">Two decks with scrolling waveforms, BPM detection,</tspan><tspan x="26" dy="23">sync, key lock, a 3-band EQ with kills and a crossfader.</tspan><tspan x="26" dy="23">Record your mix straight into the library.</tspan></text>
   </g>
   <g transform="translate(0 602)">
-    <rect x="0.5" y="0.5" width="431" height="176" rx="16" fill="#f6f8fa" stroke="#d1d9e0"/>
+    <rect x="0.5" y="0.5" width="431" height="199" rx="16" fill="#f6f8fa" stroke="#d1d9e0"/>
     <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
     <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5v6.8a1.5 1.5 0 0 0 .44 1.06l8.2 8.2a1.5 1.5 0 0 0 2.12 0l6.8-6.8a1.5 1.5 0 0 0 0-2.12l-8.2-8.2A1.5 1.5 0 0 0 11.3 3H4.5A1.5 1.5 0 0 0 3 4.5z"/><circle cx="8" cy="8" r="1.4" fill="#fff"/></g>
     <text class="title" x="86" y="54">Playlists, favorites and tags</text>
     <text class="body" x="26" y="99"><tspan x="26" dy="0">Colored tags like Discord roles, filters, multi-select in</tspan><tspan x="26" dy="23">every list, listening statistics, and .ump packs to share</tspan><tspan x="26" dy="23">your playlists with friends.</tspan></text>
   </g>
   <g transform="translate(448 602)">
-    <rect x="0.5" y="0.5" width="431" height="176" rx="16" fill="#f6f8fa" stroke="#d1d9e0"/>
+    <rect x="0.5" y="0.5" width="431" height="199" rx="16" fill="#f6f8fa" stroke="#d1d9e0"/>
     <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
     <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="11" height="8.5" rx="1.5"/><path d="M1 17h13"/><rect x="16.5" y="8" width="6" height="12" rx="1.5"/></g>
     <text class="title" x="86" y="54">On all your devices</text>
-    <text class="body" x="26" y="99"><tspan x="26" dy="0">Windows, Linux, macOS and Android, with the same</tspan><tspan x="26" dy="23">look. A profile for each person, themes, English and</tspan><tspan x="26" dy="23">Italian, a 3D tilting cover and Discord Rich Presence.</tspan></text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Windows, Linux, macOS, Android and iPhone (preview),</tspan><tspan x="26" dy="23">with the same look. A profile for each person, themes,</tspan><tspan x="26" dy="23">English and Italian, a 3D tilting cover and</tspan><tspan x="26" dy="23">Discord Rich Presence.</tspan></text>
   </g>
-  <g transform="translate(0 795)">
+  <g transform="translate(0 818)">
     <rect x="0.5" y="0.5" width="879" height="176" rx="16" fill="#f6f8fa" stroke="#d1d9e0"/>
     <rect x="0.5" y="0.5" width="879" height="176" rx="16" fill="url(#accent)" fill-opacity="0.06" stroke="url(#accent)" stroke-opacity="0.7"/>
     <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
     <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2" fill="#fff"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.4 5.4a9.3 9.3 0 0 0 0 13.2M18.6 5.4a9.3 9.3 0 0 1 0 13.2"/></g>
     <text class="title" x="86" y="54">Listen together</text>
-    <text class="body" x="26" y="99"><tspan x="26" dy="0">Rooms on your network (or over Radmin VPN): everyone hears the same song at the same moment, with a chat, a</tspan><tspan x="26" dy="23">shared queue and permissions decided by the host. Songs are downloaded by each computer from their link,</tspan><tspan x="26" dy="23">or sent over by someone in the room.</tspan></text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Rooms on your network (or over Radmin VPN), from computers and phones: everyone hears the same song at the same</tspan><tspan x="26" dy="23">moment, with a chat, a shared queue and permissions decided by the host. Songs are downloaded by each device from</tspan><tspan x="26" dy="23">their link, or sent over by someone in the room.</tspan></text>
+  </g>
+  <g transform="translate(0 1011)">
+    <rect x="0.5" y="0.5" width="879" height="176" rx="16" fill="#f6f8fa" stroke="#d1d9e0"/>
+    <rect x="0.5" y="0.5" width="879" height="176" rx="16" fill="url(#accent)" fill-opacity="0.06" stroke="url(#accent)" stroke-opacity="0.7"/>
+    <rect x="26" y="26" width="44" height="44" rx="12" fill="url(#accent)"/>
+    <g transform="translate(36 36)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10.5 8.5v6l4.5-3z" fill="#fff"/><path d="M11 18.5h2"/></g>
+    <text class="title" x="86" y="54">Your phone as a remote</text>
+    <text class="body" x="26" y="99"><tspan x="26" dy="0">Connect your phone to the computer over Wi-Fi or with the cable: it drives the computer&apos;s player, its songs play on the</tspan><tspan x="26" dy="23">computer&apos;s speakers, and a song you save goes to the phone, the computer or both.</tspan><tspan x="26" dy="23">Send playlists to the phone in one click.</tspan></text>
   </g>
 </svg>

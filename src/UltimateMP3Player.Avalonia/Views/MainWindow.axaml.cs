@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     {
         _host = host;
         Icon = App.WindowIcon;
+        PhoneLinkViewModel.ShowWindow = PhoneDialogs.Show;
         WindowFrame.Apply(this, Root, TitleBar, TitleText, WindowButtons, MinButton, MaxButton, CloseButton, ResizeEdges);
         var s = host.Settings;
         var screen = Screens.Primary?.WorkingArea.Size.ToSize(Screens.Primary.Scaling);

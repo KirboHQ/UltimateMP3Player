@@ -47,7 +47,7 @@
   <source media="(max-width: 640px) and (prefers-color-scheme: dark)" srcset="assets/readme/highlights-it-dark-mobile.svg">
   <source media="(max-width: 640px)" srcset="assets/readme/highlights-it-light-mobile.svg">
   <source media="(prefers-color-scheme: dark)" srcset="assets/readme/highlights-it-dark.svg">
-  <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · brani nel cloud · un lettore come Spotify · testi sincronizzati · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · su tutti i tuoi dispositivi · ascolta insieme">
+  <img src="assets/readme/highlights-it-light.svg" width="100%" alt="In breve: incolli un link, hai la musica · brani nel cloud · un lettore come Spotify · testi sincronizzati · una coda che si riempie da sola · modalità DJ · playlist, preferiti e tag · su tutti i tuoi dispositivi · ascolta insieme · il telefono come telecomando">
 </picture>
 
 <img src="assets/readme/screens/hero.webp" width="100%" alt="L'app su Windows e Android: la home, il lettore sul telefono">
@@ -124,18 +124,21 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 
 <img src="assets/readme/screens/together.webp" width="100%" alt="Una stanza con tre persone: il brano in riproduzione, la coda con chi ha aggiunto ogni brano, la chat">
 
-- Le stanze sulla stessa rete (Wi-Fi o cavo) si trovano da sole; da lontano entrate tutti nella stessa rete di Radmin
-  VPN. Una stanza può avere una password e un numero massimo di persone; si può entrare anche con l'indirizzo.
-- Tutti sentono lo stesso brano allo stesso punto: comanda l'orologio dell'host, ogni computer lo segue (volume ed
+- Le stanze sulla stessa rete (Wi-Fi o cavo) si trovano da sole, **con computer e telefoni** (Android e iPhone) nella
+  stessa stanza; da lontano entrate tutti nella stessa rete di Radmin VPN. Una stanza può avere una password e un
+  numero massimo di persone; si può entrare anche con l'indirizzo.
+- Tutti sentono lo stesso brano allo stesso punto: comanda l'orologio dell'host, ogni dispositivo lo segue (volume ed
   equalizzatore restano i tuoi)
-- Ogni computer si procura il brano in riproduzione e i due dopo: dalla sua libreria, dalla memoria delle stanze, dal
+- Ogni dispositivo si procura il brano in riproduzione e i due dopo: dalla sua libreria, dalla memoria delle stanze, dal
   link del brano, oppure glielo manda qualcuno nella stanza. Un brano parte quando ce l'hanno tutti (o dopo qualche
   secondo per chi ce l'ha); chi arriva dopo entra al punto giusto.
 - L'host decide chi può aggiungere, togliere e spostare, saltare, mettere in pausa, andare avanti e indietro; per gli
   altri i tasti sono oscurati. In una stanza i tasti play delle tue liste diventano **+** e il doppio clic mette il
-  brano nella stanza.
+  brano nella stanza; sul telefono basta toccare un brano (tienilo premuto per altro).
 - Chat, chi ha aggiunto ogni brano, l'avanzamento dei download di tutti, espulsioni, passaggio dell'host. Se l'host
-  esce o il suo PC si spegne, la stanza passa a chi ha più permessi (a parità, a chi è entrato per primo).
+  esce o il suo dispositivo si spegne, la stanza passa a chi ha più permessi (a parità, a chi è entrato per primo).
+- Sul telefono, la scheda **Insieme**: le stanze vicine o una tua, poi la coda, le persone e la chat. Quando un'altra
+  app prende l'audio (un video, una chiamata), la stanza va avanti in silenzio sul telefono: premi play per risentirla.
 - I brani ascoltati nelle stanze restano in memoria (10 di base, insieme ai consigliati); quelli che ti piacciono li
   salvi nella libreria o in una playlist
 - Il P2P si può spegnere dalle impostazioni: i brani arrivano allora solo dalla tua libreria, dalla memoria o dal loro
@@ -161,9 +164,24 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 <img src="assets/readme/screens/phone.webp" width="100%" alt="Su Android: la libreria, i testi sincronizzati, la ricerca online e la scheda del download">
 
 - La stessa libreria, playlist, tag, testi, equalizzatore e download su Android (e iPhone, in anteprima)
+- Cerca e scarica in un'unica scheda: scrivi per trovare i tuoi brani e la musica online, incolla un link per scaricarlo
 - Condividi un link da YouTube, Spotify, SoundCloud o quasi ogni altra app con *Scarica con Ultimate MP3 Player*
 - Scorri di lato per passare da una scheda all'altra; dentro una playlist uno scorrimento verso destra torna indietro
 - Accedi ai siti dall'app per le playlist private; il brano sulla schermata di blocco e i tasti delle cuffie
+- *Ascolta insieme* in una scheda tutta sua, con computer e altri telefoni
+
+### Il telefono come telecomando
+
+- Sul telefono apri *Impostazioni › Collega al computer*, sul computer *Impostazioni › Collega telefono* e sceglilo.
+  Sulla stessa Wi-Fi il telefono lo consente una volta; con il cavo non c'è niente da consentire (Android: attiva il
+  tethering USB; iPhone: Dispositivi Apple o iTunes su Windows, `usbmuxd` su Linux, niente da aggiungere su Mac).
+- Il telefono comanda il lettore del computer: play, salto, posizione, la coda e il volume del computer, anche dalla
+  schermata di blocco. La musica suona sul computer e il telefono resta in silenzio.
+- Anche i brani del telefono suonano sul computer, inviati tramite la rete o il cavo quando il computer non li ha
+- Salvare un brano mentre sono collegati chiede dove: sul telefono, sul computer o su entrambi
+- **Al telefono** nella finestra di esportazione del computer manda playlist e tag al telefono, che prende solo i brani
+  che non ha
+- Se la connessione cade torna da sola; entrare in una stanza o aprire il DJ scollega il telefono
 
 ### E poi
 
@@ -252,7 +270,8 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 > Ultimate MP3 Player › Music*): aggiungine altri da Impostazioni › Libreria. Disinstallando l'app vengono cancellati:
 > tieni un pacchetto `.ump`. I download vogliono l'app aperta: in background iOS lascia a un'app solo mezzo minuto
 > circa per finirli. Per mandare un link da un'altra app, crea un Comando rapido che prende l'URL condiviso e apre
-> `ump://add?url=` seguito da quello.
+> `ump://add?url=` seguito da quello. La prima volta che cerchi le stanze o ti colleghi a un computer, iOS chiede di
+> trovare i dispositivi sulla rete locale: consenti.
 
 ## 💬 Aiuto e segnalazioni
 

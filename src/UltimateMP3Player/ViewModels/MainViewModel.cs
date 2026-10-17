@@ -128,6 +128,39 @@ public sealed class MainViewModel : Observable
         Navigate(Stats);
     }
 
+    // Connect phone: on the computer the phone driving it, on the phone the computer it drives.
+    private PhoneLinkViewModel? _phoneLink;
+    public PhoneLinkViewModel PhoneLink => _phoneLink ??= new PhoneLinkViewModel(this);
+    private ComputerLinkViewModel? _computerLink;
+    public ComputerLinkViewModel ComputerLink => _computerLink ??= new ComputerLinkViewModel(this);
+    public bool PhoneLinked => _phoneLink?.HasPhone == true;
+    public bool ComputerLinked => _computerLink?.IsLinked == true;
+
+    public void OnPhoneLinkChanged()
+    {
+        OnChanged(nameof(PhoneLinked));
+        Player.OnPhoneLink();
+    }
+
+    // The DJ, a room: they can't work while a phone drives the player, so disconnecting it is asked first.
+    public bool ConfirmUnlinkPhone(string why, string action)
+    {
+        if (!PhoneLinked) return true;
+        if (!Dialogs.Confirm(L.T("Disconnect the phone?"), why, action, true)) return false;
+        _ = _phoneLink!.Disconnect();
+        return true;
+    }
+
+    public async Task<bool> ConfirmUnlinkPhoneAsync(string why, string action)
+    {
+        if (!PhoneLinked) return true;
+        if (!await Dialogs.ConfirmAsync(L.T("Disconnect the phone?"), why, action, true)) return false;
+        if (_phoneLink?.HasPhone == true) _ = _phoneLink.Disconnect();
+        return true;
+    }
+
+    private static string DjUnlinkText() => L.T("The DJ section uses the audio on its own: opening it disconnects the phone.");
+
     // In a room of "Listen together": the play buttons of the lists become "+" (add to the room).
     public bool InRoom => _together?.InRoom == true;
     public bool CanAddToRoom => _together?.CanAdd == true;
@@ -136,6 +169,17 @@ public sealed class MainViewModel : Observable
 
     // The DJ, another profile, another language: they can't work while in a room, so leaving it is asked first.
     public bool ConfirmLeaveRoom(string why, string action) => _together == null || _together.ConfirmLeave(why, action);
+    public Task<bool> ConfirmLeaveRoomAsync(string why, string action) => _together == null ? Task.FromResult(true) : _together.ConfirmLeaveAsync(why, action);
+
+    // Phones, before the screen is rebuilt or another profile opens: the room and the computer this phone drives end with
+    // this session, so both are asked first.
+    public async Task<bool> ConfirmLeaveAllAsync(string roomWhy, string action)
+    {
+        if (!await ConfirmLeaveRoomAsync(roomWhy, action)) return false;
+        if (_computerLink?.IsLinked != true) return true;
+        return await Dialogs.ConfirmAsync(L.T("Disconnect from the computer?"), L.F("This phone will be disconnected from {0}.", _computerLink.ComputerName),
+            L.T("Disconnect and continue"), true);
+    }
 
     // A stand-in for a room song that isn't in the library: the TrackViewModel cache forgets it.
     public void ForgetVm(string id) => _vms.Remove(id);
@@ -158,6 +202,7 @@ public sealed class MainViewModel : Observable
     public void LoadInDj(TrackViewModel t, bool deckB)
     {
         if (!ConfirmLeaveRoom(DjLeaveText(), L.T("Leave and open the DJ"))) return;
+        if (!ConfirmUnlinkPhone(DjUnlinkText(), L.T("Disconnect and open the DJ"))) return;
         Dj.Load(t, deckB ? Dj.B : Dj.A);
         Navigate(Dj);
     }
@@ -209,6 +254,8 @@ public sealed class MainViewModel : Observable
     public void Detach()
     {
         _together?.Shutdown();
+        _phoneLink?.Shutdown();
+        _computerLink?.Shutdown();
         Player.Detach();
         Radio.Detach();
         Downloads.Detach();
@@ -299,7 +346,8 @@ public sealed class MainViewModel : Observable
     {
         if (page == Page) return;
         // The DJ has its own audio: in a room it would mean leaving it, so it's asked first.
-        if (page is DjViewModel && InRoom && !ConfirmLeaveRoom(DjLeaveText(), L.T("Leave and open the DJ")))
+        if (page is DjViewModel && (InRoom && !ConfirmLeaveRoom(DjLeaveText(), L.T("Leave and open the DJ"))
+                                    || !ConfirmUnlinkPhone(DjUnlinkText(), L.T("Disconnect and open the DJ"))))
         {
             OnNavChanged();
             return;
@@ -654,7 +702,14 @@ public sealed class MainViewModel : Observable
 
     // A suggested song (or one of a link heard without saving it) goes into the library before going into a playlist, the
     // favourites or getting a tag: in the cloud, nothing downloaded. The library song (the same one for the others).
-    public TrackViewModel KeepInLibrary(TrackViewModel t) => Radio.Item(t.Id) is { } suggested ? Vm(Radio.Keep(suggested, null)) : t;
+    public TrackViewModel KeepInLibrary(TrackViewModel t)
+    {
+        if (Radio.Item(t.Id) is not { } suggested) return t;
+        var kept = Vm(Radio.Keep(suggested, null));
+        // A file of a phone's own (Connect phone), with no link to hear it from again: saved on this computer at once.
+        if (!kept.T.HasLink && !kept.T.IsSaved) _ = SaveToDevice(new[] { kept }, quiet: true);
+        return kept;
+    }
 
     private List<TrackViewModel> KeepInLibrary(IReadOnlyList<TrackViewModel> tracks)
         => tracks.Where(t => _together == null || !_together.IsStandIn(t)).Select(KeepInLibrary).Distinct().ToList();
@@ -839,7 +894,7 @@ public sealed class MainViewModel : Observable
     }
 
     // The copy heard from the cache becomes the song's saved file (cover and analysis only if it lacks them).
-    private async Task<bool> SaveFromCache(Track t, string cached)
+    internal async Task<bool> SaveFromCache(Track t, string cached)
     {
         try
         {
@@ -1369,20 +1424,23 @@ public sealed class MainViewModel : Observable
 
     // ------------------------------------------------------------------ .ump packs
 
-    private readonly Queue<string> _packs = new();
+    private readonly Queue<object> _packs = new();
     private bool _packOpen;
 
-    // A pack opened (double click, dragged in, Settings): one dialog at a time.
-    public async void OpenPack(string path)
+    // A pack opened (double click, dragged in, Settings), or sent by the connected computer: one dialog at a time.
+    public void OpenPack(PackFile pack) => OpenPack((object)pack);
+    public void OpenPack(string path) => OpenPack((object)path);
+
+    private async void OpenPack(object what)
     {
-        _packs.Enqueue(path);
+        _packs.Enqueue(what);
         if (_packOpen) return;
         _packOpen = true;
         try
         {
             // After the window has appeared: a double click on a pack can be what started the app.
             await _ui.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
-            while (_packs.TryDequeue(out var next)) await Views.PackDialogs.Import(this, next);
+            while (_packs.TryDequeue(out var next)) await (next is PackFile p ? Views.PackDialogs.Import(this, p) : Views.PackDialogs.Import(this, (string)next));
         }
         finally { _packOpen = false; }
     }

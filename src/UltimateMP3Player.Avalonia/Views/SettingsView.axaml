@@ -703,6 +703,28 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== connect phone -->
+                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole"
+                        views:SettingsView.Keywords="{local:T 'connect phone remote control android iphone mobile cable usb wifi send music p2p'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Connect phone'}" Classes="card-title"/>
+                        <TextBlock Text="{local:T 'Control the music of this computer from your phone: the phone\'s songs play here and its sound stays off. You can also send music from here to the phone.'}"
+                                   Classes="hint" Margin="0,-8,0,14"/>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Theme="{StaticResource PrimaryButton}" Command="{Binding ConnectPhoneCommand}" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E8EA}" Classes="glyph"/>
+                                    <TextBlock Text="{local:T 'Connect phone…'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock Text="{Binding PhoneLink.PhoneName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" IsVisible="{Binding PhoneLink.HasPhone}"/>
+                                <TextBlock Text="{Binding PhoneLink.StatusText}" Classes="hint"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== listen together -->
                 <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'listen together room rooms friends network lan radmin vpn firewall p2p host ahead'}">
                     <StackPanel>

@@ -1,5 +1,5 @@
-<!-- Download: a link (pasted here, or shared from another app) is read, then you choose what to download and where; below,
-     the downloads of the whole app. -->
+<!-- Download, inside the search page (its box takes the links): a link (written, pasted, shared from another app, or a song
+     found online) is read, then you choose what to download and where; below, the downloads of the whole app. -->
 <UserControl x:Class="UltimateMP3Player.Views.DownloadsPage"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -171,27 +171,15 @@
     <!-- while choosing several things: the bar with what to do sits under the page (the last rows stay reachable) -->
     <Grid RowDefinitions="*,Auto">
     <ScrollViewer x:Name="Scroller">
-        <StackPanel Margin="16,12,16,24">
-            <TextBlock Text="{local:T 'Download music'}" Classes="page-title" Margin="2,0,0,12"/>
-
-            <!-- the link -->
-            <Border Height="50" CornerRadius="25" Background="{DynamicResource Surface2Brush}" BorderBrush="Transparent" BorderThickness="1"
-                    Padding="16,0,4,0" Margin="0,0,0,14">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                    <TextBlock Text="{local:Icon E71B}" Classes="glyph" Foreground="{DynamicResource SubTextBrush}" FontSize="17"/>
-                    <TextBox x:Name="LinkBox" Grid.Column="1" Theme="{StaticResource BareTextBox}" FontSize="15" Margin="12,0,4,0"
-                             Watermark="{local:T 'Paste the link of a song or a playlist'}"/>
-                    <Button x:Name="GoButton" Grid.Column="2" Theme="{StaticResource PillPrimaryButton}" Height="40" Padding="16,0" Click="Go_Click">
-                        <TextBlock x:Name="GoText" Text="{local:T Paste}"/>
-                    </Button>
-                </Grid>
-            </Border>
-
+        <!-- (the link is written or pasted in the search box above) -->
+        <StackPanel Margin="16,4,16,24">
             <Panel Margin="0,0,0,8">
                 <Border Classes="card" Padding="18" IsVisible="{Binding ShowIntro}">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Share or paste a link'}" FontSize="17" FontWeight="SemiBold"/>
-                        <TextBlock Classes="hint" Margin="0,6,0,14" FontSize="14" LineHeight="20"
+                        <TextBlock Text="{local:T 'Search your songs and online'}" FontSize="17" FontWeight="SemiBold"/>
+                        <TextBlock Classes="hint" Margin="0,6,0,0" FontSize="14" LineHeight="20"
+                                   Text="{local:T 'Type the title or the artist: you find the songs you already have and those on music sites, to download with a tap. You can also paste the link of a song or a playlist.'}"/>
+                        <TextBlock Classes="hint" Margin="0,10,0,14" FontSize="14" LineHeight="20"
                                    Text="{local:T 'From YouTube, Spotify, SoundCloud and almost any other app tap Share and choose “Download with Ultimate MP3 Player”. Songs, albums and whole playlists: choose which playlist to save them in. Songs you already have aren\'t downloaded again.'}"/>
                         <ItemsControl ItemsSource="{Binding FeaturedSites}">
                             <ItemsControl.ItemsPanel>
@@ -208,6 +196,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         <TextBlock Text="{local:T '…and hundreds of other sites.'}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" Margin="2,2,0,0"/>
+                        <TextBlock Classes="hint" Margin="0,12,0,0" FontSize="14" Text="{local:T 'With #name you find the songs with that tag.'}"/>
                     </StackPanel>
                 </Border>
 

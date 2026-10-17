@@ -39,6 +39,8 @@
     <array>
         <string>audio</string>
     </array>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>To find the rooms of Listen together and play with the others, and to be found by the computer and control its music (Settings, Connect to computer).</string>
     <!-- The app's Documents (the music, errors.log) in the Files app, and files opened from there in place. -->
     <key>UIFileSharingEnabled</key>
     <true/>

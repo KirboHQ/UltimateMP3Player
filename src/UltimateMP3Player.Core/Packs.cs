@@ -170,87 +170,101 @@ public static class PackWriter
         catch { return 0; }
     }
 
+    // What a pack of these songs holds: its description and every entry with the file it comes from (and its song).
+    // Written into a .ump below, or sent piece by piece to the connected phone (Connect phone).
+    public static (PackManifest Manifest, List<(string Entry, string File, PackTrack? Track)> Entries) Describe(Library lib, Profile profile,
+        PackExport e, string? appVersion)
+    {
+        var songs = Songs(lib, profile, e);
+        var tagIds = e.Tags.Select(t => t.Id).ToHashSet();
+        var manifest = new PackManifest { App = appVersion, Author = profile.Info.Name, Music = e.Music };
+        manifest.Tags = e.Tags.Select(t => new PackTag { Id = t.Id, Name = t.Name, Color = t.Color }).ToList();
+        var entries = new List<(string Entry, string File, PackTrack? Track)>();
+        foreach (var t in songs)
+        {
+            var pt = new PackTrack
+            {
+                Id = t.Id, Title = t.Title, Artist = t.Artist, Album = t.Album, Year = t.Year, Duration = t.Duration,
+                SourceUrl = t.SourceUrl, Site = t.Site, ArtUrl = t.ArtUrl, Wave = t.Wave, Loudness = t.Loudness, Peak = t.Peak,
+                Bpm = t.Bpm, BeatOffset = t.BeatOffset, Lyrics = t.Lyrics,
+                Keys = t.Keys.Where(k => !k.StartsWith("file:", StringComparison.OrdinalIgnoreCase)).ToList(),
+                Tags = profile.TagsOf(t.Id).Where(tagIds.Contains).ToList(),
+            };
+            if (CarriesFile(t, e) && File.Exists(t.Path))
+            {
+                pt.File = Pack.MusicEntry(t.Id, Path.GetExtension(t.Path));
+                pt.Size = SizeOf(t.Path);
+                entries.Add((pt.File, t.Path, pt));
+                if (e.Videos && t.HasVideo && File.Exists(t.VideoPath))
+                {
+                    if (t.VideoPath == t.Path) pt.Video = pt.File;
+                    else
+                    {
+                        pt.Video = Pack.VideoEntry(t.Id, Path.GetExtension(t.VideoPath!));
+                        entries.Add((pt.Video, t.VideoPath!, pt));
+                    }
+                }
+            }
+            if (t.HasCover && File.Exists(AppPaths.TrackCover(t.Id))) entries.Add((Pack.CoverEntry(t.Id), AppPaths.TrackCover(t.Id), pt));
+            foreach (var synced in new[] { true, false })
+                if (t.HasLyrics && File.Exists(LyricsStore.PathFor(t.Id, synced)))
+                    entries.Add((Pack.LyricsEntry(t.Id, synced), LyricsStore.PathFor(t.Id, synced), pt));
+            manifest.Tracks.Add(pt);
+        }
+
+        var inPack = manifest.Tracks.Select(t => t.Id).ToHashSet();
+        foreach (var p in e.Playlists)
+        {
+            var pp = new PackPlaylist
+            {
+                Id = p.Id, Name = p.Name, Favorites = p.IsFavorites, SourceUrl = p.SourceUrl,
+                Tracks = p.Tracks.ToList().Where(inPack.Contains).ToList(),
+                Tags = p.Tags.ToList().Where(tagIds.Contains).ToList(),
+            };
+            var cover = profile.PlaylistCover(p);
+            if (p.HasCover && File.Exists(cover))
+            {
+                entries.Add((Pack.PlaylistCoverEntry(p.Id), cover, null));
+                pp.HasCover = true;
+            }
+            manifest.Playlists.Add(pp);
+        }
+        return (manifest, entries);
+    }
+
     // Writes the pack (a .part file renamed at the end, so a failed export leaves nothing half done).
     // progress: share done 0-1 and the song being copied.
     public static async Task<PackManifest> WriteAsync(string path, Library lib, Profile profile, PackExport e, string? appVersion,
         Action<double, string?>? progress, CancellationToken ct)
     {
-        var songs = Songs(lib, profile, e);
-        var tags = e.Tags.ToList();
-        var tagIds = tags.Select(t => t.Id).ToHashSet();
-        var manifest = new PackManifest { App = appVersion, Author = profile.Info.Name, Music = e.Music };
-        manifest.Tags = tags.Select(t => new PackTag { Id = t.Id, Name = t.Name, Color = t.Color }).ToList();
-
-        long total = Math.Max(1, EstimateSize(songs, e)), done = 0;
+        var (manifest, entries) = Describe(lib, profile, e, appVersion);
+        long total = Math.Max(1, manifest.Tracks.Count * 1200L + entries.Sum(x => SizeOf(x.File))), done = manifest.Tracks.Count * 1200L;
         var part = path + ".part";
         try
         {
             await using (var fs = new FileStream(part, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16, true))
             using (var zip = new ZipArchive(fs, ZipArchiveMode.Create))
             {
-                foreach (var t in songs)
+                foreach (var (entry, file, pt) in entries)
                 {
                     ct.ThrowIfCancellationRequested();
-                    progress?.Invoke(done / (double)total, t.Title);
-                    var pt = new PackTrack
+                    var title = pt?.Title;
+                    progress?.Invoke(done / (double)total, title);
+                    var level = entry.StartsWith("lyrics/", StringComparison.Ordinal) ? CompressionLevel.Optimal : CompressionLevel.NoCompression;
+                    var (size, hash) = await CopyIn(zip, file, entry, level, n =>
                     {
-                        Id = t.Id, Title = t.Title, Artist = t.Artist, Album = t.Album, Year = t.Year, Duration = t.Duration,
-                        SourceUrl = t.SourceUrl, Site = t.Site, ArtUrl = t.ArtUrl, Wave = t.Wave, Loudness = t.Loudness, Peak = t.Peak,
-                        Bpm = t.Bpm, BeatOffset = t.BeatOffset, Lyrics = t.Lyrics,
-                        Keys = t.Keys.Where(k => !k.StartsWith("file:", StringComparison.OrdinalIgnoreCase)).ToList(),
-                        Tags = profile.TagsOf(t.Id).Where(tagIds.Contains).ToList(),
-                    };
-                    if (CarriesFile(t, e) && File.Exists(t.Path))
+                        done += n;
+                        progress?.Invoke(done / (double)total, title);
+                    }, ct);
+                    if (pt != null && entry == pt.File)
                     {
-                        pt.File = Pack.MusicEntry(t.Id, Path.GetExtension(t.Path));
-                        var (size, hash) = await CopyIn(zip, t.Path, pt.File, CompressionLevel.NoCompression, n =>
-                        {
-                            done += n;
-                            progress?.Invoke(done / (double)total, t.Title);
-                        }, ct);
                         pt.Size = size;
                         pt.Hash = hash;
-                        if (e.Videos && t.HasVideo && File.Exists(t.VideoPath))
-                        {
-                            if (t.VideoPath == t.Path) pt.Video = pt.File;
-                            else
-                            {
-                                pt.Video = Pack.VideoEntry(t.Id, Path.GetExtension(t.VideoPath!));
-                                await CopyIn(zip, t.VideoPath!, pt.Video, CompressionLevel.NoCompression, n => done += n, ct);
-                            }
-                        }
                     }
-                    if (t.HasCover && File.Exists(AppPaths.TrackCover(t.Id)))
-                    {
-                        await CopyIn(zip, AppPaths.TrackCover(t.Id), Pack.CoverEntry(t.Id), CompressionLevel.NoCompression, n => done += n, ct);
-                    }
-                    foreach (var synced in new[] { true, false })
-                        if (t.HasLyrics && File.Exists(LyricsStore.PathFor(t.Id, synced)))
-                            await CopyIn(zip, LyricsStore.PathFor(t.Id, synced), Pack.LyricsEntry(t.Id, synced), CompressionLevel.Optimal, null, ct);
-                    manifest.Tracks.Add(pt);
-                    done += 1200;
                 }
 
-                var inPack = manifest.Tracks.Select(t => t.Id).ToHashSet();
-                foreach (var p in e.Playlists)
-                {
-                    var pp = new PackPlaylist
-                    {
-                        Id = p.Id, Name = p.Name, Favorites = p.IsFavorites, SourceUrl = p.SourceUrl,
-                        Tracks = p.Tracks.ToList().Where(inPack.Contains).ToList(),
-                        Tags = p.Tags.ToList().Where(tagIds.Contains).ToList(),
-                    };
-                    var cover = profile.PlaylistCover(p);
-                    if (p.HasCover && File.Exists(cover))
-                    {
-                        await CopyIn(zip, cover, Pack.PlaylistCoverEntry(p.Id), CompressionLevel.NoCompression, null, ct);
-                        pp.HasCover = true;
-                    }
-                    manifest.Playlists.Add(pp);
-                }
-
-                var entry = zip.CreateEntry(Pack.ManifestName, CompressionLevel.Optimal);
-                await using (var s = entry.Open())
+                var manifestEntry = zip.CreateEntry(Pack.ManifestName, CompressionLevel.Optimal);
+                await using (var s = manifestEntry.Open())
                     await JsonSerializer.SerializeAsync(s, manifest, JsonStore.Options, ct);
             }
             File.Move(part, path, true);
@@ -327,10 +341,14 @@ public sealed class PackSong
 // An opened pack: its description and the zip, read on demand.
 public sealed class PackFile : IDisposable
 {
-    private readonly ZipArchive _zip;
+    private readonly ZipArchive? _zip;
     private readonly HashSet<string> _entries;
     // One reader at a time: the entries share the file stream.
     private readonly SemaphoreSlim _gate = new(1, 1);
+    // A pack sent by the connected computer ("Connect phone"): no file, each entry asked for when it's needed
+    // (entry, target; false: not there, an exception: the connection is gone).
+    private readonly Func<string, string, Action<long>?, CancellationToken, Task<bool>>? _fetch;
+    private readonly Action? _closed;
 
     private PackFile(string path, ZipArchive zip, PackManifest manifest, long size)
     {
@@ -339,6 +357,24 @@ public sealed class PackFile : IDisposable
         _entries = zip.Entries.Select(e => e.FullName).ToHashSet(StringComparer.OrdinalIgnoreCase);
         Manifest = manifest;
         FileSize = size;
+    }
+
+    private PackFile(string name, PackManifest manifest, long size, IEnumerable<string> entries,
+        Func<string, string, Action<long>?, CancellationToken, Task<bool>> fetch, Action? closed)
+    {
+        FilePath = name + Pack.Extension;
+        _entries = entries.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Manifest = manifest;
+        FileSize = size;
+        _fetch = fetch;
+        _closed = closed;
+    }
+
+    public static PackFile Remote(string name, PackManifest manifest, long size, IEnumerable<string> entries,
+        Func<string, string, Action<long>?, CancellationToken, Task<bool>> fetch, Action? closed)
+    {
+        manifest.Tracks.RemoveAll(t => string.IsNullOrEmpty(t.Id));
+        return new PackFile(name, manifest, size, entries, fetch, closed);
     }
 
     public string FilePath { get; }
@@ -382,11 +418,17 @@ public sealed class PackFile : IDisposable
     public async Task<bool> ExtractAsync(string entryName, string target, Action<long>? copied, CancellationToken ct)
     {
         if (!Has(entryName)) return false;
+        if (_fetch != null)
+        {
+            // (a profile never saved yet has no folder)
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(target))!);
+            return await _fetch(entryName, target, copied, ct);
+        }
         var tmp = target + ".part";
         await _gate.WaitAsync(ct);
         try
         {
-            if (_zip.GetEntry(entryName) is not { } entry) return false;
+            if (_zip!.GetEntry(entryName) is not { } entry) return false;
             // A profile never saved yet has no folder (its playlist pictures go there).
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(target))!);
             await using (var src = entry.Open())
@@ -421,10 +463,21 @@ public sealed class PackFile : IDisposable
     public byte[]? ReadBytes(string entryName)
     {
         if (!Has(entryName)) return null;
+        if (_fetch != null)
+        {
+            // (off the UI thread, where the callers may be: the link answers on other threads)
+            var tmp = Path.Combine(Path.GetTempPath(), "ump-entry-" + Ids.New());
+            try { return Task.Run(() => _fetch(entryName, tmp, null, CancellationToken.None)).GetAwaiter().GetResult() ? File.ReadAllBytes(tmp) : null; }
+            catch { return null; }
+            finally
+            {
+                try { File.Delete(tmp); } catch { }
+            }
+        }
         _gate.Wait();
         try
         {
-            if (_zip.GetEntry(entryName) is not { } e) return null;
+            if (_zip!.GetEntry(entryName) is not { } e) return null;
             using var s = e.Open();
             using var ms = new MemoryStream();
             s.CopyTo(ms);
@@ -439,6 +492,11 @@ public sealed class PackFile : IDisposable
 
     public void Dispose()
     {
+        if (_zip == null)
+        {
+            _closed?.Invoke();
+            return;
+        }
         _gate.Wait();
         try { _zip.Dispose(); }
         finally { _gate.Release(); }

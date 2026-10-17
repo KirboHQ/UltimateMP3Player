@@ -352,6 +352,16 @@
                                     <TextBlock Text="{Binding RoomName}" Margin="6,0,0,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                 </StackPanel>
                             </Button>
+                            <!-- a phone connected (Connect phone): which one, a spinner while it comes back; a click opens its window -->
+                            <Button Theme="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="0,3,0,0" FontSize="11.5" Command="{Binding OpenPhoneCommand}"
+                                    IsVisible="{Binding PhoneLinked}" ToolTip.Tip="{Binding PhoneTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessBrush}" VerticalAlignment="Center" IsVisible="{Binding !PhoneAway}"/>
+                                    <Ellipse Classes="spinner" Width="9" Height="9" StrokeThickness="1.5" VerticalAlignment="Center" IsVisible="{Binding PhoneAway}"/>
+                                    <TextBlock Text="{local:Icon E8EA}" Classes="glyph" FontSize="12" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding PhoneName}" Margin="5,0,0,0" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
                             <!-- not saved on the device: the library icon puts a suggested song (or one heard from a link) into the library,

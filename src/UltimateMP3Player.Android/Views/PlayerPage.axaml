@@ -30,6 +30,15 @@
                                IsVisible="{Binding Player.ContextName, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                     <TextBlock Text="{Binding Player.ContextName}" FontSize="13.5" FontWeight="SemiBold" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"
                                local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
+                    <!-- driving a computer (Connect to computer): where the music plays; a tap opens its page -->
+                    <Button Theme="{StaticResource PillButton}" HorizontalAlignment="Center" Margin="0,5,0,0" Padding="12,0" Height="28" FontSize="12.5"
+                            Background="{DynamicResource AccentSoftBrush}" Command="{Binding Player.OpenRemoteCommand}" IsVisible="{Binding Player.IsRemote}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E7F4}" Classes="glyph" FontSize="13" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Player.RemoteText}" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" Margin="6,0,0,0"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
                 <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Foreground="{DynamicResource TextBrush}" Click="More_Click"/>
             </Grid>
@@ -131,6 +140,9 @@
             <Grid x:Name="Extras" Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="14,4,14,10">
                 <Button x:Name="SpeedButton" Theme="{StaticResource PillButton}" Height="36" MinWidth="50" Padding="10,0" FontSize="13.5"
                         Background="Transparent" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1.5" Content="{Binding Player.SpeedText}" Click="Speed_Click"/>
+                <!-- driving a computer: its volume (the phone's buttons are the phone's own) -->
+                <Slider Grid.Column="1" Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Margin="12,0,6,0"
+                        VerticalAlignment="Center" Value="{Binding Player.Volume}" IsVisible="{Binding Player.IsRemote}"/>
                 <ToggleButton Grid.Column="2" Theme="{StaticResource TouchToggle}" Content="{local:Icon E720}" IsChecked="{Binding ShowLyrics}"
                               IsVisible="{Binding HasLyrics}"/>
                 <ToggleButton Grid.Column="3" Theme="{StaticResource TouchToggle}" Content="{local:Icon E714}" IsChecked="{Binding ShowVideo}" IsVisible="{Binding HasVideo}"/>

@@ -103,6 +103,9 @@ internal sealed class Voice : IDisposable
 // Current song plus the fading one, then speed, EQ, volume, limiter.
 public sealed class MasterProvider : ISampleProvider
 {
+    // Paused with the output going on (iOS in a room, AudioEngine.KeepAwake): silence, the song held where it is.
+    public volatile bool Held;
+
     private const double MicroFade = 0.03;
     private const double SeekFade = 0.015;
     // Frames the songs are read in while the speed is changed.
@@ -496,6 +499,11 @@ public sealed class MasterProvider : ISampleProvider
 
     public int Read(float[] buffer, int offset, int count)
     {
+        if (Held)
+        {
+            Zero(buffer, offset, count);
+            return count;
+        }
         Voice? finished = null;
         bool ended = false, nearEnd = false;
         lock (_lock)

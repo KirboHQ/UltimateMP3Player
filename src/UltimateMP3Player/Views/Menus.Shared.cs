@@ -164,6 +164,14 @@ public static partial class Menus
 
     private const string RadioGlyph = "";
 
+    // Connect phone: a suggested song goes where you say (this computer, the phone or both), like the player's heart.
+    private static void Keep(MainViewModel main, TrackViewModel t, bool favorite)
+    {
+        if (main.PhoneLinked) _ = main.PhoneLink.Keep(t, favorite);
+        else if (favorite) main.ToggleFavorite(t);
+        else main.AddToLibrary(t);
+    }
+
     // A suggested song that isn't in the library: its place in the queue (row) or skipping it (the one playing), keeping it,
     // more songs like it.
     public static ContextMenu ForRadioItem(RadioItemViewModel item, MainViewModel main, QueueRow? row)
@@ -187,10 +195,10 @@ public static partial class Menus
         if (item.IsFailed) menu.Items.Add(Item(L.T("Try downloading it again"), "", () => main.Radio.Prepare(item.Id)));
         menu.Items.Add(new Separator());
         // Only into the library (in the cloud, nothing downloaded: also a playlist, the favourites), or saved on the device too.
-        menu.Items.Add(Item(L.T("Add to library"), LibraryGlyph, () => main.AddToLibrary(t)));
+        menu.Items.Add(Item(L.T("Add to library"), LibraryGlyph, () => Keep(main, t, false)));
         menu.Items.Add(Item(L.T("Save to device"), SaveGlyph, () => _ = main.Radio.Save(item, null)));
         menu.Items.Add(AddToPlaylist(t));
-        menu.Items.Add(FavoriteItem(t));
+        menu.Items.Add(t.IsFavorite || !main.PhoneLinked ? FavoriteItem(t) : Item(L.T("Add to Favorites"), "\uEB51", () => Keep(main, t, true)));
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => player.PlayRadio(t)));
         menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
@@ -242,9 +250,9 @@ public static partial class Menus
         menu.Items.Add(Item(L.T("Give every permission"), "", () => room.SetAllPerms(who, true)));
         menu.Items.Add(Item(L.T("Remove every permission"), "", () => room.SetAllPerms(who, false)));
         if (who.Count == 1 && !who[0].Away)
-            menu.Items.Add(Item(L.T("Make host"), "", () => room.MakeHost(who[0])));
+            menu.Items.Add(Item(L.T("Make host"), "", () => _ = room.MakeHost(who[0])));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(who.Count == 1 ? L.T("Kick from the room…") : L.F("Kick {0} people…", who.Count), "", () => room.Kick(who)));
+        menu.Items.Add(Item(who.Count == 1 ? L.T("Kick from the room…") : L.F("Kick {0} people…", who.Count), "", () => _ = room.Kick(who)));
         return menu;
     }
 

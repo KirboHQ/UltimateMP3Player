@@ -106,8 +106,8 @@ public sealed class TrackViewModel : Observable
             : Main.Radio.Has(Id) ? L.T("Not in your library: you listen to it from its link.")
             : L.T("In the cloud: not saved on your device, you listen to it from its link."));
 
-    // In the library (false: a suggested song, one heard from a link).
-    public bool InLibrary => !Main.Radio.Has(Id);
+    // In the library (false: a suggested song, one heard from a link, a song of the computer this phone drives: "pc-").
+    public bool InLibrary => !Main.Radio.Has(Id) && !Id.StartsWith("pc-", StringComparison.Ordinal);
 
     // The button next to the heart in the player: the library icon into the library (in the cloud, nothing downloaded) for a
     // song not in it, the download arrow for one of the library in the cloud ("+" stays "add to a playlist").

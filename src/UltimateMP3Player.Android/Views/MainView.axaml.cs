@@ -29,7 +29,8 @@ public partial class MainView : UserControl
     {
         _host = host;
         InitializeComponent();
-        foreach (var (tab, name) in new[] { (TabHome, "home"), (TabSearch, "search"), (TabLibrary, "library"), (TabDownloads, "downloads"), (TabSettings, "settings") })
+        ComputerLinkViewModel.ShowPage = LinkSheet.Show;
+        foreach (var (tab, name) in new[] { (TabHome, "home"), (TabSearch, "search"), (TabLibrary, "library"), (TabTogether, "together"), (TabSettings, "settings") })
         {
             var t = name;
             tab.IsCheckedChanged += (_, _) => { if (tab.IsChecked == true && !_syncingTabs) GoTab(t); };
@@ -320,11 +321,15 @@ public partial class MainView : UserControl
     public void ShowProfiles(bool startup)
     {
         var page = new ProfilesPage(_host, startup);
-        page.Done += info =>
+        page.Done += async info =>
         {
             Gate.IsVisible = false;
             Gate.Content = null;
-            if (info != null && info.Id != _host.Session?.Profile.Info.Id) _host.OpenProfile(info);
+            if (info != null && info.Id != _host.Session?.Profile.Info.Id)
+            {
+                if (_host.Session is not { } open || await open.ConfirmLeaveAllAsync(L.T("Switching profile will make you leave the room."), L.T("Leave and switch profile")))
+                    _host.OpenProfile(info);
+            }
             else if (_session != null)
             {
                 // The same profile, maybe renamed or with another picture.
@@ -361,7 +366,7 @@ public partial class MainView : UserControl
     // has to show it (building one takes a noticeable moment).
     private void WarmTabs(MainViewModel session)
     {
-        var roots = new object[] { session.Home, session.Search, Hub!, session.Downloads, session.Settings };
+        var roots = new object[] { session.Home, session.Search, Hub!, session.Settings };
         void Next(int i)
         {
             if (i >= roots.Length || _session != session) return;
@@ -476,7 +481,7 @@ public partial class MainView : UserControl
         });
     }
 
-    private static readonly string[] TabNames = { "home", "search", "library", "downloads", "settings" };
+    private static readonly string[] TabNames = { "home", "search", "library", "together", "settings" };
     private static int TabOrder(string tab) => Array.IndexOf(TabNames, tab);
 
     private bool Forward(object? from, object to)
@@ -508,6 +513,8 @@ public partial class MainView : UserControl
 
     private Control ViewFor(object page)
     {
+        // The download page is a part of the search one (SearchPage shows it).
+        if (page is DownloadsPageViewModel && _session != null) page = _session.Search;
         int i = _pages.FindIndex(p => p.Page == page);
         if (i >= 0)
         {
@@ -522,8 +529,8 @@ public partial class MainView : UserControl
             SearchViewModel => new SearchPage(),
             LibraryHub => new LibraryPage(),
             LibraryViewModel or PlaylistPageViewModel => new SongsPage(),
-            DownloadsPageViewModel => new DownloadsPage(),
             SettingsViewModel => new SettingsPage(),
+            TogetherViewModel => new TogetherPage(),
             StatsViewModel => new StatsPage(),
             _ => new TextBlock { Text = page.ToString() },
         };
@@ -543,15 +550,15 @@ public partial class MainView : UserControl
     }
 
     private bool IsRoot(object page) => _session != null &&
-        (page == _session.Home || page == _session.Search || page == Hub || page == _session.Downloads || page is SettingsViewModel);
+        (page == _session.Home || page == _session.Search || page == Hub || page == _session.Downloads || page is SettingsViewModel or TogetherViewModel);
 
     // ------------------------------------------------------------------ the bottom bar
 
     private string TabOf(object? page) => page switch
     {
-        SearchViewModel => "search",
+        SearchViewModel or DownloadsPageViewModel => "search",
         LibraryHub or LibraryViewModel or PlaylistPageViewModel => "library",
-        DownloadsPageViewModel => "downloads",
+        TogetherViewModel => "together",
         SettingsViewModel => "settings",
         NowPlayingViewModel => TabOf(_shownPage),
         _ => "home",
@@ -564,7 +571,7 @@ public partial class MainView : UserControl
         TabHome.IsChecked = tab == "home";
         TabSearch.IsChecked = tab == "search";
         TabLibrary.IsChecked = tab == "library";
-        TabDownloads.IsChecked = tab == "downloads";
+        TabTogether.IsChecked = tab == "together";
         TabSettings.IsChecked = tab == "settings";
         _syncingTabs = false;
     }
@@ -574,7 +581,8 @@ public partial class MainView : UserControl
         if (_session == null) return;
         object root = RootOf(tab);
         Sheets.CloseAll();
-        if (_session.Page == root)
+        // (the download part with the search box empty is already the search tab's start)
+        if (_session.Page == root || _session.Page is DownloadsPageViewModel && _shown is SearchPage { HasQuery: false })
         {
             (_shown as IPage)?.ScrollToTop();
             return;
@@ -587,7 +595,7 @@ public partial class MainView : UserControl
     {
         "search" => _session!.Search,
         "library" => Hub!,
-        "downloads" => _session!.Downloads,
+        "together" => _session!.Together,
         "settings" => _session!.Settings,
         _ => _session!.Home,
     };

@@ -1,5 +1,5 @@
 <!-- The phone's screen: the pages, the song playing over the bottom bar (a tap opens it full screen), the bottom bar with
-     Home · Cerca · Libreria · Download · Impostazioni. On top: the song's page, the sheets, the profiles' page. -->
+     Home · Search (with the downloads, like the computer's box) · Library · Together (Listen together) · Settings. On top: the song's page, the sheets, the profiles' page. -->
 <UserControl x:Class="UltimateMP3Player.Views.MainView"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -45,7 +45,7 @@
             </Border>
 
             <!-- the song playing -->
-            <views:MiniPlayer x:Name="Mini" Grid.Row="2" DataContext="{Binding Player}" IsVisible="{Binding HasTrack, FallbackValue=False}"/>
+            <views:MiniPlayer x:Name="Mini" Grid.Row="2" DataContext="{Binding Player}" IsVisible="{Binding ShowNowPlaying, FallbackValue=False}"/>
 
             <!-- the bottom bar (turned or on a tablet: a column on the left, like the computer's side bar) -->
             <Border x:Name="NavBar" Grid.Row="3" Background="{DynamicResource NavBarBrush}" BorderBrush="Transparent" BorderThickness="0,1,0,0">
@@ -53,7 +53,7 @@
                     <RadioButton x:Name="TabHome" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE80F;" Content="{local:T Home}"/>
                     <RadioButton x:Name="TabSearch" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE721;" Content="{local:T Search}"/>
                     <RadioButton x:Name="TabLibrary" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE8F1;" Content="{local:T Library}"/>
-                    <RadioButton x:Name="TabDownloads" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE896;" Content="{local:T Download}"/>
+                    <RadioButton x:Name="TabTogether" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE716;" Content="{local:T Together}"/>
                     <RadioButton x:Name="TabSettings" Theme="{StaticResource TabButton}" GroupName="tabs" local:Ui.Glyph="&#xE713;" Content="{local:T Settings}"/>
                 </UniformGrid>
             </Border>

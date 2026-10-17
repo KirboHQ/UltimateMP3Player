@@ -1848,5 +1848,113 @@ public static partial class L
         ["Same as the system"] = "Come il sistema",
         ["Light"] = "Chiaro",
         ["Dark"] = "Scuro",
+        ["Connect phone"] = "Collega telefono",
+        ["Connect phone…"] = "Collega telefono…",
+        ["Connect to computer"] = "Collega al computer",
+        ["COMPUTER"] = "COMPUTER",
+        ["Connect"] = "Collega",
+        ["Disconnect"] = "Scollega",
+        ["Allow"] = "Consenti",
+        ["Not connected"] = "Non collegato",
+        ["To the phone"] = "Al telefono",
+        ["Phones nearby"] = "Telefoni nelle vicinanze",
+        ["connect phone remote control android iphone mobile cable usb wifi send music p2p"] =
+            "collega telefono telecomando controllo remoto android iphone cellulare cavo usb wifi invia musica p2p",
+        ["connect computer pc remote control cable usb wifi send music"] = "collega computer pc telecomando controllo remoto cavo usb wifi invia musica",
+        ["Control the music of this computer from your phone: the phone's songs play here and its sound stays off. You can also send music from here to the phone."] =
+            "Controlla la musica di questo computer dal telefono: i brani del telefono suonano qui e il suo audio resta spento. Da qui puoi anche mandare musica al telefono.",
+        ["Control the music of the computer from the phone, and receive music from it"] = "Controlla la musica del computer dal telefono e ricevi musica da lì",
+        ["On the phone open Settings › Connect to computer: it shows up here. The phone controls the music of this computer (its songs play here, its sound stays off) and receives music with “To the phone” in the export window."] =
+            "Sul telefono apri Impostazioni › Collega al computer: comparirà qui. Il telefono controlla la musica di questo computer (i suoi brani suonano qui, il suo audio resta spento) e riceve musica con «Al telefono» nella finestra di esportazione.",
+        ["Same Wi-Fi as this computer, or a cable: no need to confirm on the phone then. Android: turn on USB tethering in the phone's settings. iPhone: it needs Apple Devices (or iTunes) on this computer."] =
+            "Stessa Wi-Fi di questo computer, oppure un cavo: in quel caso non serve confermare sul telefono. Android: attiva il tethering USB nelle impostazioni del telefono. iPhone: serve Dispositivi Apple (o iTunes) su questo computer.",
+        ["Same Wi-Fi as this computer, or a cable: no need to confirm on the phone then. Android: turn on USB tethering in the phone's settings. iPhone: just the cable (the iPhone must trust this Mac)."] =
+            "Stessa Wi-Fi di questo computer, oppure un cavo: in quel caso non serve confermare sul telefono. Android: attiva il tethering USB nelle impostazioni del telefono. iPhone: basta il cavo (l'iPhone deve dare fiducia a questo Mac).",
+        ["Same Wi-Fi as this computer, or a cable: no need to confirm on the phone then. Android: turn on USB tethering in the phone's settings. iPhone: it needs usbmuxd on this computer (the usbmuxd package)."] =
+            "Stessa Wi-Fi di questo computer, oppure un cavo: in quel caso non serve confermare sul telefono. Android: attiva il tethering USB nelle impostazioni del telefono. iPhone: serve usbmuxd su questo computer (il pacchetto usbmuxd).",
+        ["Looking for phones in “Connect to computer”…"] = "Cerco i telefoni in «Collega al computer»…",
+        ["Through the cable: no confirmation needed"] = "Con il cavo: non serve la conferma",
+        ["On the network · {0}"] = "In rete · {0}",
+        ["Waiting for the phone to allow it…"] = "In attesa del consenso dal telefono…",
+        ["Connected through the cable: the phone controls the music"] = "Collegato con il cavo: il telefono controlla la musica",
+        ["Connected: the phone controls the music"] = "Collegato: il telefono controlla la musica",
+        ["Connection lost: reconnecting…"] = "Connessione persa: riconnessione…",
+        ["Connected to {0}: it controls the music on this computer (click for the options)"] = "Collegato a {0}: controlla la musica di questo computer (clic per le opzioni)",
+        ["Disconnect the phone?"] = "Scollegare il telefono?",
+        ["The DJ section uses the audio on its own: opening it disconnects the phone."] = "La sezione DJ usa l'audio per conto suo: aprendola il telefono viene scollegato.",
+        ["Disconnect and open the DJ"] = "Scollega e apri il DJ",
+        ["Disconnect and continue"] = "Scollega e continua",
+        ["In a room the player is the room's: the phone connected to this computer will be disconnected."] =
+            "In una stanza il lettore è della stanza: il telefono collegato a questo computer verrà scollegato.",
+        ["While a phone is connected it drives this computer's player, so you'll leave the room."] =
+            "Mentre un telefono è collegato comanda il lettore di questo computer, quindi uscirai dalla stanza.",
+        ["Leave and connect"] = "Esci e collega",
+        ["Couldn't connect to {0}"] = "Impossibile collegarsi a {0}",
+        ["{0} disconnected"] = "{0} si è scollegato",
+        ["{0} disconnected."] = "{0} si è scollegato.",
+        ["{0} is back"] = "{0} è di nuovo collegato",
+        ["{0} connected: it controls the music on this computer"] = "{0} collegato: controlla la musica di questo computer",
+        ["{0} is no longer reachable: connect it again from Settings."] = "{0} non è più raggiungibile: ricollegalo dalle Impostazioni.",
+        ["{0} is no longer reachable: the music stays on the computer."] = "{0} non è più raggiungibile: la musica resta sul computer.",
+        ["No answer: the phone may have left “Connect to computer”, or it's on another network."] =
+            "Nessuna risposta: il telefono potrebbe aver chiuso «Collega al computer», oppure è su un'altra rete.",
+        ["The phone didn't answer."] = "Il telefono non ha risposto.",
+        ["The phone said no."] = "Il telefono ha rifiutato.",
+        ["The app on the phone is another version: update it on both devices."] = "L'app sul telefono è di un'altra versione: aggiornala su entrambi i dispositivi.",
+        ["The phone is connected to another computer."] = "Il telefono è collegato a un altro computer.",
+        ["Open “Connect to computer” in the phone's settings."] = "Apri «Collega al computer» nelle impostazioni del telefono.",
+        ["The phone is already answering another computer."] = "Il telefono sta già rispondendo a un altro computer.",
+        ["Couldn't send the music"] = "Impossibile inviare la musica",
+        ["Sent to {0}: choose there what to import"] = "Inviato a {0}: scegli lì cosa importare",
+        ["The connected phone opens its import window and takes the songs it doesn't have, through the network or the cable."] =
+            "Sul telefono collegato si apre la finestra di importazione e arrivano i brani che non ha, tramite la rete o il cavo.",
+        ["Playing on {0}"] = "In riproduzione su {0}",
+        ["Reconnecting to {0}…"] = "Riconnessione a {0}…",
+        ["Connected to {0}: the music plays there"] = "Collegato a {0}: la musica suona lì",
+        ["Connection to {0} lost: reconnecting…"] = "Connessione con {0} persa: riconnessione…",
+        ["Waiting for a computer…"] = "In attesa di un computer…",
+        ["Disconnected from {0}"] = "Scollegato da {0}",
+        ["Connect to the computer?"] = "Collegarsi al computer?",
+        ["“{0}” wants to connect. This phone then controls the music on that computer: the songs play there and the phone stays silent."] =
+            "«{0}» vuole collegarsi. Questo telefono poi controlla la musica su quel computer: i brani suonano lì e il telefono resta in silenzio.",
+        ["Couldn't receive the music:"] = "Non è stato possibile ricevere la musica:",
+        ["The computer isn't connected any more."] = "Il computer non è più collegato.",
+        ["This phone is visible as “{0}”. On the computer, in Ultimate MP3 Player, open Settings › Connect phone and choose it: then allow it here."] =
+            "Questo telefono è visibile come «{0}». Sul computer, in Ultimate MP3 Player, apri Impostazioni › Collega telefono e sceglilo: poi consenti qui.",
+        ["Same Wi-Fi as the computer. With a USB cable there's nothing to allow: plug the phone into the computer and turn on USB tethering (Settings › Network › Hotspot & tethering)."] =
+            "Stessa Wi-Fi del computer. Con un cavo USB non c'è niente da consentire: collega il telefono al computer e attiva il tethering USB (Impostazioni › Rete › Hotspot e tethering).",
+        ["Same Wi-Fi as the computer. With the cable there's nothing to allow: plug the iPhone into the computer (on Windows it needs Apple Devices or iTunes)."] =
+            "Stessa Wi-Fi del computer. Con il cavo non c'è niente da consentire: collega l'iPhone al computer (su Windows serve Dispositivi Apple o iTunes).",
+        ["Keep this page open until the computer has connected."] = "Tieni aperta questa pagina finché il computer non si è collegato.",
+        ["The music plays on the computer and this phone stays silent: use the player as always, also from the lock screen. Your songs go to the computer by themselves; the computer can send you music with “To the phone” in its export window."] =
+            "La musica suona sul computer e questo telefono resta in silenzio: usa il lettore come sempre, anche dalla schermata di blocco. I tuoi brani arrivano al computer da soli; il computer può mandarti musica con «Al telefono» nella sua finestra di esportazione.",
+        ["The phone can't wait for computers:"] = "Il telefono non riesce ad attendere i computer:",
+        ["Disconnect from the computer?"] = "Scollegarsi dal computer?",
+        ["In a room the player is the room's: this phone will be disconnected from {0}."] = "In una stanza il lettore è della stanza: questo telefono verrà scollegato da {0}.",
+        ["While connected to a computer this phone drives its player, so you'll leave the room."] =
+            "Mentre è collegato a un computer questo telefono ne comanda il lettore, quindi uscirai dalla stanza.",
+        ["“{0}”: on which device?"] = "«{0}»: su quale dispositivo?",
+        ["This phone"] = "Questo telefono",
+        ["The computer"] = "Il computer",
+        ["Both"] = "Entrambi",
+        ["Added to Favorites on {0}"] = "Aggiunto ai Preferiti su {0}",
+        ["Added to the library on {0}"] = "Aggiunto alla libreria su {0}",
+        ["Couldn't save “{0}”: the computer didn't send it"] = "Impossibile salvare «{0}»: il computer non l'ha inviato",
+        ["This computer"] = "Questo computer",
+        ["The phone"] = "Il telefono",
+        ["The same music, at the same moment, for everyone in the room, with a chat: phones and computers on the same Wi-Fi."] =
+            "La stessa musica, nello stesso momento, per tutti nella stanza, con una chat: telefoni e computer sulla stessa Wi-Fi.",
+        ["ROOMS ON THE NETWORK"] = "STANZE SULLA RETE",
+        ["CREATE A ROOM"] = "CREA UNA STANZA",
+        ["Leave"] = "Esci",
+        ["Chat"] = "Chat",
+        ["Together"] = "Insieme",
+        ["Silenced on this phone while the room goes on: press play to hear it again."] =
+            "Silenziato su questo telefono mentre la stanza va avanti: premi play per sentirla di nuovo.",
+        ["This phone will be disconnected from {0}."] = "Questo telefono verrà scollegato da {0}.",
+        ["Off: this phone gets the songs only from your library, the storage or their link, and sends none to anyone."] =
+            "Disattivato: questo telefono prende i brani solo dalla tua libreria, dalla memoria temporanea o dal loro link, e non ne manda a nessuno.",
+        ["Tap a song anywhere in the app to add it here (press and hold it for more)."] =
+            "Tocca un brano ovunque nell'app per aggiungerlo qui (tienilo premuto per altre azioni).",
     };
 }

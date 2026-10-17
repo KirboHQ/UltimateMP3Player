@@ -560,6 +560,8 @@ public static class Icons
     // Segoe code → Fluent code (20 px regular icons; FilledCodes are in the filled font).
     private static readonly Dictionary<char, char> Map_ = new()
     {
+        // (Connect phone: a phone, a computer)
+        ['\uE8EA'] = '\uF5E0', ['\uE7F4'] = '\uF359',
         [''] = '', [''] = '', [''] = '', [''] = '', [''] = '', [''] = '',
         [''] = '', [''] = '', [''] = '', [''] = '', [''] = '', [''] = '',
         [''] = '', [''] = '', [''] = '', [''] = '', [''] = '', [''] = '',

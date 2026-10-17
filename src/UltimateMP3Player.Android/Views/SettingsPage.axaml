@@ -1,5 +1,5 @@
 <!-- The settings that make sense on a phone (the computer apps' ones, without the window, the tray, Discord, the smooth
-     scrolling, the DJ and Listen together; instead of a browser's cookies, the logins made inside the app). A row with an
+     scrolling, the DJ, the firewall; instead of a browser's cookies, the logins made inside the app). A row with an
      arrow opens its choices. The search box under the title keeps only the cards and the rows that match (Keywords: more
      words that find a card). -->
 <UserControl x:Class="UltimateMP3Player.Views.SettingsPage"
@@ -305,6 +305,62 @@
                         <TextBlock x:Name="MusicDirHint" Text="{local:T 'In the phone\'s storage, in the app\'s folder: you can see it by connecting the phone to a computer (Android › data). If you uninstall the app, Android asks whether to keep it.'}"
                                    Classes="setting-hint"/>
                     </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ============================================================ computer -->
+            <TextBlock Text="{local:T COMPUTER}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'connect computer pc remote control cable usb wifi send music'}">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Click="Computer_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Connect to computer'}" Classes="setting"/>
+                            <TextBlock Text="{Binding ComputerLink.SummaryText}" Classes="value"/>
+                            <TextBlock Text="{local:T 'Control the music of the computer from the phone, and receive music from it'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- ============================================================ listen together (no firewall here) -->
+            <TextBlock Text="{local:T 'LISTEN TOGETHER'}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'listen together room rooms friends network lan radmin vpn firewall p2p host ahead'}">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Tag="TogetherAhead" Click="Choose_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Songs got ready ahead when you listen'}" Classes="setting"/>
+                            <TextBlock Text="{Binding TogetherAhead.Label}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="TogetherHostAhead" Click="Choose_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Songs got ready ahead when you\'re the host'}" Classes="setting"/>
+                            <TextBlock Text="{Binding TogetherHostAhead.Label}" Classes="value"/>
+                            <TextBlock Text="{local:T 'How many songs of the queue to download before their turn, besides the one playing.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding TogetherP2P}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Exchange songs with the others'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Off: this phone gets the songs only from your library, the storage or their link, and sends none to anyone.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
+                    <Border Classes="line"/>
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding TogetherSendAsHost}" IsEnabled="{Binding TogetherP2P}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'When you\'re the host, send the songs yourself'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Whoever turned on “Take the songs from the host” gets them from you instead of downloading them from the internet: worth it if your connection is fast. The others download them as usual.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
+                    <Border Classes="line"/>
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding TogetherTakeFromHost}" IsEnabled="{Binding TogetherP2P}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Take the songs from the host'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'If the host sends them, the ones it gets ready come from it; you download the others and, if they can\'t be found, wait for the host. Off (or if the host doesn\'t send them): from the link first, then from whoever in the room has it.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
                 </StackPanel>
             </Border>
 

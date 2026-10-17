@@ -211,6 +211,9 @@ public partial class SettingsPage : UserControl, IPage
 
     private void Logins_Click(object? sender, RoutedEventArgs e) => LoginsSheet.Show();
 
+    // (through the view model: a room is left first)
+    private void Computer_Click(object? sender, RoutedEventArgs e) => Vm?.ComputerLink.Open();
+
     // A row with an arrow: its choices in a sheet (the computer's drop-down).
     private void Choose_Click(object? sender, RoutedEventArgs e)
     {
@@ -225,6 +228,8 @@ public partial class SettingsPage : UserControl, IPage
             "StartupProfile" => (L.T("At startup"), vm.StartupChoices, vm.StartupProfile, x => vm.StartupProfile = x),
             "RadioSource" => (L.T("Where similar songs come from"), vm.RadioSourceChoices, vm.RadioSource, x => vm.RadioSource = x),
             "RadioAhead" => (L.T("Similar songs prepared ahead"), vm.TogetherAheadChoices, vm.RadioAhead, x => vm.RadioAhead = x),
+            "TogetherAhead" => (L.T("Songs got ready ahead when you listen"), vm.TogetherAheadChoices, vm.TogetherAhead, x => vm.TogetherAhead = x),
+            "TogetherHostAhead" => (L.T("Songs got ready ahead when you're the host"), vm.TogetherAheadChoices, vm.TogetherHostAhead, x => vm.TogetherHostAhead = x),
             "SearchMode" => (L.T("How to search"), vm.SearchModes, vm.SearchMode, x => vm.SearchMode = x),
             "AudioFormat" => (L.T("Audio format"), vm.AudioFormats, vm.AudioFormat, x => vm.AudioFormat = x),
             "VideoQuality" => (L.T("Maximum video quality"), vm.VideoQualities, vm.VideoQuality, x => vm.VideoQuality = x),

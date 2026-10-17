@@ -59,8 +59,8 @@ public sealed class AppHost : Observable
         Media.NextPressed += () => Session?.Player.NextCommand.Execute(null);
         Media.PreviousPressed += () => Session?.Player.PreviousCommand.Execute(null);
         Media.SeekRequested += t => Session?.Player.Seek(t.TotalSeconds);
-        Media.FavoritePressed += () => Session?.Player.FavoriteCommand.Execute(null);
-        Media.SavePressed += () => Session?.Player.SaveCurrentCommand.Execute(null);
+        Media.FavoritePressed += () => Session?.Player.KeepFromSystem(true);
+        Media.SavePressed += () => Session?.Player.KeepFromSystem(false);
         Media.StopPressed += () => Session?.SetPlaying(false);
         RestartToUpdateCommand = new RelayCommand(() => RestartToUpdate(false));
 
@@ -129,9 +129,11 @@ public sealed class AppHost : Observable
         L.English = Settings.Language == "en";
     }
 
-    public void SetLanguage(string code)
+    public async void SetLanguage(string code)
     {
         if (code == Settings.Language) return;
+        if (Session != null && !await Session.ConfirmLeaveAllAsync(L.T("Changing the language rebuilds the window, so you'll leave the room."),
+                L.T("Leave and change language"))) return;
         Settings.Language = code;
         Settings.Save();
         L.English = code == "en";

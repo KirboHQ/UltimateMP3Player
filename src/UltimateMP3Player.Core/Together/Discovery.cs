@@ -5,15 +5,15 @@ using System.Text.Json;
 
 namespace UltimateMP3Player.Core.Together;
 
-// Rooms are found with a broadcast on the local network (also works over Radmin VPN and similar "virtual LANs"):
-// the searcher shouts a question, every host answers with its room.
+// Rooms are found with a question to every address of the local networks and their broadcasts (also works over Radmin
+// VPN and similar "virtual LANs"; iPhones can't hear broadcasts): every host answers with its room.
 public static class Discovery
 {
     public const int Port = 47799;
     private static readonly byte[] Question = "UMP-LT?"u8.ToArray();
 
     // Windows reports an "ICMP port unreachable" as an error on the next receive: switched off.
-    private static void NoResetErrors(UdpClient udp)
+    internal static void NoResetErrors(UdpClient udp)
     {
         try { udp.Client.IOControl(unchecked((int)0x9800000C), new byte[] { 0 }, null); } catch { }
     }
@@ -66,7 +66,7 @@ public static class Discovery
         using var udp = new UdpClient(AddressFamily.InterNetwork) { EnableBroadcast = true };
         NoResetErrors(udp);
         udp.Client.Bind(new IPEndPoint(IPAddress.Any, 0));
-        foreach (var target in Targets())
+        foreach (var target in Link.LinkDiscovery.Targets().Append(IPAddress.Loopback))
         {
             try { await udp.SendAsync(Question, new IPEndPoint(target, Port), ct); }
             catch (OperationCanceledException) { throw; }
@@ -98,23 +98,7 @@ public static class Discovery
         return found.Values.OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
-    // Everyone on every network this PC is on (Wi-Fi, cable, VPNs), plus this PC itself.
-    private static List<IPAddress> Targets()
-    {
-        var list = new List<IPAddress> { IPAddress.Broadcast, IPAddress.Loopback };
-        foreach (var (ip, mask) in Networks())
-        {
-            var a = ip.GetAddressBytes();
-            var m = mask.GetAddressBytes();
-            var b = new byte[4];
-            for (int i = 0; i < 4; i++) b[i] = (byte)(a[i] | ~m[i]);
-            var bc = new IPAddress(b);
-            if (!list.Contains(bc)) list.Add(bc);
-        }
-        return list;
-    }
-
-    private static IEnumerable<(IPAddress Ip, IPAddress Mask)> Networks()
+    internal static IEnumerable<(IPAddress Ip, IPAddress Mask)> Networks()
     {
         NetworkInterface[] nics;
         try { nics = NetworkInterface.GetAllNetworkInterfaces(); }
@@ -141,7 +125,10 @@ public static class Discovery
             {
                 if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
                 var props = nic.GetIPProperties();
-                bool gateway = props.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(IPAddress.Any));
+                // (Android doesn't tell the gateways: then every network ranks the same)
+                bool gateway;
+                try { gateway = props.GatewayAddresses.Any(g => g.Address.AddressFamily == AddressFamily.InterNetwork && !g.Address.Equals(IPAddress.Any)); }
+                catch { gateway = false; }
                 foreach (var u in props.UnicastAddresses)
                 {
                     if (u.Address.AddressFamily != AddressFamily.InterNetwork) continue;

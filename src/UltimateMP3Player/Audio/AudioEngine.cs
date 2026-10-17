@@ -24,6 +24,33 @@ public sealed class AudioEngine : IDisposable
     private int _pauseVersion, _openVersion;
     private double _crossfade;
 
+#if IOS_APP
+    private bool _keepAwake;
+
+    // iOS keeps an app running in the background only while it plays: in a room (whose connection must stay) a pause goes
+    // on with silence, the song held where it is.
+    public bool KeepAwake
+    {
+        get => _keepAwake;
+        set
+        {
+            _keepAwake = value;
+            if (value || !_master.Held) return;
+            _master.Held = false;
+            if (_playing) return;
+            try { _out?.Pause(); } catch { }
+            _outRunning = false;
+        }
+    }
+
+    // After an interruption (a call) iOS has stopped the output: on again, playing or with the silence above.
+    public void Wake()
+    {
+        if (_out == null || !_playing && !_master.Held) return;
+        try { _out.Play(); } catch { }
+    }
+
+#endif
     public event Action? Ended;
     public event Action? NearEnd;
     public event Action<string>? Failed;
@@ -52,6 +79,13 @@ public sealed class AudioEngine : IDisposable
     public bool HasSource => _master.HasSource;
     public string? SourcePath { get; private set; }
 
+#if IOS_APP
+    // The speaker, the headphones or Bluetooth hold some more (iOS says how much): in time with the others in a room.
+    internal static int DeviceLatencyMs => AudioPlatform.DeviceLatencyMs();
+#else
+    internal const int DeviceLatencyMs = 0;
+#endif
+
     public TimeSpan Position
     {
         get
@@ -60,7 +94,7 @@ public sealed class AudioEngine : IDisposable
             // The output buffer holds LatencyMs of sound, that is more of the song when it plays faster. An output that
             // measures what it holds (the phone's) is asked, playing or not: emptied at a pause, it holds nothing.
             if (_out is IOutputLatency o) p -= TimeSpan.FromMilliseconds(o.LatencyMs * _master.Speed);
-            else if (_playing) p -= TimeSpan.FromMilliseconds(LatencyMs * _master.Speed);
+            else if (_playing) p -= TimeSpan.FromMilliseconds((LatencyMs + DeviceLatencyMs) * _master.Speed);
             return p < TimeSpan.Zero ? TimeSpan.Zero : p;
         }
     }
@@ -169,6 +203,7 @@ public sealed class AudioEngine : IDisposable
         _pauseVersion++;
         try
         {
+            _master.Held = false;
             bool wasStopped = !_playing;
             EnsureOutput();
             if (wasStopped && !_outRunning) _master.FadeLevel(0, 0);
@@ -195,6 +230,13 @@ public sealed class AudioEngine : IDisposable
         _ = Task.Delay(TimeSpan.FromSeconds(PauseFade + 0.05)).ContinueWith(_ => _ui.BeginInvoke(() =>
         {
             if (version != _pauseVersion || _playing) return;
+#if IOS_APP
+            if (_keepAwake)
+            {
+                _master.Held = true;
+                return;
+            }
+#endif
             // An output that can throw away what it still holds (the fade and the silence after it, and a little of the
             // song before them, not heard yet): emptied, and the song goes back to the point heard last, so playing
             // again goes on from there, without the dip of the fade in the middle.

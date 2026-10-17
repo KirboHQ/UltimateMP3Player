@@ -82,6 +82,8 @@ public static class Menus
             ("tag", TagViewModel t) => ForTag(t),
             ("queue", QueueRow q) => ForQueue(q),
             ("current", _) when App.Host.Session?.Player.Current is { } cur => ForTrack(cur, null),
+            ("roomitem", RoomItemViewModel r) when App.Host.Session is { InRoom: true } s => ForRoomItem(r, s.Together),
+            ("member", MemberViewModel m) when App.Host.Session is { InRoom: true } s => ForMembers(s.Together, m),
             _ => null,
         };
         if (menu != null && dataContext != null && Selection.Of(source) is { IsActive: false } sel && sel.Contains(dataContext))
@@ -107,16 +109,35 @@ public static class Menus
     public static SheetMenu ForTrack(TrackViewModel t, ITrackList? owner)
     {
         var main = t.Main;
+        // A song of the room itself (the one playing; a song that isn't in the library).
+        if (main.InRoom && main.Together.ItemFor(t) is { } roomItem && (owner == null || main.Together.IsStandIn(t)))
+            return ForRoomItem(roomItem, main.Together);
         // A suggested song that isn't in the library.
         if (main.Radio.Item(t.Id) is { } suggested) return ForRadioItem(suggested, main, null);
-        var menu = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
         var player = main.Player;
-        if (owner != null && player.Current != t) menu.Add(new(L.T("Play"), GPlay, () => player.PlayFrom(owner, t)));
-        else if (player.Current != t) menu.Add(new(L.T("Play"), GPlay, () => player.PlaySingle(t.T)));
-        menu.Add(new(L.T("Play next"), GNext, () => player.PlayNext(t)));
-        menu.Add(new(L.T("Add to queue"), GQueue, () => player.Enqueue(t)));
-        menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
-        menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
+        // A song of the computer this phone drives (Connect to computer): what the computer can do with it, and keeping it.
+        if (player.IsRemote && main.ComputerLink.IsStandIn(t))
+        {
+            var pc = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
+            pc.Add(new(L.T("Play next"), GNext, () => player.PlayNext(t)));
+            pc.Add(new(L.T("Add to queue"), GQueue, () => player.Enqueue(t)));
+            pc.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
+            pc.Line();
+            pc.Add(new(L.T("Add to library"), GLibrary, () => _ = main.ComputerLink.Keep(t, false, true)));
+            pc.Add(new(L.T("Add to Favorites"), GHeart, () => _ = main.ComputerLink.Keep(t, true, true)));
+            return pc;
+        }
+        var menu = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
+        if (main.InRoom) AddRoomItems(menu, new[] { t });
+        else
+        {
+            if (owner != null && player.Current != t) menu.Add(new(L.T("Play"), GPlay, () => player.PlayFrom(owner, t)));
+            else if (player.Current != t) menu.Add(new(L.T("Play"), GPlay, () => player.PlaySingle(t.T)));
+            menu.Add(new(L.T("Play next"), GNext, () => player.PlayNext(t)));
+            menu.Add(new(L.T("Add to queue"), GQueue, () => player.Enqueue(t)));
+            menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
+            menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
+        }
         menu.Line();
         AddSave(menu, new[] { t });
         menu.Add(AddToPlaylist(t));
@@ -260,6 +281,7 @@ public static class Menus
     {
         var t = row.Track;
         var player = row.Player;
+        if (player.InRoom && t.Main.Together.ItemFor(t) is { } roomItem) return ForRoomItem(roomItem, t.Main.Together);
         if (row.Radio is { } suggested) return ForRadioItem(suggested, t.Main, row);
         int last = player.UpNext.LastOrDefault()?.Index ?? row.Index;
         var menu = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
@@ -269,6 +291,14 @@ public static class Menus
         menu.Add(new(L.T("Remove from Up next"), GRemove, () => player.RemoveUpcoming(row.Index)));
         menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
         menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
+        // (a song of the computer this phone drives: keeping it, nothing else)
+        if (player.IsRemote && t.Main.ComputerLink.IsStandIn(t))
+        {
+            menu.Line();
+            menu.Add(new(L.T("Add to library"), GLibrary, () => _ = t.Main.ComputerLink.Keep(t, false, true)));
+            menu.Add(new(L.T("Add to Favorites"), GHeart, () => _ = t.Main.ComputerLink.Keep(t, true, true)));
+            return menu;
+        }
         menu.Line();
         AddSave(menu, new[] { t });
         menu.Add(AddToPlaylist(t));
@@ -352,6 +382,8 @@ public static class Menus
         menu.Add(new(L.T("Move to top"), GUp, () => { player.MoveUpcomingToTop(places); sel.Stop(); }));
         menu.Add(new(L.T("Move to bottom"), GDown, () => { player.MoveUpcomingToBottom(places); sel.Stop(); }));
         menu.Add(new(L.T("Remove from Up next"), GRemove, () => { player.RemoveUpcoming(places); sel.Stop(); }));
+        // (songs of a room, of the computer this phone drives: kept one at a time, from their own menu)
+        if (player.InRoom || player.IsRemote && songs.Any(main.ComputerLink.IsStandIn)) return menu;
         menu.Line();
         AddSave(menu, songs, sel.Stop);
         menu.Add(new SheetEntry { Text = L.T("Add to playlist"), Glyph = GAdd, Sub = () => AddManyToPlaylist(songs, sel) });
@@ -410,7 +442,7 @@ public static class Menus
                 var player = main.Player;
                 list.Add(new(GUp, L.T("To top"), () => { if (places.Count > 0) { player.MoveUpcomingToTop(places); sel.Stop(); } }));
                 list.Add(new(GDown, L.T("To bottom"), () => { if (places.Count > 0) { player.MoveUpcomingToBottom(places); sel.Stop(); } }));
-                var cloud = rows.Select(r => r.Track).Where(t => t.IsCloud && !t.IsSaving).Distinct().ToList();
+                var cloud = player.InRoom ? new List<TrackViewModel>() : rows.Select(r => r.Track).Where(t => t.IsCloud && !t.IsSaving).Distinct().ToList();
                 if (cloud.Count > 0) list.Add(new(GSave, L.T("Save"), () => { _ = main.SaveToDevice(cloud); sel.Stop(); }));
                 list.Add(new(GRemove, L.T("Remove"), () => { if (places.Count > 0) { player.RemoveUpcoming(places); sel.Stop(); } }, danger: true));
                 break;
@@ -628,11 +660,107 @@ public static class Menus
         return menu;
     }
 
-    // ------------------------------------------------------------------ Listen together (not on the phone: only so the
-    // shared view model compiles)
+    // ------------------------------------------------------------------ Listen together
 
-    public static SheetMenu? ForMembers(TogetherViewModel room, MemberViewModel? clicked = null) => null;
-    public static SheetMenu? ForRoomItem(RoomItemViewModel item, TogetherViewModel room) => null;
+    // In a room: songs go into the room's queue (greyed out without the host's permission).
+    private static void AddRoomItems(SheetMenu menu, IReadOnlyList<TrackViewModel> tracks)
+    {
+        var room = tracks[0].Main.Together;
+        menu.Add(new(tracks.Count == 1 ? L.T("Add to the room's queue") : L.F("Add {0} songs to the room", tracks.Count), GQueue, () => room.Add(tracks), room.CanAdd));
+        menu.Add(new(L.T("Play next in the room"), GNext, () => room.Add(tracks, next: true), room.CanAdd && room.CanRemove));
+        if (!room.CanAdd) menu.Add(new SheetEntry(room.Denied(Core.Together.Perm.Add), GInfo, null) { Info = true });
+    }
+
+    // A song of the room: its place in the queue, and keeping it.
+    public static SheetMenu ForRoomItem(RoomItemViewModel item, TogetherViewModel room)
+    {
+        var main = room.Main;
+        var t = item.Track;
+        var menu = new SheetMenu { Title = t.Title, Subtitle = item.AddedByText, Cover = t };
+        if (!item.IsCurrent)
+        {
+            int index = room.Queue.IndexOf(item), last = room.Queue.Count - 1;
+            menu.Add(new(L.T("Play it now"), GPlay, () => room.PlayNow(item.Id), room.CanRemove && room.CanSkip));
+            menu.Add(new(L.T("Move to top"), GUp, () => room.MoveTo(item, 0), room.CanRemove && index > 0));
+            menu.Add(new(L.T("Move to bottom"), GDown, () => room.MoveTo(item, last), room.CanRemove && index < last));
+            menu.Add(new(L.T("Remove from queue"), GRemove, () => room.Remove(item), item.CanRemove));
+        }
+        else menu.Add(new(L.T("Skip"), GNext, room.Skip, room.CanSkip));
+        menu.Line();
+        // As for any song: into the library (in the cloud), or onto the device.
+        if (item.InLibrary)
+        {
+            menu.Add(AddToPlaylist(t));
+            menu.Add(FavoriteItem(t));
+        }
+        else
+        {
+            if (TogetherViewModel.HasLink(item.Item))
+                menu.Add(new(L.T("Add to library (without downloading it)"), GLibrary, () => room.AddToLibrary(item, null)));
+            menu.Add(new SheetEntry
+            {
+                Text = L.T("Add to playlist"), Glyph = GAdd, Sub = () => RoomPlaylistMenu(item, room),
+                Enabled = item.IsReady || TogetherViewModel.HasLink(item.Item),
+            });
+        }
+        if (!item.SavedOnDevice) menu.Add(new(L.T("Save to device"), GSave, () => _ = room.Save(item, null), item.IsReady));
+        if (item.Item.SourceUrl is { } url && url.StartsWith("http"))
+            menu.Add(new(L.T("Copy original link"), GLink, () => { Ui.CopyText(url); main.Toast(L.T("Link copied")); }));
+        return menu;
+    }
+
+    private static SheetMenu RoomPlaylistMenu(RoomItemViewModel item, TogetherViewModel room)
+    {
+        var main = room.Main;
+        var menu = new SheetMenu { Title = L.T("Add to playlist"), Subtitle = item.Track.Title, Cover = item.Track };
+        menu.Add(new(L.T("New playlist…"), GAdd, async () =>
+        {
+            var name = await Dialogs.PromptAsync(L.T("New playlist"), L.T("Playlist name"), main.NewPlaylistName());
+            if (!string.IsNullOrWhiteSpace(name)) room.AddToPlaylist(item, main.Profile.CreatePlaylist(name));
+        }));
+        menu.Line();
+        foreach (var p in main.Playlists)
+        {
+            var pl = p.P;
+            menu.Add(new(Short(p.Name), p.IsFavorites ? GHeartFill : GList, () => room.AddToPlaylist(item, pl)));
+        }
+        return menu;
+    }
+
+    // The host on a person of the room: what they may do (ticks, the sheet stays open), handing over the room, a kick.
+    public static SheetMenu? ForMembers(TogetherViewModel room, MemberViewModel? clicked = null)
+    {
+        var who = room.SelectedMembers;
+        if (clicked != null && !who.Contains(clicked)) who = new List<MemberViewModel> { clicked };
+        who = who.Where(m => !m.IsMe).ToList();
+        if (!room.IsHost || who.Count == 0) return null;
+        var menu = new SheetMenu { Title = who.Count == 1 ? who[0].Name : L.F("{0} people", who.Count), Subtitle = who.Count == 1 ? who[0].RoleText : null };
+        foreach (var (perm, text) in new[]
+                 {
+                     (Core.Together.Perm.Add, L.T("Can add songs")),
+                     (Core.Together.Perm.Remove, L.T("Can remove and move songs")),
+                     (Core.Together.Perm.Skip, L.T("Can skip songs")),
+                     (Core.Together.Perm.Pause, L.T("Can pause, move forward and back and loop the song")),
+                     (Core.Together.Perm.Speed, L.T("Can change the speed")),
+                 })
+        {
+            var p = perm;
+            menu.Add(new SheetEntry
+            {
+                Text = text,
+                Checked = () => who.All(m => (m.M.Perms & p) != 0),
+                Click = () => room.TogglePerm(who, p),
+            });
+        }
+        menu.Line();
+        menu.Add(new(L.T("Give every permission"), GCheck, () => room.SetAllPerms(who, true)));
+        menu.Add(new(L.T("Remove every permission"), GClose, () => room.SetAllPerms(who, false)));
+        if (who.Count == 1 && !who[0].Away) menu.Add(new(L.T("Make host"), "\uE716", () => _ = room.MakeHost(who[0])));
+        menu.Line();
+        menu.Add(new SheetEntry(who.Count == 1 ? L.T("Kick from the room…") : L.F("Kick {0} people…", who.Count), "\uE8F8", () => _ = room.Kick(who)) { Danger = true });
+        return menu;
+    }
+
     public static void Open(SheetMenu? menu, Control target, bool below)
     {
         if (menu != null) Open(menu);

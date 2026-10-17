@@ -25,6 +25,12 @@ public sealed class PlaybackService : Service
     private bool _foreground;
     private NoisyReceiver? _noisy;
 
+    // Driving a computer (Connect to computer): this phone is silent, so no audio focus and no pauses for its headphones.
+    private static bool Remote => App.Host?.Session?.Player.IsRemote == true;
+    // That, or in a room: the service stays in front the whole time (paused too), or Android stops the app and the
+    // connection with it.
+    private static bool Connected => Remote || App.Host?.Session?.InRoom == true;
+
     public override IBinder? OnBind(Intent? intent) => null;
 
     public override void OnCreate()
@@ -49,6 +55,12 @@ public sealed class PlaybackService : Service
             case ActionFavorite: c?.RaiseFavorite(); break;
             case ActionSave: c?.RaiseSave(); break;
             case ActionStop:
+                if (Connected)
+                {
+                    // The notification swiped away: it comes back, the connection goes on (it ends from its own page).
+                    Show(false);
+                    return StartCommandResult.NotSticky;
+                }
                 c?.RaiseStop();
                 StopEverything();
                 return StartCommandResult.NotSticky;
@@ -85,13 +97,15 @@ public sealed class PlaybackService : Service
     {
         var c = App.Host?.Media;
         if (c == null) return;
-        if (c.IsPlaying) Focus.Request();
+        if (Remote) Focus.Abandon();
+        // (muted: another app may play meanwhile)
+        else if (c.IsPlaying && App.Host?.Session?.Player.Silenced != true) Focus.Request();
         if (_current is { } s)
         {
             s.Show(false);
             return;
         }
-        if (!c.IsPlaying) return;
+        if (!c.IsPlaying && !Connected) return;
         var ctx = Application.Context;
         try
         {
@@ -105,7 +119,7 @@ public sealed class PlaybackService : Service
     private void Show(bool starting)
     {
         var c = App.Host?.Media;
-        if (c == null || !c.HasTrack)
+        if (c == null || !c.HasTrack && !Connected)
         {
             if (starting)
             {
@@ -116,7 +130,7 @@ public sealed class PlaybackService : Service
             return;
         }
         var n = MakeNotification(c);
-        if (c.IsPlaying || starting) Front(n);
+        if (c.IsPlaying || starting || Connected) Front(n);
         else
         {
             if (_foreground)
@@ -215,7 +229,13 @@ public sealed class PlaybackService : Service
     {
         public override void OnReceive(Context? context, Intent? intent)
         {
-            if (intent?.Action == AudioManager.ActionAudioBecomingNoisy) Avalonia.Threading.Dispatcher.UIThread.Post(() => App.Host?.Media.RaisePause());
+            if (intent?.Action != AudioManager.ActionAudioBecomingNoisy || Remote) return;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                // In a room the music goes on for the others: this phone goes quiet instead.
+                if (App.Host?.Session?.Player is { InRoom: true } player) player.SilenceInRoom();
+                else App.Host?.Media.RaisePause();
+            });
         }
     }
 }
@@ -258,6 +278,9 @@ public static class Focus
         public void OnAudioFocusChange(AudioFocus focusChange) => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             var media = App.Host?.Media;
+            // In a room the music goes on for the others: only this phone goes quiet (pausing would pause the room).
+            var player = App.Host?.Session?.Player;
+            bool room = player?.InRoom == true;
             switch (focusChange)
             {
                 case AudioFocus.Loss:
@@ -265,10 +288,16 @@ public static class Focus
                     _held = false;
                     _resumeAfter = false;
                     Audio.TrackOut.Duck = 1;
-                    media?.RaisePause();
+                    if (room) player!.SilenceInRoom();
+                    else media?.RaisePause();
                     break;
                 case AudioFocus.LossTransient:
                     // A call, a voice message: pause and come back after it.
+                    if (room)
+                    {
+                        Audio.TrackOut.Duck = 0;
+                        break;
+                    }
                     _resumeAfter = media?.IsPlaying == true;
                     media?.RaisePause();
                     break;

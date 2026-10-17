@@ -21,6 +21,9 @@ public sealed class RadioSong
     public bool FromLink { get; set; }
     // The audio quality chosen for it (a library song in the cloud: Track.AudioQuality); null: the one in Settings.
     public string? Quality { get; set; }
+    // A song of the connected phone (Connect phone): its id there. Its file comes from the phone; once the phone is gone,
+    // from its link (if it has one).
+    public string? Phone { get; set; }
 
     public static bool IsRadio(string id) => id.StartsWith(Prefix, StringComparison.Ordinal);
 
@@ -77,6 +80,9 @@ public sealed class RadioFetcher : IDisposable
 
     // A song got ready, failed or moved on with its download.
     public event Action<string>? Changed;
+    // Gets a song of the connected phone from the phone, into this folder (progress 0-100): its file, or null when it
+    // can't (no phone).
+    public Func<RadioSong, string, Action<double>, CancellationToken, Task<string?>>? FromPhone { get; set; }
     // Its link didn't work and the same song was found elsewhere (id, the new link, its keys): heard from there from now on.
     public event Action<string, string, List<string>>? Replaced;
 
@@ -142,17 +148,27 @@ public sealed class RadioFetcher : IDisposable
         try
         {
             var keys = s.Keys;
-            string file;
-            YtInfo? info;
-            try
+            string? file = null;
+            YtInfo? info = null;
+            // A song of the connected phone comes from the phone; without the phone, from its link (if it has one).
+            if (s.Phone != null && FromPhone != null)
             {
-                // Its link doesn't work (removed, private, DRM): the same song from YouTube.
-                (file, info) = await CloudSongs.DownloadAsync(s.Url, s.Title, s.Artist, s.Duration, s.Quality ?? o.AudioFormat, o.Cookies, _cache.TempDir, progress, cts.Token);
+                file = await FromPhone(s, _cache.TempDir, progress, cts.Token);
+                cts.Token.ThrowIfCancellationRequested();
             }
-            catch (EngineException ex) when (ex is { NotFoundElsewhere: true, Gone: true })
+            if (file == null)
             {
-                _gone.Add(s.Id);
-                throw;
+                if (s.Phone != null && !s.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)) throw new IOException("The phone isn't connected.");
+                try
+                {
+                    // Its link doesn't work (removed, private, DRM): the same song from YouTube.
+                    (file, info) = await CloudSongs.DownloadAsync(s.Url, s.Title, s.Artist, s.Duration, s.Quality ?? o.AudioFormat, o.Cookies, _cache.TempDir, progress, cts.Token);
+                }
+                catch (EngineException ex) when (ex is { NotFoundElsewhere: true, Gone: true })
+                {
+                    _gone.Add(s.Id);
+                    throw;
+                }
             }
             if (info != null)
             {

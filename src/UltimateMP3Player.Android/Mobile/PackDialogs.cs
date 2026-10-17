@@ -317,6 +317,12 @@ public static class PackDialogs
             Dialogs.Alert(L.T("Can't open the pack"), ex.Message);
             return;
         }
+        await Import(main, pack);
+    }
+
+    // An opened pack: a file, or the music the connected computer sends (Connect phone).
+    public static async Task Import(MainViewModel main, PackFile pack)
+    {
         PackImportResult? result = null;
         using (pack)
         {

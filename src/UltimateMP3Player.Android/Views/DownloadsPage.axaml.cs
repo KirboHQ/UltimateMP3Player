@@ -6,7 +6,8 @@ using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
 
-public partial class DownloadsPage : UserControl, IPage
+// Not a page of its own: the lower part of the search page (SearchPage), shown while its box is empty or a link is open.
+public partial class DownloadsPage : UserControl
 {
     private DownloadQueue? _queue;
 
@@ -18,13 +19,6 @@ public partial class DownloadsPage : UserControl, IPage
         InitializeComponent();
         Selection.SetOwner(JobList, Picks);
         DataContextChanged += (_, _) => Attach();
-        LinkBox.TextChanged += (_, _) => GoText.Text = (LinkBox.Text ?? "").Trim().Length > 0 ? L.T("Go") : L.T("Paste");
-        LinkBox.KeyDown += (_, e) =>
-        {
-            if (e.Key != Key.Enter) return;
-            e.Handled = true;
-            Go_Click(null, new RoutedEventArgs());
-        };
     }
 
     private DownloadsPageViewModel? Vm => DataContext as DownloadsPageViewModel;
@@ -39,21 +33,6 @@ public partial class DownloadsPage : UserControl, IPage
 
     private void OnJobs(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs? e) =>
         Picks.SetItems(_queue?.Jobs ?? (IEnumerable<object>)Array.Empty<object>());
-
-    // Empty: what's in the clipboard; written: that link.
-    private async void Go_Click(object? sender, RoutedEventArgs? e)
-    {
-        var text = (LinkBox.Text ?? "").Trim();
-        if (text.Length == 0) text = (await Ui.ClipboardTextAsync())?.Trim() ?? "";
-        if (text.Length == 0)
-        {
-            App.Host.Session?.Toast(L.T("There's no link in the clipboard: copy it from the app or the site and try again."));
-            return;
-        }
-        LinkBox.Text = "";
-        App.Host.Session?.StartDownload(text);
-        Scroller.Offset = default;
-    }
 
     private void Playlist_Click(object? sender, RoutedEventArgs e)
     {

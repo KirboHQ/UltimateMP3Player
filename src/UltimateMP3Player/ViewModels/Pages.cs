@@ -827,8 +827,9 @@ public sealed class NowPlayingViewModel : Observable
         }
     }
 
-    public string? VideoPath => ShowVideo ? Player.Current?.T.VideoPath : null;
-    public bool HasVideo => Player.Current?.HasVideo == true;
+    // (driving a computer the video would be this phone's, out of step: the cover instead)
+    public string? VideoPath => ShowVideo && !Player.IsRemote ? Player.Current?.T.VideoPath : null;
+    public bool HasVideo => Player.Current?.HasVideo == true && !Player.IsRemote;
     public bool ShowCover => VideoPath == null && !LyricsVisible;
     public bool CoverTilt => Main.Host.Settings.CoverTilt;
 

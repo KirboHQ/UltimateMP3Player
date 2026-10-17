@@ -261,6 +261,10 @@ public sealed class SettingsViewModel : Observable
     public ICommand ImportFilesCommand { get; }
     public ICommand ImportFolderCommand { get; }
     public ICommand ExportPackCommand { get; }
+    // Connect phone (the computer apps) and Connect to computer (the phones).
+    public PhoneLinkViewModel PhoneLink => _main.PhoneLink;
+    public ComputerLinkViewModel ComputerLink => _main.ComputerLink;
+    public ICommand ConnectPhoneCommand => new RelayCommand(() => PhoneLinkViewModel.ShowWindow?.Invoke(_main));
     public ICommand ImportPackCommand { get; }
     public ICommand SelectThemeCommand { get; }
     public ICommand RenameArtistCommand { get; }

@@ -21,6 +21,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         WindowFrame.Apply(this, Root, MinButton, MaxButton, CloseButton);
         SmoothScroll.Attach(this);
+        PhoneLinkViewModel.ShowWindow = PhoneDialogs.Show;
         var s = host.Settings;
         Width = Math.Clamp(s.WindowWidth, MinWidth, SystemParameters.VirtualScreenWidth);
         Height = Math.Clamp(s.WindowHeight, MinHeight, SystemParameters.VirtualScreenHeight);

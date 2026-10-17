@@ -1,5 +1,5 @@
-<!-- Cerca: your songs and the music sites (YouTube Music, SoundCloud, YouTube, Deezer); a link written or pasted here is
-     downloaded. A song found online opens on the download page, as a pasted link. -->
+<!-- Cerca, with the downloads (like the computer's box): your songs and the music sites (YouTube Music, SoundCloud, YouTube,
+     Deezer); a link written or pasted here is downloaded. A song found online opens in the download part, as a pasted link. -->
 <UserControl x:Class="UltimateMP3Player.Views.SearchPage"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -43,17 +43,9 @@
         </StackPanel>
 
         <Panel>
-            <!-- nothing written yet -->
-            <ScrollViewer x:Name="Intro">
-                <StackPanel Margin="20,20,20,24">
-                    <TextBlock Text="{local:T 'Search your songs and online'}" FontSize="18" FontWeight="SemiBold"/>
-                    <TextBlock Classes="hint" Margin="0,8,0,0" FontSize="14"
-                               Text="{local:T 'Type the title or the artist: you find the songs you already have and those on music sites, to download with a tap. You can also paste the link of a song or a playlist.'}"/>
-                    <TextBlock Classes="hint" Margin="0,14,0,0" FontSize="14"
-                               Text="{local:T 'From YouTube, Spotify, SoundCloud and almost any other app: tap Share and choose “Download with Ultimate MP3 Player”.'}"/>
-                    <TextBlock Classes="hint" Margin="0,14,0,0" FontSize="14" Text="{local:T 'With #name you find the songs with that tag.'}"/>
-                </StackPanel>
-            </ScrollViewer>
+            <!-- nothing written yet, or a link open (pasted, shared, a song found online): the download part, as the computer's
+                 Download page; Back from a song found online goes back to the results -->
+            <views:DownloadsPage x:Name="DownloadsPart" DataContext="{Binding $parent[views:MainView].DataContext.Downloads}"/>
 
             <!-- your songs -->
             <ListBox x:Name="LocalList" Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}" IsVisible="False">

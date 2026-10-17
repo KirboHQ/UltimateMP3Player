@@ -1,0 +1,372 @@
+<!-- Listen together on the phone: the rooms around (join one, by address too) and a new room; inside a room three tabs,
+     the queue (with the song playing and random songs), the people (the host taps one for permissions) and the chat. The
+     song itself stays in the mini player and its page, like any song. -->
+<UserControl x:Class="UltimateMP3Player.Views.TogetherPage"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <UserControl.Styles>
+        <Style Selector="TextBlock.card-title">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+            <Setter Property="Margin" Value="4,6,0,4"/>
+        </Style>
+        <Style Selector="Border.line">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
+            <Setter Property="Margin" Value="0,2"/>
+        </Style>
+        <Style Selector="TextBlock.value">
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="Margin" Value="0,3,0,0"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style Selector="CheckBox.switch">
+            <Setter Property="Margin" Value="0,10"/>
+        </Style>
+        <!-- a permission of a person: lit when they have it -->
+        <Style Selector="TextBlock.perm">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="Opacity" Value="0.3"/>
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+        </Style>
+        <Style Selector="TextBlock.perm.on">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+        <Style Selector="Border.row.away">
+            <Setter Property="Opacity" Value="0.5"/>
+        </Style>
+        <Style Selector="TextBlock.chat.system">
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+            <Setter Property="FontStyle" Value="Italic"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Panel>
+        <!-- ============================================================ lobby -->
+        <ScrollViewer x:Name="Lobby" IsVisible="{Binding !InRoom}">
+            <StackPanel Margin="16,12,16,28">
+                <TextBlock Text="{local:T 'Listen together'}" Classes="page-title" Margin="2,0,0,6"/>
+                <TextBlock Text="{local:T 'The same music, at the same moment, for everyone in the room, with a chat: phones and computers on the same Wi-Fi.'}"
+                           Classes="hint" TextWrapping="Wrap" Margin="2,0,0,16"/>
+
+                <!-- why the last room ended / a join failed -->
+                <Border CornerRadius="14" Padding="14,6,4,6" Margin="0,0,0,14" Background="{DynamicResource WarningSoftBrush}"
+                        IsVisible="{Binding LobbyMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Text="{local:Icon E7BA}" Classes="glyph" Foreground="{DynamicResource WarningBrush}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding LobbyMessage}" Margin="10,0,6,0" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="13.5"
+                                   Foreground="{DynamicResource WarningBrush}"/>
+                        <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" FontSize="13" Command="{Binding DismissMessageCommand}"/>
+                    </Grid>
+                </Border>
+                <StackPanel Orientation="Horizontal" Margin="4,0,0,14" IsVisible="{Binding BusyText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Ellipse Classes="spinner" Width="18" Height="18" StrokeThickness="3"/>
+                    <TextBlock Text="{Binding BusyText}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- the rooms around -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{local:T 'ROOMS ON THE NETWORK'}" Classes="card-title"/>
+                    <Ellipse Grid.Column="1" Classes="spinner" Width="14" Height="14" StrokeThickness="2" Margin="0,0,6,0" IsVisible="{Binding Scanning}"/>
+                </Grid>
+                <Border Classes="card">
+                    <StackPanel>
+                        <ItemsControl ItemsSource="{Binding Rooms}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:RoomAdViewModel">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,10">
+                                        <Panel Width="44" Height="44" VerticalAlignment="Center">
+                                            <Ellipse Fill="{Binding HostBrush}"/>
+                                            <TextBlock Text="{Binding Initial}" FontSize="17" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Panel>
+                                        <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" FontSize="15.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+                                                <TextBlock Text="{local:Icon E72E}" Classes="glyph" FontSize="12" Margin="6,0,0,0" Foreground="{DynamicResource SubTextBrush}"
+                                                           IsVisible="{Binding Locked}"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Detail}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Playing}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                                                       IsVisible="{Binding Playing, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Theme="{StaticResource TouchPrimary}" Padding="18,0" VerticalAlignment="Center" Content="{Binding JoinText}"
+                                                IsEnabled="{Binding CanJoin}" Command="{Binding $parent[views:TogetherPage].DataContext.JoinCommand}" CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <StackPanel Margin="4,14,4,14" IsVisible="{Binding !HasRooms}">
+                            <TextBlock Text="{local:T 'No rooms yet'}" FontSize="16" FontWeight="Bold"/>
+                            <TextBlock Text="{local:T 'Ask a friend to create one on the same network, or create it yourself. If a room doesn\'t show up, join with its address.'}"
+                                       Classes="hint" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        </StackPanel>
+                        <Border Classes="line"/>
+                        <Button Theme="{StaticResource SettingRow}" Command="{Binding JoinByAddressCommand}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Join by address'}" Classes="setting"/>
+                                <TextBlock Text="{local:T 'If the room doesn\'t show up: type the address of the computer hosting it'}" Classes="value"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
+                <!-- a new room -->
+                <TextBlock Text="{local:T 'CREATE A ROOM'}" Classes="card-title" Margin="4,22,0,4"/>
+                <Border Classes="card">
+                    <StackPanel Margin="0,8,0,4">
+                        <TextBlock Text="{local:T 'Others on the network see it and can join.'}" Classes="hint" TextWrapping="Wrap" Margin="4,0,0,4"/>
+                        <TextBlock Text="{local:T 'Room name'}" Classes="field-label" Margin="4,12,0,8"/>
+                        <TextBox Theme="{StaticResource TouchBox}" Text="{Binding NewRoomName}" MaxLength="60"/>
+                        <TextBlock Text="{local:T 'Password (optional)'}" Classes="field-label" Margin="4,14,0,8"/>
+                        <TextBox Theme="{StaticResource TouchBox}" Text="{Binding NewPassword}" MaxLength="40" Watermark="{local:T none}"/>
+                        <Button x:Name="MaxRow" Theme="{StaticResource SettingRow}" Margin="0,8,0,0" Click="Max_Click">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Max people'}" Classes="setting"/>
+                                <TextBlock Text="{Binding MaxChoice.Label}" Classes="value"/>
+                            </StackPanel>
+                        </Button>
+                        <Border Classes="line"/>
+                        <TextBlock Text="{local:T 'People who join can'}" Classes="field-label" Margin="4,12,0,0"/>
+                        <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding DefAdd}">
+                            <TextBlock Text="{local:T 'Add songs to the queue'}" Classes="setting"/>
+                        </CheckBox>
+                        <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding DefRemove}">
+                            <TextBlock Text="{local:T 'Remove and move songs in the queue'}" Classes="setting"/>
+                        </CheckBox>
+                        <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding DefSkip}">
+                            <TextBlock Text="{local:T 'Skip the song playing'}" Classes="setting"/>
+                        </CheckBox>
+                        <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding DefPause}">
+                            <TextBlock Text="{local:T 'Pause, move forward and back in the song and put it on loop'}" Classes="setting" TextWrapping="Wrap"/>
+                        </CheckBox>
+                        <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding DefSpeed}">
+                            <TextBlock Text="{local:T 'Change the playback speed for everyone'}" Classes="setting" TextWrapping="Wrap"/>
+                        </CheckBox>
+                        <Button Theme="{StaticResource TouchPrimary}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,12,0,8"
+                                Command="{Binding CreateCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E716}" Classes="glyph"/>
+                                <TextBlock Text="{local:T 'Create the room'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- ============================================================ in the room -->
+        <DockPanel x:Name="Room" IsVisible="{Binding InRoom}">
+            <StackPanel DockPanel.Dock="Top" Margin="0,8,0,4">
+                <Grid ColumnDefinitions="*,Auto" Margin="18,6,12,0">
+                    <StackPanel>
+                        <TextBlock Text="{Binding RoomName}" Classes="page-title" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding RoomSubtitle}" FontSize="13.5" Foreground="{DynamicResource SubTextBrush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                        <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding AddressText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Text="{Binding AddressText}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                            <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8C8}" FontSize="14" Command="{Binding CopyAddressCommand}"/>
+                        </Grid>
+                    </StackPanel>
+                    <Button Grid.Column="1" Theme="{StaticResource SmallGhost}" VerticalAlignment="Top" Margin="8,4,0,0" Command="{Binding LeaveCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E89B}" Classes="glyph" FontSize="13"/>
+                            <TextBlock Text="{local:T Leave}" Margin="7,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+                <!-- the host's device went away: the room moves to someone else -->
+                <Border CornerRadius="14" Padding="14,9" Margin="16,8,16,0" Background="{DynamicResource WarningSoftBrush}" IsVisible="{Binding Reconnecting}">
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Ellipse Classes="spinner" Width="16" Height="16" StrokeThickness="2.5" Stroke="{DynamicResource WarningBrush}"/>
+                        <TextBlock Grid.Column="1" Text="{local:T 'Lost the connection to the room: reconnecting (if the host left, the room moves to someone else)…'}"
+                                   Margin="10,0,0,0" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="13.5"/>
+                    </Grid>
+                </Border>
+                <Border CornerRadius="22" Padding="4" Background="{DynamicResource SurfaceBrush}" Margin="16,12,16,0" MaxWidth="560">
+                    <UniformGrid Rows="1">
+                        <RadioButton x:Name="TabQueue" Theme="{StaticResource TouchSegment}" GroupName="room" local:Ui.Glyph="&#xE8FD;" Content="{local:T Queue}"/>
+                        <RadioButton x:Name="TabPeople" Theme="{StaticResource TouchSegment}" GroupName="room" local:Ui.Glyph="&#xE716;" Content="{local:T People}" Margin="4,0"/>
+                        <RadioButton x:Name="TabChat" Theme="{StaticResource TouchSegment}" GroupName="room" local:Ui.Glyph="&#xE724;" Content="{local:T Chat}"/>
+                    </UniformGrid>
+                </Border>
+            </StackPanel>
+
+            <Panel>
+                <!-- the song playing and the queue -->
+                <ScrollViewer x:Name="QueuePane">
+                    <StackPanel Margin="0,8,0,20">
+                        <Border Classes="row" Padding="16,8" IsVisible="{Binding HasCurrent}"
+                                views:Touch.Tap="{Binding CurrentItem.SaveCommand}" views:Touch.TapParameter="{Binding $self}">
+                            <Grid ColumnDefinitions="56,*">
+                                <ContentControl Width="56" Height="56" Content="{Binding CurrentItem.Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                                <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding NowKicker}" Classes="small-caps" Foreground="{DynamicResource AccentTextBrush}"/>
+                                    <TextBlock Text="{Binding CurrentItem.Track.Title}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding CurrentItem.AddedByText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <Grid ColumnDefinitions="Auto,*" Margin="0,3,0,0">
+                                        <Ellipse Classes="spinner" Width="12" Height="12" StrokeThickness="2" Margin="0,0,7,0" IsVisible="{Binding NowBusy}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding NowStatus}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Grid ColumnDefinitions="*,Auto" Margin="18,14,12,4">
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{local:T Queued}" FontSize="17" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding QueueCountText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"/>
+                            </StackPanel>
+                            <ToggleButton Grid.Column="1" Theme="{StaticResource Chip}" Margin="0" IsChecked="{Binding ShowRandom, Mode=OneWay}"
+                                          Command="{Binding ToggleRandomCommand}" IsVisible="{Binding CanAdd}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E8B1}" Classes="glyph" FontSize="13"/>
+                                    <TextBlock Text="{local:T 'Random songs'}" Margin="7,0,0,0"/>
+                                </StackPanel>
+                            </ToggleButton>
+                        </Grid>
+                        <TextBlock Text="{Binding AddHint}" Classes="hint" TextWrapping="Wrap" Margin="18,0,18,8"/>
+
+                        <!-- a few songs at random from your songs, a playlist or a tag (or suggested online) -->
+                        <Border Classes="card" Margin="16,4,16,10" IsVisible="{Binding ShowRandom}">
+                            <StackPanel Margin="0,6,0,6">
+                                <TextBlock Text="{Binding RandomTitle}" FontSize="15" FontWeight="SemiBold" Margin="4,0,0,4"/>
+                                <Button Theme="{StaticResource SettingRow}" Click="RandomSource_Click">
+                                    <StackPanel>
+                                        <TextBlock Text="{local:T From}" Classes="setting"/>
+                                        <TextBlock Text="{Binding RandomSource.Label}" Classes="value"/>
+                                    </StackPanel>
+                                </Button>
+                                <Border Classes="line"/>
+                                <Button Theme="{StaticResource SettingRow}" Click="RandomCount_Click">
+                                    <StackPanel>
+                                        <TextBlock Text="{local:T 'How many songs'}" Classes="setting"/>
+                                        <TextBlock Text="{Binding RandomCount.Label}" Classes="value"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="{Binding RandomHint}" Classes="hint" TextWrapping="Wrap" Margin="4,8,4,0"/>
+                                <Button Theme="{StaticResource TouchPrimary}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,12,0,4"
+                                        Command="{Binding AddRandomCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Classes="spinner" Width="14" Height="14" StrokeThickness="2" Stroke="{DynamicResource OnAccentBrush}" Margin="0,0,8,0"
+                                                 IsVisible="{Binding RandomBusy}"/>
+                                        <TextBlock Text="{Binding RandomAddText}"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding Queue}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:RoomItemViewModel">
+                                    <Border Classes="row" Padding="8,6,12,6" views:Touch.Tap="{Binding SaveCommand}" views:Touch.TapParameter="{Binding $self}"
+                                            views:Touch.Menu="roomitem">
+                                        <Grid ColumnDefinitions="30,46,*,Auto">
+                                            <TextBlock Text="{Binding Number}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <ContentControl Grid.Column="1" Width="46" Height="46" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                                            <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Track.Title}" FontSize="15" TextTrimming="CharacterEllipsis"/>
+                                                <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
+                                                    <Panel Width="16" Height="16" VerticalAlignment="Center">
+                                                        <Ellipse Fill="{Binding AddedByBrush}"/>
+                                                        <TextBlock Text="{Binding AddedByInitial}" FontSize="8.5" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Panel>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Track.Artist}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" Margin="6,0,0,0" TextTrimming="CharacterEllipsis"/>
+                                                </Grid>
+                                            </StackPanel>
+                                            <!-- this phone's copy: ready, on its way, or not yet -->
+                                            <Panel Grid.Column="3" Width="30" Height="30" VerticalAlignment="Center">
+                                                <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="13" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center"
+                                                           IsVisible="{Binding IsReady}"/>
+                                                <TextBlock Text="{local:Icon E7BA}" Classes="glyph" FontSize="13" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center"
+                                                           IsVisible="{Binding IsFailed}"/>
+                                                <Panel IsVisible="{Binding IsBusy}">
+                                                    <Ellipse Classes="spinner" Width="26" Height="26" StrokeThickness="2"/>
+                                                    <TextBlock Text="{Binding PctText}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Panel>
+                                            </Panel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{local:T 'The queue is empty'}" FontSize="16" FontWeight="Bold" Margin="18,10,18,0" IsVisible="{Binding !HasQueue}"/>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- the people -->
+                <ScrollViewer x:Name="PeoplePane" IsVisible="False">
+                    <StackPanel Margin="0,8,0,20">
+                        <TextBlock Text="{Binding MyRoleText}" Classes="hint" TextWrapping="Wrap" Margin="18,4,18,10"/>
+                        <ItemsControl ItemsSource="{Binding Members}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:MemberViewModel">
+                                    <Border Classes="row" Padding="16,8" views:Touch.Tap="{Binding $parent[views:TogetherPage].MemberTap}" views:Touch.Menu="member" Classes.away="{Binding Away}">
+                                        <Grid ColumnDefinitions="44,*">
+                                            <Panel Width="44" Height="44" VerticalAlignment="Top">
+                                                <Ellipse Fill="{Binding Brush}"/>
+                                                <TextBlock Text="{Binding Initial}" FontSize="17" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <views:CoverImage CornerRadius="22" Source="{Binding Avatar}"/>
+                                            </Panel>
+                                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Text="{Binding NameText}" FontSize="15.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+                                                    <Border Grid.Column="1" CornerRadius="8" Padding="8,2" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding RoleText}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}"/>
+                                                    </Border>
+                                                </Grid>
+                                                <StackPanel Orientation="Horizontal" Margin="0,5,0,4">
+                                                    <TextBlock Text="{local:Icon E710}" Classes="glyph perm" Classes.on="{Binding PermAdd}"/>
+                                                    <TextBlock Text="{local:Icon E738}" Classes="glyph perm" Classes.on="{Binding PermRemove}"/>
+                                                    <TextBlock Text="{local:Icon E893}" Classes="glyph perm" Classes.on="{Binding PermSkip}"/>
+                                                    <TextBlock Text="{local:Icon E769}" Classes="glyph perm" Classes.on="{Binding PermPause}"/>
+                                                    <TextBlock Text="{local:Icon E916}" Classes="glyph perm" Classes.on="{Binding PermSpeed}"/>
+                                                    <TextBlock Text="{local:T 'no P2P'}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"
+                                                               IsVisible="{Binding NoP2P}"/>
+                                                </StackPanel>
+                                                <ProgressBar Height="3" Maximum="100" Value="{Binding StatusPct, Mode=OneWay}" Margin="0,1,0,3" IsVisible="{Binding StatusBusy}"/>
+                                                <TextBlock Text="{Binding StatusText}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- the chat -->
+                <DockPanel x:Name="ChatPane" IsVisible="False">
+                    <Grid x:Name="ChatBar" DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" Margin="12,6,12,10">
+                        <TextBox x:Name="ChatBox" Theme="{StaticResource TouchBox}" Text="{Binding ChatInput}" MaxLength="500" Watermark="{local:T 'Write a message…'}"/>
+                        <Button Grid.Column="1" Theme="{StaticResource TouchPrimary}" Width="48" Padding="0" Margin="8,0,0,0" Command="{Binding SendCommand}"
+                                HorizontalContentAlignment="Center">
+                            <TextBlock Text="{local:Icon E724}" Classes="glyph" FontSize="16"/>
+                        </Button>
+                    </Grid>
+                    <ScrollViewer x:Name="ChatScroll">
+                        <ItemsControl ItemsSource="{Binding Chat}" Margin="18,6,18,6">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="vm:ChatLineViewModel">
+                                    <StackPanel Margin="0,0,0,5">
+                                        <StackPanel Orientation="Horizontal" Margin="0,8,0,1" IsVisible="{Binding ShowName}">
+                                            <TextBlock Text="{Binding Name}" Foreground="{Binding Brush}" FontWeight="SemiBold" FontSize="13.5"/>
+                                            <TextBlock Text="{Binding Time}" Foreground="{DynamicResource MutedBrush}" FontSize="11.5" Margin="7,0,0,0" VerticalAlignment="Bottom"/>
+                                        </StackPanel>
+                                        <TextBlock Classes="chat" Classes.system="{Binding IsSystem}" Text="{Binding Text}" TextWrapping="Wrap" FontSize="15" LineHeight="21"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Panel>
+        </DockPanel>
+    </Panel>
+</UserControl>

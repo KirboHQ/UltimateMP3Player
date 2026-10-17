@@ -40,10 +40,12 @@ public static class PackDialogs
         var tags = main.Tags.Select(t => new ExportTag(t.T, t.Brush, t.Count)).ToList();
         var chosen = (many ?? Array.Empty<PlaylistViewModel>()).Select(p => p.P).ToList();
         if (playlist != null) chosen.Add(playlist.P);
-        BuildExport(main.Library, main.Profile, lists, tags, chosen, tag?.T).ShowDialog();
+        BuildExport(main.Library, main.Profile, lists, tags, chosen, tag?.T, main.PhoneLinked ? main.PhoneLink.SendPack : null).ShowDialog();
     }
 
-    public static DialogWindow BuildExport(Library lib, Profile profile, List<ExportList> lists, List<ExportTag> tags, IReadOnlyCollection<Playlist> chosen, Tag? tag)
+    // toPhone: "To the phone", with a phone connected (Connect phone): true when it went.
+    public static DialogWindow BuildExport(Library lib, Profile profile, List<ExportList> lists, List<ExportTag> tags, IReadOnlyCollection<Playlist> chosen, Tag? tag,
+        Func<PackExport, bool>? toPhone = null)
     {
         var pickedLists = lists.Where(l => chosen.Contains(l.P)).ToHashSet();
         var pickedTags = tags.Where(t => t.T == tag).ToHashSet();
@@ -161,7 +163,10 @@ public static class PackDialogs
         // The same songs as plain MP3s in a folder, for a USB stick, an SD card or the car (FolderExport).
         var folder = Dialogs.Button(L.T("To a folder (MP3)…"), "GhostButton");
         ToolTip.SetTip(folder, L.T("For a USB stick, an SD card or the car stereo: one MP3 file per song, named “Artist - Title”, with title, artist, album and cover in its tags. Songs in the cloud are downloaded."));
-        var win = Dialogs.Frame(L.T("Export to a pack"), Fit(body), 560, folder, cancel, ok);
+        // Straight to the connected phone, without a file: it chooses there what to import.
+        var phone = Dialogs.Button(L.T("To the phone"), "GhostButton");
+        ToolTip.SetTip(phone, L.T("The connected phone opens its import window and takes the songs it doesn't have, through the network or the cable."));
+        var win = toPhone != null ? Dialogs.Frame(L.T("Export to a pack"), Fit(body), 640, folder, phone, cancel, ok) : Dialogs.Frame(L.T("Export to a pack"), Fit(body), 560, folder, cancel, ok);
 
         PackExport Current() => new()
         {
@@ -182,7 +187,7 @@ public static class PackDialogs
                 ? L.T("The music is inside the pack: it imports even without internet and with songs gone from the sites. It's as big as the songs.")
                 : L.T("A tiny pack, perfect to send on Discord: whoever opens it downloads the songs again from their links. Those without a link (your own files, DJ mixes) still travel as files.");
             videoBox.IsVisible = e.Music && songs.Any(t => t.HasVideo);
-            ok.IsEnabled = folder.IsEnabled = !e.IsEmpty;
+            ok.IsEnabled = folder.IsEnabled = phone.IsEnabled = !e.IsEmpty;
             (line1.Text, line2.Text) = PackWriter.Summary(songs, e, SizeOf);
         }
         changed = Update;
@@ -243,6 +248,11 @@ public static class PackDialogs
                 status.Foreground = B("ErrorBrush");
                 status.Text = L.T("Export failed:") + " " + ex.Message;
             }
+        };
+        phone.Click += (_, _) =>
+        {
+            var e = Current();
+            if (stage == 0 && !e.IsEmpty && toPhone?.Invoke(e) == true) win.DialogResult = true;
         };
         folder.Click += async (_, _) =>
         {
@@ -327,6 +337,12 @@ public static class PackDialogs
             Dialogs.Alert(L.T("Can't open the pack"), ex.Message);
             return;
         }
+        await Import(main, pack);
+    }
+
+    // An opened pack: a file, or the music the connected computer sends (Connect phone).
+    public static async Task Import(MainViewModel main, PackFile pack)
+    {
         PackImportResult? result = null;
         using (pack)
         {

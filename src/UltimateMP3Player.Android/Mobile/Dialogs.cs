@@ -35,6 +35,34 @@ public static partial class Dialogs
     // A message with only "OK".
     public static void Alert(string title, string message) => _ = ShowAsync(title, message, Array.Empty<(string, string)>(), "OK", false, cancel: false);
 
+    // A question with a few answers, a button each, one under the other (the first is the main one): its index, or -1.
+    public static async Task<int> ChooseAsync(string title, string message, params string[] answers)
+    {
+        var sheets = Sheets;
+        if (sheets == null) return -1;
+        var body = new StackPanel { Margin = new Thickness(24, 4, 24, 18) };
+        body.Children.Add(new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10) });
+        body.Children.Add(new TextBlock { Text = message, Classes = { "hint" }, FontSize = 14.5, LineHeight = 21, Margin = new Thickness(0, 0, 0, 12) });
+        int chosen = -1;
+        for (int i = 0; i < answers.Length; i++)
+        {
+            int n = i;
+            var b = new Button
+            {
+                Content = answers[i], Theme = Ui.Theme(i == 0 ? "TouchPrimary" : "TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 10, 0, 0),
+            };
+            b.Click += (_, _) =>
+            {
+                chosen = n;
+                sheets.Close(body);
+            };
+            body.Children.Add(b);
+        }
+        await sheets.Show(new ScrollViewer { Content = body });
+        return chosen;
+    }
+
     // Title, text, fields; the OK button's answer (the fields' texts), or null.
     private static async Task<string[]?> ShowAsync(string title, string? message, (string Label, string Value)[] fields, string ok, bool danger, bool cancel = true)
     {
@@ -46,20 +74,27 @@ public static partial class Dialogs
         var boxes = new List<TextBox>();
         foreach (var (label, value) in fields)
         {
-            body.Children.Add(new TextBlock { Text = label, Classes = { "field-label" }, Margin = new Thickness(4, 12, 0, 8) });
+            body.Children.Add(new TextBlock { Text = label, Classes = { "field-label" }, Margin = new Thickness(4, 12, 0, 8), TextWrapping = TextWrapping.Wrap });
             var box = new TextBox { Text = value, Theme = Ui.Theme("TouchBox") };
             boxes.Add(box);
             body.Children.Add(box);
         }
         string[]? result = null;
         var okButton = new Button { Content = ok, Theme = Ui.Theme(danger ? "TouchDanger" : "TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
-        var row = new Grid { ColumnDefinitions = cancel ? new ColumnDefinitions("*,12,*") : new ColumnDefinitions("*"), Margin = new Thickness(0, 22, 0, 0) };
+        // A long answer ("Leave and change language") gets the whole width: the two buttons one above the other.
+        bool stack = cancel && ok.Length > 18;
+        var row = new Grid
+        {
+            ColumnDefinitions = cancel && !stack ? new ColumnDefinitions("*,12,*") : new ColumnDefinitions("*"),
+            RowDefinitions = stack ? new RowDefinitions("Auto,10,Auto") : new RowDefinitions("Auto"), Margin = new Thickness(0, 22, 0, 0),
+        };
         if (cancel)
         {
             var no = new Button { Content = L.T("Cancel"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
             no.Click += (_, _) => sheets.Close(body);
             row.Children.Add(no);
-            Grid.SetColumn(okButton, 2);
+            if (stack) Grid.SetRow(no, 2);
+            else Grid.SetColumn(okButton, 2);
         }
         row.Children.Add(okButton);
         body.Children.Add(row);

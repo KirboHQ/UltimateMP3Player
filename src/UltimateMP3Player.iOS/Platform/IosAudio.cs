@@ -40,6 +40,22 @@ public static class AudioPlatform
         return new AppleTrackSource(path);
     }
 
+    // What the speaker, the headphones or Bluetooth still hold (iOS measures it): heard that much later. Asked again
+    // when the output changes (AudioSession).
+    private static int _deviceLatency = -1;
+
+    public static int DeviceLatencyMs()
+    {
+        if (_deviceLatency < 0)
+        {
+            try { _deviceLatency = (int)Math.Clamp(AVAudioSession.SharedInstance().OutputLatency * 1000, 0, 1000); }
+            catch { _deviceLatency = 0; }
+        }
+        return _deviceLatency;
+    }
+
+    internal static void DeviceChanged() => _deviceLatency = -1;
+
     // The output is iOS's choice (Control Center): nothing to choose in Settings.
     public static string? Device { get; set; }
     public static List<(string Id, string Name)> OutputDevices() => new();
@@ -289,6 +305,13 @@ public static class AudioSession
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 var media = App.Host?.Media;
+                // Driving a computer or in a room: a call here doesn't pause the music there; this phone's output (the
+                // silence, the room's music) comes back after it.
+                if (App.Host?.Session?.Player is { } player && (player.IsRemote || player.InRoom))
+                {
+                    if (!began) player.Wake();
+                    return;
+                }
                 if (began)
                 {
                     _resumeAfter = media?.IsPlaying == true;
@@ -303,8 +326,17 @@ public static class AudioSession
         });
         AVAudioSession.Notifications.ObserveRouteChange((_, e) =>
         {
-            if (e.Reason == AVAudioSessionRouteChangeReason.OldDeviceUnavailable)
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => App.Host?.Media.RaisePause());
+            AudioPlatform.DeviceChanged();
+            if (e.Reason != AVAudioSessionRouteChangeReason.OldDeviceUnavailable) return;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                // Headphones gone: a pause; in a room (the music goes on for the others) this phone goes quiet instead;
+                // driving a computer, nothing (the music isn't here).
+                var player = App.Host?.Session?.Player;
+                if (player?.IsRemote == true) return;
+                if (player?.InRoom == true) player.SilenceInRoom();
+                else App.Host?.Media.RaisePause();
+            });
         });
     }
 

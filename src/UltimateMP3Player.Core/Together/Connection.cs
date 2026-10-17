@@ -25,7 +25,8 @@ public sealed class Connection : IDisposable
     public Connection(TcpClient tcp)
     {
         _tcp = tcp;
-        tcp.NoDelay = true;
+        // (an iPhone through its cable is a local socket, without that option)
+        try { tcp.NoDelay = true; } catch { }
         try { tcp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true); } catch { }
         _stream = tcp.GetStream();
         var ip = (tcp.Client.RemoteEndPoint as IPEndPoint)?.Address ?? IPAddress.None;

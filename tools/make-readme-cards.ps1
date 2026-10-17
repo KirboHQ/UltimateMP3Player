@@ -27,9 +27,11 @@ $cards = @{
         @{ Icon = 'tag'; Title = 'Playlists, favorites and tags'
            Text = 'Colored tags like Discord roles, filters, multi-select in every list, listening statistics, and .ump packs to share your playlists with friends.' }
         @{ Icon = 'devices'; Title = 'On all your devices'
-           Text = 'Windows, Linux, macOS and Android, with the same look. A profile for each person, themes, English and Italian, a 3D tilting cover and Discord Rich Presence.' }
+           Text = 'Windows, Linux, macOS, Android and iPhone (preview), with the same look. A profile for each person, themes, English and Italian, a 3D tilting cover and Discord Rich Presence.' }
         @{ Icon = 'together'; Title = 'Listen together'; Wide = $true
-           Text = 'Rooms on your network (or over Radmin VPN): everyone hears the same song at the same moment, with a chat, a shared queue and permissions decided by the host. Songs are downloaded by each computer from their link, or sent over by someone in the room.' }
+           Text = 'Rooms on your network (or over Radmin VPN), from computers and phones: everyone hears the same song at the same moment, with a chat, a shared queue and permissions decided by the host. Songs are downloaded by each device from their link, or sent over by someone in the room.' }
+        @{ Icon = 'remote'; Title = 'Your phone as a remote'; Wide = $true
+           Text = "Connect your phone to the computer over Wi-Fi or with the cable: it drives the computer's player, its songs play on the computer's speakers, and a song you save goes to the phone, the computer or both. Send playlists to the phone in one click." }
     )
     it = @(
         @{ Icon = 'link'; Title = 'Incolli un link, hai la musica'
@@ -47,9 +49,11 @@ $cards = @{
         @{ Icon = 'tag'; Title = 'Playlist, preferiti e tag'
            Text = 'Tag colorati come i ruoli di Discord, filtri, selezione multipla in ogni lista, statistiche di ascolto e pacchetti .ump per condividere le playlist con gli amici.' }
         @{ Icon = 'devices'; Title = 'Su tutti i tuoi dispositivi'
-           Text = 'Windows, Linux, macOS e Android, con lo stesso aspetto. Un profilo per persona, temi, italiano e inglese, copertina 3D e stato su Discord.' }
+           Text = 'Windows, Linux, macOS, Android e iPhone (anteprima), con lo stesso aspetto. Un profilo per persona, temi, italiano e inglese, copertina 3D e stato su Discord.' }
         @{ Icon = 'together'; Title = 'Ascolta insieme'; Wide = $true
-           Text = "Stanze sulla tua rete (o tramite Radmin VPN): tutti sentono lo stesso brano nello stesso momento, con la chat, una coda condivisa e i permessi decisi dall'host. Ogni computer scarica i brani dal loro link, oppure glieli manda qualcuno nella stanza." }
+           Text = "Stanze sulla tua rete (o tramite Radmin VPN), da computer e telefoni: tutti sentono lo stesso brano nello stesso momento, con la chat, una coda condivisa e i permessi decisi dall'host. Ogni dispositivo scarica i brani dal loro link, oppure glieli manda qualcuno nella stanza." }
+        @{ Icon = 'remote'; Title = 'Il telefono come telecomando'; Wide = $true
+           Text = 'Collega il telefono al computer via Wi-Fi o con il cavo: comanda il lettore del computer, i suoi brani suonano dalle casse del computer e un brano che salvi va sul telefono, sul computer o su entrambi. Manda playlist al telefono con un clic.' }
     )
 }
 
@@ -65,6 +69,7 @@ $icons = @{
     mic        = '<rect x="9" y="2.5" width="6" height="11.5" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>'
     devices    = '<rect x="2" y="5" width="11" height="8.5" rx="1.5"/><path d="M1 17h13"/><rect x="16.5" y="8" width="6" height="12" rx="1.5"/>'
     together   = '<circle cx="12" cy="12" r="2" fill="#fff"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.4 5.4a9.3 9.3 0 0 0 0 13.2M18.6 5.4a9.3 9.3 0 0 1 0 13.2"/>'
+    remote     = '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10.5 8.5v6l4.5-3z" fill="#fff"/><path d="M11 18.5h2"/>'
 }
 
 # GitHub's own greys, so the cards sit well on its pages.
