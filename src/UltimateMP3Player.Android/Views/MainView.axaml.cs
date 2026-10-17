@@ -582,7 +582,7 @@ public partial class MainView : UserControl
         object root = RootOf(tab);
         Sheets.CloseAll();
         // (the download part with the search box empty is already the search tab's start)
-        if (_session.Page == root || _session.Page is DownloadsPageViewModel && _shown is SearchPage { HasQuery: false })
+        if (_session.Page == root || tab == "search" && _session.Page is DownloadsPageViewModel && _shown is SearchPage { HasWords: false })
         {
             (_shown as IPage)?.ScrollToTop();
             return;

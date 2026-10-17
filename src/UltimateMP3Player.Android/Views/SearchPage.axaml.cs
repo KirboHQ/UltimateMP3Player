@@ -111,8 +111,11 @@ public partial class SearchPage : UserControl, IPage
         Update();
     }
 
+    // Words in the box (a song found online open keeps them: the Search tab then goes back to its results).
+    public bool HasWords => Text.Trim().Length > 0 && !IsLink(Text);
+
     // Results on the page (not the download part).
-    public bool HasQuery => Text.Trim().Length > 0 && !IsLink(Text) && !OnDownloads;
+    public bool HasQuery => HasWords && !OnDownloads;
 
     private void Update()
     {
