@@ -288,14 +288,20 @@
 
     <!-- ============================================================ dialogs' rows (the computer apps' templates) -->
 
-    <DataTemplate x:Key="SongChoiceTemplate">
-        <Border Padding="4,6" Background="Transparent">
-            <Grid ColumnDefinitions="Auto,Auto,*">
-                <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center"/>
-                <ContentControl Grid.Column="1" Width="42" Height="42" Margin="12,0,0,0" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
-                <StackPanel Grid.Column="2" Margin="12,0,8,0" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="14.5"/>
-                    <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}"/>
+    <!-- A song to tick (the songs of a tag): like a list's songs being chosen, the round tick and the tinted row; a tap
+         anywhere on the row ticks it. -->
+    <DataTemplate x:Key="SongChoiceTemplate" DataType="vm:SongChoice" x:DataType="vm:SongChoice" x:CompileBindings="True">
+        <Border Classes="row picking" Classes.picked="{Binding IsSelected}" Padding="8,7,12,7"
+                views:Touch.Tap="{x:Static views:Commands.ToggleChoice}">
+            <Grid ColumnDefinitions="Auto,52,*">
+                <Border Classes="tick" Margin="0,0,14,0">
+                    <TextBlock Classes="glyph" Text="{local:Icon E73E}" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                </Border>
+                <ContentControl Grid.Column="1" Width="52" Height="52" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                <StackPanel Grid.Column="2" Margin="14,0,8,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Track.Title}" FontSize="15.5" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Track.Artist}" FontSize="13.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                               Margin="0,3,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>

@@ -22,6 +22,14 @@ public static class Commands
         }
         if (Menus.MenuFor(kind, c.DataContext, c) is { } menu) Menus.Open(menu);
     });
+
+    // A song to tick in a dialog (the songs of a tag): ticked or not, with the lists' little tick of the phone.
+    public static readonly System.Windows.Input.ICommand ToggleChoice = new RelayCommand(p =>
+    {
+        if (p is not SongChoice c) return;
+        c.IsSelected = !c.IsSelected;
+        Haptics.Tick();
+    });
 }
 
 public static class Converters

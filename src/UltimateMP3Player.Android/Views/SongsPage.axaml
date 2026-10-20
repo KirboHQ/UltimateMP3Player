@@ -86,6 +86,14 @@
                     <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8B1}" Command="{Binding ShuffleCommand}" Margin="0,0,6,0"/>
                     <Button Grid.Column="4" Theme="{StaticResource BigPlayButton}" Content="{local:Icon E768}" Command="{Binding PlayCommand}"/>
                 </Grid>
+                <!-- a tag: its songs chosen from the whole library, ticked in a list -->
+                <Button Theme="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="14,0,16,2" Padding="4,6" Click="TagSongs_Click"
+                        IsVisible="{Binding IsTagPage}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Icon E710}" Classes="glyph" FontSize="14"/>
+                        <TextBlock Text="{local:T 'Add songs'}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Button>
                 <!-- while some songs are in the cloud (and shown): save them all -->
                 <Button Theme="{StaticResource LinkButton}" HorizontalAlignment="Left" Margin="14,0,16,2" Padding="4,6" Command="{Binding SaveAllCommand}"
                         IsVisible="{Binding ShowSaveAll}">

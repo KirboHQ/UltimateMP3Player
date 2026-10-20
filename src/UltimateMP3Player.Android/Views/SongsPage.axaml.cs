@@ -194,8 +194,8 @@ public partial class SongsPage : UserControl, IPage
             // songs there, all hidden by the "on the phone / in the cloud" filter
             else if (storage is { HidesAll: true }) all.Add(new ListNote(storage.EmptyTitle, storage.EmptyText));
             else if (DataContext is PlaylistPageViewModel pp) all.Add(new ListNote(L.T("This playlist is empty"), L.T("Add songs from a song's ⋮ menu, or choose this playlist when you download a link.")));
-            else if (DataContext is LibraryViewModel lib) all.Add(new ListNote(lib.EmptyTitle, lib.IsTagPage || lib.Unsorted ? lib.EmptyText
-                : L.T("Share a link from another app (YouTube, Spotify…) or paste it in the Download tab.")));
+            else if (DataContext is LibraryViewModel lib) all.Add(new ListNote(lib.EmptyTitle, lib.IsTagPage ? L.T("Tap “Add songs” to choose them from your library.")
+                : lib.Unsorted ? lib.EmptyText : L.T("Share a link from another app (YouTube, Spotify…) or paste it in the Download tab.")));
         }
         _filled = rows.Count;
         if (_shown != null && List.ItemsSource == _shown && Same(_shown, all))
@@ -538,6 +538,11 @@ public partial class SongsPage : UserControl, IPage
     {
         var filter = DataContext switch { LibraryViewModel l => l.TagFilter, PlaylistPageViewModel p => p.TagFilter, _ => null };
         if (filter != null && App.Host.Session is { } main) Menus.Open(Menus.TagFilterMenu(filter, main));
+    }
+
+    private void TagSongs_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is LibraryViewModel { Tag: { } tag }) _ = TagDialogs.ChooseSongsAsync(tag);
     }
 
     private void PlaylistMenu_Click(object? sender, RoutedEventArgs e)

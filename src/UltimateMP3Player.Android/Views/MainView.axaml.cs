@@ -42,7 +42,11 @@ public partial class MainView : UserControl
         PageHost.AddHandler(PointerPressedEvent, SwipePressed, RoutingStrategies.Tunnel, true);
         PageHost.AddHandler(PointerMovedEvent, SwipeMoved, RoutingStrategies.Tunnel, true);
         PageHost.AddHandler(PointerReleasedEvent, SwipeReleased, RoutingStrategies.Tunnel, true);
-        PageHost.PointerCaptureLost += (_, _) => { if (_swipe == Swipe.Active) EndSwipe(false); };
+        PageHost.PointerCaptureLost += (_, _) =>
+        {
+            if (_swipe == Swipe.Active) EndSwipe(false);
+            else if (_swipe == Swipe.Row) EndRow(false);
+        };
         FullPlayer.CloseRequested += () =>
         {
             if (_session?.Page is NowPlayingViewModel) _session.BackCommand.Execute(null);
@@ -73,7 +77,7 @@ public partial class MainView : UserControl
         if (rail == _rail) return;
         _rail = rail;
         Shell.ColumnDefinitions = rail ? new ColumnDefinitions("Auto,*") : new ColumnDefinitions("*");
-        foreach (var c in new Control[] { Banners, PageHost, ToastBox, Mini }) Grid.SetColumn(c, rail ? 1 : 0);
+        foreach (var c in new Control[] { Banners, PageHost, SwipeLayer, ToastBox, Mini }) Grid.SetColumn(c, rail ? 1 : 0);
         Grid.SetColumn(NavBar, 0);
         Grid.SetRow(NavBar, rail ? 0 : 3);
         Grid.SetRowSpan(NavBar, rail ? 4 : 1);
@@ -423,6 +427,8 @@ public partial class MainView : UserControl
             _shown = view;
             _shownPage = page;
             bool forward = Forward(oldPage, page);
+            // (the page a swipe brought: it and the one before are where the finger left them, the swipe ends their movement)
+            bool swiped = _swiped && view == _swipeView;
             // A movement still going (tabs tapped quickly) gives way: every other page out of sight and in its place.
             _slide?.Cancel();
             _slide = null;
@@ -432,17 +438,20 @@ public partial class MainView : UserControl
                     v.IsVisible = false;
                     v.RenderTransform = null;
                 }
-            view.RenderTransform = null;
-            if (old != null) old.RenderTransform = null;
-            bool motion = animate && Ui.Animations && old != null && !_swiped;
+            if (!swiped)
+            {
+                view.RenderTransform = null;
+                if (old != null) old.RenderTransform = null;
+            }
+            bool motion = animate && Ui.Animations && old != null && !swiped;
             (view as IPage)?.Shown();
             if (motion) _ = Slide(old!, view, forward, _slide = new CancellationTokenSource());
-            else
+            else if (!swiped)
             {
                 view.IsVisible = true;
                 if (old != null) old.IsVisible = false;
             }
-            ShowBackdrop(view is HomePage, motion || _swiped);
+            ShowBackdrop(view is HomePage, motion || swiped);
         }
         SyncTabs();
     }
@@ -604,8 +613,11 @@ public partial class MainView : UserControl
 
     // A finger moving sideways on a tab's own page turns to the tab beside it, the pages following the finger; on a page
     // inside a tab (a playlist) a swipe to the right goes back. Not while what's under the finger moves sideways itself
-    // (a row of cards with room that way, a slider, a drag handle, a text box) or a list is scrolling up and down.
-    private enum Swipe { None, Pending, Active }
+    // (a row of cards with room that way, a slider, a drag handle, a text box) or a list is scrolling up and down. A song's
+    // row pulled to the right plays next instead (RowSwipe), unless the finger starts at the screen's left edge.
+    // The page changes as the finger lifts, and a new swipe doesn't wait for the movement to end: it takes the pages from
+    // where they are (like the covers in the player).
+    private enum Swipe { None, Pending, Active, Row }
     private Swipe _swipe;
     private Point _swipeStart;
     private double _swipeX, _swipeSpeed, _swipeLastX;
@@ -617,13 +629,19 @@ public partial class MainView : UserControl
     private TranslateTransform? _swipeOut, _swipeIn;
     // The new page is already in its place: ShowPage doesn't move it again.
     private bool _swiped;
+    // What the finger first touched (once a list scrolls a little, the moves come from the list itself).
+    private Visual? _pressedOn;
+    private RowSwipe? _row;
+    // From this close to the left edge a swipe to the right is the page's (back, the tab before), never a row's.
+    private const double EdgeWidth = 24;
 
     private void SwipePressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_swipe == Swipe.Active) return;
-        _swipe = e.Pointer.Type == PointerType.Touch && _session != null && _shown != null && _slide == null && !FullPlayer.IsOpen && !SheetLayer.IsOpen
+        if (_swipe is Swipe.Active or Swipe.Row) return;
+        _swipe = e.Pointer.Type == PointerType.Touch && _session != null && _shown != null && !FullPlayer.IsOpen && !SheetLayer.IsOpen
             ? Swipe.Pending : Swipe.None;
         _swipeStart = e.GetPosition(PageHost);
+        _pressedOn = e.Source as Visual;
     }
 
     private void SwipeMoved(object? sender, PointerEventArgs e)
@@ -633,20 +651,33 @@ public partial class MainView : UserControl
         double dx = p.X - _swipeStart.X, dy = p.Y - _swipeStart.Y;
         if (_swipe == Swipe.Pending)
         {
-            if (Math.Abs(dy) > 12 && Math.Abs(dy) >= Math.Abs(dx))
+            // (a long press opened a song's menu meanwhile: the finger is the menu's)
+            if (Math.Abs(dy) > 12 && Math.Abs(dy) >= Math.Abs(dx) || SheetLayer.IsOpen)
             {
                 _swipe = Swipe.None;
                 return;
             }
             if (Math.Abs(dx) < 16 || Math.Abs(dx) < Math.Abs(dy) * 1.5) return;
-            if (!StartSwipe(dx < 0, e.Source as Visual))
+            double from = 0;
+            if (dx > 0 && _swipeStart.X > EdgeWidth && !MovesSideways(_pressedOn, false) && RowSwipe.Find(_pressedOn) is { } hit)
+            {
+                // (a page still moving stops in its place first: the strip goes where the row is)
+                StopMotion();
+                _row = new RowSwipe(hit.Row, hit.Run, SwipeLayer);
+                _swipe = Swipe.Row;
+            }
+            else if (StartSwipe(dx < 0, e.Source as Visual))
+            {
+                _swipe = Swipe.Active;
+                from = _swipeX;
+            }
+            else
             {
                 _swipe = Swipe.None;
                 return;
             }
-            _swipe = Swipe.Active;
-            // (from where the finger crossed the slop: no jump of its size)
-            _swipeStart = _swipeStart.WithX(_swipeStart.X + (dx < 0 ? -16 : 16));
+            // (from where the finger crossed the slop: no jump of its size; a page caught moving goes on from where it is)
+            _swipeStart = _swipeStart.WithX(_swipeStart.X + (dx < 0 ? -16 : 16) - from);
             _swipeLastX = p.X;
             _swipeLastT = e.Timestamp;
             _swipeSpeed = 0;
@@ -654,6 +685,11 @@ public partial class MainView : UserControl
         }
         e.PreventGestureRecognition();
         e.Handled = true;
+        if (_swipe == Swipe.Row)
+        {
+            _row!.Move(p.X - _swipeStart.X);
+            return;
+        }
         if (e.Timestamp > _swipeLastT)
         {
             // px per ms, smoothed a little
@@ -667,6 +703,13 @@ public partial class MainView : UserControl
 
     private void SwipeReleased(object? sender, PointerReleasedEventArgs e)
     {
+        if (_swipe == Swipe.Row)
+        {
+            e.Handled = true;
+            EndRow(true);
+            e.Pointer.Capture(null);
+            return;
+        }
         if (_swipe != Swipe.Active)
         {
             _swipe = Swipe.None;
@@ -692,7 +735,7 @@ public partial class MainView : UserControl
         return false;
     }
 
-    // The page that comes in, put beside this one.
+    // The page that comes in, put beside this one (from where this one is, if it's still moving).
     private bool StartSwipe(bool left, Visual? source)
     {
         if (MovesSideways(source, left) || _shownPage is not { } page) return false;
@@ -710,6 +753,8 @@ public partial class MainView : UserControl
             _swipeTab = null;
             to = back;
         }
+        double at = (_shown!.RenderTransform as TranslateTransform)?.X ?? 0;
+        StopMotion();
         var view = ViewFor(to);
         if (view == _shown) return false;
         _swipeView = view;
@@ -718,8 +763,31 @@ public partial class MainView : UserControl
         view.RenderTransform = _swipeIn = new TranslateTransform(-_swipeDir * PageHost.Bounds.Width, 0);
         view.IsVisible = true;
         (view as IPage)?.Shown();
-        _swipeX = 0;
+        _swipeX = left ? Math.Min(at, 0) : Math.Max(at, 0);
         return true;
+    }
+
+    // A movement of the pages still going (the swipe before, a tab just tapped) stops where it ends: the page shown in its
+    // place, the others out of sight.
+    private void StopMotion()
+    {
+        if (_slide == null) return;
+        _slide.Cancel();
+        _slide = null;
+        foreach (var (_, v) in _pages)
+            if (v != _shown)
+            {
+                v.IsVisible = false;
+                v.RenderTransform = null;
+            }
+        if (_shown != null) _shown.RenderTransform = null;
+    }
+
+    private void EndRow(bool commit)
+    {
+        _swipe = Swipe.None;
+        _row?.End(commit);
+        _row = null;
     }
 
     private void PlaceSwipe(double x)
@@ -730,16 +798,31 @@ public partial class MainView : UserControl
         _swipeIn!.X = x - _swipeDir * w;
         // The glow behind the home page's top comes and goes with it.
         double a = _shown is HomePage ? 1 : 0, b = _swipeView is HomePage ? 1 : 0;
-        if (a != b) Backdrop.Opacity = a + (b - a) * Math.Abs(x) / w;
+        if (a == b) return;
+        // (a change of the glow still going stops: the finger has it)
+        _backdropRun++;
+        Backdrop.Opacity = a + (b - a) * Math.Abs(x) / w;
     }
 
-    // The rest of the way (to the new page, or back to this one), then the new page is the one shown.
+    // The new page is the one shown at once (and its tab in the bar), then the rest of the way (to it, or back to this one).
     private void EndSwipe(bool go)
     {
         _swipe = Swipe.None;
         var from = _shown!;
         var to = _swipeView!;
-        var tab = _swipeTab;
+        if (go)
+        {
+            _swiped = true;
+            try
+            {
+                if (_swipeTab != null) GoTab(_swipeTab);
+                else _session?.BackCommand.Execute(null);
+            }
+            finally { _swiped = false; }
+            // (another page after all: ShowPage already put everything in its place)
+            if (_shown != to && _shown != from) return;
+            go = _shown == to;
+        }
         double x0 = _swipeX, end = go ? _swipeDir * PageHost.Bounds.Width : 0;
         var cts = _slide = new CancellationTokenSource();
         Ui.Tween(this, go ? 220 : 200, Ui.CubicOut, t =>
@@ -748,20 +831,9 @@ public partial class MainView : UserControl
             PlaceSwipe(x0 + (end - x0) * t);
             if (t < 1) return;
             if (_slide == cts) _slide = null;
-            if (!go)
-            {
-                to.IsVisible = false;
-                to.RenderTransform = null;
-                from.RenderTransform = null;
-                return;
-            }
-            _swiped = true;
-            try
-            {
-                if (tab != null) GoTab(tab);
-                else _session?.BackCommand.Execute(null);
-            }
-            finally { _swiped = false; }
+            (go ? from : to).IsVisible = false;
+            from.RenderTransform = null;
+            to.RenderTransform = null;
         });
     }
 

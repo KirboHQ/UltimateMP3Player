@@ -102,6 +102,79 @@ public static class TagDialogs
         return s.Length == 6 && int.TryParse(s, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _) ? "#" + s.ToUpperInvariant() : null;
     }
 
+    // The whole library (newest first, a search to find songs) with the songs that have this tag ticked: a tap on a row ticks
+    // or unticks it, "Done" puts the tag on the ticked songs and takes it off the unticked ones.
+    public static async Task ChooseSongsAsync(TagViewModel tag)
+    {
+        var sheets = App.Host.View?.Sheets;
+        var main = App.Host.Session;
+        if (sheets == null || main == null) return;
+        var choices = main.Library.Snapshot().OrderByDescending(t => t.Added).Select(main.Vm)
+            .Select(t => new SongChoice(t) { IsSelected = t.TagIds.Contains(tag.Id) }).ToList();
+        var had = choices.Where(c => c.IsSelected).ToHashSet();
+        var body = new DockPanel { Margin = new Thickness(20, 4, 20, 18) };
+
+        var top = new StackPanel();
+        DockPanel.SetDock(top, Dock.Top);
+        var title = new DockPanel { Margin = new Thickness(4, 0, 4, 12) };
+        var dot = new Ellipse { Width = 14, Height = 14, Fill = tag.Brush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 10, 0) };
+        DockPanel.SetDock(dot, Dock.Left);
+        title.Children.Add(dot);
+        title.Children.Add(new TextBlock { Text = L.F("Songs with “{0}”", tag.Name), FontSize = 19, FontWeight = FontWeight.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
+        top.Children.Add(title);
+        var search = new TextBox { Theme = Ui.Theme("FilterBox"), Watermark = L.T("Search in this list") };
+        top.Children.Add(search);
+        var countText = new TextBlock { Foreground = B("SubTextBrush"), FontSize = 13.5, Margin = new Thickness(4, 12, 4, 6) };
+        top.Children.Add(countText);
+        body.Children.Add(top);
+
+        var done = new Button { Content = L.T("Done"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var cancel = new Button { Content = L.T("Cancel"), Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var buttons = new Grid { ColumnDefinitions = new ColumnDefinitions("*,12,*"), Margin = new Thickness(0, 14, 0, 0) };
+        DockPanel.SetDock(buttons, Dock.Bottom);
+        buttons.Children.Add(cancel);
+        Grid.SetColumn(done, 2);
+        buttons.Children.Add(done);
+        body.Children.Add(buttons);
+
+        // (a list that builds only the rows on screen: a library can have thousands of songs; a tap on a row ticks it, the
+        // template's Touch.Tap; the rows step in from the edges like a list's being chosen)
+        var list = new ListBox
+        {
+            Theme = Ui.Theme("PlainList"), ItemsSource = choices, MinHeight = 200, Margin = new Thickness(-12, 0, -12, 0),
+            ItemTemplate = Ui.Find<Avalonia.Controls.Templates.IDataTemplate>("SongChoiceTemplate"),
+        };
+        body.Children.Add(list);
+
+        void Count() => countText.Text = L.Count(choices.Count(c => c.IsSelected), "1 song selected", "{0} songs selected");
+        foreach (var c in choices) c.PropertyChanged += (_, _) => Count();
+        Count();
+        var filter = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        filter.Tick += (_, _) =>
+        {
+            filter.Stop();
+            var q = new TrackQuery(search.Text ?? "");
+            list.ItemsSource = q.IsEmpty ? choices : choices.Where(c => q.Matches(c.Track)).ToList();
+        };
+        search.TextChanged += (_, _) =>
+        {
+            filter.Stop();
+            filter.Start();
+        };
+
+        bool ok = false;
+        done.Click += (_, _) => { ok = true; sheets.Close(body); };
+        cancel.Click += (_, _) => sheets.Close(body);
+        await sheets.Show(body, maxHeightShare: 0.92);
+        filter.Stop();
+        if (!ok) return;
+        var off = choices.Where(c => !c.IsSelected && had.Contains(c)).Select(c => c.Track).ToList();
+        var on = choices.Where(c => c.IsSelected && !had.Contains(c)).Select(c => c.Track).ToList();
+        // (the added ones last: their message is the one that stays on screen)
+        if (off.Count > 0) main.SetTag(off, tag, false);
+        if (on.Count > 0) main.SetTag(on, tag, true);
+    }
+
     // Which tags, on which songs; Add false = take them off.
     public static async Task<(List<TrackViewModel> Songs, List<TagViewModel> Tags, bool Add)?> ApplyToSongsAsync(PlaylistViewModel p, List<TrackViewModel> songs)
     {
@@ -137,7 +210,7 @@ public static class TagDialogs
         body.Children.Add(buttons);
 
         var list = new ItemsControl { ItemsSource = choices, ItemTemplate = Ui.Find<Avalonia.Controls.Templates.IDataTemplate>("SongChoiceTemplate") };
-        body.Children.Add(new ScrollViewer { Content = list, MaxHeight = 360 });
+        body.Children.Add(new ScrollViewer { Content = list, MaxHeight = 360, Margin = new Thickness(-12, 0, -12, 0) });
 
         void Update()
         {

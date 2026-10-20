@@ -165,7 +165,9 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 - The same library, playlists, tags, lyrics, equalizer and downloads on Android (and iPhone, in preview)
 - Search and download in one tab: type to find your songs and the music online, paste a link to download it
 - Share a link from YouTube, Spotify, SoundCloud or almost any other app with *Download with Ultimate MP3 Player*
-- Swipe sideways to move between tabs; inside a playlist a swipe to the right goes back
+- **Swipe a song to the right to add it to the queue**, like on Spotify
+- Swipe sideways to move between tabs, as fast as you like; inside a playlist a swipe from the left edge goes back
+- Tap *Add songs* on a tag to tick its songs from your whole library
 - Sign in to the sites inside the app for private playlists; the song on the lock screen and the headphones' buttons
 - *Listen together* in its own tab, with computers and other phones
 

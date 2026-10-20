@@ -153,6 +153,19 @@ public static class Menus
         return menu;
     }
 
+    // A song's row pulled to the right (RowSwipe): its menu's "Add to queue" (after the songs added before it, ahead of the
+    // list's, like Spotify's), where the menu has it (not a suggested song, not a song of the room itself, not without the
+    // room's permission).
+    public static Action? AddToQueue(TrackViewModel t, ITrackList? owner)
+    {
+        var main = t.Main;
+        if (main.Radio.Item(t.Id) != null) return null;
+        if (!main.InRoom) return () => main.Player.Enqueue(t);
+        var room = main.Together;
+        if (room.ItemFor(t) != null && (owner == null || room.IsStandIn(t)) || !room.CanAdd) return null;
+        return () => room.Add(new[] { t });
+    }
+
     // "Save on the device" for the songs not saved (or how far their save is).
     private static void AddSave(SheetMenu menu, IReadOnlyList<TrackViewModel> tracks, Action? then = null)
     {
@@ -627,6 +640,7 @@ public static class Menus
         var main = App.Host.Session!;
         var menu = new SheetMenu { Title = t.Name, Subtitle = t.CountText, Cover = t };
         menu.Add(new(L.T("Open"), GOpen, () => main.OpenTag(t)));
+        menu.Add(new(L.T("Add songs…"), GAdd, () => _ = TagDialogs.ChooseSongsAsync(t)));
         menu.Add(new(L.T("Edit…"), GEdit, () => _ = main.EditTag(t)));
         menu.Add(new(L.T("Export to a .ump file…"), GExport, () => main.ExportPack(tag: t)));
         menu.Line();

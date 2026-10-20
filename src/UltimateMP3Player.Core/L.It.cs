@@ -1956,5 +1956,10 @@ public static partial class L
             "Disattivato: questo telefono prende i brani solo dalla tua libreria, dalla memoria temporanea o dal loro link, e non ne manda a nessuno.",
         ["Tap a song anywhere in the app to add it here (press and hold it for more)."] =
             "Tocca un brano ovunque nell'app per aggiungerlo qui (tienilo premuto per altre azioni).",
+        // 3.9.2: a tag's songs chosen from the library (phone)
+        ["Add songs"] = "Aggiungi brani",
+        ["Add songs…"] = "Aggiungi brani…",
+        ["Songs with “{0}”"] = "Brani con «{0}»",
+        ["Tap “Add songs” to choose them from your library."] = "Tocca «Aggiungi brani» per sceglierli dalla tua libreria.",
     };
 }

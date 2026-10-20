@@ -120,10 +120,13 @@ public sealed class SheetHost : Panel
         {
             card.LayoutUpdated -= First;
             double h = card.Bounds.Height;
+            // A list that builds only the rows on screen (the songs of a tag) built none while the sheet was below the
+            // screen, and moving it doesn't make it look again: a layout pass once it's up does.
             if (!Ui.Animations)
             {
                 shift.Y = 0;
                 scrim.Opacity = 1;
+                card.InvalidateMeasure();
                 return;
             }
             Ui.Tween(this, 280, Ui.CubicOut, t =>
@@ -131,6 +134,7 @@ public sealed class SheetHost : Panel
                 if (layer.Closing) return;
                 shift.Y = h * (1 - t);
                 scrim.Opacity = t;
+                if (t >= 1) card.InvalidateMeasure();
             });
         }
         return layer.Closed.Task;

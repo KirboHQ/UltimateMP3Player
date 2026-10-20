@@ -166,7 +166,10 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 - La stessa libreria, playlist, tag, testi, equalizzatore e download su Android (e iPhone, in anteprima)
 - Cerca e scarica in un'unica scheda: scrivi per trovare i tuoi brani e la musica online, incolla un link per scaricarlo
 - Condividi un link da YouTube, Spotify, SoundCloud o quasi ogni altra app con *Scarica con Ultimate MP3 Player*
-- Scorri di lato per passare da una scheda all'altra; dentro una playlist uno scorrimento verso destra torna indietro
+- **Trascina un brano verso destra per aggiungerlo alla coda**, come su Spotify
+- Scorri di lato per passare da una scheda all'altra, veloce quanto vuoi; dentro una playlist uno scorrimento dal bordo
+  sinistro torna indietro
+- Tocca *Aggiungi brani* su un tag per spuntare i suoi brani da tutta la libreria
 - Accedi ai siti dall'app per le playlist private; il brano sulla schermata di blocco e i tasti delle cuffie
 - *Ascolta insieme* in una scheda tutta sua, con computer e altri telefoni
 

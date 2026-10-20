@@ -36,6 +36,8 @@
 
             <!-- the pages (kept while they're in the history: coming back finds them where they were) -->
             <Panel x:Name="PageHost" Grid.Row="1" ClipToBounds="True"/>
+            <!-- a song's row pulled to the right: the strip it uncovers ("Add to queue", RowSwipe) -->
+            <Canvas x:Name="SwipeLayer" Grid.Row="1" IsHitTestVisible="False" ClipToBounds="True"/>
 
             <!-- toast -->
             <Border x:Name="ToastBox" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20,0,20,12" CornerRadius="14"
