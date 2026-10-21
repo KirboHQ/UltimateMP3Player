@@ -1,8 +1,10 @@
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using UltimateMP3Player.ViewModels;
 
@@ -85,10 +87,14 @@ public static class Rows
         {
             c.PointerPressed -= OnPressed;
             c.PointerMoved -= OnMoved;
+            c.PointerReleased -= OnReleased;
+            c.PointerCaptureLost -= OnCaptureLost;
             if (e.NewValue is true)
             {
                 c.PointerPressed += OnPressed;
                 c.PointerMoved += OnMoved;
+                c.PointerReleased += OnReleased;
+                c.PointerCaptureLost += OnCaptureLost;
             }
         });
     }
@@ -127,15 +133,124 @@ public static class Rows
 
     private static async void OnMoved(object? sender, PointerEventArgs e)
     {
-        if (sender is not Control c || _start is not Point start || !e.GetCurrentPoint(c).Properties.IsLeftButtonPressed) return;
+        if (sender is not Control c) return;
+        if (_pull != null)
+        {
+            _pull.Move(e.GetPosition(null).X - _pullFrom);
+            e.Handled = true;
+            return;
+        }
+        if (_start is not Point start || !e.GetCurrentPoint(c).Properties.IsLeftButtonPressed) return;
         var p = e.GetPosition(null);
         if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
         _start = null;
         if (e.Source is Visual v && v.FindAncestorOfType<Button>(true) != null) return;
         if (c.DataContext is not TrackRow row) return;
+        // Mostly to the right: the row is pulled (into the queue, as on the phones); any other way it's dragged (onto a
+        // playlist or a tag of the sidebar, inside a playlist).
+        if (p.X - start.X > 1.5 * Math.Abs(p.Y - start.Y) && _wheelPull == null && Pull(c, row) is { } pull)
+        {
+            _pull = pull;
+            _pullFrom = p.X;
+            e.Pointer.Capture(c);
+            e.Handled = true;
+            return;
+        }
         var data = new DataObject();
         data.Set(TrackRowFormat, row);
         await DragVisuals.RunAsync(c, e, data, DragDropEffects.Copy | DragDropEffects.Move);
+    }
+
+    // ------------------------------------------------------------------ a song's row pulled to the right (RowSwipe)
+
+    // By the mouse: from where the pull began.
+    private static RowSwipe? _pull;
+    private static double _pullFrom;
+    // By two fingers on the touchpad (a sideways wheel): the wheel has no release, so the row lets go once the fingers stop
+    // for a moment (their momentum included). In wheel steps, not pixels: a step takes the row this share of the way to the
+    // mark (whatever the row's width); the row moves after this much of a step.
+    private const double StepShare = 0.4, StartSteps = 0.15;
+    // On the computer the mark is at this share of the row (wider than the phones', which have it at 0.3).
+    private const double MarkShare = 0.15;
+    private static RowSwipe? _wheelPull;
+    private static Control? _wheelRow;
+    private static double _wheelSteps;
+    private static DispatcherTimer? _wheelEnd;
+
+    private static RowSwipe? Pull(Control c, TrackRow row)
+        => Menus.AddToQueue(row.Track, row.Owner) is { } run && AdornerLayer.GetAdornerLayer(c) is { } layer ? new RowSwipe(c, run, layer, MarkShare) : null;
+
+    private static void OnReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_pull == null || e.InitialPressMouseButton != MouseButton.Left) return;
+        e.Handled = true;
+        EndPull(true);
+        e.Pointer.Capture(null);
+    }
+
+    // (the row's own capture: not one of its children's, given up when the row took it)
+    private static void OnCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (e.Source == sender) EndPull(false);
+    }
+
+    private static void EndPull(bool commit)
+    {
+        var pull = _pull;
+        _pull = null;
+        pull?.End(commit);
+    }
+
+    // The main window's wheel, before the lists scroll: sideways over a song's row, the row is pulled.
+    public static void OnWheel(object? sender, PointerWheelEventArgs e)
+    {
+        // (positive: the content goes right)
+        double steps = e.Delta.X;
+        bool sideways = Math.Abs(e.Delta.X) > Math.Abs(e.Delta.Y);
+        if (_wheelPull != null)
+        {
+            // (scrolling up or down again: let go)
+            if (!sideways)
+            {
+                EndWheel();
+                return;
+            }
+            _wheelSteps += steps;
+            _wheelPull.Move(_wheelSteps * StepShare * _wheelPull.MarkAt);
+            _wheelEnd!.Stop();
+            _wheelEnd.Start();
+            e.Handled = true;
+            return;
+        }
+        if (!sideways || _pull != null || RowAt(e.Source as Visual) is not { DataContext: TrackRow row } c) return;
+        if (c != _wheelRow) _wheelSteps = 0;
+        _wheelRow = c;
+        _wheelSteps += steps;
+        _wheelEnd ??= new DispatcherTimer(TimeSpan.FromMilliseconds(160), DispatcherPriority.Normal, (_, _) => EndWheel());
+        _wheelEnd.Stop();
+        _wheelEnd.Start();
+        // (a little to the right first, as the mouse's: then the row follows from there)
+        if (_wheelSteps < StartSteps || Pull(c, row) is not { } pull) return;
+        _wheelPull = pull;
+        _wheelSteps = 0;
+        e.Handled = true;
+    }
+
+    private static void EndWheel()
+    {
+        _wheelEnd?.Stop();
+        var pull = _wheelPull;
+        _wheelPull = null;
+        _wheelRow = null;
+        _wheelSteps = 0;
+        pull?.End(true);
+    }
+
+    private static Control? RowAt(Visual? v)
+    {
+        for (; v != null; v = v.GetVisualParent())
+            if (v is Control c && GetMenu(c) == "track" && GetDrag(c)) return c;
+        return null;
     }
 }
 

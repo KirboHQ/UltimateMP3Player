@@ -209,16 +209,25 @@ public sealed class PlaylistViewModel : Observable
     // Its songs not saved on the device.
     public int CloudCount => P.Tracks.Count(id => _main.Get(id) is { IsSaved: false });
 
+    // (one pass over the songs: big playlists are read again at every change of the library)
     public string TotalText
     {
         get
         {
-            var secs = P.Tracks.Select(id => _main.Get(id)?.Duration ?? 0).Sum();
+            int count = 0, cloud = 0;
+            double secs = 0;
+            foreach (var id in P.Tracks)
+                if (_main.Get(id) is { } song)
+                {
+                    count++;
+                    secs += song.Duration;
+                    if (!song.IsSaved) cloud++;
+                }
+            if (count == 0) return L.T("No songs");
             var t = TimeSpan.FromSeconds(secs);
             var dur = t.TotalHours >= 1 ? L.F("{0} h {1} min", (int)t.TotalHours, t.Minutes) : L.F("{0} min {1} s", t.Minutes, t.Seconds);
-            if (Count == 0) return L.T("No songs");
-            int cloud = CloudCount;
-            return $"{CountText} · {dur}" + (cloud == 0 ? "" : cloud == Count ? " · " + L.T("all in the cloud") : " · " + L.F("{0} in the cloud", cloud));
+            return $"{L.Count(count, "1 song", "{0} songs")} · {dur}" +
+                   (cloud == 0 ? "" : cloud == count ? " · " + L.T("all in the cloud") : " · " + L.F("{0} in the cloud", cloud));
         }
     }
 
@@ -240,8 +249,9 @@ public sealed class PlaylistViewModel : Observable
         if (img != null) OnChanged(nameof(CustomCover));
     }
 
-    // One cover, or a 2×2 mosaic with four.
-    public List<TrackViewModel> CoverTracks =>
+    // One cover, or a 2×2 mosaic with four (found once per Refresh: four properties ask for them).
+    private List<TrackViewModel>? _coverTracks;
+    public List<TrackViewModel> CoverTracks => _coverTracks ??=
         P.Tracks.Select(id => _main.Get(id)).Where(t => t is { HasCover: true }).Take(4).Select(t => _main.Vm(t!)).ToList();
 
     public bool ShowMosaic => !P.HasCover && !IsFavorites && CoverTracks.Count >= 4;
@@ -258,9 +268,13 @@ public sealed class PlaylistViewModel : Observable
     public List<TagViewModel> Tags => _main.Tags.Where(t => P.Tags.Contains(t.Id)).ToList();
     public bool HasTags => Tags.Count > 0;
 
-    public void Refresh() => OnChanged(nameof(Name), nameof(Count), nameof(CountText), nameof(Subtitle), nameof(TotalText),
-        nameof(HasCustomCover), nameof(CustomCover), nameof(CoverTracks), nameof(ShowMosaic), nameof(FirstCover), nameof(ShowPlaceholder),
-        nameof(Tags), nameof(HasTags), nameof(DeviceGlyph), nameof(HasDevice));
+    public void Refresh()
+    {
+        _coverTracks = null;
+        OnChanged(nameof(Name), nameof(Count), nameof(CountText), nameof(Subtitle), nameof(TotalText),
+            nameof(HasCustomCover), nameof(CustomCover), nameof(CoverTracks), nameof(ShowMosaic), nameof(FirstCover), nameof(ShowPlaceholder),
+            nameof(Tags), nameof(HasTags), nameof(DeviceGlyph), nameof(HasDevice));
+    }
 
     public override string ToString() => Name;
 }

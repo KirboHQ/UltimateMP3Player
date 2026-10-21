@@ -64,16 +64,18 @@ public static class LinkSheet
         linked.Children.Add(audio.Panel);
         linked.Children.Add(Ui.Text(L.T("The same on both devices: what you change here changes on the computer too."), "hint", new Thickness(0, 0, 0, 16)));
         bool filling = false;
-        void ModeChosen()
+        void ModeChosen(RadioButton chosen)
         {
             if (filling || App.Host.Session?.Shared is not { } s) return;
-            int m = Array.FindIndex(music.Buttons, b => b.IsChecked == true), a = Array.FindIndex(audio.Buttons, b => b.IsChecked == true);
+            // (the one just chosen: Avalonia unchecks the one before it only after this event)
+            int Picked(RadioButton[] group) => Array.IndexOf(group, chosen) is >= 0 and var i ? i : Array.FindIndex(group, b => b.IsChecked == true);
+            int m = Picked(music.Buttons), a = Picked(audio.Buttons);
             if (m >= 0 && a >= 0) s.SetModes((LinkMusic)m, (LinkAudio)a);
         }
         foreach (var b in music.Buttons.Concat(audio.Buttons))
             b.IsCheckedChanged += (_, _) =>
             {
-                if (b.IsChecked == true) ModeChosen();
+                if (b.IsChecked == true) ModeChosen(b);
             };
         var disconnect = new Button
         {

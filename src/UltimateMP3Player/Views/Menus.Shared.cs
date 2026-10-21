@@ -55,6 +55,18 @@ public static partial class Menus
         return menu;
     }
 
+    // A song's row pulled to the right (RowSwipe): its menu's "Add to queue", where the menu has it (not a suggested song,
+    // not a song of the room itself, not without the room's permission). The same as the phones' (Mobile/Menus.cs).
+    public static Action? AddToQueue(TrackViewModel t, ITrackList? owner)
+    {
+        var main = t.Main;
+        if (main.Radio.Item(t.Id) != null) return null;
+        if (!main.InRoom) return () => main.Player.Enqueue(t);
+        var room = main.Together;
+        if (room.ItemFor(t) != null && (owner == null || room.IsStandIn(t)) || !room.CanAdd) return null;
+        return () => room.Add(new[] { t });
+    }
+
     private const string SaveGlyph = "", VideoGlyph = "", DeleteGlyph = "", SelectGlyph = "", LibraryGlyph = "";
 
     // "Save on the device" for the songs not saved (or how far their save is).
@@ -261,10 +273,11 @@ public static partial class Menus
     private static IEnumerable<object> TagItems(IReadOnlyList<TrackViewModel> tracks)
     {
         var main = tracks[0].Main;
-        foreach (var tag in main.Tags)
+        var tags = main.MenuTags();
+        foreach (var tag in tags)
         {
             var tg = tag;
-            var item = TagItem(tg, StateOf(tracks, tg));
+            var item = TagItem(tg, StateOf(tracks, tg), main.DeviceGlyph(tg.Id, true));
             item.StaysOpenOnClick = true;
             item.Click += (_, _) =>
             {
@@ -274,23 +287,23 @@ public static partial class Menus
             };
             yield return item;
         }
-        if (main.Tags.Count > 0) yield return new Separator();
+        if (tags.Count > 0) yield return new Separator();
         yield return Item(L.T("New tag…"), "", () => _ = main.NewTag(tracks));
     }
 
     private static string? StateOf(IReadOnlyList<TrackViewModel> tracks, TagViewModel tag)
     {
-        int n = tracks.Count(t => t.TagIds.Contains(tag.Id));
+        int n = tracks.Count(t => t.Main.HasTag(t, tag));
         return n == 0 ? null : n == tracks.Count ? Check : Some;
     }
 
-    // Coloured dot and name.
-    private static MenuItem TagItem(TagViewModel tag, string? glyph)
+    // Coloured dot and name (device: the device's icon to show, if not the tag's own).
+    private static MenuItem TagItem(TagViewModel tag, string? glyph, string? device = null)
     {
         var header = new StackPanel { Orientation = Orientation.Horizontal };
         header.Children.Add(new Ellipse { Width = 9, Height = 9, Fill = tag.Brush, VerticalAlignment = VerticalAlignment.Center });
         header.Children.Add(new TextBlock { Text = Short(tag.Name), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
-        if (tag.DeviceGlyph is { } device) header.Children.Add(DeviceMark(device));
+        if ((device ?? tag.DeviceGlyph) is { } mark) header.Children.Add(DeviceMark(mark));
         var m = new MenuItem { Header = header };
         Ui.SetGlyph(m, glyph);
         return m;
@@ -458,9 +471,10 @@ public static partial class Menus
         return menu;
     }
 
-    private static MenuItem FavoriteItem(TrackViewModel t) => t.IsFavorite
-        ? Item(L.T("Remove from Favorites"), "", () => t.Main.ToggleFavorite(t))
-        : Item(L.T("Add to Favorites"), "", () => t.Main.ToggleFavorite(t));
+    // (connected: the device is asked, whichever music is shown)
+    private static MenuItem FavoriteItem(TrackViewModel t) => t.Main.IsFavorite(t.Id, menu: true)
+        ? Item(L.T("Remove from Favorites"), "", () => t.Main.ToggleFavorite(t, menu: true))
+        : Item(L.T("Add to Favorites"), "", () => t.Main.ToggleFavorite(t, menu: true));
 
     // Edit, cover, folder, link, delete: the same everywhere.
     private static void AddEditItems(ContextMenu menu, TrackViewModel t)
@@ -614,10 +628,10 @@ public static partial class Menus
         var main = tracks[0].Main;
         yield return Item(L.T("New playlist…"), "", () => _ = main.NewPlaylistWith(tracks));
         yield return new Separator();
-        foreach (var p in main.Playlists)
+        foreach (var p in main.MenuPlaylists())
         {
             var pl = p.P;
-            yield return Item(Short(p.Name), p.DeviceGlyph ?? (p.IsFavorites ? "" : ""), () => main.AddToPlaylist(tracks, pl));
+            yield return Item(Short(p.Name), main.DeviceGlyph(p.Id, true) ?? (p.IsFavorites ? "" : ""), () => main.AddToPlaylist(tracks, pl));
         }
     }
 
@@ -654,11 +668,12 @@ public static partial class Menus
         Ui.SetGlyph(sub, "");
         sub.Items.Add(Item(L.T("New playlist…"), "", () => _ = main.NewPlaylist(t)));
         sub.Items.Add(new Separator());
-        foreach (var p in main.Playlists)
+        // (connected: both devices' playlists, whichever music is shown)
+        foreach (var p in main.MenuPlaylists())
         {
             var pl = p.P;
             bool has = main.ProfileOf(pl).Contains(pl, t.Id);
-            sub.Items.Add(Item(Short(p.Name) + (has ? "  ✓" : ""), p.DeviceGlyph ?? (p.IsFavorites ? "" : ""), () => main.AddToPlaylist(t, pl), !has));
+            sub.Items.Add(Item(Short(p.Name) + (has ? "  ✓" : ""), main.DeviceGlyph(p.Id, true) ?? (p.IsFavorites ? "" : ""), () => main.AddToPlaylist(t, pl), !has));
         }
         return sub;
     }

@@ -236,6 +236,21 @@ public sealed class AppHost : Observable
         Window.Topmost = true;
         Window.Topmost = false;
         Session.Player.SetVisible(true);
+        if (!_notesChecked)
+        {
+            _notesChecked = true;
+            _ = ShowWhatsNewAsync();
+        }
+    }
+
+    // The first time the window shows after an update (also one installed from the tray): what changed since the version
+    // last opened.
+    private bool _notesChecked;
+
+    private async Task ShowWhatsNewAsync()
+    {
+        var notes = await ReleaseNotes.SinceLastAsync(Settings, AppInfo.GitHubRepo, AppInfo.Version);
+        if (notes.Count > 0 && !_exiting) Dialogs.WhatsNew(notes, Settings);
     }
 
     // Closing the window: stay in the tray or quit; false cancels.

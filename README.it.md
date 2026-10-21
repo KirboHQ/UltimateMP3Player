@@ -95,6 +95,7 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 
 ### Successivi
 
+- Tira un brano verso destra (col mouse, o con due dita sul touchpad) per aggiungerlo alla coda, come sul telefono
 - Trascina per riordinare, doppio clic per saltare, lascia sul cestino per togliere
 - Coda automatica, *Genera* e *Svuota*, pannello da nascondere di lato
 - Brani simili trovati online dopo un brano, o i brani dell'artista: si scaricano poco prima del loro turno (quanti in
@@ -186,6 +187,8 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 - Salvare un brano mentre sono collegati chiede dove: sul telefono, sul computer o su entrambi; con le due librerie
   insieme lo chiedono anche il cuore e le nuove playlist e i nuovi tag, e un'icona di telefono o computer distingue
   le loro playlist e i loro tag
+- Dal menu di un brano (tasto destro, o tenendo premuto sul telefono) scegli il dispositivo per Preferiti, playlist e
+  tag anche quando è mostrata la musica di un solo dispositivo
 - **Al telefono** nella finestra di esportazione del computer manda playlist e tag al telefono, che prende solo i brani
   che non ha
 - Se la connessione cade torna da sola; entrare in una stanza o aprire il DJ scollega il telefono
@@ -198,7 +201,8 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 - Profili come in Chrome, ognuno con le sue playlist, i preferiti, l'equalizzatore, il colore e l'aspetto chiaro o scuro
 - Italiano e inglese, animazioni e scorrimento fluidi
 - Stato su Discord con brano, artista, copertina e barra di avanzamento
-- Aggiornamenti automatici dalle release di GitHub
+- Aggiornamenti automatici dalle release di GitHub; il primo avvio dopo un aggiornamento mostra le novità di ogni versione
+  dalla tua in poi
 
 ## 📥 Installazione
 

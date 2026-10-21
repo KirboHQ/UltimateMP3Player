@@ -21,6 +21,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         WindowFrame.Apply(this, Root, MinButton, MaxButton, CloseButton);
         SmoothScroll.Attach(this);
+        // Two fingers sideways on the touchpad over a song's row: the row is pulled (into the queue).
+        RowSwipe.Attach(this);
         PhoneLinkViewModel.ShowWindow = PhoneDialogs.Show;
         var s = host.Settings;
         Width = Math.Clamp(s.WindowWidth, MinWidth, SystemParameters.VirtualScreenWidth);

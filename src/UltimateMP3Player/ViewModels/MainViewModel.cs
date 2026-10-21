@@ -254,15 +254,39 @@ public sealed class MainViewModel : Observable
         return list;
     }
 
-    // In the Favorites of a profile shown.
-    public bool IsFavorite(string trackId) => ShownProfiles().Any(p => p.Contains(p.Favorites, trackId));
+    // In the Favorites of a profile shown (menu: of either device while connected, whichever music is shown).
+    public bool IsFavorite(string trackId, bool menu = false) => (menu ? MenuProfiles() : ShownProfiles()).Any(p => p.Contains(p.Favorites, trackId));
 
-    // Which device an action goes to: the one whose music is shown, or (both shown) the ones chosen. Empty: cancelled.
-    private async Task<List<Profile>> TargetsAsync(string title, string text)
+    // A song's menu (right click, long press) while connected offers both devices' playlists, tags and Favorites, also
+    // when only one device's music is shown; the hidden device's get view models only for the menu.
+    private IEnumerable<Profile> MenuProfiles() => Ready is { Mirror: { } m } ? new[] { Profile, m } : ShownProfiles();
+
+    public List<PlaylistViewModel> MenuPlaylists()
+    {
+        if (Ready is not { ShowsBoth: false }) return Playlists.ToList();
+        var shown = Playlists.ToDictionary(p => p.Id);
+        return MenuProfiles().SelectMany(p => p.PlaylistsSnapshot()).OrderBy(p => p.IsFavorites ? 0 : 1)
+            .Select(p => shown.TryGetValue(p.Id, out var vm) && vm.P == p ? vm : new PlaylistViewModel(p, this)).ToList();
+    }
+
+    public List<TagViewModel> MenuTags()
+    {
+        if (Ready is not { ShowsBoth: false }) return Tags.ToList();
+        var shown = Tags.ToDictionary(t => t.Id);
+        return MenuProfiles().SelectMany(p => p.TagsSnapshot())
+            .Select(t => shown.TryGetValue(t.Id, out var vm) && vm.T == t ? vm : new TagViewModel(t, this)).ToList();
+    }
+
+    // The song has the tag (in the tag's own profile: also one of the hidden device's).
+    public bool HasTag(TrackViewModel t, TagViewModel tag) => ProfileOf(tag.T).TagsOf(t.Id).Contains(tag.Id);
+
+    // Which device an action goes to: the one whose music is shown, or (both shown, or always: a song's menu) the ones
+    // chosen. Empty: cancelled.
+    private async Task<List<Profile>> TargetsAsync(string title, string text, bool always = false)
     {
         if (Ready is not { Mirror: { } m } s) return new() { Profile };
-        if (!s.ShowsOwn) return new() { m };
-        if (!s.ShowsOther) return new() { Profile };
+        if (!always && !s.ShowsOwn) return new() { m };
+        if (!always && !s.ShowsOther) return new() { Profile };
         return await ChooseDevices(title, text) switch
         {
             0 => new() { Profile },
@@ -281,7 +305,9 @@ public sealed class MainViewModel : Observable
     public string OtherDevice => OnPhoneApp ? L.T("The computer") : L.T("The phone");
     // The phone's and the computer's icons, next to the names of playlists and tags when both devices' are shown.
     public const string PhoneGlyph = "\uE8EA", ComputerGlyph = "\uE7F4";
-    public string? DeviceGlyph(string id) => Ready is { ShowsBoth: true } s ? (s.IsTheirs(id) != s.OnPhone ? PhoneGlyph : ComputerGlyph) : null;
+    // (menu: also with one device's music shown, the menus list both devices')
+    public string? DeviceGlyph(string id, bool menu = false)
+        => Ready is { } s && (menu || s.ShowsBoth) ? (s.IsTheirs(id) != s.OnPhone ? PhoneGlyph : ComputerGlyph) : null;
 
     public void OnPhoneLinkChanged()
     {
@@ -804,7 +830,8 @@ public sealed class MainViewModel : Observable
     // Connected with both devices' music shown: on which device (or both) it's made.
     public async Task<Playlist?> NewPlaylist(TrackViewModel? with)
     {
-        var where = await TargetsAsync(L.T("New playlist"), L.T("On which device do you want to create it?|f"));
+        // (with a song: from its menu, where both devices are offered)
+        var where = await TargetsAsync(L.T("New playlist"), L.T("On which device do you want to create it?|f"), always: with != null);
         if (where.Count == 0) return null;
         var name = await Dialogs.PromptAsync(L.T("New playlist"), L.T("Playlist name"), NewPlaylistName());
         if (string.IsNullOrWhiteSpace(name)) return null;
@@ -917,15 +944,15 @@ public sealed class MainViewModel : Observable
         if (kept != t) Toast(L.F("“{0}” added to your library, in the cloud: save it on your device whenever you like", kept.Title));
     }
 
-    // Connected: in the Favorites of the device whose music is shown; with both devices' music, asked (where it is already
-    // is said). ask false (the lock screen): this device's.
-    public void ToggleFavorite(TrackViewModel t, bool ask = true)
+    // Connected: in the Favorites of the device whose music is shown; with both devices' music, or from a song's menu (menu),
+    // asked (where it is already is said). ask false (the lock screen): this device's.
+    public void ToggleFavorite(TrackViewModel t, bool ask = true, bool menu = false)
     {
         if (SaveRoomSong(t, Profile.Favorites)) return;
-        if (Ready is { Mirror: { } m } s && (s.ShowsOther || s.IsTheirs(t.Id)))
+        if (Ready is { Mirror: { } m } s && (menu || s.ShowsOther || s.IsTheirs(t.Id)))
         {
-            if (!s.ShowsOwn || !ask) ToggleIn(!s.ShowsOwn ? m : Profile, t);
-            else _ = AskFavorite(t, m);
+            if (ask && (menu || s.ShowsOwn)) _ = AskFavorite(t, m);
+            else ToggleIn(!s.ShowsOwn ? m : Profile, t);
             return;
         }
         ToggleIn(Profile, t);
@@ -1009,7 +1036,7 @@ public sealed class MainViewModel : Observable
     // True once made (false: cancelled).
     public async Task<bool> NewPlaylistWith(IReadOnlyList<TrackViewModel> tracks)
     {
-        var where = await TargetsAsync(L.T("New playlist"), L.T("On which device do you want to create it?|f"));
+        var where = await TargetsAsync(L.T("New playlist"), L.T("On which device do you want to create it?|f"), always: true);
         if (where.Count == 0) return false;
         var name = await Dialogs.PromptAsync(L.T("New playlist"), L.T("Playlist name"), NewPlaylistName());
         if (string.IsNullOrWhiteSpace(name)) return false;
@@ -1024,10 +1051,10 @@ public sealed class MainViewModel : Observable
         Toast(tracks.Count == 1 ? L.F("Removed from “{0}”", name) : L.F("{0} songs removed from “{1}”", tracks.Count, name));
     }
 
-    // Connected: the Favorites of the device whose music is shown, or (both shown) the ones chosen.
+    // Connected (the menus): the Favorites of the devices chosen.
     public async void AddToFavorites(IReadOnlyList<TrackViewModel> tracks)
     {
-        foreach (var profile in await TargetsAsync(L.T("Add to Favorites"), L.F("{0}: on which device?", L.Count(tracks.Count, "1 song", "{0} songs"))))
+        foreach (var profile in await TargetsAsync(L.T("Add to Favorites"), L.F("{0}: on which device?", L.Count(tracks.Count, "1 song", "{0} songs")), always: true))
             AddToPlaylist(tracks, profile.Favorites);
     }
 
@@ -1528,9 +1555,9 @@ public sealed class MainViewModel : Observable
     // Connected with both devices' music shown: on which device (or both) it's made.
     public async Task<TagViewModel?> NewTag(IReadOnlyList<TrackViewModel>? songs = null, PlaylistViewModel? playlist = null)
     {
-        // (a playlist's tag is one of its profile's)
+        // (a playlist's tag is one of its profile's; songs' tags come from their menu, where both devices are offered)
         var where = playlist != null ? new List<Profile> { ProfileOf(playlist.P) }
-            : await TargetsAsync(L.T("New tag"), L.T("On which device do you want to create it?"));
+            : await TargetsAsync(L.T("New tag"), L.T("On which device do you want to create it?"), always: songs != null);
         if (where.Count == 0) return null;
         var r = await Views.TagDialogs.EditAsync(null, Tag.Palette[Tags.Count % Tag.Palette.Length]);
         if (r == null) return null;
@@ -1538,7 +1565,8 @@ public sealed class MainViewModel : Observable
         foreach (var profile in where)
         {
             var tag = profile.CreateTag(r.Value.Name, r.Value.Color);
-            var vm = Tags.FirstOrDefault(t => t.Id == tag.Id);
+            // (a tag of the device whose music is hidden isn't among the shown ones)
+            var vm = Tags.FirstOrDefault(t => t.Id == tag.Id) ?? (songs != null ? new TagViewModel(tag, this) : null);
             if (vm == null) continue;
             first ??= vm;
             if (songs is { Count: > 0 }) SetTag(songs, vm, true);

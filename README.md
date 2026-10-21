@@ -94,6 +94,7 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 
 ### Up next
 
+- Pull a song to the right (with the mouse, or two fingers on the touchpad) to add it to the queue, as on the phone
 - Drag to reorder, double-click to jump, drop on the bin to remove
 - Automatic queue, *Generate* and *Clear*, a panel you can hide to the side
 - Similar songs found online after a song, or the artist's songs: downloaded just before their turn (how many ahead
@@ -183,6 +184,8 @@ Windows, Linux, macOS, Android and iPhone.</sub>
   network or the cable
 - Saving a song while they're connected asks where: on the phone, on the computer or both; with both libraries shown
   the heart and new playlists and tags ask too, and a phone or computer icon tells their playlists and tags apart
+- From a song's menu (right-click, or a long press on the phone) you choose the device for Favorites, playlists and
+  tags even when only one device's music is shown
 - **To the phone** in the computer's export window sends playlists and tags to the phone, which takes only the songs it
   doesn't have
 - A dropped connection comes back by itself; joining a room or opening the DJ disconnects the phone
@@ -195,7 +198,7 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 - Profiles like in Chrome, each with its own playlists, favorites, equalizer, colour and light or dark look
 - English and Italian, smooth animations and scrolling
 - Discord Rich Presence with song, artist, cover and progress bar
-- Automatic updates from the GitHub releases
+- Automatic updates from the GitHub releases; the first start after one shows what's new in every version since yours
 
 ## 📥 Install
 

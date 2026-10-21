@@ -22,9 +22,9 @@
     <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
     <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
     <!-- Keep equal to the other projects; the build number as on Android (3.7.2 → 30702). -->
-    <Version>3.9.3</Version>
-    <ApplicationDisplayVersion>3.9.3</ApplicationDisplayVersion>
-    <ApplicationVersion>30903</ApplicationVersion>
+    <Version>4.0.0</Version>
+    <ApplicationDisplayVersion>4.0.0</ApplicationDisplayVersion>
+    <ApplicationVersion>40000</ApplicationVersion>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -99,6 +99,8 @@
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\CoverSheen.cs" Link="Shared\Avalonia\CoverSheen.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\CoverGlow.cs" Link="Shared\Avalonia\CoverGlow.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\EqCurve.cs" Link="Shared\Avalonia\EqCurve.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\RowSwipe.cs" Link="Shared\Avalonia\RowSwipe.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\WhatsNew.cs" Link="Shared\Avalonia\WhatsNew.cs" />
     <AvaloniaXaml Include="..\UltimateMP3Player.Avalonia\Theme.axaml" Link="Theme.axaml" />
   </ItemGroup>
 

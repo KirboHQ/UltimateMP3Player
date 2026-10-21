@@ -183,6 +183,30 @@ public static partial class Dialogs
         return win.ShowDialog() == true;
     }
 
+    // "What's new" at the first start after an update (Views/WhatsNew.cs).
+    public static Task WhatsNewAsync(IReadOnlyList<ReleaseNote> notes, AppSettings settings)
+    {
+        WhatsNew(notes, settings);
+        return Task.CompletedTask;
+    }
+
+    // "Don't show again" under the notes turns AppSettings.ShowWhatsNew off.
+    public static void WhatsNew(IReadOnlyList<ReleaseNote> notes, AppSettings settings)
+    {
+        var scroll = new ScrollViewer
+        {
+            Content = new Border { Padding = new Thickness(0, 0, 12, 0), Child = Views.WhatsNew.Build(notes, false) },
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, MaxHeight = 560,
+        };
+        var hide = new CheckBox { Content = L.T("Don't show again"), IsChecked = !settings.ShowWhatsNew, Margin = new Thickness(0, 16, 0, 0) };
+        var all = new StackPanel { Children = { scroll, hide } };
+        var close = Button(L.T("Close"), "PrimaryButton", isDefault: true, isCancel: true);
+        var win = Frame(L.T("What's new"), all, 540, close);
+        win.ShowDialog();
+        settings.ShowWhatsNew = hide.IsChecked != true;
+        settings.Save();
+    }
+
     public static (string Title, string Artist, string Album, string Bpm)? EditTrack(Track t)
     {
         var bpm = t.Bpm?.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) ?? "";

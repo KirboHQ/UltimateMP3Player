@@ -822,12 +822,20 @@
                                     <TextBlock Text="{local:T 'Update now'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
+                            <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Command="{Binding WhatsNewCommand}"
+                                    Content="{local:T 'Release notes'}" Margin="0,0,10,0"/>
                             <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
                                 <TextBlock Text="{Binding Version}"/>
                                 <TextBlock Text="{Binding Host.Updates.Status}" Style="{StaticResource Hint}"
                                            Visibility="{Binding Host.Updates.Status, Converter={StaticResource NotNullVis}}"/>
                             </StackPanel>
                         </DockPanel>
+                        <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding ShowWhatsNew}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Show the release notes after an update'}"/>
+                                <TextBlock Text="{local:T 'The changes of every version since the last one you opened.'}" Style="{StaticResource Hint}"/>
+                            </StackPanel>
+                        </CheckBox>
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding AutoUpdateEngines}">
                             <StackPanel>
                                 <TextBlock Text="{local:T 'Update download engines'}"/>

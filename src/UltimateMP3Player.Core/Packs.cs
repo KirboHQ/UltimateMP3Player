@@ -557,6 +557,8 @@ public sealed class LibraryIndex
     private readonly Library _lib;
     private Dictionary<long, List<Track>>? _bySize;
     private readonly Dictionary<string, List<(Track T, SongIdentity Id)>> _byTitle = new();
+    // Each song's title and artist as indexed (renamed since: indexed again).
+    private readonly Dictionary<string, (string Title, string? Artist, SongIdentity Id)> _indexed = new();
 
     public LibraryIndex(Library lib)
     {
@@ -564,16 +566,22 @@ public sealed class LibraryIndex
         foreach (var t in lib.Snapshot()) AddTitles(t);
     }
 
-    // A song added meanwhile (a pack can hold the same song twice).
+    // A song added meanwhile (a pack can hold the same song twice), or renamed (the linked device's songs stay matched).
     public void Add(Track t)
     {
+        bool known = _indexed.TryGetValue(t.Id, out var was);
+        if (known && was.Title == t.Title && was.Artist == t.Artist) return;
+        if (known)
+            foreach (var title in was.Id.Titles)
+                if (_byTitle.TryGetValue(title, out var list)) list.RemoveAll(e => e.T.Id == t.Id);
         AddTitles(t);
-        if (_bySize != null && SizeOf(t.Path) is > 0 and var size) Bucket(_bySize, size).Add(t);
+        if (!known && _bySize != null && SizeOf(t.Path) is > 0 and var size) Bucket(_bySize, size).Add(t);
     }
 
     private void AddTitles(Track t)
     {
         var id = SongMeta.Identity(t.Title, t.Artist);
+        _indexed[t.Id] = (t.Title, t.Artist, id);
         if (id.Artists.Count == 0) return;
         foreach (var title in id.Titles) Bucket(_byTitle, title).Add((t, id));
     }
@@ -613,12 +621,17 @@ public sealed class LibraryIndex
                 }
         }
         if (t.Duration <= 0) return null;
-        var wanted = SongMeta.Identity(t.Title, t.Artist);
-        if (wanted.Artists.Count == 0) return null;
+        return FindSimilar(SongMeta.Identity(t.Title, t.Artist), t.Duration);
+    }
+
+    // The same song (title, artist, ±4 s, like Library.FindSimilar).
+    public Track? FindSimilar(SongIdentity wanted, double duration)
+    {
+        if (duration <= 0 || wanted.Artists.Count == 0) return null;
         foreach (var title in wanted.Titles)
             if (_byTitle.TryGetValue(title, out var candidates))
                 foreach (var (c, id) in candidates)
-                    if (Math.Abs(c.Duration - t.Duration) <= 4 && SongMeta.SameSong(wanted, id) && _lib.Get(c.Id) != null) return c;
+                    if (Math.Abs(c.Duration - duration) <= 4 && SongMeta.SameSong(wanted, id) && _lib.Get(c.Id) != null) return c;
         return null;
     }
 }

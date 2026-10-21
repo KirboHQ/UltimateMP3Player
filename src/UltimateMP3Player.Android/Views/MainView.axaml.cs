@@ -286,7 +286,15 @@ public partial class MainView : UserControl
         _ = _host.EnsureEnginesAsync();
         _ = AskNotifications();
         _ = OfferRightPackage();
+        _ = ShowWhatsNew();
         DispatcherTimer.RunOnce(Sheets.Warm, TimeSpan.FromSeconds(2));
+    }
+
+    // The first start after an update: what changed since the version last opened.
+    private async Task ShowWhatsNew()
+    {
+        var notes = await ReleaseNotes.SinceLastAsync(_host.Settings, Services.AppInfo.GitHubRepo, Services.AppInfo.Version);
+        if (notes.Count > 0) await Dialogs.WhatsNewAsync(notes, _host.Settings);
     }
 
     // The phones' package (ARM) on an x86 device, an emulator: everything runs through a translator and downloads fail.

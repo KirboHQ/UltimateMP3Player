@@ -230,6 +230,7 @@ public sealed class SettingsViewModel : Observable
         OpenDataDirCommand = new RelayCommand(() => MainViewModel.OpenFolder(AppPaths.DataDir));
         UpdateEnginesCommand = new RelayCommand(() => _ = UpdateEngines(), () => !_updating);
         CheckAppUpdateCommand = new RelayCommand(() => _ = _main.Host.CheckAppUpdateNow(), () => !Host.Updates.IsBusy);
+        WhatsNewCommand = new RelayCommand(() => _ = OpenWhatsNew());
         ManageProfilesCommand = new RelayCommand(() => _main.Host.SwitchProfile());
         ImportFilesCommand = new RelayCommand(() => _ = _main.ImportDialog(false));
         ImportFolderCommand = new RelayCommand(() => _ = _main.ImportDialog(true));
@@ -257,6 +258,7 @@ public sealed class SettingsViewModel : Observable
     public ICommand OpenDataDirCommand { get; }
     public ICommand UpdateEnginesCommand { get; }
     public ICommand CheckAppUpdateCommand { get; }
+    public ICommand WhatsNewCommand { get; }
     public ICommand ManageProfilesCommand { get; }
     public ICommand ImportFilesCommand { get; }
     public ICommand ImportFolderCommand { get; }
@@ -729,6 +731,26 @@ public sealed class SettingsViewModel : Observable
     {
         get => S.AutoUpdateApp;
         set { S.AutoUpdateApp = value; Save(); OnChanged(); }
+    }
+
+    // The notes of this version, shown at the first start after the update.
+    public bool ShowWhatsNew
+    {
+        get => S.ShowWhatsNew;
+        set { S.ShowWhatsNew = value; Save(); OnChanged(); }
+    }
+
+    // This version's notes again (the dialog's "Don't show again" can change ShowWhatsNew).
+    private async Task OpenWhatsNew()
+    {
+        var notes = await ReleaseNotes.ForAsync(AppInfo.GitHubRepo, AppInfo.Version);
+        if (notes.Count == 0)
+        {
+            _main.Toast(L.T("Couldn't get this version's notes: check your connection."));
+            return;
+        }
+        await Dialogs.WhatsNewAsync(notes, S);
+        OnChanged(nameof(ShowWhatsNew));
     }
 
     public bool AutoUpdateEngines

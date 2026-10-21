@@ -48,6 +48,8 @@ public partial class MainWindow : Window
         _dropHide.Tick += (_, _) => HidePackDrop();
         AddHandler(DragDrop.DropEvent, OnPackDrop, RoutingStrategies.Tunnel);
         AddHandler(DragDrop.DropEvent, OnDrop, RoutingStrategies.Bubble);
+        // Two fingers sideways on the touchpad over a song's row: the row is pulled (into the queue).
+        AddHandler(PointerWheelChangedEvent, Rows.OnWheel, RoutingStrategies.Tunnel);
         Opened += (_, _) => _host.OnTrackChanged();
 
         SearchBox.GotFocus += (_, _) => SearchFocus();

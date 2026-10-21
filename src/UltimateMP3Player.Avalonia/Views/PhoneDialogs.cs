@@ -62,16 +62,18 @@ public static class PhoneDialogs
         modes.Children.Add(same);
         body.Children.Add(modes);
         bool filling = false;
-        void ModeChosen()
+        void ModeChosen(RadioButton chosen)
         {
             if (filling || main.Shared is not { } s) return;
-            int m = Array.FindIndex(music.Buttons, b => b.IsChecked == true), a = Array.FindIndex(audio.Buttons, b => b.IsChecked == true);
+            // (the one just chosen: Avalonia unchecks the one before it only after this event)
+            int Picked(RadioButton[] group) => Array.IndexOf(group, chosen) is >= 0 and var i ? i : Array.FindIndex(group, b => b.IsChecked == true);
+            int m = Picked(music.Buttons), a = Picked(audio.Buttons);
             if (m >= 0 && a >= 0) s.SetModes((LinkMusic)m, (LinkAudio)a);
         }
         foreach (var b in music.Buttons.Concat(audio.Buttons))
             b.IsCheckedChanged += (_, _) =>
             {
-                if (b.IsChecked == true) ModeChosen();
+                if (b.IsChecked == true) ModeChosen(b);
             };
 
         var hint = Ui.Text(L.T("On the phone open Settings › Connect to computer: it shows up here. Each one then shows the other's music, the phone controls the music of this computer and receives music with “To the phone” in the export window."), "hint");

@@ -898,7 +898,8 @@ public sealed class LinkViewModel : Observable
         _video = QualityChoices.Pick(VideoChoices, main.Host.Settings.VideoMaxRes);
 
         PlaylistChoices = new List<Choice> { new(L.T("None (only in “All songs”)"), NoPlaylist), new(L.T("New playlist…"), NewPlaylist) };
-        PlaylistChoices.AddRange(main.Playlists.Where(p => !p.IsOther).Select(p => new Choice(p.Name, p.Id, p.IsFavorites ? "♥" : null)));
+        // (this device's, also while only the other device's music is shown: the songs are downloaded here)
+        PlaylistChoices.AddRange(main.MenuPlaylists().Where(p => !p.IsOther).Select(p => new Choice(p.Name, p.Id, p.IsFavorites ? "♥" : null)));
         Title = System.Text.RegularExpressions.Regex.Replace(r.Title, @"^(Album|EP|Single|Playlist)\s+-\s+", "");
         // The same playlist downloaded again (the songs added since): into the one already made from it, not a copy.
         _playlist = !IsCollection ? PlaylistChoices[0]

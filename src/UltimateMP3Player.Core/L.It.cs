@@ -2001,5 +2001,14 @@ public static partial class L
         ["{0} songs from {1} were added to your library"] = "{0} brani di {1} sono stati aggiunti alla tua libreria",
         ["Couldn't keep “{0}”: {1} didn't send it"] = "Impossibile tenere «{0}»: {1} non l'ha inviato",
         ["Couldn't get the music of {0}: {1}"] = "Impossibile ricevere la musica di {0}: {1}",
+        // 4.0.0: what's new after an update
+        ["What's new"] = "Novità",
+        ["{0} new versions: open one to see what changed."] = "{0} nuove versioni: aprine una per vedere cosa è cambiato.",
+        ["Small fixes and improvements."] = "Piccole correzioni e miglioramenti.",
+        ["Don't show again"] = "Non mostrare più",
+        ["Release notes"] = "Novità",
+        ["Show the release notes after an update"] = "Mostra le novità dopo un aggiornamento",
+        ["The changes of every version since the last one you opened."] = "Le modifiche di ogni versione dall'ultima che hai aperto.",
+        ["Couldn't get this version's notes: check your connection."] = "Impossibile scaricare le novità di questa versione: controlla la connessione.",
     };
 }

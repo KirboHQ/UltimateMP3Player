@@ -71,7 +71,7 @@ public partial class Templates : ResourceDictionary
 
     private void Row_MouseDown(object sender, MouseButtonEventArgs e) => _dragStart = e.GetPosition(null);
 
-    // Rows can be dropped on a sidebar playlist or moved inside one.
+    // Rows can be dropped on a sidebar playlist or moved inside one; pulled to the right, they go into the queue (RowSwipe).
     private void Row_MouseMove(object sender, MouseEventArgs e)
     {
         if (e.LeftButton != MouseButtonState.Pressed || _dragStart is not Point start) return;
@@ -80,6 +80,7 @@ public partial class Templates : ResourceDictionary
         if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
         _dragStart = null;
         if (sender is not FrameworkElement fe || fe.DataContext is not TrackRow row) return;
+        if (p.X - start.X > 1.5 * Math.Abs(p.Y - start.Y) && RowSwipe.StartDrag(fe, p)) return;
         DragVisuals.Run(fe, new DataObject(typeof(TrackRow), row), DragDropEffects.Copy | DragDropEffects.Move);
     }
 }

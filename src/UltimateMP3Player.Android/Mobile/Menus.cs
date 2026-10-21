@@ -179,9 +179,10 @@ public static class Menus
             }));
     }
 
-    private static SheetEntry FavoriteItem(TrackViewModel t) => t.IsFavorite
-        ? new SheetEntry(L.T("Remove from Favorites"), GHeartFill, () => t.Main.ToggleFavorite(t))
-        : new SheetEntry(L.T("Add to Favorites"), GHeart, () => t.Main.ToggleFavorite(t));
+    // (connected: the device is asked, whichever music is shown)
+    private static SheetEntry FavoriteItem(TrackViewModel t) => t.Main.IsFavorite(t.Id, menu: true)
+        ? new SheetEntry(L.T("Remove from Favorites"), GHeartFill, () => t.Main.ToggleFavorite(t, menu: true))
+        : new SheetEntry(L.T("Add to Favorites"), GHeart, () => t.Main.ToggleFavorite(t, menu: true));
 
     // Edit, cover, link, delete: the same everywhere.
     private static void AddEditItems(SheetMenu menu, TrackViewModel t)
@@ -204,13 +205,16 @@ public static class Menus
         var menu = new SheetMenu { Title = L.T("Add to playlist"), Subtitle = t.Title, Cover = t };
         menu.Add(new(L.T("New playlist…"), GAdd, () => _ = main.NewPlaylist(t)));
         menu.Line();
-        foreach (var p in main.Playlists)
+        // (connected: both devices' playlists, whichever music is shown)
+        foreach (var p in main.MenuPlaylists())
         {
             var pl = p.P;
             bool has = main.ProfileOf(pl).Contains(pl, t.Id);
-            menu.Add(new SheetEntry(Short(p.Name), p.DeviceGlyph ?? (p.IsFavorites ? GHeartFill : GList), () => main.AddToPlaylist(t, pl), !has)
+            menu.Add(new SheetEntry(Short(p.Name), main.DeviceGlyph(p.Id, true) ?? (p.IsFavorites ? GHeartFill : GList), () => main.AddToPlaylist(t, pl), !has)
             {
                 Checked = has ? () => true : null,
+                // (the tick takes the icon's place: which device's list it is goes after the name)
+                Mark = has ? main.DeviceGlyph(p.Id, true) : null,
             });
         }
         return menu;
@@ -489,10 +493,10 @@ public static class Menus
         var menu = new SheetMenu { Title = L.T("Add to playlist"), Subtitle = L.Count(tracks.Count, "1 song", "{0} songs"), Cover = tracks[0] };
         menu.Add(new(L.T("New playlist…"), GAdd, async () => { if (await main.NewPlaylistWith(tracks)) sel?.Stop(); }));
         menu.Line();
-        foreach (var p in main.Playlists)
+        foreach (var p in main.MenuPlaylists())
         {
             var pl = p.P;
-            menu.Add(new(Short(p.Name), p.DeviceGlyph ?? (p.IsFavorites ? GHeartFill : GList), () => { main.AddToPlaylist(tracks, pl); sel?.Stop(); }));
+            menu.Add(new(Short(p.Name), main.DeviceGlyph(p.Id, true) ?? (p.IsFavorites ? GHeartFill : GList), () => { main.AddToPlaylist(tracks, pl); sel?.Stop(); }));
         }
         return menu;
     }
@@ -504,14 +508,15 @@ public static class Menus
     {
         var main = tracks[0].Main;
         var menu = new SheetMenu { Title = L.T("Tags"), Subtitle = tracks.Count == 1 ? tracks[0].Title : L.Count(tracks.Count, "1 song", "{0} songs"), Cover = tracks[0] };
-        foreach (var tag in main.Tags)
+        // (connected: both devices' tags, whichever music is shown)
+        foreach (var tag in main.MenuTags())
         {
             var tg = tag;
             menu.Add(new SheetEntry
             {
-                Text = Short(tg.Name), Dot = tg.Brush, Mark = tg.DeviceGlyph,
-                Checked = () => tracks.All(t => t.TagIds.Contains(tg.Id)),
-                Click = () => main.SetTag(tracks, tg, !tracks.All(t => t.TagIds.Contains(tg.Id))),
+                Text = Short(tg.Name), Dot = tg.Brush, Mark = main.DeviceGlyph(tg.Id, true),
+                Checked = () => tracks.All(t => main.HasTag(t, tg)),
+                Click = () => main.SetTag(tracks, tg, !tracks.All(t => main.HasTag(t, tg))),
             });
         }
         menu.Line();

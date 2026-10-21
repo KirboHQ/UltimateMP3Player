@@ -192,6 +192,25 @@ public static partial class Dialogs
         return accepted;
     }
 
+    // "What's new" at the first start after an update (Avalonia's Views/WhatsNew.cs).
+    // "Don't show again" under the notes turns AppSettings.ShowWhatsNew off.
+    public static async Task WhatsNewAsync(IReadOnlyList<ReleaseNote> notes, AppSettings settings)
+    {
+        var sheets = Sheets;
+        if (sheets == null) return;
+        var body = new StackPanel { Margin = new Thickness(24, 4, 24, 18) };
+        body.Children.Add(new TextBlock { Text = L.T("What's new"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 12) });
+        body.Children.Add(Views.WhatsNew.Build(notes, true));
+        var hide = new CheckBox { Content = new TextBlock { Text = L.T("Don't show again"), TextWrapping = TextWrapping.Wrap, FontSize = 15 }, IsChecked = !settings.ShowWhatsNew, Margin = new Thickness(0, 16, 0, 0) };
+        body.Children.Add(hide);
+        var close = new Button { Content = L.T("Close"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 20, 0, 0) };
+        close.Click += (_, _) => sheets.Close(body);
+        body.Children.Add(close);
+        await sheets.Show(new ScrollViewer { Content = body }, maxHeightShare: 0.9);
+        settings.ShowWhatsNew = hide.IsChecked != true;
+        settings.Save();
+    }
+
     // ------------------------------------------------------------------ files
 
     public static readonly string[] ImageExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".jfif", ".avif" };

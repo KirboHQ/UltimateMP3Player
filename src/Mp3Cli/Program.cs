@@ -75,6 +75,24 @@ switch (args[0])
             return 0;
         }
 
+    case "notes":
+        {
+            // mp3cli notes [owner/repo]: the parser on a sample, then the real releases' notes as the "What's new" reads them.
+            var sample = ReleaseNotes.Parse("## 📱 Title\n**Fixes**\n- **Bold**: a *b* [link](http://x)\n  wrapped\n> quote\n1. one\n\n**Full Changelog**: x");
+            bool ok = sample.Count == 5 && sample[0] is { Kind: NoteKind.Heading } && sample[1].Runs[0].Text == "Fixes" &&
+                      sample[2] is { Kind: NoteKind.Bullet } b && b.Runs[0] is { Text: "Bold", Bold: true } &&
+                      string.Concat(b.Runs.Select(r => r.Text)) == "Bold: a b link wrapped" && b.Runs[2].Italic &&
+                      sample[3].Kind == NoteKind.Quote && sample[4].Runs[0].Text == "1. one";
+            Console.WriteLine("parser: " + (ok ? "ok" : "SBAGLIATO"));
+            foreach (var n in (await ReleaseNotes.FetchAsync(args.Length > 1 ? args[1] : "KirboHQ/UltimateMP3Player")).Take(3))
+            {
+                Console.WriteLine($"===== {n.VersionText} | {n.Title}");
+                foreach (var block in n.Blocks)
+                    Console.WriteLine($"  {block.Kind,-8} " + string.Concat(block.Runs.Select(r => r.Bold ? $"[{r.Text}]" : r.Italic ? $"/{r.Text}/" : r.Text)));
+            }
+            return ok ? 0 : 1;
+        }
+
     case "shuffle":
         {
             int n = int.Parse(args[1]), rounds = int.Parse(args[2]);

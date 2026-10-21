@@ -1,5 +1,6 @@
 using System.IO;
 using System.IO.Compression;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
@@ -48,6 +49,10 @@ public sealed class SharedLibrary
     // Songs both have: their id → this device's, and back.
     private readonly Dictionary<string, string> _dupe = new();
     private readonly Dictionary<string, string> _dupeBack = new();
+    // For the songs both have without the same link: this device's by title (built when first needed, kept up to date),
+    // the other device's as compared (worked out once per song: every rebuild goes through all of them).
+    private LibraryIndex? _similar;
+    private readonly ConditionalWeakTable<LinkTrack, SongIdentity> _theirIds = new();
     private HashSet<string> _mirrorLists = new();
     private readonly Dictionary<string, int> _listCovers = new();
 
@@ -156,11 +161,15 @@ public sealed class SharedLibrary
     // The key a song kept here from the other device gets (its id there).
     private string TheirKey(string their) => OnPhone ? LinkTrack.ComputerKey(their) : LinkTrack.PhoneKey(their);
 
-    // This device's song for one of the other device's (it came from here, or both have it).
+    // This device's song for one of the other device's (it came from here, or both have it: the same link, or the same
+    // title, artist and length, as for downloads and packs: songs added from files have no link).
     public Track? FindLocal(LinkTrack lt)
     {
         if (lt.Yours is { } y && _main.Library.Get(y) is { } mine) return mine;
-        return _main.Library.FindByKeys(lt.Keys.Append(TheirKey(lt.Id)));
+        if (_main.Library.FindByKeys(lt.Keys.Append(TheirKey(lt.Id))) is { } byKey) return byKey;
+        if (lt.Duration <= 0) return null;
+        _similar ??= new LibraryIndex(_main.Library);
+        return _similar.FindSimilar(_theirIds.GetValue(lt, x => SongMeta.Identity(x.Title, x.Artist)), lt.Duration);
     }
 
     // The id a song of the other device has here (its own row, or this device's song when both have it); null when unknown.
@@ -407,6 +416,7 @@ public sealed class SharedLibrary
         if (_disposed) return;
         _ownTracks.Add(t.Id);
         _ownGone.Remove(t.Id);
+        _similar?.Add(t);
         Schedule();
         // (a song kept here may be one of the other device's: shown once from now on)
         _rebuild.Stop();
@@ -719,8 +729,10 @@ public sealed class SharedLibrary
             async Task Fetch()
             {
                 if (await FetchFile("p:" + Strip(list.Id), path, new Msg { T = "plc", Id = Strip(list.Id) }) == null || _disposed || Mirror != m) return;
+                // (as it is now: songs added meanwhile stay; deleted meanwhile, nothing to show)
+                if (m.GetPlaylist(list.Id) is not { } now) return;
                 _applying = true;
-                try { m.PutPlaylist(list.Clone()); }
+                try { m.PutPlaylist(now.Clone()); }
                 finally { _applying = false; }
                 _main.RefreshList(list.Id);
             }
