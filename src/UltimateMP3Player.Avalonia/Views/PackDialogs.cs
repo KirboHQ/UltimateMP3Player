@@ -35,9 +35,9 @@ public static class PackDialogs
     // many: several playlists chosen together (selected on Home).
     public static void Export(MainViewModel main, PlaylistViewModel? playlist = null, TagViewModel? tag = null, IReadOnlyCollection<PlaylistViewModel>? many = null)
     {
-        var lists = main.Playlists.Select(p => new ExportList(p.P, p.Name, p.CountText,
+        var lists = main.Playlists.Where(p => !p.IsOther).Select(p => new ExportList(p.P, p.Name, p.CountText,
             () => new ContentControl { Content = p, ContentTemplate = Ui.Find<IDataTemplate>("PlaylistCover") })).ToList();
-        var tags = main.Tags.Select(t => new ExportTag(t.T, t.Brush, t.Count)).ToList();
+        var tags = main.Tags.Where(t => !main.IsTheirs(t.Id)).Select(t => new ExportTag(t.T, t.Brush, t.Count)).ToList();
         var chosen = (many ?? Array.Empty<PlaylistViewModel>()).Select(p => p.P).ToList();
         if (playlist != null) chosen.Add(playlist.P);
         BuildExport(main.Library, main.Profile, lists, tags, chosen, tag?.T, main.PhoneLinked ? main.PhoneLink.SendPack : null).ShowDialog();

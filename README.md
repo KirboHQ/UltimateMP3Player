@@ -17,7 +17,7 @@
   <img alt="Linux" src="https://img.shields.io/badge/Linux-x64%20%7C%20arm64-FCC624?style=flat-square&logo=linux&logoColor=black">
   <img alt="macOS 12 or later" src="https://img.shields.io/badge/macOS-12%2B-000000?style=flat-square&logo=apple&logoColor=white">
   <img alt="Android 8 or later" src="https://img.shields.io/badge/Android-8%2B-3DDC84?style=flat-square&logo=android&logoColor=white">
-  <img alt="iOS 15 or later, preview" src="https://img.shields.io/badge/iOS-15%2B%20preview-000000?style=flat-square&logo=apple&logoColor=white">
+  <img alt="iOS 15 or later" src="https://img.shields.io/badge/iOS-15%2B-000000?style=flat-square&logo=apple&logoColor=white">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white">
   <a href="LICENSE"><img alt="License GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-6E7781?style=flat-square"></a>
 </p>
@@ -162,7 +162,7 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 
 <img src="assets/readme/screens/phone.webp" width="100%" alt="On Android: the library, synced lyrics, online search and the download card">
 
-- The same library, playlists, tags, lyrics, equalizer and downloads on Android (and iPhone, in preview)
+- The same library, playlists, tags, lyrics, equalizer and downloads on Android and iPhone
 - Search and download in one tab: type to find your songs and the music online, paste a link to download it
 - Share a link from YouTube, Spotify, SoundCloud or almost any other app with *Download with Ultimate MP3 Player*
 - **Swipe a song to the right to add it to the queue**, like on Spotify
@@ -177,10 +177,12 @@ Windows, Linux, macOS, Android and iPhone.</sub>
   same Wi-Fi the phone allows it once; with the cable there's nothing to allow (Android: turn on USB tethering;
   iPhone: Apple Devices or iTunes on Windows, `usbmuxd` on Linux, nothing to add on a Mac).
 - The phone drives the computer's player: play, skip, seek, the queue and the computer's volume, also from the lock
-  screen. The music plays on the computer and the phone stays silent.
-- The phone's songs play on the computer too, sent through the network or the cable when the computer doesn't have
-  them
-- Saving a song while they're connected asks where: on the phone, on the computer or both
+  screen. The music plays on the computer, on the phone or on both, in sync.
+- Each one shows the other's music: start a playlist of the phone or of the computer from either of them, or show
+  only one device's music (the profile at the bottom left follows). Songs a device doesn't have come through the
+  network or the cable
+- Saving a song while they're connected asks where: on the phone, on the computer or both; with both libraries shown
+  the heart and new playlists and tags ask too, and a phone or computer icon tells their playlists and tags apart
 - **To the phone** in the computer's export window sends playlists and tags to the phone, which takes only the songs it
   doesn't have
 - A dropped connection comes back by itself; joining a room or opening the DJ disconnects the phone
@@ -189,7 +191,7 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 
 <img src="assets/readme/screens/looks.webp" width="100%" alt="Light or dark and eight colours, chosen by each profile">
 
-- The same app on Windows, Linux, macOS and Android (and iPhone, in preview)
+- The same app on Windows, Linux, macOS, Android and iPhone
 - Profiles like in Chrome, each with its own playlists, favorites, equalizer, colour and light or dark look
 - English and Italian, smooth animations and scrolling
 - Discord Rich Presence with song, artist, cover and progress bar
@@ -253,7 +255,7 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 > anyway**. The music stays in the app's own folder (*Android › data*, visible from a computer); if you uninstall the
 > app, Android asks whether to keep it. To move your music to another phone or computer, use a `.ump` pack.
 
-**iPhone and iPad** (iOS 15 or later; a preview; not on the App Store)
+**iPhone and iPad** (iOS 15 or later; not on the App Store)
 
 1. Install **SideStore** from your Windows PC (or Mac) following the official guide at [sidestore.io](https://sidestore.io):
    it installs apps signed with your free Apple ID, without a Mac or a jailbreak. Then turn on **Developer Mode**

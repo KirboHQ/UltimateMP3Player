@@ -200,6 +200,7 @@ public sealed class Msg
     public List<LinkRow>? Rows { get; set; }
     public PackManifest? Pack { get; set; }
     public PhoneAd? Ad { get; set; }
+    public LinkLib? Lib { get; set; }
 
     public static readonly JsonSerializerOptions Json = new()
     {

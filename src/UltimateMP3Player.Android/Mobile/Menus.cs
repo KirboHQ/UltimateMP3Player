@@ -50,6 +50,8 @@ public class SheetEntry
     // Another sheet with more choices (the computer's submenus).
     public Func<SheetMenu>? Sub { get; init; }
     public IBrush? Dot { get; init; }
+    // A small icon after the text (the phone's or the computer's, Connect phone with both devices' music shown).
+    public string? Mark { get; init; }
     // A line of information, not a button.
     public bool Info { get; init; }
 }
@@ -115,18 +117,6 @@ public static class Menus
         // A suggested song that isn't in the library.
         if (main.Radio.Item(t.Id) is { } suggested) return ForRadioItem(suggested, main, null);
         var player = main.Player;
-        // A song of the computer this phone drives (Connect to computer): what the computer can do with it, and keeping it.
-        if (player.IsRemote && main.ComputerLink.IsStandIn(t))
-        {
-            var pc = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
-            pc.Add(new(L.T("Play next"), GNext, () => player.PlayNext(t)));
-            pc.Add(new(L.T("Add to queue"), GQueue, () => player.Enqueue(t)));
-            pc.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
-            pc.Line();
-            pc.Add(new(L.T("Add to library"), GLibrary, () => _ = main.ComputerLink.Keep(t, false, true)));
-            pc.Add(new(L.T("Add to Favorites"), GHeart, () => _ = main.ComputerLink.Keep(t, true, true)));
-            return pc;
-        }
         var menu = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
         if (main.InRoom) AddRoomItems(menu, new[] { t });
         else
@@ -170,7 +160,7 @@ public static class Menus
     private static void AddSave(SheetMenu menu, IReadOnlyList<TrackViewModel> tracks, Action? then = null)
     {
         var main = tracks[0].Main;
-        var cloud = tracks.Where(t => t.IsCloud && !t.IsSaving).ToList();
+        var cloud = tracks.Where(main.ToSave).ToList();
         if (cloud.Count > 0)
             menu.Add(new(tracks.Count == 1 ? L.T("Save to device") : L.F("Save to device ({0})", cloud.Count), GSave, () =>
             {
@@ -217,8 +207,8 @@ public static class Menus
         foreach (var p in main.Playlists)
         {
             var pl = p.P;
-            bool has = main.Profile.Contains(pl, t.Id);
-            menu.Add(new SheetEntry(Short(p.Name), p.IsFavorites ? GHeartFill : GList, () => main.AddToPlaylist(t, pl), !has)
+            bool has = main.ProfileOf(pl).Contains(pl, t.Id);
+            menu.Add(new SheetEntry(Short(p.Name), p.DeviceGlyph ?? (p.IsFavorites ? GHeartFill : GList), () => main.AddToPlaylist(t, pl), !has)
             {
                 Checked = has ? () => true : null,
             });
@@ -273,7 +263,12 @@ public static class Menus
         menu.Line();
         // Saved on the device, or only kept in the library (a playlist, the favourites: in the cloud, nothing downloaded).
         menu.Add(new(L.T("Add to library"), GLibrary, () => main.AddToLibrary(t)));
-        menu.Add(new(L.T("Save to device"), GSave, () => _ = main.Radio.Save(item, null)));
+        menu.Add(new(L.T("Save to device"), GSave, () =>
+        {
+            // (connected to the other device: it asks where)
+            if (main.Shared is { Ready: true }) _ = main.SaveToDevice(new[] { t });
+            else _ = main.Radio.Save(item, null);
+        }));
         menu.Add(AddToPlaylist(t));
         menu.Add(FavoriteItem(t));
         menu.Add(new SheetEntry { Text = L.T("Lyrics"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
@@ -304,14 +299,6 @@ public static class Menus
         menu.Add(new(L.T("Remove from Up next"), GRemove, () => player.RemoveUpcoming(row.Index)));
         menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
         menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
-        // (a song of the computer this phone drives: keeping it, nothing else)
-        if (player.IsRemote && t.Main.ComputerLink.IsStandIn(t))
-        {
-            menu.Line();
-            menu.Add(new(L.T("Add to library"), GLibrary, () => _ = t.Main.ComputerLink.Keep(t, false, true)));
-            menu.Add(new(L.T("Add to Favorites"), GHeart, () => _ = t.Main.ComputerLink.Keep(t, true, true)));
-            return menu;
-        }
         menu.Line();
         AddSave(menu, new[] { t });
         menu.Add(AddToPlaylist(t));
@@ -395,8 +382,8 @@ public static class Menus
         menu.Add(new(L.T("Move to top"), GUp, () => { player.MoveUpcomingToTop(places); sel.Stop(); }));
         menu.Add(new(L.T("Move to bottom"), GDown, () => { player.MoveUpcomingToBottom(places); sel.Stop(); }));
         menu.Add(new(L.T("Remove from Up next"), GRemove, () => { player.RemoveUpcoming(places); sel.Stop(); }));
-        // (songs of a room, of the computer this phone drives: kept one at a time, from their own menu)
-        if (player.InRoom || player.IsRemote && songs.Any(main.ComputerLink.IsStandIn)) return menu;
+        // (songs of a room: kept one at a time, from their own menu)
+        if (player.InRoom) return menu;
         menu.Line();
         AddSave(menu, songs, sel.Stop);
         menu.Add(new SheetEntry { Text = L.T("Add to playlist"), Glyph = GAdd, Sub = () => AddManyToPlaylist(songs, sel) });
@@ -427,10 +414,10 @@ public static class Menus
         menu.Add(new(L.T("Play"), GPlay, () => { main.PlayPlaylists(lists); sel.Stop(); }));
         menu.Add(new(L.T("Add to queue"), GQueue, () => { main.EnqueuePlaylists(lists); sel.Stop(); }));
         menu.Line();
-        int cloud = main.SongsOf(lists).Count(t => t.IsCloud && !t.IsSaving);
+        int cloud = main.SongsOf(lists).Count(main.ToSave);
         if (cloud > 0) menu.Add(new(L.F("Save to device ({0})", cloud), GSave, () => { _ = main.SavePlaylists(lists); sel.Stop(); }));
         menu.Add(new SheetEntry { Text = L.T("Tags"), Glyph = GTag, Sub = () => PlaylistsTagMenu(lists) });
-        menu.Add(new(L.T("Export to a .ump file…"), GExport, () => ExportPlaylists(sel, lists)));
+        if (lists.All(p => !p.IsOther)) menu.Add(new(L.T("Export to a .ump file…"), GExport, () => ExportPlaylists(sel, lists)));
         if (lists.Any(p => !p.IsFavorites))
         {
             menu.Line();
@@ -455,7 +442,7 @@ public static class Menus
                 var player = main.Player;
                 list.Add(new(GUp, L.T("To top"), () => { if (places.Count > 0) { player.MoveUpcomingToTop(places); sel.Stop(); } }));
                 list.Add(new(GDown, L.T("To bottom"), () => { if (places.Count > 0) { player.MoveUpcomingToBottom(places); sel.Stop(); } }));
-                var cloud = player.InRoom ? new List<TrackViewModel>() : rows.Select(r => r.Track).Where(t => t.IsCloud && !t.IsSaving).Distinct().ToList();
+                var cloud = player.InRoom ? new List<TrackViewModel>() : rows.Select(r => r.Track).Where(main.ToSave).Distinct().ToList();
                 if (cloud.Count > 0) list.Add(new(GSave, L.T("Save"), () => { _ = main.SaveToDevice(cloud); sel.Stop(); }));
                 list.Add(new(GRemove, L.T("Remove"), () => { if (places.Count > 0) { player.RemoveUpcoming(places); sel.Stop(); } }, danger: true));
                 break;
@@ -473,8 +460,8 @@ public static class Menus
             {
                 var lists = sel.Playlists;
                 list.Add(new(GPlay, L.T("Play"), () => { if (lists.Count > 0) { main.PlayPlaylists(lists); sel.Stop(); } }));
-                if (main.SongsOf(lists).Any(t => t.IsCloud && !t.IsSaving)) list.Add(new(GSave, L.T("Save"), () => { _ = main.SavePlaylists(lists); sel.Stop(); }));
-                list.Add(new(GExport, L.T("Export"), () => { if (lists.Count > 0) ExportPlaylists(sel, lists); }));
+                if (main.SongsOf(lists).Any(main.ToSave)) list.Add(new(GSave, L.T("Save"), () => { _ = main.SavePlaylists(lists); sel.Stop(); }));
+                if (lists.All(p => !p.IsOther)) list.Add(new(GExport, L.T("Export"), () => { if (lists.Count > 0) ExportPlaylists(sel, lists); }));
                 if (lists.Any(p => !p.IsFavorites))
                     list.Add(new(GDelete, L.T("Delete"), () => _ = DeletePlaylists(sel, lists), danger: true));
                 break;
@@ -487,7 +474,7 @@ public static class Menus
                 if (sel.Owner is PlaylistPageViewModel) list.Add(new(GMove, L.T("Move"), sel.RequestReorder));
                 list.Add(new(GQueue, L.T("Queue"), () => { if (tracks.Count > 0) { main.Enqueue(tracks); sel.Stop(); } }));
                 list.Add(new(GAdd, "Playlist", () => { if (tracks.Count > 0) Open(AddManyToPlaylist(tracks, sel)); }));
-                var cloud = tracks.Where(t => t.IsCloud && !t.IsSaving).ToList();
+                var cloud = tracks.Where(main.ToSave).ToList();
                 if (cloud.Count > 0) list.Add(new(GSave, L.T("Save"), () => { _ = main.SaveToDevice(cloud); sel.Stop(); }));
                 list.Add(new(GDelete, L.T("Delete"), () => { if (tracks.Count > 0) _ = DeleteSongs(sel, tracks); }, danger: true));
                 break;
@@ -505,7 +492,7 @@ public static class Menus
         foreach (var p in main.Playlists)
         {
             var pl = p.P;
-            menu.Add(new(Short(p.Name), p.IsFavorites ? GHeartFill : GList, () => { main.AddToPlaylist(tracks, pl); sel?.Stop(); }));
+            menu.Add(new(Short(p.Name), p.DeviceGlyph ?? (p.IsFavorites ? GHeartFill : GList), () => { main.AddToPlaylist(tracks, pl); sel?.Stop(); }));
         }
         return menu;
     }
@@ -522,7 +509,7 @@ public static class Menus
             var tg = tag;
             menu.Add(new SheetEntry
             {
-                Text = Short(tg.Name), Dot = tg.Brush,
+                Text = Short(tg.Name), Dot = tg.Brush, Mark = tg.DeviceGlyph,
                 Checked = () => tracks.All(t => t.TagIds.Contains(tg.Id)),
                 Click = () => main.SetTag(tracks, tg, !tracks.All(t => t.TagIds.Contains(tg.Id))),
             });
@@ -536,7 +523,7 @@ public static class Menus
     {
         var main = App.Host.Session!;
         var menu = new SheetMenu { Title = L.T("Tags"), Subtitle = p.Name, Cover = p };
-        foreach (var tag in main.Tags)
+        foreach (var tag in main.TagsFor(p))
         {
             var tg = tag;
             menu.Add(new SheetEntry
@@ -557,12 +544,12 @@ public static class Menus
     {
         var main = App.Host.Session!;
         var menu = new SheetMenu { Title = L.T("Tags"), Subtitle = L.Count(lists.Count, "1 playlist", "{0} playlists"), Cover = lists[0] };
-        foreach (var tag in main.Tags)
+        foreach (var tag in main.Tags.Where(t => lists.Any(p => main.ProfileOf(p.P) == main.ProfileOf(t.T))))
         {
             var tg = tag;
             menu.Add(new SheetEntry
             {
-                Text = Short(tg.Name), Dot = tg.Brush,
+                Text = Short(tg.Name), Dot = tg.Brush, Mark = tg.DeviceGlyph,
                 Checked = () => lists.All(p => p.P.Tags.Contains(tg.Id)),
                 Click = () => main.SetPlaylistsTag(lists, tg, !lists.All(p => p.P.Tags.Contains(tg.Id))),
             });
@@ -579,7 +566,7 @@ public static class Menus
     public static SheetMenu TagPicker(ISet<string> chosen, MainViewModel main, Action changed)
     {
         var menu = new SheetMenu { Title = L.T("Tags for the downloaded songs") };
-        foreach (var tag in main.Tags)
+        foreach (var tag in main.Tags.Where(t => !main.IsTheirs(t.Id)))
         {
             var tg = tag;
             menu.Add(new SheetEntry
@@ -615,7 +602,7 @@ public static class Menus
         foreach (var tag in main.Tags)
         {
             var tg = tag;
-            menu.Add(new SheetEntry { Text = Short(tg.Name), Dot = tg.Brush, Checked = () => filter.Contains(tg.Id), Click = () => filter.Toggle(tg.Id) });
+            menu.Add(new SheetEntry { Text = Short(tg.Name), Dot = tg.Brush, Mark = tg.DeviceGlyph, Checked = () => filter.Contains(tg.Id), Click = () => filter.Toggle(tg.Id) });
         }
         menu.Line();
         menu.Add(new(L.T("Clear the filter"), GRemove, filter.Clear, filter.IsActive));
@@ -642,7 +629,7 @@ public static class Menus
         menu.Add(new(L.T("Open"), GOpen, () => main.OpenTag(t)));
         menu.Add(new(L.T("Add songs…"), GAdd, () => _ = TagDialogs.ChooseSongsAsync(t)));
         menu.Add(new(L.T("Edit…"), GEdit, () => _ = main.EditTag(t)));
-        menu.Add(new(L.T("Export to a .ump file…"), GExport, () => main.ExportPack(tag: t)));
+        if (!main.IsTheirs(t.Id)) menu.Add(new(L.T("Export to a .ump file…"), GExport, () => main.ExportPack(tag: t)));
         menu.Line();
         menu.Add(new SheetEntry(L.T("Delete tag…"), GDelete, () => _ = main.DeleteTag(t)) { Danger = true });
         return menu;
@@ -658,9 +645,10 @@ public static class Menus
         menu.Add(new(L.T("Open"), GOpen, () => main.OpenPlaylist(p)));
         menu.Line();
         menu.Add(new SheetEntry { Text = L.T("Tags"), Glyph = GTag, Sub = () => PlaylistTagMenu(p) });
-        menu.Add(new(L.T("Export to a .ump file…"), GExport, () => main.ExportPack(p)));
+        if (!p.IsOther) menu.Add(new(L.T("Export to a .ump file…"), GExport, () => main.ExportPack(p)));
         // Its songs in the cloud saved on the device; or the space its songs take, freed (the sheet says how).
-        if (p.CloudCount > 0) menu.Add(new(L.F("Save to device ({0})", p.CloudCount), GSave, () => _ = main.SavePlaylists(new[] { p })));
+        int toSave = main.SongsOf(new[] { p }).Count(main.ToSave);
+        if (toSave > 0) menu.Add(new(L.F("Save to device ({0})", toSave), GSave, () => _ = main.SavePlaylists(new[] { p })));
         if (p.Count > p.CloudCount) menu.Add(new(L.T("Free up space…"), GDelete, () => _ = main.DeleteTracks(p.Songs.Where(t => t.IsSaved).ToList())));
         if (!p.IsFavorites)
         {

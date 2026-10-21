@@ -61,7 +61,11 @@ public static class AppPaths
     // (set by the app as it starts; null elsewhere).
     public static Func<string, string>? MovedPath { get; set; }
 
-    public static string TrackCover(string trackId) => Path.Combine(CoversDir, trackId + ".jpg");
+    // The other device's songs while connected to it (Connect phone: "ph-…" on the computer, "pc-…" on the phone) keep their
+    // covers apart, in the temporary folder: they're that device's.
+    public static string TrackCover(string trackId) => Path.Combine(IsLinkId(trackId) ? LinkDir : CoversDir, trackId + ".jpg");
+    public static bool IsLinkId(string id) => id.StartsWith("ph-", StringComparison.Ordinal) || id.StartsWith("pc-", StringComparison.Ordinal);
+    public static string LinkDir => Dir(Path.Combine(TempDir, "link"));
 
     private static string Dir(string d)
     {
@@ -213,6 +217,9 @@ public sealed class AppSettings
     // and macOS, a kind and a name on the phone), null = the system's default; its name, shown while it isn't connected.
     public string? OutputDevice { get; set; }
     public string? OutputDeviceName { get; set; }
+    // Connect phone: whose music both devices show and where it's heard (the computer's choice counts when they connect).
+    public Link.LinkMusic LinkMusic { get; set; }
+    public Link.LinkAudio LinkAudio { get; set; }
     // "Listen together": who this installation is in rooms (kept, so a kicked person stays out),
     // how many songs of rooms are kept, the last choices when creating a room.
     public string? TogetherId { get; set; }

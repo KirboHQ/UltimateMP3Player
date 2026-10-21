@@ -109,7 +109,7 @@ public static class TagDialogs
         var sheets = App.Host.View?.Sheets;
         var main = App.Host.Session;
         if (sheets == null || main == null) return;
-        var choices = main.Library.Snapshot().OrderByDescending(t => t.Added).Select(main.Vm)
+        var choices = main.Songs().OrderByDescending(t => t.Added).Select(main.Vm)
             .Select(t => new SongChoice(t) { IsSelected = t.TagIds.Contains(tag.Id) }).ToList();
         var had = choices.Where(c => c.IsSelected).ToHashSet();
         var body = new DockPanel { Margin = new Thickness(20, 4, 20, 18) };

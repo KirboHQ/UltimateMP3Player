@@ -44,7 +44,14 @@ public sealed class Playlist
     // other orders never change: choosing it again brings it back.
     public string? Sort { get; set; }
 
-    public bool IsFavorites => Id == FavoritesId;
+    // (the other device's Favorites, while connected to it, are "ph-favorites" / "pc-favorites": SharedLibrary)
+    public bool IsFavorites => Id.EndsWith(FavoritesId, StringComparison.Ordinal);
+
+    public Playlist Clone() => new()
+    {
+        Id = Id, Name = Name, Tracks = Tracks.ToList(), HasCover = HasCover, CoverVersion = CoverVersion, SourceUrl = SourceUrl, Created = Created,
+        Tags = Tags.ToList(), Sort = Sort,
+    };
 }
 
 // A label of the profile, with its colour (like a Discord role).
@@ -231,6 +238,20 @@ public sealed class Profile
 
     private string FilePath => Path.Combine(AppPaths.ProfileDir(Info.Id), "data.json");
 
+    // The other device's profile while connected to it (SharedLibrary): kept in memory only, its playlist pictures in
+    // coverDir. Changed through the usual methods; SharedLibrary sends the changes there.
+    private string? _coverDir;
+    // (what the ids of its new playlists and tags start with, like the ones it got from there)
+    private string _prefix = "";
+    public bool IsMirror => _coverDir != null;
+
+    public static Profile Mirror(ProfileInfo info, ProfileData data, string coverDir, string prefix)
+    {
+        var p = new Profile(info, data) { _coverDir = coverDir, _prefix = prefix };
+        Directory.CreateDirectory(coverDir);
+        return p;
+    }
+
     // Stays loaded so running downloads keep filling its playlists.
     public static Profile Get(ProfileInfo info)
     {
@@ -280,11 +301,124 @@ public sealed class Profile
         lock (_lock) return Data.Playlists.FirstOrDefault(p => p.Id == id);
     }
 
-    public string PlaylistCover(Playlist p) => Path.Combine(AppPaths.ProfileDir(Info.Id), "pl-" + p.Id + ".jpg");
+    public string PlaylistCover(Playlist p) => Path.Combine(_coverDir ?? AppPaths.ProfileDir(Info.Id), "pl-" + p.Id + ".jpg");
+
+    // ------------------------------------------------------------------ the other device's changes (Connect phone)
+
+    // A playlist as the other device says it is now (its own, or one of this profile changed there): put in place of this
+    // one's with the same id, or added. The same object stays, so what shows it follows.
+    public Playlist PutPlaylist(Playlist state)
+    {
+        Playlist? p;
+        bool added = false, renamed = false;
+        lock (_lock)
+        {
+            p = Data.Playlists.FirstOrDefault(x => x.Id == state.Id);
+            if (p == null)
+            {
+                p = state.Clone();
+                Data.Playlists.Add(p);
+                added = true;
+            }
+            else
+            {
+                renamed = p.Name != state.Name;
+                p.Name = state.Name;
+                p.Tracks = state.Tracks.Distinct().ToList();
+                p.HasCover = state.HasCover;
+                p.CoverVersion = state.CoverVersion;
+                p.SourceUrl = state.SourceUrl;
+                p.Tags = state.Tags.ToList();
+                p.Sort = state.Sort;
+            }
+        }
+        Save();
+        PlaylistChanged?.Invoke(p);
+        if (added || renamed) PlaylistsChanged?.Invoke();
+        return p;
+    }
+
+    public void RemovePlaylists(IEnumerable<string> ids)
+    {
+        var set = ids.ToHashSet();
+        List<Playlist> gone;
+        lock (_lock)
+        {
+            gone = Data.Playlists.Where(p => set.Contains(p.Id) && !p.IsFavorites).ToList();
+            foreach (var p in gone) Data.Playlists.Remove(p);
+        }
+        if (gone.Count == 0) return;
+        foreach (var p in gone)
+            try { File.Delete(PlaylistCover(p)); } catch { }
+        Save();
+        PlaylistsChanged?.Invoke();
+    }
+
+    // The whole list of tags (the same objects kept by id); the songs and playlists lose the tags no longer there.
+    public void PutTags(List<Tag> tags)
+    {
+        List<string> songs;
+        lock (_lock)
+        {
+            var old = Data.Tags.ToDictionary(t => t.Id);
+            Data.Tags = tags.Select(t =>
+            {
+                if (!old.TryGetValue(t.Id, out var o)) return new Tag { Id = t.Id, Name = t.Name, Color = t.Color };
+                o.Name = t.Name;
+                o.Color = t.Color;
+                return o;
+            }).ToList();
+            var known = Data.Tags.Select(t => t.Id).ToHashSet();
+            songs = Data.TrackTags.Where(kv => kv.Value.RemoveAll(id => !known.Contains(id)) > 0).Select(kv => kv.Key).ToList();
+            foreach (var id in songs.Where(id => Data.TrackTags[id].Count == 0)) Data.TrackTags.Remove(id);
+            foreach (var p in Data.Playlists) p.Tags.RemoveAll(id => !known.Contains(id));
+        }
+        Save();
+        TagsChanged?.Invoke();
+        if (songs.Count > 0) TrackTagsChanged?.Invoke(songs);
+    }
+
+    // The tags of these songs (an empty list: none); only tags of the profile are kept.
+    public void PutTrackTags(IReadOnlyDictionary<string, List<string>> tags)
+    {
+        var changed = new List<string>();
+        lock (_lock)
+        {
+            var known = Data.Tags.Select(t => t.Id).ToHashSet();
+            foreach (var (id, list) in tags)
+            {
+                var now = list.Where(known.Contains).Distinct().ToList();
+                var had = Data.TrackTags.GetValueOrDefault(id);
+                if (had == null ? now.Count == 0 : had.SequenceEqual(now)) continue;
+                if (now.Count == 0) Data.TrackTags.Remove(id);
+                else Data.TrackTags[id] = now;
+                changed.Add(id);
+            }
+        }
+        if (changed.Count == 0) return;
+        Save();
+        TrackTagsChanged?.Invoke(changed);
+    }
+
+    // The mirror's history: replaced (the other device keeps the real one).
+    public void PutHistory(List<HistoryEntry> history)
+    {
+        lock (_lock) Data.History = history;
+    }
+
+    public List<HistoryEntry> HistorySnapshot(int last)
+    {
+        lock (_lock) return Data.History.Skip(Math.Max(0, Data.History.Count - last)).ToList();
+    }
+
+    public Dictionary<string, List<string>> TrackTagsSnapshot()
+    {
+        lock (_lock) return Data.TrackTags.ToDictionary(kv => kv.Key, kv => kv.Value.ToList());
+    }
 
     public Playlist CreatePlaylist(string name, string? sourceUrl = null)
     {
-        var p = new Playlist { Name = UniqueName(name), SourceUrl = sourceUrl };
+        var p = new Playlist { Id = _prefix + Ids.New(), Name = UniqueName(name), SourceUrl = sourceUrl };
         lock (_lock) Data.Playlists.Add(p);
         Save();
         PlaylistsChanged?.Invoke();
@@ -378,6 +512,13 @@ public sealed class Profile
         PlaylistChanged?.Invoke(p);
     }
 
+    // Something of the playlist set directly (how its page sorts it): saved, and said.
+    public void Touch(Playlist p)
+    {
+        Save();
+        PlaylistChanged?.Invoke(p);
+    }
+
     public void SetPlaylistCover(Playlist p, bool has)
     {
         p.HasCover = has;
@@ -422,7 +563,7 @@ public sealed class Profile
 
     public Tag CreateTag(string name, string color)
     {
-        var t = new Tag { Name = UniqueTagName(name, null), Color = color };
+        var t = new Tag { Id = _prefix + Ids.New(), Name = UniqueTagName(name, null), Color = color };
         lock (_lock) Data.Tags.Add(t);
         Save();
         TagsChanged?.Invoke();
@@ -586,7 +727,10 @@ public sealed class Profile
         Save();
     }
 
-    public void Save() => _saver.Request();
+    public void Save()
+    {
+        if (!IsMirror) _saver.Request();
+    }
 
     public void Flush() => _saver.Flush();
 

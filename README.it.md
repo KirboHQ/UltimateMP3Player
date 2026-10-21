@@ -17,7 +17,7 @@
   <img alt="Linux" src="https://img.shields.io/badge/Linux-x64%20%7C%20arm64-FCC624?style=flat-square&logo=linux&logoColor=black">
   <img alt="macOS 12 o successivo" src="https://img.shields.io/badge/macOS-12%2B-000000?style=flat-square&logo=apple&logoColor=white">
   <img alt="Android 8 o successivo" src="https://img.shields.io/badge/Android-8%2B-3DDC84?style=flat-square&logo=android&logoColor=white">
-  <img alt="iOS 15 o successivo, anteprima" src="https://img.shields.io/badge/iOS-15%2B%20anteprima-000000?style=flat-square&logo=apple&logoColor=white">
+  <img alt="iOS 15 o successivo" src="https://img.shields.io/badge/iOS-15%2B-000000?style=flat-square&logo=apple&logoColor=white">
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8-512BD4?style=flat-square&logo=dotnet&logoColor=white">
   <a href="LICENSE"><img alt="Licenza GPL-3.0" src="https://img.shields.io/badge/licenza-GPL--3.0-6E7781?style=flat-square"></a>
 </p>
@@ -163,7 +163,7 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 
 <img src="assets/readme/screens/phone.webp" width="100%" alt="Su Android: la libreria, i testi sincronizzati, la ricerca online e la scheda del download">
 
-- La stessa libreria, playlist, tag, testi, equalizzatore e download su Android (e iPhone, in anteprima)
+- La stessa libreria, playlist, tag, testi, equalizzatore e download su Android e iPhone
 - Cerca e scarica in un'unica scheda: scrivi per trovare i tuoi brani e la musica online, incolla un link per scaricarlo
 - Condividi un link da YouTube, Spotify, SoundCloud o quasi ogni altra app con *Scarica con Ultimate MP3 Player*
 - **Trascina un brano verso destra per aggiungerlo alla coda**, come su Spotify
@@ -179,9 +179,13 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
   Sulla stessa Wi-Fi il telefono lo consente una volta; con il cavo non c'è niente da consentire (Android: attiva il
   tethering USB; iPhone: Dispositivi Apple o iTunes su Windows, `usbmuxd` su Linux, niente da aggiungere su Mac).
 - Il telefono comanda il lettore del computer: play, salto, posizione, la coda e il volume del computer, anche dalla
-  schermata di blocco. La musica suona sul computer e il telefono resta in silenzio.
-- Anche i brani del telefono suonano sul computer, inviati tramite la rete o il cavo quando il computer non li ha
-- Salvare un brano mentre sono collegati chiede dove: sul telefono, sul computer o su entrambi
+  schermata di blocco. La musica suona sul computer, sul telefono o su entrambi, sincronizzata.
+- Ciascuno mostra la musica dell'altro: fai partire una playlist del telefono o del computer da uno qualsiasi dei due,
+  oppure mostra la musica di un solo dispositivo (il profilo in basso a sinistra si adegua). I brani che un dispositivo
+  non ha arrivano tramite la rete o il cavo
+- Salvare un brano mentre sono collegati chiede dove: sul telefono, sul computer o su entrambi; con le due librerie
+  insieme lo chiedono anche il cuore e le nuove playlist e i nuovi tag, e un'icona di telefono o computer distingue
+  le loro playlist e i loro tag
 - **Al telefono** nella finestra di esportazione del computer manda playlist e tag al telefono, che prende solo i brani
   che non ha
 - Se la connessione cade torna da sola; entrare in una stanza o aprire il DJ scollega il telefono
@@ -190,7 +194,7 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 
 <img src="assets/readme/screens/looks.webp" width="100%" alt="Chiaro o scuro e otto colori, scelti da ogni profilo">
 
-- La stessa app su Windows, Linux, macOS e Android (e iPhone, in anteprima)
+- La stessa app su Windows, Linux, macOS, Android e iPhone
 - Profili come in Chrome, ognuno con le sue playlist, i preferiti, l'equalizzatore, il colore e l'aspetto chiaro o scuro
 - Italiano e inglese, animazioni e scorrimento fluidi
 - Stato su Discord con brano, artista, copertina e barra di avanzamento
@@ -255,7 +259,7 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 > comunque**. La musica resta nella cartella dell'app (*Android › data*, visibile dal computer); se disinstalli l'app,
 > Android chiede se tenerla. Per spostare la musica su un altro telefono o computer usa un pacchetto `.ump`.
 
-**iPhone e iPad** (iOS 15 o successivo; un'anteprima; non è sull'App Store)
+**iPhone e iPad** (iOS 15 o successivo; non è sull'App Store)
 
 1. Installa **SideStore** dal tuo PC Windows (o Mac) seguendo la guida ufficiale su [sidestore.io](https://sidestore.io):
    installa app firmate con il tuo Apple ID gratuito, senza Mac e senza jailbreak. Poi attiva la **Modalità

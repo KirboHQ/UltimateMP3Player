@@ -71,7 +71,7 @@ public partial class PlaylistView : UserControl
         if (Vm == null || e.Data.GetData(typeof(TrackRow)) is not TrackRow row) return;
         e.Handled = true;
         var p = Vm.Vm.P;
-        var profile = row.Track.Main.Profile;
+        var profile = row.Track.Main.ProfileOf(p);
         var (target, after) = DragVisuals.Hit(List, e);
         DragVisuals.HideLine();
         int t = target is TrackRow tr ? p.Tracks.IndexOf(tr.Track.Id) : -1;
@@ -90,7 +90,7 @@ public partial class PlaylistView : UserControl
         }
         else
         {
-            profile.AddTrack(p, row.Track.Id, t < 0 ? null : after ? t + 1 : t);
+            profile.AddTrack(p, row.Track.Main.Keep(row.Track, profile).Id, t < 0 ? null : after ? t + 1 : t);
             row.Track.Main.Toast(L.F("Added to “{0}”", PlaylistViewModel.DisplayName(p)));
         }
     }

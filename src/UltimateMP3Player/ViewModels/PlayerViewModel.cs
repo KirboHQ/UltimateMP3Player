@@ -103,7 +103,7 @@ public sealed class PlayerViewModel : Observable
         CycleRepeatCommand = new RelayCommand(() => { if (_room != null) _room.ToggleLoop(); else CycleRepeat(); }, () => _room == null || _room.CanPause);
         ToggleMuteCommand = new RelayCommand(() => Muted = !Muted);
         // (a song of the connected computer isn't one of this phone's: no heart for it)
-        FavoriteCommand = new RelayCommand(() => { if (Current != null && !KeepLinked(true)) _main.ToggleFavorite(Current); }, () => Current != null);
+        FavoriteCommand = new RelayCommand(() => { if (Current != null) _main.ToggleFavorite(Current); }, () => Current != null);
         SeekCommand = new RelayCommand(p => { if (p is double f) SeekFraction(f); }, _ => _room == null || _room.CanPause);
         SpeedStepCommand = new RelayCommand(p => { if (p is string s && double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var d)) Speed += d; },
             _ => CanSetSpeed);
@@ -111,7 +111,7 @@ public sealed class PlayerViewModel : Observable
             _ => CanSetSpeed);
         ClearQueueCommand = new RelayCommand(ClearQueue, () => _remote != null ? _remote.State.Upcoming > 0 : _room == null && _queue.UpcomingCount > 0);
         GenerateQueueCommand = new RelayCommand(GenerateQueue, () => _room == null && Current != null);
-        SaveCurrentCommand = new RelayCommand(SaveCurrent, () => IsTemporary);
+        SaveCurrentCommand = new RelayCommand(() => SaveCurrent(true), () => IsTemporary);
 
         Restore(adopt);
         _queue.Changed += () =>
@@ -124,16 +124,26 @@ public sealed class PlayerViewModel : Observable
     }
 
     // A song of the library, or one not in it still in the queue or among the recently played.
-    private Track? TrackOf(string id) => _main.Library.Get(id) ?? _main.Radio.Track(id);
+    // (connected to a phone: also one of the phone's songs, SharedLibrary)
+    private Track? TrackOf(string id) => _main.Library.Get(id) ?? _main.Radio.Track(id) ?? _main.Shared?.Get(id);
     private bool Exists(string id) => TrackOf(id) != null;
 
     // Among the recently played: a song of the library, and one heard without saving it (suggested, from a link, or a
-    // room's own, kept from now on like those).
+    // room's own, kept from now on like those). Connected to a phone, a song of the phone's (or one both have) counts
+    // there too, or only there when only the phone's music is shown.
     // The id it's remembered by (null: one that can't be found again).
     private string? AddHistory(Track t)
     {
+        if (_main.Shared is { } shared)
+        {
+            var (here, there) = shared.Counters(t.Id);
+            if (there != null) shared.Heard(there, 0, false, true);
+            if (!here) return t.Id;
+        }
         var id = _main.Library.Get(t.Id) != null || _main.Radio.Has(t.Id) ? t.Id : _main.Radio.KeepHeard(t);
-        if (id != null) _main.Profile.AddHistory(id);
+        if (id == null) return null;
+        _main.Profile.AddHistory(id);
+        _main.Shared?.OwnHistory();
         return id;
     }
 
@@ -364,14 +374,22 @@ public sealed class PlayerViewModel : Observable
     public bool HasTrack => Current != null;
     // The song playing isn't saved on the device: a suggested one, one of a link heard without saving it, or a song of the
     // library in the cloud (the "Save" button next to the heart).
-    public bool IsTemporary => Current != null && _room == null && (_main.Radio.Has(Current.Id) || !Current.IsSaved);
+    // (connected to the other device: also a song not saved on both, the save button asks where)
+    public bool IsTemporary => Current != null && _room == null &&
+                               (_main.Radio.Has(Current.Id) || !Current.IsSaved || _main.Shared is { Ready: true } s && s.NotEverywhere(Current.T));
 
     // The song playing was saved, or its audio removed from the device.
     public void RefreshSaved()
     {
+        RefreshTemporary();
+        _main.Host.OnTrackChanged();
+    }
+
+    // The connected device's music changed (where the song is saved).
+    internal void RefreshTemporary()
+    {
         OnChanged(nameof(IsTemporary));
         CommandManager.InvalidateRequerySuggested();
-        _main.Host.OnTrackChanged();
     }
     // The song block of the player bar: also in a room with nothing playing (it shows the room's name).
     public bool ShowNowPlaying => Current != null || _room != null || _remote != null || _main.PhoneLinked;
@@ -386,7 +404,7 @@ public sealed class PlayerViewModel : Observable
     {
         "library" => L.T("All songs"),
         "unsorted" => L.T("Not in a playlist"),
-        { } id when id.StartsWith("playlist:") && _main.Profile.GetPlaylist(id[9..]) is { } p => PlaylistViewModel.DisplayName(p),
+        { } id when id.StartsWith("playlist:") && (_main.Profile.GetPlaylist(id[9..]) ?? _main.Shared?.Mirror?.GetPlaylist(id[9..])) is { } p => PlaylistViewModel.DisplayName(p),
         { } id when id.StartsWith("radio:") => L.F("Songs like “{0}”", name),
         { } id when id.StartsWith("artist:") => L.F("Songs by {0}", name),
         _ => name,
@@ -480,12 +498,26 @@ public sealed class PlayerViewModel : Observable
 
     public string VolumeGlyph => Muted || Volume <= 0 ? "" : Volume < 0.34 ? "" : Volume < 0.67 ? "" : "";
 
-    private void ApplyVolume() => _audio.Volume = Muted || _silenced ? 0 : (float)Math.Pow(_volume, 2);
+    // (driving a computer: its volume, for the music heard here too; LinkSilent: the music is heard on the phone only)
+    private void ApplyVolume() => _audio.Volume = Muted || _silenced || _linkSilent ? 0 : (float)Math.Pow(Volume, 2);
 
     // Phones in a room: headphones pulled out, a call, another app's music silence only this phone (the room goes on for
     // the others) until the play button, in the app or on the lock screen. Not kept like the mute (phones have no mute button).
     private bool _silenced;
     public bool Silenced => _silenced;
+
+    // Connect phone with the music heard on the phone only: this computer's player goes on (it keeps the time and the
+    // queue), silent.
+    private bool _linkSilent;
+    internal bool LinkSilent
+    {
+        set
+        {
+            if (_linkSilent == value) return;
+            _linkSilent = value;
+            ApplyVolume();
+        }
+    }
 
     public void SilenceInRoom()
     {
@@ -717,7 +749,7 @@ public sealed class PlayerViewModel : Observable
             _queue.PlayShuffled(ids, list.ContextId, list.ContextName);
         }
         else _queue.Play(ids, 0, list.ContextId, list.ContextName);
-        if (_queue.Current is { } id && _main.Library.Get(id) is { } t) _ = Load(t, true);
+        if (_queue.Current is { } id && TrackOf(id) is { } t) _ = Load(t, true);
     }
 
     // A song on its own (from a menu, a file opened): after it the suggested songs, or all your songs (Settings).
@@ -815,35 +847,20 @@ public sealed class PlayerViewModel : Observable
 
     // The button next to the heart: a song not in the library (suggested, heard from a link) goes into it first, in the
     // cloud (the library icon: nothing downloaded); one of the library in the cloud is saved on the device (the download arrow).
-    private void SaveCurrent()
+    // (Connect phone: MainViewModel asks on which device, except from the lock screen: ask false, this one)
+    private void SaveCurrent(bool ask)
     {
         if (Current == null) return;
-        if (KeepLinked(false)) return;
-        if (!Current.InLibrary) _main.AddToLibrary(Current);
-        else _ = _main.SaveToDevice(new[] { Current });
+        if (!Current.InLibrary) _main.AddToLibrary(Current, ask);
+        else _ = _main.SaveToDevice(new[] { Current }, quiet: !ask);
     }
 
-    // Connect phone: a song neither device has kept goes where you say (this one, the other one or both); from the phone's
-    // lock screen (ask false), where nothing can be asked, onto the phone.
-    private bool KeepLinked(bool favorite, bool ask = true)
-    {
-        if (Current is not { InLibrary: false } t) return false;
-        if (_remote != null)
-        {
-            _ = _remote.Keep(t, favorite, ask);
-            return true;
-        }
-        if (!ask || !_main.PhoneLinked || t.T.Keys.Any(k => k.StartsWith("phone:", StringComparison.Ordinal))) return false;
-        _ = _main.PhoneLink.Keep(t, favorite);
-        return true;
-    }
-
-    // The heart and the save button of the lock screen and the notification.
+    // The heart and the save button of the lock screen and the notification, where nothing can be asked.
     public void KeepFromSystem(bool favorite)
     {
-        if (KeepLinked(favorite, ask: false)) return;
-        var command = favorite ? FavoriteCommand : SaveCurrentCommand;
-        if (command.CanExecute(null)) command.Execute(null);
+        if (Current == null) return;
+        if (favorite) _main.ToggleFavorite(Current, ask: false);
+        else if (IsTemporary) SaveCurrent(false);
     }
 
     public void Enqueue(TrackViewModel t, bool quiet = false)
@@ -1206,7 +1223,10 @@ public sealed class PlayerViewModel : Observable
         _listenHeard += dt * _audio.Speed;
         bool play = !_listenCounted && Duration > 0 && _listenHeard >= Duration * PlayShare;
         if (play) _listenCounted = true;
-        _main.Profile.AddListening(id, dt, play, save: false);
+        // (connected to a phone: where the song is, SharedLibrary.Counters)
+        var (here, there) = _main.Shared?.Counters(id) ?? (true, null);
+        if (there != null) _main.Shared!.Heard(there, dt, play, false);
+        if (here) _main.Profile.AddListening(id, dt, play, save: false);
         _listenUnsaved += dt;
         if (play || _listenUnsaved >= 60) SaveListening();
         _main.OnListened(id, play || started);
@@ -1223,13 +1243,14 @@ public sealed class PlayerViewModel : Observable
     // (suggested, from a link: it stays in the statistics once a play of it counts).
     private string? HeardId()
     {
-        if (Current is not { } c || !_opened) return null;
+        // (driving a computer the computer counts, also while this phone plays along)
+        if (Current is not { } c || !_opened || _remote != null) return null;
         if (_room != null)
         {
             if (_roomLoaded != _room.Session?.Current?.Id) return null;
             if (_main.Library.Get(c.Id) == null && !_main.Radio.Has(c.Id)) return _roomHeardId is { } kept && _main.Radio.Has(kept) ? kept : null;
         }
-        return _main.Library.Get(c.Id) != null || _main.Radio.Has(c.Id) ? c.Id : null;
+        return _main.Library.Get(c.Id) != null || _main.Radio.Has(c.Id) || _main.Shared?.Get(c.Id) != null ? c.Id : null;
     }
 
     // In a room: the id the song playing was kept by (RoomLoad).
@@ -1660,7 +1681,8 @@ public sealed class PlayerViewModel : Observable
     }
 
     // False when the file couldn't be opened.
-    internal async Task<bool> RoomLoad(string itemId, TrackViewModel vm, string path)
+    // count false: the computer this phone drives counts the song (it plays here too, SyncFollower).
+    internal async Task<bool> RoomLoad(string itemId, TrackViewModel vm, string path, bool count = true)
     {
         CountListening();
         NewListen();
@@ -1672,6 +1694,7 @@ public sealed class PlayerViewModel : Observable
             await _audio.OpenAsync(path, vm.T.Duration, TrackGain(vm.T));
             if (version != _loadVersion) return true;
             _opened = true;
+            if (!count) return true;
             Duration = _audio.Duration.TotalSeconds > 0 ? _audio.Duration.TotalSeconds : vm.T.Duration;
             // A room's own song (not in the library) counts in the statistics as the copy kept among the recently played.
             _roomHeardId = AddHistory(vm.T);
@@ -1715,6 +1738,10 @@ public sealed class PlayerViewModel : Observable
         _opened = false;
         _audio.Pause();
         _audio.Close();
+#if IOS_APP
+        // (driving a computer: the silence that keeps the app and the link alive)
+        if (_remote != null) _audio.Play();
+#endif
     }
 
     // Tooltips of the transport: in a room without permission they say why the button is greyed out.
@@ -1736,7 +1763,13 @@ public sealed class PlayerViewModel : Observable
     public bool IsRemote => _remote != null;
     // Over the player: where the music plays.
     public string? RemoteText => _remote == null ? null
-        : _remote.IsReconnecting ? L.F("Reconnecting to {0}…", _remote.ComputerName) : L.F("Playing on {0}", _remote.ComputerName);
+        : _remote.IsReconnecting ? L.F("Reconnecting to {0}…", _remote.ComputerName)
+        : _main.Shared?.Audio switch
+        {
+            LinkAudio.Phone => L.F("Playing on this phone · {0}", _remote.ComputerName),
+            LinkAudio.Both => L.F("Playing here and on {0}", _remote.ComputerName),
+            _ => L.F("Playing on {0}", _remote.ComputerName),
+        };
     public ICommand OpenRemoteCommand => new RelayCommand(() => _remote?.Open());
 
     private string RemoteWaitText => _remote!.State.WaitMore ? L.T("Looking for more similar songs…")
@@ -1761,7 +1794,8 @@ public sealed class PlayerViewModel : Observable
         IsPlaying = false;
 #if IOS_APP
         // iOS keeps an app running in the background only while it plays: silence, so the connection and the lock
-        // screen's buttons stay alive.
+        // screen's buttons stay alive (also when the music heard here too pauses).
+        _audio.KeepAwake = true;
         _audio.Play();
 #endif
         OnRemoteChanged();
@@ -1781,10 +1815,17 @@ public sealed class PlayerViewModel : Observable
         if (_remote == null) return;
         _remote = null;
         _loadVersion++;
+#if IOS_APP
+        _audio.KeepAwake = false;
+#endif
         _audio.Pause();
         _audio.Close();
         _opened = false;
+        _roomLoaded = null;
         IsPlaying = false;
+        ApplyVolume();
+        _roomPitchApplied = false;
+        ApplySpeed();
         Current = null;
         Position = 0;
         Duration = 0;
@@ -1830,6 +1871,7 @@ public sealed class PlayerViewModel : Observable
         IsPlaying = s.Playing;
         Position = _remote.Position;
         OnChanged(nameof(Volume), nameof(Muted), nameof(VolumeGlyph));
+        ApplyVolume();
         OnRemoteValues();
         OnWaitChanged();
         _main.Host.OnSeek();

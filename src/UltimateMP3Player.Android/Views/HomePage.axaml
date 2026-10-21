@@ -14,13 +14,24 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="18,6,14,18">
                     <TextBlock Text="{Binding Greeting}" FontSize="26" FontWeight="Bold" TextWrapping="Wrap" VerticalAlignment="Center"/>
                     <!-- the profile: who's listening (tablets shared by a family, like Netflix) -->
-                    <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="46" Height="46" Margin="10,0,0,0"
+                    <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="NaN" MinWidth="46" Height="46" Margin="10,0,0,0"
                             Command="{Binding $parent[views:MainView].DataContext.SwitchProfileCommand}">
-                        <Panel Width="38" Height="38">
-                            <Ellipse Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
-                            <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileInitial}" Foreground="White" FontWeight="Bold" FontSize="16"
-                                       FontFamily="{StaticResource UiFont}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            <views:CoverImage Margin="2" CornerRadius="17" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
+                        <Panel>
+                            <!-- both devices' music (Connect to computer): the computer's profile behind this one's -->
+                            <Panel Width="30" Height="30" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                   IsVisible="{Binding $parent[views:MainView].DataContext.HasSecondProfile}">
+                                <Ellipse Fill="{Binding $parent[views:MainView].DataContext.SecondBrush}"/>
+                                <TextBlock Text="{Binding $parent[views:MainView].DataContext.SecondInitial}" Foreground="White" FontWeight="Bold" FontSize="13"
+                                           FontFamily="{StaticResource UiFont}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <views:CoverImage Margin="2" CornerRadius="13" Source="{Binding $parent[views:MainView].DataContext.SecondAvatar}"/>
+                            </Panel>
+                            <Panel Width="38" Height="38" HorizontalAlignment="Left">
+                                <Ellipse Margin="-2" Fill="{DynamicResource BgBrush}" IsVisible="{Binding $parent[views:MainView].DataContext.HasSecondProfile}"/>
+                                <Ellipse Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
+                                <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileInitial}" Foreground="White" FontWeight="Bold" FontSize="16"
+                                           FontFamily="{StaticResource UiFont}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <views:CoverImage Margin="2" CornerRadius="17" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
+                            </Panel>
                         </Panel>
                     </Button>
                 </Grid>

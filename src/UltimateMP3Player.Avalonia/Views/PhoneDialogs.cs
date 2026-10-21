@@ -6,6 +6,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Link;
 using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
@@ -15,7 +16,7 @@ public static class PhoneDialogs
 {
     private static IBrush B(string key) => Ui.Res(key);
 
-    private const string PhoneGlyph = "\uE8EA";
+    private const string PhoneGlyph = "\uE8EA", ComputerGlyph = "\uE7F4", BothGlyph = "\uE71B";
 
     public static void Show(MainViewModel main)
     {
@@ -50,7 +51,30 @@ public static class PhoneDialogs
         };
         body.Children.Add(currentCard);
 
-        var hint = Ui.Text(L.T("On the phone open Settings › Connect to computer: it shows up here. The phone controls the music of this computer (its songs play here, its sound stays off) and receives music with “To the phone” in the export window."), "hint");
+        // ---- whose music both show and where it's heard (the same on both devices: a change goes to the phone too)
+        var music = Choices(L.T("Music shown"), (L.T("Both|f"), BothGlyph), (L.T("Phone only"), PhoneGlyph), (L.T("Computer only"), ComputerGlyph));
+        var audio = Choices(L.T("Sound plays on"), (L.T("Computer"), ComputerGlyph), (L.T("Phone"), PhoneGlyph), (L.T("Both"), BothGlyph));
+        var modes = new StackPanel { Margin = new Thickness(0, 0, 0, 16) };
+        modes.Children.Add(music.Panel);
+        modes.Children.Add(audio.Panel);
+        var same = Ui.Text(L.T("The same on both devices: what you change here changes on the phone too."), "hint", new Thickness(2, 2, 0, 0));
+        same.TextWrapping = TextWrapping.Wrap;
+        modes.Children.Add(same);
+        body.Children.Add(modes);
+        bool filling = false;
+        void ModeChosen()
+        {
+            if (filling || main.Shared is not { } s) return;
+            int m = Array.FindIndex(music.Buttons, b => b.IsChecked == true), a = Array.FindIndex(audio.Buttons, b => b.IsChecked == true);
+            if (m >= 0 && a >= 0) s.SetModes((LinkMusic)m, (LinkAudio)a);
+        }
+        foreach (var b in music.Buttons.Concat(audio.Buttons))
+            b.IsCheckedChanged += (_, _) =>
+            {
+                if (b.IsChecked == true) ModeChosen();
+            };
+
+        var hint = Ui.Text(L.T("On the phone open Settings › Connect to computer: it shows up here. Each one then shows the other's music, the phone controls the music of this computer and receives music with “To the phone” in the export window."), "hint");
         hint.TextWrapping = TextWrapping.Wrap;
         body.Children.Add(hint);
         var cable = Ui.Text(OperatingSystem.IsMacOS()
@@ -92,6 +116,14 @@ public static class PhoneDialogs
             spinner.IsVisible = busy;
             dot.IsVisible = !busy;
             disconnect.Content = vm.IsConnecting ? L.T("Cancel") : L.T("Disconnect");
+            modes.IsVisible = vm.IsLinked && main.Shared != null;
+            if (main.Shared is { } shared)
+            {
+                filling = true;
+                music.Buttons[(int)shared.Music].IsChecked = true;
+                audio.Buttons[(int)shared.Audio].IsChecked = true;
+                filling = false;
+            }
             list.Children.Clear();
             foreach (var p in vm.Phones) list.Children.Add(Row(p, vm));
             looking.IsVisible = vm.Phones.Count == 0;
@@ -129,6 +161,28 @@ public static class PhoneDialogs
         connect.VerticalAlignment = VerticalAlignment.Center;
         grid.Children.Add(At(connect, 2));
         return grid;
+    }
+
+    // A label and its choices in a pill (one ticked).
+    private static (StackPanel Panel, RadioButton[] Buttons) Choices(string label, params (string Text, string Glyph)[] options)
+    {
+        var group = "seg" + Guid.NewGuid().ToString("N");
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        var buttons = new RadioButton[options.Length];
+        for (int i = 0; i < options.Length; i++)
+        {
+            var r = buttons[i] = new RadioButton { Theme = Ui.Theme("Segment"), Content = options[i].Text, GroupName = group, Margin = new Thickness(i == 0 ? 0 : 4, 0, 0, 0) };
+            Ui.SetGlyph(r, options[i].Glyph);
+            row.Children.Add(r);
+        }
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+        panel.Children.Add(Ui.Text(label, "field-label", new Thickness(2, 0, 0, 6)));
+        panel.Children.Add(new Border
+        {
+            CornerRadius = new CornerRadius(20), Padding = new Thickness(4), Background = B("BgBrush"), BorderBrush = B("BorderBrush"),
+            BorderThickness = new Thickness(1), HorizontalAlignment = HorizontalAlignment.Left, Child = row,
+        });
+        return (panel, buttons);
     }
 
     private static TextBlock Glyph(string glyph, double size, IBrush brush)

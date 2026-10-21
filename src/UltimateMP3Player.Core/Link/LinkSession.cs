@@ -10,13 +10,30 @@ namespace UltimateMP3Player.Core.Link;
 // on the owner's thread (post); the network threads only post to it, except the files (FileLane).
 public abstract class LinkEnd : IDisposable
 {
-    // 1: 3.9.
-    public const int Proto = 1;
+    // 1: 3.9. 2: 3.9.3 (each device's music on the other, the music heard on the phone too).
+    public const int Proto = 2;
     protected const long Timeout = 9000, PingEvery = 2000, GiveUp = 180000;
 
     protected readonly Action<Action> Post;
     private Timer? _timer;
     private long _lastPing;
+    // The other device's clock (Clock there) minus this one's, from the ping with the shortest round trip (like a room's).
+    private readonly List<(long Rtt, double Off)> _samples = new();
+    private double _offset;
+
+    // The clock both sides compare (ms).
+    public static long Clock => Environment.TickCount64;
+    // The other device's clock now.
+    public double OtherClock
+    {
+        get { lock (_samples) return Clock + _offset; }
+    }
+
+    // How many pings were timed (none yet: OtherClock isn't known).
+    public int ClockSamples
+    {
+        get { lock (_samples) return _samples.Count; }
+    }
     // (read by the network threads: the files of the connection in use)
     private volatile Connection? _conn;
     protected long LostAt;
@@ -55,7 +72,7 @@ public abstract class LinkEnd : IDisposable
     {
         c.Message += (cc, m) =>
         {
-            if (cc == _conn && Files.OnMessage(m)) return;
+            if (cc == _conn && (Files.OnMessage(m) || Clocks(cc, m))) return;
             Post(() => Receive(cc, m));
         };
         c.Chunk += (cc, id, data) =>
@@ -88,6 +105,26 @@ public abstract class LinkEnd : IDisposable
         Message?.Invoke(m);
     }
 
+    // Network thread: the pings answered at once and their answers timed, so the round trip is the network's alone.
+    private bool Clocks(Connection c, Msg m)
+    {
+        if (m.T == "ping")
+        {
+            if (m.T0 != 0) c.Send(new Msg { T = "pong", T0 = m.T0, T1 = Clock });
+            return true;
+        }
+        if (m.T != "pong") return false;
+        long now = Clock, rtt = now - m.T0;
+        if (rtt < 0 || rtt > 10000) return true;
+        lock (_samples)
+        {
+            _samples.Add((rtt, m.T1 - (m.T0 + now) / 2.0));
+            if (_samples.Count > 12) _samples.RemoveAt(0);
+            _offset = _samples.MinBy(s => s.Rtt).Off;
+        }
+        return true;
+    }
+
     // A message of a connection that isn't (yet) the link's: the handshake.
     protected abstract void FromOther(Connection c, Msg m);
 
@@ -98,6 +135,8 @@ public abstract class LinkEnd : IDisposable
         _conn = c;
         old?.Close();
         _lastPing = 0;
+        // (another connection may take another way: timed again)
+        lock (_samples) _samples.Clear();
         _timer ??= new Timer(_ => Post(Tick), null, 500, 500);
         SetStatus(LinkStatus.Connected);
     }
@@ -126,10 +165,11 @@ public abstract class LinkEnd : IDisposable
                 c.Close();
                 return;
             }
-            if (now - _lastPing >= PingEvery)
+            // (quicker at first, so the clocks agree within a few seconds)
+            if (now - _lastPing >= (ClockSamples < 6 ? 500 : PingEvery))
             {
                 _lastPing = now;
-                c.Send(new Msg { T = "ping" });
+                c.Send(new Msg { T = "ping", T0 = Clock });
             }
         }
         else if (Status == LinkStatus.Reconnecting)

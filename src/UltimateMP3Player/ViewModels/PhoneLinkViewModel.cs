@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using UltimateMP3Player.Audio;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.Core.Link;
 using UltimateMP3Player.Core.Together;
@@ -42,8 +43,9 @@ public sealed class PhoneRowViewModel : Observable
 
 // "Connect phone", on the computer: the phones nearby in "Connect to computer" (looked for while the window is open),
 // the one connected and the bridge between it and the player. The phone shows what plays here and drives it as if it
-// were this computer's own buttons; its songs come here from it (those in its cloud from their links, downloaded here).
-// The computer works as always meanwhile: what the phone does is what its own buttons would do.
+// were this computer's own buttons; each device shows the other's music too (SharedLibrary), its songs come here from it
+// (those in its cloud from their links, downloaded here). The computer works as always meanwhile: what the phone does is
+// what its own buttons would do; with the music heard on the phone only, this player goes on silent.
 public sealed class PhoneLinkViewModel : Observable
 {
     // Rows of "next up" the phone gets, and the first ones whose covers it gets from the phone.
@@ -64,6 +66,7 @@ public sealed class PhoneLinkViewModel : Observable
     private string? _packFile;
     // Songs of the phone whose cover was asked for (once per connection).
     private readonly HashSet<string> _coversAsked = new();
+    private SharedLibrary? _shared;
 
     public PhoneLinkViewModel(MainViewModel main)
     {
@@ -91,7 +94,13 @@ public sealed class PhoneLinkViewModel : Observable
     public string StatusText => Status switch
     {
         LinkStatus.Connecting => L.T("Waiting for the phone to allow it…"),
-        LinkStatus.Connected => _link!.ViaCable ? L.T("Connected through the cable: the phone controls the music") : L.T("Connected: the phone controls the music"),
+        LinkStatus.Connected => (_link!.ViaCable ? L.T("Connected through the cable: the phone controls the music") : L.T("Connected: the phone controls the music"))
+            + (_shared?.Audio switch
+            {
+                LinkAudio.Phone => " · " + L.T("heard on the phone"),
+                LinkAudio.Both => " · " + L.T("heard on both"),
+                _ => "",
+            }),
         LinkStatus.Reconnecting => L.T("Connection lost: reconnecting…"),
         _ => L.T("Not connected"),
     };
@@ -201,6 +210,35 @@ public sealed class PhoneLinkViewModel : Observable
         _link = null;
         link?.Dispose();
         DropPack();
+        DropShared();
+    }
+
+    // The phone's music (made once linked: its first messages may come before the status).
+    private SharedLibrary Shared(PhoneLink link)
+    {
+        if (_shared == null)
+        {
+            _shared = new SharedLibrary(_main, link, false);
+            _shared.ModesChanged += OnModes;
+            _main.AttachShared(_shared);
+        }
+        return _shared;
+    }
+
+    private void DropShared()
+    {
+        _main.Player.LinkSilent = false;
+        if (_shared is not { } s) return;
+        _shared = null;
+        s.ModesChanged -= OnModes;
+        _main.DetachShared(s);
+    }
+
+    // Where the music is heard changed (here or on the phone): with the phone only, this player goes on silent.
+    private void OnModes()
+    {
+        _main.Player.LinkSilent = _shared?.Audio == LinkAudio.Phone && _link?.Status == LinkStatus.Connected;
+        Changed();
     }
 
     private void OnStatus(PhoneLink link)
@@ -217,6 +255,8 @@ public sealed class PhoneLinkViewModel : Observable
                 _connectedOnce = true;
                 // The songs that couldn't come while it was away.
                 _main.Radio.RetryPhone();
+                // (again after a reconnection: what changed meanwhile wasn't sent)
+                Shared(link).Start();
                 Push();
                 break;
             case LinkStatus.Reconnecting:
@@ -224,6 +264,8 @@ public sealed class PhoneLinkViewModel : Observable
                 _main.Toast(L.F("Connection to {0} lost: reconnecting…", link.OtherName));
                 break;
         }
+        // (heard here meanwhile: the phone can't play along now)
+        _main.Player.LinkSilent = _shared?.Audio == LinkAudio.Phone && link.Status == LinkStatus.Connected;
         Changed();
     }
 
@@ -233,6 +275,7 @@ public sealed class PhoneLinkViewModel : Observable
         _link = null;
         _push.Stop();
         DropPack();
+        DropShared();
         if (why != null && _connectedOnce) _main.Toast(why);
         Changed();
     }
@@ -272,10 +315,12 @@ public sealed class PhoneLinkViewModel : Observable
     {
         var p = _main.Player;
         var waiting = p.WaitingId;
+        // Where the song is heard (what the player has read minus its output's delay): the phone playing along aims there.
+        double position = p.IsPlaying ? Math.Max(0, p.LivePosition - (AudioEngine.LatencyMs + AudioEngine.DeviceLatencyMs) / 1000.0 * p.Speed) : p.LivePosition;
         return new LinkState
         {
             Current = p.Current is { } c ? Describe(c.T, true) : null,
-            Playing = p.PlaysSoon, Position = p.LivePosition, Duration = p.Duration,
+            Playing = p.PlaysSoon, Position = position, Duration = p.Duration, At = LinkEnd.Clock,
             Waiting = waiting != null, WaitMore = p.WaitingMore, WaitPct = waiting != null ? _main.Radio.StatusOf(waiting)?.Pct ?? 0 : 0,
             Speed = p.Speed, Pitch = p.SpeedPitch, Shuffle = p.Shuffle, Repeat = p.Repeat, AutoQueue = p.AutoQueue,
             Volume = p.Volume, Muted = p.Muted, Context = p.ContextName, Radio = p.RadioQueue, Upcoming = p.UpcomingCount,
@@ -300,11 +345,10 @@ public sealed class PhoneLinkViewModel : Observable
     }
 
     // A song as the phone needs it; one that came from the phone says which one it is there.
-    private static LinkTrack Describe(Track t, bool wave)
+    private LinkTrack Describe(Track t, bool wave)
     {
-        var lt = LinkTrack.From(t);
-        lt.Phone = t.Keys.FirstOrDefault(k => k.StartsWith("phone:", StringComparison.Ordinal))?[6..];
-        lt.File = false;
+        var lt = _shared?.Describe(t) ?? LinkTrack.From(t);
+        lt.Yours ??= t.Keys.FirstOrDefault(k => k.StartsWith("phone:", StringComparison.Ordinal))?[6..];
         if (wave) lt.Wave = t.Wave;
         return lt;
     }
@@ -322,18 +366,20 @@ public sealed class PhoneLinkViewModel : Observable
         }
     }
 
+    // (through SharedLibrary: the same request as the phone's songs shown here)
     private async Task FetchCover(string id, string phoneId)
     {
-        if (_link is not { Connection: not null } link) return;
-        var wait = link.Files.ReceiveAsync("c:" + phoneId, _ => AppPaths.TrackCover(id), null, CancellationToken.None);
-        link.Send(new Msg { T = "cover", Id = phoneId });
-        if (await wait != null) _main.Radio.CoverArrived(id);
+        if (_shared is not { } s || await s.CoverFile(phoneId) is not { } file) return;
+        try { File.Copy(file, AppPaths.TrackCover(id), true); }
+        catch { return; }
+        _main.Radio.CoverArrived(id);
     }
 
     // ------------------------------------------------------------------ the phone → the player
 
     private void OnMessage(PhoneLink link, Msg m)
     {
+        if (Shared(link).OnMessage(m)) return;
         var p = _main.Player;
         switch (m.T)
         {
@@ -387,25 +433,12 @@ public sealed class PhoneLinkViewModel : Observable
             case "generate":
                 if (p.GenerateQueueCommand.CanExecute(null)) p.GenerateQueueCommand.Execute(null);
                 break;
-            case "cover":
-                if (m.Id is { Length: > 0 and < 64 } coverOf && link.Connection is { } cc)
-                    _ = FileLane.SendAsync(cc, "c:" + coverOf, File.Exists(AppPaths.TrackCover(coverOf)) ? AppPaths.TrackCover(coverOf) : null);
-                break;
             case "entry":
                 if (m.Id is { Length: > 0 and < 64 } req && link.Connection is { } ec)
                     _ = FileLane.SendAsync(ec, req, m.Text != null && _pack?.GetValueOrDefault(m.Text) is { } file ? file : null);
                 break;
             case "packDone":
                 DropPack();
-                break;
-            case "keep":
-                // Save or the heart on the phone, for this computer.
-                if (m.Id != null && p.TrackFor(m.Id) is { } keep) KeepHere(_main.Vm(keep), m.Flag);
-                break;
-            case "song":
-                // Kept on the phone: the file from here.
-                if (m.Text is { Length: > 0 and < 64 } songReq && link.Connection is { } sc)
-                    _ = FileLane.SendAsync(sc, songReq, m.Id == null ? null : FileOf(m.Id));
                 break;
         }
         // The answer at once, not at the next tick.
@@ -430,37 +463,6 @@ public sealed class PhoneLinkViewModel : Observable
             if (_link != link || link.Status != LinkStatus.Reconnecting) return null;
         }
         return null;
-    }
-
-    // ------------------------------------------------------------------ keeping a song (Save, the heart)
-
-    // A song neither this computer nor the phone has kept (a suggestion here): here, on the phone or both, asked each time.
-    public async Task Keep(TrackViewModel vm, bool favorite)
-    {
-        int where = await Dialogs.ChooseAsync(favorite ? L.T("Add to Favorites") : L.T("Add to library"),
-            L.F("“{0}”: on which device?", vm.Title), L.T("This computer"), L.T("The phone"), L.T("Both"));
-        if (where < 0) return;
-        if (where != 0 && _link?.Connection is { } c)
-        {
-            c.Send(new Msg { T = "take", Tracks = new() { Describe(vm.T, true) }, Flag = favorite });
-            if (where == 1) _main.Toast(favorite ? L.F("Added to Favorites on {0}", _link.OtherName) : L.F("Added to the library on {0}", _link.OtherName));
-        }
-        if (where != 1) KeepHere(vm, favorite);
-    }
-
-    private void KeepHere(TrackViewModel vm, bool favorite)
-    {
-        var kept = favorite ? _main.KeepInLibrary(vm) : _main.AddToLibrary(vm);
-        if (favorite && !kept.IsFavorite) _main.ToggleFavorite(kept);
-    }
-
-    // The audio of a song of this computer (the saved file, the suggestion's, the copy in the cache, the one playing).
-    private string? FileOf(string id)
-    {
-        var t = _main.Library.Get(id) ?? _main.Radio.Track(id);
-        if (t == null) return null;
-        var playing = _main.Player.Current?.Id == id ? _main.Player.OpenPath : null;
-        return new[] { t.HasSavedFile ? t.Path : null, _main.Radio.PathFor(id), t.CachePath, playing }.FirstOrDefault(File.Exists);
     }
 
     // ------------------------------------------------------------------ "To the phone" (the export window)

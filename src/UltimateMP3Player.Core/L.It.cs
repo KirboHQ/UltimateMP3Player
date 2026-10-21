@@ -1961,5 +1961,45 @@ public static partial class L
         ["Add songs…"] = "Aggiungi brani…",
         ["Songs with “{0}”"] = "Brani con «{0}»",
         ["Tap “Add songs” to choose them from your library."] = "Tocca «Aggiungi brani» per sceglierli dalla tua libreria.",
+        // 3.9.3: connect phone, both devices' music on both, and where it's heard
+        ["Music shown"] = "Musica mostrata",
+        ["Sound plays on"] = "Audio riprodotto su",
+        ["Both|f"] = "Entrambe",
+        ["Phone"] = "Telefono",
+        ["Computer"] = "Computer",
+        ["Phone only"] = "Solo telefono",
+        ["Computer only"] = "Solo computer",
+        ["The same on both devices: what you change here changes on the phone too."] =
+            "Uguale sui due dispositivi: ciò che cambi qui cambia anche sul telefono.",
+        ["The same on both devices: what you change here changes on the computer too."] =
+            "Uguale sui due dispositivi: ciò che cambi qui cambia anche sul computer.",
+        ["On the phone open Settings › Connect to computer: it shows up here. Each one then shows the other's music, the phone controls the music of this computer and receives music with “To the phone” in the export window."] =
+            "Sul telefono apri Impostazioni › Collega al computer: comparirà qui. Poi ciascuno mostra la musica dell'altro, il telefono controlla la musica di questo computer e riceve musica con «Al telefono» nella finestra di esportazione.",
+        ["Use the player as always, also from the lock screen: it controls the computer. Each one shows the other's music; the computer can send you music with “To the phone” in its export window."] =
+            "Usa il lettore come sempre, anche dalla schermata di blocco: controlla il computer. Ciascuno mostra la musica dell'altro; il computer può mandarti musica con «Al telefono» nella sua finestra di esportazione.",
+        ["“{0}” wants to connect. This phone then controls the music on that computer, and each one shows the other's music."] =
+            "«{0}» vuole collegarsi. Questo telefono poi controlla la musica su quel computer, e ciascuno mostra la musica dell'altro.",
+        ["Connected to {0}: the music plays on this phone"] = "Collegato a {0}: la musica suona su questo telefono",
+        ["Connected to {0}: the music plays on both"] = "Collegato a {0}: la musica suona su entrambi",
+        ["heard on the phone"] = "si sente sul telefono",
+        ["heard on both"] = "si sente su entrambi",
+        ["Playing on this phone · {0}"] = "In riproduzione su questo telefono · {0}",
+        ["Playing here and on {0}"] = "In riproduzione qui e su {0}",
+        ["On which device do you want to create it?"] = "Su quale dispositivo vuoi crearlo?",
+        ["On which device do you want to create it?|f"] = "Su quale dispositivo vuoi crearla?",
+        ["{0}: on which device?"] = "{0}: su quale dispositivo?",
+        ["“{0}” is on both devices: on which one?"] = "«{0}» è su entrambi i dispositivi: su quale?",
+        ["{0} of these songs are on both devices: on which one?"] = "{0} di questi brani sono su entrambi i dispositivi: su quale?",
+        ["“{0}” is among the Favorites on: {1}."] = "«{0}» è tra i Preferiti su: {1}.",
+        ["Add it on: {0}"] = "Aggiungi su: {0}",
+        ["Remove it from: {0}"] = "Togli da: {0}",
+        ["Change cover"] = "Cambia copertina",
+        ["Saving “{0}” on {1}…"] = "Salvataggio di «{0}» su {1}…",
+        ["Saving {0} songs on {1}…"] = "Salvataggio di {0} brani su {1}…",
+        ["{0} songs added to the library on {1}"] = "{0} brani aggiunti alla libreria su {1}",
+        ["A song from {0} was added to your library"] = "Un brano di {0} è stato aggiunto alla tua libreria",
+        ["{0} songs from {1} were added to your library"] = "{0} brani di {1} sono stati aggiunti alla tua libreria",
+        ["Couldn't keep “{0}”: {1} didn't send it"] = "Impossibile tenere «{0}»: {1} non l'ha inviato",
+        ["Couldn't get the music of {0}: {1}"] = "Impossibile ricevere la musica di {0}: {1}",
     };
 }

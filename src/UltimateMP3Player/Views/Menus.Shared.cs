@@ -49,7 +49,7 @@ public static partial class Menus
         menu.Items.Add(LyricsSubmenu(t));
         if (t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
             menu.Items.Add(Item(L.T("Find the video…"), VideoGlyph, () => _ = main.FindVideo(t)));
-        if (!main.InRoom) menu.Items.Add(DjSubmenu(t));
+        if (!main.InRoom && !main.IsTheirs(t)) menu.Items.Add(DjSubmenu(t));
         menu.Items.Add(new Separator());
         AddEditItems(menu, t);
         return menu;
@@ -61,7 +61,7 @@ public static partial class Menus
     private static void AddSaveItems(ContextMenu menu, IReadOnlyList<TrackViewModel> tracks)
     {
         var main = tracks[0].Main;
-        var cloud = tracks.Where(t => t.IsCloud && !t.IsSaving).ToList();
+        var cloud = tracks.Where(t => main.ToSave(t)).ToList();
         if (cloud.Count > 0)
             menu.Items.Add(Item(tracks.Count == 1 ? L.T("Save to device") : L.F("Save to device ({0})", cloud.Count), SaveGlyph,
                 () => _ = main.SaveToDevice(cloud)));
@@ -164,14 +164,6 @@ public static partial class Menus
 
     private const string RadioGlyph = "";
 
-    // Connect phone: a suggested song goes where you say (this computer, the phone or both), like the player's heart.
-    private static void Keep(MainViewModel main, TrackViewModel t, bool favorite)
-    {
-        if (main.PhoneLinked) _ = main.PhoneLink.Keep(t, favorite);
-        else if (favorite) main.ToggleFavorite(t);
-        else main.AddToLibrary(t);
-    }
-
     // A suggested song that isn't in the library: its place in the queue (row) or skipping it (the one playing), keeping it,
     // more songs like it.
     public static ContextMenu ForRadioItem(RadioItemViewModel item, MainViewModel main, QueueRow? row)
@@ -195,10 +187,15 @@ public static partial class Menus
         if (item.IsFailed) menu.Items.Add(Item(L.T("Try downloading it again"), "", () => main.Radio.Prepare(item.Id)));
         menu.Items.Add(new Separator());
         // Only into the library (in the cloud, nothing downloaded: also a playlist, the favourites), or saved on the device too.
-        menu.Items.Add(Item(L.T("Add to library"), LibraryGlyph, () => Keep(main, t, false)));
-        menu.Items.Add(Item(L.T("Save to device"), SaveGlyph, () => _ = main.Radio.Save(item, null)));
+        menu.Items.Add(Item(L.T("Add to library"), LibraryGlyph, () => main.AddToLibrary(t)));
+        menu.Items.Add(Item(L.T("Save to device"), SaveGlyph, () =>
+        {
+            // (connected to the other device: it asks where)
+            if (main.Shared is { Ready: true }) _ = main.SaveToDevice(new[] { t });
+            else _ = main.Radio.Save(item, null);
+        }));
         menu.Items.Add(AddToPlaylist(t));
-        menu.Items.Add(t.IsFavorite || !main.PhoneLinked ? FavoriteItem(t) : Item(L.T("Add to Favorites"), "\uEB51", () => Keep(main, t, true)));
+        menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => player.PlayRadio(t)));
         menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
@@ -293,9 +290,26 @@ public static partial class Menus
         var header = new StackPanel { Orientation = Orientation.Horizontal };
         header.Children.Add(new Ellipse { Width = 9, Height = 9, Fill = tag.Brush, VerticalAlignment = VerticalAlignment.Center });
         header.Children.Add(new TextBlock { Text = Short(tag.Name), Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center });
+        if (tag.DeviceGlyph is { } device) header.Children.Add(DeviceMark(device));
         var m = new MenuItem { Header = header };
         Ui.SetGlyph(m, glyph);
         return m;
+    }
+
+    // The phone's or the computer's icon after a name (Connect phone, both devices' music shown).
+    private static TextBlock DeviceMark(string glyph)
+    {
+#if AVALONIA
+        var t = new TextBlock { Text = Icons.Map(glyph), FontSize = 11, Opacity = 0.6, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        t.Classes.Add("glyph");
+        return t;
+#else
+        return new TextBlock
+        {
+            Text = glyph, Style = (Style)Application.Current.Resources["Glyph"], FontSize = 11, Opacity = 0.6, Margin = new Thickness(6, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+#endif
     }
 
     public static MenuItem DjSubmenu(TrackViewModel t)
@@ -326,7 +340,7 @@ public static partial class Menus
     private static IEnumerable<object> PlaylistTagItems(PlaylistViewModel p)
     {
         var main = App.Host.Session!;
-        foreach (var tag in main.Tags)
+        foreach (var tag in main.TagsFor(p))
         {
             var tg = tag;
             var item = TagItem(tg, p.P.Tags.Contains(tg.Id) ? Check : null);
@@ -364,7 +378,7 @@ public static partial class Menus
     public static ContextMenu TagPicker(ISet<string> chosen, MainViewModel main, Action changed)
     {
         var menu = new ContextMenu();
-        foreach (var tag in main.Tags)
+        foreach (var tag in main.Tags.Where(t => !main.IsTheirs(t.Id)))
         {
             var tg = tag;
             var item = TagItem(tg, chosen.Contains(tg.Id) ? Check : null);
@@ -438,7 +452,7 @@ public static partial class Menus
         var menu = new ContextMenu();
         menu.Items.Add(Item(L.T("Open"), "", () => main.OpenTag(t)));
         menu.Items.Add(Item(L.T("Edit…"), "", () => _ = main.EditTag(t)));
-        menu.Items.Add(Item(L.T("Export to a .ump file…"), "", () => main.ExportPack(tag: t)));
+        if (!main.IsTheirs(t.Id)) menu.Items.Add(Item(L.T("Export to a .ump file…"), "", () => main.ExportPack(tag: t)));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(L.T("Delete tag…"), "", () => _ = main.DeleteTag(t)));
         return menu;
@@ -454,7 +468,7 @@ public static partial class Menus
         var main = t.Main;
         menu.Items.Add(Item(L.T("Edit info…"), "", () => _ = main.EditTrack(t)));
         menu.Items.Add(Item(L.T("Change cover…"), "", () => _ = main.ChangeTrackCover(t)));
-        if (t.IsSaved) menu.Items.Add(Item(L.T("Show in folder"), "", () => main.ShowInFolder(t)));
+        if (t.T.HasSavedFile) menu.Items.Add(Item(L.T("Show in folder"), "", () => main.ShowInFolder(t)));
         if (t.T.SourceUrl is { } url && url.StartsWith("http"))
             menu.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copied")); } catch { } }));
         menu.Items.Add(new Separator());
@@ -499,13 +513,13 @@ public static partial class Menus
         menu.Items.Add(Item(L.T("Play"), "", () => main.PlayPlaylists(lists)));
         menu.Items.Add(Item(L.T("Add to queue"), "", () => main.EnqueuePlaylists(lists)));
         menu.Items.Add(new Separator());
-        int cloud = main.SongsOf(lists).Count(t => t.IsCloud && !t.IsSaving);
+        int cloud = main.SongsOf(lists).Count(main.ToSave);
         if (cloud > 0) menu.Items.Add(Item(L.F("Save to device ({0})", cloud), SaveGlyph, () => _ = main.SavePlaylists(lists)));
         var tags = new SubmenuEntry { Header = L.T("Tags") };
         Ui.SetGlyph(tags, TagGlyph);
         foreach (var i in PlaylistsTagItems(lists)) tags.Items.Add(i);
         menu.Items.Add(tags);
-        menu.Items.Add(Item(L.T("Export to a .ump file…"), "", () => main.ExportPlaylists(lists)));
+        if (lists.All(p => !p.IsOther)) menu.Items.Add(Item(L.T("Export to a .ump file…"), "", () => main.ExportPlaylists(lists)));
         if (lists.Any(p => !p.IsFavorites))
         {
             menu.Items.Add(new Separator());
@@ -525,7 +539,7 @@ public static partial class Menus
     private static IEnumerable<object> PlaylistsTagItems(IReadOnlyList<PlaylistViewModel> lists)
     {
         var main = App.Host.Session!;
-        foreach (var tag in main.Tags)
+        foreach (var tag in main.Tags.Where(t => lists.Any(p => main.ProfileOf(p.P) == main.ProfileOf(t.T))))
         {
             var tg = tag;
             string? State() => lists.Count(p => p.P.Tags.Contains(tg.Id)) is var n && n == 0 ? null : n == lists.Count ? Check : Some;
@@ -603,7 +617,7 @@ public static partial class Menus
         foreach (var p in main.Playlists)
         {
             var pl = p.P;
-            yield return Item(Short(p.Name), p.IsFavorites ? "" : "", () => main.AddToPlaylist(tracks, pl));
+            yield return Item(Short(p.Name), p.DeviceGlyph ?? (p.IsFavorites ? "" : ""), () => main.AddToPlaylist(tracks, pl));
         }
     }
 
@@ -643,8 +657,8 @@ public static partial class Menus
         foreach (var p in main.Playlists)
         {
             var pl = p.P;
-            bool has = main.Profile.Contains(pl, t.Id);
-            sub.Items.Add(Item(Short(p.Name) + (has ? "  ✓" : ""), p.IsFavorites ? "" : "", () => main.AddToPlaylist(t, pl), !has));
+            bool has = main.ProfileOf(pl).Contains(pl, t.Id);
+            sub.Items.Add(Item(Short(p.Name) + (has ? "  ✓" : ""), p.DeviceGlyph ?? (p.IsFavorites ? "" : ""), () => main.AddToPlaylist(t, pl), !has));
         }
         return sub;
     }
@@ -668,9 +682,10 @@ public static partial class Menus
         menu.Items.Add(new Separator());
         menu.Items.Add(PlaylistTagSubmenu(p));
         menu.Items.Add(Item(L.T("Put its tags on its songs…"), "\uE8B3", () => _ = main.TagPlaylistSongs(p), p.Count > 0));
-        menu.Items.Add(Item(L.T("Export to a .ump file…"), "", () => main.ExportPack(p)));
+        if (!p.IsOther) menu.Items.Add(Item(L.T("Export to a .ump file…"), "", () => main.ExportPack(p)));
         // Its songs in the cloud saved on the device; or the space its songs take, freed (the window says how).
-        if (p.CloudCount > 0) menu.Items.Add(Item(L.F("Save to device ({0})", p.CloudCount), SaveGlyph, () => _ = main.SavePlaylists(new[] { p })));
+        int toSave = main.SongsOf(new[] { p }).Count(main.ToSave);
+        if (toSave > 0) menu.Items.Add(Item(L.F("Save to device ({0})", toSave), SaveGlyph, () => _ = main.SavePlaylists(new[] { p })));
         if (p.Count > p.CloudCount)
             menu.Items.Add(Item(L.T("Free up space…"), DeleteGlyph, () => _ = main.DeleteTracks(p.Songs.Where(t => t.IsSaved).ToList())));
         if (!p.IsFavorites)

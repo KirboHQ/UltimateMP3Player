@@ -20,13 +20,17 @@ public sealed class TagViewModel : Observable
     public Brush Brush => Ui.BrushFrom(T.Color);
     public string SearchName => Text.Normalize(T.Name);
 
-    public int Count => _main.Profile.CountTagged(Id);
+    public int Count => _main.ProfileOf(T).CountTagged(Id);
     public string CountText => L.Count(Count, "1 song", "{0} songs");
+    // Connect phone, both devices' music shown: whose tag it is.
+    public string? DeviceGlyph => _main.DeviceGlyph(Id);
+    public bool HasDevice => DeviceGlyph != null;
 
     private bool _isSelected;
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
 
-    public void Refresh() => OnChanged(nameof(Name), nameof(Color), nameof(Brush), nameof(SearchName), nameof(Count), nameof(CountText));
+    public void Refresh() => OnChanged(nameof(Name), nameof(Color), nameof(Brush), nameof(SearchName), nameof(Count), nameof(CountText),
+        nameof(DeviceGlyph), nameof(HasDevice));
     public void RefreshCount() => OnChanged(nameof(Count), nameof(CountText));
 
     public override string ToString() => Name;

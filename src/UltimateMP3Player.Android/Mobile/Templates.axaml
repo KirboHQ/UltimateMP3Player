@@ -211,6 +211,8 @@
                     <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                         <TextBlock Text="{local:Icon E995}" Classes="glyph" FontSize="12" Foreground="{DynamicResource AccentTextBrush}" Margin="0,0,6,0"
                                    IsVisible="{Binding IsPlayingFrom}"/>
+                        <TextBlock Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="12" Foreground="{DynamicResource SubTextBrush}"
+                                   Margin="0,0,6,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
                         <TextBlock Text="{Binding Subtitle}" FontSize="13.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
                 </StackPanel>
@@ -229,7 +231,11 @@
                 </Border>
                 <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Name}" FontSize="15.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding CountText}" FontSize="13.5" Foreground="{DynamicResource SubTextBrush}" Margin="0,3,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                        <TextBlock Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="12" Foreground="{DynamicResource SubTextBrush}"
+                                   Margin="0,0,6,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
+                        <TextBlock Text="{Binding CountText}" FontSize="13.5" Foreground="{DynamicResource SubTextBrush}"/>
+                    </StackPanel>
                 </StackPanel>
                 <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" FontSize="18"
                         Command="{x:Static views:Commands.MoreCommand}" CommandParameter="{Binding $parent[Border]}"/>
@@ -246,8 +252,11 @@
                 <Border Classes="tick" Margin="0" HorizontalAlignment="Center">
                     <TextBlock Classes="glyph" Text="{local:Icon E73E}" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
                 </Border>
-                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Margin="12,0,10,0" VerticalAlignment="Center"
-                           TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                <DockPanel Grid.Column="1" Margin="12,0,10,0">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="12"
+                               Foreground="{DynamicResource SubTextBrush}" Margin="6,0,0,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
+                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                </DockPanel>
             </Grid>
         </Border>
     </DataTemplate>

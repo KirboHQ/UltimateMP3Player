@@ -4,7 +4,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Controls.Primitives;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Link;
 using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
@@ -14,6 +16,7 @@ namespace UltimateMP3Player.Views;
 public static class LinkSheet
 {
     private static bool _open;
+    private const string PhoneGlyph = "\uE8EA", ComputerGlyph = "\uE7F4", BothGlyph = "\uE71B";
 
     public static void Show()
     {
@@ -52,8 +55,26 @@ public static class LinkSheet
         body.Children.Add(waiting);
 
         var linked = new StackPanel();
-        linked.Children.Add(Ui.Text(L.T("The music plays on the computer and this phone stays silent: use the player as always, also from the lock screen. Your songs go to the computer by themselves; the computer can send you music with “To the phone” in its export window."),
+        linked.Children.Add(Ui.Text(L.T("Use the player as always, also from the lock screen: it controls the computer. Each one shows the other's music; the computer can send you music with “To the phone” in its export window."),
             "hint", new Thickness(0, 0, 0, 16)));
+        // Whose music both show and where it's heard (the same on both devices: a change goes to the computer too).
+        var music = Choices(L.T("Music shown"), (L.T("Both|f"), BothGlyph), (L.T("Phone"), PhoneGlyph), (L.T("Computer"), ComputerGlyph));
+        var audio = Choices(L.T("Sound plays on"), (L.T("Computer"), ComputerGlyph), (L.T("Phone"), PhoneGlyph), (L.T("Both"), BothGlyph));
+        linked.Children.Add(music.Panel);
+        linked.Children.Add(audio.Panel);
+        linked.Children.Add(Ui.Text(L.T("The same on both devices: what you change here changes on the computer too."), "hint", new Thickness(0, 0, 0, 16)));
+        bool filling = false;
+        void ModeChosen()
+        {
+            if (filling || App.Host.Session?.Shared is not { } s) return;
+            int m = Array.FindIndex(music.Buttons, b => b.IsChecked == true), a = Array.FindIndex(audio.Buttons, b => b.IsChecked == true);
+            if (m >= 0 && a >= 0) s.SetModes((LinkMusic)m, (LinkAudio)a);
+        }
+        foreach (var b in music.Buttons.Concat(audio.Buttons))
+            b.IsCheckedChanged += (_, _) =>
+            {
+                if (b.IsChecked == true) ModeChosen();
+            };
         var disconnect = new Button
         {
             Theme = Ui.Theme("TouchGhost"), Content = L.T("Disconnect"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center,
@@ -75,6 +96,13 @@ public static class LinkSheet
             dots.Foreground = on ? Ui.Res("SuccessBrush") : Ui.Res("MutedBrush");
             waiting.IsVisible = !on;
             linked.IsVisible = on;
+            if (App.Host.Session?.Shared is { } shared)
+            {
+                filling = true;
+                music.Buttons[(int)shared.Music].IsChecked = true;
+                audio.Buttons[(int)shared.Audio].IsChecked = true;
+                filling = false;
+            }
             error.Text = vm.Error is { } e ? L.T("The phone can't wait for computers:") + " " + e : "";
             error.IsVisible = vm.Error != null && !on;
         }
@@ -89,6 +117,28 @@ public static class LinkSheet
             vm.Visible = false;
             _open = false;
         }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    // A label and its choices side by side (one ticked).
+    private static (StackPanel Panel, RadioButton[] Buttons) Choices(string label, params (string Text, string Glyph)[] options)
+    {
+        var group = "seg" + Guid.NewGuid().ToString("N");
+        var row = new UniformGrid { Rows = 1 };
+        var buttons = new RadioButton[options.Length];
+        for (int i = 0; i < options.Length; i++)
+        {
+            var r = buttons[i] = new RadioButton
+            {
+                Theme = Ui.Theme("TouchSegment"), Content = options[i].Text, GroupName = group,
+                Margin = new Thickness(i > 0 && i < options.Length - 1 ? 4 : 0, 0, i > 0 && i < options.Length - 1 ? 4 : 0, 0),
+            };
+            Ui.SetGlyph(r, options[i].Glyph);
+            row.Children.Add(r);
+        }
+        var panel = new StackPanel { Margin = new Thickness(0, 0, 0, 12) };
+        panel.Children.Add(Ui.Text(label, "field-label", new Thickness(4, 0, 0, 6)));
+        panel.Children.Add(new Border { CornerRadius = new CornerRadius(22), Padding = new Thickness(4), Background = Ui.Res("Surface2Brush"), Child = row });
+        return (panel, buttons);
     }
 
     private static TextBlock Glyph(string glyph, double size, IBrush brush)

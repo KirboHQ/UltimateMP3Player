@@ -251,9 +251,6 @@ public sealed class ChatLineViewModel
 // The "Listen together" page and everything the room does to the rest of the app.
 public sealed class TogetherViewModel : Observable
 {
-    // Output buffer of the player: what you hear is this much behind what it has read (AudioEngine.Position).
-    private static readonly double Lead = AudioEngine.LatencyMs / 1000.0;
-
     private readonly MainViewModel _main;
     private readonly DispatcherTimer _scanTimer = new() { Interval = TimeSpan.FromSeconds(2.5) };
     private readonly DispatcherTimer _follow = new(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(200) };
@@ -261,19 +258,17 @@ public sealed class TogetherViewModel : Observable
     private TogetherFetcher? _fetcher;
     private readonly Dictionary<string, Track> _ephemeral = new();
     private readonly Dictionary<string, RoomItemViewModel> _items = new();
-    private bool _shown, _scanning, _loading, _justSeeked;
-    private long _lastSeek, _failedUntil;
-    private string? _failedItem;
-    // Extra delay measured after a jump on this song (slow decoders): seeks aim this much ahead.
-    private double _lag;
+    private readonly SyncFollower _sync;
+    private bool _shown, _scanning;
     private string? _joinedAddress;
     private DateTime _lastDeny = DateTime.MinValue;
 
     public TogetherViewModel(MainViewModel main)
     {
         _main = main;
+        _sync = new SyncFollower(main.Player, true);
         var s = main.Host.Settings;
-        _newRoomName = L.F("{0}'s room", main.ProfileName);
+        _newRoomName = L.F("{0}'s room", main.Profile.Info.Name);
         MaxChoices = new[] { 2, 3, 4, 5, 6, 8, 10, 12, 16 }.Select(n => new Choice(L.F("{0} people", n), n)).ToList();
         _maxChoice = MaxChoices.FirstOrDefault(c => (int)c.Value! == s.TogetherMax) ?? MaxChoices[5];
         _defaultPerms = (Perm)s.TogetherRoomPerms & Perm.All;
@@ -597,7 +592,7 @@ public sealed class TogetherViewModel : Observable
         _fetcher = null;
         _s = null;
         _follow.Stop();
-        _loading = false;
+        _sync.Reset();
         _main.Player.LeaveRoom();
         foreach (var id in _ephemeral.Keys)
         {
@@ -1546,70 +1541,7 @@ public sealed class TogetherViewModel : Observable
             if (p.RoomLoadedId != null) p.RoomStop();
             return;
         }
-        // While the file opens the engine still holds the song before: nothing is played, paused or moved until then.
-        if (_loading) return;
-        long now = Environment.TickCount64;
-        if (p.RoomLoadedId != item.Id)
-        {
-            // A file that didn't open is tried again after a while, not every 200 ms.
-            if (_failedItem == item.Id && now < _failedUntil) return;
-            _loading = true;
-            // The song before stops here (it doesn't go on under the new one); the new one starts at the right point once open.
-            p.RoomPlay(false);
-            _ = Load(item.Id, vm, path);
-            return;
-        }
-        var audio = p.Audio;
-        double lead = (Lead + AudioEngine.DeviceLatencyMs / 1000.0) * speed;
-        if (playing)
-        {
-            if (!audio.IsPlaying)
-            {
-                audio.Seek(TimeSpan.FromSeconds(target + lead + _lag));
-                p.RoomPlay(true);
-                _lastSeek = now;
-                _justSeeked = true;
-            }
-            else if (now - _lastSeek > 1500)
-            {
-                double behind = target - audio.Position.TotalSeconds;
-                if (Math.Abs(behind) > 0.2 * Math.Max(1, speed))
-                {
-                    // Drifted (a hiccup, a seek by someone): back on the room's time. If the last jump itself landed
-                    // late (files decoded through ffmpeg take a moment to restart), the next ones aim that much further.
-                    if (_justSeeked) _lag = Math.Clamp(_lag + behind, 0, 1.5);
-                    audio.Seek(TimeSpan.FromSeconds(target + lead + _lag));
-                    _lastSeek = now;
-                    _justSeeked = true;
-                }
-                else _justSeeked = false;
-            }
-        }
-        else
-        {
-            if (audio.IsPlaying) p.RoomPlay(false);
-            if (now - _lastSeek > 400 && Math.Abs(audio.Position.TotalSeconds - target) > 0.25)
-            {
-                audio.Seek(TimeSpan.FromSeconds(target));
-                _lastSeek = now;
-            }
-        }
-    }
-
-    private async Task Load(string itemId, TrackViewModel vm, string path)
-    {
-        bool ok = false;
-        try { ok = await _main.Player.RoomLoad(itemId, vm, path); }
-        finally { _loading = false; }
-        if (!ok)
-        {
-            _failedItem = itemId;
-            _failedUntil = Environment.TickCount64 + 5000;
-        }
-        _lastSeek = 0;
-        _lag = 0;
-        _justSeeked = false;
-        Follow();
+        _sync.Follow(item.Id, vm, path, target, playing, speed, Follow);
     }
 
     // ------------------------------------------------------------------ saving a room song

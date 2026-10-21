@@ -136,6 +136,153 @@ public sealed class MainViewModel : Observable
     public bool PhoneLinked => _phoneLink?.HasPhone == true;
     public bool ComputerLinked => _computerLink?.IsLinked == true;
 
+    // ------------------------------------------------------------------ connect phone: the other device's music
+
+    // While connected (the link view models set it): the other device's songs, playlists and tags, and whose the pages show.
+    public SharedLibrary? Shared { get; private set; }
+    private SharedLibrary? Ready => Shared is { Ready: true } s ? s : null;
+
+    internal void AttachShared(SharedLibrary s)
+    {
+        Shared?.Dispose();
+        Shared = s;
+    }
+
+    internal void DetachShared(SharedLibrary s)
+    {
+        if (Shared != s) return;
+        s.Dispose();
+        Shared = null;
+        OnSharedChanged();
+    }
+
+    // The mirror's changes refresh the pages like this profile's own.
+    internal void AttachMirror(Profile m)
+    {
+        m.PlaylistChanged += _playlistChanged;
+        m.PlaylistsChanged += _playlistsChanged;
+        m.TagsChanged += _tagsChanged;
+        m.TrackTagsChanged += _trackTagsChanged;
+    }
+
+    internal void DetachMirror(Profile m)
+    {
+        m.PlaylistChanged -= _playlistChanged;
+        m.PlaylistsChanged -= _playlistsChanged;
+        m.TagsChanged -= _tagsChanged;
+        m.TrackTagsChanged -= _trackTagsChanged;
+    }
+
+    // The other device's music arrived or went, or whose is shown changed: every page again.
+    internal void OnSharedChanged()
+    {
+        OnTagsChanged();
+        RebuildPlaylists();
+        foreach (var vm in _vms.Values)
+        {
+            vm.RefreshFavorite();
+            vm.RefreshCloud();
+        }
+        OnSharedProfile();
+        OnSharedTracks();
+    }
+
+    // The other device's songs changed (some new, some gone).
+    internal void OnSharedTracks()
+    {
+        _libraryDirty = true;
+        ScheduleRefresh();
+        Player.RefreshTemporary();
+    }
+
+    // Whose profile the badge shows (and Home's greeting).
+    internal void OnSharedProfile()
+    {
+        OnChanged(nameof(ProfileName), nameof(ProfileInitial), nameof(ProfileBrush), nameof(ProfileAvatar), nameof(HasSecondProfile),
+            nameof(SecondInitial), nameof(SecondBrush), nameof(SecondAvatar));
+        if (Page == Home) Home.Refresh();
+    }
+
+    internal void RefreshVm(string id)
+    {
+        if (_vms.TryGetValue(id, out var vm)) vm.Refresh();
+    }
+
+    internal void RefreshList(string id) => Playlists.FirstOrDefault(p => p.Id == id)?.Refresh();
+
+    // A song of the library or of the other device.
+    public Track? Get(string id) => Library.Get(id) ?? Shared?.Get(id);
+
+    // The songs the library pages show: this device's and/or the other's (a song both have once, as this device's).
+    public List<Track> Songs()
+    {
+        if (Ready is not { } s) return Library.Snapshot();
+        var list = s.ShowsOwn ? Library.Snapshot() : s.SharedIds.Distinct().Select(Library.Get).OfType<Track>().ToList();
+        if (s.ShowsOther) list.AddRange(s.OtherSongs);
+        return list;
+    }
+
+    // The profiles whose playlists, tags, favourites and history are shown.
+    public IEnumerable<Profile> ShownProfiles()
+    {
+        if (Ready is not { Mirror: { } m } s) yield return Profile;
+        else
+        {
+            if (s.ShowsOwn) yield return Profile;
+            if (s.ShowsOther) yield return m;
+        }
+    }
+
+    // The mirror for the other device's playlists and tags, this profile for the rest.
+    public Profile ProfileOf(Playlist p) => Shared is { Mirror: { } m } s && s.IsTheirs(p.Id) ? m : Profile;
+    public Profile ProfileOf(Tag t) => Shared is { Mirror: { } m } s && s.IsTheirs(t.Id) ? m : Profile;
+
+    // A song is the other device's (only there, not this device's too).
+    public bool IsTheirs(TrackViewModel t) => Shared?.IsTheirs(t.Id) == true;
+    public bool IsTheirs(string id) => Shared?.IsTheirs(id) == true;
+    // Not saved on both devices while connected: "Save to device" (which asks where) has something to do.
+    public bool NotEverywhere(TrackViewModel t) => Ready?.NotEverywhere(t.T) == true;
+    // What "Save to device" works on: not saved here, or (connected) not saved on both devices; not being saved already.
+    public bool ToSave(TrackViewModel t) => (t.IsCloud || NotEverywhere(t)) && !t.IsSaving;
+
+    // The tags of the profiles shown on a song.
+    public IReadOnlyList<string> TagsOf(string trackId)
+    {
+        if (Ready == null) return Profile.TagsOf(trackId);
+        var list = new List<string>();
+        foreach (var p in ShownProfiles()) list.AddRange(p.TagsOf(trackId));
+        return list;
+    }
+
+    // In the Favorites of a profile shown.
+    public bool IsFavorite(string trackId) => ShownProfiles().Any(p => p.Contains(p.Favorites, trackId));
+
+    // Which device an action goes to: the one whose music is shown, or (both shown) the ones chosen. Empty: cancelled.
+    private async Task<List<Profile>> TargetsAsync(string title, string text)
+    {
+        if (Ready is not { Mirror: { } m } s) return new() { Profile };
+        if (!s.ShowsOwn) return new() { m };
+        if (!s.ShowsOther) return new() { Profile };
+        return await ChooseDevices(title, text) switch
+        {
+            0 => new() { Profile },
+            1 => new() { m },
+            2 => new() { Profile, m },
+            _ => new(),
+        };
+    }
+
+    // This device, the other one, both (-1: cancelled).
+    private Task<int> ChooseDevices(string title, string text)
+        => Dialogs.ChooseAsync(title, text, ThisDevice, OtherDevice, L.T("Both"));
+
+    private bool OnPhoneApp => Shared?.OnPhone ?? false;
+    public string ThisDevice => OnPhoneApp ? L.T("This phone") : L.T("This computer");
+    public string OtherDevice => OnPhoneApp ? L.T("The computer") : L.T("The phone");
+    // The phone's and the computer's icons, next to the names of playlists and tags when both devices' are shown.
+    public const string PhoneGlyph = "\uE8EA", ComputerGlyph = "\uE7F4";
+    public string? DeviceGlyph(string id) => Ready is { ShowsBoth: true } s ? (s.IsTheirs(id) != s.OnPhone ? PhoneGlyph : ComputerGlyph) : null;
+
     public void OnPhoneLinkChanged()
     {
         OnChanged(nameof(PhoneLinked));
@@ -210,11 +357,21 @@ public sealed class MainViewModel : Observable
     private string DjLeaveText() => L.F("The DJ section uses the audio on its own: opening it will make you leave “{0}”.", Together.RoomName);
     public DownloadQueue Queue => Host.Downloads;
 
-    public string ProfileName => Profile.Info.Name;
-    public string ProfileInitial => Profile.Info.Initial;
-    public Brush ProfileBrush => Ui.BrushFrom(Profile.Info.Color);
-    public ImageSource? ProfileAvatar =>
-        Profile.Info.HasAvatar ? Images.Decode(Profile.Info.AvatarPath, 96) : null;
+    // The profile of the music shown: this one, or (connected, only the other device's music) the other device's; with both
+    // devices' music, both names and the other one's picture behind this one's.
+    private SharedLibrary? OtherOnly => Ready is { ShowsOwn: false } s ? s : null;
+    public string ProfileName => OtherOnly is { } o ? o.OtherName
+        : Ready is { ShowsBoth: true } s ? $"{Profile.Info.Name} + {s.OtherName}" : Profile.Info.Name;
+    public string ProfileInitial => OtherOnly is { } o ? Initial(o.OtherName) : Profile.Info.Initial;
+    public Brush ProfileBrush => Ui.BrushFrom(OtherOnly?.OtherColor ?? Profile.Info.Color);
+    public ImageSource? ProfileAvatar => OtherOnly is { } o ? o.OtherAvatar
+        : Profile.Info.HasAvatar ? Images.Decode(Profile.Info.AvatarPath, 96) : null;
+    public bool HasSecondProfile => Ready is { ShowsBoth: true };
+    public string SecondInitial => Initial(Shared?.OtherName);
+    public Brush SecondBrush => Ui.BrushFrom(Shared?.OtherColor ?? "#7C5CFF");
+    public ImageSource? SecondAvatar => HasSecondProfile ? Shared!.OtherAvatar : null;
+
+    private static string Initial(string? name) => string.IsNullOrWhiteSpace(name) ? "?" : char.ToUpper(name.Trim()[0]).ToString();
     public bool MultipleProfiles => Host.Profiles.Profiles.Count > 1;
 
     public ICommand GoHomeCommand { get; }
@@ -249,7 +406,7 @@ public sealed class MainViewModel : Observable
         return vm;
     }
 
-    public IEnumerable<TrackViewModel> AllVms() => Library.Snapshot().Select(Vm);
+    public IEnumerable<TrackViewModel> AllVms() => Songs().Select(Vm);
 
     public void Detach()
     {
@@ -366,14 +523,14 @@ public sealed class MainViewModel : Observable
         nameof(IsSettings));
 
     // Where "back" goes (the phone shows it under the finger that swipes back).
-    public object? BackPage => _back.FirstOrDefault(p => p is not PlaylistPageViewModel pp || Profile.GetPlaylist(pp.Vm.Id) != null);
+    public object? BackPage => _back.FirstOrDefault(p => p is not PlaylistPageViewModel pp || IsShown(pp.Vm));
 
     private void GoBack()
     {
         while (_back.Count > 0)
         {
             var p = _back.Pop();
-            if (p is PlaylistPageViewModel pp && Profile.GetPlaylist(pp.Vm.Id) == null) continue;
+            if (p is PlaylistPageViewModel pp && !IsShown(pp.Vm)) continue;
             if (p is HomeViewModel) Home.Refresh();
             // (a filter changed meanwhile)
             if (p is PlaylistPageViewModel playlist) playlist.EnsureFresh();
@@ -545,23 +702,28 @@ public sealed class MainViewModel : Observable
 
     public ObservableCollection<PlaylistViewModel> Playlists { get; } = new();
 
+    // (connected: the other device's playlists too, after this device's; the Favorites first)
     private void RebuildPlaylists()
     {
-        var current = Profile.PlaylistsSnapshot();
+        var current = ShownProfiles().SelectMany(p => p.PlaylistsSnapshot()).ToList();
         var old = Playlists.ToDictionary(p => p.Id);
         Playlists.Clear();
         foreach (var p in current.OrderBy(p => p.IsFavorites ? 0 : 1))
         {
-            var vm = old.TryGetValue(p.Id, out var o) ? o : new PlaylistViewModel(p, this);
+            // (a playlist object replaced, the other device's after a new connection: a new view model)
+            var vm = old.TryGetValue(p.Id, out var o) && o.P == p ? o : new PlaylistViewModel(p, this);
             vm.Refresh();
             vm.IsSelected = Page is PlaylistPageViewModel pp && pp.Vm.Id == p.Id;
             vm.IsPlayingFrom = Player.ContextId == "playlist:" + p.Id;
             Playlists.Add(vm);
         }
-        if (Page is PlaylistPageViewModel page && Profile.GetPlaylist(page.Vm.Id) == null) Navigate(Home);
+        if (Page is PlaylistPageViewModel page && !IsShown(page.Vm)) Navigate(Home);
         UnsortedPage.MarkDirty();
         Home.Refresh();
     }
+
+    // Still there and shown (deleted, or the other device's gone or hidden).
+    private bool IsShown(PlaylistViewModel vm) => Playlists.Any(p => p.P == vm.P);
 
     private void OnPlaylistChanged(Playlist p)
     {
@@ -639,26 +801,41 @@ public sealed class MainViewModel : Observable
     public string NewPlaylistName() => L.F("My playlist #{0}", Playlists.Count);
 
     // The dialogs are awaited: on Android they can't hold the code up (on Windows they're the usual modal ones).
+    // Connected with both devices' music shown: on which device (or both) it's made.
     public async Task<Playlist?> NewPlaylist(TrackViewModel? with)
     {
+        var where = await TargetsAsync(L.T("New playlist"), L.T("On which device do you want to create it?|f"));
+        if (where.Count == 0) return null;
         var name = await Dialogs.PromptAsync(L.T("New playlist"), L.T("Playlist name"), NewPlaylistName());
         if (string.IsNullOrWhiteSpace(name)) return null;
-        var p = Profile.CreatePlaylist(name);
-        if (with != null && SaveRoomSong(with, p)) return p;
-        if (with != null)
+        Playlist? first = null;
+        foreach (var profile in where)
         {
-            Profile.AddTrack(p, KeepInLibrary(with).Id);
-            Toast(L.F("Added to “{0}”", p.Name));
+            var p = profile.CreatePlaylist(name);
+            first ??= p;
+            if (with == null) continue;
+            if (SaveRoomSong(with, p)) continue;
+            profile.AddTrack(p, Keep(with, profile).Id);
         }
-        else if (Playlists.FirstOrDefault(x => x.Id == p.Id) is { } vm) OpenPlaylist(vm);
-        return p;
+        if (with != null) Toast(L.F("Added to “{0}”", name.Trim()));
+        else if (first != null)
+        {
+            // (the list follows the change a moment later: now, to open it)
+            RebuildPlaylists();
+            if (Playlists.FirstOrDefault(x => x.Id == first.Id) is { } vm) OpenPlaylist(vm);
+        }
+        return first;
     }
+
+    // A song going into a playlist, the Favorites or a tag of this profile must be in its library (a suggestion or a song
+    // of the other device is kept here first); the other device's mirror takes any song (sent there with the edit).
+    internal TrackViewModel Keep(TrackViewModel t, Profile target) => target.IsMirror ? t : KeepInLibrary(t);
 
     public async Task RenamePlaylist(PlaylistViewModel vm)
     {
         var name = await Dialogs.PromptAsync(L.T("Rename playlist"), L.T("New name"), vm.Name);
         if (string.IsNullOrWhiteSpace(name)) return;
-        Profile.Rename(vm.P, name);
+        ProfileOf(vm.P).Rename(vm.P, name);
     }
 
     // True once deleted (false: cancelled).
@@ -666,7 +843,7 @@ public sealed class MainViewModel : Observable
     {
         if (vm.IsFavorites) return false;
         if (!await Dialogs.ConfirmAsync(L.T("Delete this playlist?"), L.F("The playlist “{0}” will be deleted. The songs stay in your library.", vm.Name), L.T("Delete"), true)) return false;
-        Profile.DeletePlaylist(vm.P);
+        ProfileOf(vm.P).DeletePlaylist(vm.P);
         return true;
     }
 
@@ -674,13 +851,15 @@ public sealed class MainViewModel : Observable
     {
         var file = await Dialogs.PickImageAsync();
         if (file == null) return;
-        await SetCover(file, Profile.PlaylistCover(vm.P), () => Profile.SetPlaylistCover(vm.P, true));
+        var profile = ProfileOf(vm.P);
+        await SetCover(file, profile.PlaylistCover(vm.P), () => profile.SetPlaylistCover(vm.P, true));
     }
 
     public void RemovePlaylistCover(PlaylistViewModel vm)
     {
-        try { File.Delete(Profile.PlaylistCover(vm.P)); } catch { }
-        Profile.SetPlaylistCover(vm.P, false);
+        var profile = ProfileOf(vm.P);
+        try { File.Delete(profile.PlaylistCover(vm.P)); } catch { }
+        profile.SetPlaylistCover(vm.P, false);
     }
 
     private async Task SetCover(string image, string target, Action done)
@@ -704,53 +883,103 @@ public sealed class MainViewModel : Observable
     // favourites or getting a tag: in the cloud, nothing downloaded. The library song (the same one for the others).
     public TrackViewModel KeepInLibrary(TrackViewModel t)
     {
+        // A song of the other device (Connect phone): kept here too, its file from there when it has no link.
+        if (Shared is { } s && s.IsTheirs(t.Id)) return Vm(s.AdoptNow(t.T, false));
         if (Radio.Item(t.Id) is not { } suggested) return t;
         var kept = Vm(Radio.Keep(suggested, null));
         // A file of a phone's own (Connect phone), with no link to hear it from again: saved on this computer at once.
-        if (!kept.T.HasLink && !kept.T.IsSaved) _ = SaveToDevice(new[] { kept }, quiet: true);
+        if (!kept.T.HasLink && !kept.T.IsSaved) _ = SaveOnThisDevice(new[] { kept }, quiet: true);
         return kept;
     }
 
     private List<TrackViewModel> KeepInLibrary(IReadOnlyList<TrackViewModel> tracks)
         => tracks.Where(t => _together == null || !_together.IsStandIn(t)).Select(KeepInLibrary).Distinct().ToList();
 
+    // The songs for a profile's playlist, Favorites or tag (Keep).
+    private List<TrackViewModel> Keep(IReadOnlyList<TrackViewModel> tracks, Profile target)
+        => target.IsMirror ? tracks.Where(t => _together == null || !_together.IsStandIn(t)).Distinct().ToList() : KeepInLibrary(tracks);
+
     // The library icon of a song not in the library (next to the heart, in its menu): into it, in the cloud, and said so.
-    public TrackViewModel AddToLibrary(TrackViewModel t)
+    // Connected: on this device, the other one or both, asked each time; from the lock screen (ask false) here.
+    public void AddToLibrary(TrackViewModel t, bool ask = true) => _ = AddToLibraryAsync(t, ask);
+
+    private async Task AddToLibraryAsync(TrackViewModel t, bool ask)
     {
+        int where = 0;
+        if (ask && Ready is { } s)
+        {
+            where = await ChooseDevices(L.T("Add to library"), L.F("“{0}”: on which device?", t.Title));
+            if (where < 0) return;
+            if (where != 0) s.SaveThere(new[] { t.T }, false);
+        }
+        if (where == 1) return;
         var kept = KeepInLibrary(t);
         if (kept != t) Toast(L.F("“{0}” added to your library, in the cloud: save it on your device whenever you like", kept.Title));
-        return kept;
     }
 
-    public void ToggleFavorite(TrackViewModel t)
+    // Connected: in the Favorites of the device whose music is shown; with both devices' music, asked (where it is already
+    // is said). ask false (the lock screen): this device's.
+    public void ToggleFavorite(TrackViewModel t, bool ask = true)
     {
         if (SaveRoomSong(t, Profile.Favorites)) return;
-        t = KeepInLibrary(t);
-        var fav = Profile.Favorites;
-        if (Profile.Contains(fav, t.Id))
+        if (Ready is { Mirror: { } m } s && (s.ShowsOther || s.IsTheirs(t.Id)))
         {
-            Profile.RemoveTrack(fav, t.Id);
+            if (!s.ShowsOwn || !ask) ToggleIn(!s.ShowsOwn ? m : Profile, t);
+            else _ = AskFavorite(t, m);
+            return;
+        }
+        ToggleIn(Profile, t);
+    }
+
+    private void ToggleIn(Profile profile, TrackViewModel t)
+    {
+        t = Keep(t, profile);
+        var fav = profile.Favorites;
+        if (profile.Contains(fav, t.Id))
+        {
+            profile.RemoveTrack(fav, t.Id);
             Toast(L.T("Removed from Favorites"));
         }
         else
         {
-            Profile.AddTrack(fav, t.Id);
+            profile.AddTrack(fav, t.Id);
             Toast(L.T("Added to Favorites ♥"));
         }
         t.RefreshFavorite();
     }
 
+    // Both devices' music: what to do, said from where the song is already a favourite.
+    private async Task AskFavorite(TrackViewModel t, Profile m)
+    {
+        bool here = Profile.Contains(Profile.Favorites, t.Id), there = m.Contains(m.Favorites, t.Id);
+        string me = ThisDevice, other = OtherDevice;
+        if (here == there)
+        {
+            int where = await ChooseDevices(here ? L.T("Remove from Favorites") : L.T("Add to Favorites"), L.F("“{0}”: on which device?", t.Title));
+            if (where is 0 or 2) ToggleIn(Profile, t);
+            if (where is 1 or 2) ToggleIn(m, t);
+            return;
+        }
+        // In one of the two: added on the other one too, or taken out of it.
+        var (has, hasnt) = here ? (me, other) : (other, me);
+        int pick = await Dialogs.ChooseAsync(L.T("Favorites"), L.F("“{0}” is among the Favorites on: {1}.", t.Title, has),
+            L.F("Add it on: {0}", hasnt), L.F("Remove it from: {0}", has));
+        if (pick < 0) return;
+        ToggleIn(pick == 0 ? here ? m : Profile : here ? Profile : m, t);
+    }
+
     public void AddToPlaylist(TrackViewModel t, Playlist p)
     {
         if (SaveRoomSong(t, p)) return;
-        t = KeepInLibrary(t);
+        var profile = ProfileOf(p);
+        t = Keep(t, profile);
         var name = PlaylistViewModel.DisplayName(p);
-        Toast(Profile.AddTrack(p, t.Id) ? L.F("Added to “{0}”", name) : L.F("Already in “{0}”", name));
+        Toast(profile.AddTrack(p, t.Id) ? L.F("Added to “{0}”", name) : L.F("Already in “{0}”", name));
     }
 
     public void RemoveFromPlaylist(TrackViewModel t, Playlist p)
     {
-        Profile.RemoveTrack(p, t.Id);
+        ProfileOf(p).RemoveTrack(p, t.Id);
         Toast(L.F("Removed from “{0}”", PlaylistViewModel.DisplayName(p)));
     }
 
@@ -770,8 +999,9 @@ public sealed class MainViewModel : Observable
 
     public void AddToPlaylist(IReadOnlyList<TrackViewModel> tracks, Playlist p)
     {
-        tracks = KeepInLibrary(tracks);
-        int added = Profile.AddTracks(p, tracks.Select(t => t.Id));
+        var profile = ProfileOf(p);
+        tracks = Keep(tracks, profile);
+        int added = profile.AddTracks(p, tracks.Select(t => t.Id));
         var name = PlaylistViewModel.DisplayName(p);
         Toast(added == 0 ? L.F("They were all already in “{0}”", name) : added == 1 ? L.F("1 song added to “{0}”", name) : L.F("{0} songs added to “{1}”", added, name));
     }
@@ -779,21 +1009,58 @@ public sealed class MainViewModel : Observable
     // True once made (false: cancelled).
     public async Task<bool> NewPlaylistWith(IReadOnlyList<TrackViewModel> tracks)
     {
+        var where = await TargetsAsync(L.T("New playlist"), L.T("On which device do you want to create it?|f"));
+        if (where.Count == 0) return false;
         var name = await Dialogs.PromptAsync(L.T("New playlist"), L.T("Playlist name"), NewPlaylistName());
         if (string.IsNullOrWhiteSpace(name)) return false;
-        var p = Profile.CreatePlaylist(name);
-        AddToPlaylist(tracks, p);
+        foreach (var profile in where) AddToPlaylist(tracks, profile.CreatePlaylist(name));
         return true;
     }
 
     public void RemoveFromPlaylist(IReadOnlyList<TrackViewModel> tracks, Playlist p)
     {
-        Profile.RemoveTracks(p, tracks.Select(t => t.Id));
+        ProfileOf(p).RemoveTracks(p, tracks.Select(t => t.Id));
         var name = PlaylistViewModel.DisplayName(p);
         Toast(tracks.Count == 1 ? L.F("Removed from “{0}”", name) : L.F("{0} songs removed from “{1}”", tracks.Count, name));
     }
 
-    public void AddToFavorites(IReadOnlyList<TrackViewModel> tracks) => AddToPlaylist(tracks, Profile.Favorites);
+    // Connected: the Favorites of the device whose music is shown, or (both shown) the ones chosen.
+    public async void AddToFavorites(IReadOnlyList<TrackViewModel> tracks)
+    {
+        foreach (var profile in await TargetsAsync(L.T("Add to Favorites"), L.F("{0}: on which device?", L.Count(tracks.Count, "1 song", "{0} songs"))))
+            AddToPlaylist(tracks, profile.Favorites);
+    }
+
+    // The copies of these songs an action goes to: this device's (here) and the other device's (there, by its ids). The
+    // other device's own songs go there, this device's only songs here; a song both have goes to the device whose music is
+    // shown, or (both shown) where chosen. Null: cancelled.
+    private async Task<(List<TrackViewModel> Here, List<string> There)?> SongTargetsAsync(IReadOnlyList<TrackViewModel> tracks, string title)
+    {
+        var here = new List<TrackViewModel>();
+        var there = new List<string>();
+        if (Ready is not { } s) return (tracks.ToList(), there);
+        var both = new List<(TrackViewModel T, string Their)>();
+        foreach (var t in tracks)
+        {
+            var their = s.TheirId(t.Id);
+            if (s.IsTheirs(t.Id))
+            {
+                if (their != null) there.Add(their);
+            }
+            else if (their == null || !s.ShowsOther) here.Add(t);
+            else if (!s.ShowsOwn) there.Add(their);
+            else both.Add((t, their));
+        }
+        if (both.Count > 0)
+        {
+            int where = await ChooseDevices(title, both.Count == 1 ? L.F("“{0}” is on both devices: on which one?", both[0].T.Title)
+                : L.F("{0} of these songs are on both devices: on which one?", both.Count));
+            if (where < 0) return null;
+            if (where != 1) here.AddRange(both.Select(b => b.T));
+            if (where != 0) there.AddRange(both.Select(b => b.Their));
+        }
+        return (here, there);
+    }
 
     public void Enqueue(IReadOnlyList<TrackViewModel> tracks)
     {
@@ -817,29 +1084,39 @@ public sealed class MainViewModel : Observable
         Player.PlayFrom(new TrackListSource("selection", L.T("Selected songs"), tracks), tracks[0], alwaysQueue: true);
     }
 
+    // (connected: the other device's songs are edited there)
     public async Task EditTrack(TrackViewModel t)
     {
         var r = await Dialogs.EditTrackAsync(t.T);
-        if (r == null) return;
-        t.T.Title = string.IsNullOrWhiteSpace(r.Value.Title) ? t.T.Title : r.Value.Title.Trim();
-        t.T.Artist = string.IsNullOrWhiteSpace(r.Value.Artist) ? null : r.Value.Artist.Trim();
-        t.T.Album = string.IsNullOrWhiteSpace(r.Value.Album) ? null : r.Value.Album.Trim();
-        t.T.Bpm = double.TryParse(r.Value.Bpm.Trim().Replace(',', '.'), System.Globalization.NumberStyles.Float,
-            System.Globalization.CultureInfo.InvariantCulture, out var bpm) && bpm is > 20 and < 400 ? Math.Round(bpm, 2) : null;
+        if (r == null || await SongTargetsAsync(new[] { t }, L.T("Edit info")) is not { } where) return;
+        var title = string.IsNullOrWhiteSpace(r.Value.Title) ? t.T.Title : r.Value.Title.Trim();
+        var artist = string.IsNullOrWhiteSpace(r.Value.Artist) ? null : r.Value.Artist.Trim();
+        var album = string.IsNullOrWhiteSpace(r.Value.Album) ? null : r.Value.Album.Trim();
+        double? bpm = double.TryParse(r.Value.Bpm.Trim().Replace(',', '.'), System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var b) && b is > 20 and < 400 ? Math.Round(b, 2) : null;
+        foreach (var their in where.There) Shared!.EditThere(their, title, artist, album, bpm);
+        if (where.Here.Count == 0) return;
+        t.T.Title = title;
+        t.T.Artist = artist;
+        t.T.Album = album;
+        t.T.Bpm = bpm;
         Library.Changed(t.T);
     }
 
     public async Task ChangeTrackCover(TrackViewModel t)
     {
         var file = await Dialogs.PickImageAsync();
-        if (file == null) return;
-        await SetCover(file, AppPaths.TrackCover(t.Id), () =>
-        {
-            t.T.HasCover = true;
-            t.T.CoverVersion++;
-            Library.Changed(t.T);
-        });
+        if (file == null || await SongTargetsAsync(new[] { t }, L.T("Change cover")) is not { } where) return;
+        foreach (var their in where.There) Shared!.CoverThere(their, file);
+        if (where.Here.Count > 0) await SetTrackCover(t, file);
     }
+
+    internal Task SetTrackCover(TrackViewModel t, string image) => SetCover(image, AppPaths.TrackCover(t.Id), () =>
+    {
+        t.T.HasCover = true;
+        t.T.CoverVersion++;
+        Library.Changed(t.T);
+    });
 
     public void ShowInFolder(TrackViewModel t)
     {
@@ -860,20 +1137,44 @@ public sealed class MainViewModel : Observable
         Library.Changed(t);
     }
 
-    // Saves the songs on the device: a suggested one goes into the library first; one just heard is copied from the
-    // cache at once; the others are downloaded (their rows show how far). quiet: no message when there's nothing to do.
+    // Saves the songs on the device. Connected: on this device, the other one or both, asked each time (the other device's
+    // songs go from one to the other without being downloaded again).
     public async Task SaveToDevice(IReadOnlyList<TrackViewModel> tracks, bool quiet = false)
     {
+        if (!quiet && Ready is { } s && tracks.Count > 0)
+        {
+            int where = await ChooseDevices(L.T("Save to device"), tracks.Count == 1 ? L.F("“{0}”: on which device?", tracks[0].Title)
+                : L.F("{0}: on which device?", L.Count(tracks.Count, "1 song", "{0} songs")));
+            if (where < 0) return;
+            if (where != 0) s.SaveThere(tracks.Select(t => t.T).ToList(), true);
+            if (where == 1) return;
+        }
+        await SaveOnThisDevice(tracks, quiet);
+    }
+
+    // On this device: a suggested one goes into the library first; one just heard is copied from the cache at once; one the
+    // other device has (Connect phone) comes from there (fromOther); the others are downloaded (their rows show how far).
+    // quiet: no message when there's nothing to do.
+    public async Task SaveOnThisDevice(IReadOnlyList<TrackViewModel> tracks, bool quiet = false, bool fromOther = true)
+    {
         var todo = new List<Track>();
+        int sent = 0;
         foreach (var vm in tracks)
         {
             if (SaveRoomSong(vm, null)) continue;
+            if (fromOther && Shared is { } s && s.TheirId(vm.Id) is { } their && !vm.T.HasSavedFile)
+            {
+                if (s.IsTheirs(vm.Id)) s.AdoptNow(vm.T, true);
+                else _ = s.SaveHere(vm.T, their);
+                sent++;
+                continue;
+            }
             var t = KeepInLibrary(vm).T;
             if (Library.Get(t.Id) == t && !t.HasSavedFile && t.HasLink && !todo.Contains(t)) todo.Add(t);
         }
         if (todo.Count == 0)
         {
-            if (!quiet && tracks.Count > 0)
+            if (!quiet && tracks.Count > 0 && sent == 0)
                 Toast(tracks.Count == 1 ? L.F("“{0}” is already saved on your device", tracks[0].Title) : L.T("They're all already saved on your device"));
             return;
         }
@@ -936,6 +1237,8 @@ public sealed class MainViewModel : Observable
     // playing goes on from a copy in the cache.
     public async Task RemoveFromDevice(IReadOnlyList<TrackViewModel> tracks)
     {
+        // (the other device's songs leave that device)
+        if (Shared is { } s) s.Send("doUnsave", tracks.Where(IsTheirs).Select(t => s.TheirId(t.Id)).OfType<string>().ToList());
         var files = new List<string>();
         long bytes = 0;
         var done = new List<TrackViewModel>();
@@ -1070,10 +1373,20 @@ public sealed class MainViewModel : Observable
             Toast(L.F("“{0}” is playing in the room: delete it once it's over.", playing.Title));
             tracks = tracks.Where(t => t != playing).ToList();
         }
-        tracks = tracks.Where(t => Library.Get(t.Id) != null || Radio.Has(t.Id)).Distinct().ToList();
+        tracks = tracks.Where(t => Library.Get(t.Id) != null || Radio.Has(t.Id) || IsTheirs(t)).Distinct().ToList();
         if (tracks.Count == 0) return false;
+        // Connected: the other device's songs (and the ones both have, where chosen) are deleted there.
+        if (await SongTargetsAsync(tracks, L.T("Delete…")) is not { } where) return false;
         var plan = new RemovePlan(tracks);
         if (await Dialogs.RemoveAsync(plan) is not { } kind) return false;
+        Shared?.Send("doDelete", where.There, (int)kind);
+        if (where.Here.Count > 0) await RemoveNow(where.Here, kind);
+        return true;
+    }
+
+    // What "Delete…" chose, done (also for the other device: SharedLibrary).
+    internal async Task RemoveNow(IReadOnlyList<TrackViewModel> tracks, RemoveKind kind)
+    {
         switch (kind)
         {
             case RemoveKind.Video:
@@ -1093,7 +1406,6 @@ public sealed class MainViewModel : Observable
                 else Toast(heard.Count == 1 ? L.F("“{0}” removed from your listening history", tracks[0].Title) : L.F("{0} songs removed from your listening history", heard.Count));
                 break;
         }
-        return true;
     }
 
     // Removes the song everywhere: files, cover, playlists, history, statistics, queue.
@@ -1139,9 +1451,9 @@ public sealed class MainViewModel : Observable
     {
         var old = Tags.ToDictionary(t => t.Id);
         Tags.Clear();
-        foreach (var t in Profile.TagsSnapshot())
+        foreach (var t in ShownProfiles().SelectMany(p => p.TagsSnapshot()))
         {
-            var vm = old.TryGetValue(t.Id, out var o) ? o : new TagViewModel(t, this);
+            var vm = old.TryGetValue(t.Id, out var o) && o.T == t ? o : new TagViewModel(t, this);
             vm.Refresh();
             vm.IsSelected = _page is LibraryViewModel { Tag: { } tag } && tag.Id == t.Id;
             Tags.Add(vm);
@@ -1213,56 +1525,86 @@ public sealed class MainViewModel : Observable
     }
 
     // Creates a tag (and puts it on these songs or this playlist, if given).
+    // Connected with both devices' music shown: on which device (or both) it's made.
     public async Task<TagViewModel?> NewTag(IReadOnlyList<TrackViewModel>? songs = null, PlaylistViewModel? playlist = null)
     {
+        // (a playlist's tag is one of its profile's)
+        var where = playlist != null ? new List<Profile> { ProfileOf(playlist.P) }
+            : await TargetsAsync(L.T("New tag"), L.T("On which device do you want to create it?"));
+        if (where.Count == 0) return null;
         var r = await Views.TagDialogs.EditAsync(null, Tag.Palette[Tags.Count % Tag.Palette.Length]);
         if (r == null) return null;
-        var tag = Profile.CreateTag(r.Value.Name, r.Value.Color);
-        var vm = Tags.FirstOrDefault(t => t.Id == tag.Id);
-        if (vm == null) return null;
-        if (songs is { Count: > 0 }) SetTag(songs, vm, true);
-        if (playlist != null) SetPlaylistTag(playlist, vm, true);
-        if (songs == null && playlist == null) Toast(L.F("Tag “{0}” created", vm.Name));
-        return vm;
+        TagViewModel? first = null;
+        foreach (var profile in where)
+        {
+            var tag = profile.CreateTag(r.Value.Name, r.Value.Color);
+            var vm = Tags.FirstOrDefault(t => t.Id == tag.Id);
+            if (vm == null) continue;
+            first ??= vm;
+            if (songs is { Count: > 0 }) SetTag(songs, vm, true);
+            if (playlist != null) SetPlaylistTag(playlist, vm, true);
+        }
+        if (first != null && songs == null && playlist == null) Toast(L.F("Tag “{0}” created", first.Name));
+        return first;
     }
 
     public async Task EditTag(TagViewModel t)
     {
         var r = await Views.TagDialogs.EditAsync(t.Name, t.Color);
-        if (r != null) Profile.UpdateTag(t.T, r.Value.Name, r.Value.Color);
+        if (r != null) ProfileOf(t.T).UpdateTag(t.T, r.Value.Name, r.Value.Color);
     }
 
     public async Task DeleteTag(TagViewModel t)
     {
-        int songs = t.Count, lists = Profile.PlaylistsSnapshot().Count(p => p.Tags.Contains(t.Id));
+        var profile = ProfileOf(t.T);
+        int songs = t.Count, lists = profile.PlaylistsSnapshot().Count(p => p.Tags.Contains(t.Id));
         var used = songs == 0 && lists == 0
             ? L.T("No song uses it.")
             : L.F("It will be removed from {0} and {1}.", L.Count(songs, "1 song", "{0} songs"), L.Count(lists, "1 playlist", "{0} playlists"));
         if (!await Dialogs.ConfirmAsync(L.T("Delete the tag?"), L.F("The tag “{0}” will be deleted.", t.Name) + " " + used, L.T("Delete"), true)) return;
-        Profile.DeleteTag(t.T);
+        profile.DeleteTag(t.T);
     }
 
+    // (a tag of the other device goes on songs there: this device's are sent along)
     public void SetTag(IReadOnlyList<TrackViewModel> tracks, TagViewModel tag, bool on)
     {
-        if (on) tracks = KeepInLibrary(tracks);
-        int n = Profile.SetTag(tracks.Select(t => t.Id), tag.Id, on);
+        var profile = ProfileOf(tag.T);
+        if (on) tracks = Keep(tracks, profile);
+        int n = profile.SetTag(tracks.Select(t => t.Id), tag.Id, on);
         if (tracks.Count == 1) Toast(on ? L.F("Tag “{0}” added", tag.Name) : L.F("Tag “{0}” removed", tag.Name));
         else if (n == 0) Toast(on ? L.F("They all had the tag “{0}” already", tag.Name) : L.F("None of them had the tag “{0}”", tag.Name));
         else Toast(on ? L.F("Tag “{0}” added to {1} songs", tag.Name, n) : L.F("Tag “{0}” removed from {1} songs", tag.Name, n));
     }
 
-    public void SetPlaylistTag(PlaylistViewModel p, TagViewModel tag, bool on) => Profile.SetPlaylistTag(p.P, tag.Id, on);
+    // A playlist only takes its own profile's tags (the menus offer only those).
+    public void SetPlaylistTag(PlaylistViewModel p, TagViewModel tag, bool on)
+    {
+        var profile = ProfileOf(p.P);
+        if (profile == ProfileOf(tag.T)) profile.SetPlaylistTag(p.P, tag.Id, on);
+    }
+
+    // The tags a playlist can take (its own profile's).
+    public IEnumerable<TagViewModel> TagsFor(PlaylistViewModel p)
+    {
+        var profile = ProfileOf(p.P);
+        return Tags.Where(t => ProfileOf(t.T) == profile);
+    }
 
     // A playlist's tags onto its songs (all, or the ones left ticked).
     public async Task TagPlaylistSongs(PlaylistViewModel p)
     {
-        var songs = p.P.Tracks.Select(id => Library.Get(id)).Where(t => t != null).Select(t => Vm(t!)).ToList();
+        var songs = p.Songs;
         if (songs.Count == 0) { Toast(L.T("This playlist is empty.")); return; }
         if (!HasTags && await NewTag() == null) return;
         var r = await Views.TagDialogs.ApplyToSongsAsync(p, songs);
         if (r == null) return;
         int changed = 0;
-        foreach (var tag in r.Value.Tags) changed += Profile.SetTag(r.Value.Songs.Select(t => t.Id), tag.Id, r.Value.Add);
+        foreach (var tag in r.Value.Tags)
+        {
+            var profile = ProfileOf(tag.T);
+            var chosen = r.Value.Add ? Keep(r.Value.Songs, profile) : r.Value.Songs;
+            changed += profile.SetTag(chosen.Select(t => t.Id), tag.Id, r.Value.Add);
+        }
         Toast(changed == 0 ? L.T("No songs to change")
             : r.Value.Add ? L.F("Tags added: {0} changes", changed) : L.F("Tags removed: {0} changes", changed));
     }
@@ -1474,7 +1816,7 @@ public sealed class MainViewModel : Observable
     public void ExportPlaylists(IReadOnlyList<PlaylistViewModel> lists) => Views.PackDialogs.Export(this, many: lists);
 
     // Their songs in the cloud saved on the device.
-    public Task SavePlaylists(IReadOnlyList<PlaylistViewModel> lists) => SaveToDevice(SongsOf(lists).Where(t => t.IsCloud).ToList());
+    public Task SavePlaylists(IReadOnlyList<PlaylistViewModel> lists) => SaveToDevice(SongsOf(lists).Where(ToSave).ToList());
 
     // True once deleted (false: cancelled).
     public async Task<bool> DeletePlaylists(IReadOnlyList<PlaylistViewModel> lists)
@@ -1484,15 +1826,15 @@ public sealed class MainViewModel : Observable
         if (del.Count == 1) return await DeletePlaylist(del[0]);
         var names = string.Join(", ", del.Take(4).Select(p => "«" + p.Name + "»")) + (del.Count > 4 ? "…" : "");
         if (!await Dialogs.ConfirmAsync(L.F("Delete {0} playlists?", del.Count), L.F("{0} will be deleted. The songs stay in your library.", names), L.T("Delete"), true)) return false;
-        foreach (var p in del) Profile.DeletePlaylist(p.P);
+        foreach (var p in del) ProfileOf(p.P).DeletePlaylist(p.P);
         Toast(L.F("{0} playlists deleted", del.Count));
         return true;
     }
 
-    // A tag on (or off) every one of these playlists.
+    // A tag on (or off) every one of these playlists (the ones of its profile).
     public void SetPlaylistsTag(IReadOnlyList<PlaylistViewModel> lists, TagViewModel tag, bool on)
     {
-        foreach (var p in lists) Profile.SetPlaylistTag(p.P, tag.Id, on);
+        foreach (var p in lists) SetPlaylistTag(p, tag, on);
     }
 
     // Songs of a pack that travelled as links: downloaded like any other, then into their playlists and tags.

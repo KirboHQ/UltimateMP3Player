@@ -31,7 +31,8 @@ public sealed class TrackViewModel : Observable
     public byte[]? Wave => T.Wave;
     public string SearchText { get; private set; } = "";
 
-    public bool IsFavorite => Main.Profile.Contains(Main.Profile.Favorites, T.Id);
+    // (connected: in the Favorites of either device whose music is shown)
+    public bool IsFavorite => Main.IsFavorite(T.Id);
 
     private bool _isCurrent;
     public bool IsCurrent { get => _isCurrent; set { if (Set(ref _isCurrent, value)) OnChanged(nameof(IsPlaying)); } }
@@ -45,6 +46,8 @@ public sealed class TrackViewModel : Observable
     private ImageSource? Cover(int size, [CallerMemberName] string? prop = null)
     {
         if (!T.HasCover) return null;
+        // A song of the connected device: its cover comes from there first.
+        if (Main.Shared is { } s && s.IsTheirs(T.Id) && !s.CoverReady(T)) return null;
         var path = AppPaths.TrackCover(T.Id);
         var img = Images.TryGet(path, size, T.CoverVersion);
         if (img != null) return img;
@@ -61,7 +64,7 @@ public sealed class TrackViewModel : Observable
 
     // This profile's tags on the song, in the order of the tag list.
     private IReadOnlyList<string>? _tagIds;
-    public IReadOnlyList<string> TagIds => _tagIds ??= Main.Profile.TagsOf(Id);
+    public IReadOnlyList<string> TagIds => _tagIds ??= Main.TagsOf(Id);
     public List<TagViewModel> Tags => Main.Tags.Where(t => TagIds.Contains(t.Id)).ToList();
     public string TagsText => string.Join(", ", Tags.Select(t => t.Name));
     public bool HasTags => TagIds.Count > 0;
@@ -106,8 +109,9 @@ public sealed class TrackViewModel : Observable
             : Main.Radio.Has(Id) ? L.T("Not in your library: you listen to it from its link.")
             : L.T("In the cloud: not saved on your device, you listen to it from its link."));
 
-    // In the library (false: a suggested song, one heard from a link, a song of the computer this phone drives: "pc-").
-    public bool InLibrary => !Main.Radio.Has(Id) && !Id.StartsWith("pc-", StringComparison.Ordinal);
+    // In the library (false: a suggested song, one heard from a link, a song of the computer this phone drives not in its
+    // library: "pc-"). A song of the connected device's library counts (Connect phone).
+    public bool InLibrary => !Main.Radio.Has(Id) && (!Id.StartsWith("pc-", StringComparison.Ordinal) || Main.Shared?.Get(Id) != null);
 
     // The button next to the heart in the player: the library icon into the library (in the cloud, nothing downloaded) for a
     // song not in it, the download arrow for one of the library in the cloud ("+" stays "add to a playlist").
@@ -190,21 +194,26 @@ public sealed class PlaylistViewModel : Observable
     public string Id => P.Id;
     public string Name => DisplayName(P);
     public bool IsFavorites => P.IsFavorites;
+    // Connect phone, both devices' music shown: the phone's or the computer's icon next to the name (two "Favorites"...).
+    public string? DeviceGlyph => _main.DeviceGlyph(Id);
+    public bool HasDevice => DeviceGlyph != null;
+    // The connected device's playlist (its songs and picture are there).
+    public bool IsOther => _main.Shared?.IsTheirs(Id) == true;
 
     // Favorites are stored as "Favorites" but shown in the app language.
     public static string DisplayName(Playlist p) => p.IsFavorites ? L.T("Favorites") : p.Name;
 
-    public int Count => P.Tracks.Count(id => _main.Library.Get(id) != null);
+    public int Count => P.Tracks.Count(id => _main.Get(id) != null);
     public string CountText => L.Count(Count, "1 song", "{0} songs");
     public string Subtitle => "Playlist · " + CountText;
     // Its songs not saved on the device.
-    public int CloudCount => P.Tracks.Count(id => _main.Library.Get(id) is { IsSaved: false });
+    public int CloudCount => P.Tracks.Count(id => _main.Get(id) is { IsSaved: false });
 
     public string TotalText
     {
         get
         {
-            var secs = P.Tracks.Select(id => _main.Library.Get(id)?.Duration ?? 0).Sum();
+            var secs = P.Tracks.Select(id => _main.Get(id)?.Duration ?? 0).Sum();
             var t = TimeSpan.FromSeconds(secs);
             var dur = t.TotalHours >= 1 ? L.F("{0} h {1} min", (int)t.TotalHours, t.Minutes) : L.F("{0} min {1} s", t.Minutes, t.Seconds);
             if (Count == 0) return L.T("No songs");
@@ -214,10 +223,10 @@ public sealed class PlaylistViewModel : Observable
     }
 
     // The songs of the playlist, as they're shown.
-    public List<TrackViewModel> Songs => P.Tracks.ToList().Select(id => _main.Library.Get(id)).OfType<Track>().Select(_main.Vm).ToList();
+    public List<TrackViewModel> Songs => P.Tracks.ToList().Select(id => _main.Get(id)).OfType<Track>().Select(_main.Vm).ToList();
 
     public bool HasCustomCover => P.HasCover;
-    public ImageSource? CustomCover => P.HasCover ? Images.TryGet(_main.Profile.PlaylistCover(P), 400, P.CoverVersion) ?? Load() : null;
+    public ImageSource? CustomCover => P.HasCover ? Images.TryGet(_main.ProfileOf(P).PlaylistCover(P), 400, P.CoverVersion) ?? Load() : null;
 
     private ImageSource? Load()
     {
@@ -227,13 +236,13 @@ public sealed class PlaylistViewModel : Observable
 
     private async Task LoadAsync()
     {
-        var img = await Images.LoadAsync(_main.Profile.PlaylistCover(P), 400, P.CoverVersion);
+        var img = await Images.LoadAsync(_main.ProfileOf(P).PlaylistCover(P), 400, P.CoverVersion);
         if (img != null) OnChanged(nameof(CustomCover));
     }
 
     // One cover, or a 2×2 mosaic with four.
     public List<TrackViewModel> CoverTracks =>
-        P.Tracks.Select(id => _main.Library.Get(id)).Where(t => t is { HasCover: true }).Take(4).Select(t => _main.Vm(t!)).ToList();
+        P.Tracks.Select(id => _main.Get(id)).Where(t => t is { HasCover: true }).Take(4).Select(t => _main.Vm(t!)).ToList();
 
     public bool ShowMosaic => !P.HasCover && !IsFavorites && CoverTracks.Count >= 4;
     public TrackViewModel? FirstCover => !P.HasCover && !IsFavorites ? CoverTracks.FirstOrDefault() : null;
@@ -251,7 +260,7 @@ public sealed class PlaylistViewModel : Observable
 
     public void Refresh() => OnChanged(nameof(Name), nameof(Count), nameof(CountText), nameof(Subtitle), nameof(TotalText),
         nameof(HasCustomCover), nameof(CustomCover), nameof(CoverTracks), nameof(ShowMosaic), nameof(FirstCover), nameof(ShowPlaceholder),
-        nameof(Tags), nameof(HasTags));
+        nameof(Tags), nameof(HasTags), nameof(DeviceGlyph), nameof(HasDevice));
 
     public override string ToString() => Name;
 }

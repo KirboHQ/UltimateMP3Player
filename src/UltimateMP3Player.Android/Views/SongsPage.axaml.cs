@@ -453,7 +453,7 @@ public partial class SongsPage : UserControl, IPage
             if (t > d) t--;
             _shown!.Move(d, _dropAfter ? t + 1 : t);
         }
-        main.Profile.MoveTrack(p, from, to);
+        main.ProfileOf(p).MoveTrack(p, from, to);
     }
 
     // The copy of the row in the finger: cover, title and artist, the handle, on a lifted card.

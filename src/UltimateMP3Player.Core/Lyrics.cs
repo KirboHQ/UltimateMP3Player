@@ -65,7 +65,8 @@ public static class Lrc
 // The lyrics files: DataDir\lyrics\<track id>.lrc (with times) or .txt (plain), shared by every profile like the songs.
 public static class LyricsStore
 {
-    public static string PathFor(string trackId, bool synced) => Path.Combine(AppPaths.LyricsDir, trackId + (synced ? ".lrc" : ".txt"));
+    public static string PathFor(string trackId, bool synced)
+        => Path.Combine(AppPaths.IsLinkId(trackId) ? AppPaths.LinkDir : AppPaths.LyricsDir, trackId + (synced ? ".lrc" : ".txt"));
 
     public static LyricsText? Load(Track t)
     {

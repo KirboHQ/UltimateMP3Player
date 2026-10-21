@@ -12,9 +12,10 @@ namespace UltimateMP3Player.ViewModels;
 
 // "Connect to computer", on the phone: visible to the computers nearby while its page is open, it asks before one
 // connects (not through a cable), then drives that computer's player (PlayerViewModel's remote mode): the phone shows
-// what plays there and its buttons work there, its own sound off. Its songs go there (the saved ones from here, the ones
-// in its cloud downloaded there). The computer can also send music here ("To the phone" in its export window): the
-// usual import window, the files coming one at a time.
+// what plays there and its buttons work there. Each device shows the other's music too (SharedLibrary, as the settings
+// chose); the music is heard on the computer, on the phone or on both (the phone then plays along, on the computer's
+// clock: SyncFollower). The computer can also send music here ("To the phone" in its export window): the usual import
+// window, the files coming one at a time.
 public sealed class ComputerLinkViewModel : Observable
 {
     private readonly MainViewModel _main;
@@ -28,11 +29,15 @@ public sealed class ComputerLinkViewModel : Observable
     private double _posBase;
     private long _posAt;
     private int _req;
-    // The computer's songs shown here ("pc-" + their id there).
+    private SharedLibrary? _shared;
+    // Songs of the computer's queue that aren't in its library (its suggestions): "pc-" + their id there.
     private readonly Dictionary<string, Track> _standIns = new();
-    private readonly HashSet<string> _coversAsked = new();
-    // The computer's songs kept on this phone: their id there → the library song here.
-    private readonly Dictionary<string, string> _kept = new();
+    // ---- the music heard here too: the files of the computer's songs sent for it (the one playing, the next one)
+    private readonly DispatcherTimer _follow;
+    private readonly SyncFollower _sync;
+    private readonly Dictionary<string, string> _files = new();
+    private readonly HashSet<string> _fetching = new();
+    private readonly Dictionary<string, long> _failedUntil = new();
 
     // Opens the "Connect to computer" page (set by the phone's screen).
     public static Action? ShowPage { get; set; }
@@ -41,6 +46,9 @@ public sealed class ComputerLinkViewModel : Observable
     {
         _main = main;
         _ui = Application.Current.Dispatcher;
+        _sync = new SyncFollower(main.Player, false);
+        _follow = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _follow.Tick += (_, _) => Follow();
         _link = NewLink();
         DisconnectCommand = new RelayCommand(() => _ = Disconnect());
     }
@@ -93,7 +101,12 @@ public sealed class ComputerLinkViewModel : Observable
     public string? Error => _link.Error;
     public string StatusText => Status switch
     {
-        LinkStatus.Connected => L.F("Connected to {0}: the music plays there", ComputerName),
+        LinkStatus.Connected => _shared?.Audio switch
+        {
+            LinkAudio.Phone => L.F("Connected to {0}: the music plays on this phone", ComputerName),
+            LinkAudio.Both => L.F("Connected to {0}: the music plays on both", ComputerName),
+            _ => L.F("Connected to {0}: the music plays there", ComputerName),
+        },
         LinkStatus.Reconnecting => L.F("Connection to {0} lost: reconnecting…", ComputerName),
         _ => L.T("Waiting for a computer…"),
     };
@@ -124,21 +137,39 @@ public sealed class ComputerLinkViewModel : Observable
 
     private async Task<bool> AskAsync(string computer)
         => await Dialogs.ConfirmAsync(L.T("Connect to the computer?"),
-            L.F("“{0}” wants to connect. This phone then controls the music on that computer: the songs play there and the phone stays silent.", computer),
+            L.F("“{0}” wants to connect. This phone then controls the music on that computer, and each one shows the other's music.", computer),
             L.T("Allow"));
+
+    // The other device's music (made once linked: its first messages may come before the status).
+    private SharedLibrary Shared()
+    {
+        if (_shared == null)
+        {
+            _shared = new SharedLibrary(_main, _link, true);
+            _shared.ModesChanged += OnModes;
+            _main.AttachShared(_shared);
+        }
+        return _shared;
+    }
 
     private void OnStatus(ComputerLink link)
     {
         if (_link != link || _shut) return;
-        if (link.Status == LinkStatus.Connected && !_remote)
+        if (link.Status == LinkStatus.Connected)
         {
-            _remote = true;
-            _state = new LinkState();
-            _rows = new List<LinkRow>();
-            _posBase = 0;
-            _posAt = Environment.TickCount64;
-            _main.Player.EnterRemote(this);
-            _main.Toast(L.F("Connected to {0}: the music plays there", link.OtherName));
+            if (!_remote)
+            {
+                _remote = true;
+                _state = new LinkState();
+                _rows = new List<LinkRow>();
+                _posBase = 0;
+                _posAt = Environment.TickCount64;
+                _main.Player.EnterRemote(this);
+                _main.Toast(L.F("Connected to {0}: the music plays there", link.OtherName));
+            }
+            // (again after a reconnection: what changed meanwhile wasn't sent)
+            Shared().Start();
+            UpdateFollow();
         }
         else if (link.Status == LinkStatus.Reconnecting) _main.Toast(L.F("Connection to {0} lost: reconnecting…", link.OtherName));
         Changed();
@@ -157,23 +188,33 @@ public sealed class ComputerLinkViewModel : Observable
 
     private void Leave()
     {
-        if (!_remote) return;
-        _remote = false;
-        _main.Player.LeaveRemote();
-        foreach (var t in _standIns.Values)
+        StopFollow();
+        if (_remote)
         {
-            _main.ForgetVm(t.Id);
-            try { File.Delete(AppPaths.TrackCover(t.Id)); } catch { }
+            _remote = false;
+            _main.Player.LeaveRemote();
         }
+        foreach (var t in _standIns.Values) _main.ForgetVm(t.Id);
         _standIns.Clear();
-        _coversAsked.Clear();
-        _kept.Clear();
+        if (_shared is { } s)
+        {
+            _shared = null;
+            s.ModesChanged -= OnModes;
+            _main.DetachShared(s);
+        }
     }
 
     private void Changed()
     {
         OnChanged(nameof(Status), nameof(IsLinked), nameof(IsReconnecting), nameof(ComputerName), nameof(StatusText), nameof(SummaryText), nameof(Error));
         _main.Player.OnRemoteLink();
+    }
+
+    // Whose music and where it's heard changed (here or on the computer).
+    private void OnModes()
+    {
+        UpdateFollow();
+        Changed();
     }
 
     public async Task Disconnect()
@@ -208,55 +249,46 @@ public sealed class ComputerLinkViewModel : Observable
     // "Next up" of the computer: its place there and the song.
     internal IEnumerable<(LinkRow Row, TrackViewModel Track)> Rows() => _rows.Select(r => (r, Vm(r.T)!));
 
-    // A song of the computer that isn't one of the phone's.
-    public bool IsStandIn(TrackViewModel? vm) => vm != null && vm.Id.StartsWith("pc-", StringComparison.Ordinal) && _main.Library.Get(vm.Id) == null;
-
     private void OnMessage(Msg m)
     {
+        if (Shared().OnMessage(m)) return;
         switch (m.T)
         {
             case "state" when m.State != null:
+                bool other = m.State.Current?.Id != _state.Current?.Id;
                 _state = m.State;
                 _posBase = m.State.Position;
                 _posAt = Environment.TickCount64;
                 _main.Player.RemoteState(Vm(_state.Current), _state);
+                if (other) DropFiles();
                 break;
             case "queue" when m.Rows != null:
                 _rows = m.Rows;
                 _main.Player.OnRemoteQueue();
                 break;
-            case "want":
-                _ = SendSong(m.Id, m.Text);
-                break;
-            case "cover":
-                if (m.Id is { Length: > 0 and < 64 } id && _link.Connection is { } c)
-                    _ = FileLane.SendAsync(c, "c:" + id, File.Exists(AppPaths.TrackCover(id)) ? AppPaths.TrackCover(id) : null);
-                break;
             case "pack":
                 _ = ReceivePack(m.Text);
-                break;
-            case "take":
-                // Kept from the computer's side, on this phone too (its Save or heart).
-                if (m.Tracks?.FirstOrDefault() is { } lt && Vm(lt) is { } taken) _ = KeepHere(taken, lt.Id, m.Flag);
                 break;
         }
     }
 
-    // The phone's own song when it came from here, otherwise a stand-in with what the computer said of it.
+    // The phone's own song when it came from here, one of the computer's shown here (or both have), otherwise a stand-in
+    // with what the computer said of it.
     private TrackViewModel? Vm(LinkTrack? lt)
     {
         if (lt == null) return null;
-        if (lt.Phone != null && (_main.Library.Get(lt.Phone) ?? _main.Radio.Track(lt.Phone)) is { } mine) return _main.Vm(mine);
-        // (kept here, or already in the library: the same link)
-        if (_kept.TryGetValue(lt.Id, out var keptId) && _main.Library.Get(keptId) is { } kept) return _main.Vm(kept);
-        if (lt.Keys.Count > 0 && _main.Library.FindByKeys(lt.Keys) is { } same) return _main.Vm(same);
+        if (lt.Yours != null && (_main.Library.Get(lt.Yours) ?? _main.Radio.Track(lt.Yours)) is { } mine) return _main.Vm(mine);
+        if (_shared?.Here(lt.Id) is { } here && _main.Get(here) is { } shown) return _main.Vm(shown);
+        if (_shared?.FindLocal(lt) is { } same) return _main.Vm(same);
         if (!_standIns.TryGetValue(lt.Id, out var t))
         {
-            var id = "pc-" + lt.Id;
             t = new Track
             {
-                Id = id, Title = lt.Title, Artist = lt.Artist, Album = lt.Album, Duration = lt.Duration, SourceUrl = lt.SourceUrl, Site = lt.Site,
-                Keys = lt.Keys.ToList(), ArtUrl = lt.ArtUrl, Loudness = lt.Loudness, Peak = lt.Peak, Bpm = lt.Bpm, HasCover = File.Exists(AppPaths.TrackCover(id)),
+                Id = "pc-" + lt.Id, Title = lt.Title, Artist = lt.Artist, Album = lt.Album, Duration = lt.Duration, SourceUrl = lt.SourceUrl, Site = lt.Site,
+                Keys = lt.Keys.Append(LinkTrack.ComputerKey(lt.Id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList(), ArtUrl = lt.ArtUrl,
+                Loudness = lt.Loudness, Peak = lt.Peak, Bpm = lt.Bpm, AudioQuality = lt.Quality,
+                // (its cover comes from the computer when shown: TrackViewModel, SharedLibrary.CoverReady)
+                HasCover = lt.Cover, CoverVersion = lt.CoverVersion,
             };
             _standIns[lt.Id] = t;
         }
@@ -267,29 +299,106 @@ public sealed class ComputerLinkViewModel : Observable
             vm.Refresh();
         }
         if (lt.Duration > 0 && t.Duration <= 0) t.Duration = lt.Duration;
-        if (lt.Cover && !t.HasCover && _coversAsked.Add(lt.Id)) _ = FetchCover(lt.Id, t);
         return vm;
     }
 
-    private async Task FetchCover(string pcId, Track t)
+    // ------------------------------------------------------------------ the music heard here too
+
+    // On while connected with the music heard on the phone (or on both).
+    private void UpdateFollow()
     {
-        if (_link.Connection == null) return;
-        var wait = _link.Files.ReceiveAsync("c:" + pcId, _ => AppPaths.TrackCover(t.Id), null, CancellationToken.None);
-        _link.Send(new Msg { T = "cover", Id = pcId });
-        if (await wait == null) return;
-        t.HasCover = true;
-        t.CoverVersion++;
-        _main.Vm(t).Refresh();
-        if (_main.Player.Current?.T == t) _main.Host.OnTrackChanged();
+        if (_remote && _shared is { Audio: LinkAudio.Phone or LinkAudio.Both })
+        {
+            if (!_follow.IsEnabled) _follow.Start();
+        }
+        else StopFollow();
     }
 
-    // The computer wants a song of the phone's to play it: its file (the saved one, or the copy in the cache).
-    private async Task SendSong(string? id, string? req)
+    private void StopFollow()
     {
-        if (req is not { Length: > 0 and < 64 } || _link.Connection is not { } c) return;
-        var t = id == null ? null : _main.Library.Get(id) ?? _main.Radio.Track(id);
-        var path = t == null ? null : t.HasSavedFile ? t.Path : t.CachePath is { } cached && File.Exists(cached) ? cached : null;
-        await FileLane.SendAsync(c, req, path);
+        if (!_follow.IsEnabled && _files.Count == 0 && _main.Player.RoomLoadedId == null) return;
+        _follow.Stop();
+        _sync.Reset();
+        if (_remote) _main.Player.RoomStop();
+        foreach (var f in _files.Values) Delete(f);
+        _files.Clear();
+        _failedUntil.Clear();
+    }
+
+    // A few times a second: the computer's song open here, playing where it is there (by the computer's clock).
+    private void Follow()
+    {
+        var p = _main.Player;
+        if (!_follow.IsEnabled || _link.ClockSamples == 0 || _state.At == 0) return;
+        if (_state.Current is not { } cur || Vm(cur) is not { } vm)
+        {
+            if (p.RoomLoadedId != null) p.RoomStop();
+            return;
+        }
+        p.RoomSpeed(_state.Speed, _state.Pitch);
+        bool playing = _state.Playing && !_state.Waiting && _link.Status == LinkStatus.Connected;
+        double target = _state.Position + (playing ? (_link.OtherClock - _state.At) / 1000.0 * _state.Speed : 0);
+        string path = "";
+        if (p.RoomLoadedId != cur.Id)
+        {
+            if (FileFor(cur) is not { } file)
+            {
+                // (still coming from the computer: the song before doesn't go on meanwhile)
+                p.RoomPlay(false);
+                return;
+            }
+            path = file;
+        }
+        _sync.Follow(cur.Id, vm, path, Math.Max(0, target), playing, _state.Speed, Follow);
+        // The next one on its way while this one plays.
+        if (p.RoomLoadedId == cur.Id && _rows.FirstOrDefault()?.T is { } next) FileFor(next);
+    }
+
+    // The file of a song of the computer to play here: the phone's own, or the one sent from the computer (asked once; again
+    // after a while when it couldn't).
+    private string? FileFor(LinkTrack lt)
+    {
+        var mine = lt.Yours != null ? _main.Library.Get(lt.Yours) ?? _main.Radio.Track(lt.Yours) : _shared?.FindLocal(lt);
+        if (mine != null && new[] { mine.HasSavedFile ? mine.Path : null, _main.Radio.PathFor(mine.Id), mine.CachePath }.FirstOrDefault(File.Exists) is { } own)
+            return own;
+        if (_files.TryGetValue(lt.Id, out var got)) return got;
+        if (_shared == null || _fetching.Contains(lt.Id) || _failedUntil.GetValueOrDefault(lt.Id) > Environment.TickCount64) return null;
+        _fetching.Add(lt.Id);
+        _ = Fetch(_shared, lt.Id);
+        return null;
+    }
+
+    private async Task Fetch(SharedLibrary shared, string pcId)
+    {
+        var path = await shared.FetchSong(pcId);
+        _fetching.Remove(pcId);
+        if (path == null)
+        {
+            _failedUntil[pcId] = Environment.TickCount64 + 3000;
+            return;
+        }
+        if (_shared != shared || !_follow.IsEnabled) Delete(path);
+        else
+        {
+            _files[pcId] = path;
+            DropFiles();
+        }
+    }
+
+    // Only the files of the song playing there, the one open here and the next one stay.
+    private void DropFiles()
+    {
+        var keep = new HashSet<string?> { _state.Current?.Id, _rows.FirstOrDefault()?.T.Id, _main.Player.RoomLoadedId };
+        foreach (var id in _files.Keys.Where(k => !keep.Contains(k)).ToList())
+        {
+            Delete(_files[id]);
+            _files.Remove(id);
+        }
+    }
+
+    private static void Delete(string path)
+    {
+        try { File.Delete(path); } catch { }
     }
 
     // ------------------------------------------------------------------ the phone's buttons, for the computer
@@ -308,8 +417,7 @@ public sealed class ComputerLinkViewModel : Observable
                 _state.Playing = flag;
                 break;
             case "seek":
-                _posBase = pos;
-                _posAt = Environment.TickCount64;
+                Rebase(pos);
                 break;
             case "shuffle": _state.Shuffle = flag; break;
             case "repeat": _state.Repeat = (RepeatMode)index; break;
@@ -330,108 +438,29 @@ public sealed class ComputerLinkViewModel : Observable
     }
 
     // Where the song is now becomes the base (before its speed or its playing changes).
-    private void Hold()
+    private void Hold() => Rebase(Position);
+
+    // (the music heard here follows the same point until the computer answers)
+    private void Rebase(double pos)
     {
-        _posBase = Position;
+        _posBase = pos;
         _posAt = Environment.TickCount64;
+        _state.Position = pos;
+        if (_link.ClockSamples > 0) _state.At = (long)_link.OtherClock;
     }
+
+    // A song as the computer needs it (its own id there when known).
+    private LinkTrack Describe(Track t) => _shared?.Describe(t) ?? LinkTrack.From(t);
 
     // A list from a song (index -1: all of it, shuffled if flag; otherwise flag: the rest follows anyway).
     public void PlayList(IEnumerable<Track> tracks, int index, string? name, bool flag)
-        => _link.Send(new Msg { T = "play", Tracks = tracks.Select(LinkTrack.From).ToList(), Index = index, Text = name, Flag = flag });
+        => _link.Send(new Msg { T = "play", Tracks = tracks.Select(Describe).ToList(), Index = index, Text = name, Flag = flag });
 
-    public void PlaySingle(Track t) => _link.Send(new Msg { T = "single", Tracks = new() { LinkTrack.From(t) } });
+    public void PlaySingle(Track t) => _link.Send(new Msg { T = "single", Tracks = new() { Describe(t) } });
 
-    public void PlayRadio(Track t, bool artist) => _link.Send(new Msg { T = "radio", Tracks = new() { LinkTrack.From(t) }, Flag = artist });
+    public void PlayRadio(Track t, bool artist) => _link.Send(new Msg { T = "radio", Tracks = new() { Describe(t) }, Flag = artist });
 
-    public void Enqueue(Track t, bool next) => _link.Send(new Msg { T = "enqueue", Tracks = new() { LinkTrack.From(t) }, Flag = next });
-
-    // ------------------------------------------------------------------ keeping a song (Save, the heart)
-
-    // A song this phone hasn't kept (the computer's, or a suggestion): here, on the computer or both, asked each time;
-    // from the lock screen (ask false), where nothing can be asked, here.
-    public async Task Keep(TrackViewModel vm, bool favorite, bool ask)
-    {
-        var pcId = PcId(vm);
-        int where = !ask ? 0 : await Dialogs.ChooseAsync(favorite ? L.T("Add to Favorites") : L.T("Add to library"),
-            L.F("“{0}”: on which device?", vm.Title), L.T("This phone"), L.T("The computer"), L.T("Both"));
-        if (where < 0) return;
-        if (where != 0 && pcId != null)
-        {
-            _link.Send(new Msg { T = "keep", Id = pcId, Flag = favorite });
-            if (where == 1) _main.Toast(favorite ? L.F("Added to Favorites on {0}", ComputerName) : L.F("Added to the library on {0}", ComputerName));
-        }
-        if (where != 1) await KeepHere(vm, pcId, favorite);
-    }
-
-    // The computer's id of one of its songs shown here.
-    private string? PcId(TrackViewModel vm)
-    {
-        if (vm.Id.StartsWith("pc-", StringComparison.Ordinal)) return vm.Id[3..];
-        if (_main.Player.Current == vm && _state.Current is { } cur) return cur.Id;
-        return _rows.FirstOrDefault(r => Vm(r.T) == vm)?.T.Id;
-    }
-
-    // Into this phone's library: a song of the computer with its file sent from there (no new download), a suggestion of
-    // the phone's own as usual. favorite: into the Favorites too.
-    private async Task KeepHere(TrackViewModel vm, string? pcId, bool favorite)
-    {
-        TrackViewModel kept;
-        if (IsStandIn(vm) && pcId != null)
-        {
-            var pc = vm.T;
-            var t = _main.Library.FindByKeys(pc.Keys);
-            var file = t is { HasSavedFile: true } ? null : await FetchSong(pcId);
-            if (t == null)
-            {
-                if (file == null && !pc.HasLink)
-                {
-                    _main.Toast(L.F("Couldn't save “{0}”: the computer didn't send it", pc.Title));
-                    return;
-                }
-                t = new Track
-                {
-                    Title = pc.Title, Artist = pc.Artist, Album = pc.Album, Duration = pc.Duration, SourceUrl = pc.SourceUrl, Site = pc.Site,
-                    Keys = pc.Keys.ToList(), ArtUrl = pc.ArtUrl, Wave = pc.Wave, Loudness = pc.Loudness, Peak = pc.Peak, Bpm = pc.Bpm,
-                };
-                try
-                {
-                    if (pc.HasCover && File.Exists(AppPaths.TrackCover(pc.Id)))
-                    {
-                        File.Copy(AppPaths.TrackCover(pc.Id), AppPaths.TrackCover(t.Id), true);
-                        t.HasCover = true;
-                    }
-                }
-                catch { }
-                _main.Library.Add(t);
-            }
-            _kept[pcId] = t.Id;
-            kept = _main.Vm(t);
-            if (file != null)
-            {
-                if (await _main.SaveFromCache(t, file)) _main.Toast(L.F("“{0}” saved on your device", t.Title));
-                try { File.Delete(file); } catch { }
-            }
-            else if (!t.HasSavedFile) await _main.SaveToDevice(new[] { kept });
-        }
-        else kept = favorite ? _main.KeepInLibrary(vm) : _main.AddToLibrary(vm);
-        if (favorite && !kept.IsFavorite) _main.ToggleFavorite(kept);
-        // The phone's own now: the player shows it (the heart, the save button) at once.
-        if (_remote) _main.Player.RemoteState(Vm(_state.Current), _state);
-    }
-
-    // The file of a song of the computer, into the cache's temporary folder; null when it can't send it.
-    private async Task<string?> FetchSong(string pcId)
-    {
-        var link = _link;
-        if (link.Connection == null) return null;
-        var dir = _main.Host.SongCache.TempDir;
-        Directory.CreateDirectory(dir);
-        var req = "s" + Interlocked.Increment(ref _req);
-        var wait = link.Files.ReceiveAsync(req, ext => Path.Combine(dir, Ids.New() + ext), null, CancellationToken.None);
-        link.Send(new Msg { T = "song", Id = pcId, Text = req });
-        return await wait;
-    }
+    public void Enqueue(Track t, bool next) => _link.Send(new Msg { T = "enqueue", Tracks = new() { Describe(t) }, Flag = next });
 
     // ------------------------------------------------------------------ music from the computer
 

@@ -42,11 +42,22 @@
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding ManageProfilesCommand}">
                         <Grid ColumnDefinitions="Auto,*">
-                            <Panel Width="46" Height="46">
-                                <Ellipse Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
-                                <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileInitial}" Foreground="White" FontWeight="Bold" FontSize="18"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <views:CoverImage Margin="2" CornerRadius="21" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
+                            <Panel>
+                                <!-- both devices' music (Connect to computer): the computer's profile behind this one's -->
+                                <Panel Width="36" Height="36" Margin="32,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                       IsVisible="{Binding $parent[views:MainView].DataContext.HasSecondProfile}">
+                                    <Ellipse Fill="{Binding $parent[views:MainView].DataContext.SecondBrush}"/>
+                                    <TextBlock Text="{Binding $parent[views:MainView].DataContext.SecondInitial}" Foreground="White" FontWeight="Bold" FontSize="15"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <views:CoverImage Margin="2" CornerRadius="16" Source="{Binding $parent[views:MainView].DataContext.SecondAvatar}"/>
+                                </Panel>
+                                <Panel Width="46" Height="46" HorizontalAlignment="Left">
+                                    <Ellipse Margin="-2" Fill="{DynamicResource SurfaceBrush}" IsVisible="{Binding $parent[views:MainView].DataContext.HasSecondProfile}"/>
+                                    <Ellipse Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
+                                    <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileInitial}" Foreground="White" FontWeight="Bold" FontSize="18"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <views:CoverImage Margin="2" CornerRadius="21" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
+                                </Panel>
                             </Panel>
                             <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileName}" FontSize="16.5" FontWeight="SemiBold"/>

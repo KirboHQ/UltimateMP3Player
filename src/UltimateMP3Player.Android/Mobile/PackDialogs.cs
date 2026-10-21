@@ -42,8 +42,9 @@ public static class PackDialogs
         if (sheets == null) return;
         var lib = main.Library;
         var profile = main.Profile;
-        var lists = main.Playlists.ToList();
-        var tags = main.Tags.ToList();
+        // (this device's: the other one's are exported there)
+        var lists = main.Playlists.Where(p => !p.IsOther).ToList();
+        var tags = main.Tags.Where(t => !main.IsTheirs(t.Id)).ToList();
         var pickedLists = lists.Where(l => l == playlist || many?.Contains(l) == true).ToHashSet();
         var pickedTags = tags.Where(t => t == tag).ToHashSet();
         bool whole = false;

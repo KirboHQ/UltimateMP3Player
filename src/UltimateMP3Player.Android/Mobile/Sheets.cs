@@ -352,11 +352,18 @@ public sealed class SheetHost : Panel
                 Text = e.Text, Classes = { "hint" }, Margin = new Thickness(18, 8, 18, 8),
             };
         object content = e.Text;
-        if (e.Dot != null)
+        if (e.Dot != null || e.Mark != null)
         {
             var row = new StackPanel { Orientation = Orientation.Horizontal };
-            row.Children.Add(new Ellipse { Width = 12, Height = 12, Fill = e.Dot, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) });
+            if (e.Dot != null)
+                row.Children.Add(new Ellipse { Width = 12, Height = 12, Fill = e.Dot, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) });
             row.Children.Add(new TextBlock { Text = e.Text, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
+            if (e.Mark != null)
+            {
+                var mark = new TextBlock { Text = Icons.Map(e.Mark), FontSize = 13, Opacity = 0.6, Margin = new Thickness(7, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+                mark.Classes.Add("glyph");
+                row.Children.Add(mark);
+            }
             content = row;
         }
         else content = new TextBlock { Text = e.Text, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };

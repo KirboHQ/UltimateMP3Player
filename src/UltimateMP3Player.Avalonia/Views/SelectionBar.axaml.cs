@@ -166,7 +166,7 @@ public partial class SelectionBar : UserControl
     // The ones in the cloud saved on the device (all, or how many of them).
     private void AddSave(MainViewModel main, List<TrackViewModel> songs)
     {
-        var cloud = songs.Where(t => t.IsCloud && !t.IsSaving).ToList();
+        var cloud = songs.Where(main.ToSave).ToList();
         if (cloud.Count == 0) return;
         Add("", cloud.Count == songs.Count ? L.T("Save") : L.F("Save ({0})", cloud.Count),
             L.Count(cloud.Count, "Save the song in the cloud on your device", "Save the {0} songs in the cloud on your device"), b =>
@@ -218,7 +218,7 @@ public partial class SelectionBar : UserControl
         CountText.Text = L.Count(lists.Count, "1 playlist", "{0} playlists");
         Add("", L.T("Play"), L.T("Play all their songs"), b => main.PlayPlaylists(lists));
         Add("", L.T("Queued"), L.T("Add all their songs to the queue"), b => main.EnqueuePlaylists(lists));
-        int cloud = main.SongsOf(lists).Count(t => t.IsCloud && !t.IsSaving);
+        int cloud = main.SongsOf(lists).Count(main.ToSave);
         if (cloud > 0)
             Add("", L.F("Save ({0})", cloud), L.Count(cloud, "Save their song in the cloud on your device", "Save their {0} songs in the cloud on your device"),
                 b => { _ = main.SavePlaylists(lists); Rebuild(); });

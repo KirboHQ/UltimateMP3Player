@@ -150,20 +150,28 @@ public sealed class HomeViewModel : Observable
     public List<object> PlaylistCards => [.. _main.Playlists, NewPlaylistCard.Instance];
     public bool HasRecent => Recent.Count > 0;
     public bool HasRecentlyAdded => RecentlyAdded.Count > 0;
-    public bool IsEmpty => _main.Library.Count == 0;
+    public bool IsEmpty { get; private set; }
     public TrackListSource RecentList { get; private set; } = new("recent", "", new List<TrackViewModel>());
 
     // Songs in "Recently played".
     public const int RecentCount = 12;
 
-    // A song of the library, or one heard without saving it (suggested, from a link, in a room: RadioViewModel keeps them).
-    private Track? Heard(string id) => _main.Library.Get(id) ?? _main.Radio.Track(id);
+    // A song of the library (or of the connected device), or one heard without saving it (suggested, from a link, in a room:
+    // RadioViewModel keeps them).
+    private Track? Heard(string id) => _main.Get(id) ?? _main.Radio.Track(id);
 
+    // (connected: the songs heard on both devices whose music is shown, the newest first)
     public void Refresh()
     {
-        Recent = _main.Profile.RecentTracks(RecentCount, id => Heard(id) != null).Select(id => _main.Vm(Heard(id)!)).ToList();
+        var profiles = _main.ShownProfiles().ToList();
+        var ids = profiles.Count == 1 ? profiles[0].RecentTracks(RecentCount, id => Heard(id) != null)
+            : profiles.SelectMany(p => p.HistorySnapshot(200)).OrderByDescending(h => h.At).Select(h => h.TrackId).Distinct()
+                .Where(id => Heard(id) != null).Take(RecentCount).ToList();
+        Recent = ids.Select(id => _main.Vm(Heard(id)!)).ToList();
         RecentList = new TrackListSource("recent", L.T("Recently played"), Recent);
-        var added = _main.Library.Snapshot().OrderByDescending(t => t.Added).Take(8).Select(_main.Vm).ToList();
+        var songs = _main.Songs();
+        IsEmpty = songs.Count == 0;
+        var added = songs.OrderByDescending(t => t.Added).Take(8).Select(_main.Vm).ToList();
         var addedList = new TrackListSource("added", L.T("Recently added"), added);
         RecentlyAdded = added.Select((t, i) => new TrackRow(i + 1, t, addedList)).ToList();
         OnChanged(nameof(Greeting), nameof(Recent), nameof(RecentlyAdded), nameof(PlaylistCards), nameof(HasRecent), nameof(HasRecentlyAdded),
@@ -287,16 +295,17 @@ public sealed class LibraryViewModel : Observable, ITrackList
     public void Rebuild()
     {
         _dirty = false;
-        IEnumerable<Track> tracks = _main.Library.Snapshot();
+        IEnumerable<Track> tracks = _main.Songs();
         if (Unsorted)
         {
-            var inPlaylists = _main.Profile.PlaylistsSnapshot().SelectMany(p => p.Tracks).ToHashSet();
+            var inPlaylists = _main.Playlists.SelectMany(p => p.P.Tracks).ToHashSet();
             tracks = tracks.Where(t => !inPlaylists.Contains(t.Id));
         }
         if (Tag != null)
         {
             var id = Tag.Id;
-            tracks = tracks.Where(t => _main.Profile.TagsOf(t.Id).Contains(id));
+            var profile = _main.ProfileOf(Tag.T);
+            tracks = tracks.Where(t => profile.TagsOf(t.Id).Contains(id));
             TaggedPlaylists = _main.Playlists.Where(p => p.P.Tags.Contains(id)).ToList();
             OnChanged(nameof(TaggedPlaylists), nameof(HasTaggedPlaylists), nameof(Title), nameof(ContextName));
         }
@@ -361,7 +370,10 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
         {
             if (value == null || !Set(ref _sort, value)) return;
             Vm.P.Sort = IsCustomOrder ? null : (string)value.Value!;
-            _main.Profile.Save();
+            // (the other device's playlist: its order is kept there too)
+            var profile = _main.ProfileOf(Vm.P);
+            if (profile.IsMirror) profile.Touch(Vm.P);
+            else profile.Save();
             Rebuild();
             OnChanged(nameof(IsCustomOrder));
         }
@@ -441,7 +453,7 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
     public void Rebuild()
     {
         _dirty = false;
-        var tracks = Vm.P.Tracks.ToList().Select(id => _main.Library.Get(id)).OfType<Track>();
+        var tracks = Vm.P.Tracks.ToList().Select(_main.Get).OfType<Track>();
         var songs = TrackSort.Apply(tracks, (string)_sort.Value!).Select(_main.Vm).ToList();
         _order = Storage.Apply(songs, t => t.IsSaved);
         ApplyFilter();

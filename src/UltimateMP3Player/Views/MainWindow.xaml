@@ -153,14 +153,28 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <Grid Width="32" Height="32">
-                                <Ellipse Fill="{Binding ProfileBrush}"/>
-                                <TextBlock Text="{Binding ProfileInitial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Ellipse Margin="2.5" Visibility="{Binding ProfileAvatar, Converter={StaticResource NotNullVis}}">
-                                    <Ellipse.Fill>
-                                        <ImageBrush ImageSource="{Binding ProfileAvatar}" Stretch="UniformToFill"/>
-                                    </Ellipse.Fill>
-                                </Ellipse>
+                            <Grid>
+                                <!-- both devices' music (Connect phone): the other device's profile behind this one's -->
+                                <Grid Width="26" Height="26" Margin="20,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                      Visibility="{Binding HasSecondProfile, Converter={StaticResource BoolVis}}">
+                                    <Ellipse Fill="{Binding SecondBrush}"/>
+                                    <TextBlock Text="{Binding SecondInitial}" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Ellipse Margin="2" Visibility="{Binding SecondAvatar, Converter={StaticResource NotNullVis}}">
+                                        <Ellipse.Fill>
+                                            <ImageBrush ImageSource="{Binding SecondAvatar}" Stretch="UniformToFill"/>
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                </Grid>
+                                <Grid Width="32" Height="32" HorizontalAlignment="Left">
+                                    <Ellipse Margin="-2" Fill="{DynamicResource SidebarBrush}" Visibility="{Binding HasSecondProfile, Converter={StaticResource BoolVis}}"/>
+                                    <Ellipse Fill="{Binding ProfileBrush}"/>
+                                    <TextBlock Text="{Binding ProfileInitial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Ellipse Margin="2.5" Visibility="{Binding ProfileAvatar, Converter={StaticResource NotNullVis}}">
+                                        <Ellipse.Fill>
+                                            <ImageBrush ImageSource="{Binding ProfileAvatar}" Stretch="UniformToFill"/>
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                </Grid>
                             </Grid>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding ProfileName}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
@@ -192,6 +206,8 @@
                                             </Border.InputBindings>
                                             <DockPanel>
                                                 <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding DeviceGlyph}" Style="{StaticResource Glyph}" FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                                                           Margin="0,0,6,0" VerticalAlignment="Center" Visibility="{Binding HasDevice, Converter={StaticResource BoolVis}}"/>
                                                 <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
                                                 <TextBlock x:Name="Name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" local:Marquee.IsEnabled="True"/>
                                             </DockPanel>
@@ -237,7 +253,11 @@
                                         <ContentPresenter Width="42" Height="42" Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
                                         <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
                                             <TextBlock x:Name="Name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
-                                            <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <DockPanel>
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding DeviceGlyph}" Style="{StaticResource Glyph}" FontSize="10.5" Foreground="{DynamicResource MutedBrush}"
+                                                           Margin="0,0,5,0" VerticalAlignment="Center" Visibility="{Binding HasDevice, Converter={StaticResource BoolVis}}"/>
+                                                <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
                                         </StackPanel>
                                         <TextBlock Grid.Column="2" Text="&#xE995;" Style="{StaticResource Glyph}" Foreground="{DynamicResource AccentTextBrush}"
                                                    FontSize="12" Margin="6,0,2,0" Visibility="{Binding IsPlayingFrom, Converter={StaticResource BoolVis}}"/>

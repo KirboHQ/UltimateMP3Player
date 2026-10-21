@@ -100,7 +100,7 @@ public sealed class RadioViewModel : Observable
     public bool IsCloud(Track t) => _main.Library.Get(t.Id) == t && !t.HasSavedFile && t.HasLink;
 
     // Played from the cache, fetched first if needed: a suggested song, or a library song in the cloud.
-    public bool Streams(Track t) => _items.ContainsKey(t.Id) || IsCloud(t);
+    public bool Streams(Track t) => _items.ContainsKey(t.Id) || IsCloud(t) || _main.Shared?.Streams(t) == true;
 
     // Heard enough to stay in the statistics without being in the library (a play of it counted).
     private bool Heard(string id) => _main.Profile.StatsOf(id) is { Plays: > 0 };
@@ -184,6 +184,17 @@ public sealed class RadioViewModel : Observable
             {
                 var own = lt.Id[3..];
                 if (_main.Library.Get(own) != null || _items.ContainsKey(own)) ids.Add(own);
+                continue;
+            }
+            // One both have (the phone knows this computer's id), or one of the phone's library: shown here already.
+            if (lt.Yours is { } yours && (_main.Library.Get(yours) != null || _items.ContainsKey(yours)))
+            {
+                ids.Add(yours);
+                continue;
+            }
+            if (_main.Shared?.Here(lt.Id) is { } shown)
+            {
+                ids.Add(shown);
                 continue;
             }
             var keys = lt.Keys.Append(LinkTrack.PhoneKey(lt.Id)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -346,9 +357,16 @@ public sealed class RadioViewModel : Observable
         var ids = p.Window(ahead);
         var wanted = new List<RadioSong>();
         var lib = _main.Library;
+        var shared = _main.Shared;
         foreach (var id in ids)
         {
             if (_items.TryGetValue(id, out var item)) wanted.Add(item.Song);
+            // (Connect phone: a song of the phone, or one kept from it whose file hasn't come yet: from the phone)
+            else if (shared != null && _main.Get(id) is { } other && shared.Streams(other))
+            {
+                if (!_streams.TryGetValue(id, out var s)) _streams[id] = s = shared.StreamOf(other);
+                wanted.Add(s);
+            }
             else if (lib.Get(id) is { } t && IsCloud(t))
             {
                 if (!_streams.TryGetValue(id, out var s)) _streams[id] = s = CloudSongs.StreamOf(t);
@@ -392,7 +410,7 @@ public sealed class RadioViewModel : Observable
         Refresh();
     }
 
-    private Track? TrackFor(string id) => _items.TryGetValue(id, out var i) ? i.T : _streams.ContainsKey(id) ? _main.Library.Get(id) : null;
+    private Track? TrackFor(string id) => _items.TryGetValue(id, out var i) ? i.T : _streams.ContainsKey(id) ? _main.Get(id) : null;
 
     // The player waits for this song: it goes first (and is tried again if it had failed).
     public void Prepare(string id)

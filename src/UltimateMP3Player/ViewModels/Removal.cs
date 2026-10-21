@@ -39,7 +39,8 @@ public sealed class RemovePlan
         Tracks = tracks;
         var main = tracks[0].Main;
         bool one = tracks.Count == 1;
-        var lib = tracks.Where(t => main.Library.Get(t.Id) == t.T).Select(t => t.T).ToList();
+        // (the other device's songs, Connect phone, are that library's)
+        var lib = tracks.Where(t => main.Library.Get(t.Id) == t.T || main.IsTheirs(t)).Select(t => t.T).ToList();
 
         var videos = lib.Where(t => t.HasOwnVideo).ToList();
         int sameFile = lib.Count(t => t.HasVideo && !t.HasOwnVideo);
