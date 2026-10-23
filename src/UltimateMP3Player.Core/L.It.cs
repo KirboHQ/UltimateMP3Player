@@ -2010,5 +2010,15 @@ public static partial class L
         ["Show the release notes after an update"] = "Mostra le novità dopo un aggiornamento",
         ["The changes of every version since the last one you opened."] = "Le modifiche di ogni versione dall'ultima che hai aperto.",
         ["Couldn't get this version's notes: check your connection."] = "Impossibile scaricare le novità di questa versione: controlla la connessione.",
+        // 4.0.1: songs heard from their site while they download
+        ["Start songs while they download"] = "Avvia i brani mentre si scaricano",
+        ["Songs in the cloud and suggested ones play right away, while they download. Off: they wait for the whole file (less mobile data)."] = "I brani nel cloud e quelli suggeriti partono subito, mentre si scaricano. Spento: aspettano il file intero (meno dati mobili).",
+        ["Songs in the cloud and suggested ones play right away. Off: they wait for the whole download (less mobile data)"] =
+            "I brani nel cloud e quelli suggeriti partono subito. Spento: aspettano il download completo (meno dati mobili)",
+        // 4.0.1: normalize volume button next to the song
+        ["Normalize volume on: all songs at the same volume"] = "Normalizzazione del volume attiva: tutti i brani allo stesso volume",
+        ["Normalize volume off: each song at its own volume"] = "Normalizzazione del volume spenta: ogni brano al suo volume",
+        ["Normalize volume on: all songs at the same volume (click to turn it off)"] = "Normalizzazione del volume attiva: tutti i brani allo stesso volume (clicca per spegnerla)",
+        ["Normalize volume off: each song at its own volume (click to turn it on)"] = "Normalizzazione del volume spenta: ogni brano al suo volume (clicca per accenderla)",
     };
 }

@@ -94,6 +94,7 @@ public sealed class PlayerViewModel : Observable
         _audio.Ended += OnEnded;
         _audio.NearEnd += OnNearEnd;
         _audio.Failed += OnFailed;
+        _audio.StreamRefused += OnStreamRefused;
 
         // In a room of "Listen together" these buttons need the host's permission: without it they are greyed out.
         PlayPauseCommand = new RelayCommand(PlayPause, () => _room == null || _room.CanPause);
@@ -198,6 +199,7 @@ public sealed class PlayerViewModel : Observable
         _audio.Ended -= OnEnded;
         _audio.NearEnd -= OnNearEnd;
         _audio.Failed -= OnFailed;
+        _audio.StreamRefused -= OnStreamRefused;
     }
 
     private void OnFailed(string msg) => _main.Toast(msg);
@@ -947,6 +949,30 @@ public sealed class PlayerViewModel : Observable
         ? L.T("Automatic queue on: up next refills at every song (click to turn it off)")
         : L.T("Automatic queue off: clicking a song plays just that one (click to turn it on)");
 
+    // Normalize volume (button next to the song, and Settings): heard over a few seconds, not in a jump (Mixer.GainGlide).
+    public bool Normalize
+    {
+        get => _main.Profile.Data.Normalize;
+        set
+        {
+            if (value == Normalize) return;
+            SetNormalize(value);
+            _main.Toast(value ? L.T("Normalize volume on: all songs at the same volume") : L.T("Normalize volume off: each song at its own volume"));
+        }
+    }
+
+    public string NormalizeTip => Normalize
+        ? L.T("Normalize volume on: all songs at the same volume (click to turn it off)")
+        : L.T("Normalize volume off: each song at its own volume (click to turn it on)");
+
+    internal void SetNormalize(bool value)
+    {
+        _main.Profile.Data.Normalize = value;
+        _main.Profile.Save();
+        ApplyNormalization();
+        OnChanged(nameof(Normalize), nameof(NormalizeTip));
+    }
+
     private async Task Load(Track t, bool play, bool crossfade = false)
     {
         // A saved song whose file is gone, with a link: it goes back to the cloud (heard from its link) instead of failing.
@@ -958,7 +984,9 @@ public sealed class PlayerViewModel : Observable
             _main.Toast(L.F("The file of “{0}” is gone: you listen to it from its link, and you can save it again", t.Title));
         }
         var path = t.AudioPath ?? _main.Radio.PathFor(t.Id);
-        if (path == null && _main.Radio.Streams(t))
+        // Not here yet: heard from its site while it downloads (once its analysis is done), otherwise waited for.
+        var link = path == null && _main.Radio.Streams(t) ? _main.Radio.StreamOf(t.Id) : null;
+        if (path == null && link == null && _main.Radio.Streams(t))
         {
             Wait(t, play);
             return;
@@ -967,6 +995,9 @@ public sealed class PlayerViewModel : Observable
         int version = ++_loadVersion;
         double resume = Current?.Id == t.Id ? _resumeAt : 0;
         _resumeAt = 0;
+        // The same play going on (its link was refused, now its file is here): not one more in the history.
+        bool goesOn = _goesOn == t.Id;
+        _goesOn = null;
         CountListening();
         NewListen();
         bool wasWaiting = IsWaiting;
@@ -977,7 +1008,8 @@ public sealed class PlayerViewModel : Observable
         _opened = false;
         try
         {
-            if (crossfade) await _audio.CrossfadeToAsync(path, t.Duration, TrackGain(t));
+            if (link != null) await _audio.OpenAsync(link, t.Duration, TrackGain(t));
+            else if (crossfade) await _audio.CrossfadeToAsync(path, t.Duration, TrackGain(t));
             else await _audio.OpenAsync(path, t.Duration, TrackGain(t));
             if (version != _loadVersion) return;
             _opened = true;
@@ -992,8 +1024,11 @@ public sealed class PlayerViewModel : Observable
             {
                 if (!_audio.IsPlaying) _audio.Play();
                 IsPlaying = _audio.IsPlaying;
-                AddHistory(t);
-                _main.OnPlayed();
+                if (!goesOn)
+                {
+                    AddHistory(t);
+                    _main.OnPlayed();
+                }
             }
             else
             {
@@ -1064,11 +1099,31 @@ public sealed class PlayerViewModel : Observable
     internal void OnRadioReady(string id)
     {
         if (_waiting == id && TrackOf(id) is { } t) _ = Load(t, _waitPlay);
+        // Heard from its site so far: on from its file, at the same point.
+        else if (_opened && Current?.Id == id && _audio.Streaming && _main.Radio.PathFor(id) is { } path)
+            _ = _audio.SwapAsync(path, Current.T.Duration > 0 ? Current.T.Duration : Duration);
     }
 
     internal void OnRadioProgress(string id)
     {
-        if (_waiting == id) OnWaitChanged();
+        if (_waiting != id) return;
+        // Its analysis is done: it starts from its site while the rest downloads.
+        if (_main.Radio.StreamOf(id) != null && TrackOf(id) is { } t) _ = Load(t, _waitPlay);
+        else OnWaitChanged();
+    }
+
+    // The song whose link was refused, waiting for its file (Load: the same play).
+    private string? _goesOn;
+
+    // Its site gave nothing from the link (or stopped before the end): the song waits for its file at the point reached,
+    // like a pause, and goes on by itself once the file is here.
+    private void OnStreamRefused(string link)
+    {
+        if (_audio.SourcePath != link || Current is not { } c) return;
+        _main.Radio.DropStream(c.Id);
+        _goesOn = c.Id;
+        _resumeAt = Position;
+        Wait(c.T, IsPlaying);
     }
 
     // The song waited for can't be downloaded: on to the next one.
@@ -1151,7 +1206,7 @@ public sealed class PlayerViewModel : Observable
     }
 
     // The file the player has open right now (null: nothing open).
-    internal string? OpenPath => _opened ? _audio.SourcePath : null;
+    internal string? OpenPath => _opened && !_audio.Streaming ? _audio.SourcePath : null;
 
     // The song playing and the next ones: the suggested ones among them get ready.
     internal List<string> Window(int ahead)
@@ -1300,14 +1355,15 @@ public sealed class PlayerViewModel : Observable
     {
         if (_room != null) { if (!Unsilence()) _room.SetPaused(false); }
         else if (_remote != null) _remote.Do("playing", flag: true);
-        else if (!IsPlaying) PlayPause();
+        // (a song still downloading: PlayPause flips whether it starts by itself, so only when it wouldn't)
+        else if (_waiting != null ? !_waitPlay : !IsPlaying) PlayPause();
     }
 
     public void Pause()
     {
         if (_room != null) { if (!Unsilence()) _room.SetPaused(true); }
         else if (_remote != null) _remote.Do("playing", flag: false);
-        else if (IsPlaying) PlayPause();
+        else if (_waiting != null ? _waitPlay : IsPlaying) PlayPause();
     }
 
     // First song that can play: its file is here, or it can be fetched from its link (a song in the cloud, a suggested one:

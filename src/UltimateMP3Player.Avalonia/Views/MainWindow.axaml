@@ -399,6 +399,8 @@
                             <!-- automatic queue: lit = "next up" refills itself at every song (in a room the room's queue rules) -->
                             <ToggleButton Theme="{StaticResource ToggleIcon}" Content="{local:Icon E90B}" IsChecked="{Binding AutoQueue}"
                                           ToolTip.Tip="{Binding AutoQueueTip}" IsVisible="{Binding !InRoom}"/>
+                            <ToggleButton Theme="{StaticResource ToggleIcon}" Content="{local:Icon EC4A}" IsChecked="{Binding Normalize}"
+                                          ToolTip.Tip="{Binding NormalizeTip}"/>
                         </StackPanel>
                     </Grid>
 
@@ -414,8 +416,8 @@
                                     Margin="12,0" ToolTip.Tip="{Binding PlayTip}" ToolTip.ShowOnDisabled="True"/>
                             <Button Theme="{StaticResource ControlButton}" Content="{local:Icon E893}" Command="{Binding NextCommand}"
                                     Margin="0,0,8,0" ToolTip.Tip="{Binding NextTip}" ToolTip.ShowOnDisabled="True"/>
-                            <ToggleButton Theme="{StaticResource ToggleIcon}" Content="{Binding RepeatGlyph, Converter={StaticResource Icon}}"
-                                          IsChecked="{Binding RepeatOn, Mode=OneWay}" Command="{Binding CycleRepeatCommand}" ToolTip.Tip="{Binding RepeatTip}"/>
+                            <local:CommandToggle Theme="{StaticResource ToggleIcon}" Content="{Binding RepeatGlyph, Converter={StaticResource Icon}}"
+                                                 IsChecked="{Binding RepeatOn, Mode=OneWay}" Command="{Binding CycleRepeatCommand}" ToolTip.Tip="{Binding RepeatTip}"/>
                         </StackPanel>
                         <Grid Margin="0,6,0,0" ColumnDefinitions="44,*,44">
                             <TextBlock Text="{Binding PositionText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>

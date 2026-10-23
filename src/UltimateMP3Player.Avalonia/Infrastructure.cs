@@ -562,6 +562,8 @@ public static class Icons
     {
         // (Connect phone: a phone, a computer)
         ['\uE8EA'] = '\uF5E0', ['\uE7F4'] = '\uF359',
+        // (Normalize volume: a gauge)
+        ['\uEC4A'] = '\uF4C7',
         [''] = '', [''] = '', [''] = '', [''] = '', [''] = '', [''] = '',
         [''] = '', [''] = '', [''] = '', [''] = '', [''] = '', [''] = '',
         [''] = '', [''] = '', [''] = '', [''] = '', [''] = '', [''] = '',
@@ -900,4 +902,13 @@ public static class Images
             if (!ReferenceEquals(target, src)) target.Dispose();
         }
     }
+}
+
+// A toggle whose state is only the view model's (IsChecked bound one way, a command makes the change): a click doesn't flip
+// it by itself. A plain ToggleButton turned itself off when the command left the value as it was (repeat all → repeat one:
+// still on), since the binding doesn't send a value that didn't change.
+public class CommandToggle : Avalonia.Controls.Primitives.ToggleButton
+{
+    protected override Type StyleKeyOverride => typeof(Avalonia.Controls.Primitives.ToggleButton);
+    protected override void Toggle() { }
 }

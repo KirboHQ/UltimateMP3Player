@@ -132,12 +132,12 @@
                         Content="{Binding Player.PlayGlyph, Converter={StaticResource Icon}}" Command="{Binding Player.PlayPauseCommand}"/>
                 <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Width="58" Height="58" FontSize="30" Foreground="{DynamicResource TextBrush}"
                         Content="{local:Icon E893}" Command="{Binding Player.NextCommand}" HorizontalAlignment="Center"/>
-                <ToggleButton Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{Binding Player.RepeatGlyph, Converter={StaticResource Icon}}"
-                              IsChecked="{Binding Player.RepeatOn, Mode=OneWay}" Command="{Binding Player.CycleRepeatCommand}" HorizontalAlignment="Center"/>
+                <local:CommandToggle Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{Binding Player.RepeatGlyph, Converter={StaticResource Icon}}"
+                                     IsChecked="{Binding Player.RepeatOn, Mode=OneWay}" Command="{Binding Player.CycleRepeatCommand}" HorizontalAlignment="Center"/>
             </Grid>
 
-            <!-- what else: speed, lyrics, video, automatic queue, add to a playlist, next up -->
-            <Grid x:Name="Extras" Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" Margin="14,4,14,10">
+            <!-- what else: speed, lyrics, video, automatic queue, even volume, add to a playlist, next up -->
+            <Grid x:Name="Extras" Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Margin="14,4,14,10">
                 <Button x:Name="SpeedButton" Theme="{StaticResource PillButton}" Height="36" MinWidth="50" Padding="10,0" FontSize="13.5"
                         Background="Transparent" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1.5" Content="{Binding Player.SpeedText}" Click="Speed_Click"/>
                 <!-- driving a computer: its volume (the phone's buttons are the phone's own) -->
@@ -147,8 +147,11 @@
                               IsVisible="{Binding HasLyrics}"/>
                 <ToggleButton Grid.Column="3" Theme="{StaticResource TouchToggle}" Content="{local:Icon E714}" IsChecked="{Binding ShowVideo}" IsVisible="{Binding HasVideo}"/>
                 <ToggleButton Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{local:Icon E90B}" IsChecked="{Binding Player.AutoQueue}"/>
-                <Button Grid.Column="5" Theme="{StaticResource TouchIcon}" Content="{local:Icon E710}" Click="AddToPlaylist_Click"/>
-                <Button Grid.Column="6" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8FD}" Click="Queue_Click"/>
+                <!-- the volume the same for all songs (Settings › Even volume); driving a computer: that one's setting, not here -->
+                <ToggleButton Grid.Column="5" Theme="{StaticResource TouchToggle}" Content="{local:Icon EC4A}" IsChecked="{Binding Player.Normalize}"
+                              IsVisible="{Binding !Player.IsRemote}"/>
+                <Button Grid.Column="6" Theme="{StaticResource TouchIcon}" Content="{local:Icon E710}" Click="AddToPlaylist_Click"/>
+                <Button Grid.Column="7" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8FD}" Click="Queue_Click"/>
             </Grid>
         </Grid>
     </Panel>

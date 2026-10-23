@@ -267,8 +267,9 @@ public sealed class SongCache
         try { JsonStore.Save(_index, new IndexFile { Entries = _entries }); } catch { }
     }
 
-    // A song from its link, audio only with tags and cover, into dir; progress 0-100.
-    public static async Task<string> DownloadAsync(string url, string audioFormat, string? cookies, string dir, Action<double> progress, CancellationToken ct)
+    // A song from its link, audio only with tags and cover, into dir; progress 0-100. stream: what to hear it from meanwhile.
+    public static async Task<string> DownloadAsync(string url, string audioFormat, string? cookies, string dir, Action<double> progress, CancellationToken ct,
+        Action<SongStream>? stream = null)
     {
         var analysis = await Analyzer.AnalyzeAsync(new AnalyzeRequest(url, cookies), ct);
         var item = analysis.Items.FirstOrDefault() ?? throw new EngineException(L.T("No downloadable content found in this link."));
@@ -280,6 +281,7 @@ public sealed class SongCache
             EmbedMetadata = true,
             CookiesBrowser = cookies,
         }, dir);
+        if (stream != null) job.Streamable += stream;
         job.Progress += p =>
         {
             if (p.Percent is double pct) progress(p.Phase == JobPhase.Converting ? 85 + pct * 0.15 : Math.Min(85, pct * 0.85));

@@ -34,6 +34,15 @@ public sealed class YtFormat
     public string? Note { get; init; }
     public double? Quality { get; init; }
     public bool HasDrm { get; init; }
+    // Where the analysis says it can be fetched without yt-dlp: its link, the headers it wants, the size of the pieces
+    // (YouTube slows a single big request down to a crawl), and whether it needs the browser's cookies (then only yt-dlp).
+    public string? Url { get; init; }
+    public Dictionary<string, string> Headers { get; init; } = new();
+    public long? ChunkSize { get; init; }
+    public bool NeedsCookies { get; init; }
+
+    // The headers as ffmpeg's -headers wants them.
+    public string HeaderText => string.Concat(Headers.Select(h => $"{h.Key}: {h.Value}\r\n"));
 
     private static readonly HashSet<string> AudioExts = new(StringComparer.OrdinalIgnoreCase)
         { "m4a", "mp3", "opus", "ogg", "oga", "wav", "flac", "aac", "weba", "mka" };
@@ -73,8 +82,17 @@ public sealed class YtFormat
         Note = f.Str("format_note"),
         Quality = f.Num("quality"),
         HasDrm = f.Bool("has_drm"),
+        Url = f.Str("url"),
+        Headers = f.Prop("http_headers") is { ValueKind: JsonValueKind.Object } h
+            ? h.EnumerateObject().Where(p => p.Value.ValueKind == JsonValueKind.String).ToDictionary(p => p.Name, p => p.Value.GetString()!)
+            : new(),
+        ChunkSize = f.Prop("downloader_options")?.Long("http_chunk_size"),
+        NeedsCookies = f.Str("cookies") != null,
     };
 }
+
+// A song's audio straight from its site (the format chosen for its download), heard while the download goes on.
+public sealed record SongStream(string Url, string Headers);
 
 // One video as "yt-dlp -J" describes it.
 public sealed class YtInfo

@@ -464,6 +464,8 @@
                         <ToggleButton Style="{StaticResource ToggleIcon}" Content="&#xE90B;" IsChecked="{Binding AutoQueue}"
                                       ToolTip="{Binding AutoQueueTip}" AutomationProperties.Name="{local:T 'Automatic queue'}"
                                       Visibility="{Binding InRoom, Converter={StaticResource InvBoolVis}}"/>
+                        <ToggleButton Style="{StaticResource ToggleIcon}" Content="&#xEC4A;" IsChecked="{Binding Normalize}"
+                                      ToolTip="{Binding NormalizeTip}" AutomationProperties.Name="{local:T 'Normalize volume'}"/>
                     </StackPanel>
                 </Grid>
 

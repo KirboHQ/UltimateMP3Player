@@ -16,6 +16,9 @@ public sealed class DownloadJob
     public string? CoverOut { get; set; }
 
     public event Action<JobProgress>? Progress;
+    // A song's format is chosen and can be heard straight from its site (with ffmpeg) while it downloads: raised before
+    // the download starts (on the job's thread).
+    public event Action<SongStream>? Streamable;
 
     public DownloadJob(MediaItem item, DownloadOptions options, string outputDir)
     {
@@ -230,6 +233,11 @@ public sealed class DownloadJob
         }
 
         Report(JobPhase.Downloading, null, L.T("Connecting…"));
+        if (target is AudioTarget && !sel.Merge && sel.Audio is { Url: not null, NeedsCookies: false } one)
+        {
+            if (Engines.VideoDownloads && (one.IsM3u8 || one.Protocol is "https" or "http")) Streamable?.Invoke(new SongStream(one.Url, one.HeaderText));
+            if (await DownloadFormat(one, temp, OnProgress, ct) is { } file) return file;
+        }
         // The first try reads the analysis already made (its links are fresh); the next ones the page again.
         string? infoFile = null;
         if (info.Json is { } json)
@@ -272,6 +280,36 @@ public sealed class DownloadJob
             else spec = "ba/b";
             ClearDir(temp);
             return await YtDlp.DownloadAsync(info.WebpageUrl, spec, target is VideoTarget { Container: not "gif" }, temp, Options.CookiesBrowser, OnProgress, ct, extra);
+        }
+    }
+
+    // One yt-dlp is enough: the format chosen is fetched from the link its analysis gave (a file in pieces, HLS through
+    // ffmpeg), without starting yt-dlp again. Null when it doesn't work (yt-dlp then, as before).
+    private async Task<string?> DownloadFormat(YtFormat f, string temp, Action<DlProgress> progress, CancellationToken ct)
+    {
+        var path = Path.Combine(temp, "media." + (string.IsNullOrEmpty(f.Ext) ? "mka" : f.Ext));
+        try
+        {
+            if (f.IsM3u8 && Engines.VideoDownloads)
+            {
+                double duration = Item.Duration ?? Item.Info?.Duration ?? 0;
+                await Ffmpeg.RunAsync(new[] { "-headers", f.HeaderText, "-i", f.Url!, "-vn", "-c", "copy", path }, duration,
+                    p => Report(JobPhase.Downloading, p * 100, "Download"), ct);
+            }
+            else if (f.Protocol is "https" or "http")
+                await Http.DownloadFileAsync(f.Url!, path, f.Headers, (done, total) => progress(new DlProgress(f.Id, "downloading", done, total, null, null)), ct,
+                    chunk: f.ChunkSize ?? 10 << 20);
+            else return null;
+            // An error page instead of the audio: much smaller than the analysis said.
+            long size = new FileInfo(path).Length;
+            if (size < 16 << 10 || f.Size is long expected && size < expected / 2) throw new IOException("Not the audio.");
+            return path;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch
+        {
+            ClearDir(temp);
+            return null;
         }
     }
 

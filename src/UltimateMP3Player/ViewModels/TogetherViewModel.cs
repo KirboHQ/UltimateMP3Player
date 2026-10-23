@@ -1172,13 +1172,12 @@ public sealed class TogetherViewModel : Observable
                     {
                         var key = SongMeta.Key(h.Title, h.Artist);
                         if (list.Count >= want || inRoom.Contains(key) || _suggestedUsed.Contains(key)) continue;
-                        var keys = SourceKeys.ForItem(new MediaItem { Url = h.Url, PageUrl = h.Url });
-                        var have = lib.FindByKeys(keys) ?? lib.FindSimilar(h.Title, h.Artist, h.Duration);
+                        var have = lib.FindByKeys(h.Keys()) ?? lib.FindSimilar(h.Title, h.Artist, h.Duration);
                         list.Add((h, have != null && (have.HasSavedFile || have.HasLink) ? have : null));
                         inRoom.Add(key);
                     }
                     if (hits.Count == 0) break;
-                    seed = new RadioSeed(hits[^1].Title, hits[^1].Artist, SourceKeys.ForItem(new MediaItem { Url = hits[^1].Url, PageUrl = hits[^1].Url }));
+                    seed = new RadioSeed(hits[^1].Title, hits[^1].Artist, hits[^1].Keys());
                 }
                 return list;
             });

@@ -155,6 +155,14 @@
                         </StackPanel>
                     </CheckBox>
                     <Border Classes="line"/>
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding PlayWhileDownloading}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Start songs while they download'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Songs in the cloud and suggested ones play right away. Off: they wait for the whole download (less mobile data)'}"
+                                       Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
+                    <Border Classes="line"/>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding Crossfade}">
                         <StackPanel>
                             <TextBlock Text="{local:T Crossfade}" Classes="setting"/>

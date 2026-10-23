@@ -54,6 +54,8 @@ public sealed class AudioEngine : IDisposable
     public event Action? Ended;
     public event Action? NearEnd;
     public event Action<string>? Failed;
+    // The site refused the link a song was heard from (LinkTrackSource), or cut it off before the end: its link.
+    public event Action<string>? StreamRefused;
 
     public AudioEngine(Dispatcher ui)
     {
@@ -78,6 +80,8 @@ public sealed class AudioEngine : IDisposable
     public bool IsPlaying => _playing;
     public bool HasSource => _master.HasSource;
     public string? SourcePath { get; private set; }
+    // Heard from its site while it downloads (SourcePath is the link), until its file takes over (SwapAsync).
+    public bool Streaming => SourcePath?.StartsWith("http", StringComparison.OrdinalIgnoreCase) == true;
 
 #if IOS_APP
     // The speaker, the headphones or Bluetooth hold some more (iOS says how much): in time with the others in a room.
@@ -142,10 +146,16 @@ public sealed class AudioEngine : IDisposable
 
     // Decoders are created off the UI thread. An open overtaken by another one (or by Close) is thrown away:
     // it would otherwise put its song back in the engine.
-    public async Task OpenAsync(string path, double durationHint, double trackGainDb)
+    public Task OpenAsync(string path, double durationHint, double trackGainDb) => OpenAsync(OpenSource(path, durationHint), path, trackGainDb, durationHint);
+
+    public Task OpenAsync(SongStream link, double durationHint, double trackGainDb) =>
+        OpenAsync(Task.Run<ITrackSource>(() => new LinkTrackSource(link, TimeSpan.FromSeconds(durationHint),
+            () => _ui.BeginInvoke(() => StreamRefused?.Invoke(link.Url)))), link.Url, trackGainDb, durationHint);
+
+    private async Task OpenAsync(Task<ITrackSource> opening, string path, double trackGainDb, double durationHint)
     {
         int version = ++_openVersion;
-        var source = await OpenSource(path, durationHint);
+        var source = await opening;
         if (version != _openVersion)
         {
             source.Dispose();

@@ -203,6 +203,8 @@ public sealed class AppSettings
     // yt-dlp browser spec: "firefox" or "firefox:C:\profile".
     public string CookiesBrowser { get; set; } = "firefox";
     public int MaxParallel { get; set; } = 3;
+    // Songs in the cloud and suggested ones start from their site while they download (off: once downloaded, less data).
+    public bool PlayWhileDownloading { get; set; } = true;
     public bool CloseToTray { get; set; } = true;
     // Profile opened at startup, null = ask.
     public string? StartupProfile { get; set; }

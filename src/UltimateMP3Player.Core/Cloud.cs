@@ -156,19 +156,19 @@ public static class CloudSongs
     }
 
     // A song's audio into dir from its link, or, when the link can't give it, from the same song found on YouTube (FindForAsync).
-    // Replacement: where it came from instead (null: its own link).
+    // Replacement: where it came from instead (null: its own link). stream: what to hear it from while it downloads.
     public static async Task<(string File, YtInfo? Replacement)> DownloadAsync(string url, string title, string? artist, double duration, string audioFormat,
-        string? cookies, string dir, Action<double> progress, CancellationToken ct)
+        string? cookies, string dir, Action<double> progress, CancellationToken ct, Action<SongStream>? stream = null)
     {
         try
         {
-            return (await SongCache.DownloadAsync(url, audioFormat, cookies, dir, progress, ct), null);
+            return (await SongCache.DownloadAsync(url, audioFormat, cookies, dir, progress, ct, stream), null);
         }
         catch (EngineException ex) when (ex.LinkProblem && !ct.IsCancellationRequested)
         {
             var info = await FindForAsync(ex, title, artist, duration, url, cookies, ct);
             if (info == null) throw new EngineException(ex.Message, ex.Details) { Gone = ex.Gone, NeedsLogin = ex.NeedsLogin, NotFoundElsewhere = true };
-            return (await SongCache.DownloadAsync(info.WebpageUrl, audioFormat, cookies, dir, progress, ct), info);
+            return (await SongCache.DownloadAsync(info.WebpageUrl, audioFormat, cookies, dir, progress, ct, stream), info);
         }
     }
 }

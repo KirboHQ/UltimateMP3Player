@@ -114,6 +114,8 @@ public static class Analyzer
 
         var info = YtInfo.Parse(root);
         if (info.Formats.Count == 0) throw new EngineException(L.T("No downloadable format found.")) { NoMedia = true };
+        // (for the download: yt-dlp doesn't analyze it again)
+        info.Json = root.GetRawText();
         var single = ItemFromInfo(info, siteName);
         result.Title = single.Title;
         result.Uploader = single.Artist ?? info.Uploader;

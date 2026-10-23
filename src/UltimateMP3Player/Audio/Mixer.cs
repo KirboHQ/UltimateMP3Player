@@ -12,13 +12,17 @@ internal sealed class Voice : IDisposable
     public Voice(ITrackSource source, float gain, double duration)
     {
         Source = source;
-        Gain = gain;
+        Gain = GainTarget = gain;
         Duration = duration > 0 ? duration : source.Duration.TotalSeconds;
     }
 
     public ITrackSource Source { get; }
     public ISampleProvider? Chain { get; private set; }
     public float Gain;
+    // A new gain (the song's loudness measured while it plays, normalization turned on or off) is reached gently, not in
+    // a jump: GainStep per frame, the whole change in GainGlide seconds.
+    public float GainTarget;
+    public float GainStep;
     public double Duration;
     // 0..1, heard through an equal-power curve.
     public float Fade = 1f;
@@ -108,6 +112,7 @@ public sealed class MasterProvider : ISampleProvider
 
     private const double MicroFade = 0.03;
     private const double SeekFade = 0.015;
+    private const double GainGlide = 3;
     // Frames the songs are read in while the speed is changed.
     private const int StretchChunk = 1024;
 
@@ -336,6 +341,7 @@ public sealed class MasterProvider : ISampleProvider
             if (_current is not { } cur) return false;
             var v = new Voice(source, cur.Gain, cur.Duration)
             {
+                GainTarget = cur.GainTarget, GainStep = cur.GainStep,
                 CrossfadeAt = cur.CrossfadeAt, NearEndRaised = cur.NearEndRaised, Ended = cur.Ended,
                 BendFrom = cur.BendFrom, BendSeconds = cur.BendSeconds, BendRatio = cur.BendRatio,
             };
@@ -438,7 +444,11 @@ public sealed class MasterProvider : ISampleProvider
     public void SetTrackGain(double db)
     {
         lock (_lock)
-            if (_current != null) _current.Gain = Db(db);
+            if (_current is { } v)
+            {
+                v.GainTarget = Db(db);
+                v.GainStep = Math.Abs(v.GainTarget - v.Gain) / (float)(GainGlide * _rate);
+            }
     }
 
     // Master level faded around pause and resume.
@@ -596,6 +606,8 @@ public sealed class MasterProvider : ISampleProvider
         catch { read = 0; }
         for (int i = 0; i + 1 < read; i += 2)
         {
+            if (v.Gain != v.GainTarget)
+                v.Gain = v.Gain < v.GainTarget ? Math.Min(v.GainTarget, v.Gain + v.GainStep) : Math.Max(v.GainTarget, v.Gain - v.GainStep);
             if (v.Fade != v.FadeTarget)
                 v.Fade = v.Fade < v.FadeTarget ? Math.Min(v.FadeTarget, v.Fade + v.FadeStep) : Math.Max(v.FadeTarget, v.Fade - v.FadeStep);
             float g = v.Fade >= 1f ? v.Gain : v.Gain * MathF.Sin(v.Fade * MathF.PI / 2);

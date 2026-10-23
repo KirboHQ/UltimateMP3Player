@@ -17,6 +17,17 @@ public sealed class SearchHit
     public string? Thumb { get; init; }
     // Place in its service's own results (0 = first).
     public int Rank { get; init; }
+    // Its id on its site when the link doesn't show it ("soundcloud:123").
+    public string? SiteKey { get; init; }
+
+    // What a download of it would be known by: found again in the library, and the suggestions that start from it ask its
+    // site by its id (a SoundCloud link alone would send them to YouTube Music).
+    public List<string> Keys()
+    {
+        var keys = SourceKeys.ForItem(new MediaItem { Url = Url, PageUrl = Url });
+        if (SiteKey != null) keys.Add(SiteKey);
+        return keys;
+    }
 }
 
 // The sites the search box can search, without accounts or keys: YouTube Music (official songs), YouTube (videos,
@@ -238,6 +249,7 @@ public static class OnlineSearchServices
                 Service = SoundCloud, Title = title,
                 Artist = t.Prop("publisher_metadata")?.Str("artist") is { Length: > 0 } a ? a : t.Prop("user")?.Str("username"),
                 Duration = t.Num("duration") / 1000.0, Thumb = art?.Replace("-large.", "-t300x300."), Url = url, Rank = hits.Count,
+                SiteKey = t.Str("id") is { } id ? "soundcloud:" + id : null,
             });
         }
         return hits;

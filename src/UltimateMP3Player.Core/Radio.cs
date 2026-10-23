@@ -47,7 +47,7 @@ public sealed class RadioSong
     public static RadioSong From(SearchHit h) => new()
     {
         Id = Prefix + Ids.New(), Title = h.Title, Artist = h.Artist, Album = h.Album, Duration = h.Duration ?? 0, Url = h.Url, Service = h.Service,
-        Thumb = h.Thumb, Keys = SourceKeys.ForItem(new MediaItem { Url = h.Url, PageUrl = h.Url }),
+        Thumb = h.Thumb, Keys = h.Keys(),
     };
 }
 
@@ -68,6 +68,8 @@ public sealed class RadioFetcher : IDisposable
     private HashSet<string> _inUse = new(StringComparer.OrdinalIgnoreCase);
     // The downloads going on (song id → how to stop it).
     private readonly Dictionary<string, CancellationTokenSource> _running = new();
+    // Songs still downloading whose audio can be heard from their site meanwhile (the analysis is done).
+    private readonly Dictionary<string, SongStream> _streams = new();
     private bool _disposed;
 
     public RadioFetcher(SongCache cache, Func<RadioFetchOptions> options, Action<Action> post)
@@ -91,6 +93,9 @@ public sealed class RadioFetcher : IDisposable
     public string? PathFor(string id) => _paths.TryGetValue(id, out var p) && File.Exists(p) ? p : null;
     public FileStatus? StatusOf(string id) => _status.GetValueOrDefault(id);
     public bool IsReady(string id) => PathFor(id) != null;
+    public SongStream? StreamOf(string id) => _streams.GetValueOrDefault(id);
+    // Its site refused it: the song waits for its file.
+    public void DropStream(string id) => _streams.Remove(id);
     public bool IsFailed(string id) => StatusOf(id)?.State == FileState.Failed;
     // Failed because the song is gone from its site and nothing like it was found elsewhere (not a connection problem).
     public bool IsGone(string id) => _gone.Contains(id);
@@ -145,6 +150,12 @@ public sealed class RadioFetcher : IDisposable
         {
             if (_running.GetValueOrDefault(s.Id) == cts && Math.Abs((StatusOf(s.Id)?.Pct ?? 0) - pct) >= 2) Set(s.Id, FileState.Downloading, pct);
         });
+        Action<SongStream> stream = link => _post(() =>
+        {
+            if (_running.GetValueOrDefault(s.Id) != cts || IsReady(s.Id)) return;
+            _streams[s.Id] = link;
+            Changed?.Invoke(s.Id);
+        });
         try
         {
             var keys = s.Keys;
@@ -162,7 +173,8 @@ public sealed class RadioFetcher : IDisposable
                 try
                 {
                     // Its link doesn't work (removed, private, DRM): the same song from YouTube.
-                    (file, info) = await CloudSongs.DownloadAsync(s.Url, s.Title, s.Artist, s.Duration, s.Quality ?? o.AudioFormat, o.Cookies, _cache.TempDir, progress, cts.Token);
+                    (file, info) = await CloudSongs.DownloadAsync(s.Url, s.Title, s.Artist, s.Duration, s.Quality ?? o.AudioFormat, o.Cookies, _cache.TempDir, progress, cts.Token,
+                        stream);
                 }
                 catch (EngineException ex) when (ex is { NotFoundElsewhere: true, Gone: true })
                 {
@@ -204,7 +216,11 @@ public sealed class RadioFetcher : IDisposable
         }
         finally
         {
-            if (_running.GetValueOrDefault(s.Id) == cts) _running.Remove(s.Id);
+            if (_running.GetValueOrDefault(s.Id) == cts)
+            {
+                _running.Remove(s.Id);
+                _streams.Remove(s.Id);
+            }
             cts.Dispose();
             if (!_disposed) _post(Next);
         }
@@ -219,6 +235,7 @@ public sealed class RadioFetcher : IDisposable
     private void MarkReady(RadioSong s, string path)
     {
         _paths[s.Id] = path;
+        _streams.Remove(s.Id);
         _inUse = _paths.Values.ToHashSet(StringComparer.OrdinalIgnoreCase);
         Set(s.Id, FileState.Ready, 100);
     }
@@ -233,6 +250,7 @@ public sealed class RadioFetcher : IDisposable
     public void Forget(string id)
     {
         _status.Remove(id);
+        _streams.Remove(id);
         _gone.Remove(id);
         _offline.Remove(id);
         if (_paths.Remove(id)) _inUse = _paths.Values.ToHashSet(StringComparer.OrdinalIgnoreCase);

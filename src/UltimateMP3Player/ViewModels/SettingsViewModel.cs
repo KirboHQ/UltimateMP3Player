@@ -221,6 +221,8 @@ public sealed class SettingsViewModel : Observable
     {
         _main = main;
         Equalizer = new EqualizerViewModel(main);
+        // (the button next to the song turns it on and off too)
+        main.Player.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(PlayerViewModel.Normalize)) OnChanged(nameof(Normalize)); };
         AudioFormats = QualityChoices.Audio();
         VideoQualities = QualityChoices.Video();
         ParallelChoices = Enumerable.Range(1, 6).Select(n => new Choice(L.F("{0} at a time", n), n)).ToList();
@@ -349,14 +351,8 @@ public sealed class SettingsViewModel : Observable
 
     public bool Normalize
     {
-        get => _main.Profile.Data.Normalize;
-        set
-        {
-            _main.Profile.Data.Normalize = value;
-            _main.Profile.Save();
-            _main.Player.ApplyNormalization();
-            OnChanged();
-        }
+        get => _main.Player.Normalize;
+        set => _main.Player.SetNormalize(value);
     }
 
     public bool Crossfade
@@ -577,6 +573,12 @@ public sealed class SettingsViewModel : Observable
             S.AudioFormat = (string)value.Value!;
             Save();
         }
+    }
+
+    public bool PlayWhileDownloading
+    {
+        get => S.PlayWhileDownloading;
+        set { S.PlayWhileDownloading = value; Save(); OnChanged(); }
     }
 
     public bool PreferAudioOnly

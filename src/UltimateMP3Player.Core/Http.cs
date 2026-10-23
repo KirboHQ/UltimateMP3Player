@@ -70,32 +70,50 @@ public static class Http
     }
 
     public static async Task DownloadFileAsync(string url, string path, IDictionary<string, string>? headers,
-        Action<long, long?>? progress, CancellationToken ct, string? referer = null)
+        Action<long, long?>? progress, CancellationToken ct, string? referer = null, long chunk = 0)
     {
-        using var req = Request(HttpMethod.Get, url, null, referer, headers);
-        using var resp = await Client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-        if (!resp.IsSuccessStatusCode)
-            throw new EngineException(resp.StatusCode switch
-            {
-                HttpStatusCode.Forbidden => L.T("The site denied access to the file (error 403)."),
-                HttpStatusCode.NotFound => L.T("The file no longer exists (error 404)."),
-                HttpStatusCode.Unauthorized => L.T("The site requires you to sign in (login) for this file."),
-                _ => L.F("Download failed (HTTP {0}).", (int)resp.StatusCode),
-            }, url);
-        long? total = resp.Content.Headers.ContentLength;
         var tmp = path + ".part";
-        await using (var src = await resp.Content.ReadAsStreamAsync(ct))
         await using (var dst = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16, true))
         {
             var buf = new byte[1 << 16];
             long done = 0;
+            long? total = null;
             var sw = Stopwatch.StartNew();
-            int n;
-            while ((n = await src.ReadAsync(buf, ct)) > 0)
+            // chunk > 0: asked for in pieces of that size, each from where the last one stopped (until the whole file).
+            while (true)
             {
-                await dst.WriteAsync(buf.AsMemory(0, n), ct);
-                done += n;
-                if (sw.ElapsedMilliseconds > 250) { progress?.Invoke(done, total); sw.Restart(); }
+                using var req = Request(HttpMethod.Get, url, null, referer, headers);
+                if (chunk > 0) req.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(done, done + chunk - 1);
+                using var resp = await Client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+                if (!resp.IsSuccessStatusCode)
+                    throw new EngineException(resp.StatusCode switch
+                    {
+                        HttpStatusCode.Forbidden => L.T("The site denied access to the file (error 403)."),
+                        HttpStatusCode.NotFound => L.T("The file no longer exists (error 404)."),
+                        HttpStatusCode.Unauthorized => L.T("The site requires you to sign in (login) for this file."),
+                        _ => L.F("Download failed (HTTP {0}).", (int)resp.StatusCode),
+                    }, url);
+                // A site that doesn't do pieces sends the whole file at once.
+                if (chunk > 0 && resp.StatusCode != HttpStatusCode.PartialContent)
+                {
+                    chunk = 0;
+                    done = 0;
+                    dst.SetLength(0);
+                }
+                total ??= chunk > 0 ? resp.Content.Headers.ContentRange?.Length : resp.Content.Headers.ContentLength;
+                long got = 0;
+                await using (var src = await resp.Content.ReadAsStreamAsync(ct))
+                {
+                    int n;
+                    while ((n = await src.ReadAsync(buf, ct)) > 0)
+                    {
+                        await dst.WriteAsync(buf.AsMemory(0, n), ct);
+                        done += n;
+                        got += n;
+                        if (sw.ElapsedMilliseconds > 250) { progress?.Invoke(done, total); sw.Restart(); }
+                    }
+                }
+                if (chunk <= 0 || got == 0 || (total is long all ? done >= all : got < chunk)) break;
             }
             progress?.Invoke(done, total ?? done);
         }
