@@ -23,19 +23,25 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
-    <img alt="Scarica per Windows" src="https://img.shields.io/badge/Scarica_per_Windows-7C5CFF?style=for-the-badge&logo=windows&logoColor=white" height="42">
+  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-windows-x64-setup.exe">
+    <img alt="Scarica per Windows" src="https://img.shields.io/badge/Scarica_per_Windows-7C5CFF?style=for-the-badge&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMGgxMS40djExLjRIMHpNMTIuNiAwSDI0djExLjRIMTIuNnpNMCAxMi42aDExLjRWMjRIMHpNMTIuNiAxMi42SDI0VjI0SDEyLjZ6Ii8%2BPC9zdmc%2B" height="42">
   </a>
-  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
+  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-linux-x64.tar.gz">
     <img alt="Scarica per Linux" src="https://img.shields.io/badge/Linux-7C5CFF?style=for-the-badge&logo=linux&logoColor=white" height="42">
   </a>
-  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
+  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-macos-arm64.zip">
     <img alt="Scarica per macOS" src="https://img.shields.io/badge/macOS-7C5CFF?style=for-the-badge&logo=apple&logoColor=white" height="42">
   </a>
-  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest">
+  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-android-arm64-v8a.apk">
     <img alt="Scarica per Android" src="https://img.shields.io/badge/Android-7C5CFF?style=for-the-badge&logo=android&logoColor=white" height="42">
   </a>
+  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-ios.ipa">
+    <img alt="Scarica per iPhone" src="https://img.shields.io/badge/iPhone-7C5CFF?style=for-the-badge&logo=apple&logoColor=white" height="42">
+  </a>
 </p>
+
+<p align="center"><sub>Sempre l'ultima versione. Altri processori (ARM, Mac Intel, telefoni vecchi) e come installare:
+<a href="#-installazione">Installazione</a>.</sub></p>
 
 <p align="center"><a href="README.md">English</a> · <b>Italiano</b></p>
 
@@ -205,6 +211,42 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
   dalla tua in poi
 
 ## 📥 Installazione
+
+Ogni pulsante scarica quel file dall'ultima release.
+
+<table>
+  <tr>
+    <th>Sistema</th>
+    <th>Scarica</th>
+    <th>Altre versioni</th>
+  </tr>
+  <tr>
+    <td><b>Windows</b><br><sub>10 e 11</sub></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-windows-x64-setup.exe"><img alt="Scarica per Windows x64" src="https://img.shields.io/badge/Scarica-x64-7C5CFF?style=for-the-badge&labelColor=5B3FD9&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMGgxMS40djExLjRIMHpNMTIuNiAwSDI0djExLjRIMTIuNnpNMCAxMi42aDExLjRWMjRIMHpNMTIuNiAxMi42SDI0VjI0SDEyLjZ6Ii8%2BPC9zdmc%2B"></a></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-windows-arm64-setup.exe"><img alt="Windows su ARM" src="https://img.shields.io/badge/ARM64-Snapdragon-6E7781?style=for-the-badge&labelColor=57606A&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMGgxMS40djExLjRIMHpNMTIuNiAwSDI0djExLjRIMTIuNnpNMCAxMi42aDExLjRWMjRIMHpNMTIuNiAxMi42SDI0VjI0SDEyLjZ6Ii8%2BPC9zdmc%2B"></a></td>
+  </tr>
+  <tr>
+    <td><b>Linux</b><br><sub>qualsiasi distribuzione recente</sub></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-linux-x64.tar.gz"><img alt="Scarica per Linux x64" src="https://img.shields.io/badge/Scarica-x64-7C5CFF?style=for-the-badge&labelColor=5B3FD9&logo=linux&logoColor=white"></a></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-linux-arm64.tar.gz"><img alt="Linux arm64" src="https://img.shields.io/badge/arm64-6E7781?style=for-the-badge&logo=linux&logoColor=white"></a></td>
+  </tr>
+  <tr>
+    <td><b>macOS</b><br><sub>12 o successivo</sub></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-macos-arm64.zip"><img alt="Scarica per Mac con Apple Silicon" src="https://img.shields.io/badge/Scarica-Apple_Silicon-7C5CFF?style=for-the-badge&labelColor=5B3FD9&logo=apple&logoColor=white"></a></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-macos-x64.zip"><img alt="Mac Intel" src="https://img.shields.io/badge/Intel-x64-6E7781?style=for-the-badge&labelColor=57606A&logo=apple&logoColor=white"></a></td>
+  </tr>
+  <tr>
+    <td><b>Android</b><br><sub>8 o successivo</sub></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-android-arm64-v8a.apk"><img alt="Scarica per Android" src="https://img.shields.io/badge/Scarica-APK-7C5CFF?style=for-the-badge&labelColor=5B3FD9&logo=android&logoColor=white"></a></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-android-armeabi-v7a.apk"><img alt="Vecchi telefoni a 32 bit" src="https://img.shields.io/badge/32--bit-telefoni_vecchi-6E7781?style=for-the-badge&labelColor=57606A&logo=android&logoColor=white"></a>
+      <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-android-x86_64.apk"><img alt="Emulatori e Chromebook" src="https://img.shields.io/badge/x86__64-emulatori-6E7781?style=for-the-badge&labelColor=57606A&logo=android&logoColor=white"></a></td>
+  </tr>
+  <tr>
+    <td><b>iPhone e iPad</b><br><sub>iOS 15 o successivo</sub></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-ios.ipa"><img alt="Scarica per iPhone" src="https://img.shields.io/badge/Scarica-IPA-7C5CFF?style=for-the-badge&labelColor=5B3FD9&logo=apple&logoColor=white"></a></td>
+    <td><sub>si installa con SideStore, vedi sotto</sub></td>
+  </tr>
+</table>
 
 **Windows**
 
