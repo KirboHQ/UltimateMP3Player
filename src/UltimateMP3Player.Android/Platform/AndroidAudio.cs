@@ -142,12 +142,15 @@ public static class AudioPlatform
 // or on the seek bar is heard quickly); while it's away (the screen off, another app in front) it grows to BackgroundMs:
 // a stop of the app's code (the garbage collector, a phone slowed down with the screen off) no longer reaches the speaker,
 // and the phone wakes up less often. A jump, another song or a pause throw away what's waiting (IOutputLatency), so they
-// are heard at once all the same; what it holds is measured, so the position stays the one heard.
+// are heard at once all the same; what it holds is measured, so the position stays the one heard. When the sound runs out
+// on screen anyway, the buffer grows (Grow).
 public sealed class TrackOut : IWavePlayer, IOutputLatency
 {
     private const int BackgroundMs = 1000;
     private static readonly List<TrackOut> Live = new();
     private static bool _background;
+    // What the buffer holds on screen after Grow (0 = latencyMs), for as long as the app runs.
+    private static int _screenMs;
 
     private readonly int _latencyMs;
     // The output chosen in Settings, null = Android's own choice.
@@ -229,8 +232,23 @@ public sealed class TrackOut : IWavePlayer, IOutputLatency
     // How much of the track's buffer the writer fills (the rest stays empty): little on screen, a lot while away.
     private void ApplySize()
     {
-        try { _track?.SetBufferSizeInFrames((int)((long)_rate * (_background ? BackgroundMs : _latencyMs) / 1000)); }
+        try { _track?.SetBufferSizeInFrames((int)((long)_rate * (_background ? BackgroundMs : Math.Max(_latencyMs, _screenMs)) / 1000)); }
         catch (Exception ex) { App.Log(ex); }
+    }
+
+    // The sound ran out on screen: the mix stopped for longer than the buffer lasts (the garbage collector while a list
+    // scrolls, a phone slowed down by battery saver). The buffer doubles, up to the background's: one stutter instead of
+    // one at every scroll. Pauses and jumps stay immediate (Flush, Drop); only a change of EQ or speed comes later.
+    private void Grow()
+    {
+        lock (Live)
+        {
+            if (_background) return;
+            int now = Math.Max(_latencyMs, _screenMs);
+            if (now >= BackgroundMs) return;
+            _screenMs = Math.Min(BackgroundMs, now * 2);
+            foreach (var o in Live) o.ApplySize();
+        }
     }
 
     private void Run()
@@ -247,15 +265,19 @@ public sealed class TrackOut : IWavePlayer, IOutputLatency
         // The samples reach Android through one buffer outside .NET's memory, filled in place: no array made in Java and
         // copied there and back at every write (50 times a second, for as long as the music plays).
         Java.Nio.ByteBuffer? direct = null;
-        IntPtr address = IntPtr.Zero;
+        IntPtr address = IntPtr.Zero, clear = IntPtr.Zero;
         try
         {
             direct = Java.Nio.ByteBuffer.AllocateDirect(big);
             direct?.Order(Java.Nio.ByteOrder.NativeOrder()!);
             if (direct != null) address = Android.Runtime.JNIEnv.GetDirectBufferAddress(direct.Handle);
+            // Buffer.clear() called straight: the binding's Clear() looks for the .NET object of the buffer it returns (the
+            // same one) at every write, a lookup that after a garbage collection waits for Java's side of it.
+            if (direct != null) clear = Android.Runtime.JNIEnv.GetMethodID(direct.Class.Handle, "clear", "()Ljava/nio/Buffer;");
         }
         catch { address = IntPtr.Zero; }
         if (address == IntPtr.Zero) floats = new float[big / 4];
+        int underruns = 0;
         while (!_closed)
         {
             // Paused: asleep until Play (or closing) wakes it; the long timeout only in case a wake-up got lost.
@@ -282,7 +304,7 @@ public sealed class TrackOut : IWavePlayer, IOutputLatency
                 if (direct != null && address != IntPtr.Zero)
                 {
                     Marshal.Copy(bytes, 0, address, chunk);
-                    direct.Clear();
+                    Android.Runtime.JNIEnv.DeleteLocalRef(Android.Runtime.JNIEnv.CallObjectMethod(direct.Handle, clear));
                     written = t.Write(direct, chunk, WriteMode.Blocking);
                 }
                 else
@@ -293,6 +315,10 @@ public sealed class TrackOut : IWavePlayer, IOutputLatency
                 if (written < 0) throw new InvalidOperationException("AudioTrack " + written);
                 lock (_sync)
                     if (flushes == _flushes) _written += (uint)(written / frame);
+                // (counted away from the screen too: a stop there doesn't make it grow once back)
+                int u = t.UnderrunCount;
+                if (u > underruns && !_background) Grow();
+                underruns = u;
             }
             catch (Exception ex)
             {

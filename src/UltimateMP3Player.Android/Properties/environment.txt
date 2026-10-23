@@ -1,0 +1,5 @@
+# The garbage collector's young area: 16 MB instead of 4. Scrolling a list makes short-lived objects (Avalonia's layout
+# and text, Android's touch events) and every collection on Android also asks Java about the objects shared with it: a stop
+# that was felt as a stutter of the list and, with battery saver, of the sound. A quarter as many collections, for some
+# megabytes of memory. The concurrent collector is the one the SDK sets by default (written again: this line replaces it).
+MONO_GC_PARAMS=nursery-size=16m,major=marksweep-conc
