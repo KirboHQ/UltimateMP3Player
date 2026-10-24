@@ -103,6 +103,9 @@ public partial class SongsPage : UserControl, IPage
             _ => "",
         };
         Fill();
+        // Filled before it was ever in the window (the library's songs tab, made at start): what changes until then isn't
+        // heard, so it's filled again when it gets there (the first download into an empty library showed "No songs yet").
+        if (!IsAttachedToVisualTree()) _stale = true;
     }
 
     private bool IsAttachedToVisualTree() => this.GetVisualRoot() != null;

@@ -107,6 +107,7 @@ public static partial class Menus
         if (t.HasLyrics && main.Player.Current == t)
             sub.Items.Add(Item(L.T("Show lyrics"), "", main.ShowLyrics));
         sub.Items.Add(Item(t.HasLyrics ? L.T("Search online again") : L.T("Search online"), "", () => main.SearchLyrics(new[] { t }), !searching));
+        sub.Items.Add(Item(L.T("Choose lyrics…"), "", () => _ = main.ChooseLyrics(t), !searching));
         if (t.HasLyrics) sub.Items.Add(Item(L.T("Delete lyrics"), "", () => main.DeleteLyrics(t)));
         return sub;
     }

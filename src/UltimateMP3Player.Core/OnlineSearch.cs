@@ -32,11 +32,25 @@ public sealed class SearchHit
 
 // The sites the search box can search, without accounts or keys: YouTube Music (official songs), YouTube (videos,
 // covers, live), SoundCloud (remixes, mashups) and Deezer (a catalogue like Spotify's; the audio comes from YouTube
-// Music, as for Deezer and Spotify links). Spotify itself refuses anonymous searches.
+// Music, as for Deezer and Spotify links). Spotify refuses anonymous searches: only with the user's own key (SpotifyKey).
 public static class OnlineSearchServices
 {
-    public const string YouTubeMusic = "YouTube Music", YouTube = "YouTube", SoundCloud = "SoundCloud", Deezer = "Deezer";
-    public static readonly string[] Default = { YouTubeMusic, SoundCloud, YouTube, Deezer };
+    public const string YouTubeMusic = "YouTube Music", YouTube = "YouTube", SoundCloud = "SoundCloud", Deezer = "Deezer", Spotify = "Spotify";
+    public static readonly string[] Default = { YouTubeMusic, SoundCloud, YouTube, Deezer, Spotify };
+
+    // The user's own Spotify app (a free one on developer.spotify.com), from the settings: without it Spotify isn't
+    // searched (its tab says what it takes).
+    public static (string Id, string Secret)? SpotifyKey { get; private set; }
+
+    public static void UseSpotifyKey(string? id, string? secret)
+    {
+        SpotifyKey = !string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(secret) ? (id.Trim(), secret.Trim()) : null;
+        _spotifyToken = null;
+    }
+
+    // Spotify said no to the key itself (wrong, or its account without Premium), not "no answer".
+    public static bool SpotifyRefused(Exception ex)
+        => ex is HttpRequestException { StatusCode: HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden };
 
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
@@ -53,9 +67,11 @@ public static class OnlineSearchServices
             Album = h.Album,
             Duration = h.Duration,
             Kind = h.Service is YouTube or YouTubeMusic ? MediaKind.Video : MediaKind.Audio,
-            Source = SourceKind.YtDlp,
+            // (a catalogue's song is found on YouTube Music: the same song from another site counts as had, as for its link)
+            Source = h.Service is Deezer or Spotify ? SourceKind.Search : SourceKind.YtDlp,
             Url = h.Url,
             PageUrl = h.Url,
+            SpotifyTrackId = h.Service == Spotify ? h.Url[(h.Url.LastIndexOf('/') + 1)..] : null,
             SiteName = Sites.NameFor(h.Url),
         };
         if (h.Thumb != null) item.Thumbnails.Add(h.Thumb);
@@ -75,6 +91,7 @@ public static class OnlineSearchServices
         YouTube => YouTubeAsync(query, limit, ct),
         SoundCloud => SoundCloudAsync(query, limit, ct),
         Deezer => DeezerAsync(query, limit, ct),
+        Spotify => SpotifyAsync(query, limit, ct),
         _ => Task.FromResult(new List<SearchHit>()),
     };
 
@@ -282,6 +299,106 @@ public static class OnlineSearchServices
         return hits;
     }
 
+    // ------------------------------------------------------------------ Spotify (the user's key)
+
+    // The key's access token (an hour), kept until it expires or Spotify refuses it.
+    private static string? _spotifyToken;
+    private static DateTime _spotifyTokenEnd;
+    private static readonly SemaphoreSlim SpotifyGate = new(1);
+
+    private static async Task<string> SpotifyTokenAsync(bool fresh, CancellationToken ct)
+    {
+        var key = SpotifyKey ?? throw new EngineException(L.T("Spotify needs your key: see Settings › Online search."));
+        await SpotifyGate.WaitAsync(ct);
+        try
+        {
+            if (!fresh && _spotifyToken != null && DateTime.UtcNow < _spotifyTokenEnd) return _spotifyToken;
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(Timeout);
+            using var req = new HttpRequestMessage(HttpMethod.Post, "https://accounts.spotify.com/api/token")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["grant_type"] = "client_credentials" }),
+            };
+            req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(key.Id + ":" + key.Secret)));
+            using var resp = await Http.Client.SendAsync(req, cts.Token);
+            resp.EnsureSuccessStatusCode();
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(cts.Token));
+            _spotifyTokenEnd = DateTime.UtcNow.AddSeconds((doc.RootElement.Num("expires_in") ?? 3600) - 60);
+            return _spotifyToken = doc.RootElement.Str("access_token") ?? throw new EngineException(L.T("Spotify didn't answer as expected."));
+        }
+        finally { SpotifyGate.Release(); }
+    }
+
+    // An API call with the key's token.
+    private static async Task<string> SpotifyGetAsync(string url, CancellationToken ct)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(Timeout);
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", await SpotifyTokenAsync(attempt > 0, ct));
+            using var resp = await Http.Client.SendAsync(req, cts.Token);
+            // (a token that expired early: a fresh one, once)
+            if (resp.StatusCode == HttpStatusCode.Unauthorized && attempt == 0) continue;
+            resp.EnsureSuccessStatusCode();
+            return await resp.Content.ReadAsStringAsync(cts.Token);
+        }
+    }
+
+    private static async Task<List<SearchHit>> SpotifyAsync(string query, int limit, CancellationToken ct)
+    {
+        // shortcut: one page of at most 10 (the most Spotify gives a key since 2026); ask for a second page (&offset=10) if 10 are too few.
+        using var doc = JsonDocument.Parse(await SpotifyGetAsync($"https://api.spotify.com/v1/search?type=track&limit={Math.Min(10, limit)}&q={Uri.EscapeDataString(query)}", ct));
+        var hits = new List<SearchHit>();
+        foreach (var t in doc.RootElement.Prop("tracks")?.Arr("items") ?? Enumerable.Empty<JsonElement>())
+            if (hits.Count < limit && SpotifyHit(t, hits.Count) is { } h) hits.Add(h);
+        return hits;
+    }
+
+    private static SearchHit? SpotifyHit(JsonElement t, int rank)
+    {
+        if (t.Str("id") is not { } id || t.Str("name") is not { Length: > 0 } title) return null;
+        var album = t.Prop("album");
+        return new SearchHit
+        {
+            Service = Spotify, Title = title, Artist = string.Join(", ", t.Arr("artists").Select(a => a.Str("name")).OfType<string>()) is { Length: > 0 } who ? who : null,
+            Album = album?.Str("name"), Duration = t.Num("duration_ms") / 1000.0, Rank = rank,
+            Thumb = album?.Arr("images").OrderBy(i => Math.Abs((i.Int("width") ?? 0) - 300)).Select(i => i.Str("url")).FirstOrDefault(u => u != null),
+            Url = "https://open.spotify.com/track/" + id,
+        };
+    }
+
+    // The artist the words name on Spotify, with their songs, the most played first. A key can't ask for an artist's top
+    // songs any more (2026): it's a search of their name, kept to their own songs, without doubles. Null when there's none.
+    public static async Task<(string Name, List<SearchHit> Hits)?> SpotifyArtistAsync(string name, int limit, CancellationToken ct)
+    {
+        string id, found;
+        using (var s = JsonDocument.Parse(await SpotifyGetAsync($"https://api.spotify.com/v1/search?type=artist&limit=10&q={Uri.EscapeDataString(name)}", ct)))
+        {
+            // (the best known first: Spotify no longer tells a key how many follow each)
+            var artists = s.RootElement.Prop("artists")?.Arr("items").ToList() ?? new List<JsonElement>();
+            var artist = artists.FirstOrDefault(a => Text.Normalize(a.Str("name")) == Text.Normalize(name));
+            if (artist.ValueKind != JsonValueKind.Object && artists.Count > 0 && Text.Coverage(name, artists[0].Str("name") ?? "") >= 0.8) artist = artists[0];
+            if (artist.ValueKind != JsonValueKind.Object || artist.Str("id") is not { } aid) return null;
+            (id, found) = (aid, artist.Str("name") ?? name);
+        }
+        var hits = new List<SearchHit>();
+        var seen = new HashSet<string>();
+        var q = Uri.EscapeDataString($"artist:\"{found}\"");
+        // shortcut: pages of 10 one after the other, at most 10 of them (Deezer's top is a hundred too); more pages if fans ask for every song.
+        for (int offset = 0; offset < 100 && hits.Count < limit; offset += 10)
+        {
+            using var doc = JsonDocument.Parse(await SpotifyGetAsync($"https://api.spotify.com/v1/search?type=track&limit=10&offset={offset}&q={q}", ct));
+            var page = doc.RootElement.Prop("tracks")?.Arr("items").ToList() ?? new List<JsonElement>();
+            foreach (var t in page)
+                if (hits.Count < limit && t.Arr("artists").Any(a => a.Str("id") == id) && SpotifyHit(t, hits.Count) is { } h && seen.Add(SongMeta.Key(h.Title, found)))
+                    hits.Add(h);
+            if (page.Count < 10) break;
+        }
+        return (found, hits);
+    }
+
     // ------------------------------------------------------------------ similar songs (the suggested queue)
 
     // Songs like the seed, without the seed itself and without doubles: from its own site first, every site taking
@@ -394,13 +511,22 @@ public static class OnlineSearchServices
     }
 
     private static async Task<List<SearchHit>> DeezerArtistTopAsync(string name, int limit, int skip, CancellationToken ct)
+        => await FindArtistAsync(name, ct) is { } a ? await ArtistTopAsync(a.Id, limit, skip, ct) : new List<SearchHit>();
+
+    // The artist on Deezer with exactly that name (the best known one: "Queen" has namesakes), not the first one that only
+    // looks like it; or the first one when it's nearly that name. Null when there's none.
+    public static async Task<(string Id, string Name)?> FindArtistAsync(string name, CancellationToken ct)
     {
-        using var s = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/search/artist?q={Uri.EscapeDataString(name)}&limit=5", ct));
-        // The artist with exactly that name, not the first one that only looks like it.
+        using var s = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/search/artist?q={Uri.EscapeDataString(name)}&limit=10", ct));
         var artists = s.RootElement.Arr("data").ToList();
-        var artist = artists.FirstOrDefault(a => Text.Normalize(a.Str("name")) == Text.Normalize(name));
-        var id = artist.ValueKind == JsonValueKind.Object ? artist.Str("id") : artists.Count > 0 && Text.Coverage(name, artists[0].Str("name") ?? "") >= 0.8 ? artists[0].Str("id") : null;
-        if (id == null) return new List<SearchHit>();
+        var artist = artists.Where(a => Text.Normalize(a.Str("name")) == Text.Normalize(name)).OrderByDescending(a => a.Num("nb_fan") ?? 0).FirstOrDefault();
+        if (artist.ValueKind != JsonValueKind.Object && artists.Count > 0 && Text.Coverage(name, artists[0].Str("name") ?? "") >= 0.8) artist = artists[0];
+        return artist.ValueKind == JsonValueKind.Object && artist.Str("id") is { } id ? (id, artist.Str("name") ?? name) : null;
+    }
+
+    // An artist's songs on Deezer, the most listened first (up to about a hundred).
+    public static async Task<List<SearchHit>> ArtistTopAsync(string id, int limit, int skip, CancellationToken ct)
+    {
         using var doc = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/artist/{id}/top?limit={Math.Min(100, limit)}&index={skip}", ct));
         return DeezerHits(doc.RootElement, limit);
     }

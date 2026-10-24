@@ -372,7 +372,9 @@ public sealed class TogetherFetcher : IDisposable
     {
         var o = _options();
         // A link that can't be downloaded (DRM, removed, private): the same song from YouTube, like everywhere else.
-        var (file, _) = await CloudSongs.DownloadAsync(t.SourceUrl!, t.Title, t.Artist, t.Duration, o.AudioFormat, o.Cookies, _cache.TempDir, pct => _s.Post(() =>
+        // A catalogue's song (Spotify, Deezer, Apple Music) that whoever added it already had from YouTube: that same video,
+        // so everyone hears the same version (and nobody needs Spotify, nor searches for it again).
+        var (file, _) = await CloudSongs.DownloadAsync(CloudSongs.StreamUrl(t.SourceUrl!, t.Keys), t.Title, t.Artist, t.Duration, o.AudioFormat, o.Cookies, _cache.TempDir, pct => _s.Post(() =>
         {
             if (lane.Id == t.Id && Math.Abs((StatusOf(t.Id)?.Pct ?? 0) - pct) >= 2) Set(t.Id, FileState.Downloading, pct);
         }), ct);

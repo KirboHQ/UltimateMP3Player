@@ -75,6 +75,43 @@ switch (args[0])
             return 0;
         }
 
+    case "similar":
+        {
+            // Library.FindSimilar's title index (set UMP_DATA: songs are added and removed): found, renamed, artist renamed, removed.
+            var a = new Track { Title = "Heroes Tonight (Official Video)", Artist = "Janji", Duration = 208, SourceUrl = "https://example.com/a" };
+            lib.FindSimilar("x", "y", 1);
+            lib.Add(a);
+            bool found = lib.FindSimilar("Heroes Tonight", "Janji feat. Johnning", 210) == a && lib.FindSimilar("Heroes Tonight", "Janji", 215) == null;
+            a.Title = "Another Name";
+            lib.Changed(a);
+            bool renamed = lib.FindSimilar("Heroes Tonight", "Janji", 208) == null && lib.FindSimilar("Another Name", "Janji", 208) == a;
+            lib.RenameArtist("Janji", "Janji Music");
+            bool artist = lib.FindSimilar("Another Name", "Janji Music", 208) == a && lib.FindSimilar("Another Name", "Janji", 208) == null;
+            lib.Remove(a);
+            bool removed = lib.FindSimilar("Another Name", "Janji Music", 208) == null;
+            bool ok = found && renamed && artist && removed;
+            Console.WriteLine($"similar: {(ok ? "ok" : "SBAGLIATO")} (found={found} renamed={renamed} artist={artist} removed={removed})");
+            return ok ? 0 : 1;
+        }
+
+    case "match":
+        {
+            // YouTube Music's results for "YOASOBI Racing Into The Night" (the English title of a Japanese song): the original,
+            // first and written in Japanese, beats the English version and the piano cover; asked for, the English version
+            // wins; the first result by someone else isn't taken.
+            YtInfo Info(string artist, double d) => new() { Artist = artist, Duration = d };
+            var results = new[] { ("夜に駆ける", Info("YOASOBI", 262)), ("夜に駆ける", Info("YOASOBI", 259)), ("Into The Night", Info("YOASOBI", 260)),
+                ("Racing Into the Night [Yoru Ni Kakeru - 夜に駆ける] (Piano Version)", Info("DPSM", 263)), ("Run Into The Night", Info("Adgy & Éiru", 179)) };
+            // (as MusicMatcher.FindAsync: the 3 best titles read, the best total taken)
+            int Pick(string title, double d) => results.Select((r, i) => (i, r))
+                .OrderByDescending(x => MusicMatcher.ResultScore(title, "YOASOBI", x.r.Item1, x.i)).Take(3)
+                .OrderByDescending(x => MusicMatcher.Score(title, "YOASOBI", d, x.r.Item1, x.i, x.r.Item2).Total).First().i;
+            bool ok = Pick("Racing Into The Night", 262) == 0 && Pick("Into The Night", 260) == 2 &&
+                      MusicMatcher.Score("Racing Into The Night", "YOASOBI", 262, "夜に駆ける", 0, Info("Someone Else", 262)).Total <= 0.3;
+            Console.WriteLine("match: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
     case "notes":
         {
             // mp3cli notes [owner/repo]: the parser on a sample, then the real releases' notes as the "What's new" reads them.

@@ -459,7 +459,7 @@ public sealed class TogetherViewModel : Observable
         string? password = null;
         if (locked)
         {
-            password = await Dialogs.PromptAsync(L.T("Room with a password"), L.F("Password of “{0}”", name ?? ip), "");
+            password = await Dialogs.PromptAsync(L.T("Room with a password"), L.F("Password of “{0}”", name ?? ip), "", L.T("Join"));
             if (password == null) return;
         }
         Busy = true;
@@ -480,7 +480,7 @@ public sealed class TogetherViewModel : Observable
                 // The room turned out to have a password: ask once.
                 if (r.NeedsPassword && attempt == 0)
                 {
-                    password = await Dialogs.PromptAsync(L.T("Room with a password"), r.Error ?? L.T("Password"), "");
+                    password = await Dialogs.PromptAsync(L.T("Room with a password"), r.Error ?? L.T("Password"), "", L.T("Join"));
                     if (password == null) return;
                     continue;
                 }
@@ -501,7 +501,7 @@ public sealed class TogetherViewModel : Observable
         var settings = _main.Host.Settings;
         var text = await Dialogs.PromptAsync(L.T("Join by address"),
             L.T("Address of the computer hosting the room (for example 192.168.1.20, or its Radmin VPN one)"),
-            settings.TogetherLastAddress ?? "");
+            settings.TogetherLastAddress ?? "", L.T("Join"));
         if (string.IsNullOrWhiteSpace(text)) return;
         text = text.Trim();
         int port = TogetherSession.FirstPort;

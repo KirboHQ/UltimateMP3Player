@@ -125,8 +125,9 @@ public static partial class Dialogs
         return win.ShowDialog() == true ? chosen : -1;
     }
 
-    public static string? Prompt(string title, string label, string initial)
-        => Show(title, null, new[] { (label, initial) }, L.T("Save"), false)?[0];
+    // ok: the button's word ("Save" when none).
+    public static string? Prompt(string title, string label, string initial, string? ok = null)
+        => Show(title, null, new[] { (label, initial) }, ok ?? L.T("Save"), false)?[0];
 
     private static IBrush Res(string key) => Ui.Find<IBrush>(key) ?? Brushes.Gray;
     private static T Res<T>(string key) where T : class => Ui.Find<T>(key);
@@ -218,25 +219,36 @@ public static partial class Dialogs
     // The same dialogs for the view models shared with the Android app, which wait for them with await (there a dialog
     // can't hold the code up). Here they're the ones above.
     public static Task<bool> ConfirmAsync(string title, string message, string ok, bool danger = false) => Task.FromResult(Confirm(title, message, ok, danger));
-    public static Task<string?> PromptAsync(string title, string label, string initial) => Task.FromResult(Prompt(title, label, initial));
+    public static Task<string?> PromptAsync(string title, string label, string initial, string? ok = null) => Task.FromResult(Prompt(title, label, initial, ok));
     public static Task<int> ChooseAsync(string title, string message, params string[] answers) => Task.FromResult(Choose(title, message, answers));
     public static Task<(string Title, string Artist, string Album, string Bpm)?> EditTrackAsync(Track t) => Task.FromResult(EditTrack(t));
+    // A few text fields under a message (and a button that opens a page, for what goes in them): their values, or null.
+    public static Task<string[]?> FormAsync(string title, string? message, (string Text, string Url)? link, params (string Label, string Value)[] fields)
+        => Task.FromResult(Show(title, message, fields, L.T("Save"), false, link));
     public static Task<string?> PickImageAsync() => Task.FromResult(PickImage());
     public static Task<string?> PickFolderAsync(string title, string? initial = null) => Task.FromResult(PickFolder(title, initial));
     public static Task<string[]?> PickFilesAsync(string title, bool multiple, params (string Name, IEnumerable<string> Extensions)[] filters)
         => Task.FromResult(PickFiles(title, multiple, filters));
     public static Task<string?> PickFileAsync(string title, params (string Name, IEnumerable<string> Extensions)[] filters) => Task.FromResult(PickFile(title, filters));
 
-    private static string[]? Show(string title, string? message, (string Label, string Value)[] fields, string ok, bool danger)
+    private static string[]? Show(string title, string? message, (string Label, string Value)[] fields, string ok, bool danger, (string Text, string Url)? link = null)
     {
         var stack = new StackPanel();
         if (message != null)
             stack.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = Res("SubTextBrush"), LineHeight = 20 });
+        if (link is { } page)
+        {
+            var open = Button(page.Text, "GhostButton");
+            open.HorizontalAlignment = HorizontalAlignment.Left;
+            open.Margin = new Thickness(0, 12, 0, 2);
+            open.Click += (_, _) => ViewModels.MainViewModel.OpenUrl(page.Url);
+            stack.Children.Add(open);
+        }
 
         var boxes = new List<TextBox>();
         foreach (var (label, value) in fields)
         {
-            var l = new TextBlock { Text = label, Margin = new Thickness(2, 10, 0, 6) };
+            var l = new TextBlock { Text = label, Margin = new Thickness(2, 10, 0, 6), TextWrapping = TextWrapping.Wrap };
             l.Classes.Add("field-label");
             stack.Children.Add(l);
             var box = new TextBox { Text = value, Theme = Res<Avalonia.Styling.ControlTheme>("BoxTextBox") };
@@ -262,6 +274,66 @@ public static partial class Dialogs
             else okButton.Focus();
         };
         return win.ShowDialog() == true ? result : null;
+    }
+
+    // The archive's versions of a song's lyrics: on the left whose they are, their length and whether they have times; on
+    // the right the words of the one picked. The chosen one, or null.
+    public static Task<LyricsChoice?> ChooseLyricsAsync(string song, double duration, IReadOnlyList<LyricsChoice> choices)
+    {
+        var preview = new TextBlock { TextWrapping = TextWrapping.Wrap, LineHeight = 21 };
+        var previewScroll = new ScrollViewer { VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, Content = preview };
+        var rows = new StackPanel();
+        var grid = new Grid { Height = 400, Margin = new Thickness(0, 12, 0, 0), ColumnDefinitions = new ColumnDefinitions("300,14,*") };
+        grid.Children.Add(new Border
+        {
+            CornerRadius = new CornerRadius(10), Background = Res("BgBrush"), Padding = new Thickness(6),
+            Child = new ScrollViewer { VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, Content = rows },
+        });
+        var previewBox = new Border { CornerRadius = new CornerRadius(10), Background = Res("BgBrush"), Padding = new Thickness(16, 12, 8, 12), Child = previewScroll };
+        Grid.SetColumn(previewBox, 2);
+        grid.Children.Add(previewBox);
+
+        LyricsChoice? picked = null;
+        var borders = new List<Border>();
+        void Pick(int i)
+        {
+            picked = choices[i];
+            for (int k = 0; k < borders.Count; k++) borders[k].Background = k == i ? Res("AccentSoftBrush") : Brushes.Transparent;
+            preview.Text = picked.Words;
+            previewScroll.ScrollToHome();
+        }
+        for (int i = 0; i < choices.Count; i++)
+        {
+            var c = choices[i];
+            int n = i;
+            var info = new StackPanel();
+            info.Children.Add(new TextBlock { Text = c.Title, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+            info.Children.Add(new TextBlock { Text = c.Artist, FontSize = 12.5, Foreground = Res("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis });
+            info.Children.Add(new TextBlock
+            {
+                Text = c.Details(duration), FontSize = 12, Foreground = Res(c.Synced ? "SuccessBrush" : "MutedBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0),
+            });
+            var row = new Border
+            {
+                CornerRadius = new CornerRadius(8), Padding = new Thickness(10, 7, 10, 7), Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), Child = info,
+            };
+            row.PointerPressed += (_, _) => Pick(n);
+            borders.Add(row);
+            rows.Children.Add(row);
+        }
+
+        var body = new StackPanel();
+        body.Children.Add(new TextBlock
+        {
+            Text = L.T("The versions LRCLIB has, the likeliest first. Those with times light up line by line as you listen."),
+            TextWrapping = TextWrapping.Wrap, Foreground = Res("SubTextBrush"), LineHeight = 20,
+        });
+        body.Children.Add(grid);
+        var use = Button(L.T("Use these lyrics"), "PrimaryButton", isDefault: true);
+        var win = Frame(L.F("Lyrics of “{0}”", song), body, 760, Button(L.T("Cancel"), "GhostButton", isCancel: true), use);
+        use.Click += (_, _) => win.DialogResult = true;
+        Pick(0);
+        return Task.FromResult(win.ShowDialog() == true ? picked : null);
     }
 
     public static Button Button(string text, string style, bool isDefault = false, bool isCancel = false)

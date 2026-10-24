@@ -354,26 +354,26 @@ public static class MusicMatcher
         var query = $"{artist} {item.Title}".Trim();
         status(L.T("Searching YouTube Music…"));
 
-        var candidates = new List<(string Id, double Score)>();
+        var candidates = new List<(string Id, string Title, int Rank)>();
         try
         {
             var music = await YtDlp.SearchMusicAsync(query, 5, cookies, ct);
-            candidates = music.Select((r, i) => (r.Id, TitleScore(item.Title, artist, r.Title) - i * 0.05)).OrderByDescending(c => c.Item2).ToList();
+            candidates = music.Select((r, i) => (r.Id, r.Title, i)).OrderByDescending(c => ResultScore(item.Title, artist, c.Title, c.i)).ToList();
         }
         catch (EngineException) { }
 
         YtInfo? best = null;
         double bestScore = double.MinValue;
-        foreach (var (id, score) in candidates.Take(3))
+        foreach (var (id, title, rank) in candidates.Take(3))
         {
             YtInfo info;
             try { info = await YtDlp.GetInfoAsync("https://music.youtube.com/watch?v=" + id, cookies, ct); }
             catch (EngineException) { continue; }
-            double total = score + DurationScore(item.Duration, info.Duration) + ArtistScore(artist, info);
+            var (total, sure) = Score(item.Title, artist, item.Duration, title, rank, info);
             if (total > bestScore) { best = info; bestScore = total; }
-            if (score > 0.7 && DurationScore(item.Duration, info.Duration) >= 0 && ArtistScore(artist, info) > 0) return info;
+            if (sure) return info;
         }
-        if (best != null && bestScore > 0.3) return best;
+        if (best != null && bestScore > MinScore) return best;
 
         status(L.T("Searching YouTube…"));
         var yt = await YtDlp.SearchYouTubeAsync($"{artist} - {item.Title} audio", 5, cookies, ct);
@@ -382,9 +382,33 @@ public static class MusicMatcher
                                      (Text.Coverage(artist, r.Title + " " + r.Channel) > 0.5 ? 0.3 : 0) - i * 0.05))
             .OrderByDescending(x => x.s)
             .FirstOrDefault();
-        if (pick.r.Id != null && (best == null || pick.s > bestScore))
+        // Nothing that looks like the song: not found, rather than another song under this one's title.
+        if (pick.r.Id != null && pick.s > MinScore)
             return await YtDlp.GetInfoAsync("https://www.youtube.com/watch?v=" + pick.r.Id, cookies, ct);
-        return best ?? throw new EngineException(L.T("Song not found on YouTube Music."));
+        throw new EngineException(L.T("Song not found on YouTube Music."));
+    }
+
+    private const double MinScore = 0.3;
+
+    // Written in different alphabets ("Racing Into The Night" and "夜に駆ける"): their words can't be compared.
+    private static bool OtherScript(string a, string b) => HasLatin(a) != HasLatin(b);
+    private static bool HasLatin(string s) => s.Any(c => c < (char)0x250 && char.IsLetter(c));
+
+    // YouTube Music's first result in another alphabet is its own guess for the song's other name (the English title
+    // of a Japanese song): nearly a match, if the artist and the length agree (Score).
+    private static bool OtherName(string wantedTitle, string candidate, int rank) => rank == 0 && OtherScript(wantedTitle, candidate);
+
+    // A YouTube Music result's title against the song's, its place among the results counted (first = 0).
+    public static double ResultScore(string wantedTitle, string artist, string candidate, int rank)
+        => (OtherName(wantedTitle, candidate, rank) ? 0.8 : TitleScore(wantedTitle, artist, candidate)) - rank * 0.05;
+
+    // A result read (its length and artist known) against the song: its total, and whether it's surely the song (the
+    // others needn't be read).
+    public static (double Total, bool Sure) Score(string wantedTitle, string artist, double? duration, string candidate, int rank, YtInfo info)
+    {
+        double title = ResultScore(wantedTitle, artist, candidate, rank), length = DurationScore(duration, info.Duration), who = ArtistScore(artist, info, lenient: true);
+        if (OtherName(wantedTitle, candidate, rank)) return (length < 0 || who < 0 ? length + who : title + length + who, false);
+        return (title + length + who, title > 0.7 && length >= 0 && who > 0);
     }
 
     // Only a close match (the same title and artist, the length within a few seconds when known), or null: for a song whose
@@ -425,10 +449,12 @@ public static class MusicMatcher
         return -1;
     }
 
-    private static double ArtistScore(string artist, YtInfo info)
+    // lenient: an artist written in another alphabet ("Kenshi Yonezu" and "米津玄師") is neither confirmed nor refused.
+    private static double ArtistScore(string artist, YtInfo info, bool lenient = false)
     {
         if (artist.Length == 0) return 0;
         var who = $"{info.Artist} {info.Uploader} {info.Title}";
-        return Text.Coverage(artist, who) >= 0.5 ? 0.4 : -0.3;
+        if (Text.Coverage(artist, who) >= 0.5) return 0.4;
+        return lenient && OtherScript(artist, info.Artist ?? info.Uploader ?? "") ? 0 : -0.3;
     }
 }

@@ -21,8 +21,82 @@ public static partial class Dialogs
     public static async Task<bool> ConfirmAsync(string title, string message, string ok, bool danger = false)
         => await ShowAsync(title, message, Array.Empty<(string, string)>(), ok, danger) != null;
 
-    public static async Task<string?> PromptAsync(string title, string label, string initial)
-        => (await ShowAsync(title, null, new[] { (label, initial) }, L.T("Save"), false))?[0];
+    // ok: the button's word ("Save" when none).
+    public static async Task<string?> PromptAsync(string title, string label, string initial, string? ok = null)
+        => (await ShowAsync(title, null, new[] { (label, initial) }, ok ?? L.T("Save"), false))?[0];
+
+    // A few text fields under a message (and a button that opens a page, for what goes in them): their values, or null.
+    public static Task<string[]?> FormAsync(string title, string? message, (string Text, string Url)? link, params (string Label, string Value)[] fields)
+        => ShowAsync(title, message, fields, L.T("Save"), false, link: link);
+
+    // The archive's versions of a song's lyrics: the list (whose they are, their length, whether they have times), the
+    // words of the one picked under it. The chosen one, or null.
+    public static async Task<LyricsChoice?> ChooseLyricsAsync(string song, double duration, IReadOnlyList<LyricsChoice> choices)
+    {
+        var sheets = Sheets;
+        if (sheets == null) return null;
+        var body = new DockPanel { Margin = new Thickness(20, 4, 20, 18) };
+        var head = new StackPanel { Margin = new Thickness(4, 0, 4, 12) };
+        head.Children.Add(new TextBlock { Text = L.F("Lyrics of “{0}”", song), FontSize = 20, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap });
+        head.Children.Add(new TextBlock
+        {
+            Text = L.T("The versions LRCLIB has, the likeliest first. Those with times light up line by line as you listen."),
+            Classes = { "hint" }, FontSize = 14, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0),
+        });
+        DockPanel.SetDock(head, Dock.Top);
+        body.Children.Add(head);
+        var use = new Button
+        {
+            Content = L.T("Use these lyrics"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 14, 0, 0),
+        };
+        DockPanel.SetDock(use, Dock.Bottom);
+        body.Children.Add(use);
+
+        var preview = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 15, LineHeight = 22 };
+        var previewScroll = new ScrollViewer { Content = preview };
+        var rows = new StackPanel();
+        var grid = new Grid { RowDefinitions = new RowDefinitions("*,10,*") };
+        grid.Children.Add(new Border { CornerRadius = new CornerRadius(14), Background = Ui.Res("BgBrush"), Padding = new Thickness(6), Child = new ScrollViewer { Content = rows } });
+        var previewBox = new Border { CornerRadius = new CornerRadius(14), Background = Ui.Res("BgBrush"), Padding = new Thickness(16, 12, 12, 12), Child = previewScroll };
+        Grid.SetRow(previewBox, 2);
+        grid.Children.Add(previewBox);
+        body.Children.Add(grid);
+
+        LyricsChoice? picked = null, result = null;
+        var borders = new List<Border>();
+        void Pick(int i)
+        {
+            picked = choices[i];
+            for (int k = 0; k < borders.Count; k++) borders[k].Background = k == i ? Ui.Res("AccentSoftBrush") : Brushes.Transparent;
+            preview.Text = picked.Words;
+            previewScroll.ScrollToHome();
+        }
+        for (int i = 0; i < choices.Count; i++)
+        {
+            var c = choices[i];
+            int n = i;
+            var info = new StackPanel();
+            info.Children.Add(new TextBlock { Text = c.Title, FontSize = 15, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+            info.Children.Add(new TextBlock { Text = c.Artist, FontSize = 13, Foreground = Ui.Res("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis });
+            info.Children.Add(new TextBlock
+            {
+                Text = c.Details(duration), FontSize = 12.5, Foreground = Ui.Res(c.Synced ? "SuccessBrush" : "MutedBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0),
+            });
+            var row = new Border { CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 9, 12, 9), Background = Brushes.Transparent, Child = info };
+            row.Tapped += (_, e) => { Pick(n); e.Handled = true; };
+            borders.Add(row);
+            rows.Children.Add(row);
+        }
+        use.Click += (_, _) =>
+        {
+            result = picked;
+            sheets.Close(body);
+        };
+        Pick(0);
+        await sheets.Show(body);
+        return result;
+    }
 
     public static async Task<(string Title, string Artist, string Album, string Bpm)?> EditTrackAsync(Track t)
     {
@@ -64,13 +138,24 @@ public static partial class Dialogs
     }
 
     // Title, text, fields; the OK button's answer (the fields' texts), or null.
-    private static async Task<string[]?> ShowAsync(string title, string? message, (string Label, string Value)[] fields, string ok, bool danger, bool cancel = true)
+    private static async Task<string[]?> ShowAsync(string title, string? message, (string Label, string Value)[] fields, string ok, bool danger, bool cancel = true,
+        (string Text, string Url)? link = null)
     {
         var sheets = Sheets;
         if (sheets == null) return null;
         var body = new StackPanel { Margin = new Thickness(24, 4, 24, 18) };
         body.Children.Add(new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10) });
         if (message != null) body.Children.Add(new TextBlock { Text = message, Classes = { "hint" }, FontSize = 14.5, LineHeight = 21 });
+        if (link is { } page)
+        {
+            var open = new Button
+            {
+                Content = page.Text, Theme = Ui.Theme("TouchGhost"), HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 14, 0, 0),
+            };
+            open.Click += (_, _) => ViewModels.MainViewModel.OpenUrl(page.Url);
+            body.Children.Add(open);
+        }
         var boxes = new List<TextBox>();
         foreach (var (label, value) in fields)
         {
@@ -112,7 +197,8 @@ public static partial class Dialogs
                 sheets.Close(body);
             };
         var shown = sheets.Show(new ScrollViewer { Content = body });
-        if (boxes.Count > 0)
+        // (not with a page to open first: the keyboard would hide the steps)
+        if (boxes.Count > 0 && link == null)
             Dispatcher.UIThread.Post(() =>
             {
                 boxes[0].Focus();

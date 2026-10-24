@@ -538,6 +538,7 @@ public sealed class MainViewModel : Observable
         if (page is HomeViewModel) Home.Refresh();
         if (page == UnsortedPage) UnsortedPage.Rebuild();
         else if (page is LibraryViewModel lib) lib.EnsureFresh();
+        else if (page is SearchViewModel search) search.EnsureFresh();
         if (Page is not SearchViewModel || page is SearchViewModel) _back.Push(Page);
         if (_back.Count > 30) { var keep = _back.Take(30).Reverse().ToList(); _back.Clear(); foreach (var k in keep) _back.Push(k); }
         Page = page;
@@ -561,6 +562,7 @@ public sealed class MainViewModel : Observable
             // (a filter changed meanwhile)
             if (p is PlaylistPageViewModel playlist) playlist.EnsureFresh();
             else if (p is LibraryViewModel lib) lib.EnsureFresh();
+            else if (p is SearchViewModel search) search.EnsureFresh();
             Page = p;
             break;
         }
@@ -574,9 +576,19 @@ public sealed class MainViewModel : Observable
     }
 
     // The settings showing only what these words find (a download that needs a login: "cookie", the browser's cookies).
-    public void SearchSettings(string words)
+    // fromSearch: from the search's results (the Spotify tab), Back goes back to them, like a song found online.
+    public void SearchSettings(string words, bool fromSearch = false)
     {
         Settings.StartSearch = words;
+        if (fromSearch && Page == Search)
+        {
+            Settings.Refresh();
+            _back.Push(Search);
+            Page = Settings;
+            OnNavChanged();
+            CommandManager.InvalidateRequerySuggested();
+            return;
+        }
         GoSettings();
     }
 
@@ -789,6 +801,7 @@ public sealed class MainViewModel : Observable
         {
             LibraryPage.Rebuild();
             if (Page == Search) Search.Run(Search.Query);
+            else Search.MarkDirty();
             if (Page == Home) Home.Refresh();
             if (Page == _stats) _stats!.Rebuild();
         }
@@ -1710,6 +1723,27 @@ public sealed class MainViewModel : Observable
         if (tracks.Count == 0) return;
         Host.Lyrics.Search(tracks.Select(t => t.T).ToList());
         Toast(tracks.Count == 1 ? L.F("Looking for the lyrics of “{0}”…", tracks[0].Title) : L.F("Looking for the lyrics of {0} songs…", tracks.Count));
+    }
+
+    // "Choose lyrics…": the archive's versions of the song, picked by hand (the automatic search keeps taking the best one).
+    public async Task ChooseLyrics(TrackViewModel t)
+    {
+        Toast(L.F("Looking for the lyrics of “{0}”…", t.Title));
+        List<LyricsChoice> choices;
+        try { choices = await Task.Run(() => LyricsFinder.ChoicesAsync(t.Title, t.T.Artist, t.T.Duration, CancellationToken.None)); }
+        catch
+        {
+            Toast(L.T("LRCLIB isn't answering: check your connection and try again."));
+            return;
+        }
+        if (choices.Count == 0)
+        {
+            Toast(L.F("No lyrics found for “{0}”", t.Title));
+            return;
+        }
+        if (await Dialogs.ChooseLyricsAsync(t.Title, t.T.Duration, choices) is not { } picked) return;
+        Host.Lyrics.Use(t.T, picked.Result);
+        Toast(picked.Synced ? L.F("Lyrics found for “{0}”", t.Title) : L.F("Lyrics found for “{0}” (without timing)", t.Title));
     }
 
     public void DeleteLyrics(TrackViewModel t)

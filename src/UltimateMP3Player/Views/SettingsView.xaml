@@ -431,8 +431,16 @@
                             <ComboBox ItemsSource="{Binding SearchModes}" SelectedItem="{Binding SearchMode}" Width="280" HorizontalAlignment="Left"
                                       AutomationProperties.Name="{local:T 'How to search'}"/>
                             <TextBlock Text="{Binding SearchModeHint}" Style="{StaticResource Hint}" FontSize="12" Margin="2,8,0,0"/>
-                            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,10,0,0" Foreground="{DynamicResource MutedBrush}"
-                                       Text="{local:T 'Spotify doesn\'t allow searching without an account: Deezer has the same catalogue, and the audio comes from YouTube Music as for Spotify links.'}"/>
+                            <DockPanel Margin="0,16,0,0">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Command="{Binding SpotifyKeyCommand}" Content="{local:T 'Enter key…'}"
+                                        VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{local:T 'Spotify key'}"/>
+                                    <TextBlock Text="{Binding SpotifyKeyText}" Style="{StaticResource Hint}" FontSize="12"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,8,0,0" Foreground="{DynamicResource MutedBrush}"
+                                       Text="{local:T 'Spotify only answers apps with a key: with yours (free; your Spotify account needs Premium) the search finds Spotify\'s songs and artists too. Without one, Deezer has the same catalogue. The audio comes from YouTube Music, as for Spotify links.'}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>

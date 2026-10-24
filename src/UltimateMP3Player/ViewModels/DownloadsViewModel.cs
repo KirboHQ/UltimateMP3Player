@@ -1297,10 +1297,10 @@ public sealed class DownloadsPageViewModel : Observable
     }
 
     // A song chosen among the online search's results: its card at once, without reading the link again (the search already
-    // said what it is). Deezer's, a catalogue, are read like a pasted link (their audio comes from YouTube Music).
+    // said what it is). Deezer's and Spotify's, catalogues, are read like a pasted link (their audio comes from YouTube Music).
     public void ShowHit(SearchHit hit)
     {
-        if (hit.Service == OnlineSearchServices.Deezer)
+        if (hit.Service is OnlineSearchServices.Deezer or OnlineSearchServices.Spotify)
         {
             _ = AnalyzeAsync(hit.Url);
             return;

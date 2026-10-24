@@ -83,6 +83,11 @@ public sealed class Library
     private readonly List<Track> _tracks;
     private readonly Dictionary<string, Track> _byId = new();
     private readonly Dictionary<string, Track> _byKey = new(StringComparer.OrdinalIgnoreCase);
+    // FindSimilar's index: every song under each title it can be known by, with its title, artist and identity as indexed
+    // (built when first needed, kept up to date by Add, Changed, RenameArtist and Remove). Without it every search result,
+    // playlist song or room song went through the whole library.
+    private Dictionary<string, List<Track>>? _byTitle;
+    private readonly Dictionary<Track, (string Title, string? Artist, SongIdentity Id)> _titled = new();
     private readonly DebouncedSaver _saver;
 
     public event Action<Track>? TrackAdded;
@@ -148,16 +153,49 @@ public sealed class Library
 
     // Same song from another source (title, artist, ±4 s).
     public Track? FindSimilar(string title, string? artist, double? duration)
+        => duration is > 0 ? FindSimilar(SongMeta.Identity(title, artist), duration.Value) : null;
+
+    public Track? FindSimilar(SongIdentity wanted, double duration)
     {
-        if (duration is not > 0) return null;
-        var wanted = SongMeta.Identity(title, artist);
-        if (wanted.Titles.Count == 0 || wanted.Artists.Count == 0) return null;
+        if (duration <= 0 || wanted.Titles.Count == 0 || wanted.Artists.Count == 0) return null;
         lock (_lock)
         {
-            return _tracks.FirstOrDefault(x =>
-                Math.Abs(x.Duration - duration.Value) <= 4 &&
-                SongMeta.SameSong(wanted, SongMeta.Identity(x.Title, x.Artist)));
+            if (_byTitle == null)
+            {
+                _byTitle = new Dictionary<string, List<Track>>();
+                foreach (var t in _tracks) IndexTitles(t);
+            }
+            foreach (var title in wanted.Titles)
+                if (_byTitle.TryGetValue(title, out var same))
+                    foreach (var c in same)
+                        if (Math.Abs(c.Duration - duration) <= 4 && SongMeta.SameSong(wanted, _titled[c].Id)) return c;
         }
+        return null;
+    }
+
+    // (under the lock; nothing until FindSimilar first builds the index)
+    private void IndexTitles(Track t)
+    {
+        if (_byTitle == null) return;
+        if (_titled.TryGetValue(t, out var was))
+        {
+            if (was.Title == t.Title && was.Artist == t.Artist) return;
+            UnindexTitles(t);
+        }
+        var id = SongMeta.Identity(t.Title, t.Artist);
+        _titled[t] = (t.Title, t.Artist, id);
+        foreach (var title in id.Titles)
+        {
+            if (!_byTitle.TryGetValue(title, out var list)) _byTitle[title] = list = new List<Track>();
+            list.Add(t);
+        }
+    }
+
+    private void UnindexTitles(Track t)
+    {
+        if (_byTitle == null || !_titled.Remove(t, out var was)) return;
+        foreach (var title in was.Id.Titles)
+            if (_byTitle.TryGetValue(title, out var list) && list.Remove(t) && list.Count == 0) _byTitle.Remove(title);
     }
 
     // Renames an artist on every song, returns them.
@@ -167,7 +205,11 @@ public sealed class Library
         lock (_lock)
         {
             hit = _tracks.Where(t => string.Equals(t.Artist?.Trim(), from.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToList();
-            foreach (var t in hit) t.Artist = string.IsNullOrWhiteSpace(to) ? null : to.Trim();
+            foreach (var t in hit)
+            {
+                t.Artist = string.IsNullOrWhiteSpace(to) ? null : to.Trim();
+                IndexTitles(t);
+            }
         }
         if (hit.Count == 0) return hit;
         _saver.Request();
@@ -188,6 +230,7 @@ public sealed class Library
             if (_byId.ContainsKey(t.Id)) return;
             _tracks.Add(t);
             Index(t);
+            IndexTitles(t);
         }
         _saver.Request();
         TrackAdded?.Invoke(t);
@@ -209,6 +252,9 @@ public sealed class Library
 
     public void Changed(Track t)
     {
+        // (a title or artist edited: found under the new one)
+        lock (_lock)
+            if (_byId.GetValueOrDefault(t.Id) == t) IndexTitles(t);
         _saver.Request();
         TrackChanged?.Invoke(t);
     }
@@ -219,6 +265,7 @@ public sealed class Library
         {
             if (!_tracks.Remove(t)) return;
             _byId.Remove(t.Id);
+            UnindexTitles(t);
             foreach (var k in t.Keys)
                 if (_byKey.TryGetValue(k, out var x) && x == t) _byKey.Remove(k);
         }

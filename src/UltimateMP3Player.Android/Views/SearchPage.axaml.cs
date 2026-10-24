@@ -180,6 +180,12 @@ public partial class SearchPage : UserControl, IPage
         return true;
     }
 
+    // Back from Settings (a Spotify key entered there, sites changed): the words are searched again online.
+    public void Shown()
+    {
+        if (HasQuery) _vm?.EnsureFresh();
+    }
+
     // A tap on the tab already open: back to the top. The keyboard only opens with a tap on the box.
     public void ScrollToTop()
     {

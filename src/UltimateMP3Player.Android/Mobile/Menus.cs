@@ -241,6 +241,7 @@ public static class Menus
         menu.Line();
         if (t.HasLyrics && main.Player.Current == t) menu.Add(new(L.T("Show lyrics"), GLyrics, main.ShowLyrics));
         menu.Add(new(t.HasLyrics ? L.T("Search online again") : L.T("Search online"), GSearch, () => main.SearchLyrics(new[] { t }), !searching));
+        menu.Add(new(L.T("Choose lyrics…"), GSelect, () => _ = main.ChooseLyrics(t), !searching));
         if (t.HasLyrics) menu.Add(new SheetEntry(L.T("Delete lyrics"), GDelete, () => main.DeleteLyrics(t)) { Danger = true });
         return menu;
     }

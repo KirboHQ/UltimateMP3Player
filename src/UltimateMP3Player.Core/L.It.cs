@@ -1064,7 +1064,6 @@ public static partial class L
         ["videos: covers, live, versions found nowhere else"] = "video: cover, live, versioni che non sono altrove",
         ["remixes, mashups and independent artists"] = "remix, mashup e artisti indipendenti",
         ["a catalogue like Spotify's; the audio comes from YouTube Music"] = "un catalogo come quello di Spotify; l'audio arriva da YouTube Music",
-        ["Spotify doesn't allow searching without an account: Deezer has the same catalogue, and the audio comes from YouTube Music as for Spotify links."] = "Spotify non permette di cercare senza un account: Deezer ha lo stesso catalogo, e l'audio arriva da YouTube Music come per i link di Spotify.",
 
         // ---------------------------------------------------------------- 3.1: DJ speed
         ["Deck speed"] = "Velocità del deck",
@@ -2020,5 +2019,37 @@ public static partial class L
         ["Normalize volume off: each song at its own volume"] = "Normalizzazione del volume spenta: ogni brano al suo volume",
         ["Normalize volume on: all songs at the same volume (click to turn it off)"] = "Normalizzazione del volume attiva: tutti i brani allo stesso volume (clicca per spegnerla)",
         ["Normalize volume off: each song at its own volume (click to turn it on)"] = "Normalizzazione del volume spenta: ogni brano al suo volume (clicca per accenderla)",
+        // Spotify search with the user's key
+        ["Spotify needs your key: see Settings › Online search."] = "Spotify richiede la tua chiave: vedi Impostazioni › Ricerca online.",
+        ["Spotify didn't answer as expected."] = "Spotify non ha risposto come previsto.",
+        ["with your key; the audio comes from YouTube Music"] = "con la tua chiave; l'audio arriva da YouTube Music",
+        ["Set: the search also looks on Spotify"] = "Impostata: la ricerca guarda anche su Spotify",
+        ["Not set"] = "Non impostata",
+        ["Spotify key"] = "Chiave Spotify",
+        ["Enter key…"] = "Inserisci la chiave…",
+        ["Spotify only answers apps with a key: make yours once, it's free (Spotify wants your account to have Premium).\n\n1. Open developer.spotify.com (the button below) and sign in with your Spotify account.\n2. Dashboard › Create app: any name and description; as Redirect URI write http://127.0.0.1:8888/callback (it isn't used); tick Web API and save.\n3. In the app's Settings copy the Client ID, then press View client secret and copy that too.\n4. Paste them here. The key stays on this device; empty fields remove it.\n\nGood to know: Spotify's rules for developers don't allow using its search to get the songs from another service, as this app does, so Spotify could turn your key off."] =
+            "Spotify risponde solo alle app con una chiave: creane una tua, una volta sola, è gratis (Spotify vuole che il tuo account sia Premium).\n\n1. Apri developer.spotify.com (il pulsante qui sotto) e accedi col tuo account Spotify.\n2. Dashboard › Create app: nome e descrizione a piacere; come Redirect URI scrivi http://127.0.0.1:8888/callback (non viene usato); spunta Web API e salva.\n3. Nelle Settings dell'app copia il Client ID, poi premi View client secret e copia anche quello.\n4. Incollali qui. La chiave resta su questo dispositivo; con i campi vuoti la togli.\n\nDa sapere: le regole di Spotify per gli sviluppatori non permettono di usare la sua ricerca per prendere i brani da un altro servizio, come fa questa app, quindi Spotify potrebbe disattivare la tua chiave.",
+        ["Open developer.spotify.com"] = "Apri developer.spotify.com",
+        ["The Spotify key works: the search now finds Spotify's songs and artists too"] = "La chiave Spotify funziona: ora la ricerca trova anche i brani e gli artisti di Spotify",
+        ["Spotify refused the key: check the Client ID, the secret and that your Spotify account has Premium"] =
+            "Spotify ha rifiutato la chiave: controlla il Client ID, il secret e che il tuo account Spotify sia Premium",
+        ["Spotify didn't answer: the key is saved, the search will try it again"] = "Spotify non ha risposto: la chiave è salvata, la ricerca la riproverà",
+        ["Spotify only answers apps with a key: with yours (free; your Spotify account needs Premium) the search finds Spotify's songs and artists too. Without one, Deezer has the same catalogue. The audio comes from YouTube Music, as for Spotify links."] =
+            "Spotify risponde solo alle app con una chiave: con la tua (gratis; il tuo account Spotify dev'essere Premium) la ricerca trova anche i brani e gli artisti di Spotify. Senza, Deezer ha lo stesso catalogo. L'audio arriva da YouTube Music, come per i link di Spotify.",
+        ["Search Spotify too"] = "Cerca anche su Spotify",
+        ["Set it up in Settings"] = "Configura nelle Impostazioni",
+        ["Spotify only answers apps with a key. Make yours once in Settings, free and in a few minutes (your Spotify account needs Premium): then Spotify's songs and artists are found here too."] =
+            "Spotify risponde solo alle app con una chiave. Creane una tua nelle Impostazioni, una volta sola, gratis e in pochi minuti (il tuo account Spotify dev'essere Premium): poi qui trovi anche i brani e gli artisti di Spotify.",
+        ["Spotify refused your key: check the Client ID and the secret in Settings. Spotify also wants the account that made the key to have Premium."] =
+            "Spotify ha rifiutato la tua chiave: controlla il Client ID e il secret nelle Impostazioni. Spotify vuole anche che l'account che ha creato la chiave sia Premium.",
+        // Lyrics chosen by hand
+        ["Choose lyrics…"] = "Scegli il testo…",
+        ["Lyrics of “{0}”"] = "Testo di «{0}»",
+        ["The versions LRCLIB has, the likeliest first. Those with times light up line by line as you listen."] =
+            "Le versioni che ha LRCLIB, le più probabili prima. Quelle con i tempi si illuminano riga per riga mentre ascolti.",
+        ["Use these lyrics"] = "Usa questo testo",
+        ["with times"] = "con i tempi",
+        ["without times"] = "senza tempi",
+        ["{0} s off the song: the times may not match"] = "{0} s di differenza dal brano: i tempi potrebbero non coincidere",
     };
 }

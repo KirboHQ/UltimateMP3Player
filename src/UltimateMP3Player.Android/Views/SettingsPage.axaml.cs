@@ -377,11 +377,24 @@ public partial class SettingsPage : UserControl, IPage
     }
 
     // Back with a search written: the whole page again.
+    // Opened to show one setting (the Spotify key, from the search's Spotify tab): it starts searched, and Back goes
+    // straight back (the search emptied for next time).
+    private string? _opened;
+
+    public void Shown()
+    {
+        if (Vm is not { StartSearch: { } words } vm) return;
+        vm.StartSearch = null;
+        SearchBox.Text = _opened = words;
+    }
+
     public bool Back()
     {
         if (string.IsNullOrEmpty(SearchBox.Text)) return false;
+        bool leave = SearchBox.Text == _opened;
+        _opened = null;
         SearchBox.Text = "";
-        return true;
+        return !leave;
     }
 
     public void ScrollToTop() => Scroller.Offset = default;

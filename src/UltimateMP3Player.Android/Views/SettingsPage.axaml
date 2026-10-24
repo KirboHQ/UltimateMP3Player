@@ -274,6 +274,15 @@
                                 <TextBlock Text="{Binding SearchModeHint}" Classes="setting-hint"/>
                             </StackPanel>
                         </Button>
+                        <Border Classes="line"/>
+                        <Button Theme="{StaticResource SettingRow}" Command="{Binding SpotifyKeyCommand}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Spotify key'}" Classes="setting"/>
+                                <TextBlock Text="{Binding SpotifyKeyText}" Classes="value"/>
+                                <TextBlock Text="{local:T 'Spotify only answers apps with a key: with yours (free; your Spotify account needs Premium) the search finds Spotify\'s songs and artists too. Without one, Deezer has the same catalogue. The audio comes from YouTube Music, as for Spotify links.'}"
+                                           Classes="setting-hint"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </StackPanel>
             </Border>

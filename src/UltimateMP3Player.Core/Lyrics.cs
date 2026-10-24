@@ -141,6 +141,22 @@ public sealed class LyricsResult
     public string? Match { get; init; }
 }
 
+// A version of the lyrics in the archive, to choose by hand: whose and which song it says it is, its length, whether it
+// has times, its words (for a preview) and what saving it writes.
+public sealed record LyricsChoice(string Artist, string Title, double? Duration, bool Synced, string Words, LyricsResult Result)
+{
+    // "3:42 · with times", and a warning when its length is far from the song's (the times would be out of step).
+    public string Details(double songDuration)
+    {
+        var parts = new List<string>();
+        if (Duration is double d) parts.Add(Text.Duration(d));
+        parts.Add(Synced ? L.T("with times") : L.T("without times"));
+        if (Synced && songDuration > 0 && Duration is double dd && Math.Abs(dd - songDuration) > LyricsFinder.SyncSlack)
+            parts.Add(L.F("{0} s off the song: the times may not match", Math.Round(Math.Abs(dd - songDuration))));
+        return string.Join(" · ", parts);
+    }
+}
+
 // Lyrics from LRCLIB (lrclib.net): a free, open archive of lyrics with times, no account or key.
 // The song is matched on title, artist and length. The times are kept only for the same recording: a version of
 // another length, or a remix matched to the original, gets the words without the times (they would be off).
@@ -148,7 +164,7 @@ public static class LyricsFinder
 {
     private const string Api = "https://lrclib.net/api/";
     // How far the lengths may differ for the times to still be right.
-    private const double SyncSlack = 5;
+    internal const double SyncSlack = 5;
     // Artist not confirmed (the "artist" is often who uploaded it): same title, same version and same length only.
     private const double StrictSlack = 2.5;
 
@@ -291,7 +307,7 @@ public static class LyricsFinder
                 kind = LyricsKind.Instrumental;
                 score = artistOk ? 3 : 2;
             }
-            else if (timed && !string.IsNullOrWhiteSpace(c.Synced) && Lrc.Parse(c.Synced).Count(l => l.Text.Length > 0) >= 2)
+            else if (timed && Timed(c.Synced))
             {
                 kind = LyricsKind.Synced;
                 score = artistOk ? 5 : 4;
@@ -316,6 +332,57 @@ public static class LyricsFinder
         }
         return (best, bestScore);
     }
+
+    // Every version of the lyrics the archive has for the song, for choosing by hand: the likeliest first (the artist
+    // confirmed, the same title, times that fit its length), each once. Instrumental answers aren't lyrics to choose.
+    public static async Task<List<LyricsChoice>> ChoicesAsync(string title, string? artist, double duration, CancellationToken ct)
+    {
+        var guesses = Guesses(title, artist).Where(g => g.Core.Length > 0).ToList();
+        var urls = new List<string>();
+        foreach (var g in guesses.Where(g => g.Artist != null))
+        {
+            var art = Uri.EscapeDataString(g.Artist!);
+            urls.Add($"{Api}search?track_name={Uri.EscapeDataString(g.Query)}&artist_name={art}");
+            if (g.LooseQuery != null) urls.Add($"{Api}search?track_name={Uri.EscapeDataString(g.LooseQuery)}&artist_name={art}");
+        }
+        foreach (var g in guesses) urls.Add($"{Api}search?track_name={Uri.EscapeDataString(g.Query)}");
+        // (the archive's own matching on any field, for a title written another way)
+        urls.Add($"{Api}search?q={Uri.EscapeDataString($"{artist} {title}".Trim())}");
+        // All the questions at once (one after the other the window took seconds to open), their answers kept in this order.
+        // One that fails is left out when others found versions; with none found it goes up (the archive isn't answering).
+        var answers = await Task.WhenAll(urls.Distinct().Select(async url =>
+        {
+            try { return (Hits: await GetAsync(url, ct), Error: (Exception?)null); }
+            catch (Exception ex) when (!ct.IsCancellationRequested) { return (Hits: new List<Candidate>(), Error: ex); }
+        }));
+        var pool = answers.SelectMany(a => a.Hits).ToList();
+        if (pool.Count == 0 && answers.FirstOrDefault(a => a.Error != null).Error is { } failed) throw failed;
+
+        double Diff(Candidate c) => duration > 0 && c.Duration is > 0 ? Math.Abs(c.Duration.Value - duration) : double.MaxValue;
+        int Rank(Candidate c) => (guesses.Any(g => SameArtist(g.Artists, c.Artist)) ? 4 : 0)
+                                 + (guesses.Any(g => SameTitle(g.Core, c.Title) || SameTitle(g.Loose, c.Title)) ? 2 : 0)
+                                 + (Timed(c.Synced) && Diff(c) <= SyncSlack ? 1 : 0);
+        var seen = new HashSet<string>();
+        return pool
+            .Where(c => !c.Instrumental && (Timed(c.Synced) || !string.IsNullOrWhiteSpace(c.Plain)))
+            .OrderByDescending(Rank).ThenBy(Diff)
+            .Where(c => seen.Add((Timed(c.Synced) ? c.Synced! : c.Plain!).Replace("\r", "").Trim()))
+            .Take(30)
+            .Select(c =>
+            {
+                var plain = !string.IsNullOrWhiteSpace(c.Plain) ? c.Plain!.Replace("\r", "").Trim() : Lrc.ToPlain(c.Synced!);
+                var synced = Timed(c.Synced) ? c.Synced!.Replace("\r", "").Trim() : null;
+                return new LyricsChoice(c.Artist, c.Title, c.Duration, synced != null, synced != null ? Lrc.ToPlain(synced) : plain, new LyricsResult
+                {
+                    Kind = synced != null ? LyricsKind.Synced : LyricsKind.Plain, Synced = synced, Plain = plain,
+                    Match = $"{c.Artist} – {c.Title} ({(c.Duration is double cd ? Text.Duration(cd) : "?")})",
+                });
+            })
+            .ToList();
+    }
+
+    // Lyrics with times on at least two sung lines.
+    private static bool Timed(string? synced) => !string.IsNullOrWhiteSpace(synced) && Lrc.Parse(synced).Count(l => l.Text.Length > 0) >= 2;
 
     // One answer (get) or a list (search); not found = empty. Busy (503, 429): tried again a little later.
     // Other errors go up, so the song isn't marked as having no lyrics.

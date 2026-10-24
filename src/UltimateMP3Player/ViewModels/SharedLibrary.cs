@@ -49,9 +49,8 @@ public sealed class SharedLibrary
     // Songs both have: their id → this device's, and back.
     private readonly Dictionary<string, string> _dupe = new();
     private readonly Dictionary<string, string> _dupeBack = new();
-    // For the songs both have without the same link: this device's by title (built when first needed, kept up to date),
+    // For the songs both have without the same link: this device's by title (the library's index),
     // the other device's as compared (worked out once per song: every rebuild goes through all of them).
-    private LibraryIndex? _similar;
     private readonly ConditionalWeakTable<LinkTrack, SongIdentity> _theirIds = new();
     private HashSet<string> _mirrorLists = new();
     private readonly Dictionary<string, int> _listCovers = new();
@@ -168,8 +167,7 @@ public sealed class SharedLibrary
         if (lt.Yours is { } y && _main.Library.Get(y) is { } mine) return mine;
         if (_main.Library.FindByKeys(lt.Keys.Append(TheirKey(lt.Id))) is { } byKey) return byKey;
         if (lt.Duration <= 0) return null;
-        _similar ??= new LibraryIndex(_main.Library);
-        return _similar.FindSimilar(_theirIds.GetValue(lt, x => SongMeta.Identity(x.Title, x.Artist)), lt.Duration);
+        return _main.Library.FindSimilar(_theirIds.GetValue(lt, x => SongMeta.Identity(x.Title, x.Artist)), lt.Duration);
     }
 
     // The id a song of the other device has here (its own row, or this device's song when both have it); null when unknown.
@@ -416,7 +414,6 @@ public sealed class SharedLibrary
         if (_disposed) return;
         _ownTracks.Add(t.Id);
         _ownGone.Remove(t.Id);
-        _similar?.Add(t);
         Schedule();
         // (a song kept here may be one of the other device's: shown once from now on)
         _rebuild.Stop();

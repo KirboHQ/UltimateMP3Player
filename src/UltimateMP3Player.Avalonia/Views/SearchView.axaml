@@ -192,13 +192,14 @@
                 <TextBlock Text="{local:T 'Try the title and the artist, or paste the song\'s link directly.'}" Classes="hint"
                            Margin="0,8,0,0" TextAlignment="Center"/>
             </StackPanel>
-            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,48,0,0" Orientation="Horizontal">
-                <StackPanel.IsVisible>
-                    <MultiBinding Converter="{x:Static BoolConverters.And}">
-                        <Binding Path="OnlineBusy"/>
-                        <Binding Path="OnlineHits.Count" Converter="{StaticResource IsZero}"/>
-                    </MultiBinding>
-                </StackPanel.IsVisible>
+            <!-- the Spotify tab without a key (or with one Spotify refuses): what it takes, and the way to Settings -->
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" MaxWidth="480" IsVisible="{Binding ShowSpotifySetup}">
+                <TextBlock Text="{local:T 'Search Spotify too'}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding SpotifySetupText}" Classes="hint" Margin="0,8,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
+                <Button Theme="{StaticResource PrimaryButton}" Content="{local:T 'Set it up in Settings'}" Command="{Binding SpotifySettingsCommand}"
+                        HorizontalAlignment="Center" Margin="0,18,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,48,0,0" Orientation="Horizontal" IsVisible="{Binding ShowSearching}">
                 <Ellipse Classes="spinner" Width="20" Height="20" StrokeThickness="3"/>
                 <TextBlock Text="{local:T 'Searching online…'}" FontSize="14" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
             </StackPanel>

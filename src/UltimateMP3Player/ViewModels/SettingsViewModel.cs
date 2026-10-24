@@ -200,6 +200,7 @@ public sealed class SearchServiceOption : Observable
         OnlineSearchServices.YouTubeMusic => "the official songs, with albums and covers",
         OnlineSearchServices.YouTube => "videos: covers, live, versions found nowhere else",
         OnlineSearchServices.SoundCloud => "remixes, mashups and independent artists",
+        OnlineSearchServices.Spotify => "with your key; the audio comes from YouTube Music",
         _ => "a catalogue like Spotify's; the audio comes from YouTube Music",
     });
     public bool Enabled
@@ -233,6 +234,7 @@ public sealed class SettingsViewModel : Observable
         UpdateEnginesCommand = new RelayCommand(() => _ = UpdateEngines(), () => !_updating);
         CheckAppUpdateCommand = new RelayCommand(() => _ = _main.Host.CheckAppUpdateNow(), () => !Host.Updates.IsBusy);
         WhatsNewCommand = new RelayCommand(() => _ = OpenWhatsNew());
+        SpotifyKeyCommand = new RelayCommand(() => _ = AskSpotifyKey());
         ManageProfilesCommand = new RelayCommand(() => _main.Host.SwitchProfile());
         ImportFilesCommand = new RelayCommand(() => _ = _main.ImportDialog(false));
         ImportFolderCommand = new RelayCommand(() => _ = _main.ImportDialog(true));
@@ -261,6 +263,7 @@ public sealed class SettingsViewModel : Observable
     public ICommand UpdateEnginesCommand { get; }
     public ICommand CheckAppUpdateCommand { get; }
     public ICommand WhatsNewCommand { get; }
+    public ICommand SpotifyKeyCommand { get; }
     public ICommand ManageProfilesCommand { get; }
     public ICommand ImportFilesCommand { get; }
     public ICommand ImportFolderCommand { get; }
@@ -507,6 +510,37 @@ public sealed class SettingsViewModel : Observable
     public string SearchModeHint => S.SearchParallel
         ? L.T("Searches every site that's on at the same time: the results come mixed, each site's best first.")
         : L.T("Searches the first site; if it finds nothing or doesn't answer it moves to the next, in the order above.");
+
+    // Spotify only lets apps with a key search it: the user's own (a free app on developer.spotify.com).
+    public string SpotifyKeyText => OnlineSearchServices.SpotifyKey != null ? L.T("Set: the search also looks on Spotify") : L.T("Not set");
+
+    private async Task AskSpotifyKey()
+    {
+        // The guide: Spotify's own page names (Create app, Redirect URI, Web API...) stay as Spotify writes them.
+        var r = await Dialogs.FormAsync(L.T("Spotify key"),
+            L.T("Spotify only answers apps with a key: make yours once, it's free (Spotify wants your account to have Premium).\n\n1. Open developer.spotify.com (the button below) and sign in with your Spotify account.\n2. Dashboard › Create app: any name and description; as Redirect URI write http://127.0.0.1:8888/callback (it isn't used); tick Web API and save.\n3. In the app's Settings copy the Client ID, then press View client secret and copy that too.\n4. Paste them here. The key stays on this device; empty fields remove it.\n\nGood to know: Spotify's rules for developers don't allow using its search to get the songs from another service, as this app does, so Spotify could turn your key off."),
+            (L.T("Open developer.spotify.com"), "https://developer.spotify.com/dashboard"),
+            ("Client ID", S.SpotifyClientId ?? ""), ("Client secret", S.SpotifyClientSecret ?? ""));
+        if (r == null) return;
+        OnlineSearchServices.UseSpotifyKey(r[0], r[1]);
+        S.SpotifyClientId = OnlineSearchServices.SpotifyKey?.Id;
+        S.SpotifyClientSecret = OnlineSearchServices.SpotifyKey?.Secret;
+        Save();
+        OnChanged(nameof(SpotifyKeyText), nameof(SearchServices));
+        _main.Search.OnSettingsChanged();
+        if (OnlineSearchServices.SpotifyKey == null) return;
+        try
+        {
+            await Task.Run(() => OnlineSearchServices.SearchAsync(OnlineSearchServices.Spotify, "music", 1, CancellationToken.None));
+            _main.Toast(L.T("The Spotify key works: the search now finds Spotify's songs and artists too"));
+        }
+        catch (Exception ex)
+        {
+            _main.Toast(OnlineSearchServices.SpotifyRefused(ex)
+                ? L.T("Spotify refused the key: check the Client ID, the secret and that your Spotify account has Premium")
+                : L.T("Spotify didn't answer: the key is saved, the search will try it again"));
+        }
+    }
 
     // ------------------------------------------------------------------ lyrics (app)
 

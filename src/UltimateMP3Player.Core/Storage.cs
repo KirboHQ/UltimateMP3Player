@@ -256,6 +256,9 @@ public sealed class AppSettings
     public List<string> SearchServices { get; set; } = new(OnlineSearchServices.Default);
     public List<string> SearchServicesOff { get; set; } = new();
     public bool SearchParallel { get; set; } = true;
+    // The user's own Spotify app (developer.spotify.com): with its key the search box also searches Spotify.
+    public string? SpotifyClientId { get; set; }
+    public string? SpotifyClientSecret { get; set; }
     // Lyrics searched by themselves: for new songs and for the song playing, when never searched before.
     public bool AutoLyrics { get; set; } = true;
     // The songs of a link get their audio saved on the device (the last choice of the download card); off = they go into
@@ -283,6 +286,7 @@ public sealed class AppSettings
         bool isNew = !File.Exists(AppPaths.SettingsFile) && !File.Exists(AppPaths.SettingsFile + ".bak");
         var s = JsonStore.Load<AppSettings>(AppPaths.SettingsFile);
         s.IsNew = isNew;
+        OnlineSearchServices.UseSpotifyKey(s.SpotifyClientId, s.SpotifyClientSecret);
         return s;
     }
 

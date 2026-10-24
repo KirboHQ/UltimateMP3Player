@@ -235,6 +235,14 @@ public sealed class LyricsService : Observable
         if (b == Scan) OnScanChanged();
     }
 
+    // Chosen by hand among the archive's versions (a song's menu, "Choose lyrics…").
+    public void Use(Track t, LyricsResult r)
+    {
+        LyricsStore.Save(t, r);
+        if (_host.Library.Get(t.Id) == t) _host.Library.Changed(t);
+        TrackDone?.Invoke(t, r.Kind, false, null);
+    }
+
     // Removed by hand from a song's menu.
     public void Delete(Track t)
     {

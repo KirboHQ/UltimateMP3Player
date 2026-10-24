@@ -471,7 +471,6 @@ public sealed class OnlineHitViewModel : Observable
     {
         Hit = hit;
         _main = main;
-        var lib = main.Library;
         InLibrary = Find();
         DownloadCommand = new RelayCommand(() => _main.OpenHit(Hit));
     }
@@ -527,17 +526,19 @@ public sealed class OnlineHitViewModel : Observable
 // A filter over the online results: all of them, or one site.
 public sealed class ServiceTab : Observable
 {
-    public ServiceTab(string? service, string label, int count)
+    public ServiceTab(string? service, string label, int? count)
     {
         Service = service;
         Label = label;
-        Count = count;
-        Brush = service != null ? Ui.BrushFrom(Sites.ColorFor(service)) : null;
+        // (none for Spotify without its key: nothing was searched there)
+        Count = count?.ToString() ?? "";
+        // (no dot for the artist's tab: it's not a site)
+        Brush = service != null && !service.StartsWith('\0') ? Ui.BrushFrom(Sites.ColorFor(service)) : null;
     }
 
     public string? Service { get; }
     public string Label { get; }
-    public int Count { get; }
+    public string Count { get; }
     public Brush? Brush { get; }
     public bool HasDot => Brush != null;
 
@@ -560,6 +561,7 @@ public sealed class SearchViewModel : Observable, ITrackList
         ShowOnlineCommand = new RelayCommand(() => PickTab(true));
         SelectServiceCommand = new RelayCommand(p => { if (p is ServiceTab t) SelectService(t.Service); });
         OnlineSettingsCommand = new RelayCommand(() => _main.GoSettings());
+        SpotifySettingsCommand = new RelayCommand(() => _main.SearchSettings("Spotify", fromSearch: true));
     }
 
     public string ContextId => "search";
@@ -578,9 +580,11 @@ public sealed class SearchViewModel : Observable, ITrackList
     public ICommand ShowOnlineCommand { get; }
     public ICommand SelectServiceCommand { get; }
     public ICommand OnlineSettingsCommand { get; }
+    public ICommand SpotifySettingsCommand { get; }
 
     public void Run(string query)
     {
+        _libraryChanged = false;
         Query = query.Trim();
         var q = new TrackQuery(Query);
         _order = _main.AllVms()
@@ -648,17 +652,31 @@ public sealed class SearchViewModel : Observable, ITrackList
     private readonly Dictionary<string, List<SearchHit>> _byService = new();
     private readonly List<string> _failed = new();
     private List<OnlineHitViewModel> _allHits = new();
+    // Each result's row, made once per search (every site that answers rebuilds the lists; a row checks the library and
+    // loads its picture).
+    private readonly Dictionary<SearchHit, OnlineHitViewModel> _rows = new();
+    private OnlineHitViewModel Row(SearchHit h) => _rows.TryGetValue(h, out var row) ? row : _rows[h] = new OnlineHitViewModel(h, _main);
     private string? _serviceFilter;
 
     public List<OnlineHitViewModel> OnlineHits { get; private set; } = new();
     public List<ServiceTab> ServiceTabs { get; private set; } = new();
-    public bool HasServiceTabs => ServiceTabs.Count > 2;
+    public bool HasServiceTabs => ServiceTabs.Count > 2 || _artistHits != null || SpotifyLocked;
 
     private bool _onlineBusy;
-    public bool OnlineBusy { get => _onlineBusy; private set { if (Set(ref _onlineBusy, value)) OnChanged(nameof(NoOnlineResults)); } }
+    public bool OnlineBusy { get => _onlineBusy; private set { if (Set(ref _onlineBusy, value)) OnChanged(nameof(NoOnlineResults), nameof(ShowSearching)); } }
     private string? _onlineStatus;
     public string? OnlineStatus { get => _onlineStatus; private set => Set(ref _onlineStatus, value); }
-    public bool NoOnlineResults => !OnlineBusy && _allHits.Count == 0 && _onlineQuery.Length > 0;
+    public bool NoOnlineResults => !OnlineBusy && _allHits.Count == 0 && _onlineQuery.Length > 0 && !ShowSpotifySetup;
+    public bool ShowSearching => OnlineBusy && OnlineHits.Count == 0 && !ShowSpotifySetup;
+
+    // Spotify on but without a key (or with one Spotify refuses): its tab is there anyway, to say what it takes and lead
+    // to Settings, where the key goes.
+    private bool _spotifyRefused;
+    private bool SpotifyLocked => Services.Contains(OnlineSearchServices.Spotify) && (OnlineSearchServices.SpotifyKey == null || _spotifyRefused);
+    public bool ShowSpotifySetup => _serviceFilter == OnlineSearchServices.Spotify && SpotifyLocked;
+    public string SpotifySetupText => OnlineSearchServices.SpotifyKey == null
+        ? L.T("Spotify only answers apps with a key. Make yours once in Settings, free and in a few minutes (your Spotify account needs Premium): then Spotify's songs and artists are found here too.")
+        : L.T("Spotify refused your key: check the Client ID and the secret in Settings. Spotify also wants the account that made the key to have Premium.");
     public string NoOnlineText => !Searchable(Query) ? L.T("Type at least two letters to search online.")
         : _failed.Count > 0 && _byService.Count == 0 ? L.T("The sites didn't answer: check your connection and try again.")
         : L.T("No songs found online.");
@@ -675,7 +693,7 @@ public sealed class SearchViewModel : Observable, ITrackList
         }
         if (Query == _onlineQuery)
         {
-            foreach (var h in _allHits) h.RefreshLibrary();
+            foreach (var h in _rows.Values) h.RefreshLibrary();
             return;
         }
         _onlineTimer.Start();
@@ -691,8 +709,11 @@ public sealed class SearchViewModel : Observable, ITrackList
         _onlineCts?.Cancel();
         _onlineQuery = Query;
         _byService.Clear();
+        _rows.Clear();
         _failed.Clear();
         _serviceFilter = null;
+        _artistHits = null;
+        _spotifyRefused = false;
         Rebuild();
         if (!Searchable(Query))
         {
@@ -700,7 +721,51 @@ public sealed class SearchViewModel : Observable, ITrackList
             return;
         }
         var cts = _onlineCts = new CancellationTokenSource();
-        _ = SearchOnline(Query, Services, S.SearchParallel, cts);
+        // (Spotify without a key isn't asked)
+        var asked = Services.Where(s => s != OnlineSearchServices.Spotify || OnlineSearchServices.SpotifyKey != null).ToList();
+        if (asked.Count > 0) _ = SearchOnline(Query, asked, S.SearchParallel, cts);
+        _ = FindArtist(Query, cts);
+    }
+
+    // Your songs changed while another page was shown (a song downloaded from these results): looked for again when shown.
+    private bool _libraryChanged;
+    public void MarkDirty() => _libraryChanged = true;
+
+    // Shown again (Back from a download, or from Settings, where a Spotify key may have been entered): your songs and the
+    // results' "already have it" marks again, and what the settings dropped searched again.
+    public void EnsureFresh()
+    {
+        if (Query.Length == 0) return;
+        if (_libraryChanged) Run(Query);
+        else if (_onlineQuery.Length == 0) RunOnlineNow();
+    }
+
+    // The words name an artist: one more tab with their songs (the most played on Spotify with its key, else the most
+    // listened on Deezer), like an artist's page.
+    private const string ArtistTab = "\0artist";
+    private string _artistName = "";
+    private List<SearchHit>? _artistHits;
+
+    private async Task FindArtist(string query, CancellationTokenSource cts)
+    {
+        bool spotify = Services.Contains(OnlineSearchServices.Spotify) && OnlineSearchServices.SpotifyKey != null;
+        (string Name, List<SearchHit> Hits) found;
+        try
+        {
+            found = await Task.Run<(string Name, List<SearchHit> Hits)>(async () =>
+            {
+                if (spotify)
+                    try { if (await OnlineSearchServices.SpotifyArtistAsync(query, 100, cts.Token) is { Hits.Count: > 0 } s) return s; }
+                    catch (Exception) when (!cts.IsCancellationRequested) { }
+                return await OnlineSearchServices.FindArtistAsync(query, cts.Token) is { } a
+                    ? (a.Name, await OnlineSearchServices.ArtistTopAsync(a.Id, 100, 0, cts.Token))
+                    : ("", new List<SearchHit>());
+            });
+        }
+        catch { return; }
+        if (cts.IsCancellationRequested || _onlineCts != cts || found.Hits.Count == 0) return;
+        (_artistName, _artistHits) = found;
+        Rebuild();
     }
 
     private async Task SearchOnline(string query, List<string> services, bool parallel, CancellationTokenSource cts)
@@ -735,9 +800,16 @@ public sealed class SearchViewModel : Observable, ITrackList
     {
         List<SearchHit> hits;
         try { hits = await Task.Run(() => OnlineSearchServices.SearchAsync(service, query, PerService, cts.Token)); }
-        catch
+        catch (Exception ex)
         {
-            if (!cts.IsCancellationRequested && _onlineCts == cts) _failed.Add(service);
+            if (cts.IsCancellationRequested || _onlineCts != cts) return;
+            // (a key Spotify refuses: its tab says so, it's not "no answer")
+            if (service == OnlineSearchServices.Spotify && OnlineSearchServices.SpotifyRefused(ex))
+            {
+                _spotifyRefused = true;
+                Rebuild();
+            }
+            else _failed.Add(service);
             return;
         }
         if (cts.IsCancellationRequested || _onlineCts != cts) return;
@@ -750,14 +822,21 @@ public sealed class SearchViewModel : Observable, ITrackList
     {
         var order = Services.Where(_byService.ContainsKey).ToList();
         _allHits = order.SelectMany(s => _byService[s]).OrderBy(h => h.Rank).ThenBy(h => order.IndexOf(h.Service))
-            .Select(h => new OnlineHitViewModel(h, _main)).ToList();
-        if (_serviceFilter != null && !_byService.ContainsKey(_serviceFilter)) _serviceFilter = null;
+            .Select(Row).ToList();
+        bool locked = SpotifyLocked;
+        if (_serviceFilter != null && !_byService.ContainsKey(_serviceFilter) && !(_serviceFilter == ArtistTab && _artistHits != null)
+            && !(_serviceFilter == OnlineSearchServices.Spotify && locked)) _serviceFilter = null;
         var tabs = new List<ServiceTab> { new(null, L.T("All"), _allHits.Count) };
-        tabs.AddRange(order.Where(s => _byService[s].Count > 0).Select(s => new ServiceTab(s, s, _byService[s].Count)));
+        tabs.AddRange(Services.Where(s => _byService.TryGetValue(s, out var got) && got.Count > 0 || s == OnlineSearchServices.Spotify && locked)
+            .Select(s => new ServiceTab(s, s, _byService.TryGetValue(s, out var got) ? got.Count : null)));
+        if (_artistHits != null) tabs.Add(new ServiceTab(ArtistTab, L.F("Songs by {0}", _artistName), _artistHits.Count));
         foreach (var t in tabs) t.IsSelected = t.Service == _serviceFilter;
         ServiceTabs = tabs;
-        OnlineHits = _serviceFilter == null ? _allHits : _allHits.Where(h => h.Service == _serviceFilter).ToList();
-        OnChanged(nameof(OnlineHits), nameof(ServiceTabs), nameof(HasServiceTabs), nameof(OnlineTabText), nameof(NoOnlineResults), nameof(NoOnlineText));
+        OnlineHits = _serviceFilter == null ? _allHits
+            : _serviceFilter == ArtistTab ? _artistHits!.Select(Row).ToList()
+            : _allHits.Where(h => h.Service == _serviceFilter).ToList();
+        OnChanged(nameof(OnlineHits), nameof(ServiceTabs), nameof(HasServiceTabs), nameof(OnlineTabText), nameof(NoOnlineResults), nameof(NoOnlineText),
+            nameof(ShowSearching), nameof(ShowSpotifySetup), nameof(SpotifySetupText));
     }
 
     private void SelectService(string? service)
@@ -771,9 +850,11 @@ public sealed class SearchViewModel : Observable, ITrackList
     {
         _onlineQuery = "";
         _allHits = new();
+        _rows.Clear();
         OnlineHits = new();
+        _spotifyRefused = false;
         OnChanged(nameof(OnlineEnabled), nameof(OnlineMode), nameof(LocalMode), nameof(OnlineHits), nameof(OnlineTabText), nameof(ShowLocalEmpty),
-            nameof(LocalEmptyHint), nameof(NoOnlineResults));
+            nameof(LocalEmptyHint), nameof(NoOnlineResults), nameof(ShowSearching), nameof(ShowSpotifySetup));
     }
 }
 
