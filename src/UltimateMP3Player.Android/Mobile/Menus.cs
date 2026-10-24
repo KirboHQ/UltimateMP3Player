@@ -77,6 +77,7 @@ public static class Menus
             ("track", SongItem s) => ForTrack(s.Track, s.Row.Owner),
             ("track", TrackRow r) => ForTrack(r.Track, r.Owner),
             ("card", TrackViewModel t) => ForTrack(t, null),
+            ("hit", OnlineHitViewModel h) => ForHit(h),
             // A finished download: the song's menu (play similar songs, playlists…), as anywhere else.
             ("download", DownloadJobViewModel { Song: { } song }) => ForTrack(song, null),
             ("download", DownloadJobViewModel job) => ForJob(job),
@@ -243,6 +244,31 @@ public static class Menus
         menu.Add(new(t.HasLyrics ? L.T("Search online again") : L.T("Search online"), GSearch, () => main.SearchLyrics(new[] { t }), !searching));
         menu.Add(new(L.T("Choose lyrics…"), GSelect, () => _ = main.ChooseLyrics(t), !searching));
         if (t.HasLyrics) menu.Add(new SheetEntry(L.T("Delete lyrics"), GDelete, () => main.DeleteLyrics(t)) { Danger = true });
+        return menu;
+    }
+
+    // ------------------------------------------------------------------ songs found online
+
+    // A song found online (search): heard without saving it, like a link's songs, or opened to download it. Not an album or a
+    // playlist (a tap opens their card). The same as the computer's (Menus.Shared.cs).
+    public static SheetMenu? ForHit(OnlineHitViewModel h)
+    {
+        if (!h.IsSong) return null;
+        var main = h.Main;
+        var menu = new SheetMenu { Title = h.Title, Subtitle = h.Subtitle };
+        if (main.InRoom) menu.Add(new(L.T("Add to the room's queue"), GQueue, () => h.QueueAction?.Invoke(), h.QueueAction != null));
+        else
+        {
+            menu.Add(new(L.T("Play"), GPlay, h.Play));
+            menu.Add(new(L.T("Play next"), GNext, () => { if (h.Song() is { } t) main.Player.PlayNext(t); }));
+            menu.Add(new(L.T("Add to queue"), GQueue, () => h.QueueAction?.Invoke()));
+            menu.Add(new(L.T("Play similar songs"), GRadio, () => { if (h.Song() is { } t) main.Player.PlayRadio(t); }));
+            menu.Add(new(L.T("Play the artist's songs"), "", () => { if (h.Song() is { } t) main.Player.PlayArtist(t); },
+                !string.IsNullOrWhiteSpace(h.Hit.Artist)));
+        }
+        menu.Line();
+        menu.Add(new(L.T("Download|verb"), GSave, () => h.DownloadCommand.Execute(null)));
+        menu.Add(new(L.T("Copy link"), GLink, () => { Ui.CopyText(h.Hit.Url); main.Toast(L.T("Link copied")); }));
         return menu;
     }
 
@@ -595,6 +621,27 @@ public static class Menus
                 changed();
             }
         }));
+        return menu;
+    }
+
+    // Tick more playlists for the songs of a download (Favorites, say), besides the one chosen above it.
+    public static SheetMenu AlsoPicker(LinkViewModel link)
+    {
+        var menu = new SheetMenu { Title = L.T("Also add to"), Subtitle = L.T("Tick as many as you like") };
+        foreach (var c in link.AlsoChoices)
+        {
+            var id = (string)c.Value!;
+            menu.Add(new SheetEntry
+            {
+                Text = Short(c.Label),
+                Checked = () => link.AlsoIds.Contains(id),
+                Click = () =>
+                {
+                    if (!link.AlsoIds.Remove(id)) link.AlsoIds.Add(id);
+                    link.OnAlsoChosen();
+                },
+            });
+        }
         return menu;
     }
 

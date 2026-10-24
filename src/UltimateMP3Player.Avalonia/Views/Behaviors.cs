@@ -63,7 +63,7 @@ public static class Click
 // Right click on a row, a card, a playlist or a tag: its menu (Menus). Track rows can be dragged onto playlists and tags.
 public static class Rows
 {
-    // "track" (a song row of a list), "card" (a song card), "playlist", "tag", "queue" (a row of "next up").
+    // "track" (a song row of a list), "card" (a song card), "hit" (a song found online), "playlist", "tag", "queue" (a row of "next up").
     public static readonly AttachedProperty<string?> MenuProperty = AvaloniaProperty.RegisterAttached<Control, string?>("Menu", typeof(Rows));
     public static string? GetMenu(Control c) => c.GetValue(MenuProperty);
     public static void SetMenu(Control c, string? v) => c.SetValue(MenuProperty, v);
@@ -85,13 +85,14 @@ public static class Rows
         });
         DragProperty.Changed.AddClassHandler<Control>((c, e) =>
         {
-            c.PointerPressed -= OnPressed;
+            c.RemoveHandler(InputElement.PointerPressedEvent, OnPressed);
             c.PointerMoved -= OnMoved;
             c.PointerReleased -= OnReleased;
             c.PointerCaptureLost -= OnCaptureLost;
             if (e.NewValue is true)
             {
-                c.PointerPressed += OnPressed;
+                // (also the press a button takes: a song found online is one)
+                c.AddHandler(InputElement.PointerPressedEvent, OnPressed, handledEventsToo: true);
                 c.PointerMoved += OnMoved;
                 c.PointerReleased += OnReleased;
                 c.PointerCaptureLost += OnCaptureLost;
@@ -107,6 +108,7 @@ public static class Rows
         var menu = GetMenu(c) switch
         {
             "track" when c.DataContext is TrackRow row => Menus.MenuFor(row, c),
+            "hit" when c.DataContext is OnlineHitViewModel h => Menus.ForHit(h),
             "card" when many.Count > 1 => Menus.ForSelection(SelectionBar.SongsOf(many), null),
             "card" when c.DataContext is TrackViewModel t => Menus.ForTrack(t, null),
             "playlist" when many.OfType<PlaylistViewModel>().ToList() is { Count: > 1 } lists => Menus.ForPlaylists(lists),
@@ -144,18 +146,21 @@ public static class Rows
         var p = e.GetPosition(null);
         if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
         _start = null;
-        if (e.Source is Visual v && v.FindAncestorOfType<Button>(true) != null) return;
-        if (c.DataContext is not TrackRow row) return;
+        // (a button of the row, not the button a song found online is)
+        if (e.Source is Visual v && v.FindAncestorOfType<Button>(true) is { } b && c.IsVisualAncestorOf(b)) return;
         // Mostly to the right: the row is pulled (into the queue, as on the phones); any other way it's dragged (onto a
         // playlist or a tag of the sidebar, inside a playlist).
-        if (p.X - start.X > 1.5 * Math.Abs(p.Y - start.Y) && _wheelPull == null && Pull(c, row) is { } pull)
+        if (p.X - start.X > 1.5 * Math.Abs(p.Y - start.Y) && _wheelPull == null && Pull(c) is { } pull)
         {
+            // (a button gives the pointer to what it shows: no click when it's let go; before _pull, as the button losing it
+            // would end the pull)
+            e.Pointer.Capture(c is Button { Content: Control inner } ? inner : c);
             _pull = pull;
             _pullFrom = p.X;
-            e.Pointer.Capture(c);
             e.Handled = true;
             return;
         }
+        if (c.DataContext is not TrackRow row) return;
         var data = new DataObject();
         data.Set(TrackRowFormat, row);
         await DragVisuals.RunAsync(c, e, data, DragDropEffects.Copy | DragDropEffects.Move);
@@ -177,8 +182,16 @@ public static class Rows
     private static double _wheelSteps;
     private static DispatcherTimer? _wheelEnd;
 
-    private static RowSwipe? Pull(Control c, TrackRow row)
-        => Menus.AddToQueue(row.Track, row.Owner) is { } run && AdornerLayer.GetAdornerLayer(c) is { } layer ? new RowSwipe(c, run, layer, MarkShare) : null;
+    private static RowSwipe? Pull(Control c)
+    {
+        var run = c.DataContext switch
+        {
+            TrackRow row => Menus.AddToQueue(row.Track, row.Owner),
+            OnlineHitViewModel h => h.QueueAction,
+            _ => null,
+        };
+        return run != null && AdornerLayer.GetAdornerLayer(c) is { } layer ? new RowSwipe(c, run, layer, MarkShare) : null;
+    }
 
     private static void OnReleased(object? sender, PointerReleasedEventArgs e)
     {
@@ -222,7 +235,7 @@ public static class Rows
             e.Handled = true;
             return;
         }
-        if (!sideways || _pull != null || RowAt(e.Source as Visual) is not { DataContext: TrackRow row } c) return;
+        if (!sideways || _pull != null || RowAt(e.Source as Visual) is not { } c) return;
         if (c != _wheelRow) _wheelSteps = 0;
         _wheelRow = c;
         _wheelSteps += steps;
@@ -230,7 +243,7 @@ public static class Rows
         _wheelEnd.Stop();
         _wheelEnd.Start();
         // (a little to the right first, as the mouse's: then the row follows from there)
-        if (_wheelSteps < StartSteps || Pull(c, row) is not { } pull) return;
+        if (_wheelSteps < StartSteps || Pull(c) is not { } pull) return;
         _wheelPull = pull;
         _wheelSteps = 0;
         e.Handled = true;
@@ -249,7 +262,7 @@ public static class Rows
     private static Control? RowAt(Visual? v)
     {
         for (; v != null; v = v.GetVisualParent())
-            if (v is Control c && GetMenu(c) == "track" && GetDrag(c)) return c;
+            if (v is Control c && GetMenu(c) is "track" or "hit" && GetDrag(c)) return c;
         return null;
     }
 }

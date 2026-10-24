@@ -695,10 +695,10 @@ public sealed class MainViewModel : Observable
     }
 
     // A result of the online search: in a room it goes straight into the room's queue (like a double click on a song of
-    // yours there), otherwise its card on the download page, ready at once.
+    // yours there), otherwise its card on the download page, ready at once. An album or a playlist always opens its card.
     public void OpenHit(SearchHit hit)
     {
-        if (InRoom && Together.CanAdd)
+        if (InRoom && Together.CanAdd && hit.Collection == null)
         {
             Together.AddFromLink(new[] { OnlineSearchServices.ToItem(hit) });
             Toast(L.F("“{0}” goes into the room's queue", hit.Title));

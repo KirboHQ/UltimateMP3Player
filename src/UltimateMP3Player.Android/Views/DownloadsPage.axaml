@@ -61,6 +61,16 @@
                         <TextBlock Text="{local:T 'New playlist name'}" Classes="field-label" Margin="4,14,0,8"/>
                         <TextBox Theme="{StaticResource TouchBox}" Text="{Binding NewName}" Watermark="{local:T 'Playlist name'}"/>
                     </StackPanel>
+                    <!-- more playlists the songs go into as well (Favorites, say) -->
+                    <TextBlock Text="{local:T 'Also add to'}" Classes="field-label" Margin="4,14,0,8"/>
+                    <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="Also_Click">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{local:T 'Choose one or more…'}" FontWeight="Normal" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
+                                       IsVisible="{Binding !HasAlso}"/>
+                            <TextBlock Text="{Binding AlsoText}" FontWeight="Normal" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" IsVisible="{Binding HasAlso}"/>
+                            <TextBlock Grid.Column="1" Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
+                        </Grid>
+                    </Button>
                     <TextBlock Text="{local:T 'Song tags'}" Classes="field-label" Margin="4,14,0,8" IsVisible="{Binding $parent[views:MainView].DataContext.HasTags}"/>
                     <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="Tags_Click"
                             IsVisible="{Binding $parent[views:MainView].DataContext.HasTags}">

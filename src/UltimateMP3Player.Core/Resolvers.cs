@@ -196,6 +196,14 @@ public static class Deezer
             n++;
             result.Items.Add(type == "album" ? Track(t, e, n) : Track(t, null, null));
         }
+        // A playlist comes with its first 400 songs: the others page by page.
+        while (type == "playlist" && result.Items.Count < (e.Int("nb_tracks") ?? 0))
+        {
+            using var more = JsonDocument.Parse(await Http.GetStringAsync($"https://api.deezer.com/playlist/{id}/tracks?index={result.Items.Count}&limit=1000", ct: ct));
+            var page = more.RootElement.Arr("data").ToList();
+            if (page.Count == 0) break;
+            foreach (var t in page) result.Items.Add(Track(t, null, null));
+        }
         if (result.Items.Count == 0) throw new EngineException(L.T("No songs found in this Deezer link."));
         return result;
     }

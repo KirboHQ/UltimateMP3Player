@@ -46,6 +46,11 @@ public partial class DownloadsPage : UserControl
         Menus.Open(menu);
     }
 
+    private void Also_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Vm?.Link is { } link) Menus.Open(Menus.AlsoPicker(link));
+    }
+
     // The audio or video quality of the songs of the card.
     private void Quality_Click(object? sender, RoutedEventArgs e)
     {

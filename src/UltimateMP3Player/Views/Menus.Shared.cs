@@ -177,6 +177,30 @@ public static partial class Menus
 
     private const string RadioGlyph = "";
 
+    // A song found online (search): heard without saving it, like a link's songs, or opened to download it. Not an album or a
+    // playlist (a click opens their card).
+    public static ContextMenu? ForHit(OnlineHitViewModel h)
+    {
+        if (!h.IsSong) return null;
+        var main = h.Main;
+        var menu = new ContextMenu();
+        if (main.InRoom)
+            menu.Items.Add(Item(L.T("Add to the room's queue"), "", () => h.QueueAction?.Invoke(), h.QueueAction != null));
+        else
+        {
+            menu.Items.Add(Item(L.T("Play"), "", h.Play));
+            menu.Items.Add(Item(L.T("Play next"), "", () => { if (h.Song() is { } t) main.Player.PlayNext(t); }));
+            menu.Items.Add(Item(L.T("Add to queue"), "", () => h.QueueAction?.Invoke()));
+            menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => { if (h.Song() is { } t) main.Player.PlayRadio(t); }));
+            menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => { if (h.Song() is { } t) main.Player.PlayArtist(t); },
+                !string.IsNullOrWhiteSpace(h.Hit.Artist)));
+        }
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Download|verb"), SaveGlyph, () => h.DownloadCommand.Execute(null)));
+        menu.Items.Add(Item(L.T("Copy link"), "", () => { try { Ui.CopyText(h.Hit.Url); main.Toast(L.T("Link copied")); } catch { } }));
+        return menu;
+    }
+
     // A suggested song that isn't in the library: its place in the queue (row) or skipping it (the one playing), keeping it,
     // more songs like it.
     public static ContextMenu ForRadioItem(RadioItemViewModel item, MainViewModel main, QueueRow? row)
@@ -414,6 +438,29 @@ public static partial class Menus
                 changed();
             }
         }));
+        return menu;
+    }
+
+    // Tick more playlists for the songs of a download (Favorites, say), besides the one chosen next to it.
+    public static ContextMenu AlsoPicker(LinkViewModel link)
+    {
+        var menu = new ContextMenu();
+        // (it stays open: several can be ticked)
+        menu.Items.Add(Item(L.T("Tick as many as you like"), "", () => { }, false));
+        menu.Items.Add(new Separator());
+        foreach (var c in link.AlsoChoices)
+        {
+            var id = (string)c.Value!;
+            var item = Item(c.Label, link.AlsoIds.Contains(id) ? Check : "", () => { });
+            item.StaysOpenOnClick = true;
+            item.Click += (_, _) =>
+            {
+                if (!link.AlsoIds.Remove(id)) link.AlsoIds.Add(id);
+                Ui.SetGlyph(item, link.AlsoIds.Contains(id) ? Check : null);
+                link.OnAlsoChosen();
+            };
+            menu.Items.Add(item);
+        }
         return menu;
     }
 

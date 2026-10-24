@@ -69,6 +69,22 @@
                             <TextBlock Text="{local:T 'New playlist name'}" Style="{StaticResource FieldLabel}"/>
                             <TextBox Style="{StaticResource BoxTextBox}" Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" Tag="{local:T 'Playlist name'}"/>
                         </StackPanel>
+                        <!-- more playlists the songs go into as well (Favorites, say) -->
+                        <StackPanel Margin="0,0,14,0">
+                            <TextBlock Text="{local:T 'Also add to'}" Style="{StaticResource FieldLabel}"/>
+                            <Button Style="{StaticResource GhostButton}" Height="38" Padding="14,0" MinWidth="150" MaxWidth="420" HorizontalAlignment="Left"
+                                    HorizontalContentAlignment="Left" Click="Also_Click" ToolTip="{local:T 'Choose more playlists to put the downloaded songs in'}"
+                                    AutomationProperties.Name="{local:T 'Also add to'}">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Text="&#xE70D;" Style="{StaticResource Glyph}" FontSize="10" Margin="12,0,0,0"
+                                               Foreground="{DynamicResource SubTextBrush}"/>
+                                    <TextBlock Text="{local:T 'Choose one or more…'}" FontWeight="Normal" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
+                                               Visibility="{Binding HasAlso, Converter={StaticResource InvBoolVis}}"/>
+                                    <TextBlock Text="{Binding AlsoText}" FontWeight="Normal" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                               Visibility="{Binding HasAlso, Converter={StaticResource BoolVis}}"/>
+                                </DockPanel>
+                            </Button>
+                        </StackPanel>
                         <!-- tags the songs get once downloaded -->
                         <StackPanel Margin="0,0,14,0">
                             <TextBlock Text="{local:T 'Song tags'}" Style="{StaticResource FieldLabel}"/>

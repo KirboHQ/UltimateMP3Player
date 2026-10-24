@@ -70,19 +70,19 @@ public static class WebImages
     }
 }
 
-// Where one request's songs go, in the original order, and the tags they get.
+// Where one request's songs go (the playlists, each in the original order) and the tags they get.
 public sealed class DownloadBatch
 {
-    public DownloadBatch(Profile profile, string? playlistId, int size, IReadOnlyList<string>? tagIds = null)
+    public DownloadBatch(Profile profile, IReadOnlyList<string>? playlistIds, int size, IReadOnlyList<string>? tagIds = null)
     {
         Profile = profile;
-        PlaylistId = playlistId;
+        PlaylistIds = playlistIds ?? Array.Empty<string>();
         Slots = new string?[size];
         TagIds = tagIds ?? Array.Empty<string>();
     }
 
     public Profile Profile { get; }
-    public string? PlaylistId { get; }
+    public IReadOnlyList<string> PlaylistIds { get; }
     public string?[] Slots { get; }
     public IReadOnlyList<string> TagIds { get; }
     // Songs of an imported pack: they go into their playlists and tags (index, library id).
@@ -95,13 +95,17 @@ public sealed class DownloadBatch
         foreach (var tag in TagIds)
             if (Profile.GetTag(tag) != null) Profile.SetTag(new[] { trackId }, tag, true);
         Placed?.Invoke(index, trackId);
-        if (PlaylistId == null || Profile.GetPlaylist(PlaylistId) is not { } pl || Profile.Contains(pl, trackId)) return;
-        int? at = null;
-        for (int j = index - 1; j >= 0 && at == null; j--)
-            if (Slots[j] is { } prev && pl.Tracks.IndexOf(prev) is int p and >= 0) at = p + 1;
-        for (int j = index + 1; j < Slots.Length && at == null; j++)
-            if (Slots[j] is { } next && pl.Tracks.IndexOf(next) is int p and >= 0) at = p;
-        Profile.AddTrack(pl, trackId, at);
+        // (a playlist deleted meanwhile is skipped)
+        foreach (var id in PlaylistIds)
+        {
+            if (Profile.GetPlaylist(id) is not { } pl || Profile.Contains(pl, trackId)) continue;
+            int? at = null;
+            for (int j = index - 1; j >= 0 && at == null; j--)
+                if (Slots[j] is { } prev && pl.Tracks.IndexOf(prev) is int p and >= 0) at = p + 1;
+            for (int j = index + 1; j < Slots.Length && at == null; j++)
+                if (Slots[j] is { } next && pl.Tracks.IndexOf(next) is int p and >= 0) at = p;
+            Profile.AddTrack(pl, trackId, at);
+        }
     }
 }
 
@@ -1018,6 +1022,14 @@ public sealed class LinkViewModel : Observable
 
     public bool ShowNewName => Equals(_playlist.Value, NewPlaylist);
 
+    // More playlists the songs go into as well (Favorites, say), ticked in a menu like the tags. Every card starts without.
+    private readonly HashSet<string> _also = new();
+    public ISet<string> AlsoIds => _also;
+    public IEnumerable<Choice> AlsoChoices => PlaylistChoices.Skip(2);
+    public string AlsoText => string.Join(", ", AlsoChoices.Where(c => _also.Contains((string)c.Value!)).Select(c => c.Label));
+    public bool HasAlso => _also.Count > 0;
+    public void OnAlsoChosen() => OnChanged(nameof(AlsoText), nameof(HasAlso));
+
     // Tags the downloaded songs get.
     private readonly HashSet<string> _tags = new();
     public ISet<string> TagIds => _tags;
@@ -1066,8 +1078,12 @@ public sealed class LinkViewModel : Observable
             var p = _main.Profile.CreatePlaylist(NewName, R.SourceUrl);
             playlistId = p.Id;
         }
-        var batch = new DownloadBatch(_main.Profile, playlistId, Items.Count, ChosenTags.Select(t => t.Id).ToList());
-        var target = playlistId != null && _main.Profile.GetPlaylist(playlistId) is { } pl ? PlaylistViewModel.DisplayName(pl) : null;
+        var ids = new List<string>();
+        if (playlistId != null) ids.Add(playlistId);
+        ids.AddRange(_also.Where(id => !ids.Contains(id)));
+        var batch = new DownloadBatch(_main.Profile, ids, Items.Count, ChosenTags.Select(t => t.Id).ToList());
+        var names = ids.Select(_main.Profile.GetPlaylist).OfType<Playlist>().Select(PlaylistViewModel.DisplayName).ToList();
+        var target = names.Count switch { 0 => "", 1 => " " + L.F("in the playlist “{0}”", names[0]), _ => " " + L.F("in {0} playlists", names.Count) };
         if (!SaveAudio)
         {
             AddToCloud(selected, batch, target);
@@ -1076,12 +1092,12 @@ public sealed class LinkViewModel : Observable
         bool video = HasVideo && WithVideo;
         _main.Host.Downloads.Add(batch, selected.Select(i => (i.Item, i.Number - 1)), video, ChosenAudio, video ? ChosenVideo : null);
         var what = selected.Count == 1 ? L.F("Downloading “{0}”", selected[0].Title) : L.F("Downloading {0} songs", selected.Count);
-        _main.Downloads.Queued(what + (target != null ? " " + L.F("in the playlist “{0}”", target) : "") + " ✓");
+        _main.Downloads.Queued(what + target + " ✓");
     }
 
-    // The songs into the library (and the playlist, with the tags) without downloading them: in the cloud, at once. One the
+    // The songs into the library (and the playlists, with the tags) without downloading them: in the cloud, at once. One the
     // library already has (saved or not) is that one; their covers come from the site in the background.
-    private void AddToCloud(List<LinkItemViewModel> selected, DownloadBatch batch, string? target)
+    private void AddToCloud(List<LinkItemViewModel> selected, DownloadBatch batch, string target)
     {
         var lib = _main.Library;
         int added = 0;
@@ -1110,7 +1126,7 @@ public sealed class LinkViewModel : Observable
             : added == selected.Count ? L.F("{0} songs added without saving them", selected.Count)
             : L.F("{0} songs added without saving them ({1} were already there)", selected.Count, selected.Count - added);
         // The card stays: the songs can be heard right away (Listen) or saved later.
-        _main.Downloads.Added(what + (target != null ? " " + L.F("in the playlist “{0}”", target) : "") + " ☁");
+        _main.Downloads.Added(what + target + " ☁");
     }
 
     private void Listen()

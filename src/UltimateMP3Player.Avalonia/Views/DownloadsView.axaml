@@ -76,6 +76,21 @@
                             <TextBlock Text="{local:T 'New playlist name'}" Classes="field-label"/>
                             <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding NewName}" Watermark="{local:T 'Playlist name'}"/>
                         </StackPanel>
+                        <!-- more playlists the songs go into as well (Favorites, say) -->
+                        <StackPanel Margin="0,0,14,0">
+                            <TextBlock Text="{local:T 'Also add to'}" Classes="field-label"/>
+                            <Button Classes="also" Theme="{StaticResource GhostButton}" Height="38" Padding="14,0" MinWidth="150" MaxWidth="420" HorizontalAlignment="Left"
+                                    HorizontalContentAlignment="Left" ToolTip.Tip="{local:T 'Choose more playlists to put the downloaded songs in'}">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Text="{local:Icon E70D}" Classes="glyph" FontSize="10" Margin="12,0,0,0"
+                                               Foreground="{DynamicResource SubTextBrush}"/>
+                                    <TextBlock Text="{local:T 'Choose one or more…'}" FontWeight="Normal" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
+                                               IsVisible="{Binding !HasAlso}"/>
+                                    <TextBlock Text="{Binding AlsoText}" FontWeight="Normal" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding HasAlso}"/>
+                                </DockPanel>
+                            </Button>
+                        </StackPanel>
                         <!-- tags the songs get once downloaded -->
                         <StackPanel Margin="0,0,14,0">
                             <TextBlock Text="{local:T 'Song tags'}" Classes="field-label"/>

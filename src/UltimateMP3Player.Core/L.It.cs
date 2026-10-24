@@ -2051,5 +2051,17 @@ public static partial class L
         ["with times"] = "con i tempi",
         ["without times"] = "senza tempi",
         ["{0} s off the song: the times may not match"] = "{0} s di differenza dal brano: i tempi potrebbero non coincidere",
+        // Albums and playlists in the search, more playlists for a download
+        ["Album"] = "Album",
+        ["Playlist"] = "Playlist",
+        ["Albums by {0}"] = "Album di {0}",
+        ["Open it to choose its songs and the playlist to save them in"] = "Aprila per scegliere i brani e la playlist in cui salvarli",
+        ["Also add to"] = "Aggiungi anche a",
+        ["Choose one or more…"] = "Scegline una o più…",
+        ["Tick as many as you like"] = "Spunta tutte quelle che vuoi",
+        ["Copy link"] = "Copia link",
+        ["Albums and playlists"] = "Album e playlist",
+        ["Choose more playlists to put the downloaded songs in"] = "Scegli altre playlist in cui mettere i brani scaricati",
+        ["in {0} playlists"] = "in {0} playlist",
     };
 }

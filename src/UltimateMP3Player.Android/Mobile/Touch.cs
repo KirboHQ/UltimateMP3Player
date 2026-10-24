@@ -14,7 +14,8 @@ public static class Touch
 {
     public static readonly AttachedProperty<ICommand?> TapProperty = AvaloniaProperty.RegisterAttached<Control, ICommand?>("Tap", typeof(Touch));
     public static readonly AttachedProperty<object?> TapParameterProperty = AvaloniaProperty.RegisterAttached<Control, object?>("TapParameter", typeof(Touch));
-    // "track" (a song of a list), "card" (a song card), "playlist", "tag", "queue" (a song of "next up"), "current" (the song playing).
+    // "track" (a song of a list), "card" (a song card), "hit" (a song found online), "playlist", "tag", "queue" (a song of "next up"),
+    // "current" (the song playing).
     public static readonly AttachedProperty<string?> MenuProperty = AvaloniaProperty.RegisterAttached<Control, string?>("Menu", typeof(Touch));
 
     public static ICommand? GetTap(Control c) => c.GetValue(TapProperty);

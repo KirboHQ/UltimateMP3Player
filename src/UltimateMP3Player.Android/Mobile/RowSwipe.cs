@@ -15,12 +15,13 @@ public sealed partial class RowSwipe
     {
         Control? row = null;
         for (var v = source; v != null && row == null; v = v.GetVisualParent())
-            if (v is Control c && Touch.GetMenu(c) == "track") row = c;
+            if (v is Control c && Touch.GetMenu(c) is "track" or "hit") row = c;
         if (row == null || Selection.Of(row) is { IsActive: true } || row.FindAncestorOfType<SongList>() is { Reordering: true }) return null;
         var run = row.DataContext switch
         {
             SongItem s => Menus.AddToQueue(s.Track, s.Row.Owner),
             TrackRow r => Menus.AddToQueue(r.Track, r.Owner),
+            OnlineHitViewModel h => h.QueueAction,
             _ => null,
         };
         return run != null ? (row, run) : null;

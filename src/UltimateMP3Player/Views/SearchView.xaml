@@ -149,11 +149,68 @@
             </DockPanel>
 
             <ListBox Grid.Row="1" Style="{StaticResource PlainList}" ItemsSource="{Binding OnlineHits}" AutomationProperties.Name="{local:T 'Online results'}">
-                <ListBox.ItemTemplate>
+                <ListBox.Resources>
+                    <!-- the playlist named as the words: a big card first, so it's clear it's a whole playlist -->
+                    <DataTemplate DataType="{x:Type vm:FeaturedHitViewModel}">
+                        <Button x:Name="RowButton" Style="{StaticResource HitRow}" Command="{Binding DownloadCommand}" Margin="0,0,0,8"
+                                AutomationProperties.Name="{Binding Title}"
+                                ToolTip="{local:T 'Open it to choose its songs and the playlist to save them in'}" ToolTipService.InitialShowDelay="1200">
+                            <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}">
+                                <Grid local:Marquee.Host="True">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Width="112" Height="112">
+                                        <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}">
+                                            <TextBlock Text="&#xE8FD;" Style="{StaticResource Glyph}" FontSize="30" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                                        </Border>
+                                        <Border CornerRadius="8">
+                                            <Border.Background>
+                                                <ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/>
+                                            </Border.Background>
+                                        </Border>
+                                    </Grid>
+                                    <StackPanel Grid.Column="1" Margin="20,0,12,0" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE8FD;" Style="{StaticResource Glyph}" FontSize="12" Foreground="{DynamicResource AccentTextBrush}"/>
+                                            <TextBlock Text="{Binding Kind}" FontSize="12.5" FontWeight="Bold" Margin="7,0,0,0" Foreground="{DynamicResource AccentTextBrush}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="Bold" Margin="0,4,0,6" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Service}" FontSize="12.5" Margin="6,0,10,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Details}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <Border x:Name="Get" Grid.Column="2" CornerRadius="17" Height="34" Padding="16,0" Margin="14,0,4,0" VerticalAlignment="Center"
+                                            Background="{DynamicResource Surface3Brush}">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock x:Name="GetIcon" Text="&#xE896;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"/>
+                                            <TextBlock x:Name="GetText" Text="{local:T 'Download|verb'}" FontSize="13" FontWeight="SemiBold" Margin="8,0,0,0"
+                                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </Button>
+                        <DataTemplate.Triggers>
+                            <Trigger SourceName="RowButton" Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Card" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+                                <Setter TargetName="Get" Property="Background" Value="{DynamicResource AccentGradient}"/>
+                                <Setter TargetName="GetIcon" Property="Foreground" Value="{DynamicResource OnAccentBrush}"/>
+                                <Setter TargetName="GetText" Property="Foreground" Value="{DynamicResource OnAccentBrush}"/>
+                            </Trigger>
+                        </DataTemplate.Triggers>
+                    </DataTemplate>
                     <DataTemplate DataType="{x:Type vm:OnlineHitViewModel}">
                         <Button x:Name="RowButton" Style="{StaticResource HitRow}" Command="{Binding DownloadCommand}"
+                                PreviewMouseLeftButtonDown="Hit_MouseDown" PreviewMouseMove="Hit_MouseMove" MouseRightButtonUp="Hit_RightClick"
                                 ToolTip="{local:T 'Open it to download it: choose the playlist and press Download'}" ToolTipService.InitialShowDelay="1200">
-                            <Grid local:Marquee.Host="True">
+                            <Grid x:Name="Row" local:Marquee.Host="True">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
                                     <ColumnDefinition Width="*"/>
@@ -211,7 +268,7 @@
                             </Trigger>
                         </DataTemplate.Triggers>
                     </DataTemplate>
-                </ListBox.ItemTemplate>
+                </ListBox.Resources>
             </ListBox>
 
             <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" MaxWidth="460"

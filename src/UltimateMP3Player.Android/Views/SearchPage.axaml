@@ -6,6 +6,15 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <UserControl.Styles>
+        <!-- the card of the playlist named as the words, darker while pressed (its colour from a style: one set on it would win) -->
+        <Style Selector="Border.featured">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        </Style>
+        <Style Selector="Border.featured:pressed">
+            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+        </Style>
+    </UserControl.Styles>
     <!-- while choosing several things: the bar with what to do sits under the page (the last rows stay reachable) -->
     <Grid RowDefinitions="*,Auto">
     <DockPanel>
@@ -95,9 +104,36 @@
                 </StackPanel>
                 <Panel>
                     <ListBox Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}" ItemsSource="{Binding OnlineHits}">
-                        <ListBox.ItemTemplate>
+                        <ListBox.DataTemplates>
+                            <!-- the playlist named as the words: a big card first, so it's clear it's a whole playlist (before the rows: it's one of them too) -->
+                            <DataTemplate DataType="vm:FeaturedHitViewModel">
+                                <Border Classes="featured" Margin="12,2,12,10" Padding="12" CornerRadius="14" views:Touch.Tap="{Binding DownloadCommand}">
+                                    <Grid ColumnDefinitions="96,*">
+                                        <Panel Width="96" Height="96">
+                                            <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}">
+                                                <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="26" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                                            </Border>
+                                            <views:CoverImage CornerRadius="8" Source="{Binding Thumb}"/>
+                                        </Panel>
+                                        <StackPanel Grid.Column="1" Margin="14,0,4,0" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="12" Foreground="{DynamicResource AccentTextBrush}"/>
+                                                <TextBlock Text="{Binding Kind}" FontSize="12.5" FontWeight="Bold" Margin="6,0,0,0" Foreground="{DynamicResource AccentTextBrush}"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontSize="19" FontWeight="Bold" Margin="0,3,0,4" TextWrapping="Wrap" MaxLines="2"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Service}" FontSize="12" Margin="6,0,8,0" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Details}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
                             <DataTemplate DataType="vm:OnlineHitViewModel">
-                                <Border Classes="row" Padding="16,7,12,7" views:Touch.Tap="{Binding DownloadCommand}">
+                                <Border Classes="row" Padding="16,7,12,7" views:Touch.Tap="{Binding DownloadCommand}" views:Touch.Menu="hit">
                                     <Grid ColumnDefinitions="52,*,Auto">
                                         <Panel Width="52" Height="52">
                                             <Border CornerRadius="6" Background="{DynamicResource PlaceholderGradient}">
@@ -126,7 +162,7 @@
                                     </Grid>
                                 </Border>
                             </DataTemplate>
-                        </ListBox.ItemTemplate>
+                        </ListBox.DataTemplates>
                     </ListBox>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Top" Margin="28,40,28,0" IsVisible="{Binding NoOnlineResults}">
                         <TextBlock Text="{Binding NoOnlineText}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>

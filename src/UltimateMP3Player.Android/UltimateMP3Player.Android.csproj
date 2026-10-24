@@ -20,9 +20,9 @@
     <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
     <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
     <!-- Keep equal to the other projects; the version code is 3.6.0 → 30600, the same in every processor's package. -->
-    <Version>4.0.3</Version>
-    <ApplicationDisplayVersion>4.0.3</ApplicationDisplayVersion>
-    <ApplicationVersion>40003</ApplicationVersion>
+    <Version>4.0.4</Version>
+    <ApplicationDisplayVersion>4.0.4</ApplicationDisplayVersion>
+    <ApplicationVersion>40004</ApplicationVersion>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>

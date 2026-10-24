@@ -79,10 +79,17 @@ public sealed class RowSwipe
 
     private static Brush Res(string key) => (Brush)Application.Current.Resources[key];
 
-    // A song's row (the lists' template, named "Row"), and what letting it go does; null where there's nothing to queue.
+    // A song's row (the lists' template, or a song found online, named "Row"), and what letting it go does; null where
+    // there's nothing to queue.
     private static RowSwipe? Create(FrameworkElement row)
     {
-        if (row.DataContext is not TrackRow r || Menus.AddToQueue(r.Track, r.Owner) is not { } run) return null;
+        var run = row.DataContext switch
+        {
+            TrackRow r => Menus.AddToQueue(r.Track, r.Owner),
+            OnlineHitViewModel h => h.QueueAction,
+            _ => null,
+        };
+        if (run == null) return null;
         if (VisualTreeHelper.GetParent(row) is not UIElement host || AdornerLayer.GetAdornerLayer(host) is not { } layer) return null;
         return new RowSwipe(row, run, host, layer);
     }
@@ -304,7 +311,7 @@ public sealed class RowSwipe
     {
         while (d != null)
         {
-            if (d is FrameworkElement { Name: "Row", DataContext: TrackRow } row) return row;
+            if (d is FrameworkElement { Name: "Row", DataContext: TrackRow or OnlineHitViewModel } row) return row;
             d = d is Visual ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
         }
         return null;
