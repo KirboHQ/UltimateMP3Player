@@ -357,7 +357,7 @@ public static class MusicMatcher
         var candidates = new List<(string Id, string Title, int Rank)>();
         try
         {
-            var music = await YtDlp.SearchMusicAsync(query, 5, cookies, ct);
+            var music = await SearchMusicAsync(query, cookies, ct);
             candidates = music.Select((r, i) => (r.Id, r.Title, i)).OrderByDescending(c => ResultScore(item.Title, artist, c.Title, c.i)).ToList();
         }
         catch (EngineException) { }
@@ -390,6 +390,18 @@ public static class MusicMatcher
 
     private const double MinScore = 0.3;
 
+    // YouTube Music's "Songs" results over HTTP (half a second, not a yt-dlp started for each song); yt-dlp's when that fails.
+    private static async Task<List<(string Id, string Title)>> SearchMusicAsync(string query, string? cookies, CancellationToken ct)
+    {
+        try
+        {
+            var hits = await OnlineSearchServices.MatchCandidatesAsync(query, 5, ct);
+            if (hits.Count > 0) return hits.Select(h => (h.Url[(h.Url.IndexOf("v=") + 2)..], h.Title)).ToList();
+        }
+        catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or JsonException or OperationCanceledException) { }
+        return await YtDlp.SearchMusicAsync(query, 5, cookies, ct);
+    }
+
     // Written in different alphabets ("Racing Into The Night" and "夜に駆ける"): their words can't be compared.
     private static bool OtherScript(string a, string b) => HasLatin(a) != HasLatin(b);
     private static bool HasLatin(string s) => s.Any(c => c < (char)0x250 && char.IsLetter(c));
@@ -419,7 +431,7 @@ public static class MusicMatcher
         var query = $"{artist} {item.Title}".Trim();
         bool Close(double? duration) => item.Duration is not > 0 || duration is not > 0 || Math.Abs(item.Duration.Value - duration.Value) <= 8;
 
-        var music = await YtDlp.SearchMusicAsync(query, 5, cookies, ct);
+        var music = await SearchMusicAsync(query, cookies, ct);
         foreach (var (id, score) in music.Select((r, i) => (r.Id, TitleScore(item.Title, artist, r.Title) - i * 0.05)).OrderByDescending(c => c.Item2).Take(3))
         {
             if (score < 0.6) continue;

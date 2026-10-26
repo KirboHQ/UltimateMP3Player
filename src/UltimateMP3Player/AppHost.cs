@@ -337,6 +337,9 @@ public sealed class AppHost : Observable
 
     public void OnSeek() => UpdateTimeline(true);
 
+    // Joined, left, someone came or went: Discord shows the room's size.
+    public void OnRoomChanged() => UpdateTimeline(true);
+
     private void UpdateTimeline(bool force)
     {
         var p = Session?.Player;
@@ -346,7 +349,8 @@ public sealed class AppHost : Observable
         if (p?.Current != null) Media.SetTimeline(p.EnginePosition, duration);
         // Discord runs its bar on the clock: at another speed the song lasts that much more or less.
         double speed = p?.Speed is > 0 and var s ? s : 1;
-        Presence.Update(p?.Current?.T, p?.IsPlaying == true, (p?.EnginePosition ?? TimeSpan.Zero) / speed, duration / speed);
+        var room = Session is { InRoom: true, Together: var t } ? new DiscordPresence.Room(t.RoomId, t.RoomName, t.MemberCount, t.RoomMax) : null;
+        Presence.Update(p?.Current?.T, p?.IsPlaying == true, (p?.EnginePosition ?? TimeSpan.Zero) / speed, duration / speed, room);
     }
 
     public void SetDiscordPresence(bool on)

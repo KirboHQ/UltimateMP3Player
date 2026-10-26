@@ -81,15 +81,22 @@ public sealed class DownloadBatch
         TagIds = tagIds ?? Array.Empty<string>();
     }
 
+    public string Id { get; } = Ids.New();
     public Profile Profile { get; }
     public IReadOnlyList<string> PlaylistIds { get; }
     public string?[] Slots { get; }
     public IReadOnlyList<string> TagIds { get; }
     // Songs of an imported pack: they go into their playlists and tags (index, library id).
     public Action<int, string>? Placed { get; init; }
+    // What the small panel calls it when it has several songs (a playlist's name), and the playlist made for it (a canceled
+    // download takes it away again).
+    public string? Title { get; init; }
+    public string? NewPlaylist { get; init; }
+    public bool Canceled { get; set; }
 
     public void Place(int index, string trackId)
     {
+        if (Canceled) return;
         Slots[index] = trackId;
         // A tag deleted meanwhile is skipped.
         foreach (var tag in TagIds)
@@ -157,6 +164,9 @@ public sealed class DownloadJobViewModel : Observable
     // Saving a song of the library that's in the cloud (its audio onto the device).
     public bool IsSave => AttachTo != null && !VideoOnly && !Replace;
     public Track? Result { get; private set; }
+    public TrackOutcome? Outcome { get; private set; }
+    // It brought something into the library (a new song, or the audio of one in the cloud): what canceling its group takes back.
+    public bool Brought => Outcome is TrackOutcome.Downloaded or TrackOutcome.Saved;
     private IReadOnlyList<string>? _originalKeys;
     // Its own link didn't work: the same song found on YouTube instead (once, by itself, for a song being saved).
     private bool _foundElsewhere;
@@ -321,6 +331,15 @@ public sealed class DownloadJobViewModel : Observable
                 return TrackDownloader.RunAsync(_queue.Host.Library, req, p => ui.BeginInvoke(() => Apply(p)), ct);
             }, ct);
             Result = res.Track;
+            Outcome = res.Outcome;
+            // Its group was canceled while it was finishing: what it brought goes away like the others'.
+            if (Batch.Canceled)
+            {
+                State = JobState.Canceled;
+                StatusText = L.T("Canceled");
+                _ = _queue.TakeBackAsync(new[] { this });
+                return;
+            }
             Batch.Place(Index, res.Track.Id);
             // A quality chosen on the card stays the song's own, for its next downloads (and for hearing it from the cloud).
             if (!Replace && (AudioQuality != null || VideoRes != null) && _queue.Host.Library.Get(res.Track.Id) is { } got)
@@ -510,6 +529,55 @@ public sealed class DownloadJobViewModel : Observable
     }
 }
 
+// The downloads asked for together (one song, or the songs of a link), as the small panel shows them on any page while they
+// go: how far they are and a button that cancels them all.
+public sealed class DownloadGroupViewModel : Observable
+{
+    private readonly DownloadQueue _queue;
+
+    public DownloadGroupViewModel(DownloadBatch batch, DownloadQueue queue)
+    {
+        Batch = batch;
+        _queue = queue;
+        CancelCommand = new RelayCommand(() => _ = queue.CancelGroupAsync(this));
+        OpenCommand = new RelayCommand(() => { if (queue.Host.Session is { } main) main.Navigate(main.Downloads); });
+    }
+
+    public DownloadBatch Batch { get; }
+    public ICommand CancelCommand { get; }
+    // The download page, with every song of it.
+    public ICommand OpenCommand { get; }
+
+    private string _title = "", _detail = "";
+    private double _percent;
+    private bool _indeterminate;
+    public string Title { get => _title; private set => Set(ref _title, value); }
+    public string Detail { get => _detail; private set => Set(ref _detail, value); }
+    public double Percent { get => _percent; private set => Set(ref _percent, value); }
+    public bool Indeterminate { get => _indeterminate; private set => Set(ref _indeterminate, value); }
+    // Songs it already brought (canceling it asks first: they go away too).
+    public int Brought { get; private set; }
+
+    internal void Refresh(List<DownloadJobViewModel> jobs)
+    {
+        Brought = jobs.Count(j => j.Brought);
+        if (jobs.Count == 1)
+        {
+            var j = jobs[0];
+            Title = j.Title;
+            Detail = j.StatusText;
+            Percent = j.IsFinished ? 100 : j.Percent;
+            Indeterminate = j.State == JobState.Queued || j.Indeterminate;
+            return;
+        }
+        int finished = jobs.Count(j => j.IsFinished), failed = jobs.Count(j => j.State == JobState.Failed);
+        Title = Batch.Title ?? L.Count(jobs.Count, "1 song", "{0} songs");
+        Detail = L.F("{0} of {1}", finished, jobs.Count) + (failed > 0 ? " · " + L.Count(failed, "1 failed", "{0} failed") : "");
+        Percent = jobs.Sum(j => j.IsFinished ? 100 : j.Percent) / jobs.Count;
+        Indeterminate = false;
+    }
+}
+
 // All downloads; they survive profile switches and closing.
 public sealed class DownloadQueue : Observable
 {
@@ -547,6 +615,7 @@ public sealed class DownloadQueue : Observable
         });
         Jobs.CollectionChanged += (_, _) => { if (!_adding) Notify(); };
         _tick.Tick += (_, _) => Pump();
+        _groupTick.Tick += (_, _) => RefreshGroups();
     }
 
     public AppHost Host { get; }
@@ -706,7 +775,8 @@ public sealed class DownloadQueue : Observable
         int limit = Math.Clamp(Host.Settings.MaxParallel, 1, 6);
         int running = Jobs.Count(j => j.State == JobState.Running);
         bool waiting = false;
-        foreach (var j in Jobs.Where(j => j.State == JobState.Queued).ToList())
+        // (a group being canceled: its songs are leaving, none starts meanwhile)
+        foreach (var j in Jobs.Where(j => j.State == JobState.Queued && !j.Batch.Canceled).ToList())
         {
             if (running >= limit) break;
             var service = j.Service;
@@ -810,8 +880,83 @@ public sealed class DownloadQueue : Observable
         }
     }
 
-    private void Notify() => OnChanged(nameof(HasActive), nameof(HasJobs), nameof(HasDone), nameof(HasFailed), nameof(ActiveCount), nameof(Summary),
-        nameof(HasFailedForYouTube), nameof(IsThrottled), nameof(ThrottleText));
+    private void Notify()
+    {
+        OnChanged(nameof(HasActive), nameof(HasJobs), nameof(HasDone), nameof(HasFailed), nameof(ActiveCount), nameof(Summary),
+            nameof(HasFailedForYouTube), nameof(IsThrottled), nameof(ThrottleText));
+        RefreshGroups();
+    }
+
+    // ------------------------------------------------------------------ groups (the small panel, the phone's notification)
+
+    // (the bars move twice a second: following every line of yt-dlp would redraw the panel for nothing)
+    private readonly DispatcherTimer _groupTick = new() { Interval = TimeSpan.FromMilliseconds(500) };
+
+    // The groups with something still to download, the oldest first.
+    public ObservableCollection<DownloadGroupViewModel> Groups { get; } = new();
+    public bool HasGroups => Groups.Count > 0;
+    public event Action? GroupsRefreshed;
+
+    private void RefreshGroups()
+    {
+        var byBatch = new Dictionary<DownloadBatch, List<DownloadJobViewModel>>();
+        foreach (var j in Jobs)
+        {
+            if (!byBatch.TryGetValue(j.Batch, out var list)) byBatch[j.Batch] = list = new();
+            list.Add(j);
+        }
+        bool had = HasGroups;
+        foreach (var g in Groups.Where(g => !byBatch.TryGetValue(g.Batch, out var l) || !l.Any(j => j.IsActive)).ToList()) Groups.Remove(g);
+        foreach (var (batch, list) in byBatch)
+            if (list.Any(j => j.IsActive) && !Groups.Any(g => g.Batch == batch)) Groups.Add(new DownloadGroupViewModel(batch, this));
+        foreach (var g in Groups) g.Refresh(byBatch[g.Batch]);
+        if (HasGroups) _groupTick.Start();
+        else _groupTick.Stop();
+        if (had != HasGroups) OnChanged(nameof(HasGroups));
+        GroupsRefreshed?.Invoke();
+    }
+
+    // The phone's notification: its Cancel asks in the app when the group has songs to take away, otherwise it cancels at once
+    // (a song done in the second before goes too).
+    public void CancelGroup(string id, bool ask = false)
+    {
+        if (Groups.FirstOrDefault(g => g.Batch.Id == id) is { } g) _ = CancelGroupAsync(g, ask);
+    }
+
+    // A group canceled: what's still to download stops, and the songs it already brought go away again, as if it had never
+    // started (the new ones out of the library, the ones saved from the cloud back in the cloud; the ones that were already
+    // there stay). The playlist made for it goes too. Asked first when there are songs to take away.
+    public async Task CancelGroupAsync(DownloadGroupViewModel group, bool ask = true)
+    {
+        var batch = group.Batch;
+        if (batch.Canceled) return;
+        int done = Jobs.Count(j => j.Batch == batch && j.Brought);
+        if (ask && done > 0 && !await Dialogs.ConfirmAsync(L.F("Stop downloading “{0}”?", group.Title),
+                L.Count(done, "The song already downloaded will be removed too.", "The {0} songs already downloaded will be removed too."),
+                L.T("Stop and remove"), true))
+            return;
+        if (batch.Canceled) return;
+        batch.Canceled = true;
+        // Taken after the question: the songs that finished while it was open go too.
+        var jobs = Jobs.Where(j => j.Batch == batch).ToList();
+        var brought = jobs.Where(j => j.Brought).ToList();
+        Remove(jobs);
+        if (brought.Count > 0) await TakeBackAsync(brought);
+        // Even with the songs that were already in the library in it: it was made for this download.
+        if (batch.NewPlaylist is { } id && batch.Profile.GetPlaylist(id) is { } pl) batch.Profile.DeletePlaylist(pl);
+        if (brought.Count == 0) Host.Session?.Toast(L.F("“{0}” canceled", group.Title));
+    }
+
+    internal async Task TakeBackAsync(IReadOnlyList<DownloadJobViewModel> jobs)
+    {
+        if (Host.Session is not { } main) return;
+        List<TrackViewModel> Songs(TrackOutcome o) => jobs.Where(j => j.Outcome == o && j.Result != null).Select(j => Host.Library.Get(j.Result!.Id))
+            .OfType<Track>().Distinct().Select(main.Vm).ToList();
+        var added = Songs(TrackOutcome.Downloaded);
+        var saved = Songs(TrackOutcome.Saved);
+        if (added.Count > 0) await main.RemoveNow(added, RemoveKind.Everything);
+        if (saved.Count > 0) await main.RemoveFromDevice(saved);
+    }
 }
 
 public sealed class LinkItemViewModel : Observable
@@ -1071,17 +1216,22 @@ public sealed class LinkViewModel : Observable
     {
         var selected = Items.Where(i => i.IsSelected).ToList();
         if (selected.Count == 0) return;
-        string? playlistId = _playlist.Value as string;
+        string? playlistId = _playlist.Value as string, created = null;
         if (playlistId == NoPlaylist) playlistId = null;
         else if (playlistId == NewPlaylist)
         {
-            var p = _main.Profile.CreatePlaylist(NewName, R.SourceUrl);
-            playlistId = p.Id;
+            // (a list of songs has no link of its own)
+            var p = _main.Profile.CreatePlaylist(NewName, R.SourceUrl.Length > 0 ? R.SourceUrl : null);
+            playlistId = created = p.Id;
         }
         var ids = new List<string>();
         if (playlistId != null) ids.Add(playlistId);
         ids.AddRange(_also.Where(id => !ids.Contains(id)));
-        var batch = new DownloadBatch(_main.Profile, ids, Items.Count, ChosenTags.Select(t => t.Id).ToList());
+        var batch = new DownloadBatch(_main.Profile, ids, Items.Count, ChosenTags.Select(t => t.Id).ToList())
+        {
+            Title = selected.Count == 1 ? null : Title,
+            NewPlaylist = created,
+        };
         var names = ids.Select(_main.Profile.GetPlaylist).OfType<Playlist>().Select(PlaylistViewModel.DisplayName).ToList();
         var target = names.Count switch { 0 => "", 1 => " " + L.F("in the playlist “{0}”", names[0]), _ => " " + L.F("in {0} playlists", names.Count) };
         if (!SaveAudio)
@@ -1100,11 +1250,17 @@ public sealed class LinkViewModel : Observable
     private void AddToCloud(List<LinkItemViewModel> selected, DownloadBatch batch, string target)
     {
         var lib = _main.Library;
-        int added = 0;
+        int added = 0, noLink = 0;
         foreach (var it in selected)
         {
             var item = it.Item;
             var t = lib.FindByKeys(SourceKeys.ForItem(item)) ?? (item.Source == SourceKind.Search ? lib.FindSimilar(item.Title, item.Artist, item.Duration) : null);
+            // A song of a list found nowhere by its name has no link to be heard from: only saving it searches for it.
+            if (t == null && string.IsNullOrEmpty(item.PageUrl ?? item.Url))
+            {
+                noLink++;
+                continue;
+            }
             if (t == null)
             {
                 t = CloudSongs.FromItem(item);
@@ -1122,9 +1278,15 @@ public sealed class LinkViewModel : Observable
             it.InLibrary = true;
         }
         OnChanged(nameof(Subtitle), nameof(AlreadyCount));
+        int n = selected.Count - noLink;
         var what = selected.Count == 1 ? L.F("“{0}” added without saving it", selected[0].Title)
-            : added == selected.Count ? L.F("{0} songs added without saving them", selected.Count)
-            : L.F("{0} songs added without saving them ({1} were already there)", selected.Count, selected.Count - added);
+            : added == n ? L.F("{0} songs added without saving them", n)
+            : L.F("{0} songs added without saving them ({1} were already there)", n, n - added);
+        if (noLink > 0)
+        {
+            var missing = L.Count(noLink, "1 song has no link: save it to have it", "{0} songs have no link: save them to have them");
+            what = n == 0 ? missing : what + " · " + missing;
+        }
         // The card stays: the songs can be heard right away (Listen) or saved later.
         _main.Downloads.Added(what + target + " ☁");
     }
@@ -1165,6 +1327,7 @@ public sealed class DownloadsPageViewModel : Observable
         TryYouTubeCommand = new RelayCommand(() => _ = AnalyzeOnYouTubeAsync(_lastUrl));
         // (shown when the link needs a login: the settings open on the browser's cookies)
         OpenSettingsCommand = new RelayCommand(() => _main.SearchSettings("cookie"));
+        ImportListCommand = new RelayCommand(() => _ = PickListAsync());
         Queue.PropertyChanged += OnQueueChanged;
     }
 
@@ -1189,6 +1352,8 @@ public sealed class DownloadsPageViewModel : Observable
     public ICommand OpenSettingsCommand { get; }
     // The link's site won't give it (DRM, removed, private): the same song searched on YouTube Music.
     public ICommand TryYouTubeCommand { get; }
+    // A file with a list of songs (a playlist exported from Apple Music, iTunes, Exportify...).
+    public ICommand ImportListCommand { get; }
 
     private bool _canTryYouTube;
     public bool CanTryYouTube { get => _canTryYouTube; private set => Set(ref _canTryYouTube, value); }
@@ -1305,6 +1470,61 @@ public sealed class DownloadsPageViewModel : Observable
             SuggestCookies = false;
             ErrorHint = null;
             Error = L.T("Unexpected error:") + " " + ex.Message;
+        }
+        finally
+        {
+            if (_cts == cts) IsAnalyzing = false;
+        }
+    }
+
+    private async Task PickListAsync()
+    {
+        var file = await Dialogs.PickFileAsync(L.T("Import a list of songs"), (L.T("Lists of songs"), new[] { ".txt", ".csv", ".m3u", ".m3u8", ".xml" }));
+        if (file == null) return;
+        string text;
+        try { text = await File.ReadAllTextAsync(file); }
+        catch (Exception ex)
+        {
+            Link = null;
+            Error = ex.Message;
+            return;
+        }
+        await ImportListAsync(text, Path.GetFileNameWithoutExtension(file));
+    }
+
+    // A list of songs (pasted, or from a file): one card with all of them, like a playlist's link. name: the file's.
+    public async Task ImportListAsync(string text, string? name = null)
+    {
+        _cts?.Cancel();
+        var cts = _cts = new CancellationTokenSource();
+        _lastUrl = "";
+        IsAnalyzing = true;
+        AnalyzingText = L.T("Reading the list…");
+        Error = null;
+        ErrorHint = null;
+        SuggestCookies = false;
+        CanTryYouTube = false;
+        Link = null;
+        try
+        {
+            var entries = ListImport.Parse(text);
+            if (entries.Count == 0) throw new EngineException(L.T("No songs found in this list."));
+            if (Engines.Missing().Count > 0 && entries.Any(e => e.Url != null))
+            {
+                AnalyzingText = L.T("Preparing download engines…");
+                await _main.Host.EnsureEnginesAsync();
+            }
+            var ui = Application.Current.Dispatcher;
+            var cookies = _main.Host.Settings.CookiesBrowserOrNull;
+            var r = await Task.Run(() => ListImport.AnalyzeAsync(entries, name ?? L.T("Imported list"), cookies,
+                (done, total) => ui.BeginInvoke(() => { if (_cts == cts) AnalyzingText = L.F("Reading the list: {0} of {1}…", done, total); }), cts.Token), cts.Token);
+            if (cts.IsCancellationRequested) return;
+            Link = new LinkViewModel(r, r.Items, _main);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) when (!cts.IsCancellationRequested)
+        {
+            Error = ex is EngineException or System.Xml.XmlException ? ex.Message : L.T("Unexpected error:") + " " + ex.Message;
         }
         finally
         {

@@ -92,6 +92,7 @@ public sealed class MainViewModel : Observable
         host.Lyrics.TrackDone += OnLyricsDone;
         host.Lyrics.BatchDone += OnLyricsBatchDone;
         host.Downloads.SavingChanged += OnSaving;
+        host.Downloads.PropertyChanged += OnQueueChanged;
         if (Player.Current is { } playing) host.Lyrics.Auto(playing.T, true);
         Radio.Refresh();
     }
@@ -338,7 +339,11 @@ public sealed class MainViewModel : Observable
     public bool InRoom => _together?.InRoom == true;
     public bool CanAddToRoom => _together?.CanAdd == true;
 
-    public void OnRoomChanged() => OnChanged(nameof(InRoom), nameof(CanAddToRoom), nameof(ShowPlayerBar));
+    public void OnRoomChanged()
+    {
+        OnChanged(nameof(InRoom), nameof(CanAddToRoom), nameof(ShowPlayerBar));
+        Host.OnRoomChanged();
+    }
 
     // The DJ, another profile, another language: they can't work while in a room, so leaving it is asked first.
     public bool ConfirmLeaveRoom(string why, string action) => _together == null || _together.ConfirmLeave(why, action);
@@ -456,6 +461,12 @@ public sealed class MainViewModel : Observable
         Host.Lyrics.TrackDone -= OnLyricsDone;
         Host.Lyrics.BatchDone -= OnLyricsBatchDone;
         Host.Downloads.SavingChanged -= OnSaving;
+        Host.Downloads.PropertyChanged -= OnQueueChanged;
+    }
+
+    private void OnQueueChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(DownloadQueue.HasGroups)) OnChanged(nameof(ShowDownloadPanel));
     }
 
     // Songs deleted by another profile leave this one too.
@@ -489,7 +500,7 @@ public sealed class MainViewModel : Observable
             if (value is DjViewModel entering) entering.Enter();
             if (old is TogetherViewModel hidden) hidden.Hidden();
             if (value is TogetherViewModel shown) shown.Shown();
-            OnChanged(nameof(ShowPlayerBar));
+            OnChanged(nameof(ShowPlayerBar), nameof(ShowDownloadPanel));
             Player.UpNextVisible = value == NowPlaying;
             foreach (var p in Playlists) p.IsSelected = value is PlaylistPageViewModel pp && pp.Vm == p;
             foreach (var t in Tags) t.IsSelected = value is LibraryViewModel { Tag: { } tag } && tag == t;
@@ -719,10 +730,27 @@ public sealed class MainViewModel : Observable
     private async Task PasteLink()
     {
         var text = (await Ui.ClipboardTextAsync())?.Trim();
-        if (string.IsNullOrEmpty(text)) return;
+        if (string.IsNullOrEmpty(text) || PasteList(text)) return;
         if (LooksLikeLink(text)) StartDownload(text);
         else SearchText = text;
     }
+
+    // Pasted text that is a list of songs (several links, an exported playlist): its card on the download page. False: it isn't.
+    public bool PasteList(string? text)
+    {
+        if (!ListImport.IsList(text)) return false;
+        Navigate(Downloads);
+        _ = Downloads.ImportListAsync(text!);
+        return true;
+    }
+
+    // The small panel of the downloads going on: on every page but the one that already shows them (and the DJ's, which
+    // fills the window).
+#if ANDROID_APP || IOS_APP
+    public bool ShowDownloadPanel => Queue.HasGroups && Page is not (DownloadsPageViewModel or SearchViewModel);
+#else
+    public bool ShowDownloadPanel => Queue.HasGroups && Page is not (DownloadsPageViewModel or DjViewModel);
+#endif
 
     // ------------------------------------------------------------------ toast
 

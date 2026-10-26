@@ -49,6 +49,10 @@ public sealed class AppHost : Observable
         {
             if (e.PropertyName is nameof(DownloadQueue.Summary) or nameof(DownloadQueue.HasActive)) OnDownloadsChanged();
         };
+#if ANDROID_APP
+        // (the notification's bar follows the group's, twice a second; DownloadService shows it at most once a second)
+        Downloads.GroupsRefreshed += OnDownloadsChanged;
+#endif
         Updates = new Updater();
         Presence = new DiscordPresence();
         Lyrics = new LyricsService(this);
@@ -266,6 +270,11 @@ public sealed class AppHost : Observable
             case IncomingKind.Downloads:
                 if (Session.Page is not DownloadsPageViewModel) Session.Navigate(Session.Downloads);
                 break;
+            // The notification's Cancel on a group with songs already downloaded: asked here, they'd go too.
+            case IncomingKind.CancelDownload:
+                if (Session.Page is not DownloadsPageViewModel) Session.Navigate(Session.Downloads);
+                Downloads.CancelGroup(what.Value!, ask: true);
+                break;
         }
     }
 
@@ -306,6 +315,7 @@ public sealed class AppHost : Observable
     public void OnSeek() => UpdateTimeline(true);
 
     public void SetDiscordPresence(bool on) { }
+    public void OnRoomChanged() { }
 
     private void UpdateTimeline(bool force)
     {
@@ -320,9 +330,12 @@ public sealed class AppHost : Observable
     private void OnDownloadsChanged()
     {
 #if ANDROID_APP
-        var running = Downloads.Jobs.Where(j => j.IsRunning).ToList();
-        double? pct = running.Count == 1 && !running[0].Indeterminate ? running[0].Percent : null;
-        DownloadService.Update(Downloads.HasActive, Downloads.Summary, pct);
+        // The oldest group by its name ("Song" or "Playlist · 3 of 20"), its Cancel for that group.
+        var groups = Downloads.Groups;
+        var g = groups.FirstOrDefault();
+        var more = groups.Count > 1 ? L.Count(groups.Count - 1, "1 more download", "{0} more downloads") : null;
+        DownloadService.Update(Downloads.HasActive, g?.Title, g != null ? string.Join(" · ", new[] { g.Detail, more }.OfType<string>()) : Downloads.Summary,
+            g is { Indeterminate: false } ? g.Percent : null, g?.Batch.Id, g?.Brought > 0);
 #elif IOS_APP
         Background.Downloading(Downloads.HasActive);
 #endif
@@ -418,6 +431,6 @@ public sealed class AppHost : Observable
     }
 }
 
-public enum IncomingKind { Link, Pack, Files, Player, Downloads }
+public enum IncomingKind { Link, Pack, Files, Player, Downloads, CancelDownload }
 
 public sealed record Incoming(IncomingKind Kind, string? Value = null, List<string>? Values = null);

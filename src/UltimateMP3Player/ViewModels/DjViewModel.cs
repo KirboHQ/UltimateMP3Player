@@ -278,6 +278,41 @@ public sealed class DjDeckViewModel : Observable
         Dj.Poll();
     }
 
+    // The scrolling waveform held down is a hand on the record: the song stops under it and sounds only while it
+    // moves (DjWave says where to); let go, it goes on from there. Locked: both records move together.
+    public void Hold()
+    {
+        if (!HasTrack) return;
+        StopNudge();
+        Dj.Engine.EnsureRunning();
+        Dj.Engine.Atomically(() =>
+        {
+            Engine.Hold();
+            if (Held) Other.Engine.Hold();
+        });
+        Dj.Poll();
+    }
+
+    public void ScratchTo(double seconds)
+    {
+        if (!Engine.Scratching) return;
+        Engine.ScratchTo(seconds);
+        if (Held) Other.Engine.ScratchTo(Dj.LockedAt(this, seconds));
+    }
+
+    public void Release()
+    {
+        if (!Engine.Scratching) return;
+        Dj.Engine.Atomically(() =>
+        {
+            Engine.Release();
+            if (Held) Other.Engine.Release();
+        });
+        // (the other one exactly where the lock keeps it)
+        if (Held) Dj.MoveLocked(this, Engine.Position);
+        Dj.Poll();
+    }
+
     private double _firstBeat;
     // Where the beat grid starts (seconds of the song); every other beat follows from here and the BPM.
     public double FirstBeat { get => _firstBeat; internal set => Set(ref _firstBeat, value); }
@@ -373,7 +408,7 @@ public sealed class DjDeckViewModel : Observable
         if (!HasTrack) { Position = 0; return; }
         if (_nudge != 0) Nudging(dt);
         double engine = Engine.Position;
-        if (!Engine.Playing || Engine.Jumps != _jumps)
+        if (!Engine.Playing || Engine.Scratching || Engine.Jumps != _jumps)
         {
             _jumps = Engine.Jumps;
             Position = engine;
@@ -689,7 +724,7 @@ public sealed class DjViewModel : Observable
     public void MoveLocked(DjDeckViewModel deck, double seconds)
     {
         var other = deck.Other;
-        double otherAt = deck == A ? (seconds / A.Rate - _lockGap) * B.Rate : (seconds / B.Rate + _lockGap) * A.Rate;
+        double otherAt = LockedAt(deck, seconds);
         Engine.Atomically(() =>
         {
             deck.Engine.Seek(seconds);
@@ -697,6 +732,10 @@ public sealed class DjViewModel : Observable
         });
         Poll();
     }
+
+    // Where the other deck is when this one is at `seconds`.
+    public double LockedAt(DjDeckViewModel deck, double seconds) =>
+        deck == A ? (seconds / A.Rate - _lockGap) * B.Rate : (seconds / B.Rate + _lockGap) * A.Rate;
 
     public void StopDecks()
     {
@@ -781,23 +820,29 @@ public sealed class DjViewModel : Observable
     // Set while one deck's tempo is being copied onto the other (no ping-pong).
     public bool Linking { get; set; }
 
-    // Dragging the shared playhead: both decks move together, each at its own speed, so they stay in sync.
+    // The shared playhead held down: a hand on both records (DjDeckViewModel.Hold), each moved at its own speed so
+    // they stay in sync.
     private readonly double[] _scrubFrom = new double[2];
 
     public void BeginScrubBoth()
     {
+        Engine.EnsureRunning();
+        foreach (var d in Decks) d.StopNudge();
+        Engine.Atomically(() => { foreach (var d in Decks) d.Engine.Hold(); });
         for (int i = 0; i < 2; i++) _scrubFrom[i] = Decks[i].Engine.Position;
+        Poll();
     }
 
     public void ScrubBoth(double seconds)
     {
-        if (Locked)
-        {
-            MoveLocked(A, _scrubFrom[0] + seconds * A.Rate);
-            return;
-        }
-        for (int i = 0; i < 2; i++)
-            if (Decks[i].HasTrack) Decks[i].Engine.Seek(_scrubFrom[i] + seconds * Decks[i].Rate);
+        for (int i = 0; i < 2; i++) Decks[i].Engine.ScratchTo(_scrubFrom[i] + seconds * Decks[i].Rate);
+    }
+
+    public void EndScrubBoth()
+    {
+        if (!Decks.Any(d => d.Engine.Scratching)) return;
+        Engine.Atomically(() => { foreach (var d in Decks) d.Engine.Release(); });
+        if (Locked) MoveLocked(A, A.Engine.Position);
         Poll();
     }
 
@@ -875,7 +920,7 @@ public sealed class DjViewModel : Observable
             _shownRecord = RecordText;
             OnChanged(nameof(RecordText));
         }
-        bool moving = Decks.Append(Tapper).Any(d => d.IsPlaying || d.IsNudging);
+        bool moving = Decks.Append(Tapper).Any(d => d.IsPlaying || d.IsNudging || d.Engine.Scratching);
         Frames(_open && moving);
         // Nothing moving: the texts are checked a few times a second instead of 30 (a press of Play polls at once).
         var interval = TimeSpan.FromMilliseconds(moving || Engine.IsRecording ? 33 : 200);

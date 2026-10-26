@@ -122,9 +122,10 @@ public static class OnlineSearchServices
         return await Http.GetStringAsync(url, ct: cts.Token);
     }
 
-    private static string InnerTubeBody(string client, string version, string query, string filter) => JsonSerializer.Serialize(new
+    // local: in the app's language from Italy (the search box); otherwise as yt-dlp asks (English, the country from the address).
+    private static string InnerTubeBody(string client, string version, string query, string filter, bool local = true) => JsonSerializer.Serialize(new
     {
-        context = new { client = new { clientName = client, clientVersion = version, hl = Lang, gl = "IT" } },
+        context = new { client = local ? (object)new { clientName = client, clientVersion = version, hl = Lang, gl = "IT" } : new { clientName = client, clientVersion = version, hl = "en" } },
         query,
         @params = filter,
     });
@@ -146,10 +147,14 @@ public static class OnlineSearchServices
 
     // ------------------------------------------------------------------ YouTube Music: the "Songs" results
 
-    private static async Task<List<SearchHit>> YouTubeMusicAsync(string query, int limit, CancellationToken ct)
+    // The songs MusicMatcher picks from, as yt-dlp's search finds them (the same results, measured: its lower places change
+    // from one search to the next anyway), without starting yt-dlp for each song of a playlist.
+    public static Task<List<SearchHit>> MatchCandidatesAsync(string query, int limit, CancellationToken ct) => YouTubeMusicAsync(query, limit, ct, local: false);
+
+    private static async Task<List<SearchHit>> YouTubeMusicAsync(string query, int limit, CancellationToken ct, bool local = true)
     {
         var json = await PostJsonAsync("https://music.youtube.com/youtubei/v1/search?prettyPrint=false",
-            InnerTubeBody("WEB_REMIX", "1.20240904.01.00", query, "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D"), "https://music.youtube.com", ct);
+            InnerTubeBody("WEB_REMIX", "1.20240904.01.00", query, "EgWKAQIIAWoKEAkQBRAKEAMQBA%3D%3D", local), "https://music.youtube.com", ct);
         using var doc = JsonDocument.Parse(json);
         var hits = new List<SearchHit>();
         foreach (var row in MusicRows(doc.RootElement))

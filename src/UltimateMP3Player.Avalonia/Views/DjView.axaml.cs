@@ -56,6 +56,12 @@ public partial class DjView : UserControl
         {
             _scrubbing = false;
             e.Pointer.Capture(null);
+            (DataContext as DjViewModel)?.EndScrubBoth();
+        };
+        Both.PointerCaptureLost += (_, _) =>
+        {
+            _scrubbing = false;
+            (DataContext as DjViewModel)?.EndScrubBoth();
         };
     }
 

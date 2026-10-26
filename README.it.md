@@ -64,6 +64,10 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 - Salvi l'audio sul dispositivo, oppure aggiungi solo i brani alla libreria nel cloud e li salvi dopo
 - MP3 a 320, 256, 192 o 128 kbps o formato originale, video da 360p fino al 4K, scelti per ogni brano e ricordati;
   più download insieme
+- **Liste di brani**: incolla tanti link o righe "Artista - Titolo" insieme, oppure apri una playlist esportata da Apple
+  Music, iTunes, Exportify o un .m3u con *Importa una lista*, senza limiti sul numero di brani
+- Un pannellino mostra i download in corso da qualsiasi pagina: la sua X annulla un brano o un'intera playlist, compresi
+  i brani già scaricati; su Android anche dalla notifica
 - *Scarica di nuovo / qualità…*: un brano salvato riscaricato in un'altra qualità, al posto dei suoi file
 - Riconosce i doppioni (stessa fonte o stesso brano) e gestisce da solo i limiti dei siti: i download si mettono in
   pausa e riprendono più piano
@@ -151,6 +155,8 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 <img src="assets/readme/screens/dj.webp" width="100%" alt="Modalità DJ: due tracce con forme d'onda, BPM, mixer e crossfader">
 
 - Due tracce con forme d'onda scorrevoli e panoramica, CUE, avanti/indietro, range del tempo ±8 / 16 / 50 %, key lock
+- Tieni premuta una forma d'onda come una mano sul disco: ferma è in silenzio, muovila per lo scratch, lasciala e il
+  brano riparte
 - Un selettore dei brani per ogni traccia: libreria, playlist, tag, il brano in riproduzione o un file
 - BPM rilevati in automatico, TAP su ogni traccia (anche con il tasto T), griglia dei beat e SYNC di tempo e fase
 - Mixer con EQ a 3 bande e kill, fader dei canali e crossfader
@@ -196,7 +202,8 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 - La stessa app su Windows, Linux, macOS, Android e iPhone
 - Profili come in Chrome, ognuno con le sue playlist, i preferiti, l'equalizzatore, il colore e l'aspetto chiaro o scuro
 - Italiano e inglese, animazioni e scorrimento fluidi
-- Stato su Discord con brano, artista, copertina e barra di avanzamento
+- Stato su Discord con brano, artista, copertina e barra di avanzamento; un brano in pausa resta per 5 minuti, e in una
+  stanza di Ascolta insieme mostra quanti siete ("3 di 16")
 - Aggiornamenti automatici dalle release di GitHub; il primo avvio dopo un aggiornamento mostra le novità di ogni versione
   dalla tua in poi
 

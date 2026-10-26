@@ -257,7 +257,17 @@
     </UserControl.Resources>
 
     <Grid x:Name="Root" Margin="28,6,20,16" RowDefinitions="Auto,Auto,Auto,*">
-        <TextBlock Text="{local:T 'Download music'}" FontSize="30" FontWeight="Bold" Margin="0,0,0,16"/>
+        <DockPanel Margin="0,0,8,16">
+            <!-- a list of songs: a file exported from Apple Music, iTunes, Exportify… (pasting several links does the same) -->
+            <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" VerticalAlignment="Center" Command="{Binding ImportListCommand}"
+                    ToolTip.Tip="{local:T 'Choose a playlist exported from Apple Music, iTunes or Exportify (txt, csv, m3u, xml), with no limit on the songs. You can also paste several links at once: in the Spotify app select the songs (Ctrl+A) and copy them (Ctrl+C).'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="13"/>
+                    <TextBlock Text="{local:T 'Import a list'}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <TextBlock Text="{local:T 'Download music'}" FontSize="30" FontWeight="Bold"/>
+        </DockPanel>
 
         <!-- intro / analyzing / error / result -->
         <Panel Grid.Row="1" Margin="0,0,8,20">

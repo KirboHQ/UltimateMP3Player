@@ -36,6 +36,11 @@ public partial class MainWindow : Window
         };
         PreviewKeyDown += OnKeyDown;
         PreviewTextInput += OnTextInput;
+        // A list of songs (several links, an exported playlist) opens as one card: the box would keep only its first line.
+        DataObject.AddPastingHandler(SearchBox, (_, e) =>
+        {
+            if (e.DataObject.GetData(DataFormats.UnicodeText) is string text && Vm?.PasteList(text) == true) e.CancelCommand();
+        });
         PreviewMouseLeftButtonDown += (_, e) => SelectionBar.ClearOnOutsideClick(e.OriginalSource as DependencyObject);
         PreviewDragOver += OnDragOver;
         // Leaving one element for another is a leave followed by an over: only a real exit hides the pack overlay.

@@ -466,7 +466,7 @@
                 <views:DjWave Grid.Row="4" Deck="{Binding B}"/>
                 <!-- the shared playhead: dragging it moves both songs together (a song's own waveform moves only that one) -->
                 <Border Grid.RowSpan="5" Width="40" HorizontalAlignment="Center" CornerRadius="6" Cursor="SizeWE"
-                        MouseLeftButtonDown="Both_Down" MouseMove="Both_Move" MouseLeftButtonUp="Both_Up"
+                        MouseLeftButtonDown="Both_Down" MouseMove="Both_Move" MouseLeftButtonUp="Both_Up" LostMouseCapture="Both_Lost"
                         ToolTip="{local:T 'Drag to move both tracks together'}">
                     <Border.Style>
                         <Style TargetType="Border">

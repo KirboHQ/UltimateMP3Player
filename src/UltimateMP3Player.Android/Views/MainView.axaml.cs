@@ -77,7 +77,7 @@ public partial class MainView : UserControl
         if (rail == _rail) return;
         _rail = rail;
         Shell.ColumnDefinitions = rail ? new ColumnDefinitions("Auto,*") : new ColumnDefinitions("*");
-        foreach (var c in new Control[] { Banners, PageHost, SwipeLayer, ToastBox, Mini }) Grid.SetColumn(c, rail ? 1 : 0);
+        foreach (var c in new Control[] { Banners, PageHost, SwipeLayer, BottomStack, Mini }) Grid.SetColumn(c, rail ? 1 : 0);
         Grid.SetColumn(NavBar, 0);
         Grid.SetRow(NavBar, rail ? 0 : 3);
         Grid.SetRowSpan(NavBar, rail ? 4 : 1);

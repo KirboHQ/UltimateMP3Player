@@ -2063,5 +2063,34 @@ public static partial class L
         ["Albums and playlists"] = "Album e playlist",
         ["Choose more playlists to put the downloaded songs in"] = "Scegli altre playlist in cui mettere i brani scaricati",
         ["in {0} playlists"] = "in {0} playlist",
+        // Lists of songs imported, downloads canceled from the small panel
+        ["To get them all: in the Spotify app on the computer open the playlist, select its songs (Ctrl+A), copy them (Ctrl+C) and paste them here: they're read one by one, with no limit."] =
+            "Per averli tutti: nell'app di Spotify sul computer apri la playlist, seleziona i brani (Ctrl+A), copiali (Ctrl+C) e incollali qui: vengono letti uno per uno, senza limiti.",
+        ["To get them all: export the playlist from Apple Music on a Mac or from iTunes (File › Library › Export Playlist) and open the file with “Import a list” on the Download page."] =
+            "Per averli tutti: esporta la playlist da Apple Music sul Mac o da iTunes (File › Libreria › Esporta playlist) e apri il file con “Importa una lista” nella pagina Download.",
+        ["List"] = "Lista",
+        ["No songs found in this list."] = "Nessun brano trovato in questa lista.",
+        ["1 line of the list couldn't be read: it was left out."] = "1 riga della lista non si è potuta leggere: è stata lasciata fuori.",
+        ["{0} lines of the list couldn't be read: they were left out."] = "{0} righe della lista non si sono potute leggere: sono state lasciate fuori.",
+        ["Import a list"] = "Importa una lista",
+        ["Import a list of songs"] = "Importa una lista di brani",
+        ["Lists of songs"] = "Liste di brani",
+        ["Imported list"] = "Lista importata",
+        ["Reading the list…"] = "Lettura della lista…",
+        ["Reading the list: {0} of {1}…"] = "Lettura della lista: {0} di {1}…",
+        ["Choose a playlist exported from Apple Music, iTunes or Exportify (txt, csv, m3u, xml), with no limit on the songs. You can also paste several links at once: in the Spotify app select the songs (Ctrl+A) and copy them (Ctrl+C)."] =
+            "Scegli una playlist esportata da Apple Music, iTunes o Exportify (txt, csv, m3u, xml), senza limiti di brani. Puoi anche incollare tanti link insieme: nell'app di Spotify seleziona i brani (Ctrl+A) e copiali (Ctrl+C).",
+        ["1 song has no link: save it to have it"] = "1 brano non ha un link: salvalo per averlo",
+        ["{0} songs have no link: save them to have them"] = "{0} brani non hanno un link: salvali per averli",
+        ["Stop downloading “{0}”?"] = "Fermare il download di «{0}»?",
+        ["The song already downloaded will be removed too."] = "Verrà tolto anche il brano già scaricato.",
+        ["The {0} songs already downloaded will be removed too."] = "Verranno tolti anche i {0} brani già scaricati.",
+        ["Stop and remove"] = "Ferma e togli",
+        ["“{0}” canceled"] = "«{0}» annullato",
+        ["Cancel the download"] = "Annulla il download",
+        ["Open the downloads"] = "Apri i download",
+        ["1 more download"] = "1 altro download",
+        ["{0} more downloads"] = "altri {0} download",
+        ["Paused"] = "In pausa",
     };
 }

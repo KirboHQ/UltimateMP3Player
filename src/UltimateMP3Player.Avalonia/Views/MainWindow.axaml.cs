@@ -199,6 +199,18 @@ public partial class MainWindow : Window
             FocusManager?.ClearFocus();
             e.Handled = true;
         }
+        // A list of songs (several links, an exported playlist) opens as one card: the box would keep only its first line.
+        else if (e.Key == Key.V && (e.KeyModifiers & Command) != 0)
+        {
+            e.Handled = true;
+            _ = PasteIntoSearch();
+        }
+    }
+
+    private async Task PasteIntoSearch()
+    {
+        var text = await Ui.ClipboardTextAsync();
+        if (Vm?.PasteList(text) != true) SearchBox.Paste();
     }
 
     private void SearchFocus()

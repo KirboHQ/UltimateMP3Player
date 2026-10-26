@@ -688,6 +688,8 @@ public sealed class TogetherViewModel : Observable
     // ------------------------------------------------------------------ room: header and people
 
     public string RoomName => _s?.RoomName ?? "";
+    public string RoomId => _s?.RoomId ?? "";
+    public int RoomMax => _s?.Max ?? 0;
     public int MemberCount => _s?.Members.Count(m => !m.Away) ?? 0;
     public bool Reconnecting => _s?.Status == RoomStatus.Reconnecting;
     public string? HostName => _s?.Host?.Name;

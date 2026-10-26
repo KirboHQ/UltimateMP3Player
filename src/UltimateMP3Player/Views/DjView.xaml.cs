@@ -67,6 +67,8 @@ public partial class DjView : UserControl
 
     private void Both_Up(object sender, MouseButtonEventArgs e) => (sender as FrameworkElement)?.ReleaseMouseCapture();
 
+    private void Both_Lost(object sender, MouseEventArgs e) => (DataContext as DjViewModel)?.EndScrubBoth();
+
     // Wheel on the tempo fader: 0.1 % a notch (the knob goes the way the wheel turns: up = slower, as the fader is drawn).
     private void Tempo_Wheel(object sender, MouseWheelEventArgs e)
     {

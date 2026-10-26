@@ -14,10 +14,12 @@ public sealed class DownloadService : Service
 {
     private const int NotificationId = 2;
     private const string Channel = "downloads";
+    public const string ExtraGroup = "ump.group";
     private static DownloadService? _current;
-    // What the queue wants now (a service that starts after the downloads are over goes away at once), and its text.
-    private static bool _wanted, _starting, _showPosted, _stopPosted;
-    private static string? _summary, _shownSummary;
+    // What the queue wants now (a service that starts after the downloads are over goes away at once), and its text: the
+    // oldest group's name, how far it is, its id (Cancel cancels it; ask: songs already downloaded, the app asks first).
+    private static bool _wanted, _starting, _showPosted, _stopPosted, _ask;
+    private static string? _title, _summary, _group, _shown;
     private static double? _percent;
     private static int _shownPercent = -2;
     private static long _lastShown, _lastFailed;
@@ -45,7 +47,8 @@ public sealed class DownloadService : Service
     {
         if (intent?.Action == "ump.cancel")
         {
-            App.Host?.Downloads.CancelAll();
+            if (intent.GetStringExtra(ExtraGroup) is { } group) App.Host?.Downloads.CancelGroup(group);
+            else App.Host?.Downloads.CancelAll();
             return StartCommandResult.NotSticky;
         }
         // Started again while it was stopping: the same service carries on.
@@ -76,11 +79,14 @@ public sealed class DownloadService : Service
     // Called when the queue changes: started with the first download, the text follows (at most once a second: faster
     // ones Android drops anyway, and each is a new notification), stopped a moment after the last one (a playlist that
     // ends and the next one that starts don't take it down and up again).
-    public static void Update(bool active, string? summary, double? percent)
+    public static void Update(bool active, string? title, string? summary, double? percent, string? group, bool ask)
     {
         _wanted = active;
+        _title = title;
         _summary = summary;
         _percent = percent;
+        _group = group;
+        _ask = ask;
         if (!active)
         {
             if (_current != null && !_stopPosted)
@@ -132,12 +138,13 @@ public sealed class DownloadService : Service
     private void Show(bool front)
     {
         int pct = _percent is double p ? (int)Math.Clamp(p, 0, 100) : -1;
-        if (!front && _summary == _shownSummary && pct == _shownPercent) return;
-        _shownSummary = _summary;
+        var shown = $"{_title}\n{_summary}\n{_group}\n{_ask}";
+        if (!front && shown == _shown && pct == _shownPercent) return;
+        _shown = shown;
         _shownPercent = pct;
         _lastShown = SystemClock.ElapsedRealtime();
         // The Java objects of a notification let go at once (not when the garbage collector gets to them).
-        using var n = MakeNotification(_summary, pct);
+        using var n = MakeNotification(pct);
         try
         {
             if (front)
@@ -156,7 +163,7 @@ public sealed class DownloadService : Service
     private void StopNow()
     {
         if (_current == this) _current = null;
-        _shownSummary = null;
+        _shown = null;
         _shownPercent = -2;
         try { StopForeground(StopForegroundFlags.Remove); } catch { }
         StopSelf();
@@ -172,7 +179,7 @@ public sealed class DownloadService : Service
         m?.CreateNotificationChannel(ch);
     }
 
-    private Notification MakeNotification(string? summary, int percent)
+    private Notification MakeNotification(int percent)
     {
         if (_open == null)
         {
@@ -180,18 +187,28 @@ public sealed class DownloadService : Service
                 .PutExtra(MainActivity.ExtraOpenDownloads, true)!.AddFlags(ActivityFlags.SingleTop | ActivityFlags.NewTask)!;
             _open = PendingIntent.GetActivity(this, 20, open, PendingIntentFlags.Immutable | PendingIntentFlags.UpdateCurrent);
         }
-        if (_cancel == null)
+        // The group's Cancel: right here, or (songs already downloaded, they'd go too) in the app, which asks first. The button
+        // opens the app itself: Android doesn't let a service started by a notification's button open it.
+        _cancel?.Dispose();
+        if (_group != null && _ask)
+        {
+            using var ask = new Intent(this, typeof(MainActivity)).SetAction(Intent.ActionMain)!.AddCategory(Intent.CategoryLauncher)!
+                .PutExtra(MainActivity.ExtraCancelGroup, _group)!.AddFlags(ActivityFlags.SingleTop | ActivityFlags.NewTask)!;
+            _cancel = PendingIntent.GetActivity(this, 22, ask, PendingIntentFlags.Immutable | PendingIntentFlags.UpdateCurrent);
+        }
+        else
         {
             using var cancel = new Intent(this, typeof(DownloadService)).SetAction("ump.cancel")!;
+            if (_group != null) cancel.PutExtra(ExtraGroup, _group);
             _cancel = PendingIntent.GetService(this, 21, cancel, PendingIntentFlags.Immutable | PendingIntentFlags.UpdateCurrent);
         }
         _cancelIcon ??= Android.Graphics.Drawables.Icon.CreateWithResource(this, Resource.Drawable.ic_close);
         using var b = Build.VERSION.SdkInt >= BuildVersionCodes.O ? new Notification.Builder(this, Channel) : new Notification.Builder(this);
-        using var actionBuilder = new Notification.Action.Builder(_cancelIcon, L.T("Cancel all"), _cancel);
+        using var actionBuilder = new Notification.Action.Builder(_cancelIcon, _group != null ? L.T("Cancel") : L.T("Cancel all"), _cancel);
         using var action = actionBuilder.Build();
         b.SetSmallIcon(Resource.Drawable.ic_download)
-            .SetContentTitle(L.T("Downloading"))
-            .SetContentText(summary ?? "")
+            .SetContentTitle(_title ?? L.T("Downloading"))
+            .SetContentText(_summary ?? "")
             .SetOngoing(true)
             .SetOnlyAlertOnce(true)
             .SetShowWhen(false)

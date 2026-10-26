@@ -2,6 +2,7 @@
 //   mp3cli download <url> [--items 1,3] [--video] [--original] [--out dir] [--cookies firefox]
 //   mp3cli import <file-or-folder>
 //   mp3cli list
+//   mp3cli songlist [file]
 //   mp3cli shuffle <n> <rounds>
 using System.Diagnostics;
 using UltimateMP3Player.Core;
@@ -126,6 +127,44 @@ switch (args[0])
                 Console.WriteLine($"===== {n.VersionText} | {n.Title}");
                 foreach (var block in n.Blocks)
                     Console.WriteLine($"  {block.Kind,-8} " + string.Concat(block.Runs.Select(r => r.Bold ? $"[{r.Text}]" : r.Italic ? $"/{r.Text}/" : r.Text)));
+            }
+            return ok ? 0 : 1;
+        }
+
+    case "songlist":
+        {
+            // mp3cli songlist [file]: the parser on the exports' shapes, then (a file given) its songs read as the app reads them.
+            var spotify = ListImport.Parse("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC\r\nhttps://open.spotify.com/track/7ouMYWpwJ422jRcDASZB7P?si=x\r\n");
+            var apple = ListImport.Parse("Nome\tArtista\tCompositore\tAlbum\tDurata\nCENERE\tLazza\t\tSirio\t208\n\"Heroes\"\tDavid Bowie\t\t\"Heroes\"\t371\n");
+            var csv = ListImport.Parse("Track URI,Track Name,Artist URI(s),Artist Name(s),Album Name,Duration (ms)\n" +
+                                       "spotify:track:4uLU6hMCjMI75M1A2tKUQC,\"Never Gonna Give You Up\",x,Rick Astley,\"Whenever You Need Somebody\",213573\n");
+            var m3u = ListImport.Parse("#EXTM3U\n#EXTINF:208,Lazza - CENERE\nC:\\Music\\cenere.mp3\n/sdcard/Music/Bowie - Heroes.mp3\n");
+            var plain = ListImport.Parse("1. Lazza - CENERE (3:28)\nDavid Bowie – Heroes\n\n# comment\nsolo un titolo\n");
+            var xml = ListImport.Parse("<?xml version=\"1.0\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">" +
+                "<plist version=\"1.0\"><dict><key>Tracks</key><dict><key>7</key><dict><key>Track ID</key><integer>7</integer><key>Name</key><string>CENERE</string>" +
+                "<key>Artist</key><string>Lazza</string><key>Total Time</key><integer>208000</integer></dict><key>9</key><dict><key>Name</key><string>Heroes</string></dict></dict>" +
+                "<key>Playlists</key><array><dict><key>Name</key><string>x</string><key>Playlist Items</key><array><dict><key>Track ID</key><integer>9</integer></dict>" +
+                "<dict><key>Track ID</key><integer>7</integer></dict></array></dict></array></dict></plist>");
+            bool ok = spotify.Count == 2 && spotify[1].Url!.EndsWith("?si=x") &&
+                      apple is [{ Title: "CENERE", Artist: "Lazza", Album: "Sirio", Duration: 208 }, { Title: "\"Heroes\"" }] &&
+                      csv is [{ Title: "Never Gonna Give You Up", Artist: "Rick Astley", SpotifyId: "4uLU6hMCjMI75M1A2tKUQC", Url: null }] && Math.Abs(csv[0].Duration!.Value - 213.573) < 0.01 &&
+                      m3u is [{ Title: "CENERE", Artist: "Lazza", Duration: 208 }, { Title: "Heroes", Artist: "Bowie" }] &&
+                      plain is [{ Title: "CENERE", Artist: "Lazza", Duration: 208 }, { Title: "Heroes", Artist: "David Bowie" }, { Title: "solo un titolo", Artist: null }] &&
+                      xml is [{ Title: "Heroes" }, { Title: "CENERE", Duration: 208 }] &&
+                      ListImport.IsList("a - b\nc - d") && !ListImport.IsList("https://youtu.be/x") && !ListImport.IsList("ciao\ncome stai") &&
+                      ListImport.IsList("https://youtu.be/a\nhttps://youtu.be/b");
+            Console.WriteLine("parser: " + (ok ? "ok" : "SBAGLIATO"));
+            if (!ok)
+                foreach (var e in spotify.Concat(apple).Concat(csv).Concat(m3u).Concat(plain).Concat(xml)) Console.WriteLine("  " + e);
+            if (args.Length > 1)
+            {
+                var entries = ListImport.Parse(await File.ReadAllTextAsync(args[1]));
+                Console.WriteLine($"{entries.Count} lines");
+                var read = await ListImport.AnalyzeAsync(entries, Path.GetFileNameWithoutExtension(args[1]), Opt("--cookies"),
+                    (d, n) => { if (d % 25 == 0 || d == n) Console.WriteLine($"  [{sw.Elapsed.TotalSeconds:0.0}s] {d}/{n}"); }, CancellationToken.None);
+                foreach (var it in read.Items) Console.WriteLine($"  {it.SiteName,-13} {it.Artist} - {it.Title} ({Text.Duration(it.Duration)}) {it.Url}");
+                foreach (var note in read.Notes) Console.WriteLine("  NOTE " + note);
+                Console.WriteLine($"{read.Items.Count} songs in {sw.Elapsed.TotalSeconds:0.0}s");
             }
             return ok ? 0 : 1;
         }

@@ -64,6 +64,10 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 - Save the audio on your device, or just add the songs to your library in the cloud and save them later
 - MP3 at 320, 256, 192 or 128 kbps or the original format, videos from 360p up to 4K, chosen for each song and remembered;
   several downloads at a time
+- **Lists of songs**: paste many links or "Artist - Title" lines at once, or open a playlist exported from Apple Music,
+  iTunes, Exportify or an .m3u with *Import a list*, with no limit on the number of songs
+- A small panel shows the downloads going on from any page: its X cancels one song or a whole playlist, songs already
+  downloaded included; on Android also from the notification
 - *Download again / quality…*: a saved song downloaded again in another quality, in place of its files
 - Duplicates are recognized (same source or same song), and site rate limits are handled by themselves: downloads
   pause, then resume more gently
@@ -150,6 +154,7 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 <img src="assets/readme/screens/dj.webp" width="100%" alt="DJ mode: two decks with waveforms, BPM, mixer and crossfader">
 
 - Two decks with scrolling waveforms and overviews, CUE, nudge, tempo range ±8 / 16 / 50 %, key lock
+- Hold a scrolling waveform like a hand on the record: still it's silent, move it to scratch, let go and the song plays on
 - A song browser for each deck: library, playlists, tags, the song playing or a file
 - Automatic BPM detection, TAP on each deck (also with the T key), beat grid and SYNC of tempo and phase
 - Mixer with 3-band EQ and kills, channel faders and crossfader
@@ -193,7 +198,8 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 - The same app on Windows, Linux, macOS, Android and iPhone
 - Profiles like in Chrome, each with its own playlists, favorites, equalizer, colour and light or dark look
 - English and Italian, smooth animations and scrolling
-- Discord Rich Presence with song, artist, cover and progress bar
+- Discord Rich Presence with song, artist, cover and progress bar; a paused song stays for 5 minutes, and in a Listen
+  together room it shows how many are in it ("3 of 16")
 - Automatic updates from the GitHub releases; the first start after one shows what's new in every version since yours
 
 ## 📥 Install

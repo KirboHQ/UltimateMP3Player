@@ -77,7 +77,7 @@ public sealed class MainApplication : Android.App.Application
     DataSchemes = new[] { "content" }, DataMimeType = "application/x-ump")]
 public sealed class MainActivity : AvaloniaMainActivity<App>
 {
-    public const string ExtraOpenPlayer = "ump.open_player", ExtraOpenDownloads = "ump.open_downloads";
+    public const string ExtraOpenPlayer = "ump.open_player", ExtraOpenDownloads = "ump.open_downloads", ExtraCancelGroup = "ump.cancel_group";
 
     public static MainActivity? Current { get; private set; }
 
@@ -165,11 +165,13 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
             }
             else if (intent.GetBooleanExtra(ExtraOpenPlayer, false)) what = new Incoming(IncomingKind.Player);
             else if (intent.GetBooleanExtra(ExtraOpenDownloads, false)) what = new Incoming(IncomingKind.Downloads);
+            else if (intent.GetStringExtra(ExtraCancelGroup) is { } group) what = new Incoming(IncomingKind.CancelDownload, group);
         }
         catch (Exception ex) { App.Log(ex); }
         // Handled once (a rotation or coming back must not do it again).
         intent.RemoveExtra(ExtraOpenPlayer);
         intent.RemoveExtra(ExtraOpenDownloads);
+        intent.RemoveExtra(ExtraCancelGroup);
         if (what != null) Dispatcher.UIThread.Post(() => App.Deliver(what));
     }
 

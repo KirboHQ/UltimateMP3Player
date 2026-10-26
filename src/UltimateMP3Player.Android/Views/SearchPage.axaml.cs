@@ -153,6 +153,8 @@ public partial class SearchPage : UserControl, IPage
             _main?.Toast(L.T("There's no link in the clipboard: copy it from the app or the site and try again."));
             return;
         }
+        // (several links, an exported playlist: one card with all the songs)
+        if (App.Host.Session?.PasteList(text) == true) return;
         Box.Text = text;
         if (IsLink(text)) Download_Click(null, new RoutedEventArgs());
     }

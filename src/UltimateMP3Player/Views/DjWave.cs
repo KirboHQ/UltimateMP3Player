@@ -42,7 +42,7 @@ public sealed class LevelMeter : FrameworkElement
     }
 }
 
-// A deck's waveform. Scrolling: ~10 s around the fixed playhead, beat grid and cue; drag to scrub.
+// A deck's waveform. Scrolling: ~10 s around the fixed playhead, beat grid and cue; held down it's the record (scratch).
 // Overview: the whole song, click or drag to jump.
 public sealed class DjWave : FrameworkElement
 {
@@ -284,8 +284,9 @@ public sealed class DjWave : FrameworkElement
         if (Deck is not { HasTrack: true } deck) return;
         var p = e.GetPosition(this);
         _dragX = p.X;
-        _dragPos = deck.Position;
         if (Overview) deck.Seek(p.X / Math.Max(1, ActualWidth) * Duration);
+        else deck.Hold();
+        _dragPos = deck.Engine.Position;
         CaptureMouse();
         e.Handled = true;
     }
@@ -294,8 +295,15 @@ public sealed class DjWave : FrameworkElement
     {
         if (!IsMouseCaptured || Deck is not { } deck) return;
         var p = e.GetPosition(this);
-        deck.Seek(Overview ? p.X / Math.Max(1, ActualWidth) * Duration : _dragPos - (p.X - _dragX) * SecondsPerPixel);
+        if (Overview) deck.Seek(p.X / Math.Max(1, ActualWidth) * Duration);
+        else deck.ScratchTo(_dragPos - (p.X - _dragX) * SecondsPerPixel);
     }
 
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e) => ReleaseMouseCapture();
+
+    protected override void OnLostMouseCapture(MouseEventArgs e)
+    {
+        base.OnLostMouseCapture(e);
+        Deck?.Release();
+    }
 }

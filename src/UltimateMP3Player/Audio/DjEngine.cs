@@ -105,6 +105,7 @@ public sealed class DjDeckEngine : ISampleProvider
         _reader?.Dispose();
         _reader = null;
         _source = null;
+        _scratching = false;
         if (_tempWav != null) try { File.Delete(_tempWav); } catch { }
         _tempWav = null;
     }
@@ -118,6 +119,7 @@ public sealed class DjDeckEngine : ISampleProvider
             lock (_lock)
             {
                 if (_reader == null) return 0;
+                if (_scratching) return _scratchAt / SampleRate;
                 if (_preroll > 0) return -_preroll;
                 if (_atEnd) return Duration + _postroll;
                 double buffered = (_st.UnprocessedSampleCount + _st.AvailableSamples * _tempo) / (double)SampleRate;
@@ -151,12 +153,109 @@ public sealed class DjDeckEngine : ISampleProvider
         }
     }
 
+    // ------------------------------------------------------------------ scratching
+
+    // A hand on the record: the song stops under it and sounds only while it moves, forwards or backwards at the
+    // hand's speed, the pitch with it (straight from the file, no SoundTouch). The pointer moves in steps, so the
+    // record glides after it: it follows within ~25 ms and its speed changes over ~12 ms (no buzz at the mouse's rate).
+    private const double Follow = 0.025, Glide = 0.012, MaxSpeed = 6;
+    private volatile bool _scratching;
+    // In frames of the song; speed in frames per frame (1 = normal).
+    private double _scratchAt, _scratchTo, _speed;
+    // Samples since the hand went down: the first 5 ms fade in (the record jumps back to what you hear).
+    private int _fadeIn;
+    private double[] _path = new double[2048];
+    private float[] _stretch = new float[8192];
+    private readonly float[] _dcIn = new float[2], _dcOut = new float[2];
+
+    public bool Scratching => _scratching;
+
+    public void Hold()
+    {
+        lock (_lock)
+        {
+            if (_reader == null || _scratching) return;
+            _scratchAt = _scratchTo = Position * SampleRate;
+            _speed = 0;
+            _fadeIn = 0;
+            _dcIn[0] = _dcIn[1] = _dcOut[0] = _dcOut[1] = 0;
+            _scratching = true;
+        }
+    }
+
+    // Where the hand has taken the record, in seconds of the song.
+    public void ScratchTo(double seconds)
+    {
+        lock (_lock) _scratchTo = seconds * SampleRate;
+    }
+
+    // Let go: the song goes on from where the record is (playing or not).
+    public void Release()
+    {
+        lock (_lock)
+        {
+            if (!_scratching) return;
+            _scratching = false;
+            Seek(_scratchAt / SampleRate);
+        }
+    }
+
+    private int Scratch(Span<float> dst)
+    {
+        if (!_scratching || _reader == null || _source == null) return 0;
+        int n = dst.Length / 2;
+        if (_path.Length < n) _path = new double[n];
+        double glide = 1 - Math.Exp(-1 / (Glide * SampleRate)), lo = double.MaxValue, hi = double.MinValue;
+        for (int i = 0; i < n; i++)
+        {
+            double want = Math.Clamp((_scratchTo - _scratchAt) / (Follow * SampleRate), -MaxSpeed, MaxSpeed);
+            _speed += (want - _speed) * glide;
+            _scratchAt += _speed;
+            _path[i] = _scratchAt;
+            lo = Math.Min(lo, _scratchAt);
+            hi = Math.Max(hi, _scratchAt);
+        }
+        // The stretch of the song those positions cover, read in one go (silence before the start and past the end).
+        int align = _reader.WaveFormat.BlockAlign;
+        long total = _reader.Length / align, first = Math.Max(0, (long)Math.Floor(lo)), last = Math.Min(total - 1, (long)Math.Floor(hi) + 1);
+        int len = (int)Math.Max(0, last - first + 1), have = 0;
+        if (len > 0)
+        {
+            if (_stretch.Length < len * 2) _stretch = new float[len * 2];
+            _reader.Position = first * align;
+            for (int r; have < len * 2 && (r = _source.Read(_stretch, have, len * 2 - have)) > 0;) have += r;
+        }
+        for (int i = 0; i < n; i++)
+        {
+            long k = (long)Math.Floor(_path[i]);
+            float f = (float)(_path[i] - k), fade = _fadeIn < 220 ? _fadeIn++ / 220f : 1;
+            for (int c = 0; c < 2; c++)
+            {
+                float a = Sample(k, c, first, have), b = Sample(k + 1, c, first, have);
+                // A record that stands still is silent: the level it stopped on is taken off (DC blocker, ~35 Hz).
+                float x = (a + (b - a) * f) * fade, y = x - _dcIn[c] + 0.995f * _dcOut[c];
+                _dcIn[c] = x;
+                _dcOut[c] = y;
+                dst[i * 2 + c] = y;
+            }
+        }
+        return n;
+    }
+
+    private float Sample(long frame, int c, long first, int have)
+    {
+        long i = (frame - first) * 2 + c;
+        return i >= 0 && i < have ? _stretch[i] : 0;
+    }
+
     // ------------------------------------------------------------------ audio thread
 
     public int Read(float[] buffer, int offset, int count)
     {
         int frames = count / 2, got = 0;
-        if (Playing && _source != null)
+        if (_scratching)
+            lock (_lock) got = Scratch(buffer.AsSpan(offset, frames * 2));
+        if (got == 0 && Playing && _source != null)
         {
             lock (_lock)
             {

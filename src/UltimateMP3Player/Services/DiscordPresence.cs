@@ -22,9 +22,16 @@ public sealed class DiscordPresence : IDisposable
     private string? _sent;
     private DateTime _retryAfter;
     private bool _enabled;
+    // A paused song stays shown for a while, but only once something played (not the song the app opens with).
+    private static readonly TimeSpan PauseShown = TimeSpan.FromMinutes(5);
+    private bool _played;
+    private DateTime? _pausedAt;
 
-    // What should be shown; the JSON is built when sending, once the cover has been checked.
-    private sealed record Wanted(Track Track, long Start, long? End);
+    // The Listen together room: Discord shows its size, "(3 of 16)".
+    public sealed record Room(string Id, string Name, int Members, int Max);
+
+    // What should be shown (a song, a room, or both); the JSON is built when sending, once the cover has been checked.
+    private sealed record Wanted(Track? Track, long Start, long? End, bool Paused, Room? Room);
 
     public bool Available => AppInfo.DiscordAppId.Length > 0;
 
@@ -38,37 +45,70 @@ public sealed class DiscordPresence : IDisposable
         }
     }
 
-    // Playing: song with progress bar; paused: cleared.
-    public void Update(Track? t, bool playing, TimeSpan position, TimeSpan duration)
+    // Playing: song with progress bar; paused: the song without it for 5 minutes, then nothing (only the room, in one).
+    public void Update(Track? t, bool playing, TimeSpan position, TimeSpan duration, Room? room = null)
     {
         if (!Enabled || !Available) return;
-        if (t == null || !playing)
+        if (t != null && playing)
         {
-            Push(null);
+            _played = true;
+            _pausedAt = null;
+            // (to the second: the same song at the same place sends nothing new; Discord takes 5 changes every 20 seconds)
+            long start = (DateTimeOffset.UtcNow - position).ToUnixTimeSeconds() * 1000;
+            Push(new Wanted(t, start, duration > TimeSpan.Zero ? start + (long)duration.TotalMilliseconds : null, false, room));
             return;
         }
-        long start = (DateTimeOffset.UtcNow - position).ToUnixTimeMilliseconds();
-        Push(new Wanted(t, start, duration > TimeSpan.Zero ? start + (long)duration.TotalMilliseconds : null));
+        if (t != null && _played)
+        {
+            if (_pausedAt == null)
+            {
+                _pausedAt = DateTime.UtcNow;
+                _ = ForgetPause(_pausedAt.Value);
+            }
+            if (DateTime.UtcNow - _pausedAt < PauseShown)
+            {
+                Push(new Wanted(t, 0, null, true, room));
+                return;
+            }
+        }
+        Push(room != null ? new Wanted(null, 0, null, false, room) : null);
+    }
+
+    // Still paused since then: the song goes (on the UI thread, like Update).
+    private async Task ForgetPause(DateTime at)
+    {
+        await Task.Delay(PauseShown);
+        if (_pausedAt != at || _wanted is not { Paused: true } w) return;
+        _played = false;
+        Push(w.Room != null ? new Wanted(null, 0, null, false, w.Room) : null);
     }
 
     private static string Build(Wanted w, string? art)
     {
         var t = w.Track;
+        var state = new List<string>();
+        if (t != null) state.Add(t.DisplayArtist);
+        if (w.Paused) state.Add(L.T("Paused"));
+        if (w.Room != null) state.Add(L.T("Listen together"));
         var activity = new Dictionary<string, object?>
         {
             ["type"] = 2,
-            ["status_display_type"] = 2,
-            ["details"] = Fit(t.Title),
-            ["state"] = Fit(t.DisplayArtist),
-            ["timestamps"] = w.End is long end
-                ? new Dictionary<string, long> { ["start"] = w.Start, ["end"] = end }
-                : new Dictionary<string, long> { ["start"] = w.Start },
+            // The status under the name: the song's title, or the app's name for a room alone.
+            ["status_display_type"] = t != null ? 2 : 0,
+            ["details"] = Fit(t?.Title ?? w.Room!.Name),
+            ["state"] = Fit(string.Join(" · ", state.Where(s => !string.IsNullOrWhiteSpace(s)))),
             ["assets"] = new Dictionary<string, string?>
             {
                 ["large_image"] = art ?? "logo",
-                ["large_text"] = Fit(t.Album ?? t.Title),
+                ["large_text"] = Fit(t != null ? t.Album ?? t.Title : w.Room!.Name),
             },
         };
+        // Left out rather than null (Discord refuses a null; a dictionary's nulls are written anyway).
+        if (t != null && !w.Paused)
+            activity["timestamps"] = w.End is long end ? new Dictionary<string, long> { ["start"] = w.Start, ["end"] = end }
+                : new Dictionary<string, long> { ["start"] = w.Start };
+        if (w.Room is { } r)
+            activity["party"] = new Dictionary<string, object> { ["id"] = r.Id, ["size"] = new[] { Math.Max(1, r.Members), Math.Max(r.Members, r.Max) } };
         if (AppInfo.RepoUrl is { } repo)
             activity["buttons"] = new[] { new Dictionary<string, string> { ["label"] = "Ultimate MP3 Player", ["url"] = repo } };
         return JsonSerializer.Serialize(activity, Json);
@@ -106,9 +146,9 @@ public sealed class DiscordPresence : IDisposable
         return url.Length <= 256 ? url : null;
     }
 
-    private static async Task<string?> ArtFor(Track t)
+    private static async Task<string?> ArtFor(Track? t)
     {
-        foreach (var url in Candidates(t).Distinct())
+        foreach (var url in t != null ? Candidates(t).Distinct() : [])
             if (await Works(url)) return url;
         return AppInfo.LogoUrl is { } logo && await Works(logo) ? logo : null;
     }

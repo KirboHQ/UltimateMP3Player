@@ -324,6 +324,33 @@
                             BoxShadow="{DynamicResource PopupShadow}">
                         <TextBlock Text="{Binding ToastText}" TextWrapping="Wrap"/>
                     </Border>
+
+                    <!-- downloads going on, seen from any page: each group (a song, or the songs of a link) with how far it is and a
+                         button that cancels it; a click opens the download page -->
+                    <Border Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,16" Width="320" CornerRadius="12" Padding="4"
+                            Background="{DynamicResource PopupBrush}" BoxShadow="{DynamicResource PopupShadow}" IsVisible="{Binding ShowDownloadPanel}">
+                        <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Queue.Groups}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:DownloadGroupViewModel">
+                                        <Button Theme="{StaticResource SubtleButton}" Padding="10,7,4,7" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                Command="{Binding OpenCommand}" ToolTip.Tip="{local:T 'Open the downloads'}">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="15" Foreground="{DynamicResource AccentTextBrush}" VerticalAlignment="Center"/>
+                                                <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,1,0,5"/>
+                                                    <ProgressBar Value="{Binding Percent}" IsIndeterminate="{Binding Indeterminate}"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="2" Theme="{StaticResource IconButton}" Content="{local:Icon E711}" Command="{Binding CancelCommand}"
+                                                        VerticalAlignment="Center" ToolTip.Tip="{local:T 'Cancel the download'}"/>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
                 </Grid>
             </Grid>
 

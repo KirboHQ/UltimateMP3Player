@@ -114,7 +114,10 @@ public static class Spotify
         }
         if (result.Items.Count == 0) throw new EngineException(L.T("No downloadable songs found in this Spotify link."));
         if (type == "playlist" && result.Items.Count >= 100)
+        {
             result.Notes.Add(L.T("Spotify shows at most 100 songs for shared playlists: the first 100 are listed."));
+            result.Notes.Add(L.T("To get them all: in the Spotify app on the computer open the playlist, select its songs (Ctrl+A), copy them (Ctrl+C) and paste them here: they're read one by one, with no limit."));
+        }
         return result;
     }
 
@@ -335,9 +338,13 @@ public static class AppleMusic
         }
         if (result.Items.Count == 0) throw new EngineException(L.T("No songs found in this Apple Music link."));
         if (result.Thumbnails.Count == 0) result.Thumbnails = result.Items[0].Thumbnails.ToList();
-        // A long playlist: the page has only its first songs.
-        if (Regex.Match(html, "\"numTracks\":\\s*(\\d+)") is { Success: true } total && int.Parse(total.Groups[1].Value) > result.Items.Count)
+        // A long playlist: the page has only its first songs (300), the rest is paged in by the web player.
+        if (doc.RootElement.Arr("data").FirstOrDefault().Prop("data")?.Prop("nextIntent")?.Str("$kind") == "PlaylistPaginationIntent"
+            || Regex.Match(html, "\"numTracks\":\\s*(\\d+)") is { Success: true } total && int.Parse(total.Groups[1].Value) > result.Items.Count)
+        {
             result.Notes.Add(L.F("Apple Music only shows the first {0} songs of this playlist: those are listed.", result.Items.Count));
+            result.Notes.Add(L.T("To get them all: export the playlist from Apple Music on a Mac or from iTunes (File › Library › Export Playlist) and open the file with “Import a list” on the Download page."));
+        }
         return result;
     }
 

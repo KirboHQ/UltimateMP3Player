@@ -183,6 +183,13 @@
     <ScrollViewer x:Name="Scroller">
         <!-- (the link is written or pasted in the search box above) -->
         <StackPanel Margin="16,4,16,24">
+            <!-- a list of songs: a file exported from Apple Music, iTunes, Exportify… (pasting several links does the same) -->
+            <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,0,0,8" Command="{Binding ImportListCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="13"/>
+                    <TextBlock Text="{local:T 'Import a list'}" Margin="7,0,0,0"/>
+                </StackPanel>
+            </Button>
             <Panel Margin="0,0,0,8">
                 <Border Classes="card" Padding="18" IsVisible="{Binding ShowIntro}">
                     <StackPanel>

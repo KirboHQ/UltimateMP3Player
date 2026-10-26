@@ -42,8 +42,8 @@ public sealed class LevelMeter : Control
     }
 }
 
-// A deck's waveform (the Windows app's DjWave). Scrolling: ~10 s around the fixed playhead, beat grid and cue; drag to
-// scrub. Overview: the whole song, click or drag to jump.
+// A deck's waveform (the Windows app's DjWave). Scrolling: ~10 s around the fixed playhead, beat grid and cue; held
+// down it's the record (scratch). Overview: the whole song, click or drag to jump.
 public sealed class DjWave : Control
 {
     public static readonly StyledProperty<DjDeckViewModel?> DeckProperty = AvaloniaProperty.Register<DjWave, DjDeckViewModel?>(nameof(Deck));
@@ -271,8 +271,9 @@ public sealed class DjWave : Control
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || Deck is not { HasTrack: true } deck) return;
         var p = e.GetPosition(this);
         _dragX = p.X;
-        _dragPos = deck.Position;
         if (Overview) deck.Seek(p.X / Math.Max(1, Bounds.Width) * Duration);
+        else deck.Hold();
+        _dragPos = deck.Engine.Position;
         _dragging = true;
         e.Pointer.Capture(this);
         e.Handled = true;
@@ -283,7 +284,8 @@ public sealed class DjWave : Control
         base.OnPointerMoved(e);
         if (!_dragging || Deck is not { } deck) return;
         var p = e.GetPosition(this);
-        deck.Seek(Overview ? p.X / Math.Max(1, Bounds.Width) * Duration : _dragPos - (p.X - _dragX) * SecondsPerPixel);
+        if (Overview) deck.Seek(p.X / Math.Max(1, Bounds.Width) * Duration);
+        else deck.ScratchTo(_dragPos - (p.X - _dragX) * SecondsPerPixel);
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
@@ -291,11 +293,13 @@ public sealed class DjWave : Control
         base.OnPointerReleased(e);
         _dragging = false;
         e.Pointer.Capture(null);
+        Deck?.Release();
     }
 
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         base.OnPointerCaptureLost(e);
         _dragging = false;
+        Deck?.Release();
     }
 }
