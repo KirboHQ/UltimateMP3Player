@@ -49,10 +49,9 @@ public sealed class AppHost : Observable
         {
             if (e.PropertyName is nameof(DownloadQueue.Summary) or nameof(DownloadQueue.HasActive)) OnDownloadsChanged();
         };
-#if ANDROID_APP
-        // (the notification's bar follows the group's, twice a second; DownloadService shows it at most once a second)
+        // (the notification's bar follows the group's, twice a second; DownloadService shows it at most once a second; iOS
+        // learns here of a list being read)
         Downloads.GroupsRefreshed += OnDownloadsChanged;
-#endif
         Updates = new Updater();
         Presence = new DiscordPresence();
         Lyrics = new LyricsService(this);
@@ -330,14 +329,15 @@ public sealed class AppHost : Observable
     private void OnDownloadsChanged()
     {
 #if ANDROID_APP
-        // The oldest group by its name ("Song" or "Playlist · 3 of 20"), its Cancel for that group.
-        var groups = Downloads.Groups;
+        // The oldest group by its name ("Song" or "Playlist · 3 of 20"), its Cancel for that group. A list being read counts as
+        // one (a list already read only waits in the app to be opened).
+        var groups = Downloads.Groups.Where(x => x.Batch != null || x.Reading).ToList();
         var g = groups.FirstOrDefault();
         var more = groups.Count > 1 ? L.Count(groups.Count - 1, "1 more download", "{0} more downloads") : null;
-        DownloadService.Update(Downloads.HasActive, g?.Title, g != null ? string.Join(" · ", new[] { g.Detail, more }.OfType<string>()) : Downloads.Summary,
-            g is { Indeterminate: false } ? g.Percent : null, g?.Batch.Id, g?.Brought > 0);
+        DownloadService.Update(Downloads.HasActive || Downloads.IsReading, g?.Title, g != null ? string.Join(" · ", new[] { g.Detail, more }.OfType<string>()) : Downloads.Summary,
+            g is { Indeterminate: false } ? g.Percent : null, g?.Id, g?.Brought > 0);
 #elif IOS_APP
-        Background.Downloading(Downloads.HasActive);
+        Background.Downloading(Downloads.HasActive || Downloads.IsReading);
 #endif
     }
 

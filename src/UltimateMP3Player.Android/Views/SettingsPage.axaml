@@ -519,6 +519,35 @@
                     </Button>
                 </StackPanel>
             </Border>
+
+            <!-- ============================================================ support the project: donations, the people who support it -->
+            <TextBlock Text="{local:T 'SUPPORT THE PROJECT'}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'support donate donation sponsor sponsors ko-fi coffee money thanks supporters'}">
+                <StackPanel>
+                    <TextBlock Text="{local:T 'Ultimate MP3 Player is free, with no ads, and made in spare time. If it\'s useful to you, a donation helps keep it going.'}"
+                               Classes="setting-hint" Margin="0,12,0,0"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding SponsorCommand}">
+                        <StackPanel>
+                            <TextBlock Text="GitHub Sponsors" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Monthly or once, with a GitHub account'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding KofiCommand}">
+                        <StackPanel>
+                            <TextBlock Text="Ko-fi" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Once, by card or PayPal, no account needed'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <StackPanel IsVisible="{Binding Supporters, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        <Border Classes="line"/>
+                        <StackPanel Margin="0,12">
+                            <TextBlock Text="{local:T 'Thanks to'}" Classes="setting"/>
+                            <TextBlock Text="{Binding Supporters}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
             </StackPanel>
             <StackPanel x:Name="NoResults" IsVisible="False" Margin="12,36,12,24" HorizontalAlignment="Center">
                 <TextBlock Text="{local:T 'No settings found'}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center"/>

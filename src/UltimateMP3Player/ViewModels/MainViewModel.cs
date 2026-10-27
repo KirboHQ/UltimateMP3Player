@@ -500,6 +500,8 @@ public sealed class MainViewModel : Observable
             if (value is DjViewModel entering) entering.Enter();
             if (old is TogetherViewModel hidden) hidden.Hidden();
             if (value is TogetherViewModel shown) shown.Shown();
+            // (a list read meanwhile: its card is in sight now)
+            if (value is DownloadsPageViewModel downloads) downloads.DropListGroup();
             OnChanged(nameof(ShowPlayerBar), nameof(ShowDownloadPanel));
             Player.UpNextVisible = value == NowPlaying;
             foreach (var p in Playlists) p.IsSelected = value is PlaylistPageViewModel pp && pp.Vm == p;

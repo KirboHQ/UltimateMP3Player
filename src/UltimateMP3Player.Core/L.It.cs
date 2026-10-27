@@ -2096,5 +2096,20 @@ public static partial class L
             "I brani che aggiungi da un link o da un pacchetto vengono scaricati. Spento: vanno nella libreria nel cloud, li ascolti dal loro link e li salvi quando vuoi.",
         ["1 as a link"] = "1 come link",
         ["{0} as links"] = "{0} come link",
+        // 4.2.1: a list being read in the downloads' panel (Spotify's pauses waited out); support the project
+        ["the site asks to wait"] = "il sito chiede di aspettare",
+        ["The site asks to wait a few minutes: it goes on by itself."] = "Il sito chiede di aspettare qualche minuto: riprende da solo.",
+        ["Loading complete"] = "Caricamento completato",
+        ["The list couldn't be read"] = "Non è stato possibile leggere la lista",
+        ["Support the project"] = "Sostieni il progetto",
+        ["SUPPORT THE PROJECT"] = "SOSTIENI IL PROGETTO",
+        ["support donate donation sponsor sponsors ko-fi coffee money thanks supporters"] =
+            "sostieni sostegno dona donazione donazioni sponsor ko-fi caffè soldi grazie sostenitori",
+        ["Ultimate MP3 Player is free, with no ads, and made in spare time. If it's useful to you, a donation helps keep it going."] =
+            "Ultimate MP3 Player è gratuito, senza pubblicità, ed è fatto nel tempo libero. Se ti è utile, una donazione aiuta a farlo andare avanti.",
+        ["Monthly or once, with a GitHub account"] = "Ogni mese o una volta sola, con un account GitHub",
+        ["Once, by card or PayPal, no account needed"] = "Una volta, con carta o PayPal, senza account",
+        ["Thanks to"] = "Grazie a",
+        ["No one yet: your name could be the first here."] = "Ancora nessuno: il tuo nome potrebbe essere il primo qui.",
     };
 }

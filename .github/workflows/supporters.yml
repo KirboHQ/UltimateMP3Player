@@ -1,0 +1,70 @@
+# The GitHub sponsors into supporters.json, which the app reads from main (Settings › Support the project): once a day, or
+# by hand (Actions › Supporters › Run workflow). Only public sponsors, past and one-time ones too, oldest first; names are
+# only added, never removed, so the ones written by hand (Ko-fi) stay. A sponsor who wants to leave the list makes their
+# sponsorship private on GitHub, then their name is taken out by hand.
+# Needs the secret SPONSORS_TOKEN: a classic token of the account (Settings › Developer settings › Personal access tokens ›
+# Tokens (classic)) with only the read:user scope; GitHub's own token can't read sponsorships.
+name: Supporters
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the public sponsors
+        env:
+          GH_TOKEN: ${{ secrets.SPONSORS_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::The secret SPONSORS_TOKEN is missing (a classic token with the read:user scope)."
+            exit 1
+          fi
+          gh api graphql --paginate -F owner="$OWNER" -f query='
+            query($owner: String!, $endCursor: String) {
+              user(login: $owner) {
+                sponsorshipsAsMaintainer(first: 100, after: $endCursor, includePrivate: false, activeOnly: false,
+                                         orderBy: {field: CREATED_AT, direction: ASC}) {
+                  pageInfo { hasNextPage endCursor }
+                  nodes {
+                    privacyLevel
+                    sponsorEntity { ... on User { login name } ... on Organization { login name } }
+                  }
+                }
+              }
+            }' --jq '.data.user.sponsorshipsAsMaintainer.nodes[] | select(.privacyLevel == "PUBLIC") | .sponsorEntity | (.name // .login)' > sponsors.txt
+          echo "$(wc -l < sponsors.txt) public sponsors"
+
+      - name: Add the new names
+        run: |
+          python3 - <<'EOF'
+          import json
+          names = json.load(open("supporters.json", encoding="utf-8"))
+          added = []
+          for line in open("sponsors.txt", encoding="utf-8"):
+              name = line.strip()
+              if name and name not in names:
+                  names.append(name)
+                  added.append(name)
+          if added:
+              with open("supporters.json", "w", encoding="utf-8", newline="\n") as f:
+                  f.write(json.dumps(names, ensure_ascii=False, indent=2) + "\n")
+          print("added:", ", ".join(added) or "nobody")
+          EOF
+
+      - name: Commit
+        run: |
+          if git diff --quiet supporters.json; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Supporters: new GitHub sponsors" supporters.json
+          git push

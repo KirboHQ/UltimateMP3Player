@@ -1040,6 +1040,42 @@ public sealed class SettingsViewModel : Observable
     }
 
     public ICommand ShowTermsCommand => new RelayCommand(() => Dialogs.Terms(false));
+
+    // ------------------------------------------------------------------ support the project
+
+    // GitHub Sponsors (a GitHub account needed), Ko-fi for everyone else (card or PayPal); the same as .github/FUNDING.yml.
+    private const string SponsorsUrl = "https://github.com/sponsors/KirboHQ", KofiUrl = "https://ko-fi.com/kirbohq";
+    public ICommand SponsorCommand => new RelayCommand(() => MainViewModel.OpenUrl(SponsorsUrl));
+    public ICommand KofiCommand => new RelayCommand(() => MainViewModel.OpenUrl(KofiUrl));
+
+    // The people who support it: supporters.json in the repository (a list of names kept by hand), read from GitHub so it
+    // changes without a new version. null: not read (offline), the line is hidden.
+    private string? _supporters;
+    private bool _supportersAsked;
+    public string? Supporters
+    {
+        get
+        {
+            if (!_supportersAsked && AppInfo.GitHubRepo.Length > 0)
+            {
+                _supportersAsked = true;
+                _ = LoadSupportersAsync();
+            }
+            return _supporters;
+        }
+    }
+
+    private async Task LoadSupportersAsync()
+    {
+        try
+        {
+            var json = await Task.Run(() => Http.GetStringAsync($"https://raw.githubusercontent.com/{AppInfo.GitHubRepo}/main/supporters.json"));
+            var names = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json)?.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n.Trim()).ToList() ?? new();
+            _supporters = names.Count > 0 ? string.Join(" · ", names) : L.T("No one yet: your name could be the first here.");
+            OnChanged(nameof(Supporters));
+        }
+        catch { }
+    }
 }
 
 // Browsers installed here whose cookies yt-dlp can read.

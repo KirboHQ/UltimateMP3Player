@@ -929,6 +929,45 @@
                         <Button Style="{StaticResource LinkButton}" Content="{local:T 'Terms of use'}" Command="{Binding ShowTermsCommand}" HorizontalAlignment="Left"/>
                     </StackPanel>
                 </Border>
+
+                <!-- ==================================================== support the project: donations, the people who support it -->
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
+                        views:SettingsView.Keywords="{local:T 'support donate donation sponsor sponsors ko-fi coffee money thanks supporters'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Support the project'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Ultimate MP3 Player is free, with no ads, and made in spare time. If it\'s useful to you, a donation helps keep it going.'}"
+                                   Style="{StaticResource Hint}" Margin="0,-8,0,14"/>
+                        <UniformGrid Columns="2">
+                            <Button Style="{StaticResource SupportTile}" Command="{Binding SponsorCommand}" Margin="0,0,6,0"
+                                    AutomationProperties.Name="GitHub Sponsors">
+                                <StackPanel>
+                                    <Grid Width="38" Height="38" HorizontalAlignment="Left">
+                                        <Ellipse Fill="{DynamicResource ErrorSoftBrush}"/>
+                                        <TextBlock Text="&#xEB51;" Style="{StaticResource Glyph}" FontSize="17" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Center"/>
+                                    </Grid>
+                                    <TextBlock Text="GitHub Sponsors" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                    <TextBlock Text="{local:T 'Monthly or once, with a GitHub account'}" Style="{StaticResource Hint}" FontSize="12"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource SupportTile}" Command="{Binding KofiCommand}" Margin="6,0,0,0"
+                                    AutomationProperties.Name="Ko-fi">
+                                <StackPanel>
+                                    <Grid Width="38" Height="38" HorizontalAlignment="Left">
+                                        <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
+                                        <TextBlock Text="&#xE734;" Style="{StaticResource Glyph}" FontSize="17" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                                    </Grid>
+                                    <TextBlock Text="Ko-fi" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                    <TextBlock Text="{local:T 'Once, by card or PayPal, no account needed'}" Style="{StaticResource Hint}" FontSize="12"/>
+                                </StackPanel>
+                            </Button>
+                        </UniformGrid>
+                        <StackPanel Visibility="{Binding Supporters, Converter={StaticResource NotNullVis}}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16"/>
+                            <TextBlock Text="{local:T 'Thanks to'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <TextBlock Text="{Binding Supporters}" Style="{StaticResource Hint}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
             </views:MasonryPanel>
         </StackPanel>
     </ScrollViewer>

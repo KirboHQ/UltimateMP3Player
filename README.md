@@ -65,7 +65,8 @@ Windows, Linux, macOS, Android and iPhone.</sub>
 - MP3 at 320, 256, 192 or 128 kbps or the original format, videos from 360p up to 4K, chosen for each song and remembered;
   several downloads at a time
 - **Lists of songs**: paste many links or "Artist - Title" lines at once, or open a playlist exported from Apple Music,
-  iTunes, Exportify or an .m3u with *Import a list*, with no limit on the number of songs
+  iTunes, Exportify or an .m3u with *Import a list*, with no limit on the number of songs (its progress in the downloads'
+  panel, from any page)
 - A small panel shows the downloads going on from any page: its X cancels one song or a whole playlist, songs already
   downloaded included; on Android also from the notification
 - *Download again / quality…*: a saved song downloaded again in another quality, in place of its files
@@ -319,6 +320,13 @@ Every button downloads that file from the latest release.
 
 Found a bug or have an idea? Open an [issue](https://github.com/KirboHQ/UltimateMP3Player/issues), or use
 **Settings → Help & support** in the app: it fills in the app and Windows versions for you.
+
+## ❤️ Support the project
+
+Ultimate MP3 Player is free, with no ads, and made in spare time. If it's useful to you, you can support it on
+[GitHub Sponsors](https://github.com/sponsors/KirboHQ) (monthly or once) or [Ko-fi](https://ko-fi.com/kirbohq) (once,
+by card or PayPal, no account needed), also from **Settings → Support the project** in the app, which thanks the
+supporters by name.
 
 ## 🛠️ Build from source
 

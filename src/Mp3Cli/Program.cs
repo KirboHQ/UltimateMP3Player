@@ -221,7 +221,11 @@ switch (args[0])
                 var entries = ListImport.Parse(await File.ReadAllTextAsync(args[1]));
                 Console.WriteLine($"{entries.Count} lines");
                 var read = await ListImport.AnalyzeAsync(entries, Path.GetFileNameWithoutExtension(args[1]), Opt("--cookies"),
-                    (d, n) => { if (d % 25 == 0 || d == n) Console.WriteLine($"  [{sw.Elapsed.TotalSeconds:0.0}s] {d}/{n}"); }, CancellationToken.None);
+                    (d, n, wait) =>
+                    {
+                        if (d % 25 == 0 || d == n) Console.WriteLine($"  [{sw.Elapsed.TotalSeconds:0.0}s] {d}/{n}");
+                        if (wait is { } w) Console.WriteLine($"  [{sw.Elapsed.TotalSeconds:0.0}s] {d}/{n} too many requests: waiting {(w - DateTime.UtcNow).TotalSeconds:0} s");
+                    }, CancellationToken.None);
                 foreach (var it in read.Items) Console.WriteLine($"  {it.SiteName,-13} {it.Artist} - {it.Title} ({Text.Duration(it.Duration)}) {it.Url}");
                 foreach (var note in read.Notes) Console.WriteLine("  NOTE " + note);
                 Console.WriteLine($"{read.Items.Count} songs in {sw.Elapsed.TotalSeconds:0.0}s");

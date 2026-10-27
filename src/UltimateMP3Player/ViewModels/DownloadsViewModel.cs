@@ -535,15 +535,58 @@ public sealed class DownloadGroupViewModel : Observable
 {
     private readonly DownloadQueue _queue;
 
-    public DownloadGroupViewModel(DownloadBatch batch, DownloadQueue queue)
+    public DownloadGroupViewModel(DownloadBatch batch, DownloadQueue queue) : this(queue, batch.Id) => Batch = batch;
+
+    // A list of songs being read (DownloadsPageViewModel.ImportListAsync), before its songs are downloads: its bar the lines
+    // read, then "loading complete" until its card on the download page is seen. stop: the reading canceled.
+    public DownloadGroupViewModel(string title, DownloadQueue queue, Action stop) : this(queue, Ids.New())
     {
-        Batch = batch;
+        _stop = stop;
+        Reading = true;
+        Title = title;
+        Detail = L.T("Reading the list…");
+        Indeterminate = true;
+    }
+
+    private DownloadGroupViewModel(DownloadQueue queue, string id)
+    {
+        Id = id;
         _queue = queue;
         CancelCommand = new RelayCommand(() => _ = queue.CancelGroupAsync(this));
         OpenCommand = new RelayCommand(() => { if (queue.Host.Session is { } main) main.Navigate(main.Downloads); });
     }
 
-    public DownloadBatch Batch { get; }
+    // null: a list being read.
+    public DownloadBatch? Batch { get; }
+    public string Id { get; }
+    private readonly Action? _stop;
+    // A list still being read (read, it waits to be opened).
+    public bool Reading { get; private set; }
+
+    internal void Read(int done, int total, bool waiting)
+    {
+        // (the last lines' progress may come after the end)
+        if (!Reading) return;
+        Percent = total > 0 ? done * 100.0 / total : 0;
+        Indeterminate = false;
+        Detail = L.F("{0} of {1}", done, total) + (waiting ? " · " + L.T("the site asks to wait") : "");
+        _queue.GroupChanged();
+    }
+
+    internal void Ready(string detail)
+    {
+        Reading = false;
+        Percent = 100;
+        Indeterminate = false;
+        Detail = detail;
+        _queue.GroupChanged();
+    }
+
+    internal void Stop()
+    {
+        _stop?.Invoke();
+        _queue.RemoveGroup(this);
+    }
     public ICommand CancelCommand { get; }
     // The download page, with every song of it.
     public ICommand OpenCommand { get; }
@@ -571,7 +614,7 @@ public sealed class DownloadGroupViewModel : Observable
             return;
         }
         int finished = jobs.Count(j => j.IsFinished), failed = jobs.Count(j => j.State == JobState.Failed);
-        Title = Batch.Title ?? L.Count(jobs.Count, "1 song", "{0} songs");
+        Title = Batch!.Title ?? L.Count(jobs.Count, "1 song", "{0} songs");
         Detail = L.F("{0} of {1}", finished, jobs.Count) + (failed > 0 ? " · " + L.Count(failed, "1 failed", "{0} failed") : "");
         Percent = jobs.Sum(j => j.IsFinished ? 100 : j.Percent) / jobs.Count;
         Indeterminate = false;
@@ -892,10 +935,13 @@ public sealed class DownloadQueue : Observable
     // (the bars move twice a second: following every line of yt-dlp would redraw the panel for nothing)
     private readonly DispatcherTimer _groupTick = new() { Interval = TimeSpan.FromMilliseconds(500) };
 
-    // The groups with something still to download, the oldest first.
+    // The groups with something still to download (and the lists being read), the oldest first.
     public ObservableCollection<DownloadGroupViewModel> Groups { get; } = new();
     public bool HasGroups => Groups.Count > 0;
+    // A list is being read: the phones keep going in the background as for a download.
+    public bool IsReading => Groups.Any(g => g.Reading);
     public event Action? GroupsRefreshed;
+    private bool _hadGroups;
 
     private void RefreshGroups()
     {
@@ -905,22 +951,45 @@ public sealed class DownloadQueue : Observable
             if (!byBatch.TryGetValue(j.Batch, out var list)) byBatch[j.Batch] = list = new();
             list.Add(j);
         }
-        bool had = HasGroups;
-        foreach (var g in Groups.Where(g => !byBatch.TryGetValue(g.Batch, out var l) || !l.Any(j => j.IsActive)).ToList()) Groups.Remove(g);
+        foreach (var g in Groups.Where(g => g.Batch != null && (!byBatch.TryGetValue(g.Batch, out var l) || !l.Any(j => j.IsActive))).ToList()) Groups.Remove(g);
         foreach (var (batch, list) in byBatch)
             if (list.Any(j => j.IsActive) && !Groups.Any(g => g.Batch == batch)) Groups.Add(new DownloadGroupViewModel(batch, this));
-        foreach (var g in Groups) g.Refresh(byBatch[g.Batch]);
-        if (HasGroups) _groupTick.Start();
+        foreach (var g in Groups)
+            if (g.Batch != null) g.Refresh(byBatch[g.Batch]);
+        // (a list moves its own bar)
+        if (Groups.Any(g => g.Batch != null)) _groupTick.Start();
         else _groupTick.Stop();
-        if (had != HasGroups) OnChanged(nameof(HasGroups));
+        GroupChanged();
+    }
+
+    internal void GroupChanged()
+    {
+        if (_hadGroups != HasGroups)
+        {
+            _hadGroups = HasGroups;
+            OnChanged(nameof(HasGroups));
+        }
         GroupsRefreshed?.Invoke();
+    }
+
+    public DownloadGroupViewModel AddReading(string title, Action stop)
+    {
+        var g = new DownloadGroupViewModel(title, this, stop);
+        Groups.Add(g);
+        GroupChanged();
+        return g;
+    }
+
+    public void RemoveGroup(DownloadGroupViewModel g)
+    {
+        if (Groups.Remove(g)) GroupChanged();
     }
 
     // The phone's notification: its Cancel asks in the app when the group has songs to take away, otherwise it cancels at once
     // (a song done in the second before goes too).
     public void CancelGroup(string id, bool ask = false)
     {
-        if (Groups.FirstOrDefault(g => g.Batch.Id == id) is { } g) _ = CancelGroupAsync(g, ask);
+        if (Groups.FirstOrDefault(g => g.Id == id) is { } g) _ = CancelGroupAsync(g, ask);
     }
 
     // A group canceled: what's still to download stops, and the songs it already brought go away again, as if it had never
@@ -928,7 +997,11 @@ public sealed class DownloadQueue : Observable
     // there stay). The playlist made for it goes too. Asked first when there are songs to take away.
     public async Task CancelGroupAsync(DownloadGroupViewModel group, bool ask = true)
     {
-        var batch = group.Batch;
+        if (group.Batch is not { } batch)
+        {
+            group.Stop();
+            return;
+        }
         if (batch.Canceled) return;
         int done = Jobs.Count(j => j.Batch == batch && j.Brought);
         if (ask && done > 0 && !await Dialogs.ConfirmAsync(L.F("Stop downloading “{0}”?", group.Title),
@@ -1339,6 +1412,7 @@ public sealed class DownloadsPageViewModel : Observable
     {
         Queue.PropertyChanged -= OnQueueChanged;
         _cts?.Cancel();
+        DropListGroup();
     }
 
     public MainViewModel Main => _main;
@@ -1358,7 +1432,27 @@ public sealed class DownloadsPageViewModel : Observable
     public bool CanTryYouTube { get => _canTryYouTube; private set => Set(ref _canTryYouTube, value); }
 
     private LinkViewModel? _link;
-    public LinkViewModel? Link { get => _link; private set { if (Set(ref _link, value)) OnChanged(nameof(ShowIntro)); } }
+    public LinkViewModel? Link
+    {
+        get => _link;
+        private set
+        {
+            if (!Set(ref _link, value)) return;
+            OnChanged(nameof(ShowIntro));
+            DropListGroup();
+        }
+    }
+
+    // The panel's group of the list read last: once read, it says so on the other pages until this page is seen or its card
+    // (or error) goes.
+    private DownloadGroupViewModel? _listGroup;
+
+    public void DropListGroup()
+    {
+        if (_listGroup is not { Reading: false } g) return;
+        _listGroup = null;
+        Queue.RemoveGroup(g);
+    }
 
     private bool _analyzing;
     public bool IsAnalyzing { get => _analyzing; private set { if (Set(ref _analyzing, value)) OnChanged(nameof(ShowIntro)); } }
@@ -1367,7 +1461,16 @@ public sealed class DownloadsPageViewModel : Observable
     public string AnalyzingText { get => _analyzingText; private set => Set(ref _analyzingText, value); }
 
     private string? _error;
-    public string? Error { get => _error; private set { if (Set(ref _error, value)) OnChanged(nameof(ShowIntro)); } }
+    public string? Error
+    {
+        get => _error;
+        private set
+        {
+            if (!Set(ref _error, value)) return;
+            OnChanged(nameof(ShowIntro));
+            DropListGroup();
+        }
+    }
 
     private string? _errorHint;
     public string? ErrorHint { get => _errorHint; private set => Set(ref _errorHint, value); }
@@ -1504,6 +1607,10 @@ public sealed class DownloadsPageViewModel : Observable
         SuggestCookies = false;
         CanTryYouTube = false;
         Link = null;
+        var title = name ?? L.T("Imported list");
+        // Seen from the other pages too, like a download (a long list takes minutes): the panel's bar, then "loading complete".
+        var group = _listGroup = Queue.AddReading(title, () => { if (_cts == cts) cts.Cancel(); });
+        bool read = false;
         try
         {
             var entries = ListImport.Parse(text);
@@ -1515,19 +1622,35 @@ public sealed class DownloadsPageViewModel : Observable
             }
             var ui = Application.Current.Dispatcher;
             var cookies = _main.Host.Settings.CookiesBrowserOrNull;
-            var r = await Task.Run(() => ListImport.AnalyzeAsync(entries, name ?? L.T("Imported list"), cookies,
-                (done, total) => ui.BeginInvoke(() => { if (_cts == cts) AnalyzingText = L.F("Reading the list: {0} of {1}…", done, total); }), cts.Token), cts.Token);
+            var r = await Task.Run(() => ListImport.AnalyzeAsync(entries, title, cookies,
+                (done, total, wait) => ui.BeginInvoke(() =>
+                {
+                    if (_cts != cts) return;
+                    AnalyzingText = L.F("Reading the list: {0} of {1}…", done, total) +
+                                    (wait != null ? " " + L.T("The site asks to wait a few minutes: it goes on by itself.") : "");
+                    group.Read(done, total, wait != null);
+                }), cts.Token), cts.Token);
             if (cts.IsCancellationRequested) return;
             Link = new LinkViewModel(r, r.Items, _main);
+            group.Ready(L.T("Loading complete") + " · " + L.Count(r.Items.Count, "1 song", "{0} songs"));
+            read = true;
         }
         catch (OperationCanceledException) { }
         catch (Exception ex) when (!cts.IsCancellationRequested)
         {
             Error = ex is EngineException or System.Xml.XmlException ? ex.Message : L.T("Unexpected error:") + " " + ex.Message;
+            group.Ready(L.T("The list couldn't be read"));
+            read = true;
         }
         finally
         {
             if (_cts == cts) IsAnalyzing = false;
+            // (canceled, or read while this page is in sight: nothing to tell)
+            if (!read || _main.Page == this)
+            {
+                if (_listGroup == group) _listGroup = null;
+                Queue.RemoveGroup(group);
+            }
         }
     }
 

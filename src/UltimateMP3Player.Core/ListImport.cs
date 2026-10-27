@@ -191,8 +191,8 @@ public static class ListImport
     // The songs of the list as a playlist's card. Links are read like pasted ones (a playlist's link gives all its songs);
     // a title and artist without one is found on Deezer, a catalogue like the links of Spotify (its link and cover, so it
     // can also go into the library without being saved), or else searched on YouTube Music when downloaded.
-    // progress: lines read, of how many.
-    public static async Task<AnalysisResult> AnalyzeAsync(IReadOnlyList<Entry> entries, string title, string? cookies, Action<int, int> progress,
+    // progress: lines read, of how many, and until when a site asked to wait (UTC; null: no pause).
+    public static async Task<AnalysisResult> AnalyzeAsync(IReadOnlyList<Entry> entries, string title, string? cookies, Action<int, int, DateTime?> progress,
         CancellationToken ct)
     {
         var found = new List<MediaItem>?[entries.Count];
@@ -201,11 +201,12 @@ public static class ListImport
         // (yt-dlp is a process each: fewer at once than the pages of the catalogues)
         using var engines = new SemaphoreSlim(3);
         using var pages = new SemaphoreSlim(8);
+        var limit = new Limit(until => progress(Volatile.Read(ref done), entries.Count, until));
         await Task.WhenAll(entries.Select(async (e, i) =>
         {
             try
             {
-                found[i] = await ResolveAsync(e, cookies, engines, pages, ct);
+                found[i] = await ResolveAsync(e, cookies, engines, pages, limit, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { return; }
             catch (Exception ex)
@@ -213,7 +214,7 @@ public static class ListImport
                 Interlocked.Increment(ref failed);
                 firstError ??= ex;
             }
-            progress(Interlocked.Increment(ref done), entries.Count);
+            progress(Interlocked.Increment(ref done), entries.Count, limit.Pending);
         }));
         ct.ThrowIfCancellationRequested();
         var result = new AnalysisResult { IsCollection = true, Title = title, Site = L.T("List"), PreferAudio = true };
@@ -226,7 +227,56 @@ public static class ListImport
         return result;
     }
 
-    private static async Task<List<MediaItem>> ResolveAsync(Entry e, string? cookies, SemaphoreSlim engines, SemaphoreSlim pages, CancellationToken ct)
+    // A site that answered "too many requests". Spotify does after a couple of hundred pages in a row, with no Retry-After, and
+    // then refuses for minutes: a few retries in 30 s left a long list without a third of its songs. Its links now wait all
+    // together, the pause doubling from 5 s up to 2 minutes, and a line is given up only after 10 minutes without an answer.
+    private sealed class Limit
+    {
+        private readonly Action<DateTime?> _paused;
+        private DateTime _until = DateTime.MinValue, _lastOk = DateTime.UtcNow;
+        private int _strikes;
+
+        public Limit(Action<DateTime?> paused) => _paused = paused;
+
+        public DateTime? Pending
+        {
+            get { lock (this) return _until > DateTime.UtcNow ? _until : null; }
+        }
+
+        public async Task WaitAsync(CancellationToken ct)
+        {
+            while (Pending is { } until) await Task.Delay(until - DateTime.UtcNow + TimeSpan.FromMilliseconds(50), ct);
+        }
+
+        public void Ok()
+        {
+            lock (this)
+            {
+                _strikes = 0;
+                _lastOk = DateTime.UtcNow;
+            }
+        }
+
+        // Refused again: false when it has been refusing for too long. Only the first refusal after a pause makes it longer
+        // (the others were asked together with it).
+        public bool Refused()
+        {
+            DateTime until;
+            lock (this)
+            {
+                var now = DateTime.UtcNow;
+                if (now - _lastOk > TimeSpan.FromMinutes(10)) return false;
+                if (now < _until) return true;
+                _strikes++;
+                until = _until = now + TimeSpan.FromSeconds(Math.Min(5 << Math.Min(_strikes - 1, 5), 120));
+            }
+            _paused(until);
+            return true;
+        }
+    }
+
+    private static async Task<List<MediaItem>> ResolveAsync(Entry e, string? cookies, SemaphoreSlim engines, SemaphoreSlim pages, Limit limit,
+        CancellationToken ct)
     {
         if (e.SpotifyId is { } id && e.Title != null)
         {
@@ -241,16 +291,22 @@ public static class ListImport
             await gate.WaitAsync(ct);
             try
             {
-                for (int attempt = 0; ; attempt++)
+                for (int attempt = 0; ;)
                 {
-                    try { return (await Analyzer.AnalyzeAsync(new AnalyzeRequest(url, cookies), ct)).Items; }
-                    // Asked for hundreds at once a site may answer "too many" (Spotify does after a hundred or so) or not at all:
-                    // tried again after 2, 4, 8, 16 s, keeping its place so the others slow down too; another failure once more.
-                    catch (Exception ex) when (!ct.IsCancellationRequested && attempt < 4 &&
-                                               (attempt == 0 || ex is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests } ||
-                                                (int?)(ex as HttpRequestException)?.StatusCode >= 500))
+                    await limit.WaitAsync(ct);
+                    try
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(2 << attempt), ct);
+                        var items = (await Analyzer.AnalyzeAsync(new AnalyzeRequest(url, cookies), ct)).Items;
+                        limit.Ok();
+                        return items;
+                    }
+                    // "Too many": it waits with the others (Limit), keeping its place so the queue slows down too.
+                    catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests && !ct.IsCancellationRequested && limit.Refused()) { }
+                    // No answer, or a server error: tried again after 2, 4, 8, 16 s; another failure once more.
+                    catch (Exception ex) when (!ct.IsCancellationRequested && attempt < 4 &&
+                                               (attempt == 0 || (int?)(ex as HttpRequestException)?.StatusCode >= 500))
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(2 << attempt++), ct);
                     }
                 }
             }

@@ -65,7 +65,8 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
 - MP3 a 320, 256, 192 o 128 kbps o formato originale, video da 360p fino al 4K, scelti per ogni brano e ricordati;
   più download insieme
 - **Liste di brani**: incolla tanti link o righe "Artista - Titolo" insieme, oppure apri una playlist esportata da Apple
-  Music, iTunes, Exportify o un .m3u con *Importa una lista*, senza limiti sul numero di brani
+  Music, iTunes, Exportify o un .m3u con *Importa una lista*, senza limiti sul numero di brani (a che punto è lo dice il
+  pannellino dei download, da qualsiasi pagina)
 - Un pannellino mostra i download in corso da qualsiasi pagina: la sua X annulla un brano o un'intera playlist, compresi
   i brani già scaricati; su Android anche dalla notifica
 - *Scarica di nuovo / qualità…*: un brano salvato riscaricato in un'altra qualità, al posto dei suoi file
@@ -327,6 +328,13 @@ Ogni pulsante scarica quel file dall'ultima release.
 
 Hai trovato un problema o hai un'idea? Apri una [segnalazione](https://github.com/KirboHQ/UltimateMP3Player/issues),
 oppure usa **Impostazioni → Aiuto e supporto** nell'app: scrive già lei la versione dell'app e di Windows.
+
+## ❤️ Sostieni il progetto
+
+Ultimate MP3 Player è gratuito, senza pubblicità, ed è fatto nel tempo libero. Se ti è utile, puoi sostenerlo su
+[GitHub Sponsors](https://github.com/sponsors/KirboHQ) (ogni mese o una volta sola) o su [Ko-fi](https://ko-fi.com/kirbohq)
+(una volta, con carta o PayPal, senza account), anche da **Impostazioni → Sostieni il progetto** nell'app, che ringrazia
+i sostenitori per nome.
 
 ## 🛠️ Compilare
 
