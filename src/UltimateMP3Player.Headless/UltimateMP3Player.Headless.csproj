@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Offscreen check of the desktop app: its real window, pages and dialogs in a headless Avalonia (nothing on screen, no
+       mouse: code and the keyboard drive it), with a throwaway data folder. Not part of any release. The command is in
+       CLAUDE.md; it prints "headless: ok" or what failed, and leaves screenshots in <folder>/shots. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UltimateMP3Player.Avalonia\UltimateMP3Player.Avalonia.csproj" />
+    <PackageReference Include="Avalonia.Headless" Version="11.3.22" />
+  </ItemGroup>
+
+</Project>

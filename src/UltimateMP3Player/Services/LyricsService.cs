@@ -187,7 +187,7 @@ public sealed class LyricsService : Observable
                 catch (Exception ex)
                 {
                     failed = true;
-                    try { File.AppendAllText(AppPaths.LogFile, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] lyrics: {ex}\n\n"); } catch { }
+                    AppPaths.AppendLog($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] lyrics: {ex}\n\n");
                 }
                 _busy = null;
                 if (!failed && _host.Library.Get(t.Id) == t) _host.Library.Changed(t);

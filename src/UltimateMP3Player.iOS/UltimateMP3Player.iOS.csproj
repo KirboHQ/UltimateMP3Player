@@ -22,9 +22,9 @@
     <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
     <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
     <!-- Keep equal to the other projects; the build number as on Android (3.7.2 → 30702). -->
-    <Version>4.1.0</Version>
-    <ApplicationDisplayVersion>4.1.0</ApplicationDisplayVersion>
-    <ApplicationVersion>40100</ApplicationVersion>
+    <Version>4.2.0</Version>
+    <ApplicationDisplayVersion>4.2.0</ApplicationDisplayVersion>
+    <ApplicationVersion>40200</ApplicationVersion>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -111,6 +111,7 @@
     <Compile Include="..\UltimateMP3Player.Android\AppHost.cs" Link="AppHost.cs" />
     <Compile Include="..\UltimateMP3Player.Android\Platform\Stubs.cs" Link="Shared\Phone\Stubs.cs" />
     <Compile Include="..\UltimateMP3Player.Android\Platform\SiteLogins.Shared.cs" Link="Shared\Phone\SiteLogins.Shared.cs" />
+    <Compile Include="..\UltimateMP3Player.Android\Platform\WebJs.Shared.cs" Link="Shared\Phone\WebJs.Shared.cs" />
     <AvaloniaXaml Include="..\UltimateMP3Player.Android\Views\*.axaml" Link="Views\%(Filename)%(Extension)" />
     <Compile Include="..\UltimateMP3Player.Android\Views\*.cs" Link="Views\%(Filename)%(Extension)" />
     <AvaloniaXaml Include="..\UltimateMP3Player.Android\Mobile\*.axaml" Link="Mobile\%(Filename)%(Extension)" />

@@ -1,8 +1,19 @@
+using System.Windows.Input;
+#if !AVALONIA
 using System.IO;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Threading;
 using Microsoft.Win32;
+#else
+using System.Globalization;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Threading;
+using TrayIcon = UltimateMP3Player.Services.TrayIcon;
+#endif
 using UltimateMP3Player.Audio;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.Services;
@@ -11,10 +22,13 @@ using UltimateMP3Player.Views;
 
 namespace UltimateMP3Player;
 
-// Lives for the whole run: settings, library, audio, downloads, tray.
+// Lives for the whole run: settings, library, audio, downloads, tray. One file for Windows and Linux/macOS (linked into the
+// Avalonia app): AVALONIA marks what differs.
 public sealed class AppHost : Observable
 {
+#if !AVALONIA
     private readonly Dispatcher _ui;
+#endif
     private readonly DispatcherTimer _updateTimer;
     private Task? _installTask;
     private bool _exiting;
@@ -23,7 +37,9 @@ public sealed class AppHost : Observable
 
     public AppHost()
     {
+#if !AVALONIA
         _ui = Application.Current.Dispatcher;
+#endif
         Settings = AppSettings.Load();
         ApplyLanguage();
         ApplyTheme();
@@ -39,17 +55,33 @@ public sealed class AppHost : Observable
         Ui.Animations = Settings.Animations;
         SmoothScroll.Enabled = Settings.SmoothScroll;
 
+#if !AVALONIA
         Audio = new AudioEngine(_ui) { OutputDevice = Settings.OutputDevice };
+#else
+        Audio = new AudioEngine(System.Windows.Application.Current.Dispatcher) { OutputDevice = Settings.OutputDevice };
+#endif
         Downloads = new DownloadQueue(this);
         Updates = new Updater();
         Presence = new DiscordPresence { Enabled = Settings.DiscordPresence };
         Lyrics = new LyricsService(this);
+#if !AVALONIA
         Media = new MediaControls(_ui);
+#else
+        Media = new MediaControls();
+#endif
         Media.PlayPressed += () => Session?.SetPlaying(true);
         Media.PausePressed += () => Session?.SetPlaying(false);
+#if AVALONIA
+        Media.PlayPausePressed += () => Session?.TogglePlay();
+#endif
         Media.NextPressed += () => Session?.Player.NextCommand.Execute(null);
         Media.PreviousPressed += () => Session?.Player.PreviousCommand.Execute(null);
         Media.SeekRequested += t => Session?.Player.Seek(t.TotalSeconds);
+#if AVALONIA
+        Media.VolumeRequested += v => { if (Session != null) Session.Player.Volume = v; };
+        Media.RaiseRequested += ShowWindow;
+        Media.QuitRequested += () => Exit();
+#endif
         Tray = new TrayIcon(ShowWindow,
             () => Session?.TogglePlay(),
             () => Session?.Player.NextCommand.Execute(null),
@@ -97,14 +129,18 @@ public sealed class AppHost : Observable
 
     // ------------------------------------------------------------------ language and theme
 
-    // Settings first, then the installer's choice; new users get English.
+    // Settings first; then on Windows the installer's choice (new users get English), elsewhere the system's language.
     private void ApplyLanguage()
     {
         if (Settings.Language == null)
         {
+#if !AVALONIA
             string? chosen = null;
             try { chosen = Registry.CurrentUser.OpenSubKey(@"Software\Ultimate MP3 Player")?.GetValue("Language") as string; } catch { }
             Settings.Language = chosen is "it" or "en" ? chosen : Settings.IsNew ? "en" : "it";
+#else
+            Settings.Language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "it" || !Settings.IsNew ? "it" : "en";
+#endif
             Settings.Save();
         }
         L.English = Settings.Language == "en";
@@ -154,6 +190,9 @@ public sealed class AppHost : Observable
             Session.Profile.Flush();
         }
         Session = new MainViewModel(this, Profile.Get(info));
+#if AVALONIA
+        WatchVolume(Session);
+#endif
         ApplyTheme();
         if (Window != null) Window.DataContext = Session;
         OnTrackChanged();
@@ -184,18 +223,28 @@ public sealed class AppHost : Observable
         Session.Detach();
         Session.Profile.Flush();
         Session = new MainViewModel(this, Session.Profile, adopt: true);
+#if AVALONIA
+        WatchVolume(Session);
+#endif
         ReloadResources();
         ApplyTheme();
         if (Window != null)
         {
             var old = Window;
             var state = old.WindowState;
+#if AVALONIA
+            var pos = old.Position;
+#endif
             Window = null;
             ShowWindow();
             if (Window != null)
             {
+#if !AVALONIA
                 Window.Left = old.Left;
                 Window.Top = old.Top;
+#else
+                Window.Position = pos;
+#endif
                 Window.WindowState = state;
             }
             old.CloseSilently();
@@ -208,10 +257,19 @@ public sealed class AppHost : Observable
     // Fresh styles and templates so their texts follow the language.
     private static void ReloadResources()
     {
+#if !AVALONIA
         var merged = Application.Current.Resources.MergedDictionaries;
         var sources = merged.Select(d => d.Source).Where(s => s != null).ToList();
         merged.Clear();
         foreach (var s in sources) merged.Add(new ResourceDictionary { Source = s });
+#else
+        try
+        {
+            AppResources.Reload(new[] { "avares://UltimateMP3Player/Theme.axaml", "avares://UltimateMP3Player/Views/Templates.axaml" },
+                new[] { "avares://UltimateMP3Player/Views/TemplateStyles.axaml" });
+        }
+        catch (Exception ex) { App.Log(ex); }
+#endif
     }
 
     // ------------------------------------------------------------------ window
@@ -225,6 +283,9 @@ public sealed class AppHost : Observable
             Window = new MainWindow(this) { DataContext = Session };
             var w = Window;
             w.Closed += (_, _) => { if (Window == w) Window = null; };
+#if AVALONIA
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) desktop.MainWindow = w;
+#endif
             w.Show();
         }
         else
@@ -235,6 +296,9 @@ public sealed class AppHost : Observable
         Window.Activate();
         Window.Topmost = true;
         Window.Topmost = false;
+#if AVALONIA
+        Ui.Hidden = false;
+#endif
         Session.Player.SetVisible(true);
         if (!_notesChecked)
         {
@@ -257,16 +321,31 @@ public sealed class AppHost : Observable
     public bool OnWindowClosing()
     {
         if (_exiting) return true;
+#if !AVALONIA
         if (Settings.CloseToTray)
+#else
+        if (Settings.CloseToTray && Tray.Available)
+#endif
         {
+#if AVALONIA
+            Ui.Hidden = true;
+#endif
             Session?.Player.SetVisible(false);
             Session?.Player.SaveState();
             Tray.ShowBackgroundHint();
             _hiddenSince = DateTime.Now;
+#if !AVALONIA
             _ui.BeginInvoke(() =>
+#else
+            Dispatcher.UIThread.Post(() =>
+#endif
             {
                 Images.Release();
+#if !AVALONIA
                 Ui.TrimMemory();
+#else
+                GC.Collect(2, GCCollectionMode.Optimized, false);
+#endif
             }, DispatcherPriority.ApplicationIdle);
             return true;
         }
@@ -298,8 +377,13 @@ public sealed class AppHost : Observable
         Tray.Dispose();
         Media.Dispose();
         Audio.Dispose();
+#if !AVALONIA
         if (Window is { IsClosing: false } w) w.Close();
         Application.Current.Shutdown();
+#else
+        if (Window is { IsClosing: false } w) w.CloseSilently();
+        (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+#endif
         return true;
     }
 
@@ -315,7 +399,7 @@ public sealed class AppHost : Observable
         if (url != null) Session.StartDownload(url);
     }
 
-    // ------------------------------------------------------------------ now playing → Windows and Discord
+    // ------------------------------------------------------------------ now playing → the system and Discord
 
     public void OnPlaybackChanged()
     {
@@ -329,7 +413,11 @@ public sealed class AppHost : Observable
     public void OnTrackChanged()
     {
         var c = Session?.Player.Current;
+#if !AVALONIA
         Media.SetTrack(c?.Title, c?.T.DisplayArtist, c?.Album, c is { T.HasCover: true } ? AppPaths.TrackCover(c.Id) : null);
+#else
+        Media.SetTrack(c?.Title, c?.T.DisplayArtist, c?.Album, c is { T.HasCover: true } ? AppPaths.TrackCover(c.Id) : null, c?.T.Duration ?? 0);
+#endif
         Tray.Update(NowPlayingText(), Session?.Player.IsPlaying == true);
         if (Window != null) Window.Title = c != null ? $"{c.Title} · {c.Artist} — Ultimate MP3 Player" : "Ultimate MP3 Player";
         UpdateTimeline(true);
@@ -340,13 +428,29 @@ public sealed class AppHost : Observable
     // Joined, left, someone came or went: Discord shows the room's size.
     public void OnRoomChanged() => UpdateTimeline(true);
 
+#if AVALONIA
+    // The system's media controls show the app's volume too (GNOME, KDE): the same value as the slider, both ways.
+    private void WatchVolume(MainViewModel session)
+    {
+        Media.SetVolume(session.Player.Volume);
+        session.Player.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.Volume) && Session == session) Media.SetVolume(session.Player.Volume);
+        };
+    }
+#endif
+
     private void UpdateTimeline(bool force)
     {
         var p = Session?.Player;
         if (!force && DateTime.Now - _lastTimeline < TimeSpan.FromSeconds(5)) return;
         _lastTimeline = DateTime.Now;
         var duration = TimeSpan.FromSeconds(p?.Duration ?? 0);
+#if !AVALONIA
         if (p?.Current != null) Media.SetTimeline(p.EnginePosition, duration);
+#else
+        if (p?.Current != null) Media.SetTimeline(p.EnginePosition, duration, p.Speed);
+#endif
         // Discord runs its bar on the clock: at another speed the song lasts that much more or less.
         double speed = p?.Speed is > 0 and var s ? s : 1;
         var room = Session is { InRoom: true, Together: var t } ? new DiscordPresence.Room(t.RoomId, t.RoomName, t.MemberCount, t.RoomMax) : null;
@@ -404,7 +508,7 @@ public sealed class AppHost : Observable
     private string? _engineStatus;
     public string? EngineStatus { get => _engineStatus; private set => Set(ref _engineStatus, value); }
 
-    // Fetches missing engines (only the exe was copied).
+    // Fetches missing engines (on Windows only the exe may have been copied).
     public Task EnsureEnginesAsync()
     {
         if (Engines.Missing().Count == 0) return Task.CompletedTask;
@@ -417,7 +521,11 @@ public sealed class AppHost : Observable
         {
             EngineStatus = L.T("Downloading download engines…");
             await Task.Run(() => Engines.InstallMissingAsync((text, pct) =>
+#if !AVALONIA
                 _ui.BeginInvoke(() => EngineStatus = text + (pct is double p ? $" · {p:0}%" : "…")), CancellationToken.None));
+#else
+                Dispatcher.UIThread.Post(() => EngineStatus = text + (pct is double p ? $" · {p:0}%" : "…")), CancellationToken.None));
+#endif
             EngineStatus = null;
         }
         catch (Exception ex)

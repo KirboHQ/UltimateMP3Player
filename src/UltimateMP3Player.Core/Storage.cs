@@ -48,6 +48,24 @@ public static class AppPaths
     // Songs heard without saving them (SongCache).
     public static string CacheDir => Path.Combine(DataDir, "cache");
     public static string LogFile => Path.Combine(DataDir, "errors.log");
+
+    // errors.log (or file) stays small: past 1 MB only its newer half is kept, from the start of an entry.
+    public static void AppendLog(string text, string? file = null)
+    {
+        var path = file ?? LogFile;
+        try
+        {
+            if (new FileInfo(path) is { Exists: true, Length: > 1 << 20 })
+            {
+                var all = File.ReadAllText(path);
+                int cut = all.IndexOf("\n\n[", all.Length / 2, StringComparison.Ordinal);
+                File.WriteAllText(path, all[(cut < 0 ? all.Length / 2 : cut + 2)..]);
+            }
+            File.AppendAllText(path, text);
+        }
+        catch { }
+    }
+
     // Not created here, so deleted profiles stay deleted.
     public static string ProfileDir(string id) => Path.Combine(DataDir, "profiles", id);
     public static string TempDir => Dir(Path.Combine(Path.GetTempPath(), "UltimateMP3Player"));
@@ -91,7 +109,12 @@ public static class JsonStore
             {
                 if (File.Exists(p)) return JsonSerializer.Deserialize<T>(File.ReadAllText(p), Options) ?? new T();
             }
-            catch { }
+            catch
+            {
+                // Unreadable (damaged, or written by a newer version): kept aside, or the next saves would replace it and
+                // then its .bak with what was loaded instead (an empty library).
+                try { File.Copy(p, p + ".unreadable", true); } catch { }
+            }
         }
         return new T();
     }
@@ -156,13 +179,18 @@ public static class OldFiles
     }
 }
 
-// Many save requests become one write.
+// Many save requests become one write. Flush writes at once only what was asked and not written yet: going to the
+// background no longer rewrites an unchanged library (megabytes, and garbage that stops the sound for a moment). The write
+// has a lock of its own: a request made while it goes doesn't wait for it (the screen stopped for as long as a big library
+// took to write), it asks for the next one.
 public sealed class DebouncedSaver
 {
     private readonly Action _save;
     private readonly TimeSpan _delay;
     private readonly object _lock = new();
+    private readonly object _writing = new();
     private Timer? _timer;
+    private bool _pending;
 
     public DebouncedSaver(Action save, int delayMs = 800)
     {
@@ -174,6 +202,7 @@ public sealed class DebouncedSaver
     {
         lock (_lock)
         {
+            _pending = true;
             _timer ??= new Timer(_ => Flush());
             _timer.Change(_delay, Timeout.InfiniteTimeSpan);
         }
@@ -181,10 +210,17 @@ public sealed class DebouncedSaver
 
     public void Flush()
     {
-        lock (_lock)
+        lock (_writing)
         {
-            _timer?.Change(Timeout.Infinite, Timeout.Infinite);
-            try { _save(); } catch { }
+            lock (_lock)
+            {
+                _timer?.Change(Timeout.Infinite, Timeout.Infinite);
+                if (!_pending) return;
+                _pending = false;
+            }
+            try { _save(); }
+            // (a full disk: tried again at the next flush)
+            catch { lock (_lock) _pending = true; }
         }
     }
 }
@@ -261,9 +297,10 @@ public sealed class AppSettings
     public string? SpotifyClientSecret { get; set; }
     // Lyrics searched by themselves: for new songs and for the song playing, when never searched before.
     public bool AutoLyrics { get; set; } = true;
-    // The songs of a link get their audio saved on the device (the last choice of the download card); off = they go into
-    // the library and the playlist in the cloud, heard from their link.
-    public bool SaveLinkAudio { get; set; } = true;
+    // Songs added from a link or a pack get their audio saved on the device: where the download card's switch starts
+    // (Settings › Download); off = into the library and the playlist in the cloud, heard from their link. (Up to 4.1.0 it
+    // was the card's last choice, "SaveLinkAudio", on by default: not read.)
+    public bool SaveAudio { get; set; }
     public double WindowWidth { get; set; } = 1280;
     public double WindowHeight { get; set; } = 820;
     public bool WindowMaximized { get; set; }

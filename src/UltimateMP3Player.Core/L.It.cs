@@ -2091,6 +2091,10 @@ public static partial class L
         ["Open the downloads"] = "Apri i download",
         ["1 more download"] = "1 altro download",
         ["{0} more downloads"] = "altri {0} download",
-        ["Paused"] = "In pausa",
+        // 4.2.0: songs only added to the library by default (Settings › Download)
+        ["Songs you add from a link or a pack are downloaded. Off: they go into your library in the cloud, you listen from their link and save them whenever you like."] =
+            "I brani che aggiungi da un link o da un pacchetto vengono scaricati. Spento: vanno nella libreria nel cloud, li ascolti dal loro link e li salvi quando vuoi.",
+        ["1 as a link"] = "1 come link",
+        ["{0} as links"] = "{0} come link",
     };
 }

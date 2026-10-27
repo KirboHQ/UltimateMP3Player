@@ -1042,7 +1042,7 @@ public sealed class LinkViewModel : Observable
         }).ToList();
         HasVideo = Engines.VideoDownloads && playable.Any(i => i.Kind == MediaKind.Video);
         _withVideo = HasVideo && !main.Host.Settings.PreferAudioOnly;
-        _saveAudio = main.Host.Settings.SaveLinkAudio;
+        _saveAudio = main.Host.Settings.SaveAudio;
         _audio = QualityChoices.Pick(AudioChoices, main.Host.Settings.AudioFormat);
         _video = QualityChoices.Pick(VideoChoices, main.Host.Settings.VideoMaxRes);
 
@@ -1073,7 +1073,8 @@ public sealed class LinkViewModel : Observable
         : L.T("Listen right away without adding it to your library: it stays in temporary storage for a while, and if you like it you can save it or add it to a playlist from the song's menu.");
 
     // The audio saved on the device (the usual download), or the songs only added to the library and the playlist, in the
-    // cloud: nothing downloaded now, heard from their link, saved whenever wanted. The choice is remembered.
+    // cloud: nothing downloaded now, heard from their link, saved whenever wanted. Every card starts as Settings › Download
+    // say (a choice here is this card's only: the default doesn't change behind the user's back).
     private bool _saveAudio;
     public bool SaveAudio
     {
@@ -1081,8 +1082,6 @@ public sealed class LinkViewModel : Observable
         set
         {
             if (!Set(ref _saveAudio, value)) return;
-            _main.Host.Settings.SaveLinkAudio = value;
-            _main.Host.Settings.Save();
             OnChanged(nameof(DownloadLabel), nameof(DownloadGlyph), nameof(ShowVideoChoice), nameof(ShowVideoQuality), nameof(SaveAudioHint));
             CommandManager.InvalidateRequerySuggested();
         }

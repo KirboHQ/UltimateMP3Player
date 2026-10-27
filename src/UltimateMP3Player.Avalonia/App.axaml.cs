@@ -163,15 +163,7 @@ public partial class App : Application
         catch { }
     }
 
-    public static void Log(Exception ex)
-    {
-        try
-        {
-            var log = AppPaths.LogFile;
-            File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
-        }
-        catch { }
-    }
+    public static void Log(Exception ex) => AppPaths.AppendLog($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
 
     private static void OnUnhandled(object? sender, DispatcherUnhandledExceptionEventArgs e)
     {

@@ -42,6 +42,8 @@ public static class OnlineSearchServices
 {
     public const string YouTubeMusic = "YouTube Music", YouTube = "YouTube", SoundCloud = "SoundCloud", Deezer = "Deezer", Spotify = "Spotify";
     public static readonly string[] Default = { YouTubeMusic, SoundCloud, YouTube, Deezer, Spotify };
+    // Not searched for songs: only an artist's albums come from its catalogue (ArtistAlbumsAsync).
+    public const string AppleMusic = "Apple Music";
 
     // The user's own Spotify app (a free one on developer.spotify.com), from the settings: without it Spotify isn't
     // searched (its tab says what it takes).
@@ -389,16 +391,8 @@ public static class OnlineSearchServices
     // songs any more (2026): it's a search of their name, kept to their own songs, without doubles. Null when there's none.
     public static async Task<(string Name, List<SearchHit> Hits)?> SpotifyArtistAsync(string name, int limit, CancellationToken ct)
     {
-        string id, found;
-        using (var s = JsonDocument.Parse(await SpotifyGetAsync($"https://api.spotify.com/v1/search?type=artist&limit=10&q={Uri.EscapeDataString(name)}", ct)))
-        {
-            // (the best known first: Spotify no longer tells a key how many follow each)
-            var artists = s.RootElement.Prop("artists")?.Arr("items").ToList() ?? new List<JsonElement>();
-            var artist = artists.FirstOrDefault(a => Text.Normalize(a.Str("name")) == Text.Normalize(name));
-            if (artist.ValueKind != JsonValueKind.Object && artists.Count > 0 && Text.Coverage(name, artists[0].Str("name") ?? "") >= 0.8) artist = artists[0];
-            if (artist.ValueKind != JsonValueKind.Object || artist.Str("id") is not { } aid) return null;
-            (id, found) = (aid, artist.Str("name") ?? name);
-        }
+        if (await SpotifyFindArtistAsync(name, ct) is not { } artist) return null;
+        var (id, found) = artist;
         var hits = new List<SearchHit>();
         var seen = new HashSet<string>();
         var q = Uri.EscapeDataString($"artist:\"{found}\"");
@@ -413,6 +407,17 @@ public static class OnlineSearchServices
             if (page.Count < 10) break;
         }
         return (found, hits);
+    }
+
+    // The artist the words name on Spotify: exactly that name, or the first one when it's nearly that name.
+    private static async Task<(string Id, string Name)?> SpotifyFindArtistAsync(string name, CancellationToken ct)
+    {
+        using var s = JsonDocument.Parse(await SpotifyGetAsync($"https://api.spotify.com/v1/search?type=artist&limit=10&q={Uri.EscapeDataString(name)}", ct));
+        // (the best known first: Spotify no longer tells a key how many follow each)
+        var artists = s.RootElement.Prop("artists")?.Arr("items").ToList() ?? new List<JsonElement>();
+        var artist = artists.FirstOrDefault(a => Text.Normalize(a.Str("name")) == Text.Normalize(name));
+        if (artist.ValueKind != JsonValueKind.Object && artists.Count > 0 && Text.Coverage(name, artists[0].Str("name") ?? "") >= 0.8) artist = artists[0];
+        return artist.ValueKind == JsonValueKind.Object && artist.Str("id") is { } id ? (id, artist.Str("name") ?? name) : null;
     }
 
     // ------------------------------------------------------------------ similar songs (the suggested queue)
@@ -549,11 +554,40 @@ public static class OnlineSearchServices
 
     // ------------------------------------------------------------------ albums and playlists (opened like their link)
 
-    // An artist's albums and EPs on Deezer, the albums first, each the newest first (Deezer's own order). The singles are
-    // left out: they're among the artist's songs.
-    public static async Task<List<SearchHit>> ArtistAlbumsAsync(string id, CancellationToken ct)
+    // An artist's albums and EPs on one site (YouTube's are YouTube Music's: the same playlists), with the artist's name as
+    // the site writes it: the artist named exactly so, the best known one. The singles are left out: they're among the
+    // artist's songs. Null when the site doesn't know them.
+    public static async Task<(string Name, List<SearchHit> Hits)?> ArtistAlbumsAsync(string service, string name, CancellationToken ct)
     {
-        using var doc = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/artist/{id}/albums?limit=300", ct));
+        var found = await (service switch
+        {
+            Deezer => DeezerArtistAlbumsAsync(name, ct),
+            YouTubeMusic => YouTubeMusicArtistAlbumsAsync(name, ct),
+            SoundCloud => SoundCloudArtistAlbumsAsync(name, ct),
+            Spotify => SpotifyArtistAlbumsAsync(name, ct),
+            AppleMusic => AppleArtistAlbumsAsync(name, ct),
+            _ => Task.FromResult<(string, List<SearchHit>)?>(null),
+        });
+        return found is { Item2.Count: > 0 } ? found : null;
+    }
+
+    // Albums from several sites as one list: the albums, then the EPs, each the newest first. One on more than one site
+    // is kept once, the first site's (the sites in the order given).
+    public static List<SearchHit> MergeAlbums(IEnumerable<List<SearchHit>> sites)
+    {
+        var seen = new HashSet<string>();
+        // ("LeftRightLeftRightLeft" is "Left Right Left Right Left", "Kaleidoscope EP" Apple's "Kaleidoscope - EP"; titles of
+        // symbols only, "÷" and "×", are their own key)
+        string Key(SearchHit h) => Regex.Replace(Text.Normalize(h.Title), " ep$", "").Replace(" ", "") is { Length: > 0 } key ? key : h.Title.Trim();
+        return sites.SelectMany(s => s).Where(h => seen.Add(Key(h)))
+            .OrderBy(h => h.Collection == "ep").ThenByDescending(h => h.Year ?? "").ToList();
+    }
+
+    // Deezer's: the albums first, each the newest first (Deezer's own order).
+    private static async Task<(string, List<SearchHit>)?> DeezerArtistAlbumsAsync(string name, CancellationToken ct)
+    {
+        if (await FindArtistAsync(name, ct) is not { } artist) return null;
+        using var doc = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/artist/{artist.Id}/albums?limit=300", ct));
         var hits = new List<SearchHit>();
         foreach (var a in doc.RootElement.Arr("data"))
             if (a.Str("record_type") is "album" or "ep" && a.Str("id") is { } aid && a.Str("title") is { Length: > 0 } title)
@@ -562,7 +596,156 @@ public static class OnlineSearchServices
                     Service = Deezer, Collection = a.Str("record_type"), Title = title, Year = a.Str("release_date") is { Length: >= 4 } d ? d[..4] : null,
                     Thumb = a.Str("cover_medium"), Url = a.Str("link") ?? "https://www.deezer.com/album/" + aid, Rank = hits.Count,
                 });
-        return hits;
+        return (artist.Name, hits);
+    }
+
+    // YouTube Music's: the artist's page (the first artist named exactly so, the best known), all of its albums (the
+    // "more" of its albums shelf) and the EPs among its latest singles. Its albums search for the name finds only a few.
+    private static async Task<(string, List<SearchHit>)?> YouTubeMusicArtistAlbumsAsync(string name, CancellationToken ct)
+    {
+        string id, found;
+        using (var s = JsonDocument.Parse(await PostJsonAsync("https://music.youtube.com/youtubei/v1/search?prettyPrint=false",
+                   InnerTubeBody("WEB_REMIX", "1.20240904.01.00", name, "EgWKAQIgAWoKEAkQBRAKEAMQBA%3D%3D"), "https://music.youtube.com", ct)))
+        {
+            string RowName(JsonElement r) => Runs(r.Arr("flexColumns").FirstOrDefault().Prop("musicResponsiveListItemFlexColumnRenderer")?.Prop("text"));
+            var row = MusicRows(s.RootElement).FirstOrDefault(r => Text.Normalize(RowName(r)) == Text.Normalize(name));
+            if (row.ValueKind != JsonValueKind.Object || row.Prop("navigationEndpoint")?.Prop("browseEndpoint")?.Str("browseId") is not { } page) return null;
+            (id, found) = (page, RowName(row));
+        }
+        using var artist = JsonDocument.Parse(await MusicBrowseAsync(id, null, ct));
+        var hits = new List<SearchHit>();
+        // (only the discography's shelves have albums: the albums, the singles and EPs)
+        foreach (var shelf in BrowseSections(artist.RootElement).Select(x => x.Prop("musicCarouselShelfRenderer")).OfType<JsonElement>())
+        {
+            var shown = shelf.Arr("contents").Select(c => MusicAlbum(c.Prop("musicTwoRowItemRenderer"))).OfType<SearchHit>().ToList();
+            // ("more" only when the shelf doesn't show them all)
+            var more = shelf.Prop("header")?.Prop("musicCarouselShelfBasicHeaderRenderer")?.Prop("title")?.Arr("runs").FirstOrDefault()
+                .Prop("navigationEndpoint")?.Prop("browseEndpoint");
+            if (shown.Any(h => h.Collection == "album") && more?.Str("browseId") is { } moreId
+                && more?.Prop("browseEndpointContextSupportedConfigs")?.Prop("browseEndpointContextMusicConfig")?.Str("pageType") == "MUSIC_PAGE_TYPE_ARTIST_DISCOGRAPHY")
+                try
+                {
+                    using var all = JsonDocument.Parse(await MusicBrowseAsync(moreId, more?.Str("params"), ct));
+                    var full = BrowseSections(all.RootElement).Select(x => x.Prop("gridRenderer")).OfType<JsonElement>().FirstOrDefault().Arr("items")
+                        .Select(c => MusicAlbum(c.Prop("musicTwoRowItemRenderer"))).OfType<SearchHit>().ToList();
+                    if (full.Count > 0) shown = full;
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch { } // (the shelf's own, the latest)
+            hits.AddRange(shown);
+        }
+        return (found, hits);
+    }
+
+    private static Task<string> MusicBrowseAsync(string id, string? more, CancellationToken ct) => PostJsonAsync("https://music.youtube.com/youtubei/v1/browse?prettyPrint=false",
+        JsonSerializer.Serialize(new
+        {
+            context = new { client = new { clientName = "WEB_REMIX", clientVersion = "1.20240904.01.00", hl = Lang, gl = "IT" } },
+            browseId = id,
+            @params = more,
+        }), "https://music.youtube.com", ct);
+
+    private static IEnumerable<JsonElement> BrowseSections(JsonElement root)
+        => root.Prop("contents")?.Prop("singleColumnBrowseResultsRenderer")?.Arr("tabs").FirstOrDefault().Prop("tabRenderer")?.Prop("content")
+            ?.Prop("sectionListRenderer")?.Arr("contents") ?? Enumerable.Empty<JsonElement>();
+
+    // An album or an EP of an artist's page ("Album • 2014", the year alone on the page itself; "EP • 2017"), as its
+    // playlist; null for a single or anything else.
+    private static SearchHit? MusicAlbum(JsonElement? item)
+    {
+        if (item is not { } r || r.Prop("title")?.Arr("runs").FirstOrDefault() is not { ValueKind: JsonValueKind.Object } run
+            || PageType(run) != "MUSIC_PAGE_TYPE_ALBUM" || run.Str("text") is not { Length: > 0 } title) return null;
+        var parts = Runs(r.Prop("subtitle")).Split('•').Select(p => p.Trim()).Where(p => p.Length > 0).ToList();
+        var kind = parts.FirstOrDefault()?.ToLowerInvariant() switch { "ep" => "ep", "single" or "singolo" => null, _ => "album" };
+        var list = r.Prop("thumbnailOverlay")?.Prop("musicItemThumbnailOverlayRenderer")?.Prop("content")?.Prop("musicPlayButtonRenderer")
+            ?.Prop("playNavigationEndpoint")?.Prop("watchPlaylistEndpoint")?.Str("playlistId");
+        if (kind == null || list == null) return null;
+        var thumb = r.Prop("thumbnailRenderer")?.Prop("musicThumbnailRenderer")?.Prop("thumbnail")?.Arr("thumbnails").LastOrDefault().Str("url");
+        return new SearchHit
+        {
+            Service = YouTubeMusic, Collection = kind, Title = title, Year = parts.LastOrDefault(p => Regex.IsMatch(p, @"^\d{4}$")),
+            Thumb = thumb != null ? Regex.Replace(thumb, @"=w\d+-h\d+", "=w300-h300") : null, Url = "https://music.youtube.com/playlist?list=" + list,
+        };
+    }
+
+    // SoundCloud's: the user with exactly that name (or profile name), the most followed.
+    private static async Task<(string, List<SearchHit>)?> SoundCloudArtistAlbumsAsync(string name, CancellationToken ct)
+    {
+        string id, found;
+        using (var users = JsonDocument.Parse(await SoundCloudGetAsync(c =>
+                   $"https://api-v2.soundcloud.com/search/users?q={Uri.EscapeDataString(name)}&client_id={c}&limit=10", ct)))
+        {
+            var key = Text.Normalize(name);
+            var user = users.RootElement.Arr("collection").Where(u => Text.Normalize(u.Str("username")) == key || Text.Normalize(u.Str("full_name")) == key)
+                .OrderByDescending(u => u.Num("followers_count") ?? 0).FirstOrDefault();
+            if (user.ValueKind != JsonValueKind.Object || user.Str("id") is not { } uid) return null;
+            (id, found) = (uid, (Text.Normalize(user.Str("full_name")) == key ? user.Str("full_name") : user.Str("username")) ?? name);
+        }
+        using var doc = JsonDocument.Parse(await SoundCloudGetAsync(c => $"https://api-v2.soundcloud.com/users/{id}/albums?client_id={c}&limit=50", ct));
+        var hits = new List<SearchHit>();
+        // (not a single with its remixes, filed as an album; not one with previews only of some songs, as labels' often are)
+        foreach (var p in doc.RootElement.Arr("collection"))
+            if (SoundCloudSet(p, hits.Count, owner: false) is { Collection: not "playlist" } h && !(h.Collection == "album" && h.Songs < 4)
+                && !p.Arr("tracks").Any(t => t.Str("policy") is "SNIP" or "BLOCK"))
+                hits.Add(h);
+        return (found, hits);
+    }
+
+    // Spotify's (with the user's key): EPs are among its "singles", with four songs or more.
+    private static async Task<(string, List<SearchHit>)?> SpotifyArtistAlbumsAsync(string name, CancellationToken ct)
+    {
+        if (await SpotifyFindArtistAsync(name, ct) is not { } artist) return null;
+        var hits = new List<SearchHit>();
+        // shortcut: pages of 10 as for a key's searches, at most 10 of them; more pages for an artist with over a hundred releases.
+        for (int offset = 0; offset < 100; offset += 10)
+        {
+            using var doc = JsonDocument.Parse(await SpotifyGetAsync(
+                $"https://api.spotify.com/v1/artists/{artist.Id}/albums?include_groups=album,single&limit=10&offset={offset}", ct));
+            foreach (var a in doc.RootElement.Arr("items"))
+            {
+                int songs = a.Int("total_tracks") ?? 0;
+                var kind = a.Str("album_type") switch { "album" or "compilation" => "album", "single" when songs >= 4 => "ep", _ => null };
+                if (kind == null || a.Str("id") is not { } aid || a.Str("name") is not { Length: > 0 } title) continue;
+                hits.Add(new SearchHit
+                {
+                    Service = Spotify, Collection = kind, Title = title, Songs = songs > 0 ? songs : null, Year = a.Str("release_date") is { Length: >= 4 } d ? d[..4] : null,
+                    Thumb = a.Arr("images").OrderBy(i => Math.Abs((i.Int("width") ?? 0) - 300)).Select(i => i.Str("url")).FirstOrDefault(u => u != null),
+                    Url = "https://open.spotify.com/album/" + aid, Rank = hits.Count,
+                });
+            }
+            if (doc.RootElement.Str("next") == null) break;
+        }
+        return (artist.Name, hits);
+    }
+
+    // Apple Music's (the iTunes catalogue, free like Deezer's): the most relevant artist with exactly that name ("Ultimo"
+    // has namesakes). Its EPs end in " - EP", its singles in " - Single" (or not: "(Single Version)", fewer than four songs).
+    private static async Task<(string, List<SearchHit>)?> AppleArtistAlbumsAsync(string name, CancellationToken ct)
+    {
+        var country = L.English ? "us" : "it";
+        string id, found;
+        using (var s = JsonDocument.Parse(await GetAsync($"https://itunes.apple.com/search?term={Uri.EscapeDataString(name)}&entity=musicArtist&limit=10&country={country}", ct)))
+        {
+            var artist = s.RootElement.Arr("results").FirstOrDefault(a => Text.Normalize(a.Str("artistName")) == Text.Normalize(name));
+            if (artist.ValueKind != JsonValueKind.Object || artist.Str("artistId") is not { } aid) return null;
+            (id, found) = (aid, artist.Str("artistName") ?? name);
+        }
+        using var doc = JsonDocument.Parse(await GetAsync($"https://itunes.apple.com/lookup?id={id}&entity=album&limit=200&country={country}", ct));
+        var hits = new List<SearchHit>();
+        foreach (var a in doc.RootElement.Arr("results"))
+        {
+            if (a.Str("wrapperType") != "collection" || a.Str("artistId") != id || a.Str("collectionName") is not { Length: > 0 } title
+                || a.Str("collectionViewUrl") is not { } url || title.EndsWith(" - Single")) continue;
+            bool ep = title.EndsWith(" - EP");
+            if (!ep && a.Int("trackCount") < 4) continue;
+            hits.Add(new SearchHit
+            {
+                Service = AppleMusic, Collection = ep ? "ep" : "album", Title = ep ? title[..^5] : title, Songs = a.Int("trackCount"),
+                Year = a.Str("releaseDate") is { Length: >= 4 } d ? d[..4] : null, Thumb = a.Str("artworkUrl100")?.Replace("100x100bb", "300x300bb"),
+                Url = Regex.Replace(url, @"[?&]uo=\d+", ""), Rank = hits.Count,
+            });
+        }
+        return (found, hits);
     }
 
     // Albums, EPs and playlists named by the words on one site (none on a site without them), each kind's best first:
@@ -670,18 +853,25 @@ public static class OnlineSearchServices
         foreach (var p in doc.RootElement.Arr("collection"))
         {
             if (hits.Count >= limit) break;
-            // (no kind: a playlist)
-            var kind = p.Str("set_type") switch { "album" or "compilation" => "album", "ep" => "ep", null or "" => "playlist", _ => null };
-            if (kind == null || p.Str("permalink_url") is not { } url || p.Str("title") is not { Length: > 0 } title || p.Int("track_count") is not > 0) continue;
-            var art = p.Str("artwork_url") ?? p.Arr("tracks").Select(t => t.Str("artwork_url")).FirstOrDefault(a => a != null) ?? p.Prop("user")?.Str("avatar_url");
-            hits.Add(new SearchHit
-            {
-                Service = SoundCloud, Collection = kind, Title = title, Artist = p.Prop("user")?.Str("username"), Songs = p.Int("track_count"),
-                Year = kind != "playlist" && p.Str("release_date") is { Length: >= 4 } d ? d[..4] : null,
-                Thumb = art?.Replace("-large.", "-t300x300."), Url = url, Rank = hits.Count,
-            });
+            if (SoundCloudSet(p, hits.Count) is { } h) hits.Add(h);
         }
         return hits;
+    }
+
+    // A set as a hit, or null for an empty one or one of the other kinds (owner: false leaves who made it out, for an
+    // artist's own).
+    private static SearchHit? SoundCloudSet(JsonElement p, int rank, bool owner = true)
+    {
+        // (no kind: a playlist)
+        var kind = p.Str("set_type") switch { "album" or "compilation" => "album", "ep" => "ep", null or "" => "playlist", _ => null };
+        if (kind == null || p.Str("permalink_url") is not { } url || p.Str("title") is not { Length: > 0 } title || p.Int("track_count") is not > 0) return null;
+        var art = p.Str("artwork_url") ?? p.Arr("tracks").Select(t => t.Str("artwork_url")).FirstOrDefault(a => a != null) ?? p.Prop("user")?.Str("avatar_url");
+        return new SearchHit
+        {
+            Service = SoundCloud, Collection = kind, Title = title, Artist = owner ? p.Prop("user")?.Str("username") : null, Songs = p.Int("track_count"),
+            Year = kind != "playlist" && (p.Str("release_date") ?? p.Str("display_date")) is { Length: >= 4 } d ? d[..4] : null,
+            Thumb = art?.Replace("-large.", "-t300x300."), Url = url, Rank = rank,
+        };
     }
 
     // Deezer's public playlists for the words (its editors' and its users'), the best match first.

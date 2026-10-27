@@ -31,7 +31,8 @@ public sealed class DiscordPresence : IDisposable
     public sealed record Room(string Id, string Name, int Members, int Max);
 
     // What should be shown (a song, a room, or both); the JSON is built when sending, once the cover has been checked.
-    private sealed record Wanted(Track? Track, long Start, long? End, bool Paused, Room? Room);
+    // Paused = the bar drawn in the text, stopped where the song is.
+    private sealed record Wanted(Track? Track, long Start, long? End, string? Paused, Room? Room);
 
     public bool Available => AppInfo.DiscordAppId.Length > 0;
 
@@ -45,7 +46,8 @@ public sealed class DiscordPresence : IDisposable
         }
     }
 
-    // Playing: song with progress bar; paused: the song without it for 5 minutes, then nothing (only the room, in one).
+    // Playing: song with progress bar; paused: the song with the bar drawn in its text for 5 minutes, then nothing
+    // (only the room, in one).
     public void Update(Track? t, bool playing, TimeSpan position, TimeSpan duration, Room? room = null)
     {
         if (!Enabled || !Available) return;
@@ -55,7 +57,7 @@ public sealed class DiscordPresence : IDisposable
             _pausedAt = null;
             // (to the second: the same song at the same place sends nothing new; Discord takes 5 changes every 20 seconds)
             long start = (DateTimeOffset.UtcNow - position).ToUnixTimeSeconds() * 1000;
-            Push(new Wanted(t, start, duration > TimeSpan.Zero ? start + (long)duration.TotalMilliseconds : null, false, room));
+            Push(new Wanted(t, start, duration > TimeSpan.Zero ? start + (long)duration.TotalMilliseconds : null, null, room));
             return;
         }
         if (t != null && _played)
@@ -67,28 +69,42 @@ public sealed class DiscordPresence : IDisposable
             }
             if (DateTime.UtcNow - _pausedAt < PauseShown)
             {
-                Push(new Wanted(t, 0, null, true, room));
+                // Discord has no paused state and runs its bar on the clock, so the bar is drawn in the text. Without times
+                // Discord would start a clock of its own; one starting tomorrow stays still.
+                long still = new DateTimeOffset(_pausedAt.Value.AddDays(1)).ToUnixTimeSeconds() * 1000;
+                Push(new Wanted(t, still, null, Bar(position, duration), room));
                 return;
             }
         }
-        Push(room != null ? new Wanted(null, 0, null, false, room) : null);
+        Push(room != null ? new Wanted(null, 0, null, null, room) : null);
     }
 
     // Still paused since then: the song goes (on the UI thread, like Update).
     private async Task ForgetPause(DateTime at)
     {
         await Task.Delay(PauseShown);
-        if (_pausedAt != at || _wanted is not { Paused: true } w) return;
+        if (_pausedAt != at || _wanted is not { Paused: not null } w) return;
         _played = false;
-        Push(w.Room != null ? new Wanted(null, 0, null, false, w.Room) : null);
+        Push(w.Room != null ? new Wanted(null, 0, null, null, w.Room) : null);
+    }
+
+    // "⏸ 1:23 ━━━━●─────── 3:45": the dot at the start for 0%, halfway for 50%, at the end for 100%.
+    private static string Bar(TimeSpan position, TimeSpan duration)
+    {
+        static string Clock(TimeSpan t) => Text.Duration(t.TotalSeconds) is { Length: > 0 } s ? s : "0:00";
+        if (duration <= TimeSpan.Zero) return "⏸ " + Clock(position);
+        const int cells = 12;
+        int dot = (int)Math.Round(Math.Clamp(position / duration, 0, 1) * (cells - 1), MidpointRounding.AwayFromZero);
+        return $"⏸ {Clock(position)} {new string('━', dot)}●{new string('─', cells - 1 - dot)} {Clock(duration)}";
     }
 
     private static string Build(Wanted w, string? art)
     {
         var t = w.Track;
         var state = new List<string>();
+        // The bar first: a narrow card cuts the end of the line.
+        if (w.Paused != null) state.Add(w.Paused);
         if (t != null) state.Add(t.DisplayArtist);
-        if (w.Paused) state.Add(L.T("Paused"));
         if (w.Room != null) state.Add(L.T("Listen together"));
         var activity = new Dictionary<string, object?>
         {
@@ -104,7 +120,7 @@ public sealed class DiscordPresence : IDisposable
             },
         };
         // Left out rather than null (Discord refuses a null; a dictionary's nulls are written anyway).
-        if (t != null && !w.Paused)
+        if (t != null)
             activity["timestamps"] = w.End is long end ? new Dictionary<string, long> { ["start"] = w.Start, ["end"] = end }
                 : new Dictionary<string, long> { ["start"] = w.Start };
         if (w.Room is { } r)

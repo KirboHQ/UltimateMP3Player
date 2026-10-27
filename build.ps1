@@ -17,9 +17,15 @@ $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $app = Join-Path $root 'app'
 $csproj = "$root\src\UltimateMP3Player\UltimateMP3Player.csproj"
-# ReadyToRun: the code comes already compiled, so the start and the first pages don't wait for the JIT.
+# ReadyToRun: the code comes already compiled, so the start and the first pages don't wait for the JIT. Not "composite" (a
+# single file's default since .NET 7: the whole runtime, WPF included, compiled again into one image): .NET's own libraries
+# come already compiled, only the app's are (measured: publish 42 → 14 s, exe 92 → 76 MB).
 $publishArgs = @('-c', 'Release', '--self-contained', 'true', '-p:PublishSingleFile=true',
-    '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:EnableCompressionInSingleFile=true', '-p:PublishReadyToRun=true', '-p:DebugType=none', '--nologo', '-v', 'q')
+    '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:PublishReadyToRun=true', '-p:PublishReadyToRunComposite=false', '-p:DebugType=none', '--nologo', '-v', 'q')
+# The exe on its own (portable, updates) is compressed by .NET; the one inside the setup isn't: Inno Setup's LZMA does much
+# better on it (setup 17 MB smaller), and uncompressed it starts faster and uses less memory (see build-unix.ps1).
+$compressed = '-p:EnableCompressionInSingleFile=true'
+$uncompressed = '-p:EnableCompressionInSingleFile=false'
 
 # A .NET 8 SDK from PATH, otherwise the local copy in %LOCALAPPDATA%\dotnet-sdk.
 $dotnet = 'dotnet'
@@ -58,7 +64,7 @@ if ($Installer -or $Release) {
     foreach ($arch in 'x64', 'arm64') {
         if (Test-Path $staging) { Remove-Item $staging -Recurse -Force }
         Write-Host "Publishing $arch..."
-        & $dotnet publish $csproj @publishArgs -r "win-$arch" -o $staging
+        & $dotnet publish $csproj @publishArgs $uncompressed -r "win-$arch" -o $staging
         if ($LASTEXITCODE -ne 0) { throw "Publish failed ($arch)" }
         New-Item -ItemType Directory -Force "$staging\engines" | Out-Null
         Copy-Item "$root\engines\*" "$staging\engines" -Recurse -Exclude README.md
@@ -68,12 +74,17 @@ if ($Installer -or $Release) {
         & $iscc /Q "/DAppVersion=$version" "/DArch=$arch" "/O$outDir" "$root\installer\UltimateMP3Player.iss"
         if ($LASTEXITCODE -ne 0) { throw "Installer build failed ($arch)" }
         if ($Release) {
-            Copy-Item "$staging\UltimateMP3Player.exe" "$outDir\UltimateMP3Player-windows-$arch.exe"
+            # The same build compressed: only the bundle is made again (a few seconds).
+            $single = "$staging-exe"
+            & $dotnet publish $csproj @publishArgs $compressed -r "win-$arch" -o $single
+            if ($LASTEXITCODE -ne 0) { throw "Publish failed ($arch, exe)" }
+            Copy-Item "$single\UltimateMP3Player.exe" "$outDir\UltimateMP3Player-windows-$arch.exe"
             # Up to 3.6.x the updater only knows this name (and x64 only).
             if ($arch -eq 'x64') {
                 New-Item -ItemType Directory -Force "$outDir\legacy" | Out-Null
-                Copy-Item "$staging\UltimateMP3Player.exe" "$outDir\legacy\UltimateMP3Player.exe"
+                Copy-Item "$single\UltimateMP3Player.exe" "$outDir\legacy\UltimateMP3Player.exe"
             }
+            Remove-Item $single -Recurse -Force
         }
     }
     Remove-Item $staging -Recurse -Force
@@ -87,7 +98,7 @@ if ($Installer -or $Release) {
 }
 
 # Self-contained single file: runs on any Windows 10/11 x64 without installing .NET.
-& $dotnet publish $csproj @publishArgs -r win-x64 -o $app
+& $dotnet publish $csproj @publishArgs $compressed -r win-x64 -o $app
 if ($LASTEXITCODE -ne 0) { throw 'Build failed (is Ultimate MP3 Player running? Close it, also from the tray icon, and retry)' }
 
 $engines = Join-Path $app 'engines'

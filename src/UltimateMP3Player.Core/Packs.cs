@@ -40,6 +40,19 @@ public sealed class PackManifest
     public List<PackTrack> Tracks { get; set; } = new();
     public List<PackPlaylist> Playlists { get; set; } = new();
     public List<PackTag> Tags { get; set; } = new();
+
+    // The line under the pack's name in the import dialog.
+    public string Credits(long size)
+    {
+        var parts = new List<string?>
+        {
+            string.IsNullOrWhiteSpace(Author) ? null : L.F("by {0}", Author),
+            Created.ToString("d MMM yyyy", L.Culture),
+            Text.Size(size),
+            Music ? null : L.T("links only"),
+        };
+        return string.Join(" · ", parts.Where(p => !string.IsNullOrEmpty(p)));
+    }
 }
 
 public sealed class PackTrack
@@ -162,6 +175,17 @@ public static class PackWriter
         int files = songs.Count(t => !Pack.HasLink(t));
         if (!e.Music && files > 0) more.Add(L.Count(files, "1 song without a link travels as a file", "{0} songs without a link travel as files"));
         return (string.Join(" · ", parts), string.Join(" · ", more));
+    }
+
+    // The pack's file name: the playlist's or the tag's own when it's only that, else the profile's music and the day.
+    public static string FileName(Profile profile, PackExport e)
+    {
+        string name;
+        if (e.WholeLibrary) name = L.F("{0}'s library", profile.Info.Name) + " " + DateTime.Now.ToString("yyyy-MM-dd");
+        else if (e.Playlists.Count == 1 && e.Tags.Count == 0) name = e.Playlists[0].IsFavorites ? L.T("Favorites") : e.Playlists[0].Name;
+        else if (e.Tags.Count == 1 && e.Playlists.Count == 0) name = e.Tags[0].Name;
+        else name = L.F("{0}'s music", profile.Info.Name) + " " + DateTime.Now.ToString("yyyy-MM-dd");
+        return Text.SafeFileName(name) + Pack.Extension;
     }
 
     public static long SizeOf(string? path)
@@ -548,6 +572,20 @@ public sealed class PackImportResult
     public List<PackDownload> Downloads { get; } = new();
     // Pack song id → library id.
     public Dictionary<string, string> Map { get; } = new();
+
+    // The message once it's done.
+    public string Report()
+    {
+        var parts = new List<string>();
+        if (Added > 0) parts.Add(L.Count(Added, "1 song added", "{0} songs added"));
+        if (Cloud > 0) parts.Add(L.F("{0} in the cloud", Cloud));
+        if (Present > 0) parts.Add(L.F("{0} already in your library", Present));
+        if (Downloads.Count > 0) parts.Add(L.F("{0} downloading", Downloads.Count));
+        if (Missing + Failed > 0) parts.Add(L.Count(Missing + Failed, "1 not available", "{0} not available"));
+        if (NewPlaylists > 0) parts.Add(L.Count(NewPlaylists, "1 new playlist", "{0} new playlists"));
+        if (NewTags > 0) parts.Add(L.Count(NewTags, "1 new tag", "{0} new tags"));
+        return L.T("Pack imported") + (parts.Count > 0 ? ": " + string.Join(" · ", parts) : "");
+    }
 }
 
 // The library looked up by file size, built once for a whole pack (a pack of thousands of songs against a library of

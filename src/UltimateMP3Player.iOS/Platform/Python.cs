@@ -143,6 +143,8 @@ public static unsafe class PythonHost
                 w.WriteString("bundled", IosEngines.BundledYtDlp);
                 w.WriteString("engines", Engines.Dir);
                 w.WriteString("cache", caches);
+                w.WriteNumber("webjs", (long)WebKitJs.RunPointer);
+                w.WriteNumber("webjs_free", (long)WebKitJs.FreePointer);
             }));
             using var doc = JsonDocument.Parse(answer);
             if (doc.RootElement.TryGetProperty("error", out var error)) throw new EngineException(L.T("Python doesn't start."), error.GetString());

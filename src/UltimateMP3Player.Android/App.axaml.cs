@@ -105,10 +105,9 @@ public partial class App : Application
 
     public static void Log(Exception ex)
     {
+        AppPaths.AppendLog($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n", LogFile);
         try
         {
-            var log = LogFile ?? AppPaths.LogFile;
-            File.AppendAllText(log, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
 #if ANDROID_APP
             Android.Util.Log.Error("UltimateMP3Player", ex.ToString());
 #else

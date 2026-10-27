@@ -179,13 +179,14 @@ public sealed class PlayerViewModel : Observable
 
     public void SaveState()
     {
+        // (the time listened counts in a room too: written only when asked for, Profile.Flush)
+        SaveListening();
         // In a room (or driving a computer) the saved song is still your own one, from before.
         if (_room != null || _remote != null) return;
         double pos = 0;
         if (Current != null && Current.Id == _queue.Current) pos = _opened ? _audio.Position.TotalSeconds : _resumeAt;
         _main.Profile.Data.Queue = _queue.Save(pos);
         _main.Radio.Save();
-        SaveListening();
         _main.Profile.Save();
     }
 

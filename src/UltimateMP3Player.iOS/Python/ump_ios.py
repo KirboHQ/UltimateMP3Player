@@ -7,8 +7,8 @@
 #   cancel  a run stops (the app's Kill).
 # Several runs go at once (the downloads in parallel): sys.stdout and sys.stderr send each write to the run of the thread
 # writing, and the threads a run starts (yt-dlp's fragment downloads) belong to it too.
-# YouTube's JavaScript challenges are solved by the system's JavaScriptCore (_JavaScriptCore), the updates of yt-dlp come
-# from its GitHub releases (_update).
+# YouTube's JavaScript challenges are solved in WKWebView with its JIT (_WebKit), else by the system's JavaScriptCore
+# (_JavaScriptCore); the updates of yt-dlp come from its GitHub releases (_update).
 
 import contextvars
 import hashlib
@@ -79,7 +79,8 @@ def _log(text):
 
 def _setup(req):
     """req: libpython (the framework's binary), ytdlp (the engines' yt-dlp, a zip run by Python, as on Android),
-    bundled (the app's own copy of it), engines (the engines' folder), cache (Library/Caches)."""
+    bundled (the app's own copy of it), engines (the engines' folder), cache (Library/Caches), webjs and webjs_free
+    (Platform/WebKitJs.cs's functions)."""
     global _async_exc
     _paths.update(req)
     sys.argv = ['yt-dlp']
@@ -103,7 +104,8 @@ def _setup(req):
     except Exception:
         _async_exc = None
     _jsc.load()
-    return {'python': sys.version.split()[0], 'jsc': _jsc.lib is not None}
+    _webkit.load(req.get('webjs'), req.get('webjs_free'))
+    return {'python': sys.version.split()[0], 'jsc': _jsc.lib is not None, 'webkit': _webkit.loaded}
 
 
 def _cafile():
@@ -529,6 +531,44 @@ class _JavaScriptCore:
 _jsc = _JavaScriptCore()
 
 
+class _WebKit:
+    """The same scripts in WKWebView (Platform/WebKitJs.cs), whose JavaScriptCore has the JIT this process can't have:
+    several times faster. run gives None when it can't now (the app in the background, a script that fails, a page
+    that doesn't answer): _JavaScriptCore solves it."""
+
+    def __init__(self):
+        self.loaded = False
+
+    def load(self, run, free):
+        try:
+            if ctypes is None or not run or not free:
+                return
+            self._run = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int)(run)
+            self._free = ctypes.CFUNCTYPE(None, ctypes.c_void_p)(free)
+            self.loaded = True
+        except Exception as e:
+            _log(f'WKWebView not available: {e}')
+
+    def run(self, script):
+        if not self.loaded:
+            return None
+        try:
+            # (ctypes lets go of Python's lock while the app waits for the page)
+            data = script.encode('utf-8', 'surrogatepass')
+            output = self._run(data, len(data))
+        except Exception:
+            return None
+        if not output:
+            return None
+        try:
+            return ctypes.string_at(output).decode('utf-8', 'replace')
+        finally:
+            self._free(output)
+
+
+_webkit = _WebKit()
+
+
 def _ios_version():
     try:
         return platform.ios_ver().release or '0'
@@ -569,6 +609,9 @@ def _register_jsc(ytdlp):
         JS_RUNTIME_NAME = 'jsc'
 
         def _run_js_runtime(self, stdin, /):
+            output = _webkit.run(stdin)
+            if output is not None:
+                return output
             try:
                 return _jsc.run(stdin)
             except Exception as e:

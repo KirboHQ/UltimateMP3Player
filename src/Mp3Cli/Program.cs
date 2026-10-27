@@ -4,6 +4,8 @@
 //   mp3cli list
 //   mp3cli songlist [file]
 //   mp3cli shuffle <n> <rounds>
+//   mp3cli saver
+//   mp3cli albums [artist]
 using System.Diagnostics;
 using UltimateMP3Player.Core;
 
@@ -113,6 +115,40 @@ switch (args[0])
             return ok ? 0 : 1;
         }
 
+    case "albums":
+        {
+            // Offline: an album on two sites kept once, the first site's (also spaced otherwise, or with "EP" in its title), "÷"
+            // and "×" both kept, the EPs after the albums, each kind the newest first. With an artist's name, then, every site's
+            // albums of them (online, in the search's order).
+            SearchHit A(string site, string title, string year, string kind = "album") => new() { Service = site, Title = title, Year = year, Collection = kind };
+            var merged = OnlineSearchServices.MergeAlbums(new[]
+            {
+                new List<SearchHit> { A("YouTube Music", "Parachutes", "2000"), A("YouTube Music", "÷", "2017"), A("YouTube Music", "LeftRightLeftRightLeft (Live)", "2009") },
+                new List<SearchHit> { A("Apple Music", "Kaleidoscope", "2017", "ep") },
+                new List<SearchHit> { A("Deezer", "parachutes", "2000"), A("Deezer", "×", "2014"), A("Deezer", "Kaleidoscope EP", "2017", "ep"), A("Deezer", "Moon Music", "2024"), A("Deezer", "Left Right Left Right Left (Live)", "2009") },
+            });
+            var order = string.Join(" | ", merged.Select(h => $"{h.Title}/{h.Service}"));
+            bool ok = order == "Moon Music/Deezer | ÷/YouTube Music | ×/Deezer | LeftRightLeftRightLeft (Live)/YouTube Music | Parachutes/YouTube Music | Kaleidoscope/Apple Music";
+            Console.WriteLine($"albums merge: {(ok ? "ok" : "SBAGLIATO")} ({order})");
+            if (args.Length < 2) return ok ? 0 : 1;
+            var name = string.Join(' ', args.Skip(1));
+            var found = new List<List<SearchHit>>();
+            foreach (var site in new[] { OnlineSearchServices.YouTubeMusic, OnlineSearchServices.Deezer, OnlineSearchServices.Spotify, OnlineSearchServices.AppleMusic, OnlineSearchServices.SoundCloud })
+            {
+                try
+                {
+                    var siteAlbums = await OnlineSearchServices.ArtistAlbumsAsync(site, name, CancellationToken.None);
+                    Console.WriteLine($"[{sw.Elapsed.TotalSeconds:0.0}s] {site}: " + (siteAlbums is { } sa
+                        ? $"{sa.Name}, {sa.Hits.Count}: " + string.Join(" | ", sa.Hits.Take(8).Select(h => $"{h.Title} ({h.Collection} {h.Year} {h.Songs})")) : "-"));
+                    if (siteAlbums is { } kept) found.Add(kept.Hits);
+                }
+                catch (Exception ex) { Console.WriteLine($"{site}: {ex.GetType().Name} {ex.Message}"); }
+            }
+            var all = OnlineSearchServices.MergeAlbums(found);
+            Console.WriteLine($"together {all.Count}: " + string.Join(" | ", all.Select(h => $"{h.Title} {h.Year} [{h.Service}]")));
+            return ok ? 0 : 1;
+        }
+
     case "notes":
         {
             // mp3cli notes [owner/repo]: the parser on a sample, then the real releases' notes as the "What's new" reads them.
@@ -128,6 +164,30 @@ switch (args[0])
                 foreach (var block in n.Blocks)
                     Console.WriteLine($"  {block.Kind,-8} " + string.Concat(block.Runs.Select(r => r.Bold ? $"[{r.Text}]" : r.Italic ? $"/{r.Text}/" : r.Text)));
             }
+            return ok ? 0 : 1;
+        }
+
+    case "saver":
+        {
+            // DebouncedSaver: nothing asked, nothing written; asked, one write; a failed one is tried again at the next flush.
+            // Then errors.log past 1 MB keeps its newer half, from the start of an entry.
+            int writes = 0;
+            bool full = true;
+            var saver = new DebouncedSaver(() => { writes++; if (full) throw new IOException("disk full"); }, 60_000);
+            saver.Flush();
+            bool ok = writes == 0;
+            saver.Request();
+            saver.Flush();
+            full = false;
+            saver.Flush();
+            saver.Flush();
+            ok &= writes == 2;
+            var log = Path.Combine(Path.GetTempPath(), "ump-saver-test.log");
+            File.WriteAllText(log, new string('x', 1 << 20) + "\n\n[old]\n\n");
+            AppPaths.AppendLog("[new]\n\n", log);
+            ok &= File.ReadAllText(log) == "[old]\n\n[new]\n\n";
+            File.Delete(log);
+            Console.WriteLine("saver: " + (ok ? "ok" : "SBAGLIATO"));
             return ok ? 0 : 1;
         }
 

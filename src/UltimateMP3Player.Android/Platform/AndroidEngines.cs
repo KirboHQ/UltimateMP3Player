@@ -26,6 +26,8 @@ public static class AndroidEngines
         Set("SSL_CERT_FILE", Path.Combine(PythonHome, "etc", "tls", "cert.pem"));
         Set("PYTHONHOME", PythonHome);
         Set("PATH", (Environment.GetEnvironmentVariable("PATH") ?? "/system/bin") + ":" + NativeDir);
+        // YouTube's challenges in the WebView, with QuickJS behind it (Boot).
+        WebViewJs.Start();
         Engines.Host = new EngineHost
         {
             Dir = Bin,
@@ -58,6 +60,8 @@ public static class AndroidEngines
     // yt-dlp run from its own copy unpacked once per version, where Python keeps the compiled code, as on the iPhone: from
     // the zip it compiles yt-dlp again at every run, seconds on a phone. Python unpacks it (the zip starts with a line of
     // script, which .NET's zip can't read); -U updates the zip itself.
+    // YouTube's challenges go first to the app's WebView (WebViewJs, a provider of yt-dlp's like its deno and QuickJS ones,
+    // ahead of them): if it can't, or a yt-dlp whose insides changed can't take it, QuickJS as before.
     private const string Boot = """
         import os, shutil, sys, zipfile
         z, d = sys.argv[1], sys.argv[2]
@@ -72,6 +76,47 @@ public static class AndroidEngines
         sys.path.insert(0, d)
         sys.argv = [z] + sys.argv[3:]
         import yt_dlp
+        w = os.environ.get('UMP_WEBJS')
+        if w:
+            try:
+                import socket, struct
+                from yt_dlp.extractor.youtube.jsc._builtin.ejs import EJSBaseJCP
+                from yt_dlp.extractor.youtube.jsc.provider import JsChallengeProviderRejectedRequest, register_preference, register_provider
+                from yt_dlp.globals import supported_js_runtimes
+                from yt_dlp.utils._jsruntime import JsRuntime, JsRuntimeInfo
+                port, key = w.split(':')
+
+                class WebViewRuntime(JsRuntime):
+                    def _info(self):
+                        return JsRuntimeInfo(name='webview', path='WebView', version='1', version_tuple=(1,), supported=True)
+
+                class WebViewJCP(EJSBaseJCP):
+                    PROVIDER_NAME = 'webview'
+                    PROVIDER_VERSION = '1.0'
+                    BUG_REPORT_LOCATION = 'https://github.com/KirboHQ/UltimateMP3Player/issues'
+                    JS_RUNTIME_NAME = 'webview'
+
+                    def _run_js_runtime(self, stdin, /):
+                        try:
+                            data = stdin.encode()
+                            with socket.create_connection(('127.0.0.1', int(port)), 60) as s:
+                                s.sendall(key.encode() + struct.pack('>I', len(data)) + data)
+                                f = s.makefile('rb')
+                                failed, n = struct.unpack('>BI', f.read(5))
+                                body = f.read(n)
+                        except Exception as e:
+                            raise JsChallengeProviderRejectedRequest(f'WebView: {e}') from e
+                        if failed or len(body) != n:
+                            raise JsChallengeProviderRejectedRequest(f'WebView: {body.decode(errors="replace")}')
+                        return body.decode()
+
+                supported_js_runtimes.value['webview'] = WebViewRuntime
+                register_provider(WebViewJCP)
+                register_preference(WebViewJCP)(lambda provider, requests: 1000)
+                # (before the arguments: the links come after a --)
+                sys.argv[1:1] = ['--js-runtimes', 'webview']
+            except Exception:
+                pass
         yt_dlp.main()
         """;
 

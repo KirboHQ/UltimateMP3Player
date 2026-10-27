@@ -135,6 +135,63 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== playback -->
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'playback volume crossfade fade normalize output device speakers headphones'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T Playback}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Audio output'}" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox ItemsSource="{Binding OutputDevices}" SelectedItem="{Binding OutputDevice}" Margin="0,0,0,18"
+                                  AutomationProperties.Name="{local:T 'Audio output'}"/>
+                        <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding Normalize}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Normalize volume'}"/>
+                                <TextBlock Text="{local:T 'All songs at the same volume, even if they come from different sites.'}" Style="{StaticResource Hint}"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding PlayWhileDownloading}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Start songs while they download'}"/>
+                                <TextBlock Text="{local:T 'Songs in the cloud and suggested ones play right away, while they download. Off: they wait for the whole file (less mobile data).'}" Style="{StaticResource Hint}"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Crossfade}" AutomationProperties.Name="{local:T Crossfade}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T Crossfade}"/>
+                                <TextBlock Text="{local:T 'The next song fades in as the current one fades out, with no silence.'}" Style="{StaticResource Hint}"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <Grid Margin="0,12,0,0" Visibility="{Binding Crossfade, Converter={StaticResource BoolVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{local:T Duration}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <Slider Grid.Column="1" Minimum="1" Maximum="12" SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1"
+                                    Value="{Binding CrossfadeSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Crossfade duration'}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding CrossfadeText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                        </Grid>
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BpmMatch}" Margin="0,14,0,0" AutomationProperties.Name="{local:T 'BPM-matched transition'}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'BPM-matched transition'}"/>
+                                <TextBlock Text="{local:T 'In its last seconds the song slows down or speeds up to the next one\'s BPM (without changing key), so they meet on the beat. Only when both BPMs are known and close.'}"
+                                           Style="{StaticResource Hint}" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <Grid Margin="0,12,0,0" Visibility="{Binding BpmMatch, Converter={StaticResource BoolVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{local:T Duration}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <Slider Grid.Column="1" Minimum="2" Maximum="30" SmallChange="1" LargeChange="2" IsSnapToTickEnabled="True" TickFrequency="1"
+                                    Value="{Binding BpmMatchSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Length of the BPM-matched transition'}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding BpmMatchText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== equalizer -->
                 <Border Style="{StaticResource Card}" Padding="22" DataContext="{Binding Equalizer}" Tag="whole"
                         views:SettingsView.Keywords="{local:T 'equalizer eq bass mids treble frequencies preset sound audio'}">
@@ -239,97 +296,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ==================================================== playback -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'playback volume crossfade fade normalize output device speakers headphones'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T Playback}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Audio output'}" Style="{StaticResource FieldLabel}"/>
-                        <ComboBox ItemsSource="{Binding OutputDevices}" SelectedItem="{Binding OutputDevice}" Margin="0,0,0,18"
-                                  AutomationProperties.Name="{local:T 'Audio output'}"/>
-                        <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding Normalize}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Normalize volume'}"/>
-                                <TextBlock Text="{local:T 'All songs at the same volume, even if they come from different sites.'}" Style="{StaticResource Hint}"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding PlayWhileDownloading}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Start songs while they download'}"/>
-                                <TextBlock Text="{local:T 'Songs in the cloud and suggested ones play right away, while they download. Off: they wait for the whole file (less mobile data).'}" Style="{StaticResource Hint}"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding Crossfade}" AutomationProperties.Name="{local:T Crossfade}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T Crossfade}"/>
-                                <TextBlock Text="{local:T 'The next song fades in as the current one fades out, with no silence.'}" Style="{StaticResource Hint}"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <Grid Margin="0,12,0,0" Visibility="{Binding Crossfade, Converter={StaticResource BoolVis}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{local:T Duration}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
-                            <Slider Grid.Column="1" Minimum="1" Maximum="12" SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1"
-                                    Value="{Binding CrossfadeSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Crossfade duration'}"/>
-                            <TextBlock Grid.Column="2" Text="{Binding CrossfadeText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
-                        </Grid>
-                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding BpmMatch}" Margin="0,14,0,0" AutomationProperties.Name="{local:T 'BPM-matched transition'}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'BPM-matched transition'}"/>
-                                <TextBlock Text="{local:T 'In its last seconds the song slows down or speeds up to the next one\'s BPM (without changing key), so they meet on the beat. Only when both BPMs are known and close.'}"
-                                           Style="{StaticResource Hint}" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <Grid Margin="0,12,0,0" Visibility="{Binding BpmMatch, Converter={StaticResource BoolVis}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{local:T Duration}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
-                            <Slider Grid.Column="1" Minimum="2" Maximum="30" SmallChange="1" LargeChange="2" IsSnapToTickEnabled="True" TickFrequency="1"
-                                    Value="{Binding BpmMatchSeconds}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Length of the BPM-matched transition'}"/>
-                            <TextBlock Grid.Column="2" Text="{Binding BpmMatchText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== listening statistics -->
-                <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
-                        views:SettingsView.Keywords="{local:T 'statistics plays played most least time chart top clean up delete'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Listening statistics'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'How many times and how long you\'ve listened to each song, for this profile only.'}"
-                                   Style="{StaticResource Hint}" Margin="0,-8,0,12"/>
-                        <TextBlock Text="{Binding StatsSummary}" Margin="0,0,0,12" TextWrapping="Wrap"/>
-                        <ItemsControl ItemsSource="{Binding TopTracks}" Focusable="False" Margin="0,0,0,10">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:TrackViewModel}">
-                                    <DockPanel Margin="0,0,0,8">
-                                        <TextBlock DockPanel.Dock="Right" Text="{Binding PlaysText}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}"
-                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                        <ContentPresenter Width="38" Height="38" Content="{Binding}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
-                                        <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
-                                        </StackPanel>
-                                    </DockPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding OpenStatsCommand}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE9D2;" Style="{StaticResource Glyph}"/>
-                                <TextBlock Text="{local:T 'All statistics'}" Margin="8,0,0,0"/>
-                            </StackPanel>
-                        </Button>
-                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,12,0,0" Foreground="{DynamicResource MutedBrush}"
-                                   Text="{local:T 'To clean up, sort them by least played: select them and press Delete to delete them.'}"/>
-                    </StackPanel>
-                </Border>
-
                 <!-- ==================================================== downloads -->
                 <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'downloads format mp3 m4a opus flac quality video cookies browser chrome firefox edge folder music'}">
                     <StackPanel>
@@ -362,6 +328,13 @@
                             </StackPanel>
                         </UniformGrid>
 
+                        <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding SaveAudio}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Save the audio on your device'}"/>
+                                <TextBlock Text="{local:T 'Songs you add from a link or a pack are downloaded. Off: they go into your library in the cloud, you listen from their link and save them whenever you like.'}" Style="{StaticResource Hint}"/>
+                            </StackPanel>
+                        </CheckBox>
+
                         <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding PreferAudioOnly}">
                             <StackPanel>
                                 <TextBlock Text="{local:T 'Prefer audio only'}"/>
@@ -379,6 +352,34 @@
                         <StackPanel Width="280" HorizontalAlignment="Left" Margin="0,12,0,0" Visibility="{Binding UseCookies, Converter={StaticResource BoolVis}}">
                             <TextBlock Text="{local:T 'Browser (installed ones)'}" Style="{StaticResource FieldLabel}"/>
                             <ComboBox ItemsSource="{Binding BrowserChoices}" SelectedItem="{Binding Browser}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ==================================================== storage -->
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'storage space cache suggested cloud unsaved clear empty'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Temporary storage (unsaved songs)'}" Style="{StaticResource CardTitle}"/>
+                        <StackPanel>
+                            <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding CacheChoices}" SelectedItem="{Binding CacheSize}"
+                                      AutomationProperties.Name="{local:T 'Temporary storage (unsaved songs)'}"/>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                       Text="{local:T 'Songs you play without having saved them on your device (in the cloud, suggested, in rooms) stay ready for next time; beyond this number the oldest are deleted (never those in the queue). Saving one moves it out of here.'}"/>
+                            <TextBlock Text="{Binding CacheText}" Style="{StaticResource Hint}" Margin="0,4,0,10"/>
+                            <WrapPanel>
+                                <Button Style="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ClearCacheCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE74D;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T Empty}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Style="{StaticResource GhostButton}" Command="{Binding OpenCacheCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE838;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T 'Open the folder'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -511,6 +512,29 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== library -->
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'import add files folder computer'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Music already on your computer'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Add audio or video files you already have: they stay where they are. You can also drag them into the window.'}"
+                                   Style="{StaticResource Hint}" Margin="0,-8,0,14"/>
+                        <WrapPanel>
+                            <Button Style="{StaticResource GhostButton}" Command="{Binding ImportFilesCommand}" Margin="0,0,10,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8E5;" Style="{StaticResource Glyph}"/>
+                                    <TextBlock Text="{local:T 'Add files…'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource GhostButton}" Command="{Binding ImportFolderCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8B7;" Style="{StaticResource Glyph}"/>
+                                    <TextBlock Text="{local:T 'Add a folder…'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== tags -->
                 <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'tags labels color colors'}">
                     <StackPanel>
@@ -599,57 +623,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ==================================================== library -->
-                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'import add files folder computer'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Music already on your computer'}" Style="{StaticResource CardTitle}"/>
-                        <TextBlock Text="{local:T 'Add audio or video files you already have: they stay where they are. You can also drag them into the window.'}"
-                                   Style="{StaticResource Hint}" Margin="0,-8,0,14"/>
-                        <WrapPanel>
-                            <Button Style="{StaticResource GhostButton}" Command="{Binding ImportFilesCommand}" Margin="0,0,10,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE8E5;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Add files…'}" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button Style="{StaticResource GhostButton}" Command="{Binding ImportFolderCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE8B7;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Add a folder…'}" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== storage -->
-                <Border Style="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'storage space cache suggested cloud unsaved clear empty'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Temporary storage (unsaved songs)'}" Style="{StaticResource CardTitle}"/>
-                        <StackPanel>
-                            <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding CacheChoices}" SelectedItem="{Binding CacheSize}"
-                                      AutomationProperties.Name="{local:T 'Temporary storage (unsaved songs)'}"/>
-                            <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
-                                       Text="{local:T 'Songs you play without having saved them on your device (in the cloud, suggested, in rooms) stay ready for next time; beyond this number the oldest are deleted (never those in the queue). Saving one moves it out of here.'}"/>
-                            <TextBlock Text="{Binding CacheText}" Style="{StaticResource Hint}" Margin="0,4,0,10"/>
-                            <WrapPanel>
-                                <Button Style="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ClearCacheCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE74D;" Style="{StaticResource Glyph}"/>
-                                        <TextBlock Text="{local:T Empty}" Margin="8,0,0,0"/>
-                                    </StackPanel>
-                                </Button>
-                                <Button Style="{StaticResource GhostButton}" Command="{Binding OpenCacheCommand}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="&#xE838;" Style="{StaticResource Glyph}"/>
-                                        <TextBlock Text="{local:T 'Open the folder'}" Margin="8,0,0,0"/>
-                                    </StackPanel>
-                                </Button>
-                            </WrapPanel>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
                 <!-- ==================================================== .ump packs -->
                 <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
                         views:SettingsView.Keywords="{local:T 'export import pack packs ump share backup copy move transfer friends playlist tag library'}">
@@ -683,6 +656,40 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== listening statistics -->
+                <Border Style="{StaticResource Card}" Padding="22" Tag="whole"
+                        views:SettingsView.Keywords="{local:T 'statistics plays played most least time chart top clean up delete'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Listening statistics'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'How many times and how long you\'ve listened to each song, for this profile only.'}"
+                                   Style="{StaticResource Hint}" Margin="0,-8,0,12"/>
+                        <TextBlock Text="{Binding StatsSummary}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+                        <ItemsControl ItemsSource="{Binding TopTracks}" Focusable="False" Margin="0,0,0,10">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:TrackViewModel}">
+                                    <DockPanel Margin="0,0,0,8">
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding PlaysText}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}"
+                                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                        <ContentPresenter Width="38" Height="38" Content="{Binding}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                                        <StackPanel Margin="11,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Artist}" FontSize="12" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Style="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding OpenStatsCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE9D2;" Style="{StaticResource Glyph}"/>
+                                <TextBlock Text="{local:T 'All statistics'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,12,0,0" Foreground="{DynamicResource MutedBrush}"
+                                   Text="{local:T 'To clean up, sort them by least played: select them and press Delete to delete them.'}"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== profiles & app -->
                 <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'profile profiles startup tray icon clock close background'}">
                     <StackPanel>
@@ -705,20 +712,6 @@
                             <StackPanel>
                                 <TextBlock Text="{local:T 'Keep playing when you close the window'}"/>
                                 <TextBlock Text="{local:T 'It stays next to the clock and uses very few resources; media keys work there too.'}"
-                                           Style="{StaticResource Hint}"/>
-                            </StackPanel>
-                        </CheckBox>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== integrations -->
-                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'discord status activity rich presence'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T Integrations}" Style="{StaticResource CardTitle}"/>
-                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DiscordPresence}" IsEnabled="{Binding DiscordAvailable}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Show what you\'re listening to on Discord'}"/>
-                                <TextBlock Text="{local:T 'Song title, artist, cover and progress on your Discord profile (while Discord is open).'}"
                                            Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
@@ -816,6 +809,20 @@
                                 </StackPanel>
                             </Button>
                         </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ==================================================== integrations -->
+                <Border Style="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'discord status activity rich presence'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T Integrations}" Style="{StaticResource CardTitle}"/>
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DiscordPresence}" IsEnabled="{Binding DiscordAvailable}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Show what you\'re listening to on Discord'}"/>
+                                <TextBlock Text="{local:T 'Song title, artist, cover and progress on your Discord profile (while Discord is open).'}"
+                                           Style="{StaticResource Hint}"/>
+                            </StackPanel>
+                        </CheckBox>
                     </StackPanel>
                 </Border>
 

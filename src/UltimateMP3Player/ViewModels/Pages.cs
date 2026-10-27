@@ -747,6 +747,8 @@ public sealed class SearchViewModel : Observable, ITrackList
         _failed.Clear();
         _serviceFilter = null;
         _artistHits = _albumHits = _playlistHits = null;
+        _artistName = "";
+        _albumsBySite.Clear();
         _collections.Clear();
         _featured = null;
         _spotifyRefused = false;
@@ -778,8 +780,8 @@ public sealed class SearchViewModel : Observable, ITrackList
     }
 
     // The words name an artist: tabs with their songs (the most played on Spotify with its key, else the most listened on
-    // Deezer) and their albums (Deezer's), like an artist's page. The albums and playlists the words name, on every site, in
-    // one more. These come first, before the sites.
+    // Deezer) and their albums (every site's, AlbumSites), like an artist's page. The albums and playlists the words name,
+    // on every site, in one more. These come first, before the sites.
     private const string ArtistTab = "\0artist", AlbumsTab = "\0albums", PlaylistsTab = "\0playlists";
     private string _artistName = "";
     private List<SearchHit>? _artistHits, _albumHits, _playlistHits;
@@ -792,35 +794,71 @@ public sealed class SearchViewModel : Observable, ITrackList
 
     private async Task FindArtist(string query, CancellationTokenSource cts)
     {
+        // Deezer says who the words name (quickly, also when they're nearly the name); the sites look for that name exactly,
+        // or for the words themselves when Deezer doesn't know them.
+        (string Id, string Name)? deezer = null;
+        try { deezer = await Task.Run(() => OnlineSearchServices.FindArtistAsync(query, cts.Token)); }
+        catch { }
+        if (cts.IsCancellationRequested || _onlineCts != cts) return;
+        await Task.WhenAll(FindArtistSongs(query, deezer, cts), FindArtistAlbums(deezer?.Name ?? query, cts));
+    }
+
+    private async Task FindArtistSongs(string query, (string Id, string Name)? deezer, CancellationTokenSource cts)
+    {
         bool spotify = Services.Contains(OnlineSearchServices.Spotify) && OnlineSearchServices.SpotifyKey != null;
-        (string Name, List<SearchHit> Hits, List<SearchHit> Albums) found;
+        (string Name, List<SearchHit> Hits)? found;
         try
         {
-            found = await Task.Run<(string, List<SearchHit>, List<SearchHit>)>(async () =>
+            found = await Task.Run<(string, List<SearchHit>)?>(async () =>
             {
-                // (Deezer is asked anyway: the albums are its)
-                var deezer = OnlineSearchServices.FindArtistAsync(query, cts.Token);
-                (string Name, List<SearchHit> Hits)? songs = null;
                 if (spotify)
-                    try { if (await OnlineSearchServices.SpotifyArtistAsync(query, 100, cts.Token) is { Hits.Count: > 0 } s) songs = s; }
+                    try { if (await OnlineSearchServices.SpotifyArtistAsync(query, 100, cts.Token) is { Hits.Count: > 0 } s) return s; }
                     catch (Exception) when (!cts.IsCancellationRequested) { }
-                (string Id, string Name)? artist = null;
-                try { artist = await deezer; }
-                catch (Exception) when (!cts.IsCancellationRequested && songs != null) { }
-                var albums = new List<SearchHit>();
-                if (artist is { } a)
-                    try { albums = await OnlineSearchServices.ArtistAlbumsAsync(a.Id, cts.Token); }
-                    catch (Exception) when (!cts.IsCancellationRequested) { }
-                if (songs is { } sp) return (sp.Name, sp.Hits, albums);
-                return artist is { } d ? (d.Name, await OnlineSearchServices.ArtistTopAsync(d.Id, 100, 0, cts.Token), albums) : ("", new List<SearchHit>(), albums);
+                return deezer is { } d ? (d.Name, await OnlineSearchServices.ArtistTopAsync(d.Id, 100, 0, cts.Token)) : ((string, List<SearchHit>)?)null;
             });
         }
         catch { return; }
-        if (cts.IsCancellationRequested || _onlineCts != cts || found.Hits.Count == 0 && found.Albums.Count == 0) return;
-        _artistName = found.Name;
-        _artistHits = found.Hits.Count > 0 ? found.Hits : null;
-        _albumHits = found.Albums.Count > 0 ? found.Albums : null;
+        if (cts.IsCancellationRequested || _onlineCts != cts || found is not { Hits.Count: > 0 } f) return;
+        _artistName = f.Name;
+        _artistHits = f.Hits;
         Rebuild();
+    }
+
+    // Each site's albums of the artist, the tab growing as they answer (one album on several sites once, the first
+    // site's: MergeAlbums).
+    private readonly Dictionary<string, List<SearchHit>> _albumsBySite = new();
+
+    private Task FindArtistAlbums(string name, CancellationTokenSource cts)
+    {
+        var sites = AlbumSites();
+        return Task.WhenAll(sites.Select(async site =>
+        {
+            (string Name, List<SearchHit> Hits)? found;
+            try { found = await Task.Run(() => OnlineSearchServices.ArtistAlbumsAsync(site, name, cts.Token)); }
+            catch { return; }
+            if (cts.IsCancellationRequested || _onlineCts != cts || found is not { } f) return;
+            _albumsBySite[site] = f.Hits;
+            // (their songs' name, when found, is the tabs' one)
+            if (_artistName.Length == 0) _artistName = f.Name;
+            _albumHits = OnlineSearchServices.MergeAlbums(sites.Where(_albumsBySite.ContainsKey).Select(s => _albumsBySite[s]));
+            Rebuild();
+        }));
+    }
+
+    // Where an artist's albums are looked for, the one kept for an album on several sites first: YouTube Music (its albums
+    // play straight away; YouTube's are the same), the catalogues (their songs are found on YouTube Music: Deezer anyway, as
+    // before, Spotify with its key, Apple Music with no switch of its own), SoundCloud last (the artist's uploads). The sites
+    // switched off in the settings aren't asked.
+    private List<string> AlbumSites()
+    {
+        var on = Services;
+        var sites = new List<string>();
+        if (on.Contains(OnlineSearchServices.YouTubeMusic) || on.Contains(OnlineSearchServices.YouTube)) sites.Add(OnlineSearchServices.YouTubeMusic);
+        sites.Add(OnlineSearchServices.Deezer);
+        if (on.Contains(OnlineSearchServices.Spotify) && OnlineSearchServices.SpotifyKey != null) sites.Add(OnlineSearchServices.Spotify);
+        sites.Add(OnlineSearchServices.AppleMusic);
+        if (on.Contains(OnlineSearchServices.SoundCloud)) sites.Add(OnlineSearchServices.SoundCloud);
+        return sites;
     }
 
     // Each site's albums and playlists for the words, mixed like the songs (best of each first, in the settings' order).

@@ -190,7 +190,7 @@ public static class PackDialogs
             var e = Current();
             if (e.IsEmpty) return;
             Directory.CreateDirectory(Platform.Files.ShareDir);
-            var path = Path.Combine(Platform.Files.ShareDir, DefaultName(profile, e));
+            var path = Path.Combine(Platform.Files.ShareDir, PackWriter.FileName(profile, e));
             busy = true;
             inputs.IsEnabled = false;
             ok.IsEnabled = false;
@@ -294,16 +294,6 @@ public static class PackDialogs
         await sheets.Show(new ScrollViewer { Content = body }, dismissable: true, onDismiss: () => cts?.Cancel(), maxHeightShare: 0.94);
     }
 
-    private static string DefaultName(Profile profile, PackExport e)
-    {
-        string name;
-        if (e.WholeLibrary) name = L.F("{0}'s library", profile.Info.Name) + " " + DateTime.Now.ToString("yyyy-MM-dd");
-        else if (e.Playlists.Count == 1 && e.Tags.Count == 0) name = PlaylistViewModel.DisplayName(e.Playlists[0]);
-        else if (e.Tags.Count == 1 && e.Playlists.Count == 0) name = e.Tags[0].Name;
-        else name = L.F("{0}'s music", profile.Info.Name) + " " + DateTime.Now.ToString("yyyy-MM-dd");
-        return Text.SafeFileName(name) + Pack.Extension;
-    }
-
     // ================================================================== import
 
     public static async Task Import(MainViewModel main, string path)
@@ -339,15 +329,7 @@ public static class PackDialogs
         if (result == null) return;
 
         main.QueuePackDownloads(result);
-        var parts = new List<string>();
-        if (result.Added > 0) parts.Add(L.Count(result.Added, "1 song added", "{0} songs added"));
-        if (result.Cloud > 0) parts.Add(L.F("{0} in the cloud", result.Cloud));
-        if (result.Present > 0) parts.Add(L.F("{0} already in your library", result.Present));
-        if (result.Downloads.Count > 0) parts.Add(L.F("{0} downloading", result.Downloads.Count));
-        if (result.Missing + result.Failed > 0) parts.Add(L.Count(result.Missing + result.Failed, "1 not available", "{0} not available"));
-        if (result.NewPlaylists > 0) parts.Add(L.Count(result.NewPlaylists, "1 new playlist", "{0} new playlists"));
-        if (result.NewTags > 0) parts.Add(L.Count(result.NewTags, "1 new tag", "{0} new tags"));
-        main.Toast(L.T("Pack imported") + (parts.Count > 0 ? ": " + string.Join(" · ", parts) : ""));
+        main.Toast(result.Report());
 
         var ids = result.PlaylistIds.Distinct().ToList();
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
@@ -359,8 +341,8 @@ public static class PackDialogs
     {
         var sheets = Sheets;
         if (sheets == null) return null;
-        // The songs that travelled as links: downloaded, or into the library in the cloud (the last choice, like the links).
-        bool cloud = !settings.SaveLinkAudio;
+        // The songs that travelled as links: downloaded, or into the library in the cloud (as Settings › Downloads say).
+        bool cloud = !settings.SaveAudio;
         var m = pack.Manifest;
         var rows = songs.Select(s => new PackSongRow(s, pack)).ToList();
         var pickedLists = m.Playlists.Select(p => p.Id).ToHashSet();
@@ -378,7 +360,7 @@ public static class PackDialogs
         head.Children.Add(new Image { Source = PackImage, Width = 58, Height = 58 });
         var info = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         info.Children.Add(new TextBlock { Text = pack.Name, FontSize = 16.5, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
-        info.Children.Add(new TextBlock { Text = Credits(m, pack.FileSize), FontSize = 13, Foreground = B("SubTextBrush"), Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap });
+        info.Children.Add(new TextBlock { Text = m.Credits(pack.FileSize), FontSize = 13, Foreground = B("SubTextBrush"), Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap });
         head.Children.Add(At(info, 1));
         body.Children.Add(head);
 
@@ -387,7 +369,7 @@ public static class PackDialogs
         stats.Children.Add(Pill(L.Count(songs.Count, "1 song", "{0} songs"), null));
         if (CountOf(PackSongState.New) is > 0 and var n1) stats.Children.Add(Pill(L.Count(n1, "1 new", "{0} new"), B("AccentTextBrush")));
         if (CountOf(PackSongState.InLibrary) is > 0 and var n2) stats.Children.Add(Pill(L.F("{0} already in your library", n2), B("SuccessBrush")));
-        if (CountOf(PackSongState.Download) is > 0 and var n3) stats.Children.Add(Pill(L.F("{0} to download", n3), B("WarningBrush")));
+        if (CountOf(PackSongState.Download) is > 0 and var n3) stats.Children.Add(Pill(L.Count(n3, "1 as a link", "{0} as links"), B("WarningBrush")));
         if (CountOf(PackSongState.Missing) is > 0 and var n4) stats.Children.Add(Pill(L.Count(n4, "1 not available", "{0} not available"), B("ErrorBrush")));
         body.Children.Add(stats);
 
@@ -487,8 +469,6 @@ public static class PackDialogs
             saveBox.IsCheckedChanged += (_, _) =>
             {
                 cloud = saveBox.IsChecked != true;
-                settings.SaveLinkAudio = !cloud;
-                settings.Save();
                 changed();
             };
             inputs.Children.Add(saveBox);
@@ -594,18 +574,6 @@ public static class PackDialogs
         changed();
         await sheets.Show(new ScrollViewer { Content = body }, dismissable: true, onDismiss: () => cts?.Cancel(), maxHeightShare: 0.94);
         return outcome;
-    }
-
-    private static string Credits(PackManifest m, long size)
-    {
-        var parts = new List<string?>
-        {
-            string.IsNullOrWhiteSpace(m.Author) ? null : L.F("by {0}", m.Author),
-            m.Created.ToString("d MMM yyyy", L.Culture),
-            Text.Size(size),
-            m.Music ? null : L.T("links only"),
-        };
-        return string.Join(" · ", parts.Where(p => !string.IsNullOrEmpty(p)));
     }
 
     private static Control PlaylistCover(PackFile pack, PackPlaylist p)

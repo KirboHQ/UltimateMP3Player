@@ -621,6 +621,13 @@ public sealed class SettingsViewModel : Observable
         set { S.PreferAudioOnly = value; Save(); OnChanged(); }
     }
 
+    // Where the download card's "save the audio" starts: off, songs only go into the library (in the cloud).
+    public bool SaveAudio
+    {
+        get => S.SaveAudio;
+        set { S.SaveAudio = value; Save(); OnChanged(); }
+    }
+
     public List<Choice> VideoQualities { get; }
     public Choice VideoQuality
     {

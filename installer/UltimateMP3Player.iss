@@ -36,6 +36,9 @@ UninstallDisplayName={#AppName}
 Compression=lzma2/ultra64
 SolidCompression=yes
 LZMAUseSeparateProcess=yes
+; In 32 MB blocks on 8 threads: measured 87 → 15 s per setup, for 4% more size.
+LZMANumBlockThreads=8
+LZMABlockSize=32768
 WizardStyle=modern dark windows11 includetitlebar
 WizardSizePercent=110
 DisableWelcomePage=no

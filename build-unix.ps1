@@ -139,8 +139,11 @@ function Get-RCodesign {
 # JIT (measured in a Linux VM: up to a second of CPU at the first interactions without it). The program isn't compressed
 # inside: the .tar.gz / .zip around it already is (same download size), and uncompressed it starts faster and uses ~45 MB
 # less memory (measured: start 2.9 → 2.6 s, 294 → 247 MB), the assemblies read from the file instead of unpacked in memory.
+# Not "composite" (a single file's default since .NET 7: the whole runtime compiled again into one image): .NET's own
+# libraries come already compiled, only the app's are (measured for linux-x64: 16 → 9 s, archive 54 → 48 MB).
 $publishArgs = @('-c', 'Release', '--self-contained', 'true', '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true',
-    '-p:EnableCompressionInSingleFile=false', '-p:PublishReadyToRun=true', '-p:DebugType=none', '--nologo', '-v', 'q')
+    '-p:EnableCompressionInSingleFile=false', '-p:PublishReadyToRun=true', '-p:PublishReadyToRunComposite=false', '-p:DebugType=none',
+    '--nologo', '-v', 'q')
 $staging = Join-Path $root 'installer\staging-unix'
 New-Item -ItemType Directory -Force $Out | Out-Null
 # The licenses (the app's own GPL-3.0 and the third-party ones) go into every package, in a "licenses" folder.

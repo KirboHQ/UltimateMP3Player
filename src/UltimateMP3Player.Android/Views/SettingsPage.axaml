@@ -212,20 +212,77 @@
                 </StackPanel>
             </Border>
 
-            <!-- ============================================================ lyrics -->
-            <TextBlock Text="{local:T LYRICS}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'lyrics words karaoke lrclib synced'}">
+            <!-- ============================================================ downloads -->
+            <TextBlock Text="{local:T DOWNLOADS}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'downloads download format mp3 m4a opus flac quality video folder music storage'}">
                 <StackPanel>
-                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoLyrics}">
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding SaveAudio}">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Find lyrics automatically'}" Classes="setting"/>
-                            <TextBlock Text="{local:T 'For new songs and for the one you\'re listening to, on LRCLIB (synced when available)'}" Classes="setting-hint"/>
+                            <TextBlock Text="{local:T 'Save the audio on your device'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Songs you add from a link or a pack are downloaded. Off: they go into your library in the cloud, you listen from their link and save them whenever you like.'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
                     <Border Classes="line"/>
-                    <TextBlock Text="{Binding LyricsStats}" Classes="value" Margin="0,12,0,8"/>
-                    <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,0,0,10" Command="{Binding ScanLyricsCommand}"
-                            Content="{local:T 'Look for missing lyrics'}"/>
+                    <Button x:Name="LoginsRow" Theme="{StaticResource SettingRow}" Click="Logins_Click" views:SettingsPage.Keywords="{local:T 'sign in signed account login password cookies private members age youtube soundcloud instagram'}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Sign in to sites'}" Classes="setting"/>
+                            <TextBlock x:Name="LoginsValue" Classes="value"/>
+                            <TextBlock Text="{local:T 'To download private, members-only or age-restricted content: sign in to the site from the app'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border x:Name="LoginsLine" Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="AudioFormat" Click="Choose_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Audio format'}" Classes="setting"/>
+                            <TextBlock Text="{Binding AudioFormat.Label}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding PreferAudioOnly}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Usually audio only'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'The video is downloaded only if you choose it (saves space and data)'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="VideoQuality" Click="Choose_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Maximum video quality'}" Classes="setting"/>
+                            <TextBlock Text="{Binding VideoQuality.Label}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="Parallel" Click="Choose_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Downloads at once'}" Classes="setting"/>
+                            <TextBlock Text="{Binding Parallel.Label}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <StackPanel Margin="0,12,0,10">
+                        <TextBlock Text="{local:T 'Where the music is saved'}" Classes="setting"/>
+                        <TextBlock Text="{Binding MusicDir}" Classes="value" FontSize="12.5"/>
+                        <TextBlock x:Name="MusicDirHint" Text="{local:T 'In the phone\'s storage, in the app\'s folder: you can see it by connecting the phone to a computer (Android › data). If you uninstall the app, Android asks whether to keep it.'}"
+                                   Classes="setting-hint"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ============================================================ storage -->
+            <TextBlock Text="{local:T STORAGE}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'storage space cache suggested cloud unsaved clear empty'}">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Tag="CacheSize" Click="Choose_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Temporary storage (unsaved songs)'}" Classes="setting"/>
+                            <TextBlock Text="{Binding CacheSize.Label}" Classes="value"/>
+                            <TextBlock Text="{local:T 'Songs you play without having saved them on your phone (in the cloud, suggested, in rooms) stay ready for next time; beyond this number the oldest are deleted.'}"
+                                       Classes="setting-hint"/>
+                            <TextBlock Text="{Binding CacheText}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,4,0,10" Command="{Binding ClearCacheCommand}"
+                            Content="{local:T 'Clear storage'}"/>
                 </StackPanel>
             </Border>
 
@@ -287,52 +344,62 @@
                 </StackPanel>
             </Border>
 
-            <!-- ============================================================ downloads -->
-            <TextBlock Text="{local:T DOWNLOADS}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'downloads download format mp3 m4a opus flac quality video folder music storage'}">
+            <!-- ============================================================ lyrics -->
+            <TextBlock Text="{local:T LYRICS}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'lyrics words karaoke lrclib synced'}">
                 <StackPanel>
-                    <Button x:Name="LoginsRow" Theme="{StaticResource SettingRow}" Click="Logins_Click" views:SettingsPage.Keywords="{local:T 'sign in signed account login password cookies private members age youtube soundcloud instagram'}">
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoLyrics}">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Sign in to sites'}" Classes="setting"/>
-                            <TextBlock x:Name="LoginsValue" Classes="value"/>
-                            <TextBlock Text="{local:T 'To download private, members-only or age-restricted content: sign in to the site from the app'}" Classes="setting-hint"/>
-                        </StackPanel>
-                    </Button>
-                    <Border x:Name="LoginsLine" Classes="line"/>
-                    <Button Theme="{StaticResource SettingRow}" Tag="AudioFormat" Click="Choose_Click">
-                        <StackPanel>
-                            <TextBlock Text="{local:T 'Audio format'}" Classes="setting"/>
-                            <TextBlock Text="{Binding AudioFormat.Label}" Classes="value"/>
-                        </StackPanel>
-                    </Button>
-                    <Border Classes="line"/>
-                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding PreferAudioOnly}">
-                        <StackPanel>
-                            <TextBlock Text="{local:T 'Usually audio only'}" Classes="setting"/>
-                            <TextBlock Text="{local:T 'The video is downloaded only if you choose it (saves space and data)'}" Classes="setting-hint"/>
+                            <TextBlock Text="{local:T 'Find lyrics automatically'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'For new songs and for the one you\'re listening to, on LRCLIB (synced when available)'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
                     <Border Classes="line"/>
-                    <Button Theme="{StaticResource SettingRow}" Tag="VideoQuality" Click="Choose_Click">
+                    <TextBlock Text="{Binding LyricsStats}" Classes="value" Margin="0,12,0,8"/>
+                    <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,0,0,10" Command="{Binding ScanLyricsCommand}"
+                            Content="{local:T 'Look for missing lyrics'}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ============================================================ library -->
+            <TextBlock Text="{local:T LIBRARY}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'library songs import export pack ump file folder copy backup friend artist name'}">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportFilesCommand}">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Maximum video quality'}" Classes="setting"/>
-                            <TextBlock Text="{Binding VideoQuality.Label}" Classes="value"/>
+                            <TextBlock Text="{local:T 'Add songs from your phone'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'MP3, M4A, FLAC, video... are copied into the app'}" Classes="setting-hint"/>
                         </StackPanel>
                     </Button>
                     <Border Classes="line"/>
-                    <Button Theme="{StaticResource SettingRow}" Tag="Parallel" Click="Choose_Click">
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportFolderCommand}">
+                        <TextBlock Text="{local:T 'Add a music folder'}" Classes="setting"/>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ExportPackCommand}">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Downloads at once'}" Classes="setting"/>
-                            <TextBlock Text="{Binding Parallel.Label}" Classes="value"/>
+                            <TextBlock Text="{local:T 'Export to a .ump pack'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Playlists, tags or the whole library in one file: to keep as a backup or to send to a friend'}" Classes="setting-hint"/>
                         </StackPanel>
                     </Button>
                     <Border Classes="line"/>
-                    <StackPanel Margin="0,12,0,10">
-                        <TextBlock Text="{local:T 'Where the music is saved'}" Classes="setting"/>
-                        <TextBlock Text="{Binding MusicDir}" Classes="value" FontSize="12.5"/>
-                        <TextBlock x:Name="MusicDirHint" Text="{local:T 'In the phone\'s storage, in the app\'s folder: you can see it by connecting the phone to a computer (Android › data). If you uninstall the app, Android asks whether to keep it.'}"
-                                   Classes="setting-hint"/>
-                    </StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportPackCommand}">
+                        <TextBlock Text="{local:T 'Import a .ump pack'}" Classes="setting"/>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Click="RenameArtist_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Rename an artist'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'The same name on all their songs at once'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding OpenStatsCommand}" views:SettingsPage.Keywords="{local:T 'statistics plays listening time most played'}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Listening statistics'}" Classes="setting"/>
+                            <TextBlock Text="{Binding StatsSummary}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Border>
 
@@ -392,52 +459,6 @@
                 </StackPanel>
             </Border>
 
-            <!-- ============================================================ library -->
-            <TextBlock Text="{local:T LIBRARY}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'library songs import export pack ump file folder copy backup friend artist name'}">
-                <StackPanel>
-                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportFilesCommand}">
-                        <StackPanel>
-                            <TextBlock Text="{local:T 'Add songs from your phone'}" Classes="setting"/>
-                            <TextBlock Text="{local:T 'MP3, M4A, FLAC, video... are copied into the app'}" Classes="setting-hint"/>
-                        </StackPanel>
-                    </Button>
-                    <Border Classes="line"/>
-                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportFolderCommand}">
-                        <TextBlock Text="{local:T 'Add a music folder'}" Classes="setting"/>
-                    </Button>
-                    <Border Classes="line"/>
-                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ExportPackCommand}">
-                        <StackPanel>
-                            <TextBlock Text="{local:T 'Export to a .ump pack'}" Classes="setting"/>
-                            <TextBlock Text="{local:T 'Playlists, tags or the whole library in one file: to keep as a backup or to send to a friend'}" Classes="setting-hint"/>
-                        </StackPanel>
-                    </Button>
-                    <Border Classes="line"/>
-                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportPackCommand}">
-                        <TextBlock Text="{local:T 'Import a .ump pack'}" Classes="setting"/>
-                    </Button>
-                    <Border Classes="line"/>
-                    <Button Theme="{StaticResource SettingRow}" Click="RenameArtist_Click">
-                        <StackPanel>
-                            <TextBlock Text="{local:T 'Rename an artist'}" Classes="setting"/>
-                            <TextBlock Text="{local:T 'The same name on all their songs at once'}" Classes="setting-hint"/>
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Border>
-
-            <!-- ============================================================ statistics -->
-            <TextBlock Text="{local:T STATISTICS}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'statistics plays listening time most played'}">
-                <Button Theme="{StaticResource SettingRow}" Command="{Binding OpenStatsCommand}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Listening statistics'}" Classes="setting"/>
-                        <TextBlock Text="{Binding StatsSummary}" Classes="value"/>
-                    </StackPanel>
-                </Button>
-            </Border>
-
             <!-- ============================================================ updates -->
             <TextBlock Text="{local:T UPDATES}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Keywords="{local:T 'updates version new github engines yt-dlp ffmpeg'}">
@@ -474,24 +495,6 @@
                         <TextBlock Text="{Binding EngineInfo}" Classes="value" VerticalAlignment="Center"/>
                         <Button Grid.Column="1" Theme="{StaticResource SmallGhost}" Command="{Binding UpdateEnginesCommand}" Content="{local:T 'Update now'}" Margin="10,0,0,0"/>
                     </Grid>
-                </StackPanel>
-            </Border>
-
-            <!-- ============================================================ storage -->
-            <TextBlock Text="{local:T STORAGE}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'storage space cache suggested cloud unsaved clear empty'}">
-                <StackPanel>
-                    <Button Theme="{StaticResource SettingRow}" Tag="CacheSize" Click="Choose_Click">
-                        <StackPanel>
-                            <TextBlock Text="{local:T 'Temporary storage (unsaved songs)'}" Classes="setting"/>
-                            <TextBlock Text="{Binding CacheSize.Label}" Classes="value"/>
-                            <TextBlock Text="{local:T 'Songs you play without having saved them on your phone (in the cloud, suggested, in rooms) stay ready for next time; beyond this number the oldest are deleted.'}"
-                                       Classes="setting-hint"/>
-                            <TextBlock Text="{Binding CacheText}" Classes="setting-hint"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,4,0,10" Command="{Binding ClearCacheCommand}"
-                            Content="{local:T 'Clear storage'}"/>
                 </StackPanel>
             </Border>
 
