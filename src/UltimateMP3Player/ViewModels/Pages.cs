@@ -128,9 +128,15 @@ public sealed class HomeViewModel : Observable
 {
     private readonly MainViewModel _main;
 
+    // (the followed artists' new releases: a row of them)
+    public ArtistsViewModel Artists => _main.Artists;
+    // (the saved radios: a row of them)
+    public StationsViewModel Stations => _main.Stations;
+
     public HomeViewModel(MainViewModel main)
     {
         _main = main;
+        OpenRecapCommand = new RelayCommand(() => _main.OpenRecap(RecapYear, 0));
         Refresh();
     }
 
@@ -150,6 +156,16 @@ public sealed class HomeViewModel : Observable
     public List<object> PlaylistCards => [.. _main.Playlists, NewPlaylistCard.Instance];
     public bool HasRecent => Recent.Count > 0;
     public bool HasRecentlyAdded => RecentlyAdded.Count > 0;
+    // For you: the mixes (Mixes.Build).
+    public List<MixViewModel> ForYou { get; private set; } = new();
+    private DateTime _forYouAt;
+    private int _forYouSongs;
+    public bool HasForYou => ForYou.Count > 0;
+    // December to mid January: the year's recap, a card at the top.
+    public int RecapYear { get; private set; }
+    public bool HasRecap => RecapYear > 0;
+    public string RecapTitle => L.F("Your {0} in music", RecapYear);
+    public ICommand OpenRecapCommand { get; }
     public bool IsEmpty { get; private set; }
     public TrackListSource RecentList { get; private set; } = new("recent", "", new List<TrackViewModel>());
 
@@ -174,8 +190,19 @@ public sealed class HomeViewModel : Observable
         var added = songs.OrderByDescending(t => t.Added).Take(8).Select(_main.Vm).ToList();
         var addedList = new TrackListSource("added", L.T("Recently added"), added);
         RecentlyAdded = added.Select((t, i) => new TrackRow(i + 1, t, addedList)).ToList();
+        var now = DateTime.Now;
+        int year = now.Month == 12 ? now.Year : now.Month == 1 && now.Day <= 15 ? now.Year - 1 : 0;
+        RecapYear = year > 0 && _main.Profile.Log.Years().Contains(year) ? year : 0;
+        // (made again now and then, not at every song played: the cards would change under the pointer)
+        if (IsEmpty) ForYou = new();
+        else if (ForYou.Count == 0 || songs.Count != _forYouSongs || DateTime.Now - _forYouAt > TimeSpan.FromMinutes(30))
+        {
+            ForYou = Mixes.Build(_main);
+            _forYouAt = DateTime.Now;
+            _forYouSongs = songs.Count;
+        }
         OnChanged(nameof(Greeting), nameof(Recent), nameof(RecentlyAdded), nameof(PlaylistCards), nameof(HasRecent), nameof(HasRecentlyAdded),
-            nameof(IsEmpty), nameof(RecentList));
+            nameof(IsEmpty), nameof(RecentList), nameof(ForYou), nameof(HasForYou), nameof(RecapYear), nameof(HasRecap), nameof(RecapTitle));
     }
 
     public void PlayRecent(TrackViewModel t) => _main.Player.PlayFrom(RecentList, t);

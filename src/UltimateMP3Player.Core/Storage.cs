@@ -45,6 +45,8 @@ public static class AppPaths
     public static string ProfilesFile => Path.Combine(DataDir, "profiles.json");
     public static string CoversDir => Dir(Path.Combine(DataDir, "covers"));
     public static string LyricsDir => Dir(Path.Combine(DataDir, "lyrics"));
+    // Artists' pictures (Deezer's), kept so the artists' pages and lists show them offline too.
+    public static string ArtistPicture(string id) => Path.Combine(Dir(Path.Combine(CoversDir, "artists")), id + ".jpg");
     // Songs heard without saving them (SongCache).
     public static string CacheDir => Path.Combine(DataDir, "cache");
     public static string LogFile => Path.Combine(DataDir, "errors.log");
@@ -119,9 +121,14 @@ public static class JsonStore
         return new T();
     }
 
+    // A backup was just restored in place of the data: nothing more is written until the app starts again (what it holds in
+    // memory is the data from before).
+    public static volatile bool Frozen;
+
     // Atomic write, previous version kept as .bak.
     public static void Save<T>(string path, T value)
     {
+        if (Frozen) return;
         var tmp = path + ".tmp";
         File.WriteAllText(tmp, JsonSerializer.Serialize(value, Options));
         if (File.Exists(path)) File.Replace(tmp, path, path + ".bak", true);
@@ -269,6 +276,8 @@ public sealed class AppSettings
     public int TogetherMax { get; set; } = 8;
     // Permissions of who joins (3.1: pause and seek became one, speed is new; the 3.0 value isn't read).
     public int TogetherRoomPerms { get; set; } = 1;
+    // Vote to skip in the rooms made here: the share of the room (percent) whose votes skip a song, 0 = no votes.
+    public int TogetherVoteShare { get; set; } = 50;
     public string? TogetherLastAddress { get; set; }
     // Songs of the room's queue got ready ahead, as a guest and as the host (1-6).
     public int TogetherAhead { get; set; } = 2;
@@ -295,12 +304,24 @@ public sealed class AppSettings
     // The user's own Spotify app (developer.spotify.com): with its key the search box also searches Spotify.
     public string? SpotifyClientId { get; set; }
     public string? SpotifyClientSecret { get; set; }
+    // The user's own Last.fm API account (last.fm/api/account/create): Last.fm only answers apps with a key (Scrobbler).
+    public string? LastFmKey { get; set; }
+    public string? LastFmSecret { get; set; }
     // Lyrics searched by themselves: for new songs and for the song playing, when never searched before.
     public bool AutoLyrics { get; set; } = true;
     // Songs added from a link or a pack get their audio saved on the device: where the download card's switch starts
     // (Settings › Download); off = into the library and the playlist in the cloud, heard from their link. (Up to 4.1.0 it
     // was the card's last choice, "SaveLinkAudio", on by default: not read.)
     public bool SaveAudio { get; set; }
+    // Automatic backups of the data (Backup): every how many days (0 = never), how many are kept, where (null = the
+    // platform's default folder; a path, or on the phones a bookmark of a folder chosen through the system), when the last one.
+    // A system notification when an artist followed has a new release.
+    public bool ReleaseNotifications { get; set; } = true;
+    public int BackupEvery { get; set; } = 7;
+    public int BackupKeep { get; set; } = 5;
+    public string? BackupFolder { get; set; }
+    public string? BackupFolderName { get; set; }
+    public DateTime? LastBackup { get; set; }
     public double WindowWidth { get; set; } = 1280;
     public double WindowHeight { get; set; } = 820;
     public bool WindowMaximized { get; set; }

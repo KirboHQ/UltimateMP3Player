@@ -257,6 +257,8 @@ public sealed class SettingsViewModel : Observable
     public AppHost Host => _main.Host;
 
     public EqualizerViewModel Equalizer { get; }
+    public BackupsViewModel Backups => _main.Backups;
+    public ScrobblingViewModel Scrobbling => _main.Scrobbling;
     public ICommand BrowseCommand { get; }
     public ICommand OpenMusicDirCommand { get; }
     public ICommand OpenDataDirCommand { get; }
@@ -330,6 +332,12 @@ public sealed class SettingsViewModel : Observable
             // After the ComboBox is done: the whole window is rebuilt.
             Application.Current.Dispatcher.BeginInvoke(() => _main.Host.SetLanguage(code));
         }
+    }
+
+    public bool ReleaseNotifications
+    {
+        get => S.ReleaseNotifications;
+        set { S.ReleaseNotifications = value; Save(); OnChanged(); }
     }
 
     public bool Animations
@@ -1031,6 +1039,7 @@ public sealed class SettingsViewModel : Observable
         .ThenByDescending(kv => kv.Value.Seconds).Select(kv => _main.Library.Get(kv.Key)).OfType<Track>().Take(3).Select(_main.Vm).ToList();
 
     public ICommand OpenStatsCommand => new RelayCommand(_main.OpenStats);
+    public ICommand ImportSpotifyCommand => new RelayCommand(() => _ = SpotifyImport.RunAsync(_main));
 
     // A song is playing: the card follows it.
     public void OnListened(bool reorder)

@@ -152,6 +152,18 @@ public sealed class AudioEngine : IDisposable
         OpenAsync(Task.Run<ITrackSource>(() => new LinkTrackSource(link, TimeSpan.FromSeconds(durationHint),
             () => _ui.BeginInvoke(() => StreamRefused?.Invoke(link.Url)))), link.Url, trackGainDb, durationHint);
 
+    // An internet radio: MP3 decoded here, with the song on air (LiveMp3Source); other formats, and servers it can't talk to,
+    // through ffmpeg (not on the iPhone: MP3 stations only there). onAir: from another thread.
+    public Task OpenLiveAsync(SongStream link, Action<string?> onAir) =>
+        OpenAsync(Task.Run<ITrackSource>(() =>
+        {
+            try { return new LiveMp3Source(link, onAir); }
+            catch (Exception) when (!OperatingSystem.IsIOS())
+            {
+                return new LinkTrackSource(link, TimeSpan.Zero, () => _ui.BeginInvoke(() => StreamRefused?.Invoke(link.Url)));
+            }
+        }), link.Url, 0, 0);
+
     private async Task OpenAsync(Task<ITrackSource> opening, string path, double trackGainDb, double durationHint)
     {
         int version = ++_openVersion;

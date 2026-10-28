@@ -1,0 +1,97 @@
+<UserControl x:Class="UltimateMP3Player.Views.StationsView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player">
+    <UserControl.Resources>
+        <!-- one of the lists of stations (near you, the world, a genre): like the search page's site chips -->
+        <ControlTheme x:Key="ListChip" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusAdorner" Value="{x:Null}"/>
+            <Setter Property="Margin" Value="0,0,8,6"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Bd" CornerRadius="15" Height="30" Padding="12,0" Background="{DynamicResource Surface2Brush}"
+                            BorderBrush="Transparent" BorderThickness="1">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Bd">
+                <Setter Property="Background" Value="{DynamicResource Surface3Brush}"/>
+            </Style>
+            <Style Selector="^:pointerover">
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            </Style>
+            <Style Selector="^.selected /template/ Border#Bd">
+                <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Style>
+            <Style Selector="^.selected">
+                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+            </Style>
+        </ControlTheme>
+    </UserControl.Resources>
+    <Panel>
+        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="28,8,20,28">
+                <Grid Margin="0,0,8,22" ColumnDefinitions="Auto,*">
+                    <Border Width="148" Height="148" CornerRadius="18" Background="{DynamicResource AccentGradient}">
+                        <TextBlock Text="{local:Icon E93E}" Classes="glyph" FontSize="60" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
+                        <TextBlock Text="{local:T LIBRARY}" Classes="small-caps" Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock Text="{local:T Radio}" FontSize="40" FontWeight="Bold" Margin="0,2,0,8"/>
+                        <TextBlock Text="{Binding SavedText}" Foreground="{DynamicResource SubTextBrush}"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="{local:T 'Your radios'}" Classes="section-title"/>
+                <ItemsControl ItemsSource="{Binding Saved}" ItemTemplate="{StaticResource StationCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"
+                              IsVisible="{Binding HasSaved}"/>
+                <Border Theme="{StaticResource Card}" Padding="22" Margin="0,0,8,30" IsVisible="{Binding !HasSaved}">
+                    <TextBlock Classes="hint" FontSize="14" LineHeight="21" TextWrapping="Wrap"
+                               Text="{local:T 'Save the radios you like with the heart: they stay here and in Home, ready to play live.'}"/>
+                </Border>
+
+                <!-- radio-browser.info's: by name, or one of the lists -->
+                <TextBlock Text="{local:T 'Find radios'}" Classes="section-title"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,8,14">
+                    <TextBox x:Name="FindBox" Theme="{StaticResource FilterBox}" Width="320" VerticalAlignment="Center" Text="{Binding Query}"
+                             Watermark="{local:T 'Find a radio by name'}"/>
+                    <Button Theme="{StaticResource GhostButton}" Padding="16,8" Margin="10,0,0,0" Command="{Binding SearchCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E721}" Classes="glyph"/>
+                            <TextBlock Text="{local:T Search}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding Chips}" Focusable="False" Margin="0,0,8,14">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Theme="{StaticResource ListChip}" Classes.selected="{Binding IsSelected}" Content="{Binding Label}" CommandParameter="{Binding}"
+                                    Command="{Binding $parent[UserControl].DataContext.SelectChipCommand}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Margin="0,0,8,12">
+                    <TextBlock Text="{Binding FoundTitle}" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock Text="{local:T 'Searching…'}" Classes="hint" Margin="14,0,0,0" VerticalAlignment="Center" IsVisible="{Binding Loading}"/>
+                </StackPanel>
+                <TextBlock Text="{Binding Error}" Classes="hint" Margin="0,0,8,16" IsVisible="{Binding HasError}"/>
+                <ItemsControl ItemsSource="{Binding Found}" ItemTemplate="{StaticResource StationCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,14"/>
+                <TextBlock Classes="hint" FontSize="12" Margin="0,0,8,0" TextWrapping="Wrap"
+                           Text="{local:T 'Radios from radio-browser.info, the open directory of internet radios.'}"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Panel>
+</UserControl>

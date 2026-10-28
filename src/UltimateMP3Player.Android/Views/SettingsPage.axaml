@@ -394,12 +394,74 @@
                         </StackPanel>
                     </Button>
                     <Border Classes="line"/>
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding ReleaseNotifications}"
+                              views:SettingsPage.Keywords="{local:T 'artists follow new releases albums notifications'}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Notify new releases'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Of the artists you follow (looked for every 12 hours)'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
+                    <Border Classes="line"/>
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding OpenStatsCommand}" views:SettingsPage.Keywords="{local:T 'statistics plays listening time most played'}">
                         <StackPanel>
                             <TextBlock Text="{local:T 'Listening statistics'}" Classes="setting"/>
                             <TextBlock Text="{Binding StatsSummary}" Classes="value"/>
                         </StackPanel>
                     </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportSpotifyCommand}" views:SettingsPage.Keywords="{local:T 'spotify history import plays wrapped'}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Import your Spotify history…'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Your plays on Spotify into the statistics and the recaps'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- ============================================================ backup -->
+            <TextBlock Text="{local:T BACKUP}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'backup backups restore automatic copy safety data library playlists statistics zip reinstall'}">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Tag="BackupEvery" Click="Choose_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Automatic backup'}" Classes="setting"/>
+                            <TextBlock Text="{Binding Backups.Every.Label}" Classes="value"/>
+                            <TextBlock Text="{local:T 'Your library, playlists, tags, statistics, settings, covers and lyrics in one small file (not the music).'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="BackupKeep" Click="Choose_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Backups kept'}" Classes="setting"/>
+                            <TextBlock Text="{Binding Backups.Keep.Label}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding Backups.ChooseFolderCommand}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Backup folder'}" Classes="setting"/>
+                            <TextBlock Text="{Binding Backups.FolderText}" Classes="value"/>
+                            <TextBlock x:Name="BackupFolderHint" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Margin="0,0,0,8" Command="{Binding Backups.DefaultFolderCommand}"
+                            Content="{local:T 'Back to the default folder'}" IsVisible="{Binding !Backups.IsDefaultFolder}"/>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding Backups.BackupNowCommand}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Back up now'}" Classes="setting"/>
+                            <TextBlock Text="{Binding Backups.LastText}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding Backups.RestoreCommand}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Restore a backup…'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Its data takes the place of today\'s (a copy of today\'s is kept); then the app starts again.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="{Binding Backups.Status}" Classes="setting-hint" Margin="0,4,0,10" TextWrapping="Wrap"
+                               IsVisible="{Binding Backups.Status, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
             </Border>
 
@@ -456,6 +518,29 @@
                             <TextBlock Text="{local:T 'If the host sends them, the ones it gets ready come from it; you download the others and, if they can\'t be found, wait for the host. Off (or if the host doesn\'t send them): from the link first, then from whoever in the room has it.'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
+                </StackPanel>
+            </Border>
+
+            <!-- ============================================================ integrations: the plays to Last.fm and ListenBrainz -->
+            <TextBlock Text="{local:T INTEGRATIONS}" Classes="card-title"/>
+            <Border Classes="card" DataContext="{Binding Scrobbling}" views:SettingsPage.Keywords="{local:T 'lastfm last.fm listenbrainz scrobble scrobbling integrations'}">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding LastFmCommand}">
+                        <StackPanel>
+                            <TextBlock Text="Last.fm" Classes="setting"/>
+                            <TextBlock Text="{Binding LastFmText}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ListenBrainzCommand}">
+                        <StackPanel>
+                            <TextBlock Text="ListenBrainz" Classes="setting"/>
+                            <TextBlock Text="{Binding ListenBrainzText}" Classes="value"/>
+                            <TextBlock Text="{local:T 'Scrobbling: what this profile listens to goes to your accounts (half of a song is enough, at most 4 minutes). Without a connection the plays wait and go later.'}"
+                                       Classes="setting-hint"/>
+                            <TextBlock Text="{Binding WaitingText}" Classes="setting-hint" IsVisible="{Binding HasWaiting}"/>
+                        </StackPanel>
+                    </Button>
                 </StackPanel>
             </Border>
 

@@ -615,6 +615,19 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== followed artists -->
+                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'artists follow new releases albums notifications'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Artists you follow'}" Classes="card-title"/>
+                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding ReleaseNotifications}" Margin="0">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Notify new releases'}"/>
+                                <TextBlock Text="{local:T 'A notification when an artist you follow releases an album, an EP or a single (looked for every 12 hours).'}" Classes="hint"/>
+                            </StackPanel>
+                        </CheckBox>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== .ump packs -->
                 <Border Theme="{StaticResource Card}" Padding="22" Tag="whole"
                         views:SettingsView.Keywords="{local:T 'export import pack packs ump share backup copy move transfer friends playlist tag library'}">
@@ -648,6 +661,57 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== backups -->
+                <Border Theme="{StaticResource Card}" Padding="22" DataContext="{Binding Backups}"
+                        views:SettingsView.Keywords="{local:T 'backup backups restore automatic copy safety data library playlists statistics zip reinstall'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T Backup}" Classes="card-title"/>
+                        <TextBlock Text="{local:T 'Your library, playlists, tags, statistics, settings, covers and lyrics in one small file (not the music), made by itself now and then. Restore it after a reinstall or on a new computer.'}"
+                                   Classes="hint" Margin="0,-8,0,14"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,4">
+                            <StackPanel Margin="0,0,8,12">
+                                <TextBlock Text="{local:T 'Automatic backup'}" Classes="field-label"/>
+                                <ComboBox ItemsSource="{Binding EveryChoices}" SelectedItem="{Binding Every}" AutomationProperties.Name="{local:T 'Automatic backup'}"/>
+                            </StackPanel>
+                            <StackPanel Margin="8,0,0,12">
+                                <TextBlock Text="{local:T 'Backups kept'}" Classes="field-label"/>
+                                <ComboBox ItemsSource="{Binding KeepChoices}" SelectedItem="{Binding Keep}" AutomationProperties.Name="{local:T 'Backups kept'}"/>
+                            </StackPanel>
+                        </UniformGrid>
+                        <TextBlock Text="{local:T 'Backup folder'}" Classes="field-label"/>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding FolderText, Mode=OneWay}" IsReadOnly="True"
+                                     AutomationProperties.Name="{local:T 'Backup folder'}"/>
+                            <Button Grid.Column="1" Theme="{StaticResource GhostButton}" Content="{local:T 'Browse…'}" Margin="8,0,0,0" Command="{Binding ChooseFolderCommand}"/>
+                            <Button Grid.Column="2" Theme="{StaticResource GhostButton}" Content="{local:T Open}" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}"/>
+                            <Button Grid.Column="3" Theme="{StaticResource GhostButton}" Content="{local:T Default}" Margin="8,0,0,0" Command="{Binding DefaultFolderCommand}"
+                                    ToolTip.Tip="{local:T 'Back to the default folder'}" IsVisible="{Binding !IsDefaultFolder}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding LastText}" Classes="hint" Margin="0,0,0,12"/>
+                        <WrapPanel>
+                            <Button Theme="{StaticResource PrimaryButton}" Margin="0,0,10,0" Padding="16,9" Command="{Binding BackupNowCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E74E}" Classes="glyph"/>
+                                    <TextBlock Text="{local:T 'Back up now'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Theme="{StaticResource GhostButton}" Command="{Binding RestoreCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E777}" Classes="glyph"/>
+                                    <TextBlock Text="{local:T 'Restore a backup…'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
+                        <TextBlock Text="{Binding Status}" Classes="hint" Margin="2,10,0,0" IsVisible="{Binding Status, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== listening statistics -->
                 <Border Theme="{StaticResource Card}" Padding="22" Tag="whole"
                         views:SettingsView.Keywords="{local:T 'statistics plays played most least time chart top clean up delete'}">
@@ -671,12 +735,21 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Button Theme="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding OpenStatsCommand}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{local:Icon E9D2}" Classes="glyph"/>
-                                <TextBlock Text="{local:T 'All statistics'}" Margin="8,0,0,0"/>
-                            </StackPanel>
-                        </Button>
+                        <WrapPanel>
+                            <Button Theme="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding OpenStatsCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E9D2}" Classes="glyph"/>
+                                    <TextBlock Text="{local:T 'All statistics'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Theme="{StaticResource GhostButton}" Command="{Binding ImportSpotifyCommand}"
+                                    ToolTip.Tip="{local:T 'Your plays on Spotify into the statistics and the recaps'}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
+                                    <TextBlock Text="{local:T 'Import your Spotify history…'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
                         <TextBlock Classes="hint" FontSize="12" Margin="2,12,0,0" Foreground="{DynamicResource MutedBrush}"
                                    Text="{local:T 'To clean up, sort them by least played: select them and press Delete to delete them.'}"/>
                     </StackPanel>
@@ -794,7 +867,7 @@
                 </Border>
 
                 <!-- ==================================================== integrations -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'discord status activity rich presence'}">
+                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'discord status activity rich presence lastfm last.fm listenbrainz scrobble scrobbling'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Integrations}" Classes="card-title"/>
                         <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding DiscordPresence}" IsEnabled="{Binding DiscordAvailable}">
@@ -804,6 +877,25 @@
                                            Classes="hint"/>
                             </StackPanel>
                         </CheckBox>
+                        <!-- what this profile listens to, to Last.fm and ListenBrainz (scrobbling) -->
+                        <Grid Margin="0,18,0,0" DataContext="{Binding Scrobbling}" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto">
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Last.fm"/>
+                                <TextBlock Text="{Binding LastFmText}" Classes="hint"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Theme="{StaticResource GhostButton}" Padding="16,8" Content="{Binding LastFmButton}" Command="{Binding LastFmCommand}"
+                                    VerticalAlignment="Center"/>
+                            <StackPanel Grid.Row="1" Margin="0,12,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="ListenBrainz"/>
+                                <TextBlock Text="{Binding ListenBrainzText}" Classes="hint"/>
+                            </StackPanel>
+                            <Button Grid.Row="1" Grid.Column="1" Theme="{StaticResource GhostButton}" Padding="16,8" Margin="0,12,0,0" Content="{Binding ListenBrainzButton}"
+                                    Command="{Binding ListenBrainzCommand}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Row="2" Grid.ColumnSpan="2" Classes="hint" Margin="0,12,0,0" TextWrapping="Wrap"
+                                       Text="{local:T 'Scrobbling: what this profile listens to goes to your accounts (half of a song is enough, at most 4 minutes). Without a connection the plays wait and go later.'}"/>
+                            <TextBlock Grid.Row="3" Grid.ColumnSpan="2" Text="{Binding WaitingText}" Classes="hint" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"
+                                       IsVisible="{Binding HasWaiting}"/>
+                        </Grid>
                     </StackPanel>
                 </Border>
 

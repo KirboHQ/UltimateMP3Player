@@ -27,8 +27,11 @@ public sealed class MainViewModel : Observable
         _ui = Application.Current.Dispatcher;
         CleanProfile();
         SyncTags();
+        // (before the player: it tells it what is heard)
+        Scrobbler = new Scrobbler(profile, host.Settings, Services.AppInfo.Version.ToString(3));
 
         Radio = new RadioViewModel(this);
+        Stations = new StationsViewModel(this);
         Player = new PlayerViewModel(this, host.Audio, adopt);
         LibraryPage = new LibraryViewModel(this, unsorted: false);
         UnsortedPage = new LibraryViewModel(this, unsorted: true);
@@ -36,6 +39,12 @@ public sealed class MainViewModel : Observable
         Search = new SearchViewModel(this);
         Downloads = new DownloadsPageViewModel(this);
         NowPlaying = new NowPlayingViewModel(this);
+        Backups = new BackupsViewModel(this);
+        Artists = new ArtistsViewModel(this);
+        Scrobbling = new ScrobblingViewModel(this);
+        _ = Scrobbler.SendAsync();
+        // (the month-by-month statistics keep each song's name, for the recaps of songs gone since)
+        ListeningLog.Names = id => (Get(id) ?? Radio.Track(id)) is { } t ? (t.Title, t.Artist) : (null, null);
         RebuildPlaylists();
         Home.Refresh();
         _page = Home;
@@ -48,6 +57,8 @@ public sealed class MainViewModel : Observable
 
         GoHomeCommand = new RelayCommand(() => Navigate(Home));
         GoLibraryCommand = new RelayCommand(() => Navigate(LibraryPage));
+        GoArtistsCommand = new RelayCommand(OpenArtists);
+        GoStationsCommand = new RelayCommand(OpenStations);
         GoDownloadsCommand = new RelayCommand(() => Navigate(Downloads));
         GoSettingsCommand = new RelayCommand(GoSettings);
         GoTogetherCommand = new RelayCommand(() => Navigate(Together));
@@ -112,6 +123,14 @@ public sealed class MainViewModel : Observable
     public LibraryViewModel UnsortedPage { get; }
     public SearchViewModel Search { get; }
     public DownloadsPageViewModel Downloads { get; }
+    // Settings › Backup, and the automatic backups.
+    public BackupsViewModel Backups { get; }
+    // Library › Artists (followed, new releases); an artist's page is ArtistPageViewModel.
+    public ArtistsViewModel Artists { get; }
+    // Library › Radio: internet radios.
+    public StationsViewModel Stations { get; }
+    public Scrobbler Scrobbler { get; }
+    public ScrobblingViewModel Scrobbling { get; }
     public NowPlayingViewModel NowPlaying { get; }
     private SettingsViewModel? _settings;
     public SettingsViewModel Settings => _settings ??= new SettingsViewModel(this);
@@ -256,7 +275,8 @@ public sealed class MainViewModel : Observable
     }
 
     // In the Favorites of a profile shown (menu: of either device while connected, whichever music is shown).
-    public bool IsFavorite(string trackId, bool menu = false) => (menu ? MenuProfiles() : ShownProfiles()).Any(p => p.Contains(p.Favorites, trackId));
+    public bool IsFavorite(string trackId, bool menu = false) => Station.Is(trackId) ? Profile.HasStation(trackId[Station.Prefix.Length..])
+        : (menu ? MenuProfiles() : ShownProfiles()).Any(p => p.Contains(p.Favorites, trackId));
 
     // A song's menu (right click, long press) while connected offers both devices' playlists, tags and Favorites, also
     // when only one device's music is shown; the hidden device's get view models only for the menu.
@@ -407,6 +427,8 @@ public sealed class MainViewModel : Observable
 
     public ICommand GoHomeCommand { get; }
     public ICommand GoLibraryCommand { get; }
+    public ICommand GoArtistsCommand { get; }
+    public ICommand GoStationsCommand { get; }
     public ICommand GoDownloadsCommand { get; }
     public ICommand GoSettingsCommand { get; }
     public ICommand GoTogetherCommand { get; }
@@ -500,6 +522,8 @@ public sealed class MainViewModel : Observable
             if (value is DjViewModel entering) entering.Enter();
             if (old is TogetherViewModel hidden) hidden.Hidden();
             if (value is TogetherViewModel shown) shown.Shown();
+            // (the new releases were in sight: no more dot)
+            if (old is ArtistsViewModel) Profile.SeeReleases();
             // (a list read meanwhile: its card is in sight now)
             if (value is DownloadsPageViewModel downloads) downloads.DropListGroup();
             OnChanged(nameof(ShowPlayerBar), nameof(ShowDownloadPanel));
@@ -518,6 +542,8 @@ public sealed class MainViewModel : Observable
         LibraryViewModel { Unsorted: true } => "unsorted",
         LibraryViewModel => "library",
         DownloadsPageViewModel => "downloads",
+        ArtistsViewModel or ArtistPageViewModel => "artists",
+        StationsViewModel => "radio",
         DjViewModel => "dj",
         TogetherViewModel => "together",
         // Reached from the settings.
@@ -533,6 +559,8 @@ public sealed class MainViewModel : Observable
     public bool IsDownloads { get => Section == "downloads"; set { if (value) Navigate(Downloads); } }
     public bool IsDj { get => Section == "dj"; set { if (value) Navigate(Dj); } }
     public bool IsTogether { get => Section == "together"; set { if (value) Navigate(Together); } }
+    public bool IsArtists { get => Section == "artists"; set { if (value) OpenArtists(); } }
+    public bool IsRadio { get => Section == "radio"; set { if (value) OpenStations(); } }
     // On the DJ page the decks are the player.
     public bool ShowPlayerBar => Page is not DjViewModel;
     public bool IsSettings { get => Section == "settings"; set { if (value) GoSettings(); } }
@@ -559,8 +587,8 @@ public sealed class MainViewModel : Observable
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private void OnNavChanged() => OnChanged(nameof(IsHome), nameof(IsLibrary), nameof(IsUnsorted), nameof(IsDownloads), nameof(IsDj), nameof(IsTogether),
-        nameof(IsSettings));
+    private void OnNavChanged() => OnChanged(nameof(IsHome), nameof(IsLibrary), nameof(IsUnsorted), nameof(IsDownloads), nameof(IsDj), nameof(IsTogether), nameof(IsArtists),
+        nameof(IsRadio), nameof(IsSettings));
 
     // Where "back" goes (the phone shows it under the finger that swipes back).
     public object? BackPage => _back.FirstOrDefault(p => p is not PlaylistPageViewModel pp || IsShown(pp.Vm));
@@ -843,6 +871,7 @@ public sealed class MainViewModel : Observable
         foreach (var p in Playlists)
             if (library || dirty.Contains(p.Id)) p.Refresh();
         if (Page is PlaylistPageViewModel page && (library || dirty.Contains(page.Vm.Id))) page.Rebuild();
+        if (library && Page is ArtistPageViewModel artist) artist.Rebuild();
         if (favorites)
             foreach (var t in _vms.Values) t.RefreshFavorite();
         // Tag pages also list playlists: a playlist's tags may have changed.
@@ -991,6 +1020,12 @@ public sealed class MainViewModel : Observable
     // asked (where it is already is said). ask false (the lock screen): this device's.
     public void ToggleFavorite(TrackViewModel t, bool ask = true, bool menu = false)
     {
+        // (a radio's heart keeps the radio)
+        if (Station.Is(t.Id))
+        {
+            Stations.Toggle(t.Id);
+            return;
+        }
         if (SaveRoomSong(t, Profile.Favorites)) return;
         if (Ready is { Mirror: { } m } s && (menu || s.ShowsOther || s.IsTheirs(t.Id)))
         {
@@ -1204,6 +1239,15 @@ public sealed class MainViewModel : Observable
         if (await CloudSongs.MakeCoverAsync(t.Id, pictures) == null || Library.Get(t.Id) != t) return;
         t.HasCover = true;
         t.CoverVersion++;
+        Library.Changed(t);
+    }
+
+    // Its artist written like a handle ("neobliviscaris", a SoundCloud name) as the library or Deezer write it (in the background).
+    public async Task SpellArtist(Track t, params string?[] hints)
+    {
+        var to = await ArtistNames.SpellAsync(Library, t.Artist, CancellationToken.None, hints);
+        if (to == t.Artist || Library.Get(t.Id) != t) return;
+        t.Artist = to;
         Library.Changed(t);
     }
 
@@ -1685,6 +1729,9 @@ public sealed class MainViewModel : Observable
     private void OnTrackAdded(Track t)
     {
         Vm(t);
+        // A song whose plays came with Spotify's history: they're its own now.
+        foreach (var k in t.Keys)
+            if (k.StartsWith("spotify:", StringComparison.Ordinal) && k.Length > 8) Profile.AdoptImported("sp:" + k[8..], t.Id);
         _libraryDirty = true;
         ScheduleRefresh();
     }
@@ -1732,11 +1779,65 @@ public sealed class MainViewModel : Observable
         if (_settings != null && Page == _settings) _settings.OnListened(reorder);
     }
 
+    // ------------------------------------------------------------------ artists
+
+    public void OpenStations()
+    {
+        Navigate(Stations);
+        Stations.Opened();
+    }
+
+    public void OpenArtists()
+    {
+        Artists.Refresh();
+        Navigate(Artists);
+    }
+
+    // An artist's page (from a song's menu, a list of artists, a release).
+    public void OpenArtist(string name, string? deezerId)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return;
+        if (Page is ArtistPageViewModel open && Text.Normalize(open.Name) == Text.Normalize(name)) return;
+        Navigate(new ArtistPageViewModel(this, name.Trim(), deezerId));
+    }
+
+    // The recap of a year (month 0) or of a month: Home in December, the statistics any time.
+    public void OpenRecap(int year, int month)
+    {
+        if (Recap.Periods(Profile.Log).Count == 0)
+        {
+            Toast(L.T("Nothing listened to yet: the recap comes with the first songs."));
+            return;
+        }
+        Navigate(new RecapViewModel(this, year, month));
+    }
+
+    // The new releases not seen yet: the dot on Artists (sidebar, library chip).
+    public int NewReleases => Profile.UnseenReleases();
+    public bool HasNewReleases => NewReleases > 0;
+
+    public void OnArtistsChanged()
+    {
+        OnChanged(nameof(NewReleases), nameof(HasNewReleases));
+        if (Page is ArtistPageViewModel page) page.OnFollowChanged();
+        if (Page == Home) Home.Refresh();
+    }
+
+    // Plays added all at once (an import): every page that counts them, again.
+    public void OnStatsChanged()
+    {
+        foreach (var vm in _vms.Values) vm.RefreshStats();
+        _stats?.Rebuild();
+        _settings?.OnListened(true);
+        Home.Refresh();
+    }
+
     public void OnCurrentChanged()
     {
         OnContextChanged();
         // A song never searched gets its lyrics while it plays (Settings > Lyrics).
         if (Player?.Current is { } c) Host.Lyrics.Auto(c.T, true);
+        Stations.RefreshPlaying();
     }
 
     // The list being played changed (also with the same song going on).

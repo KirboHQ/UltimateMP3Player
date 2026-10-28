@@ -23,6 +23,9 @@ public sealed class StatsViewModel : Observable, ITrackList
         _sort = Sorts[0];
         PlayCommand = new RelayCommand(() => _main.Player.PlayAll(this, false), () => _order.Count > 0);
         TagFilter.Changed += ApplyFilter;
+        // (the newest period with something in it)
+        RecapCommand = new RelayCommand(() => _main.OpenRecap(DateTime.Now.Year, 0));
+        ImportSpotifyCommand = new RelayCommand(() => _ = SpotifyImport.RunAsync(_main));
     }
 
     public string ContextId => "stats";
@@ -31,6 +34,8 @@ public sealed class StatsViewModel : Observable, ITrackList
     public Playlist? Playlist => null;
     public TagFilter TagFilter { get; } = new();
     public ICommand PlayCommand { get; }
+    public ICommand RecapCommand { get; }
+    public ICommand ImportSpotifyCommand { get; }
 
     public List<Choice> Sorts { get; }
     private Choice _sort;

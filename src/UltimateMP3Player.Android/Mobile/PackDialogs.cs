@@ -124,7 +124,7 @@ public static class PackDialogs
         // ---- with the music or links only
         inputs.Children.Add(Label(L.T("Songs")));
         var (modeBar, withFiles, linksOnly) = Segmented(L.T("With the audio files"), MusicGlyph, L.T("Links only"), LinkGlyph);
-        withFiles.IsChecked = true;
+        linksOnly.IsChecked = true;
         inputs.Children.Add(modeBar);
         var modeHint = Hint("", 8);
         inputs.Children.Add(modeHint);
@@ -143,6 +143,11 @@ public static class PackDialogs
         var ok = Button(L.T("Create the pack"), "TouchPrimary");
         var buttons = Buttons(cancel, ok);
         body.Children.Add(buttons);
+        // While it writes the sheet can go: the export goes on in the downloads panel and notification (BackgroundExport).
+        var background = Button(L.T("In the background"), "TouchGhost");
+        background.Margin = new Thickness(0, 10, 0, 0);
+        background.IsVisible = false;
+        body.Children.Add(background);
         // The same songs as plain MP3s in a folder (a USB stick, an SD card, for the car): FolderExport.
         var folder = Button(L.T("To a folder (MP3)…"), "TouchGhost");
         folder.Margin = new Thickness(0, 10, 0, 0);
@@ -184,6 +189,13 @@ public static class PackDialogs
         bool busy = false;
         string? saved = null;
         CancellationTokenSource? cts = null;
+        BackgroundExport? bg = null;
+        // (while it writes, "In the background" takes the place of the folder's button)
+        void Working(bool on)
+        {
+            background.IsVisible = on;
+            folder.IsVisible = folderHint.IsVisible = !on;
+        }
         ok.Click += async (_, _) =>
         {
             if (busy) return;
@@ -199,6 +211,9 @@ public static class PackDialogs
             status.Text = L.T("Preparing the pack…");
             cts = new CancellationTokenSource();
             var report = Reporter(bar, status);
+            bg = new BackgroundExport(App.Host, L.F("Exporting “{0}”", Path.GetFileName(path)), status.Text, cts);
+            report += bg.Report;
+            Working(true);
             try
             {
                 var m = await Task.Run(() => PackWriter.WriteAsync(path, lib, profile, e, AppInfo.VersionText, report, cts.Token));
@@ -208,13 +223,16 @@ public static class PackDialogs
                 status.Text = "✓ " + L.F("Pack created: {0} ({1})", Path.GetFileName(path), Text.Size(PackWriter.SizeOf(path)));
                 line1.Text = L.Count(m.Tracks.Count, "1 song", "{0} songs") + " · " + L.Count(m.Playlists.Count, "1 playlist", "{0} playlists") +
                              " · " + L.Count(m.Tags.Count, "1 tag", "{0} tags");
-                buttons.IsVisible = false;
+                buttons.IsVisible = background.IsVisible = false;
                 finished.IsVisible = true;
                 done?.Invoke();
+                bg?.Done(null);
+                if (bg?.Hidden == true) _ = OfferPackAsync(main, path);
             }
             catch (OperationCanceledException)
             {
-                sheets.Close(body);
+                bg?.Done(null);
+                if (bg?.Hidden != true) sheets.Close(body);
             }
             catch (Exception ex)
             {
@@ -222,6 +240,8 @@ public static class PackDialogs
                 ok.IsEnabled = true;
                 status.Foreground = B("ErrorBrush");
                 status.Text = L.T("Export failed:") + " " + ex.Message;
+                bg?.Done(status.Text);
+                Working(false);
             }
             finally { busy = false; }
         };
@@ -248,6 +268,9 @@ public static class PackDialogs
             status.Text = L.T("Preparing the MP3s…");
             cts = new CancellationTokenSource();
             var report = Reporter(bar, status);
+            bg = new BackgroundExport(App.Host, L.F("Exporting “{0}”", target.Name), status.Text, cts);
+            report += bg.Report;
+            Working(true);
             var cookies = App.Host.Settings.CookiesBrowserOrNull;
             try
             {
@@ -264,11 +287,13 @@ public static class PackDialogs
                               (r.Skipped > 0 ? " · " + L.Count(r.Skipped, "1 skipped (no audio and no working link)", "{0} skipped (no audio and no working link)") : "");
                 buttons.IsVisible = folder.IsVisible = folderHint.IsVisible = false;
                 finished.IsVisible = true;
-                share.IsVisible = saveAs.IsVisible = false;
+                share.IsVisible = saveAs.IsVisible = background.IsVisible = false;
+                bg?.Done(status.Text);
             }
             catch (OperationCanceledException)
             {
-                sheets.Close(body);
+                bg?.Done(null);
+                if (bg?.Hidden != true) sheets.Close(body);
             }
             catch (Exception ex)
             {
@@ -276,8 +301,16 @@ public static class PackDialogs
                 ok.IsEnabled = folder.IsEnabled = true;
                 status.Foreground = B("ErrorBrush");
                 status.Text = L.T("Export failed:") + " " + ex.Message;
+                bg?.Done(status.Text);
+                Working(false);
             }
             finally { busy = false; }
+        };
+        background.Click += (_, _) =>
+        {
+            if (!busy || bg == null) return;
+            bg.Hidden = true;
+            sheets.Close(body);
         };
         share.Click += (_, _) => { if (saved != null) Platform.Files.Share(saved, "application/octet-stream", L.T("Share the pack")); };
         saveAs.Click += async (_, _) =>
@@ -291,7 +324,20 @@ public static class PackDialogs
         };
         close.Click += (_, _) => sheets.Close(body);
         changed();
-        await sheets.Show(new ScrollViewer { Content = body }, dismissable: true, onDismiss: () => cts?.Cancel(), maxHeightShare: 0.94);
+        await sheets.Show(new ScrollViewer { Content = body }, dismissable: true, onDismiss: () => { if (bg?.Hidden != true) cts?.Cancel(); }, maxHeightShare: 0.94);
+    }
+
+    // A pack made in the background: what to do with it, asked once it's ready.
+    private static async Task OfferPackAsync(MainViewModel main, string path)
+    {
+        int pick = await Dialogs.ChooseAsync(L.T("Pack created"), L.F("Pack created: {0} ({1})", Path.GetFileName(path), Text.Size(PackWriter.SizeOf(path))),
+            L.T("Share…"), L.T("Save to…"));
+        try
+        {
+            if (pick == 0) Platform.Files.Share(path, "application/octet-stream", L.T("Share the pack"));
+            else if (pick == 1 && await Dialogs.SaveAsAsync(path, Path.GetFileName(path), "application/octet-stream")) main.Toast(L.T("Pack saved"));
+        }
+        catch (Exception ex) { main.Toast(L.T("Export failed:") + " " + ex.Message); }
     }
 
     // ================================================================== import

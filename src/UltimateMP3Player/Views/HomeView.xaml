@@ -10,6 +10,25 @@
             <StackPanel Margin="28,12,20,28">
                 <TextBlock Text="{Binding Greeting}" FontSize="30" FontWeight="Bold" Margin="0,4,0,22"/>
 
+                <!-- December to mid January: the year's recap -->
+                <Border CornerRadius="16" Padding="24,20" Margin="0,0,8,26" Cursor="Hand" Background="{DynamicResource AccentGradient}"
+                        TextElement.Foreground="{DynamicResource OnAccentBrush}" Visibility="{Binding HasRecap, Converter={StaticResource BoolVis}}">
+                    <Border.InputBindings>
+                        <MouseBinding Gesture="LeftClick" Command="{Binding OpenRecapCommand}"/>
+                    </Border.InputBindings>
+                    <DockPanel>
+                        <Border DockPanel.Dock="Right" CornerRadius="20" Padding="20,10" Background="{DynamicResource OnAccentBrush}" VerticalAlignment="Center">
+                            <TextBlock Text="{local:T Open}" Foreground="{DynamicResource AccentTextBrush}" FontWeight="SemiBold"/>
+                        </Border>
+                        <TextBlock DockPanel.Dock="Left" Text="&#xE787;" Style="{StaticResource Glyph}" FontSize="34" Margin="0,0,20,0" VerticalAlignment="Center"/>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock Text="{local:T RECAP}" FontSize="12" FontWeight="Bold" Opacity="0.85"/>
+                            <TextBlock Text="{Binding RecapTitle}" FontSize="24" FontWeight="Bold" Margin="0,2,0,2" TextWrapping="Wrap"/>
+                            <TextBlock Text="{local:T 'Your songs, your artists, your minutes: page after page, like stories.'}" Opacity="0.9" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
                 <!-- first run -->
                 <Border Style="{StaticResource Card}" Padding="28" Margin="0,0,8,24" Visibility="{Binding IsEmpty, Converter={StaticResource BoolVis}}">
                     <Grid>
@@ -47,6 +66,44 @@
                     <TextBlock Text="{local:T 'Recently played'}" Style="{StaticResource SectionTitle}"/>
                     <ListBox x:Name="RecentList" Style="{StaticResource BareList}" ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}"
                              ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"/>
+                </StackPanel>
+
+                <!-- for you: mixes made from what you listen to -->
+                <StackPanel Visibility="{Binding HasForYou, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{local:T 'For you'}" Style="{StaticResource SectionTitle}"/>
+                    <ItemsControl ItemsSource="{Binding ForYou}" ItemTemplate="{StaticResource MixCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"/>
+                </StackPanel>
+
+                <!-- the followed artists' new releases: one row, the rest on the Artists page -->
+                <StackPanel Visibility="{Binding Artists.HasReleases, Converter={StaticResource BoolVis}}">
+                    <DockPanel LastChildFill="False" Margin="0,0,8,0">
+                        <TextBlock Text="{local:T 'New releases'}" Style="{StaticResource SectionTitle}"/>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="{local:T 'Show all|f'}" VerticalAlignment="Center"
+                                Command="{Binding DataContext.GoArtistsCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding Artists.Releases}" ItemTemplate="{StaticResource ReleaseCard}" Margin="0,0,8,30">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <views:CardGrid MaxRows="1"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- the saved radios: one row, the rest on the Radio page -->
+                <StackPanel Visibility="{Binding Stations.HasSaved, Converter={StaticResource BoolVis}}">
+                    <DockPanel LastChildFill="False" Margin="0,0,8,0">
+                        <TextBlock Text="{local:T 'Your radios'}" Style="{StaticResource SectionTitle}"/>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="{local:T 'Show all|f'}" VerticalAlignment="Center"
+                                Command="{Binding DataContext.GoStationsCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding Stations.Saved}" ItemTemplate="{StaticResource StationCard}" Margin="0,0,8,30">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <views:CardGrid MaxRows="1"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
                 </StackPanel>
 
                 <TextBlock Text="{local:T 'Your playlists'}" Style="{StaticResource SectionTitle}"/>

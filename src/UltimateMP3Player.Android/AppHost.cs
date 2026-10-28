@@ -349,11 +349,40 @@ public sealed class AppHost : Observable
     {
         _updateTimer.Interval = TimeSpan.FromMinutes(10);
         await UpdateEnginesAsync(false);
+        if (Session != null)
+        {
+            await Session.Backups.AutoAsync();
+            await Session.Artists.CheckAsync(false);
+            // (the plays that couldn't be sent: offline, a service not answering)
+            await Session.Scrobbler.SendAsync();
+        }
         if (Settings.AutoUpdateApp && DateTime.Now - _lastAppCheck > TimeSpan.FromHours(6))
         {
             _lastAppCheck = DateTime.Now;
             await Updates.CheckAsync(false);
         }
+    }
+
+    // A notification of the system: a followed artist's new release.
+    public void Notify(string title, string text) => Notices.Show(title, text);
+
+    // A backup was put in place of the data (BackupsViewModel): the app starts again with it (nothing is saved meanwhile).
+    public async void RestartAfterRestore()
+    {
+#if IOS_APP
+        // An iPhone app can't start itself again: closed after saying so, opened again by the user.
+        await Dialogs.ConfirmAsync(L.T("Backup restored"), L.T("The app closes now: open it again to find the restored data."), L.T("Close the app"));
+        System.Environment.Exit(0);
+#else
+        await Task.Yield();
+        var ctx = Android.App.Application.Context;
+        if (ctx.PackageManager?.GetLaunchIntentForPackage(ctx.PackageName!) is { } intent)
+        {
+            intent.AddFlags(Android.Content.ActivityFlags.NewTask | Android.Content.ActivityFlags.ClearTask);
+            ctx.StartActivity(intent);
+        }
+        Android.OS.Process.KillProcess(Android.OS.Process.MyPid());
+#endif
     }
 
     public async Task CheckAppUpdateNow()

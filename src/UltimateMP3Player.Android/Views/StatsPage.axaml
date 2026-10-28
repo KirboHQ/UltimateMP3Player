@@ -42,6 +42,21 @@
                             </Border>
                         </WrapPanel>
                         <TextBlock Text="{Binding SinceText}" Classes="hint" FontSize="12.5" Margin="2,0,0,8"/>
+                        <!-- the recap of a year or a month (stories), the plays on Spotify -->
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button Theme="{StaticResource SmallGhost}" Command="{Binding RecapCommand}" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E787}" Classes="glyph" FontSize="14"/>
+                                    <TextBlock Text="{local:T Recap}" Margin="7,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Theme="{StaticResource SmallGhost}" Command="{Binding ImportSpotifyCommand}" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E8E5}" Classes="glyph" FontSize="14"/>
+                                    <TextBlock Text="{local:T 'Import from Spotify'}" Margin="7,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <Button Theme="{StaticResource SmallGhost}" Click="Sort_Click">
                                 <StackPanel Orientation="Horizontal">

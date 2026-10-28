@@ -137,7 +137,7 @@ public static class PackDialogs
         // ---- with the music or links only
         inputs.Children.Add(Label(L.T("Songs")));
         var (modeBar, withFiles, linksOnly) = Segmented(L.T("With the audio files"), MusicGlyph, L.T("Links only"), LinkGlyph);
-        withFiles.IsChecked = true;
+        linksOnly.IsChecked = true;
         inputs.Children.Add(modeBar);
         var modeHint = Hint("", 8);
         inputs.Children.Add(modeHint);
@@ -162,7 +162,12 @@ public static class PackDialogs
         // Straight to the connected phone, without a file: it chooses there what to import.
         var phone = Dialogs.Button(L.T("To the phone"), "GhostButton");
         phone.ToolTip = L.T("The connected phone opens its import window and takes the songs it doesn't have, through the network or the cable.");
-        var win = toPhone != null ? Dialogs.Frame(L.T("Export to a pack"), Fit(body), 640, folder, phone, cancel, ok) : Dialogs.Frame(L.T("Export to a pack"), Fit(body), 560, folder, cancel, ok);
+        // While it writes the dialog can go: the export goes on in the downloads panel (BackgroundExport).
+        var background = Dialogs.Button(L.T("In the background"), "GhostButton");
+        background.ToolTip = L.T("The export goes on in the downloads panel, with its bar and its Cancel: you can keep using the app.");
+        background.Visibility = Visibility.Collapsed;
+        var win = toPhone != null ? Dialogs.Frame(L.T("Export to a pack"), Fit(body), 640, background, folder, phone, cancel, ok)
+            : Dialogs.Frame(L.T("Export to a pack"), Fit(body), 560, background, folder, cancel, ok);
 
         PackExport Current() => new()
         {
@@ -193,6 +198,14 @@ public static class PackDialogs
         string? saved = null;
         bool savedFolder = false;
         CancellationTokenSource? cts = null;
+        BackgroundExport? bg = null;
+        // (while it writes, "In the background" takes the place of the other ways out)
+        void Working(bool on)
+        {
+            background.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+            folder.Visibility = !on ? Visibility.Visible : Visibility.Collapsed;
+            phone.Visibility = !on ? Visibility.Visible : Visibility.Collapsed;
+        }
         ok.Click += async (_, _) =>
         {
             if (stage == 2)
@@ -225,6 +238,9 @@ public static class PackDialogs
             status.Text = L.T("Preparing the pack…");
             cts = new CancellationTokenSource();
             var report = Reporter(win, bar, status);
+            bg = new BackgroundExport(App.Host, L.F("Exporting “{0}”", System.IO.Path.GetFileName(path)), status.Text, cts);
+            report += bg.Report;
+            Working(true);
             try
             {
                 var m = await Task.Run(() => PackWriter.WriteAsync(path, lib, profile, e, AppInfo.VersionText, report, cts.Token));
@@ -236,13 +252,16 @@ public static class PackDialogs
                 line1.Text = L.Count(m.Tracks.Count, "1 song", "{0} songs") + " · " + L.Count(m.Playlists.Count, "1 playlist", "{0} playlists") +
                              " · " + L.Count(m.Tags.Count, "1 tag", "{0} tags");
                 ok.Content = L.T("Show in folder");
+                bg?.Done(status.Text);
+                background.Visibility = Visibility.Collapsed;
                 ok.IsEnabled = true;
                 cancel.Content = L.T("Close");
             }
             catch (OperationCanceledException)
             {
                 stage = 0;
-                win.DialogResult = false;
+                bg?.Done(null);
+                if (bg?.Hidden != true) win.DialogResult = false;
             }
             catch (Exception ex)
             {
@@ -251,12 +270,20 @@ public static class PackDialogs
                 ok.IsEnabled = true;
                 status.Foreground = B("ErrorBrush");
                 status.Text = L.T("Export failed:") + " " + ex.Message;
+                bg?.Done(status.Text);
+                Working(false);
             }
         };
         phone.Click += (_, _) =>
         {
             var e = Current();
             if (stage == 0 && !e.IsEmpty && toPhone?.Invoke(e) == true) win.DialogResult = true;
+        };
+        background.Click += (_, _) =>
+        {
+            if (stage != 1 || bg == null) return;
+            bg.Hidden = true;
+            win.DialogResult = false;
         };
         folder.Click += async (_, _) =>
         {
@@ -272,6 +299,9 @@ public static class PackDialogs
             status.Text = L.T("Preparing the MP3s…");
             cts = new CancellationTokenSource();
             var report = Reporter(win, bar, status);
+            bg = new BackgroundExport(App.Host, L.F("Exporting “{0}”", dir), status.Text, cts);
+            report += bg.Report;
+            Working(true);
             var cookies = App.Host?.Settings.CookiesBrowserOrNull;
             try
             {
@@ -288,13 +318,16 @@ public static class PackDialogs
                 status.Text = "✓ " + L.F("{0} in “{1}”", L.Count(r.Written, "1 MP3", "{0} MP3s"), dir) +
                               (r.Skipped > 0 ? " · " + L.Count(r.Skipped, "1 skipped (no audio and no working link)", "{0} skipped (no audio and no working link)") : "");
                 ok.Content = L.T("Show in folder");
+                bg?.Done(status.Text);
+                background.Visibility = Visibility.Collapsed;
                 ok.IsEnabled = true;
                 cancel.Content = L.T("Close");
             }
             catch (OperationCanceledException)
             {
                 stage = 0;
-                win.DialogResult = false;
+                bg?.Done(null);
+                if (bg?.Hidden != true) win.DialogResult = false;
             }
             catch (Exception ex)
             {
@@ -303,12 +336,14 @@ public static class PackDialogs
                 ok.IsEnabled = folder.IsEnabled = true;
                 status.Foreground = B("ErrorBrush");
                 status.Text = L.T("Export failed:") + " " + ex.Message;
+                bg?.Done(status.Text);
+                Working(false);
             }
         };
         // Closing while it writes: it stops (the half-written file is deleted), then the dialog goes.
         win.Closing += (_, e) =>
         {
-            if (stage != 1) return;
+            if (stage != 1 || bg?.Hidden == true) return;
             e.Cancel = true;
             cts?.Cancel();
             status.Text = L.T("Canceling…");

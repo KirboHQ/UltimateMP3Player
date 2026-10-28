@@ -33,6 +33,13 @@ public sealed class Updater : Observable
     private static string Exe => Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, AssetName);
     private static string NewExe => Exe + ".new";
 
+    // The app again, once this copy has quit (a backup restored).
+    public static void Relaunch(string? profileId)
+    {
+        var args = $"--wait {Environment.ProcessId}" + (profileId != null ? $" --profile {profileId}" : "");
+        try { Process.Start(new ProcessStartInfo(Exe, args) { UseShellExecute = false }); } catch { }
+    }
+
     // Only the published single-file exe updates itself.
     public static bool CanUpdate => AppInfo.GitHubRepo.Length > 0 &&
                                     !Exe.Contains(@"\bin\", StringComparison.OrdinalIgnoreCase) &&

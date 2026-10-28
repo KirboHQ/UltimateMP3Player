@@ -10,6 +10,7 @@ public partial class LibraryPage : UserControl, IPage
 {
     private LibraryHub? _hub;
     private bool _syncing;
+    private bool _artistsShown;
 
     // Choosing several playlists.
     public Selection ListPicks { get; } = new();
@@ -22,6 +23,20 @@ public partial class LibraryPage : UserControl, IPage
         TabSongs.IsCheckedChanged += (_, _) => Pick(0, TabSongs);
         TabLists.IsCheckedChanged += (_, _) => Pick(1, TabLists);
         TabTags.IsCheckedChanged += (_, _) => Pick(2, TabTags);
+        TabArtists.IsCheckedChanged += (_, _) => Pick(3, TabArtists);
+        TabRadio.IsCheckedChanged += (_, _) => Pick(4, TabRadio);
+        RadioFind.AddHandler(KeyDownEvent, (_, e) =>
+        {
+            if (e.Key != Key.Enter || _hub == null) return;
+            _hub.Main.Stations.SearchCommand.Execute(null);
+            e.Handled = true;
+        }, RoutingStrategies.Tunnel);
+        ArtistFind.AddHandler(KeyDownEvent, (_, e) =>
+        {
+            if (e.Key != Key.Enter || _hub == null) return;
+            _hub.Main.Artists.FindCommand.Execute(null);
+            e.Handled = true;
+        }, RoutingStrategies.Tunnel);
     }
 
     private void Attach()
@@ -57,14 +72,24 @@ public partial class LibraryPage : UserControl, IPage
     private void Show()
     {
         int tab = _hub?.Tab ?? 1;
+        // (leaving the artists: their new releases have been seen)
+        if (_artistsShown && tab != 3) _hub?.Main.Profile.SeeReleases();
+        if (!_artistsShown && tab == 3) _hub?.Main.Artists.Refresh();
+        _artistsShown = tab == 3;
+        // (the radios' first list comes when they're first shown)
+        if (tab == 4) _hub?.Main.Stations.Opened();
         _syncing = true;
         TabSongs.IsChecked = tab == 0;
         TabLists.IsChecked = tab == 1;
         TabTags.IsChecked = tab == 2;
+        TabArtists.IsChecked = tab == 3;
+        TabRadio.IsChecked = tab == 4;
         _syncing = false;
         Songs.IsVisible = tab == 0;
         ListsPane.IsVisible = tab == 1;
         TagsPane.IsVisible = tab == 2;
+        ArtistsPane.IsVisible = tab == 3;
+        RadioPane.IsVisible = tab == 4;
         if (tab != 1) ListPicks.Stop();
         if (tab == 0)
         {
@@ -112,5 +137,7 @@ public partial class LibraryPage : UserControl, IPage
         if (Songs.IsVisible) Songs.ScrollToTop();
         ListsPane.Offset = default;
         TagsPane.Offset = default;
+        ArtistsPane.Offset = default;
+        RadioPane.Offset = default;
     }
 }

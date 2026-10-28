@@ -191,6 +191,124 @@ switch (args[0])
             return ok ? 0 : 1;
         }
 
+    case "spotifyhistory":
+        {
+            // mp3cli spotifyhistory [files]: both shapes of Spotify's history (podcasts and too-short plays aside), the list made for
+            // the songs to add; then (files given) what they hold.
+            var extended = SpotifyHistory.Parse(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(
+                "[{\"ts\":\"2024-03-05T18:21:33Z\",\"ms_played\":200000,\"master_metadata_track_name\":\"CENERE\",\"master_metadata_album_artist_name\":\"Lazza\",\"spotify_track_uri\":\"spotify:track:4uLU6hMCjMI75M1A2tKUQC\"}," +
+                "{\"ts\":\"2024-03-05T18:30:00Z\",\"ms_played\":9000,\"master_metadata_track_name\":null,\"episode_name\":\"A podcast\"}]")));
+            var year = SpotifyHistory.Parse(new MemoryStream(System.Text.Encoding.UTF8.GetBytes(
+                "[{\"endTime\":\"2024-03-06 10:00\",\"artistName\":\"David Bowie\",\"trackName\":\"Heroes\",\"msPlayed\":12000}]")));
+            var list = ListImport.Parse(SpotifyHistory.AsList(new[] { ("CENERE", "Lazza", (string?)"https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC", 3) }));
+            bool ok = extended is [{ Title: "CENERE", Artist: "Lazza", SpotifyId: "4uLU6hMCjMI75M1A2tKUQC", Seconds: 200 }]
+                      && extended[0].At == new DateTime(2024, 3, 5, 18, 21, 33, DateTimeKind.Utc).ToLocalTime().AddSeconds(-200)
+                      && year is [{ Title: "Heroes", Artist: "David Bowie", SpotifyId: null, Seconds: 12 }]
+                      && list is [{ Title: "CENERE", Artist: "Lazza", SpotifyId: "4uLU6hMCjMI75M1A2tKUQC" }]
+                      && SpotifyHistory.IsHistory("Spotify Extended Streaming History/Streaming_History_Audio_2019-2021_0.json")
+                      && !SpotifyHistory.IsHistory("Streaming_History_Video_2020.json") && !SpotifyHistory.IsHistory("StreamingHistory_podcast_0.json");
+            // The same plays imported again add nothing; a longer export adds only what's past the earlier counts, on top of the
+            // plays heard here.
+            var info = new ProfileInfo { Name = "spotify-test" };
+            Directory.CreateDirectory(AppPaths.ProfileDir(info.Id));
+            var profile = Profile.Get(info);
+            profile.AddListening("t1", 100, true, save: false);
+            ImportedPlay P(int day, string id, string title, bool inLibrary) => new(new DateTime(2024, 3, day, 12, 0, 0), id, title, "Lazza", null, 200, true, inLibrary);
+            var first = new[] { P(1, "t1", "CENERE", true), P(2, "t1", "CENERE", true), P(3, "sp:x", "Noi", false) };
+            var longer = first.Append(P(20, "t1", "CENERE", true)).Append(P(21, "t1", "CENERE", true)).ToArray();
+            int a = profile.AddImported(SpotifyHistory.Source, first).Count, b = profile.AddImported(SpotifyHistory.Source, first).Count;
+            var c = profile.AddImported(SpotifyHistory.Source, longer);
+            var march = profile.Log.Month(2024, 3);
+            ok &= a == 3 && b == 0 && c.Count == 2 && c.All(x => x.At.Day >= 20) && profile.StatsSnapshot()["t1"].Plays == 5
+                  && march!.Songs["t1"].Plays == 4 && march.Songs["sp:x"].Plays == 1;
+            Profile.Delete(info.Id);
+            Console.WriteLine("spotifyhistory: " + (ok ? "ok" : "SBAGLIATO"));
+            if (args.Length > 1)
+            {
+                var plays = SpotifyHistory.Read(args.Skip(1));
+                Console.WriteLine($"{plays.Count} plays, {plays.Count(p => p.Seconds >= SpotifyHistory.PlaySeconds)} counted, " +
+                                  $"{plays.Select(p => p.SpotifyId ?? p.Artist + p.Title).Distinct().Count()} songs, {plays.Sum(p => p.Seconds) / 3600:0} h" +
+                                  (plays.Count > 0 ? $", {plays[0].At:d} – {plays[^1].At:d}" : ""));
+                foreach (var g in plays.GroupBy(p => p.Artist + " - " + p.Title).OrderByDescending(g => g.Count()).Take(10))
+                    Console.WriteLine($"  {g.Count(),5}  {g.Key}");
+            }
+            return ok ? 0 : 1;
+        }
+
+    case "recap":
+        {
+            // mp3cli recap: a year and a month made from a log kept in memory (the names saved with the plays, a duet counted
+            // for both artists, the year before compared).
+            ListeningLog.Names = id => id switch { "a" => ("CENERE", "Lazza"), "b" => ("Noi", "Lazza"), _ => (null, null) };
+            var log = new ListeningLog(null);
+            log.Add("a", 200, true, new DateTime(2025, 3, 2, 22, 10, 0));
+            log.Add("a", 200, true, new DateTime(2025, 3, 9, 22, 40, 0));
+            log.Add("b", 180, true, new DateTime(2025, 7, 1, 8, 0, 0));
+            log.Import(new[] { (new DateTime(2025, 3, 9, 23, 0, 0), "sp:x", (string?)"Heroes", (string?)"David Bowie, Brian Eno", (string?)null, 300.0, true) });
+            log.Add("a", 100, true, new DateTime(2024, 5, 1, 12, 0, 0));
+            var year = Recap.Make(log, 2025, 0);
+            var march = Recap.Make(log, 2025, 3);
+            bool ok = year is { Plays: 4, SongCount: 3, ArtistCount: 3, PreviousSeconds: 100, TopHour: 22, BusiestPart: 3, Parts.Length: 12 }
+                      && year.TopSongs[0].Id == "a" && year.TopArtists[0] is { Name: "Lazza", Plays: 3 } && year.TopArtists.Count(a => a.Plays == 1) == 2
+                      && march is { Plays: 3, Parts.Length: 31, BusiestPart: 9, PreviousSeconds: 0 }
+                      && Recap.Make(log, 2025, 5) == null && Recap.Periods(log).Take(4).SequenceEqual(new[] { (2025, 0), (2025, 7), (2025, 3), (2024, 0) });
+            Console.WriteLine("recap: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
+    case "seal":
+        {
+            // mp3cli seal: the statistics' files read back as written, a changed byte refused (the version before is read), the
+            // counts never plain in memory; a profile saved by 4.2 takes its plain counts once, into stats.dat.
+            var data = System.Text.Encoding.UTF8.GetBytes("{\"a\":1}");
+            var box = Sealed.Protect(data);
+            var bad = (byte[])box.Clone();
+            bad[^40] ^= 1;
+            var t = new TrackStats { Plays = 7, Seconds = 12.5 };
+            var raw = typeof(TrackStats).GetField("_plays", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(t);
+            bool ok = Sealed.Unprotect(box)!.SequenceEqual(data) && Sealed.Unprotect(bad) == null && t is { Plays: 7, Seconds: 12.5 } && (int)raw! != 7;
+            var info = new ProfileInfo { Name = "seal-test" };
+            var dir = AppPaths.ProfileDir(info.Id);
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "data.json"), "{\"Stats\":{\"x\":{\"Plays\":3,\"Seconds\":90}},\"StatsSince\":\"2024-01-01T00:00:00\"}");
+            var profile = Profile.Get(info);
+            ok &= profile.StatsOf("x") is { Plays: 3, Seconds: 90 };
+            profile.AddListening("x", 10, true);
+            profile.Flush();
+            profile.AddListening("x", 10, true);
+            profile.Flush();
+            var file = Path.Combine(dir, "stats.dat");
+            ok &= !File.ReadAllText(Path.Combine(dir, "data.json")).Contains("\"Stats\"") && Sealed.Load<SealedStats>(file)?.Stats["x"].Plays == 5;
+            var edited = File.ReadAllBytes(file);
+            edited[^1] ^= 1;
+            File.WriteAllBytes(file, edited);
+            ok &= Sealed.Load<SealedStats>(file)?.Stats["x"].Plays == 4 && File.Exists(file + ".unreadable");
+            Profile.Delete(info.Id);
+            Console.WriteLine("seal: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
+    case "radio":
+        {
+            // mp3cli radio [name]: radio-browser.info answers (by name, or the most listened to in Italy), the stations' fields read.
+            var found = await RadioBrowser.SearchAsync(args.Length > 1 ? args[1] : null, args.Length > 1 ? null : "IT", null, false, CancellationToken.None);
+            foreach (var s in found.Take(5)) Console.WriteLine($"  {s.Name} | {s.Subtitle} | {s.Quality} | {s.Url}");
+            bool ok = found.Count > 0 && found.All(s => s.Url.StartsWith("http") && s.Id.Length > 0);
+            Console.WriteLine("radio: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
+    case "scrobble":
+        {
+            // mp3cli scrobble: Last.fm's signature (the parameters sorted by name, then the secret) and a play's fields.
+            var sig = LastFm.Sign(new Dictionary<string, string> { ["token"] = "t", ["method"] = "auth.getSession", ["api_key"] = "k" }, "s");
+            var expected = Convert.ToHexString(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes("api_keykmethodauth.getSessiontokents"))).ToLowerInvariant();
+            var play = Scrobble.Of(new Track { Title = " CENERE ", Artist = "Lazza ", Album = "", Duration = 208.4 }, 1700000000);
+            bool ok = sig == expected && play is { Title: "CENERE", Artist: "Lazza", Album: null, Duration: 208, At: 1700000000 };
+            Console.WriteLine("scrobble: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
     case "songlist":
         {
             // mp3cli songlist [file]: the parser on the exports' shapes, then (a file given) its songs read as the app reads them.

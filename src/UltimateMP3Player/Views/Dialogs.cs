@@ -153,6 +153,13 @@ public static partial class Dialogs
         => Task.FromResult(PickFiles(title, multiple, filters));
     public static Task<string?> PickFileAsync(string title, params (string Name, IEnumerable<string> Extensions)[] filters) => Task.FromResult(PickFile(title, filters));
 
+    // Settings › Backup (BackupsViewModel): on a computer a folder like any other (OneDrive, a USB disk...).
+    public const string BookmarkPrefix = "bookmark:";
+    public static string DefaultBackupFolder => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Ultimate MP3 Player", "Backups");
+    public static Task<IBackupFolder?> OpenBackupFolderAsync(string? setting) => Task.FromResult<IBackupFolder?>(new LocalBackupFolder(setting ?? DefaultBackupFolder));
+    public static Task<(string Setting, string Name)?> PickBackupFolderAsync()
+        => Task.FromResult(PickFolder(L.T("Where to keep the backups"), DefaultBackupFolder) is { } dir ? (dir, dir) : ((string, string)?)null);
+
     private static string[]? Show(string title, string? message, (string Label, string Value)[] fields, string ok, bool danger, (string Text, string Url)? link = null)
     {
         var res = Application.Current.Resources;

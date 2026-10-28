@@ -24,6 +24,21 @@ public sealed class Updater : Observable
     private static string Arch => RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64";
     public static string AssetName => OperatingSystem.IsMacOS() ? $"UltimateMP3Player-macos-{Arch}.zip" : $"UltimateMP3Player-linux-{Arch}.tar.gz";
 
+    // The app again, once this copy has quit (a backup restored).
+    public static void Relaunch(string? profileId)
+    {
+        var args = new List<string> { "--wait", Environment.ProcessId.ToString() };
+        if (profileId != null) args.AddRange(new[] { "--profile", profileId });
+        try
+        {
+            if (OperatingSystem.IsMacOS() && Bundle != null)
+                Process.Start(new ProcessStartInfo("open", new[] { "-n", Bundle, "--args" }.Concat(args)) { UseShellExecute = false });
+            else
+                Process.Start(new ProcessStartInfo(Exe, args) { UseShellExecute = false });
+        }
+        catch { }
+    }
+
     // macOS: the .app around the running program.
     private static string? Bundle
     {

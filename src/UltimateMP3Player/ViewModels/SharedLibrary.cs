@@ -1151,15 +1151,27 @@ public sealed class SharedLibrary
         _heard.Clear();
     }
 
+    // (the play of one of this device's songs going on there: what it has heard of it, for this device's Last.fm)
+    private string? _theirListen;
+    private double _theirHeard;
+
     private void OnHeard(Msg m)
     {
-        if (m.Id == null || _main.Library.Get(m.Id) == null || m.Pos is < 0 or > 3600) return;
+        if (m.Id == null || _main.Library.Get(m.Id) is not { } t || m.Pos is < 0 or > 3600) return;
         var profile = _main.Profile;
         if (m.Index == 1)
         {
             profile.AddHistory(m.Id);
             OwnHistory();
             _main.OnPlayed();
+            _theirListen = m.Id;
+            _theirHeard = 0;
+            _main.Scrobbler.Started(m.Id, t);
+        }
+        if (m.Id == _theirListen)
+        {
+            _theirHeard += m.Pos;
+            _main.Scrobbler.Heard(m.Id, t, _theirHeard, t.Duration);
         }
         if (m.Pos > 0 || m.Flag) profile.AddListening(m.Id, m.Pos, m.Flag);
         _main.OnListened(m.Id, m.Flag || m.Index == 1);

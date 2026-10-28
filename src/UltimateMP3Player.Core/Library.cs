@@ -198,16 +198,18 @@ public sealed class Library
             if (_byTitle.TryGetValue(title, out var list) && list.Remove(t) && list.Count == 0) _byTitle.Remove(title);
     }
 
-    // Renames an artist on every song, returns them.
-    public List<Track> RenameArtist(string from, string to)
+    // Renames an artist on every song, returns them. inLines (the artist's page): also where it's one of several artists, only
+    // its name replaced there.
+    public List<Track> RenameArtist(string from, string to, bool inLines = false)
     {
         List<Track> hit;
         lock (_lock)
         {
-            hit = _tracks.Where(t => string.Equals(t.Artist?.Trim(), from.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToList();
+            hit = _tracks.Where(t => inLines ? ArtistNames.Has(t.Artist, from)
+                : string.Equals(t.Artist?.Trim(), from.Trim(), StringComparison.CurrentCultureIgnoreCase)).ToList();
             foreach (var t in hit)
             {
-                t.Artist = string.IsNullOrWhiteSpace(to) ? null : to.Trim();
+                t.Artist = inLines ? ArtistNames.Replace(t.Artist!, from, to.Trim()) : string.IsNullOrWhiteSpace(to) ? null : to.Trim();
                 IndexTitles(t);
             }
         }

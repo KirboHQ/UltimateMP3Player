@@ -1,0 +1,268 @@
+<UserControl x:Class="UltimateMP3Player.Views.RecapView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views"
+             Focusable="True" FocusVisualStyle="{x:Null}" KeyDown="OnKey">
+    <UserControl.Resources>
+        <Style x:Key="Kicker" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Opacity" Value="0.85"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <!-- a cover, or a note on a soft square (a song not in the library) -->
+        <DataTemplate x:Key="RowCover">
+            <Grid>
+                <Border CornerRadius="8" Background="#33FFFFFF">
+                    <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" FontSize="18" Foreground="White" HorizontalAlignment="Center"/>
+                </Border>
+                <ContentPresenter Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+            </Grid>
+        </DataTemplate>
+        <!-- an artist's picture in a circle, or its initial -->
+        <DataTemplate x:Key="RowPicture">
+            <Grid>
+                <Ellipse Fill="{Binding Brush}"/>
+                <Viewbox Margin="12">
+                    <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White"/>
+                </Viewbox>
+                <Ellipse Visibility="{Binding HasPicture, Converter={StaticResource BoolVis}}">
+                    <Ellipse.Fill>
+                        <ImageBrush ImageSource="{Binding Picture}" Stretch="UniformToFill"/>
+                    </Ellipse.Fill>
+                </Ellipse>
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="SongRow">
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="34"/>
+                    <ColumnDefinition Width="52"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Rank}" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
+                <ContentPresenter Grid.Column="1" Width="52" Height="52" Content="{Binding}" ContentTemplate="{StaticResource RowCover}"/>
+                <StackPanel Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" FontSize="15.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Subtitle}" FontSize="13" Opacity="0.8" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Detail}" FontSize="12" Opacity="0.65" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+        <DataTemplate x:Key="ArtistRow">
+            <Grid Margin="0,0,0,14">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="34"/>
+                    <ColumnDefinition Width="52"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Rank}" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
+                <ContentPresenter Grid.Column="1" Width="52" Height="52" Content="{Binding}" ContentTemplate="{StaticResource RowPicture}"/>
+                <StackPanel Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Detail}" FontSize="12.5" Opacity="0.75" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Background="{DynamicResource BgBrush}">
+        <!-- a story's size, smaller in a small window -->
+        <Viewbox StretchDirection="DownOnly" Margin="16">
+            <Border x:Name="Card" Width="400" Height="712" CornerRadius="24" TextElement.Foreground="White">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="40" ShadowDepth="10" Opacity="0.45" Color="Black"/>
+                </Border.Effect>
+                <Grid Margin="22,16,22,22">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <!-- the pages, like stories -->
+                    <ItemsControl ItemsSource="{Binding Steps}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="Bar" Height="3" CornerRadius="1.5" Margin="2,0" Background="White" Opacity="0.35"/>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding Done}" Value="True">
+                                        <Setter TargetName="Bar" Property="Opacity" Value="1"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <DockPanel Grid.Row="1" Margin="0,12,0,0">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource OverlayButton}" Width="36" Height="36" Command="{Binding CloseCommand}"
+                                ToolTip="{local:T Close}">
+                            <TextBlock Text="&#xE711;" Style="{StaticResource Glyph}" FontSize="14" Foreground="White"/>
+                        </Button>
+                        <ComboBox HorizontalAlignment="Left" MinWidth="150" ItemsSource="{Binding Periods}" SelectedItem="{Binding Period}"
+                                  ToolTip="{local:T 'Another year or month'}" AutomationProperties.Name="{local:T 'Another year or month'}"/>
+                    </DockPanel>
+
+                    <!-- a click on the right goes on, on the left goes back -->
+                    <Grid x:Name="Pages" Grid.Row="2" Margin="4,10,4,0" Background="Transparent" MouseLeftButtonUp="Pages_Click">
+                        <StackPanel x:Name="Intro" VerticalAlignment="Center" Visibility="{Binding IsIntro, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{Binding IntroKicker}" Style="{StaticResource Kicker}"/>
+                            <TextBlock Text="{Binding PeriodTitle}" FontSize="64" FontWeight="Bold" TextWrapping="Wrap" Margin="0,6,0,10" LineHeight="68"/>
+                            <TextBlock Text="{Binding IntroText}" FontSize="19" TextWrapping="Wrap" LineHeight="26"/>
+                            <TextBlock Text="{Binding HintText}" FontSize="13" Opacity="0.7" TextWrapping="Wrap" Margin="0,40,0,0"
+                                       Visibility="{Binding IsEmpty, Converter={StaticResource InvBoolVis}}"/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="Time" VerticalAlignment="Center" Visibility="{Binding IsTime, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{local:T 'You listened for'}" FontSize="20"/>
+                            <TextBlock x:Name="MinutesBig" Text="{Binding MinutesText, Mode=OneWay}" FontSize="76" FontWeight="Bold" Margin="0,4,0,0"/>
+                            <TextBlock Text="{local:T 'minutes of music'}" FontSize="22" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding CompareText}" FontSize="17" TextWrapping="Wrap" Margin="0,30,0,0" Opacity="0.9"/>
+                            <TextBlock Text="{Binding CountsText}" FontSize="14" TextWrapping="Wrap" Margin="0,8,0,0" Opacity="0.75"/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="Song" VerticalAlignment="Center" Visibility="{Binding IsSong, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{Binding SongKicker}" Style="{StaticResource Kicker}" HorizontalAlignment="Center"/>
+                            <ContentPresenter Width="250" Height="250" Margin="0,20,0,22" Content="{Binding TopSong}" ContentTemplate="{StaticResource RowCover}">
+                                <ContentPresenter.Effect>
+                                    <DropShadowEffect BlurRadius="30" ShadowDepth="8" Opacity="0.5" Color="Black"/>
+                                </ContentPresenter.Effect>
+                            </ContentPresenter>
+                            <TextBlock Text="{Binding TopSong.Title}" FontSize="26" FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center"/>
+                            <TextBlock Text="{Binding TopSong.Subtitle}" FontSize="17" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0" Opacity="0.9"/>
+                            <TextBlock Text="{Binding TopSongText}" FontSize="14" TextAlignment="Center" Margin="0,14,0,0" Opacity="0.75"/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="SongsPage" VerticalAlignment="Center" Visibility="{Binding IsSongs, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{local:T 'YOUR TOP SONGS'}" Style="{StaticResource Kicker}" Margin="0,0,0,20"/>
+                            <ItemsControl ItemsSource="{Binding TopFiveSongs}" ItemTemplate="{StaticResource SongRow}"/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="Artist" VerticalAlignment="Center" Visibility="{Binding IsArtist, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{Binding ArtistKicker}" Style="{StaticResource Kicker}" HorizontalAlignment="Center"/>
+                            <ContentPresenter Width="230" Height="230" Margin="0,20,0,22" Content="{Binding TopArtist}" ContentTemplate="{StaticResource RowPicture}">
+                                <ContentPresenter.Effect>
+                                    <DropShadowEffect BlurRadius="30" ShadowDepth="8" Opacity="0.5" Color="Black"/>
+                                </ContentPresenter.Effect>
+                            </ContentPresenter>
+                            <TextBlock Text="{Binding TopArtist.Title}" FontSize="30" FontWeight="Bold" TextWrapping="Wrap" TextAlignment="Center"/>
+                            <TextBlock Text="{Binding TopArtist.Detail}" FontSize="15" TextAlignment="Center" Margin="0,10,0,0" Opacity="0.8"/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="ArtistsPage" VerticalAlignment="Center" Visibility="{Binding IsArtists, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{local:T 'YOUR TOP ARTISTS'}" Style="{StaticResource Kicker}" Margin="0,0,0,20"/>
+                            <ItemsControl ItemsSource="{Binding TopFiveArtists}" ItemTemplate="{StaticResource ArtistRow}"/>
+                        </StackPanel>
+
+                        <StackPanel x:Name="Clock" VerticalAlignment="Center" Visibility="{Binding IsClock, Converter={StaticResource BoolVis}}">
+                            <TextBlock Text="{local:T 'WHEN YOU LISTEN'}" Style="{StaticResource Kicker}"/>
+                            <TextBlock Text="{Binding HourText}" FontSize="44" FontWeight="Bold" Margin="0,8,0,0"/>
+                            <TextBlock Text="{Binding HourLine}" FontSize="15" TextWrapping="Wrap" Opacity="0.85"/>
+                            <ItemsControl x:Name="BarsHost" ItemsSource="{Binding Bars}" Height="120" Margin="0,28,0,0" RenderTransformOrigin="0,1">
+                                <ItemsControl.RenderTransform>
+                                    <ScaleTransform/>
+                                </ItemsControl.RenderTransform>
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Rows="1"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border x:Name="Bar" Height="{Binding Height}" VerticalAlignment="Bottom" CornerRadius="3" Margin="1.5,0" Background="White" Opacity="0.4"/>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsTop}" Value="True">
+                                                <Setter TargetName="Bar" Property="Opacity" Value="1"/>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Grid Margin="0,6,0,0" Opacity="0.7">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="0:00" FontSize="11"/>
+                                <TextBlock Grid.Column="1" Text="6:00" FontSize="11"/>
+                                <TextBlock Grid.Column="2" Text="12:00" FontSize="11"/>
+                                <TextBlock Grid.Column="3" Text="18:00" FontSize="11"/>
+                            </Grid>
+                            <TextBlock Text="{Binding BusiestText}" FontSize="20" FontWeight="Bold" TextWrapping="Wrap" Margin="0,30,0,0"/>
+                        </StackPanel>
+
+                        <!-- the summary: the part that becomes the picture to share has its own background -->
+                        <Grid x:Name="SummaryPage" Visibility="{Binding IsSummary, Converter={StaticResource BoolVis}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Border x:Name="Summary" CornerRadius="18" Padding="20,20,20,16" Margin="-8,0,-8,0" Background="#26000000">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Top">
+                                        <TextBlock Text="{Binding IntroKicker}" Style="{StaticResource Kicker}"/>
+                                        <TextBlock Text="{Binding PeriodTitle}" FontSize="36" FontWeight="Bold" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Opacity="0.75" Margin="0,12,0,0">
+                                        <Image Source="{StaticResource LogoImage}" Width="18" Height="18"/>
+                                        <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <StackPanel DockPanel.Dock="Bottom" Margin="0,14,0,0">
+                                        <TextBlock Text="{local:T 'Minutes listened'}" FontSize="12" Opacity="0.75"/>
+                                        <TextBlock Text="{Binding MinutesText}" FontSize="32" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding CountsText}" FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <Grid Margin="0,18,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition/>
+                                            <ColumnDefinition Width="14"/>
+                                            <ColumnDefinition/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{local:T 'Top songs'}" FontSize="12" Opacity="0.75" Margin="0,0,0,6"/>
+                                            <ItemsControl ItemsSource="{Binding TopFiveSongs}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock FontSize="13.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,0,5">
+                                                            <Run Text="{Binding Rank, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding Title, Mode=OneWay}"/>
+                                                        </TextBlock>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="{local:T 'Top artists'}" FontSize="12" Opacity="0.75" Margin="0,0,0,6"/>
+                                            <ItemsControl ItemsSource="{Binding TopFiveArtists}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock FontSize="13.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,0,5">
+                                                            <Run Text="{Binding Rank, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding Title, Mode=OneWay}"/>
+                                                        </TextBlock>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Grid>
+                                </DockPanel>
+                            </Border>
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
+                                <Button Style="{StaticResource GhostButton}" Padding="20,10" Click="Share_Click" Background="White" Foreground="Black">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE74E;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T 'Save the picture'}" Margin="8,0,0,0" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Viewbox>
+    </Grid>
+</UserControl>

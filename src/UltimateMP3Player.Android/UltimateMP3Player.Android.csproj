@@ -20,9 +20,9 @@
     <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
     <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
     <!-- Keep equal to the other projects; the version code is 3.6.0 → 30600, the same in every processor's package. -->
-    <Version>4.2.1</Version>
-    <ApplicationDisplayVersion>4.2.1</ApplicationDisplayVersion>
-    <ApplicationVersion>40201</ApplicationVersion>
+    <Version>4.3.0</Version>
+    <ApplicationDisplayVersion>4.3.0</ApplicationDisplayVersion>
+    <ApplicationVersion>40300</ApplicationVersion>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -115,6 +115,9 @@
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\EqCurve.cs" Link="Shared\Avalonia\EqCurve.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\RowSwipe.cs" Link="Shared\Avalonia\RowSwipe.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\WhatsNew.cs" Link="Shared\Avalonia\WhatsNew.cs" />
+    <!-- the recap (stories): the same view as Linux/macOS -->
+    <AvaloniaXaml Include="..\UltimateMP3Player.Avalonia\Views\RecapView.axaml" Link="Shared\Avalonia\RecapView.axaml" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\RecapView.axaml.cs" Link="Shared\Avalonia\RecapView.axaml.cs" />
     <AvaloniaXaml Include="..\UltimateMP3Player.Avalonia\Theme.axaml" Link="Theme.axaml" />
   </ItemGroup>
 

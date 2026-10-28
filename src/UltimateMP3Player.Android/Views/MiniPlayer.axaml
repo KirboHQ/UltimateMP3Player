@@ -41,7 +41,7 @@
                 <TextBlock Text="{Binding RoomName}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AccentTextBrush}" Margin="6,0,0,0"
                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
             </StackPanel>
-            <views:ProgressLine Grid.Row="2" Height="2.5" Margin="10,0,10,0" Progress="{Binding Progress}" IsPlaying="{Binding IsPlaying}"
+            <views:ProgressLine Grid.Row="2" Height="2.5" Margin="10,0,10,0" Progress="{Binding Progress}" IsPlaying="{Binding IsPlaying}" IsVisible="{Binding !IsLive}"
                                 Duration="{Binding Duration}" Rate="{Binding Speed}" Fill="{DynamicResource ProgressGradient}" Track="{DynamicResource Surface3Brush}"/>
         </Grid>
     </Border>

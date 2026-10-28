@@ -64,6 +64,21 @@
                     <TextBlock Text="{Binding NeverText}" Margin="8,0,0,0" Classes="label"/>
                 </StackPanel>
             </Button>
+            <!-- the recap of a year or a month, like stories -->
+            <Button Theme="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Command="{Binding RecapCommand}"
+                    ToolTip.Tip="{local:T 'Your year or your month in music'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E787}" Classes="glyph"/>
+                    <TextBlock Text="{local:T Recap}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button Theme="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Command="{Binding ImportSpotifyCommand}"
+                    ToolTip.Tip="{local:T 'Your plays on Spotify into the statistics and the recaps'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
+                    <TextBlock Text="{local:T 'Import from Spotify'}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
             <ComboBox DockPanel.Dock="Right" Width="200" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
                       ToolTip.Tip="{local:T 'Sort by'}"/>
             <Button x:Name="TagFilterButton" DockPanel.Dock="Right" Theme="{StaticResource TagFilterButton}" Margin="0,0,10,0"/>

@@ -23,6 +23,11 @@ public partial class SettingsPage : UserControl, IPage
     public SettingsPage()
     {
         InitializeComponent();
+#if IOS_APP
+        BackupFolderHint.Text = L.T("The app's own folder is in Files › On My iPhone; one in iCloud Drive keeps the backups off the phone.");
+#else
+        BackupFolderHint.Text = L.T("Better a folder outside the app (Documents, a memory card…): the app's own one goes away with the app.");
+#endif
         // A short pause after the last letter: the cards are walked once per word, not at every key.
         _searchTimer.Tick += (_, _) =>
         {
@@ -235,6 +240,8 @@ public partial class SettingsPage : UserControl, IPage
             "VideoQuality" => (L.T("Maximum video quality"), vm.VideoQualities, vm.VideoQuality, x => vm.VideoQuality = x),
             "Parallel" => (L.T("Downloads at once"), vm.ParallelChoices, vm.Parallel, x => vm.Parallel = x),
             "CacheSize" => (L.T("Temporary storage (unsaved songs)"), vm.CacheChoices, vm.CacheSize, x => vm.CacheSize = x),
+            "BackupEvery" => (L.T("Automatic backup"), vm.Backups.EveryChoices, vm.Backups.Every, x => vm.Backups.Every = x),
+            "BackupKeep" => (L.T("Backups kept"), vm.Backups.KeepChoices, vm.Backups.Keep, x => vm.Backups.Keep = x),
             _ => null,
         };
         if (c is not { } choice) return;

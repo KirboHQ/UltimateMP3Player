@@ -12,6 +12,8 @@ public sealed class RoomOptions
     public int Max { get; set; } = 8;
     public string? Password { get; set; }
     public Perm DefaultPerms { get; set; }
+    // Percent of the people in the room whose votes skip the song (0 = no votes).
+    public int VoteShare { get; set; }
 }
 
 public sealed class JoinResult
@@ -84,6 +86,13 @@ public sealed class TogetherSession : IDisposable
     public Dictionary<string, Dictionary<string, FileStatus>> Files { get; private set; } = new();
     public HashSet<string> Banned { get; private set; } = new();
     public Perm DefaultPerms { get; private set; }
+    // Vote to skip: those without the permission vote, and the song goes once VotesNeeded of the people here voted.
+    // An older host never says so (VoteShare stays 0: no votes).
+    public int VoteShare { get; private set; }
+    public HashSet<string> Votes { get; private set; } = new();
+    public int VotesNeeded => VoteShare <= 0 ? 0 : Math.Max(1, (int)Math.Ceiling(Members.Count(m => !m.Away) * VoteShare / 100.0));
+    public int VoteCount => Votes.Count(id => Members.Any(m => m.Id == id && !m.Away));
+    public bool MyVote => Votes.Contains(Me.Id);
     public Dictionary<string, byte[]> Covers { get; } = new();
     public int ListenPort => _listenPort;
     public long Latency { get; private set; }
@@ -169,6 +178,7 @@ public sealed class TogetherSession : IDisposable
         _password = string.IsNullOrWhiteSpace(o.Password) ? null : o.Password.Trim();
         Locked = _password != null;
         DefaultPerms = o.DefaultPerms & Perm.All;
+        VoteShare = Math.Clamp(o.VoteShare, 0, 100);
         EnsureListener();
         HostId = Me.Id;
         var me = Me.Clone();
@@ -423,6 +433,7 @@ public sealed class TogetherSession : IDisposable
         _keepPlace[id] = LocalMs + KeepPlace;
         foreach (var list in _waiting.Values) list.Remove(id);
         BroadcastMembers();
+        CheckVotes();
     }
 
     private static async Task CloseSoon(Connection c)
@@ -454,6 +465,21 @@ public sealed class TogetherSession : IDisposable
     {
         Broadcast(new Msg { T = "play", Play = Play });
         RaisePlay();
+    }
+
+    private void BroadcastVotes()
+    {
+        Broadcast(new Msg { T = "votes", VoteShare = VoteShare, Votes = Votes.ToList() });
+        RaisePlay();
+    }
+
+    // Enough of the people here voted to skip the song: it goes. True when it went.
+    private bool CheckVotes()
+    {
+        if (!IsHost || Current == null || VoteShare <= 0 || VoteCount == 0 || VoteCount < VotesNeeded) return false;
+        AddSystem("The room voted to skip “{0}”", Current.Title);
+        Advance();
+        return true;
     }
 
     private void PushFiles()
@@ -531,7 +557,7 @@ public sealed class TogetherSession : IDisposable
         {
             T = "welcome", You = mem.Id, RoomId = RoomId, RoomName = RoomName, Max = Max, Locked = Locked, HostId = HostId, Members = Members,
             Queue = Queue, Current = Current, Play = Play, Chat = Chat.TakeLast(100).ToList(), AllFiles = Files, Banned = Banned.ToList(),
-            DefaultPerms = DefaultPerms, Password = _password, T1 = LocalMs,
+            DefaultPerms = DefaultPerms, Password = _password, T1 = LocalMs, VoteShare = VoteShare, Votes = Votes.ToList(),
         });
         foreach (var t in new[] { Current }.Concat(Queue).OfType<RoomTrack>().Take(40))
             if (Covers.TryGetValue(t.Id, out var cover)) c.Send(new Msg { T = "cover", Id = t.Id, Data = cover });
@@ -683,6 +709,13 @@ public sealed class TogetherSession : IDisposable
                 Advance();
                 break;
 
+            // (a vote for a song that isn't playing any more, or with votes off, counts for nothing)
+            case "vote":
+                if (Current == null || m.Id != Current.Id || VoteShare <= 0 || (m.Flag ? !Votes.Add(from) : !Votes.Remove(from))) return;
+                if (m.Flag) AddSystem("{0} voted to skip “{1}” ({2} of {3})", who.Name, Current.Title, VoteCount.ToString(), VotesNeeded.ToString());
+                if (!CheckVotes()) BroadcastVotes();
+                break;
+
             case "pause":
                 if (Current == null || !Allowed(Perm.Pause)) return;
                 SetPausedNow(m.Flag);
@@ -774,8 +807,10 @@ public sealed class TogetherSession : IDisposable
         if (template != null) AddSystem(template, who.Name);
         BroadcastMembers();
         PushFiles();
-        // Songs waiting only for them can start.
+        // Songs waiting only for them can start; fewer people, fewer votes needed.
         CheckWaiting();
+        bool voted = Votes.Remove(id);
+        if (!CheckVotes() && voted) BroadcastVotes();
     }
 
     // The host gives the room to someone else and stays as a guest.
@@ -815,6 +850,12 @@ public sealed class TogetherSession : IDisposable
         foreach (var k in Covers.Keys.Where(k => !keep.Contains(k)).ToList()) Covers.Remove(k);
         BroadcastQueue();
         BroadcastPlay();
+        // (the votes were for the song that went)
+        if (Votes.Count > 0)
+        {
+            Votes.Clear();
+            BroadcastVotes();
+        }
         CheckWaiting();
     }
 
@@ -963,6 +1004,8 @@ public sealed class TogetherSession : IDisposable
                 Files = m.AllFiles ?? new();
                 Banned = (m.Banned ?? new()).ToHashSet();
                 DefaultPerms = m.DefaultPerms;
+                VoteShare = m.VoteShare;
+                Votes = (m.Votes ?? new()).ToHashSet();
                 if (m.Password != null) _password = m.Password;
                 _offset = m.T1 - LocalMs;
                 _samples.Clear();
@@ -991,6 +1034,11 @@ public sealed class TogetherSession : IDisposable
                 break;
             case "play":
                 if (m.Play != null) Play = m.Play;
+                RaisePlay();
+                break;
+            case "votes":
+                VoteShare = m.VoteShare;
+                Votes = (m.Votes ?? new()).ToHashSet();
                 RaisePlay();
                 break;
             case "chat":
@@ -1160,6 +1208,7 @@ public sealed class TogetherSession : IDisposable
     public void Move(string itemId, int index) => Do(new Msg { T = "move", Id = itemId, Index = index });
     public void PlayNow(string itemId) => Do(new Msg { T = "playNow", Id = itemId });
     public void Skip() => Do(new Msg { T = "skip" });
+    public void Vote(bool on) => Do(new Msg { T = "vote", Id = Current?.Id, Flag = on });
     public void SetPaused(bool paused) => Do(new Msg { T = "pause", Flag = paused });
     public void Seek(double seconds) => Do(new Msg { T = "seek", Pos = seconds });
     public void SetLoop(bool on) => Do(new Msg { T = "loop", Flag = on });

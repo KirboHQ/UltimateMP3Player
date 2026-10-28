@@ -1,0 +1,61 @@
+<UserControl x:Class="UltimateMP3Player.Views.ArtistsView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <Panel>
+        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="28,8,20,28">
+                <Grid Margin="0,0,8,22" ColumnDefinitions="Auto,*">
+                    <Border Width="148" Height="148" CornerRadius="74" Background="{DynamicResource AccentGradient}">
+                        <TextBlock Text="{local:Icon E77B}" Classes="glyph" FontSize="56" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
+                        <TextBlock Text="{local:T LIBRARY}" Classes="small-caps" Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock Text="{local:T Artists}" FontSize="40" FontWeight="Bold" Margin="0,2,0,8"/>
+                        <TextBlock Text="{Binding FollowedText}" Foreground="{DynamicResource SubTextBrush}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- find one by name (Deezer's artists) -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,8,20">
+                    <TextBox x:Name="FindBox" Theme="{StaticResource FilterBox}" Width="320" VerticalAlignment="Center" Text="{Binding Query}"
+                             Watermark="{local:T 'Find an artist'}"/>
+                    <Button Theme="{StaticResource GhostButton}" Padding="16,8" Margin="10,0,0,0" Command="{Binding FindCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:Icon E721}" Classes="glyph"/>
+                            <TextBlock Text="{local:T Search}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <TextBlock Text="{local:T 'Searching…'}" Classes="hint" Margin="14,0,0,0" VerticalAlignment="Center" IsVisible="{Binding Finding}"/>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding Found}" ItemTemplate="{StaticResource ArtistCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"
+                              IsVisible="{Binding HasFound}"/>
+
+                <StackPanel IsVisible="{Binding HasReleases}">
+                    <DockPanel LastChildFill="False" Margin="0,0,8,0">
+                        <TextBlock Text="{local:T 'New releases'}" Classes="section-title"/>
+                        <Button DockPanel.Dock="Right" Theme="{StaticResource LinkButton}" Content="{local:T 'Mark all as seen'}" VerticalAlignment="Center"
+                                Command="{Binding SeeAllCommand}" IsVisible="{Binding HasNew}"/>
+                    </DockPanel>
+                    <ItemsControl ItemsSource="{Binding Releases}" ItemTemplate="{StaticResource ReleaseCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"/>
+                </StackPanel>
+
+                <TextBlock Text="{local:T 'Artists you follow'}" Classes="section-title"/>
+                <ItemsControl ItemsSource="{Binding Followed}" ItemTemplate="{StaticResource ArtistCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"
+                              IsVisible="{Binding HasFollowed}"/>
+                <Border Theme="{StaticResource Card}" Padding="22" Margin="0,0,8,30" IsVisible="{Binding !HasFollowed}">
+                    <TextBlock Classes="hint" FontSize="14" LineHeight="21" TextWrapping="Wrap"
+                               Text="{local:T 'Follow the artists you like: their new albums and songs show up here and in Home, with a notification.'}"/>
+                </Border>
+
+                <StackPanel IsVisible="{Binding HasSuggested}">
+                    <TextBlock Text="{local:T 'You listen to them often'}" Classes="section-title"/>
+                    <ItemsControl ItemsSource="{Binding Suggested}" ItemTemplate="{StaticResource ArtistCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,0"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Panel>
+</UserControl>

@@ -38,7 +38,7 @@ public sealed class SearchHit
 // The sites the search box can search, without accounts or keys: YouTube Music (official songs), YouTube (videos,
 // covers, live), SoundCloud (remixes, mashups) and Deezer (a catalogue like Spotify's; the audio comes from YouTube
 // Music, as for Deezer and Spotify links). Spotify refuses anonymous searches: only with the user's own key (SpotifyKey).
-public static class OnlineSearchServices
+public static partial class OnlineSearchServices
 {
     public const string YouTubeMusic = "YouTube Music", YouTube = "YouTube", SoundCloud = "SoundCloud", Deezer = "Deezer", Spotify = "Spotify";
     public static readonly string[] Default = { YouTubeMusic, SoundCloud, YouTube, Deezer, Spotify };

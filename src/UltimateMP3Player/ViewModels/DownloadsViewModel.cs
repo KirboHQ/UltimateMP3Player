@@ -538,13 +538,14 @@ public sealed class DownloadGroupViewModel : Observable
     public DownloadGroupViewModel(DownloadBatch batch, DownloadQueue queue) : this(queue, batch.Id) => Batch = batch;
 
     // A list of songs being read (DownloadsPageViewModel.ImportListAsync), before its songs are downloads: its bar the lines
-    // read, then "loading complete" until its card on the download page is seen. stop: the reading canceled.
-    public DownloadGroupViewModel(string title, DownloadQueue queue, Action stop) : this(queue, Ids.New())
+    // read, then "loading complete" until its card on the download page is seen. stop: the reading canceled. Also an export
+    // left to go on by itself (BackgroundExport).
+    public DownloadGroupViewModel(string title, DownloadQueue queue, Action stop, string? detail = null) : this(queue, Ids.New())
     {
         _stop = stop;
         Reading = true;
         Title = title;
-        Detail = L.T("Reading the list…");
+        Detail = detail ?? L.T("Reading the list…");
         Indeterminate = true;
     }
 
@@ -570,6 +571,16 @@ public sealed class DownloadGroupViewModel : Observable
         Percent = total > 0 ? done * 100.0 / total : 0;
         Indeterminate = false;
         Detail = L.F("{0} of {1}", done, total) + (waiting ? " · " + L.T("the site asks to wait") : "");
+        _queue.GroupChanged();
+    }
+
+    // An export's progress (0..1) and what it's on.
+    internal void Working(double fraction, string? detail)
+    {
+        if (!Reading) return;
+        Percent = fraction * 100;
+        Indeterminate = false;
+        if (detail != null) Detail = detail;
         _queue.GroupChanged();
     }
 
@@ -972,9 +983,9 @@ public sealed class DownloadQueue : Observable
         GroupsRefreshed?.Invoke();
     }
 
-    public DownloadGroupViewModel AddReading(string title, Action stop)
+    public DownloadGroupViewModel AddReading(string title, Action stop, string? detail = null)
     {
-        var g = new DownloadGroupViewModel(title, this, stop);
+        var g = new DownloadGroupViewModel(title, this, stop, detail);
         Groups.Add(g);
         GroupChanged();
         return g;
@@ -1338,6 +1349,7 @@ public sealed class LinkViewModel : Observable
                 t = CloudSongs.FromItem(item);
                 lib.Add(t);
                 _ = _main.FetchCover(t, CloudSongs.Pictures(item));
+                _ = _main.SpellArtist(t, item.Info?.Artist, SongMeta.CleanChannel(item.Info?.Uploader));
                 added++;
             }
             // (the quality chosen here is the one it's heard with, and saved with later)

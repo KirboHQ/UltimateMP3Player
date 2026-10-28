@@ -100,13 +100,19 @@ public sealed class TrayIcon : IDisposable
     {
         if (_hintShown) return;
         _hintShown = true;
-        var text = L.T("Music keeps playing in the background. Click the icon to reopen the player.");
+        Notify("Ultimate MP3 Player", L.T("Music keeps playing in the background. Click the icon to reopen the player."));
+    }
+
+    // A toast of the system (a followed artist's new release).
+    public static void Notify(string title, string text)
+    {
         try
         {
             if (OperatingSystem.IsLinux())
-                Process.Start(new ProcessStartInfo("notify-send", new[] { "-a", "Ultimate MP3 Player", "Ultimate MP3 Player", text }) { UseShellExecute = false });
+                Process.Start(new ProcessStartInfo("notify-send", new[] { "-a", "Ultimate MP3 Player", title, text }) { UseShellExecute = false });
             else if (OperatingSystem.IsMacOS())
-                Process.Start(new ProcessStartInfo("osascript", new[] { "-e", $"display notification \"{text.Replace("\"", "'")}\" with title \"Ultimate MP3 Player\"" }) { UseShellExecute = false });
+                Process.Start(new ProcessStartInfo("osascript", new[] { "-e", $"display notification \"{text.Replace("\"", "'")}\" with title \"{title.Replace("\"", "'")}\"" })
+                    { UseShellExecute = false });
         }
         catch { }
     }

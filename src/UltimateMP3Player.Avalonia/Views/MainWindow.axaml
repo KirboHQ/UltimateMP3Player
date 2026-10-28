@@ -21,6 +21,10 @@
         <DataTemplate DataType="vm:DjViewModel"><views:DjView/></DataTemplate>
         <DataTemplate DataType="vm:TogetherViewModel"><views:TogetherView/></DataTemplate>
         <DataTemplate DataType="vm:StatsViewModel"><views:StatsView/></DataTemplate>
+        <DataTemplate DataType="vm:ArtistsViewModel"><views:ArtistsView/></DataTemplate>
+        <DataTemplate DataType="vm:StationsViewModel"><views:StationsView/></DataTemplate>
+        <DataTemplate DataType="vm:ArtistPageViewModel"><views:ArtistView/></DataTemplate>
+        <DataTemplate DataType="vm:RecapViewModel"><views:RecapView/></DataTemplate>
     </Window.DataTemplates>
 
     <Window.Resources>
@@ -144,6 +148,19 @@
                             <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE8F1;" Content="{local:T 'All songs'}" IsChecked="{Binding IsLibrary}"/>
                             <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE8B7;" Content="{local:T 'Not in a playlist'}" IsChecked="{Binding IsUnsorted}"
                                          ToolTip.Tip="{local:T 'Songs that aren\'t in any playlist'}"/>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE77B;" IsChecked="{Binding IsArtists}"
+                                         ToolTip.Tip="{local:T 'The artists you follow and their new releases'}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:T Artists}"/>
+                                    <!-- new releases not seen yet -->
+                                    <Border Margin="8,0,0,0" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Background="{DynamicResource AccentGradient}"
+                                            IsVisible="{Binding HasNewReleases}">
+                                        <TextBlock Text="{Binding NewReleases}" FontSize="11" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </StackPanel>
+                            </RadioButton>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE93E;" Content="{local:T Radio}" IsChecked="{Binding IsRadio}"
+                                         ToolTip.Tip="{local:T 'Internet radios: find them, save the ones you like, listen live'}"/>
                             <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE896;" IsChecked="{Binding IsDownloads}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{local:T Download}"/>
@@ -446,13 +463,21 @@
                             <local:CommandToggle Theme="{StaticResource ToggleIcon}" Content="{Binding RepeatGlyph, Converter={StaticResource Icon}}"
                                                  IsChecked="{Binding RepeatOn, Mode=OneWay}" Command="{Binding CycleRepeatCommand}" ToolTip.Tip="{Binding RepeatTip}"/>
                         </StackPanel>
-                        <Grid Margin="0,6,0,0" ColumnDefinitions="44,*,44">
-                            <TextBlock Text="{Binding PositionText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Grid Margin="0,6,0,0" MinHeight="30" ColumnDefinitions="44,*,44">
+                            <TextBlock Text="{Binding PositionText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"
+                                       IsVisible="{Binding !IsLive}"/>
                             <views:WaveformBar Grid.Column="1" Height="30" Peaks="{Binding Current.Wave}" Progress="{Binding Progress}"
                                                IsPlaying="{Binding Animate}" Duration="{Binding Duration}" Rate="{Binding Speed}"
                                                PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}"
-                                               SeekCommand="{Binding SeekCommand}" ToolTip.Tip="{Binding SeekTip}"/>
-                            <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                               SeekCommand="{Binding SeekCommand}" ToolTip.Tip="{Binding SeekTip}" IsVisible="{Binding !IsLive}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding DurationText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="8,0,0,0"
+                                       IsVisible="{Binding !IsLive}"/>
+                            <!-- a radio: nothing to seek, only that it's live -->
+                            <StackPanel Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsLive}">
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource AccentGradient}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding DurationText}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" Margin="7,0,0,0"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Grid>
                     </StackPanel>
 

@@ -1,0 +1,96 @@
+<!-- An artist's page: its picture and name, follow, its new releases and albums (shelves that scroll sideways), then your
+     songs of it (the most played first), chosen and played like any list. -->
+<UserControl x:Class="UltimateMP3Player.Views.ArtistPage"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <DockPanel>
+        <Panel DockPanel.Dock="Top" Height="56">
+            <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0">
+                <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E72B}" Click="Back_Click"/>
+                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"
+                           TextTrimming="CharacterEllipsis"/>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Click="Select_Click" IsVisible="{Binding HasSongs}"/>
+                <!-- rename, change the picture -->
+                <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Click="More_Click"/>
+            </Grid>
+            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="{DynamicResource BgBrush}">
+                <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" Command="{Binding #List.Picks.CancelCommand}"/>
+                <TextBlock Grid.Column="1" Text="{Binding #List.Picks.CountText}" FontSize="16.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"/>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Command="{Binding #List.Picks.AllCommand}"/>
+                <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Command="{Binding #List.Picks.MoreCommand}"/>
+            </Grid>
+        </Panel>
+        <views:PickActions x:Name="SelectActions" DockPanel.Dock="Bottom" Picks="{Binding #List.Picks}"/>
+
+        <views:SongList x:Name="List" Theme="{StaticResource PlainList}" ItemContainerTheme="{StaticResource PlainListItem}">
+            <views:SongList.DataTemplates>
+                <StaticResource ResourceKey="SongRowTemplate"/>
+                <DataTemplate DataType="views:ListHeader">
+                    <StackPanel DataContext="{Binding Page}">
+                        <!-- its picture (chosen by hand, or Deezer's), or its initial on a colour of its own -->
+                        <Border Width="176" Height="176" CornerRadius="88" Background="{Binding Brush}" HorizontalAlignment="Center" Margin="0,4,0,14"
+                                BoxShadow="0 6 24 0 #66000000">
+                            <Panel>
+                                <TextBlock Text="{Binding Initial}" FontSize="72" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
+                            </Panel>
+                        </Border>
+                        <TextBlock Text="{Binding Name}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="18,0"/>
+                        <TextBlock Text="{Binding Subtitle}" Classes="hint" FontSize="13.5" HorizontalAlignment="Center" TextAlignment="Center" Margin="18,4,18,16"/>
+                        <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="16,0,16,20">
+                            <Button Theme="{StaticResource SmallGhost}" Command="{Binding FollowCommand}" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding FollowGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="14"/>
+                                    <TextBlock Text="{Binding FollowText}" Margin="7,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Content="{local:Icon E93E}" Command="{Binding RadioCommand}" Margin="6,0,0,0"
+                                    VerticalAlignment="Center"/>
+                            <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E721}" Command="{Binding OnlineCommand}" VerticalAlignment="Center"/>
+                            <Button Grid.Column="4" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8B1}" Command="{Binding ShuffleCommand}" Margin="0,0,6,0"
+                                    VerticalAlignment="Center"/>
+                            <Button Grid.Column="5" Theme="{StaticResource BigPlayButton}" Content="{local:Icon E768}" Command="{Binding PlayCommand}"/>
+                        </Grid>
+
+                        <StackPanel IsVisible="{Binding HasReleases}">
+                            <TextBlock Text="{local:T 'New releases'}" Classes="section-title" Margin="18,0,18,12"/>
+                            <!-- sideways only: at its ends a swipe stops there, it doesn't go on moving the page up or down -->
+                            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,24" IsScrollChainingEnabled="False">
+                                <ItemsControl ItemsSource="{Binding Releases}" ItemTemplate="{StaticResource ReleaseCardTemplate}" Margin="18,0,4,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
+                        <StackPanel IsVisible="{Binding HasAlbums}">
+                            <TextBlock Text="{local:T Albums}" Classes="section-title" Margin="18,0,18,12"/>
+                            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,24" IsScrollChainingEnabled="False">
+                                <ItemsControl ItemsSource="{Binding Albums}" ItemTemplate="{StaticResource AlbumCardTemplate}" Margin="18,0,4,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </StackPanel>
+                        <TextBlock Text="{local:T 'Looking for their albums…'}" Classes="hint" Margin="18,0,18,20" IsVisible="{Binding Loading}"/>
+                        <TextBlock Text="{local:T 'In your library'}" Classes="section-title" Margin="18,0,18,6" IsVisible="{Binding HasSongs}"/>
+                    </StackPanel>
+                </DataTemplate>
+                <DataTemplate DataType="views:ListNote">
+                    <StackPanel Margin="32,16,32,24" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Text}" Classes="hint" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </DataTemplate>
+            </views:SongList.DataTemplates>
+        </views:SongList>
+    </DockPanel>
+</UserControl>

@@ -116,7 +116,97 @@ var tags = main.Tags.Select(t => new PackDialogs.ExportTag(t.T, t.Brush, t.Count
 var export = PackDialogs.BuildExport(main.Library, main.Profile, lists, tags, Array.Empty<Playlist>(), null);
 export.Show();
 Shot(export, "pack-export");
+var linksOnly = export.GetLogicalDescendants().OfType<RadioButton>().FirstOrDefault(r => TextOf(r).Contains(L.T("Links only")));
+Check(linksOnly is { IsChecked: true }, "pack export: “Links only” is the default (the audio files only when chosen)");
+var behind = export.GetLogicalDescendants().OfType<Button>().FirstOrDefault(b => TextOf(b).Contains(L.T("In the background")) || b.Content as string == L.T("In the background"));
+Check(behind is { IsVisible: false }, "pack export: “In the background” only while it writes");
 export.Close();
+
+// ---- an export left to go on by itself: a group of the downloads panel with its bar, gone when it's done
+main.IsHome = true;
+var exporting = new BackgroundExport(host, L.F("Exporting “{0}”", "Headless.ump"), L.T("Preparing the pack…"), new CancellationTokenSource());
+exporting.Report(0.5, "A song");
+Shot(win, "export-background");
+var group = host.Downloads.Groups.FirstOrDefault();
+Check(main.ShowDownloadPanel && group is { Percent: 50 } && Shown(L.F("Copying “{0}”…", "A song")), "export in the background: its bar in the panel: " + group?.Detail);
+exporting.Done(null);
+Check(host.Downloads.Groups.Count == 0, "export in the background: done, its line goes");
+
+// ---- internet radios: a saved one on the Radio page and on Home (nothing fetched: the page's lists come when it's opened by hand)
+main.Profile.SaveStation(new Station { Id = "headless-fm", Name = "Headless FM", Url = "http://127.0.0.1:9/stream", Tags = "rock,indie", Country = "Italia", Codec = "MP3" });
+main.Navigate(main.Stations);
+Shot(win, "radio");
+Check(main.Section == "radio" && main.IsRadio && Shown("Headless FM") && Shown("Rock · Indie · Italia"), "radio: the page, the saved station and what it plays");
+main.IsHome = true;
+Shot(win, "home-radios");
+Check(Shown(L.T("Your radios")) && Shown("Headless FM"), "radio: Home's shelf of saved radios");
+main.Stations.Toggle(main.Stations.Saved[0].S);
+Dispatcher.UIThread.RunJobs();
+Check(!main.Stations.HasSaved && !main.Profile.HasStation("headless-fm"), "radio: the heart takes it away again");
+
+// ---- the recap of the year: its pages (one play is enough)
+main.Profile.Log.Add("headless-song", 240, true, DateTime.Now);
+main.OpenRecap(DateTime.Now.Year, 0);
+Shot(win, "recap");
+Check(main.Page is RecapViewModel { IsEmpty: false }, "recap: the year's opens");
+main.BackCommand.Execute(null);
+
+// ---- a radio's logo as its cover: a see-through one on the station's colour, a solid one on its edge's colour
+byte[] Png(int w, int h, SkiaSharp.SKColor back, SkiaSharp.SKColor dot)
+{
+    using var bmp = new SkiaSharp.SKBitmap(w, h);
+    using (var c = new SkiaSharp.SKCanvas(bmp))
+    {
+        c.Clear(back);
+        using var paint = new SkiaSharp.SKPaint { Color = dot, IsAntialias = true };
+        c.DrawCircle(w / 2f, h / 2f, w / 3f, paint);
+    }
+    using var img = SkiaSharp.SKImage.FromBitmap(bmp);
+    return img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100).ToArray();
+}
+bool Near(byte[]? jpeg, int r, int g, int b, int y = 2)
+{
+    if (jpeg == null) return false;
+    using var bmp = SkiaSharp.SKBitmap.Decode(jpeg);
+    var c = bmp.GetPixel(2, y);
+    return bmp.Width == 512 && Math.Abs(c.Red - r) < 12 && Math.Abs(c.Green - g) < 12 && Math.Abs(c.Blue - b) < 12;
+}
+var clearLogo = Images.TileJpeg(Png(64, 64, SkiaSharp.SKColors.Transparent, SkiaSharp.SKColors.White), 512, (w, h, px) => StationsViewModel.Tile(w, h, px, "#7C5CFF"));
+var solidLogo = Images.TileJpeg(Png(300, 300, new SkiaSharp.SKColor(0xE5, 0x48, 0x4D), SkiaSharp.SKColors.White), 512, (w, h, px) => StationsViewModel.Tile(w, h, px, "#7C5CFF"));
+Check(Near(clearLogo, 0x7C, 0x5C, 0xFF), "radio cover: a see-through logo on the station's colour");
+Check(Near(solidLogo, 0xE5, 0x48, 0x4D), "radio cover: a solid logo on its edge's colour");
+// (a small picture, light blue above and dark below: a shade from one to the other, a bit darker)
+byte[] Photo()
+{
+    using var bmp = new SkiaSharp.SKBitmap(64, 64);
+    for (int y = 0; y < 64; y++)
+        for (int x = 0; x < 64; x++)
+            bmp.SetPixel(x, y, y < 32 ? new SkiaSharp.SKColor(100, 160, 240) : new SkiaSharp.SKColor(30, 20, 20));
+    using var img = SkiaSharp.SKImage.FromBitmap(bmp);
+    return img.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100).ToArray();
+}
+var photoLogo = Images.TileJpeg(Photo(), 512, (w, h, px) => StationsViewModel.Tile(w, h, px, "#7C5CFF"));
+Check(Near(photoLogo, 80, 128, 192) && Near(photoLogo, 24, 16, 16, 509), "radio cover: a picture on a shade of its top and bottom colours");
+
+// ---- an artist's page: Change image over the picture, Rename and the picture in its menu; a rename reaches the songs where
+// it's one of several artists
+var duet = new Track { Id = "headless-duet", Title = "Duet", Artist = "Headless Artist feat. Someone", Duration = 200, SourceUrl = "https://example.com/duet" };
+main.Library.Add(duet);
+main.OpenArtist("Headless Artist", null);
+Dispatcher.UIThread.RunJobs();
+Shot(win, "artist");
+var artistPage = main.Page as ArtistPageViewModel;
+Check(artistPage is { HasSongs: true } && Menus.ForArtist(artistPage).Items.Count == 2
+    && win.GetVisualDescendants().OfType<Button>().Any(b => b.Name == "PictureButton"), "artist: its page, Change image, the menu (Rename, Change image)");
+File.WriteAllBytes(ArtistPictures.Mine("Headless Artist"), clearLogo!);
+Check(artistPage!.HasMyPicture && Menus.ForArtist(artistPage).Items.Count == 3, "artist: a picture chosen by hand, and Remove image");
+main.Library.RenameArtist("Headless Artist", "Headless Band", inLines: true);
+Check(duet.Artist == "Headless Band feat. Someone", "artist: renamed where it's one of several: " + duet.Artist);
+// (a name written like a handle, spelled as the library or the song found write it; one with capitals stays; no network here)
+string? Spell(string name, params string?[] hints) => ArtistNames.SpellAsync(main.Library, name, CancellationToken.None, hints).GetAwaiter().GetResult();
+Check(Spell("headlessband") == "Headless Band" && Spell("ne obliviscaris", "Ne Obliviscaris") == "Ne Obliviscaris" && Spell("Avicii") == "Avicii",
+    "artist: a handle spelled as the library writes it");
+main.BackCommand.Execute(null);
 
 var manifest = new PackManifest { Music = false, Author = "Headless" };
 manifest.Tracks.Add(new PackTrack { Id = "t1", Title = "A song", Artist = "An artist", Duration = 200, SourceUrl = "https://www.youtube.com/watch?v=aaaaaaaaaaa" });

@@ -116,8 +116,15 @@
             <StackPanel x:Name="SeekBlock" Grid.Row="3" Margin="24,2,24,0">
                 <views:WaveformBar Height="46" Peaks="{Binding Player.Current.Wave}" Progress="{Binding Player.Progress}" IsPlaying="{Binding Player.Animate}"
                                    Duration="{Binding Player.Duration}" Rate="{Binding Player.Speed}" BarWidth="3"
-                                   PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}" SeekCommand="{Binding Player.SeekCommand}"/>
-                <Grid ColumnDefinitions="*,*" Margin="0,6,0,0">
+                                   PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}" SeekCommand="{Binding Player.SeekCommand}"
+                                   IsVisible="{Binding !Player.IsLive}"/>
+                <!-- a radio: nothing to seek, only that it's live -->
+                <StackPanel Height="46" Orientation="Horizontal" HorizontalAlignment="Center" IsVisible="{Binding Player.IsLive}">
+                    <Ellipse Width="8" Height="8" Fill="{DynamicResource AccentGradient}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Player.DurationText}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" Margin="8,0,0,0"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <Grid ColumnDefinitions="*,*" Margin="0,6,0,0" IsVisible="{Binding !Player.IsLive}">
                     <TextBlock Text="{Binding Player.PositionText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}"/>
                     <TextBlock Grid.Column="1" Text="{Binding Player.DurationText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right"/>
                 </Grid>

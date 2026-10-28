@@ -67,7 +67,7 @@ public sealed class LyricsService : Observable
     }
 
     // Sound effects, DJ mixes and very short clips aren't songs with words.
-    private static bool Worth(Track t) => t.Duration is 0 or >= 30 && t.Site != "DJ";
+    private static bool Worth(Track t) => t.Duration is 0 or >= 30 && t.Site != "DJ" && !Station.Is(t.Id);
 
     // From the menu of a song or a selection: searched again even if it has lyrics.
     public void Search(IReadOnlyList<Track> tracks)

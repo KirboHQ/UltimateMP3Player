@@ -194,6 +194,9 @@ public sealed class Msg
     public Dictionary<string, FileStatus>? Files { get; set; }
     public Dictionary<string, Dictionary<string, FileStatus>>? AllFiles { get; set; }
     public List<string>? Banned { get; set; }
+    // Vote to skip (4.3): the share of the room that skips the song playing (0 = no votes), who voted for it.
+    public int VoteShare { get; set; }
+    public List<string>? Votes { get; set; }
     // "Connect phone" (Core/Link).
     public LinkState? State { get; set; }
     public List<LinkTrack>? Tracks { get; set; }

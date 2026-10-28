@@ -12,7 +12,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>4.2.1</Version>
+    <Version>4.3.0</Version>
     <Product>Ultimate MP3 Player</Product>
     <!-- File description: the name Windows shows in the volume mixer and the Task Manager. -->
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
@@ -52,6 +52,8 @@
   <ItemGroup>
     <PackageReference Include="NAudio.Core" Version="2.2.1" />
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <!-- internet radios' MP3 streams (LiveMp3Source), like the other systems -->
+    <PackageReference Include="NLayer.NAudioSupport" Version="2.0.1" />
     <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
   </ItemGroup>
 

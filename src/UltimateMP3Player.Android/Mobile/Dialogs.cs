@@ -388,6 +388,70 @@ public static partial class Dialogs
         return folders.FirstOrDefault();
     }
 
+    // ------------------------------------------------------------------ Settings › Backup (BackupsViewModel)
+
+    // A folder chosen through the system is kept as its bookmark (Android: a permission that lasts; iPhone: a bookmark of
+    // the folder), so the automatic backups reach it later.
+    public const string BookmarkPrefix = "bookmark:";
+#if IOS_APP
+    // Documents: in the Files app (On My iPhone › Ultimate MP3 Player), and in the iPhone's own backups.
+    public static string DefaultBackupFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Backups");
+#else
+    // Next to the music (Android/data/…/files): reachable with the cable, but removed with the app.
+    public static string DefaultBackupFolder => Path.Combine(Android.App.Application.Context.GetExternalFilesDir(null)?.AbsolutePath ?? AppPaths.DataDir, "Backups");
+#endif
+
+    public static async Task<IBackupFolder?> OpenBackupFolderAsync(string? setting)
+    {
+        if (setting == null || !setting.StartsWith(BookmarkPrefix, StringComparison.Ordinal)) return new LocalBackupFolder(setting ?? DefaultBackupFolder);
+        if (Storage is not { } storage) return null;
+        try { return await storage.OpenFolderBookmarkAsync(setting[BookmarkPrefix.Length..]) is { } folder ? new StorageBackupFolder(folder) : null; }
+        catch { return null; }
+    }
+
+    public static async Task<(string Setting, string Name)?> PickBackupFolderAsync()
+    {
+        if (await PickExportFolderAsync(L.T("Where to keep the backups")) is not { } folder) return null;
+        try
+        {
+            if (await folder.SaveBookmarkAsync() is { Length: > 0 } bookmark) return (BookmarkPrefix + bookmark, folder.Name);
+        }
+        catch { }
+        if (folder.TryGetLocalPath() is { } path) return (path, folder.Name);
+        App.Host.Session?.Toast(L.T("The app can't keep access to this folder: choose another one."));
+        return null;
+    }
+
+    private sealed class StorageBackupFolder : IBackupFolder
+    {
+        private readonly IStorageFolder _folder;
+
+        public StorageBackupFolder(IStorageFolder folder) => _folder = folder;
+
+        public string Name => _folder.Name;
+
+        public async Task<Stream> CreateAsync(string fileName)
+            => await (await _folder.CreateFileAsync(fileName) ?? throw new IOException(L.T("The chosen folder doesn't accept files."))).OpenWriteAsync();
+
+        public async Task<List<string>> NamesAsync()
+        {
+            var names = new List<string>();
+            await foreach (var item in _folder.GetItemsAsync())
+                if (item is IStorageFile) names.Add(item.Name);
+            return names;
+        }
+
+        public async Task DeleteAsync(string fileName)
+        {
+            await foreach (var item in _folder.GetItemsAsync())
+                if (item is IStorageFile && item.Name == fileName)
+                {
+                    await item.DeleteAsync();
+                    return;
+                }
+        }
+    }
+
     private static List<string>? Mimes(IEnumerable<string> extensions)
     {
         var list = new HashSet<string>();

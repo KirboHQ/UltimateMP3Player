@@ -370,6 +370,9 @@
                                 <ToggleButton Theme="{StaticResource PermToggle}" local:Ui.Glyph="&#xE916;" IsChecked="{Binding DefSpeed}" Margin="0"
                                               ToolTip.Tip="{local:T 'Change the playback speed for everyone'}" AutomationProperties.Name="{local:T 'Change the playback speed for everyone'}"/>
                             </StackPanel>
+                            <TextBlock Text="{local:T 'Vote to skip'}" Classes="field-label" Margin="2,16,0,8"/>
+                            <ComboBox ItemsSource="{Binding VoteChoices}" SelectedItem="{Binding VoteChoice}" AutomationProperties.Name="{local:T 'Vote to skip'}"
+                                      ToolTip.Tip="{local:T 'Who isn\'t allowed to skip votes instead: the song goes once this much of the room voted'}"/>
                             <Button Theme="{StaticResource PrimaryButton}" Margin="0,20,0,0" Padding="18,11" Command="{Binding CreateCommand}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{local:Icon E716}" Classes="glyph"/>

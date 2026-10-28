@@ -127,6 +127,11 @@ public partial class TogetherPage : UserControl, IPage
         if (_vm is { } vm) Choose(L.T("Max people"), vm.MaxChoices, vm.MaxChoice, x => vm.MaxChoice = x);
     }
 
+    private void Vote_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is { } vm) Choose(L.T("Vote to skip"), vm.VoteChoices, vm.VoteChoice, x => vm.VoteChoice = x);
+    }
+
     private void RandomSource_Click(object? sender, RoutedEventArgs e)
     {
         if (_vm is { } vm) Choose(L.T("From"), vm.RandomSources, vm.RandomSource, x => vm.RandomSource = x);

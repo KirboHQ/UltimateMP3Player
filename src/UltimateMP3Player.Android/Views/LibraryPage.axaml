@@ -1,4 +1,4 @@
-<!-- "La tua libreria": the songs, the playlists (Preferiti first, the songs in no playlist), the tags. -->
+<!-- "La tua libreria": the songs, the playlists (Preferiti first, the songs in no playlist), the artists, the radios, the tags. -->
 <UserControl x:Class="UltimateMP3Player.Views.LibraryPage"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -12,13 +12,23 @@
                 <TextBlock Text="{local:T 'Your library'}" Classes="page-title"/>
                 <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Content="{local:Icon E710}" Click="Add_Click" VerticalAlignment="Center"/>
             </Grid>
-            <Border CornerRadius="22" Padding="4" Background="{DynamicResource SurfaceBrush}" Margin="16,0" MaxWidth="560">
-                <UniformGrid Rows="1">
-                    <RadioButton x:Name="TabSongs" Theme="{StaticResource TouchSegment}" GroupName="lib" local:Ui.Glyph="&#xEC4F;" Content="{local:T Songs}"/>
-                    <RadioButton x:Name="TabLists" Theme="{StaticResource TouchSegment}" GroupName="lib" local:Ui.Glyph="&#xE8F1;" Content="{local:T Playlists}" Margin="4,0"/>
-                    <RadioButton x:Name="TabTags" Theme="{StaticResource TouchSegment}" GroupName="lib" local:Ui.Glyph="&#xE8EC;" Content="{local:T Tags}"/>
-                </UniformGrid>
-            </Border>
+            <!-- the library's parts: chips in a row that scrolls sideways (a swipe on it doesn't change tab) -->
+            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsScrollChainingEnabled="False">
+                <StackPanel Orientation="Horizontal" Margin="16,0,8,0">
+                    <RadioButton x:Name="TabSongs" Theme="{StaticResource TouchChip}" GroupName="lib" local:Ui.Glyph="&#xEC4F;" Content="{local:T Songs}"/>
+                    <RadioButton x:Name="TabLists" Theme="{StaticResource TouchChip}" GroupName="lib" local:Ui.Glyph="&#xE8F1;" Content="{local:T Playlists}"/>
+                    <RadioButton x:Name="TabArtists" Theme="{StaticResource TouchChip}" GroupName="lib" local:Ui.Glyph="&#xE77B;">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:T Artists}"/>
+                            <!-- new releases not seen yet -->
+                            <Ellipse Width="8" Height="8" Fill="{DynamicResource AccentGradient}" Margin="7,0,0,0" VerticalAlignment="Center"
+                                     IsVisible="{Binding Main.HasNewReleases}"/>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton x:Name="TabRadio" Theme="{StaticResource TouchChip}" GroupName="lib" local:Ui.Glyph="&#xE93E;" Content="{local:T Radio}"/>
+                    <RadioButton x:Name="TabTags" Theme="{StaticResource TouchChip}" GroupName="lib" local:Ui.Glyph="&#xE8EC;" Content="{local:T Tags}"/>
+                </StackPanel>
+            </ScrollViewer>
         </StackPanel>
 
         <Grid RowDefinitions="*,Auto">
@@ -50,6 +60,79 @@
                             </StackPanel>
                         </Grid>
                     </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- the artists: the followed ones and their new releases, the ones listened to most, a box to find one -->
+            <ScrollViewer x:Name="ArtistsPane" IsVisible="False">
+                <StackPanel Margin="0,6,0,20" DataContext="{Binding Main.Artists}">
+                    <TextBox x:Name="ArtistFind" Theme="{StaticResource TouchSearchBox}" Text="{Binding Query}" Watermark="{local:T 'Find an artist'}" Margin="16,0,16,10"/>
+                    <TextBlock Text="{local:T 'Searching…'}" Classes="hint" Margin="20,0,20,8" IsVisible="{Binding Finding}"/>
+                    <ItemsControl ItemsSource="{Binding Found}" ItemTemplate="{StaticResource ArtistRowTemplate}" Margin="0,0,0,18" IsVisible="{Binding HasFound}"/>
+
+                    <StackPanel IsVisible="{Binding HasReleases}">
+                        <Grid ColumnDefinitions="*,Auto" Margin="18,4,12,10">
+                            <TextBlock Text="{local:T 'New releases'}" Classes="section-title" Margin="0"/>
+                            <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="{local:T 'Mark all as seen'}" VerticalAlignment="Center" Padding="8"
+                                    Command="{Binding SeeAllCommand}" IsVisible="{Binding HasNew}"/>
+                        </Grid>
+                        <!-- sideways only: at its ends a swipe stops there, it doesn't go on moving the page up or down -->
+                        <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,24" IsScrollChainingEnabled="False">
+                            <ItemsControl ItemsSource="{Binding Releases}" ItemTemplate="{StaticResource ReleaseCardTemplate}" Margin="18,0,4,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+
+                    <TextBlock Text="{local:T 'Artists you follow'}" Classes="section-title" Margin="18,0,18,4"/>
+                    <ItemsControl ItemsSource="{Binding Followed}" ItemTemplate="{StaticResource ArtistRowTemplate}" IsVisible="{Binding HasFollowed}"/>
+                    <TextBlock Text="{local:T 'Follow the artists you like: their new albums and songs show up here and in Home, with a notification.'}"
+                               Classes="hint" Margin="20,6,20,0" IsVisible="{Binding !HasFollowed}"/>
+
+                    <StackPanel IsVisible="{Binding HasSuggested}" Margin="0,24,0,0">
+                        <TextBlock Text="{local:T 'You listen to them often'}" Classes="section-title" Margin="18,0,18,4"/>
+                        <ItemsControl ItemsSource="{Binding Suggested}" ItemTemplate="{StaticResource ArtistRowTemplate}"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- the internet radios: the saved ones, then radio-browser's (by name, near you, of a genre) -->
+            <ScrollViewer x:Name="RadioPane" IsVisible="False">
+                <StackPanel Margin="0,6,0,20" DataContext="{Binding Main.Stations}">
+                    <TextBlock Text="{local:T 'Your radios'}" Classes="section-title" Margin="18,0,18,4"/>
+                    <ItemsControl ItemsSource="{Binding Saved}" ItemTemplate="{StaticResource StationRowTemplate}" IsVisible="{Binding HasSaved}"/>
+                    <TextBlock Text="{local:T 'Save the radios you like with the heart: they stay here and in Home, ready to play live.'}"
+                               Classes="hint" Margin="20,6,20,0" IsVisible="{Binding !HasSaved}"/>
+
+                    <TextBlock Text="{local:T 'Find radios'}" Classes="section-title" Margin="18,26,18,10"/>
+                    <TextBox x:Name="RadioFind" Theme="{StaticResource TouchSearchBox}" Text="{Binding Query}" Watermark="{local:T 'Find a radio by name'}" Margin="16,0,16,10"/>
+                    <!-- sideways only: at its ends a swipe stops there -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsScrollChainingEnabled="False" Margin="0,0,0,12">
+                        <ItemsControl ItemsSource="{Binding Chips}" Margin="16,0,8,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <local:CommandToggle Theme="{StaticResource Chip}" IsChecked="{Binding IsSelected}" Content="{Binding Label}" CommandParameter="{Binding}"
+                                                         Command="{Binding $parent[views:LibraryPage].DataContext.Main.Stations.SelectChipCommand}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <Grid ColumnDefinitions="*,Auto" Margin="18,0,18,6">
+                        <TextBlock Text="{Binding FoundTitle}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Grid.Column="1" Text="{local:T 'Searching…'}" Classes="hint" Margin="10,0,0,0" IsVisible="{Binding Loading}"/>
+                    </Grid>
+                    <TextBlock Text="{Binding Error}" Classes="hint" Margin="20,4,20,8" IsVisible="{Binding HasError}"/>
+                    <ItemsControl ItemsSource="{Binding Found}" ItemTemplate="{StaticResource StationRowTemplate}"/>
+                    <TextBlock Text="{local:T 'Radios from radio-browser.info, the open directory of internet radios.'}" Classes="hint" FontSize="12" Margin="20,14,20,0"/>
                 </StackPanel>
             </ScrollViewer>
 

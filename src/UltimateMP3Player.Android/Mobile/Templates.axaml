@@ -295,6 +295,146 @@
         </Border>
     </DataTemplate>
 
+    <!-- A mix of Home › For you (a shelf that scrolls sideways): its first song's cover with a band in its colour and its
+         name; a tap plays it. -->
+    <DataTemplate x:Key="MixCardTemplate" DataType="vm:MixViewModel">
+        <Border Width="148" Margin="0,0,14,0" Background="Transparent" views:Touch.Tap="{Binding PlayCommand}">
+            <StackPanel>
+                <Panel Width="148" Height="148">
+                    <ContentControl Content="{Binding Cover}" ContentTemplate="{StaticResource TrackCoverMedium}"/>
+                    <Border VerticalAlignment="Bottom" CornerRadius="0,0,10,10" Background="{Binding Brush}" Padding="10,8,10,9">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="{Binding Glyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="14" Foreground="White"
+                                       Margin="0,0,7,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
+                </Panel>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" Margin="2,9,2,0" TextWrapping="Wrap" MaxLines="2"
+                           TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- ============================================================ artists -->
+
+    <!-- An artist in a list: its picture in a circle (or its initial on a colour of its own), its name; a tap opens its page,
+         the button on the right follows it (a tick once followed). -->
+    <DataTemplate x:Key="ArtistRowTemplate" DataType="vm:ArtistCardViewModel">
+        <Border Classes="row" Padding="16,7,4,7" views:Touch.Tap="{Binding OpenCommand}">
+            <Grid ColumnDefinitions="56,*,Auto">
+                <Panel Width="56" Height="56">
+                    <Ellipse Fill="{Binding Brush}"/>
+                    <TextBlock Text="{Binding Initial}" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
+                    <Ellipse Width="13" Height="13" Fill="{DynamicResource AccentGradient}" Stroke="{DynamicResource BgBrush}" StrokeThickness="2"
+                             HorizontalAlignment="Right" VerticalAlignment="Top" IsVisible="{Binding HasNew}"/>
+                </Panel>
+                <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontSize="15.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Subtitle}" FontSize="13.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"
+                               IsVisible="{Binding HasSubtitle}"/>
+                </StackPanel>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{Binding FollowGlyph, Converter={StaticResource Icon}}" FontSize="18"
+                        Command="{Binding FollowCommand}"/>
+            </Grid>
+        </Border>
+    </DataTemplate>
+
+    <!-- An internet radio (Library > Radio): its picture on its colour (or its initial), name, what it plays; a tap plays it
+         live, the heart keeps it. -->
+    <DataTemplate x:Key="StationRowTemplate" DataType="vm:StationViewModel">
+        <Border Classes="row" Padding="16,7,4,7" views:Touch.Tap="{Binding PlayCommand}">
+            <Border.Styles>
+                <!-- (the full heart is in the filled font) -->
+                <Style Selector="Button.saved">
+                    <Setter Property="FontFamily" Value="{StaticResource IconFontFilled}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource PinkBrush}"/>
+                </Style>
+            </Border.Styles>
+            <Grid ColumnDefinitions="56,*,Auto">
+                <Border Width="56" Height="56" CornerRadius="8" Background="{Binding Brush}" ClipToBounds="True">
+                    <Panel>
+                        <TextBlock Text="{Binding Initial}" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding !HasPicture}"/>
+                        <Image Source="{Binding Picture}" Stretch="Uniform" Margin="7"/>
+                    </Panel>
+                </Border>
+                <StackPanel Grid.Column="1" Margin="14,0,8,0" VerticalAlignment="Center">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Left" CornerRadius="6" Padding="6,1,6,2" Margin="0,0,7,0" Background="{DynamicResource AccentGradient}"
+                                VerticalAlignment="Center" IsVisible="{Binding IsCurrent}">
+                            <TextBlock Text="{local:T LIVE}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"/>
+                        </Border>
+                        <TextBlock Text="{Binding Name}" FontSize="15.5" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding Subtitle}" FontSize="13.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"
+                               IsVisible="{Binding HasSubtitle}"/>
+                </StackPanel>
+                <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{Binding SaveGlyph, Converter={StaticResource Icon}}" FontSize="18"
+                        Classes.saved="{Binding IsSaved}" Command="{Binding SaveCommand}"/>
+            </Grid>
+        </Border>
+    </DataTemplate>
+
+    <!-- A saved internet radio on Home's shelf (sideways): its picture on its colour; a tap plays it live. -->
+    <DataTemplate x:Key="StationCardTemplate" DataType="vm:StationViewModel">
+        <Border Width="148" Margin="0,0,14,0" Background="Transparent" views:Touch.Tap="{Binding PlayCommand}">
+            <StackPanel>
+                <Border Width="148" Height="148" CornerRadius="8" Background="{Binding Brush}" ClipToBounds="True">
+                    <Panel>
+                        <TextBlock Text="{Binding Initial}" FontSize="48" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   IsVisible="{Binding !HasPicture}"/>
+                        <Image Source="{Binding Picture}" Stretch="Uniform" Margin="20"/>
+                        <Border CornerRadius="9" Padding="8,2,8,3" Margin="8" Background="{DynamicResource AccentGradient}" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                IsVisible="{Binding IsCurrent}">
+                            <TextBlock Text="{local:T LIVE}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"/>
+                        </Border>
+                    </Panel>
+                </Border>
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14" Margin="2,9,2,1" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" Margin="2,0" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- A new album, EP or single of a followed artist (a shelf that scrolls sideways): its cover, "NEW" until seen. -->
+    <DataTemplate x:Key="ReleaseCardTemplate" DataType="vm:ReleaseCardViewModel">
+        <Border Width="148" Margin="0,0,14,0" Background="Transparent" views:Touch.Tap="{Binding OpenCommand}">
+            <StackPanel>
+                <Panel Width="148" Height="148">
+                    <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}" IsVisible="{Binding Cover, Converter={x:Static ObjectConverters.IsNull}}">
+                        <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="34" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                    </Border>
+                    <views:CoverImage CornerRadius="8" Source="{Binding Cover}"/>
+                    <Border CornerRadius="9" Padding="8,2,8,3" Margin="8" Background="{DynamicResource AccentGradient}" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            IsVisible="{Binding IsNew}">
+                        <TextBlock Text="{local:T NEW}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"/>
+                    </Border>
+                </Panel>
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" Margin="2,9,2,1" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" Margin="2,0" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="2,1,2,0" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- An album found online (an artist's page, a shelf): its cover; a tap opens it like its link. -->
+    <DataTemplate x:Key="AlbumCardTemplate" DataType="vm:OnlineHitViewModel">
+        <Border Width="148" Margin="0,0,14,0" Background="Transparent" views:Touch.Tap="{Binding DownloadCommand}">
+            <StackPanel>
+                <Panel Width="148" Height="148">
+                    <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNull}}">
+                        <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="34" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                    </Border>
+                    <views:CoverImage CornerRadius="8" Source="{Binding Thumb}"/>
+                </Panel>
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" Margin="2,9,2,1" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" Margin="2,0" TextTrimming="CharacterEllipsis"/>
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
     <!-- ============================================================ dialogs' rows (the computer apps' templates) -->
 
     <!-- A song to tick (the songs of a tag): like a list's songs being chosen, the round tick and the tinted row; a tap

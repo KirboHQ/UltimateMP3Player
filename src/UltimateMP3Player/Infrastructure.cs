@@ -545,6 +545,46 @@ public static class Images
         catch { return null; }
     }
 
+    // A picture in the middle of a square of a colour (or a shade from top to bottom), as a JPEG this wide (a radio's logo as
+    // its cover). plan gets its pixels (BGRA, not premultiplied) and says the colours (ARGB), the share of the square the
+    // picture's longer side takes, and whether its corners are rounded.
+    public static byte[]? TileJpeg(byte[] data, int size, Func<int, int, byte[], (uint Top, uint Bottom, double Side, bool Round)> plan)
+    {
+        try
+        {
+            // (an .ico holds several sizes: the biggest)
+            var frame = BitmapDecoder.Create(new MemoryStream(data), BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad)
+                .Frames.OrderByDescending(f => f.PixelWidth).First();
+            var src = new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
+            int w = src.PixelWidth, h = src.PixelHeight;
+            if (w <= 0 || h <= 0) return null;
+            var px = new byte[w * h * 4];
+            src.CopyPixels(px, w * 4, 0);
+            var (top, bottom, side, round) = plan(w, h, px);
+            double scale = side * size / Math.Max(w, h), dw = w * scale, dh = h * scale;
+            static Color Argb(uint c) => Color.FromArgb((byte)(c >> 24), (byte)(c >> 16), (byte)(c >> 8), (byte)c);
+            var where = new Rect((size - dw) / 2, (size - dh) / 2, dw, dh);
+            var dv = new DrawingVisual();
+            RenderOptions.SetBitmapScalingMode(dv, BitmapScalingMode.HighQuality);
+            using (var dc = dv.RenderOpen())
+            {
+                dc.DrawRectangle(new LinearGradientBrush(Argb(top), Argb(bottom), 90), null, new Rect(0, 0, size, size));
+                double radius = Math.Min(dw, dh) * 0.08;
+                if (round) dc.PushClip(new RectangleGeometry(where, radius, radius));
+                dc.DrawImage(src, where);
+                if (round) dc.Pop();
+            }
+            var rtb = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(dv);
+            var enc = new JpegBitmapEncoder { QualityLevel = 92 };
+            enc.Frames.Add(BitmapFrame.Create(rtb));
+            using var ms = new MemoryStream();
+            enc.Save(ms);
+            return ms.ToArray();
+        }
+        catch { return null; }
+    }
+
     // A site's picture as a square cover (the middle of a 16:9 video thumbnail).
     public static byte[]? SquareJpeg(byte[] data, int size)
     {

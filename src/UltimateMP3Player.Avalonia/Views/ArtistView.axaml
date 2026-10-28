@@ -1,0 +1,76 @@
+<UserControl x:Class="UltimateMP3Player.Views.ArtistView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <Panel>
+        <Border Height="300" VerticalAlignment="Top" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="28,8,20,28">
+                <Grid Margin="0,0,8,18" ColumnDefinitions="Auto,*">
+                    <!-- its picture (chosen by hand, or Deezer's), or its initial on a colour of its own; over it, a button to change it -->
+                    <Border Width="172" Height="172" CornerRadius="86" Background="{Binding Brush}" BoxShadow="0 6 24 0 #80000000">
+                        <Panel>
+                            <TextBlock Text="{Binding Initial}" FontSize="72" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
+                            <Border CornerRadius="86" ClipToBounds="True">
+                                <Button x:Name="PictureButton" Theme="{StaticResource OverlayButton}" Command="{Binding PictureCommand}" Opacity="0"
+                                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ToolTip.Tip="{local:T 'Change image'}">
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{local:Icon EB9F}" Classes="glyph" FontSize="30" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{local:T 'Change image'}" Margin="0,8,0,0" FontSize="12.5"/>
+                                    </StackPanel>
+                                </Button>
+                            </Border>
+                        </Panel>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="24,0,0,0" VerticalAlignment="Bottom">
+                        <TextBlock Text="{local:T ARTIST}" Classes="small-caps" Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock x:Name="NameText" Text="{Binding Name}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"
+                                   Cursor="Hand" ToolTip.Tip="{local:T 'Click to rename'}"/>
+                        <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SubTextBrush}"/>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,8,24">
+                    <Button Theme="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
+                    <Button Theme="{StaticResource HeaderShuffleButton}" Margin="12,0,0,0" Command="{Binding ShuffleCommand}"/>
+                    <Button Theme="{StaticResource GhostButton}" Padding="18,9" Margin="16,0,0,0" VerticalAlignment="Center" Command="{Binding FollowCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding FollowGlyph, Converter={StaticResource Icon}}" Classes="glyph"/>
+                            <TextBlock Text="{Binding FollowText}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Theme="{StaticResource ControlButton}" Content="{local:Icon E93E}" Margin="10,0,0,0" VerticalAlignment="Center" Command="{Binding RadioCommand}"
+                            ToolTip.Tip="{local:T 'Play the artist\'s songs'}"/>
+                    <Button Theme="{StaticResource ControlButton}" Content="{local:Icon E721}" Margin="4,0,0,0" VerticalAlignment="Center" Command="{Binding OnlineCommand}"
+                            ToolTip.Tip="{local:T 'Search online'}"/>
+                    <Button x:Name="MoreButton" Theme="{StaticResource ControlButton}" Content="{local:Icon E712}" Margin="4,0,0,0" VerticalAlignment="Center"
+                            ToolTip.Tip="{local:T 'More options'}"/>
+                </StackPanel>
+
+                <!-- your songs of it, the most played first -->
+                <StackPanel IsVisible="{Binding HasSongs}">
+                    <TextBlock Text="{local:T 'In your library'}" Classes="section-title"/>
+                    <ListBox x:Name="SongList" Theme="{StaticResource BareList}" ItemsSource="{Binding Shown}" ItemTemplate="{StaticResource TrackRowTemplate}"
+                             Margin="-8,0,8,0"/>
+                    <Button Theme="{StaticResource LinkButton}" Content="{Binding MoreText}" Command="{Binding MoreCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"
+                            IsVisible="{Binding HasMore}"/>
+                    <Border Height="30"/>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding HasReleases}">
+                    <TextBlock Text="{local:T 'New releases'}" Classes="section-title"/>
+                    <ItemsControl ItemsSource="{Binding Releases}" ItemTemplate="{StaticResource ReleaseCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"/>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding HasAlbums}">
+                    <TextBlock Text="{local:T 'Albums'}" Classes="section-title"/>
+                    <ItemsControl ItemsSource="{Binding Albums}" ItemTemplate="{StaticResource AlbumCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,0"/>
+                </StackPanel>
+                <TextBlock Text="{local:T 'Looking for their albums…'}" Classes="hint" IsVisible="{Binding Loading}"/>
+            </StackPanel>
+        </ScrollViewer>
+        <views:SelectionBar List="{Binding #SongList}" ZIndex="1"/>
+    </Panel>
+</UserControl>

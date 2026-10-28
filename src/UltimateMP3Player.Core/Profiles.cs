@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace UltimateMP3Player.Core;
 
 public sealed class ProfileInfo
@@ -78,9 +80,19 @@ public sealed class HistoryEntry
 // the time is the real time it played.
 public sealed class TrackStats
 {
-    public int Plays { get; set; }
-    public double Seconds { get; set; }
+    // (masked in memory: Sealed)
+    private int _plays = Sealed.Mask(0);
+    private long _seconds = Sealed.Mask(0.0);
+    public int Plays { get => Sealed.Mask(_plays); set => _plays = Sealed.Mask(value); }
+    public double Seconds { get => Sealed.Unmask(_seconds); set => _seconds = Sealed.Mask(value); }
     public DateTime? Last { get; set; }
+}
+
+// What stats.dat holds (sealed: Sealed).
+public sealed class SealedStats
+{
+    public Dictionary<string, TrackStats> Stats { get; set; } = new();
+    public Dictionary<string, int> Imported { get; set; } = new();
 }
 
 public sealed class EqPreset
@@ -176,11 +188,30 @@ public sealed class ProfileData
     public List<Tag> Tags { get; set; } = new();
     // Song id → ids of its tags.
     public Dictionary<string, List<string>> TrackTags { get; set; } = new();
-    // Song id → how much it was listened to, counted since StatsSince.
-    public Dictionary<string, TrackStats> Stats { get; set; } = new();
+    // Song id → how much it was listened to, counted since StatsSince: saved apart and sealed (stats.dat, Profile.LoadStats).
+    [JsonIgnore] public Dictionary<string, TrackStats> Stats { get; set; } = new();
+    // Plays already imported from other services, per "source|song|month" (Profile.AddImported): in stats.dat too.
+    [JsonIgnore] public Dictionary<string, int> ImportCounts { get; set; } = new();
+    // (where 4.2 and before kept Stats: read once)
+    [JsonPropertyName("Stats")] public Dictionary<string, TrackStats>? OldStats { get; set; }
     public DateTime? StatsSince { get; set; }
     // Songs not in the library (suggested, heard from a link or in a room) the saved queue or the recently played refer to.
     public List<RadioSong> Radio { get; set; } = new();
+    // The times already imported from other services (Spotify's history): not counted twice.
+    public List<ImportedRange> Imported { get; set; } = new();
+    // Library › Artists: the ones followed, their latest releases, when they were last looked for.
+    public List<FollowedArtist> Artists { get; set; } = new();
+    public List<Release> Releases { get; set; } = new();
+    public DateTime? ReleasesChecked { get; set; }
+    // Library › Radio: the internet radios saved, the latest first.
+    public List<Station> Stations { get; set; } = new();
+    // The last one played, saved or not: the player finds it again at the next start.
+    public Station? LastStation { get; set; }
+    // Settings › Integrations: the accounts this profile's plays go to (Scrobbler).
+    public string? LastFmUser { get; set; }
+    public string? LastFmSession { get; set; }
+    public string? ListenBrainzUser { get; set; }
+    public string? ListenBrainzToken { get; set; }
 }
 
 // One profile's playlists, history and preferences.
@@ -218,12 +249,33 @@ public sealed class Profile
         SeedStats();
     }
 
+    private const string StatsFile = "stats.dat";
+
+    // The all-time counts, from stats.dat. A profile saved by 4.2 or before had them in data.json: taken once, unless this
+    // profile was sealed already (its months in stats/ are): then plain numbers there are someone's edit.
+    private static void LoadStats(string id, ProfileData data)
+    {
+        var dir = AppPaths.ProfileDir(id);
+        var file = Path.Combine(dir, StatsFile);
+        if (Sealed.Load<SealedStats>(file) is { } kept)
+        {
+            data.Stats = kept.Stats;
+            data.ImportCounts = kept.Imported;
+        }
+        else if (!File.Exists(file) && !File.Exists(file + ".bak")
+                 && !(Directory.Exists(Path.Combine(dir, "stats")) && Directory.EnumerateFiles(Path.Combine(dir, "stats"), "*.dat").Any()))
+            data.Stats = data.OldStats ?? new();
+        data.OldStats = null;
+    }
+
     // Before 3.3 only the recent history existed: its plays are where the statistics start from.
     private void SeedStats()
     {
         if (Data.StatsSince != null) return;
-        foreach (var g in Data.History.GroupBy(h => h.TrackId))
-            Data.Stats[g.Key] = new TrackStats { Plays = g.Count(), Last = g.Max(h => h.At) };
+        // (sealed counts are there already: a date gone from data.json is no reason to count the history, easy to edit, again)
+        if (!File.Exists(Path.Combine(AppPaths.ProfileDir(Info.Id), StatsFile)))
+            foreach (var g in Data.History.GroupBy(h => h.TrackId))
+                Data.Stats[g.Key] = new TrackStats { Plays = g.Count(), Last = g.Max(h => h.At) };
         Data.StatsSince = Data.History.Count > 0 ? Data.History.Min(h => h.At) : DateTime.Now;
     }
 
@@ -259,6 +311,7 @@ public sealed class Profile
         {
             if (Open.TryGetValue(info.Id, out var p)) return p;
             var data = JsonStore.Load<ProfileData>(Path.Combine(AppPaths.ProfileDir(info.Id), "data.json"));
+            LoadStats(info.Id, data);
             // (3.7 and before saved the built-in presets by their Italian name)
             data.Eq.Preset = L.KeyOf(data.Eq.Preset);
             p = new Profile(info, data);
@@ -280,7 +333,11 @@ public sealed class Profile
     {
         lock (Open)
         {
-            if (Open.TryGetValue(id, out var p)) p._deleted = true;
+            if (Open.TryGetValue(id, out var p))
+            {
+                p._deleted = true;
+                p._log?.Close();
+            }
             Open.Remove(id);
         }
         try { Directory.Delete(AppPaths.ProfileDir(id), true); } catch { }
@@ -681,14 +738,216 @@ public sealed class Profile
     // Time listened to a song, and a play when it just counted. save = false: the caller saves now and then.
     public void AddListening(string trackId, double seconds, bool play, bool save = true)
     {
+        var now = DateTime.Now;
         lock (_lock)
         {
             if (!Data.Stats.TryGetValue(trackId, out var s)) Data.Stats[trackId] = s = new TrackStats();
             s.Seconds += seconds;
             if (play) s.Plays++;
-            s.Last = DateTime.Now;
+            s.Last = now;
         }
+        Log.Add(trackId, seconds, play, now);
         if (save) Save();
+    }
+
+    // Plays from another service (Spotify's history), song by song and month by month: an earlier import of that song in that
+    // month counted so many, only the ones past them are added (the same files again: none; a longer export after a shorter
+    // one: the difference). A song of the library adds them to the plays it has here. The ones added.
+    // shortcut: counts, not single plays (Spotify's two shapes don't share their times), so a month split over two files
+    // imported one at a time keeps only the larger half; keep the plays' times if that matters.
+    public List<ImportedPlay> AddImported(string source, IReadOnlyList<ImportedPlay> plays)
+    {
+        var fresh = new List<ImportedPlay>();
+        lock (_lock)
+        {
+            // (imports before 4.3 kept only the times they covered: the plays in them were counted then)
+            var before = Data.Imported.Where(r => r.Source == source).ToList();
+            var counts = Data.ImportCounts;
+            foreach (var g in plays.GroupBy(p => source + "|" + SongMeta.Key(p.Title, p.Artist) + "|" + p.At.ToString("yyyy-MM")))
+            {
+                var list = g.OrderBy(p => p.At).ToList();
+                int had = counts.TryGetValue(g.Key, out var n) ? n : list.Count(p => before.Any(r => p.At >= r.From && p.At <= r.To));
+                if (list.Count > had) fresh.AddRange(list.Skip(had));
+                counts[g.Key] = Math.Max(had, list.Count);
+            }
+            if (fresh.Count == 0) return fresh;
+            foreach (var p in fresh.Where(p => p.InLibrary))
+            {
+                if (!Data.Stats.TryGetValue(p.Id, out var s)) Data.Stats[p.Id] = s = new TrackStats();
+                s.Seconds += p.Seconds;
+                if (p.Play) s.Plays++;
+                if (s.Last == null || p.At > s.Last) s.Last = p.At;
+            }
+            var first = fresh.Min(p => p.At);
+            if (Data.StatsSince == null || first < Data.StatsSince) Data.StatsSince = first;
+        }
+        Log.Import(fresh.Select(p => (p.At, p.Id, p.Title, p.Artist, p.Url, p.Seconds, p.Play)));
+        Save();
+        return fresh;
+    }
+
+    // ------------------------------------------------------------------ followed artists (Library › Artists)
+
+    public event Action? ArtistsChanged;
+
+    public List<FollowedArtist> ArtistsSnapshot()
+    {
+        lock (_lock) return Data.Artists.ToList();
+    }
+
+    public FollowedArtist? FollowedArtist(string name)
+    {
+        var key = Text.Normalize(name);
+        lock (_lock) return Data.Artists.FirstOrDefault(a => Text.Normalize(a.Name) == key);
+    }
+
+    public void Follow(FollowedArtist artist)
+    {
+        lock (_lock)
+        {
+            var key = Text.Normalize(artist.Name);
+            if (Data.Artists.Any(a => Text.Normalize(a.Name) == key)) return;
+            Data.Artists.Add(artist);
+            // (its releases are looked for at once)
+            Data.ReleasesChecked = null;
+        }
+        Save();
+        ArtistsChanged?.Invoke();
+    }
+
+    public void Unfollow(string name)
+    {
+        var key = Text.Normalize(name);
+        lock (_lock)
+        {
+            if (Data.Artists.RemoveAll(a => Text.Normalize(a.Name) == key) == 0) return;
+            Data.Releases.RemoveAll(r => Text.Normalize(r.Artist) == key);
+        }
+        Save();
+        ArtistsChanged?.Invoke();
+    }
+
+    // An artist renamed on the songs (its page): still followed, under the new name (once, if that one was followed too).
+    public void RenameFollowed(string from, string to)
+    {
+        lock (_lock)
+        {
+            if (Data.Artists.FirstOrDefault(a => Text.Normalize(a.Name) == Text.Normalize(from)) is not { } a) return;
+            if (Data.Artists.Any(o => o != a && Text.Normalize(o.Name) == Text.Normalize(to))) Data.Artists.Remove(a);
+            else a.Name = to;
+        }
+        Save();
+        ArtistsChanged?.Invoke();
+    }
+
+    public void SetArtistPicture(string name, string? id, string? picture)
+    {
+        lock (_lock)
+            if (Data.Artists.FirstOrDefault(a => Text.Normalize(a.Name) == Text.Normalize(name)) is { } a)
+            {
+                a.DeezerId ??= id;
+                a.Picture = picture ?? a.Picture;
+            }
+        Save();
+    }
+
+    // The releases of the last weeks, the newest first.
+    public List<Release> ReleasesSnapshot()
+    {
+        lock (_lock) return Data.Releases.OrderByDescending(r => r.Date).ToList();
+    }
+
+    // The releases found now in place of the old list (the older than since go): the ones it didn't have and not seen yet.
+    public List<Release> MergeReleases(List<Release> found, DateTime since)
+    {
+        List<Release> fresh;
+        lock (_lock)
+        {
+            var known = Data.Releases.ToDictionary(r => r.Url);
+            fresh = found.Where(r => !known.ContainsKey(r.Url) && !r.Seen).ToList();
+            foreach (var r in found)
+                if (known.TryGetValue(r.Url, out var had)) r.Seen |= had.Seen;
+            Data.Releases = found.Where(r => r.Date >= since).GroupBy(r => r.Url).Select(g => g.First()).OrderByDescending(r => r.Date).ToList();
+            Data.ReleasesChecked = DateTime.Now;
+        }
+        Save();
+        ArtistsChanged?.Invoke();
+        return fresh;
+    }
+
+    public int UnseenReleases()
+    {
+        lock (_lock) return Data.Releases.Count(r => !r.Seen);
+    }
+
+    public void SeeReleases()
+    {
+        lock (_lock)
+        {
+            if (Data.Releases.All(r => r.Seen)) return;
+            foreach (var r in Data.Releases) r.Seen = true;
+        }
+        Save();
+        ArtistsChanged?.Invoke();
+    }
+
+    // ------------------------------------------------------------------ internet radios (Library › Radio)
+
+    public event Action? StationsChanged;
+
+    public List<Station> StationsSnapshot()
+    {
+        lock (_lock) return Data.Stations.ToList();
+    }
+
+    public bool HasStation(string id)
+    {
+        lock (_lock) return Data.Stations.Any(s => s.Id == id);
+    }
+
+    public void SaveStation(Station station)
+    {
+        lock (_lock)
+        {
+            if (Data.Stations.Any(s => s.Id == station.Id)) return;
+            Data.Stations.Insert(0, station);
+        }
+        Save();
+        StationsChanged?.Invoke();
+    }
+
+    public void ForgetStation(string id)
+    {
+        lock (_lock)
+            if (Data.Stations.RemoveAll(s => s.Id == id) == 0) return;
+        Save();
+        StationsChanged?.Invoke();
+    }
+
+    // A song added to the library that had imported plays ("sp:<Spotify id>"): they're the library song's from now on.
+    public void AdoptImported(string importedId, string trackId)
+    {
+        var (plays, seconds, last) = Log.Totals(importedId);
+        if (plays == 0 && seconds <= 0) return;
+        lock (_lock)
+        {
+            if (!Data.Stats.TryGetValue(trackId, out var s)) Data.Stats[trackId] = s = new TrackStats();
+            s.Plays += plays;
+            s.Seconds += seconds;
+            if (last != null && (s.Last == null || last > s.Last)) s.Last = last;
+        }
+        Log.Rename(importedId, trackId);
+        Save();
+    }
+
+    private ListeningLog? _log;
+    // Month by month (the recaps, "Your month"); the connected device's profile keeps it in memory only.
+    public ListeningLog Log
+    {
+        get
+        {
+            lock (_lock) return _log ??= new ListeningLog(IsMirror ? null : Path.Combine(AppPaths.ProfileDir(Info.Id), "stats"));
+        }
     }
 
     // The last songs heard, newest first, each once. exists: the ones that can still be shown (songs no longer around are
@@ -724,6 +983,7 @@ public sealed class Profile
                 else Data.Stats[newId] = s;
             }
         }
+        Log.Rename(oldId, newId);
         Save();
     }
 
@@ -732,17 +992,31 @@ public sealed class Profile
         if (!IsMirror) _saver.Request();
     }
 
-    public void Flush() => _saver.Flush();
+    public void Flush()
+    {
+        _saver.Flush();
+        _log?.Flush();
+    }
 
     private void SaveNow()
     {
-        if (_deleted) return;
+        if (_deleted || JsonStore.Frozen) return;
         string json;
-        lock (_lock) json = System.Text.Json.JsonSerializer.Serialize(Data, JsonStore.Options);
+        SealedStats stats;
+        lock (_lock)
+        {
+            json = System.Text.Json.JsonSerializer.Serialize(Data, JsonStore.Options);
+            stats = new SealedStats
+            {
+                Stats = Data.Stats.ToDictionary(kv => kv.Key, kv => new TrackStats { Plays = kv.Value.Plays, Seconds = Math.Round(kv.Value.Seconds, 1), Last = kv.Value.Last }),
+                Imported = new(Data.ImportCounts),
+            };
+        }
         Directory.CreateDirectory(AppPaths.ProfileDir(Info.Id));
         var tmp = FilePath + ".tmp";
         File.WriteAllText(tmp, json);
         if (File.Exists(FilePath)) File.Replace(tmp, FilePath, FilePath + ".bak", true);
         else File.Move(tmp, FilePath);
+        Sealed.Save(Path.Combine(AppPaths.ProfileDir(Info.Id), StatsFile), stats);
     }
 }

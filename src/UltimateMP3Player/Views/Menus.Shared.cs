@@ -23,6 +23,7 @@ public static partial class Menus
     public static ContextMenu ForTrack(TrackViewModel t, ITrackList? owner)
     {
         var main = t.Main;
+        if (Station.Is(t.Id)) return ForStation(t);
         // A song of the room itself (the one playing, from the player bar; a song that isn't in the library).
         if (main.InRoom && main.Together.ItemFor(t) is { } roomItem && (owner == null || main.Together.IsStandIn(t)))
             return ForRoomItem(roomItem, main.Together);
@@ -37,6 +38,7 @@ public static partial class Menus
             menu.Items.Add(Item(L.T("Play next"), "", () => main.Player.PlayNext(t)));
             menu.Items.Add(Item(L.T("Add to queue"), "", () => main.Player.Enqueue(t)));
             menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => main.Player.PlayRadio(t)));
+            menu.Items.Add(Item(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
             menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => main.Player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         }
         menu.Items.Add(new Separator());
@@ -128,6 +130,18 @@ public static partial class Menus
     }
 
     // A song of the room: its place in the queue, and keeping it.
+    // An internet radio (the one playing): keep it, the other radios, its site.
+    private static ContextMenu ForStation(TrackViewModel t)
+    {
+        var main = t.Main;
+        bool saved = main.IsFavorite(t.Id);
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(saved ? L.T("Remove from your radios") : L.T("Save to your radios"), saved ? "\uEB52" : "\uEB51", () => main.Stations.Toggle(t.Id)));
+        menu.Items.Add(Item(L.T("All radios"), "\uE93E", main.OpenStations));
+        if (main.Stations.HomepageOf(t.T) is { } site) menu.Items.Add(Item(L.T("The radio's website"), "\uE774", () => MainViewModel.OpenUrl(site)));
+        return menu;
+    }
+
     public static ContextMenu ForRoomItem(RoomItemViewModel item, TogetherViewModel room)
     {
         var menu = new ContextMenu();
@@ -142,7 +156,7 @@ public static partial class Menus
             menu.Items.Add(Item(L.T("Move to bottom"), "", () => room.MoveTo(item, last), room.CanRemove && index < last));
             menu.Items.Add(Item(L.T("Remove from queue"), "", () => room.Remove(item), item.CanRemove));
         }
-        else menu.Items.Add(Item(L.T("Skip"), "", room.Skip, room.CanSkip));
+        else menu.Items.Add(Item(room.CanVote ? (room.MyVote ? L.T("Take back your vote to skip") : L.T("Vote to skip")) : L.T("Skip"), "", room.Skip, room.CanSkip || room.CanVote));
         menu.Items.Add(new Separator());
         // As for any song: into the library (in the cloud) with the library icon, onto the device with the download arrow.
         if (item.InLibrary)
@@ -192,6 +206,7 @@ public static partial class Menus
             menu.Items.Add(Item(L.T("Play next"), "", () => { if (h.Song() is { } t) main.Player.PlayNext(t); }));
             menu.Items.Add(Item(L.T("Add to queue"), "", () => h.QueueAction?.Invoke()));
             menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => { if (h.Song() is { } t) main.Player.PlayRadio(t); }));
+            menu.Items.Add(Item(L.T("Go to the artist"), "\uE77B", () => main.OpenArtist(ArtistNames.First(h.Hit.Artist) ?? "", null), !string.IsNullOrWhiteSpace(h.Hit.Artist)));
             menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => { if (h.Song() is { } t) main.Player.PlayArtist(t); },
                 !string.IsNullOrWhiteSpace(h.Hit.Artist)));
         }
@@ -235,6 +250,7 @@ public static partial class Menus
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => player.PlayRadio(t)));
+        menu.Items.Add(Item(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copied")); } catch { } }));
         if (row == null && player.Current != t)
@@ -697,6 +713,7 @@ public static partial class Menus
         menu.Items.Add(Item(L.T("Move to bottom"), "", () => player.MoveUpcoming(row.Index, last), row.Index < last));
         menu.Items.Add(Item(L.T("Remove from Up next"), "", () => player.RemoveUpcoming(row.Index)));
         menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => player.PlayRadio(t)));
+        menu.Items.Add(Item(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(new Separator());
         AddSaveItems(menu, new[] { t });
@@ -760,6 +777,16 @@ public static partial class Menus
             menu.Items.Add(new Separator());
             menu.Items.Add(Item(L.T("Delete playlist…"), "", () => _ = main.DeletePlaylist(p)));
         }
+        return menu;
+    }
+
+    // An artist's page: its name on your songs, its picture.
+    public static ContextMenu ForArtist(ArtistPageViewModel a)
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(L.T("Rename…"), "\uE8AC", () => a.RenameCommand.Execute(null)));
+        menu.Items.Add(Item(L.T("Change image…"), "\uEB9F", () => a.PictureCommand.Execute(null)));
+        if (a.HasMyPicture) menu.Items.Add(Item(L.T("Remove image"), "\uE711", () => a.RemovePictureCommand.Execute(null)));
         return menu;
     }
 

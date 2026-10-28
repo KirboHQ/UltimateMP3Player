@@ -532,6 +532,18 @@ public partial class MainView : UserControl
     {
         // The download page is a part of the search one (SearchPage shows it).
         if (page is DownloadsPageViewModel && _session != null) page = _session.Search;
+        // The artists are a part of the library tab (its Artists chip).
+        if (page is ArtistsViewModel && Hub != null)
+        {
+            Hub.Tab = 3;
+            page = Hub;
+        }
+        // The radios too (its Radio chip).
+        if (page is StationsViewModel && Hub != null)
+        {
+            Hub.Tab = 4;
+            page = Hub;
+        }
         int i = _pages.FindIndex(p => p.Page == page);
         if (i >= 0)
         {
@@ -549,6 +561,8 @@ public partial class MainView : UserControl
             SettingsViewModel => new SettingsPage(),
             TogetherViewModel => new TogetherPage(),
             StatsViewModel => new StatsPage(),
+            ArtistPageViewModel => new ArtistPage(),
+            RecapViewModel => new RecapView(),
             _ => new TextBlock { Text = page.ToString() },
         };
         view.DataContext = page;
@@ -574,7 +588,7 @@ public partial class MainView : UserControl
     private string TabOf(object? page) => page switch
     {
         SearchViewModel or DownloadsPageViewModel => "search",
-        LibraryHub or LibraryViewModel or PlaylistPageViewModel => "library",
+        LibraryHub or LibraryViewModel or PlaylistPageViewModel or ArtistsViewModel or ArtistPageViewModel or StationsViewModel => "library",
         TogetherViewModel => "together",
         SettingsViewModel => "settings",
         NowPlayingViewModel => TabOf(_shownPage),
@@ -919,7 +933,7 @@ public interface IPage
     void Shown() { }
 }
 
-// The "Library" tab: songs, playlists, tags.
+// The "Library" tab: songs, playlists, artists, tags.
 public sealed class LibraryHub : Observable
 {
     public LibraryHub(MainViewModel main) => Main = main;
@@ -927,6 +941,6 @@ public sealed class LibraryHub : Observable
     public MainViewModel Main { get; }
 
     private int _tab = 1;
-    // 0 songs, 1 playlists, 2 tags.
+    // 0 songs, 1 playlists, 2 tags, 3 artists.
     public int Tab { get => _tab; set => Set(ref _tab, value); }
 }

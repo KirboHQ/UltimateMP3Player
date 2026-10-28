@@ -1,0 +1,102 @@
+<UserControl x:Class="UltimateMP3Player.Views.StationsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels">
+    <UserControl.Resources>
+        <!-- one of the lists of stations (near you, the world, a genre): like the search page's site chips -->
+        <Style x:Key="ListChip" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Margin" Value="0,0,8,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="15" Height="30" Padding="12,0" Background="{DynamicResource Surface2Brush}"
+                                BorderBrush="Transparent" BorderThickness="1">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Surface3Brush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="28,8,20,28">
+                <Grid Margin="0,0,8,22">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="148" Height="148" CornerRadius="18" Background="{DynamicResource AccentGradient}">
+                        <TextBlock Text="&#xE93E;" Style="{StaticResource Glyph}" FontSize="60" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
+                        <TextBlock Text="{local:T LIBRARY}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock Text="{local:T Radio}" FontSize="40" FontWeight="Bold" Margin="0,2,0,8"/>
+                        <TextBlock Text="{Binding SavedText}" Foreground="{DynamicResource SubTextBrush}"/>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="{local:T 'Your radios'}" Style="{StaticResource SectionTitle}"/>
+                <ItemsControl ItemsSource="{Binding Saved}" ItemTemplate="{StaticResource StationCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"
+                              Visibility="{Binding HasSaved, Converter={StaticResource BoolVis}}"/>
+                <Border Style="{StaticResource Card}" Padding="22" Margin="0,0,8,30" Visibility="{Binding HasSaved, Converter={StaticResource InvBoolVis}}">
+                    <TextBlock Style="{StaticResource Hint}" FontSize="14" LineHeight="21" TextWrapping="Wrap"
+                               Text="{local:T 'Save the radios you like with the heart: they stay here and in Home, ready to play live.'}"/>
+                </Border>
+
+                <!-- radio-browser.info's: by name, or one of the lists -->
+                <TextBlock Text="{local:T 'Find radios'}" Style="{StaticResource SectionTitle}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,8,14">
+                    <TextBox Style="{StaticResource FilterBox}" Width="320" VerticalAlignment="Center" Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="{local:T 'Find a radio by name'}" KeyDown="Find_KeyDown" AutomationProperties.Name="{local:T 'Find a radio by name'}"/>
+                    <Button Style="{StaticResource GhostButton}" Padding="16,8" Margin="10,0,0,0" Command="{Binding SearchCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE721;" Style="{StaticResource Glyph}"/>
+                            <TextBlock Text="{local:T Search}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+                <ItemsControl ItemsSource="{Binding Chips}" Focusable="False" Margin="0,0,8,14">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:RadioChip}">
+                            <Button Style="{StaticResource ListChip}" Content="{Binding Label}" CommandParameter="{Binding}"
+                                    Command="{Binding DataContext.SelectChipCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <StackPanel Orientation="Horizontal" Margin="0,0,8,12">
+                    <TextBlock Text="{Binding FoundTitle}" FontSize="16" FontWeight="SemiBold"/>
+                    <TextBlock Text="{local:T 'Searching…'}" Style="{StaticResource Hint}" Margin="14,0,0,0" VerticalAlignment="Center"
+                               Visibility="{Binding Loading, Converter={StaticResource BoolVis}}"/>
+                </StackPanel>
+                <TextBlock Text="{Binding Error}" Style="{StaticResource Hint}" Margin="0,0,8,16" Visibility="{Binding HasError, Converter={StaticResource BoolVis}}"/>
+                <ItemsControl ItemsSource="{Binding Found}" ItemTemplate="{StaticResource StationCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,14"/>
+                <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,0,8,0" TextWrapping="Wrap"
+                           Text="{local:T 'Radios from radio-browser.info, the open directory of internet radios.'}"/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -1,0 +1,89 @@
+<UserControl x:Class="UltimateMP3Player.Views.ArtistView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <Grid>
+        <Border Height="300" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="28,8,20,28">
+                <Grid Margin="0,0,8,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <!-- its picture (chosen by hand, or Deezer's), or its initial on a colour of its own; over it, a button to change it -->
+                    <Grid Width="172" Height="172">
+                        <Grid.Effect>
+                            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.5" Color="Black"/>
+                        </Grid.Effect>
+                        <Ellipse Fill="{Binding Brush}"/>
+                        <TextBlock Text="{Binding Initial}" FontSize="72" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Visibility="{Binding HasPicture, Converter={StaticResource BoolVis}}">
+                            <Ellipse.Fill>
+                                <ImageBrush ImageSource="{Binding Picture}" Stretch="UniformToFill"/>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                        <Grid>
+                            <Grid.Clip>
+                                <EllipseGeometry Center="86,86" RadiusX="86" RadiusY="86"/>
+                            </Grid.Clip>
+                            <Button x:Name="PictureButton" Style="{StaticResource OverlayButton}" Command="{Binding PictureCommand}" Opacity="0"
+                                    ToolTip="{local:T 'Change image'}">
+                                <StackPanel>
+                                    <TextBlock Text="&#xEB9F;" Style="{StaticResource Glyph}" FontSize="30" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{local:T 'Change image'}" Margin="0,8,0,0" FontSize="12.5"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Grid>
+                    <StackPanel Grid.Column="1" Margin="24,0,0,0" VerticalAlignment="Bottom">
+                        <TextBlock Text="{local:T ARTIST}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock Text="{Binding Name}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" Cursor="Hand"
+                                   MouseLeftButtonUp="Name_Click" ToolTip="{local:T 'Click to rename'}"/>
+                        <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SubTextBrush}"/>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,8,24">
+                    <Button Style="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
+                    <Button Style="{StaticResource HeaderShuffleButton}" Margin="12,0,0,0" Command="{Binding ShuffleCommand}"/>
+                    <Button Style="{StaticResource GhostButton}" Padding="18,9" Margin="16,0,0,0" VerticalAlignment="Center" Command="{Binding FollowCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding FollowGlyph}" Style="{StaticResource Glyph}"/>
+                            <TextBlock Text="{Binding FollowText}" Margin="8,0,0,0"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ControlButton}" Content="&#xE93E;" Margin="10,0,0,0" VerticalAlignment="Center" Command="{Binding RadioCommand}"
+                            ToolTip="{local:T 'Play the artist\'s songs'}"/>
+                    <Button Style="{StaticResource ControlButton}" Content="&#xE721;" Margin="4,0,0,0" VerticalAlignment="Center" Command="{Binding OnlineCommand}"
+                            ToolTip="{local:T 'Search online'}"/>
+                    <Button Style="{StaticResource ControlButton}" Content="&#xE712;" Margin="4,0,0,0" VerticalAlignment="Center" Click="More_Click"
+                            ToolTip="{local:T 'More options'}"/>
+                </StackPanel>
+
+                <!-- your songs of it, the most played first -->
+                <StackPanel Visibility="{Binding HasSongs, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{local:T 'In your library'}" Style="{StaticResource SectionTitle}"/>
+                    <ListBox x:Name="SongList" Style="{StaticResource BareList}" ItemsSource="{Binding Shown}" ItemTemplate="{StaticResource TrackRowTemplate}"
+                             Margin="-8,0,8,0"/>
+                    <Button Style="{StaticResource LinkButton}" Content="{Binding MoreText}" Command="{Binding MoreCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"
+                            Visibility="{Binding HasMore, Converter={StaticResource BoolVis}}"/>
+                    <Border Height="30"/>
+                </StackPanel>
+
+                <StackPanel Visibility="{Binding HasReleases, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{local:T 'New releases'}" Style="{StaticResource SectionTitle}"/>
+                    <ItemsControl ItemsSource="{Binding Releases}" ItemTemplate="{StaticResource ReleaseCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"/>
+                </StackPanel>
+
+                <StackPanel Visibility="{Binding HasAlbums, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{local:T 'Albums'}" Style="{StaticResource SectionTitle}"/>
+                    <ItemsControl ItemsSource="{Binding Albums}" ItemTemplate="{StaticResource AlbumCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,0"/>
+                </StackPanel>
+                <TextBlock Text="{local:T 'Looking for their albums…'}" Style="{StaticResource Hint}" Visibility="{Binding Loading, Converter={StaticResource BoolVis}}"/>
+            </StackPanel>
+        </ScrollViewer>
+        <views:SelectionBar List="{Binding ElementName=SongList}" Panel.ZIndex="1"/>
+    </Grid>
+</UserControl>

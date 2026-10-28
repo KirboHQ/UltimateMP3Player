@@ -35,6 +35,10 @@ public static class TrackDownloader
 
         await ResolveAsync(item, req.Cookies, progress, ct);
         keys = WithExtra(SourceKeys.ForItem(item), req);
+        // ("neobliviscaris", a SoundCloud name, as "Ne Obliviscaris": in the library, the tags and the file name alike)
+        if (SongMeta.From(item).Artist is { } named
+            && await ArtistNames.SpellAsync(lib, named, ct, item.Info?.Artist, SongMeta.CleanChannel(item.Info?.Uploader)) is { } spelled && spelled != named)
+            item.Artist = spelled;
         var meta = SongMeta.From(item);
         double? duration = item.Info?.Duration ?? item.Duration;
 

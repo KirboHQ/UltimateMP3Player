@@ -274,6 +274,44 @@
         </Style>
     </ControlTheme>
 
+    <!-- The library's parts (Songs, Playlists, Artists...): chips with an icon in a row that scrolls sideways, the chosen one tinted. -->
+    <ControlTheme x:Key="TouchChip" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Padding" Value="14,0,16,0"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" CornerRadius="19" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                        Padding="{TemplateBinding Padding}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Name="Ico" Text="{Binding $parent[RadioButton].(local:Ui.Glyph), Converter={StaticResource Icon}}" FontFamily="{StaticResource IconFont}"
+                                   FontSize="14" FontWeight="Normal" VerticalAlignment="Center"/>
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:checked">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ Border#Bd">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ TextBlock#Ico">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+        <Style Selector="^:pressed /template/ Border#Bd">
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+    </ControlTheme>
+
     <!-- The scroll bar shows while scrolling, thin, over the content (a phone's). -->
     <ControlTheme x:Key="ThinScrollBar" TargetType="ScrollBar">
         <Setter Property="Width" Value="4"/>

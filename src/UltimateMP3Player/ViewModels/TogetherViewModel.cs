@@ -420,11 +420,15 @@ public sealed class TogetherViewModel : Observable
         var settings = _main.Host.Settings;
         settings.TogetherMax = (int)MaxChoice.Value!;
         settings.TogetherRoomPerms = (int)_defaultPerms;
+        settings.TogetherVoteShare = (int)VoteChoice.Value!;
         settings.Save();
         var s = NewSession();
         try
         {
-            s.Create(new RoomOptions { Name = NewRoomName, Max = (int)MaxChoice.Value!, Password = NewPassword, DefaultPerms = _defaultPerms });
+            s.Create(new RoomOptions
+            {
+                Name = NewRoomName, Max = (int)MaxChoice.Value!, Password = NewPassword, DefaultPerms = _defaultPerms, VoteShare = (int)VoteChoice.Value!,
+            });
         }
         catch (Exception ex)
         {
@@ -1402,12 +1406,44 @@ public sealed class TogetherViewModel : Observable
     public void Skip()
     {
         if (_s == null) return;
+        if (CanVote)
+        {
+            ToggleVote();
+            return;
+        }
         if (!CanSkip)
         {
             Deny(Denied(Perm.Skip));
             return;
         }
         if (_s.Current != null) _s.Skip();
+    }
+
+    // ------------------------------------------------------------------ vote to skip
+
+    // Without the permission to skip, the room's votes (when the host turned them on): Next votes, again takes the vote back.
+    public bool CanVote => !CanSkip && _s is { VoteShare: > 0, Current: not null };
+    public bool MyVote => _s?.MyVote == true;
+    public string VoteText => _s == null ? "" : L.F("{0} of {1} votes to skip", _s.VoteCount, _s.VotesNeeded);
+
+    public void ToggleVote()
+    {
+        if (_s == null || !CanVote) return;
+        bool on = !_s.MyVote;
+        _s.Vote(on);
+        _main.Toast(on ? L.F("You voted to skip “{0}”", _s.Current!.Title) : L.T("Vote to skip taken back"));
+    }
+
+    // The choices of the room's form: off, half, two thirds, everyone (percent of the people in the room).
+    public List<Choice> VoteChoices { get; } = new()
+    {
+        new(L.T("No votes"), 0), new(L.T("Half the room"), 50), new(L.T("Two thirds of the room"), 67), new(L.T("Everyone"), 100),
+    };
+    private Choice? _voteChoice;
+    public Choice VoteChoice
+    {
+        get => _voteChoice ??= VoteChoices.FirstOrDefault(c => (int)c.Value! == _main.Host.Settings.TogetherVoteShare) ?? VoteChoices[1];
+        set { if (value != null) Set(ref _voteChoice, value); }
     }
 
     public void Restart() => Seek(0);
@@ -1472,13 +1508,14 @@ public sealed class TogetherViewModel : Observable
         PlayState.Paused => L.T("PAUSED"),
         PlayState.Waiting => L.T("ABOUT TO START"),
         _ => L.T("NOTHING PLAYING"),
-    };
+    } + (_s is { VoteShare: > 0, VoteCount: > 0, Current: not null } ? " · " + VoteText.ToUpper(System.Globalization.CultureInfo.CurrentCulture) : "");
 
     private void OnPlayback()
     {
         UpdateNowPlaying();
-        OnChanged(nameof(RoomLoop), nameof(RoomSpeed), nameof(RoomPitch), nameof(SpeedBadge), nameof(HasSpeedBadge));
+        OnChanged(nameof(RoomLoop), nameof(RoomSpeed), nameof(RoomPitch), nameof(SpeedBadge), nameof(HasSpeedBadge), nameof(CanVote), nameof(MyVote), nameof(VoteText));
         _main.Player.OnRoomPlayback();
+        _main.Player.OnRoomPermissions();
         Follow();
         _main.Host.OnSeek();
     }

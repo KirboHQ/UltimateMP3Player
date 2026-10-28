@@ -112,6 +112,7 @@ public static class Menus
     public static SheetMenu ForTrack(TrackViewModel t, ITrackList? owner)
     {
         var main = t.Main;
+        if (Station.Is(t.Id)) return ForStation(t);
         // A song of the room itself (the one playing; a song that isn't in the library).
         if (main.InRoom && main.Together.ItemFor(t) is { } roomItem && (owner == null || main.Together.IsStandIn(t)))
             return ForRoomItem(roomItem, main.Together);
@@ -127,6 +128,7 @@ public static class Menus
             menu.Add(new(L.T("Play next"), GNext, () => player.PlayNext(t)));
             menu.Add(new(L.T("Add to queue"), GQueue, () => player.Enqueue(t)));
             menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
+            menu.Add(new(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
             menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         }
         menu.Line();
@@ -251,6 +253,18 @@ public static class Menus
 
     // A song found online (search): heard without saving it, like a link's songs, or opened to download it. Not an album or a
     // playlist (a tap opens their card). The same as the computer's (Menus.Shared.cs).
+    // An internet radio (the one playing): keep it, the other radios, its site.
+    private static SheetMenu ForStation(TrackViewModel t)
+    {
+        var main = t.Main;
+        bool saved = main.IsFavorite(t.Id);
+        var menu = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
+        menu.Add(new(saved ? L.T("Remove from your radios") : L.T("Save to your radios"), saved ? "\uEB52" : "\uEB51", () => main.Stations.Toggle(t.Id)));
+        menu.Add(new(L.T("All radios"), "\uE93E", main.OpenStations));
+        if (main.Stations.HomepageOf(t.T) is { } site) menu.Add(new(L.T("The radio's website"), "\uE774", () => MainViewModel.OpenUrl(site)));
+        return menu;
+    }
+
     public static SheetMenu? ForHit(OnlineHitViewModel h)
     {
         if (!h.IsSong) return null;
@@ -263,6 +277,7 @@ public static class Menus
             menu.Add(new(L.T("Play next"), GNext, () => { if (h.Song() is { } t) main.Player.PlayNext(t); }));
             menu.Add(new(L.T("Add to queue"), GQueue, () => h.QueueAction?.Invoke()));
             menu.Add(new(L.T("Play similar songs"), GRadio, () => { if (h.Song() is { } t) main.Player.PlayRadio(t); }));
+            menu.Add(new(L.T("Go to the artist"), "\uE77B", () => main.OpenArtist(ArtistNames.First(h.Hit.Artist) ?? "", null), !string.IsNullOrWhiteSpace(h.Hit.Artist)));
             menu.Add(new(L.T("Play the artist's songs"), "", () => { if (h.Song() is { } t) main.Player.PlayArtist(t); },
                 !string.IsNullOrWhiteSpace(h.Hit.Artist)));
         }
@@ -304,6 +319,7 @@ public static class Menus
         menu.Add(FavoriteItem(t));
         menu.Add(new SheetEntry { Text = L.T("Lyrics"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
         menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
+        menu.Add(new(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Add(new(L.T("Copy original link"), GLink, () => { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copied")); }));
         if (row == null && player.Current != t)
@@ -329,6 +345,7 @@ public static class Menus
         menu.Add(new(L.T("Move to bottom"), GDown, () => player.MoveUpcoming(row.Index, last), row.Index < last));
         menu.Add(new(L.T("Remove from Up next"), GRemove, () => player.RemoveUpcoming(row.Index)));
         menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
+        menu.Add(new(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Line();
         AddSave(menu, new[] { t });
@@ -715,6 +732,16 @@ public static class Menus
         return menu;
     }
 
+    // An artist's page: its name on your songs, its picture.
+    public static SheetMenu ForArtist(ArtistPageViewModel a)
+    {
+        var menu = new SheetMenu { Title = a.Name, Subtitle = a.Subtitle };
+        menu.Add(new(L.T("Rename…"), GRename, () => a.RenameCommand.Execute(null)));
+        menu.Add(new(L.T("Change image…"), GPicture, () => a.PictureCommand.Execute(null)));
+        if (a.HasMyPicture) menu.Add(new(L.T("Remove image"), GRemove, () => a.RemovePictureCommand.Execute(null)));
+        return menu;
+    }
+
     // ------------------------------------------------------------------ Listen together
 
     // In a room: songs go into the room's queue (greyed out without the host's permission).
@@ -740,7 +767,7 @@ public static class Menus
             menu.Add(new(L.T("Move to bottom"), GDown, () => room.MoveTo(item, last), room.CanRemove && index < last));
             menu.Add(new(L.T("Remove from queue"), GRemove, () => room.Remove(item), item.CanRemove));
         }
-        else menu.Add(new(L.T("Skip"), GNext, room.Skip, room.CanSkip));
+        else menu.Add(new(room.CanVote ? (room.MyVote ? L.T("Take back your vote to skip") : L.T("Vote to skip")) : L.T("Skip"), GNext, room.Skip, room.CanSkip || room.CanVote));
         menu.Line();
         // As for any song: into the library (in the cloud), or onto the device.
         if (item.InLibrary)

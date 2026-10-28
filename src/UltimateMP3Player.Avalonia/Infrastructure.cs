@@ -564,6 +564,10 @@ public static class Icons
         ['\uE8EA'] = '\uF5E0', ['\uE7F4'] = '\uF359',
         // (Normalize volume: a gauge)
         ['\uEC4A'] = '\uF4C7',
+        // (Home's mixes: "Your month")
+        ['\uE787'] = '\uF22A',
+        // (the recap's picture: share)
+        ['\uE72D'] = '\uF6AF',
         [''] = '', [''] = '', [''] = '', [''] = '', [''] = '', [''] = '',
         [''] = '', [''] = '', [''] = '', [''] = '', [''] = '', [''] = '',
         [''] = '', [''] = '', [''] = '', [''] = '', [''] = '', [''] = '',
@@ -862,6 +866,56 @@ public static class Images
             using var src = SKBitmap.Decode(path);
             if (src == null) return null;
             return Encode(src, size);
+        }
+        catch { return null; }
+    }
+
+    // A picture in the middle of a square of a colour (or a shade from top to bottom), as a JPEG this wide (a radio's logo as
+    // its cover). plan gets its pixels (BGRA, not premultiplied) and says the colours (ARGB), the share of the square the
+    // picture's longer side takes, and whether its corners are rounded.
+    public static byte[]? TileJpeg(byte[] data, int size, Func<int, int, byte[], (uint Top, uint Bottom, double Side, bool Round)> plan)
+    {
+        try
+        {
+            using var src = SKBitmap.Decode(data);
+            if (src == null || src.Width <= 0 || src.Height <= 0) return null;
+            int w = src.Width, h = src.Height;
+            var px = new byte[w * h * 4];
+            using (var whole = SKImage.FromBitmap(src))
+            {
+                var pin = System.Runtime.InteropServices.GCHandle.Alloc(px, System.Runtime.InteropServices.GCHandleType.Pinned);
+                try
+                {
+                    if (!whole.ReadPixels(new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Unpremul), pin.AddrOfPinnedObject(), w * 4, 0, 0)) return null;
+                }
+                finally { pin.Free(); }
+            }
+            var (top, bottom, side, round) = plan(w, h, px);
+            double scale = side * size / Math.Max(w, h);
+            float dw = (float)(w * scale), dh = (float)(h * scale);
+            var where = SKRect.Create((size - dw) / 2, (size - dh) / 2, dw, dh);
+            using var surface = SKSurface.Create(new SKImageInfo(size, size, SKColorType.Rgba8888, SKAlphaType.Premul));
+            var canvas = surface.Canvas;
+            using (var shade = new SKPaint())
+            {
+                shade.Shader = SKShader.CreateLinearGradient(new SKPoint(0, 0), new SKPoint(0, size), new[] { new SKColor(top), new SKColor(bottom) },
+                    SKShaderTileMode.Clamp);
+                canvas.DrawRect(0, 0, size, size, shade);
+            }
+#pragma warning disable CS0618
+            using var paint = new SKPaint { FilterQuality = SKFilterQuality.High, IsAntialias = true };
+#pragma warning restore CS0618
+            if (round)
+            {
+                float radius = Math.Min(dw, dh) * 0.08f;
+                canvas.Save();
+                canvas.ClipRoundRect(new SKRoundRect(where, radius, radius), antialias: true);
+            }
+            canvas.DrawBitmap(src, where, paint);
+            if (round) canvas.Restore();
+            using var img = surface.Snapshot();
+            using var jpeg = img.Encode(SKEncodedImageFormat.Jpeg, 92);
+            return jpeg?.ToArray();
         }
         catch { return null; }
     }

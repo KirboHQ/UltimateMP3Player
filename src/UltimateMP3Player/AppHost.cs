@@ -477,6 +477,13 @@ public sealed class AppHost : Observable
     {
         _updateTimer.Interval = TimeSpan.FromMinutes(10);
         await UpdateEnginesAsync(false);
+        if (Session != null)
+        {
+            await Session.Backups.AutoAsync();
+            await Session.Artists.CheckAsync(false);
+            // (the plays that couldn't be sent: offline, a service not answering)
+            await Session.Scrobbler.SendAsync();
+        }
         if (Settings.AutoUpdateApp && DateTime.Now - _lastAppCheck > TimeSpan.FromHours(6))
         {
             _lastAppCheck = DateTime.Now;
@@ -491,6 +498,27 @@ public sealed class AppHost : Observable
     public async Task CheckAppUpdateNow()
     {
         if (await Updates.CheckAsync(true)) RestartToUpdate(false);
+    }
+
+    // A toast of the system: a followed artist's new release (a click opens the artists).
+    public void Notify(string title, string text)
+    {
+#if !AVALONIA
+        Tray.Notify(title, text, () =>
+        {
+            ShowWindow();
+            Session?.OpenArtists();
+        });
+#else
+        TrayIcon.Notify(title, text);
+#endif
+    }
+
+    // A backup was put in place of the data (BackupsViewModel): the app starts again with it (nothing is saved meanwhile).
+    public void RestartAfterRestore()
+    {
+        Updater.Relaunch(Session?.Profile.Info.Id);
+        Exit(true);
     }
 
     public void RestartToUpdate(bool background)

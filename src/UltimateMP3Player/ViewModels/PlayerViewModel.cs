@@ -98,7 +98,7 @@ public sealed class PlayerViewModel : Observable
 
         // In a room of "Listen together" these buttons need the host's permission: without it they are greyed out.
         PlayPauseCommand = new RelayCommand(PlayPause, () => _room == null || _room.CanPause);
-        NextCommand = new RelayCommand(() => _ = Next(false), () => _room == null || _room.CanSkip);
+        NextCommand = new RelayCommand(() => _ = Next(false), () => _room == null || _room.CanSkip || _room.CanVote);
         PreviousCommand = new RelayCommand(() => _ = Previous(), () => _room == null || _room.CanPause);
         // In a room: loop of the song playing, for everyone (with the pause permission).
         CycleRepeatCommand = new RelayCommand(() => { if (_room != null) _room.ToggleLoop(); else CycleRepeat(); }, () => _room == null || _room.CanPause);
@@ -126,7 +126,7 @@ public sealed class PlayerViewModel : Observable
 
     // A song of the library, or one not in it still in the queue or among the recently played.
     // (connected to a phone: also one of the phone's songs, SharedLibrary)
-    private Track? TrackOf(string id) => _main.Library.Get(id) ?? _main.Radio.Track(id) ?? _main.Shared?.Get(id);
+    private Track? TrackOf(string id) => _main.Library.Get(id) ?? _main.Radio.Track(id) ?? _main.Shared?.Get(id) ?? _main.Stations?.TrackOf(id);
     private bool Exists(string id) => TrackOf(id) != null;
 
     // Among the recently played: a song of the library, and one heard without saving it (suggested, from a link, or a
@@ -370,15 +370,18 @@ public sealed class PlayerViewModel : Observable
             if (!Set(ref _current, value)) return;
             if (old != null) old.IsCurrent = false;
             if (value != null) value.IsCurrent = true;
-            OnChanged(nameof(HasTrack), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(ContextName), nameof(IsTemporary));
+            OnChanged(nameof(HasTrack), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(ContextName), nameof(IsTemporary), nameof(IsLive), nameof(DurationText));
         }
     }
+
+    // An internet radio playing (StationsViewModel): no end, no seeking.
+    public bool IsLive => Current != null && Station.Is(Current.Id);
 
     public bool HasTrack => Current != null;
     // The song playing isn't saved on the device: a suggested one, one of a link heard without saving it, or a song of the
     // library in the cloud (the "Save" button next to the heart).
     // (connected to the other device: also a song not saved on both, the save button asks where)
-    public bool IsTemporary => Current != null && _room == null &&
+    public bool IsTemporary => Current != null && _room == null && !IsLive &&
                                (_main.Radio.Has(Current.Id) || !Current.IsSaved || _main.Shared is { Ready: true } s && s.NotEverywhere(Current.T));
 
     // The song playing was saved, or its audio removed from the device.
@@ -452,7 +455,7 @@ public sealed class PlayerViewModel : Observable
 
     public double Progress => Duration > 0 ? Math.Clamp(Position / Duration, 0, 1) : 0;
     public string PositionText => Text.Duration(Position) is { Length: > 0 } s ? s : "0:00";
-    public string DurationText => Text.Duration(Duration) is { Length: > 0 } s ? s : "0:00";
+    public string DurationText => IsLive ? L.T("LIVE") : Text.Duration(Duration) is { Length: > 0 } s ? s : "0:00";
 
     private double _volume;
     public double Volume
@@ -824,6 +827,48 @@ public sealed class PlayerViewModel : Observable
         _main.Toast(L.F("Looking for songs by {0}…", artist));
     }
 
+    // A mix of Home (MixViewModel): its songs in its order; one that goes on online (an artist's) is a list of suggestions,
+    // so songs like its last ones are found online as it gets near its end (RadioViewModel.Refresh).
+    public void PlayMix(IReadOnlyList<TrackViewModel> songs, string contextId, string name, bool online)
+    {
+        if (songs.Count == 0) return;
+        if (_room != null)
+        {
+            _room.AddAll(songs, name, false);
+            return;
+        }
+        if (_remote != null)
+        {
+            _remote.PlayList(songs.Select(t => t.T), 0, name, false);
+            return;
+        }
+        _queue.Play(songs.Select(t => t.Id).ToList(), 0, contextId, name, radio: online);
+        if (_queue.Current is { } id && TrackOf(id) is { } t) _ = Load(t, true);
+    }
+
+    // Internet radios (StationsViewModel): the list one was chosen in is the queue, next and previous go through it. Only on
+    // this device: not in a room, not while the phone drives the computer. False when it didn't start.
+    public bool PlayStations(IList<string> ids, int start, string name)
+    {
+        if (_room != null || _remote != null)
+        {
+            _main.Toast(L.T("Radios play only on this device: not in a room, nor while the phone drives the computer"));
+            return false;
+        }
+        _queue.Play(ids, start, "stations", name, fill: false);
+        if (_queue.Current is { } id && TrackOf(id) is { } t) _ = Load(t, true);
+        return true;
+    }
+
+    // The song on air of the radio playing (LiveMp3Source, from its thread): its artist line, the lock screen, Discord.
+    private void OnAir(Track t, string? title) => System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
+    {
+        if (Current?.T != t) return;
+        t.Artist = title ?? _main.Stations.SubtitleOf(t);
+        Current.Refresh();
+        _main.Host.OnTrackChanged();
+    });
+
     // The songs of a link heard without downloading them into the library (RadioViewModel.AddFromLink): each comes into
     // the cache just before its turn, like the suggested songs, and "Save" keeps one. A single song is followed by songs
     // like it (Settings), a playlist plays as a list of its own.
@@ -984,10 +1029,13 @@ public sealed class PlayerViewModel : Observable
             _main.Library.Changed(t);
             _main.Toast(L.F("The file of “{0}” is gone: you listen to it from its link, and you can save it again", t.Title));
         }
+        // An internet radio: live from its stream (no file, nothing to wait for).
+        var live = _main.Stations.StreamOf(t);
+        if (live != null) t.Artist = _main.Stations.SubtitleOf(t) ?? t.Artist;
         var path = t.AudioPath ?? _main.Radio.PathFor(t.Id);
         // Not here yet: heard from its site while it downloads (once its analysis is done), otherwise waited for.
-        var link = path == null && _main.Radio.Streams(t) ? _main.Radio.StreamOf(t.Id) : null;
-        if (path == null && link == null && _main.Radio.Streams(t))
+        var link = path == null && live == null && _main.Radio.Streams(t) ? _main.Radio.StreamOf(t.Id) : null;
+        if (path == null && link == null && live == null && _main.Radio.Streams(t))
         {
             Wait(t, play);
             return;
@@ -1007,13 +1055,23 @@ public sealed class PlayerViewModel : Observable
         if (wasWaiting) OnWaitChanged();
         SetCurrent(_main.Vm(t));
         _opened = false;
+        if (live != null && !play)
+        {
+            // (a radio isn't heard in advance: it connects when it plays, live)
+            _audio.Close();
+            IsPlaying = false;
+            _main.Host.OnTrackChanged();
+            return;
+        }
         try
         {
-            if (link != null) await _audio.OpenAsync(link, t.Duration, TrackGain(t));
+            if (live != null) await _audio.OpenLiveAsync(live, title => OnAir(t, title));
+            else if (link != null) await _audio.OpenAsync(link, t.Duration, TrackGain(t));
             else if (crossfade) await _audio.CrossfadeToAsync(path, t.Duration, TrackGain(t));
             else await _audio.OpenAsync(path, t.Duration, TrackGain(t));
             if (version != _loadVersion) return;
             _opened = true;
+            if (live != null) _ = _main.Stations.StartedAsync(t);
             Duration = _audio.Duration.TotalSeconds > 0 ? _audio.Duration.TotalSeconds : t.Duration;
             ApplyBend();
             if (resume > 1 && resume < Duration - 1)
@@ -1025,7 +1083,7 @@ public sealed class PlayerViewModel : Observable
             {
                 if (!_audio.IsPlaying) _audio.Play();
                 IsPlaying = _audio.IsPlaying;
-                if (!goesOn)
+                if (!goesOn && live == null)
                 {
                     AddHistory(t);
                     _main.OnPlayed();
@@ -1267,6 +1325,8 @@ public sealed class PlayerViewModel : Observable
         double dt = _listenClock.Elapsed.TotalSeconds;
         _listenClock.Restart();
         if (HeardId() is not { } id || dt > 5) return;
+        // (connected to a phone: the device the song is on counts it and sends it to its Last.fm, SharedLibrary.Counters)
+        var (here, there) = _main.Shared?.Counters(id) ?? (true, null);
         bool started = id != _listenId;
         if (started)
         {
@@ -1274,13 +1334,13 @@ public sealed class PlayerViewModel : Observable
             _listenId = id;
             _listenHeard = 0;
             _listenCounted = false;
+            if (here && Current is { } song) _main.Scrobbler.Started(id, song.T);
         }
         // The song goes by faster or slower than the clock.
         _listenHeard += dt * _audio.Speed;
+        if (here && Current is { } heard) _main.Scrobbler.Heard(id, heard.T, _listenHeard, Duration);
         bool play = !_listenCounted && Duration > 0 && _listenHeard >= Duration * PlayShare;
         if (play) _listenCounted = true;
-        // (connected to a phone: where the song is, SharedLibrary.Counters)
-        var (here, there) = _main.Shared?.Counters(id) ?? (true, null);
         if (there != null) _main.Shared!.Heard(there, dt, play, false);
         if (here) _main.Profile.AddListening(id, dt, play, save: false);
         _listenUnsaved += dt;
@@ -1338,7 +1398,13 @@ public sealed class PlayerViewModel : Observable
         }
         if (IsPlaying)
         {
-            _audio.Pause();
+            // (a radio paused stops listening: played again, it's live again)
+            if (IsLive)
+            {
+                _audio.Close();
+                _opened = false;
+            }
+            else _audio.Pause();
             IsPlaying = false;
             SaveState();
             return;
@@ -1452,6 +1518,16 @@ public sealed class PlayerViewModel : Observable
     {
         // In a room the host's clock decides when the next song starts (driving a computer, the computer does).
         if (_room != null || _remote != null) return;
+        // A radio has no end: its stream gone (off the air, a dead link) is said, and nothing plays in its place.
+        if (IsLive)
+        {
+            _audio.Close();
+            _opened = false;
+            IsPlaying = false;
+            _main.Toast(L.F("“{0}” isn't broadcasting right now: try again later, or choose another station.", Current!.Title));
+            _main.Host.OnTrackChanged();
+            return;
+        }
         if (Repeat == RepeatMode.One && Current != null)
         {
             CountListening();
@@ -1527,6 +1603,7 @@ public sealed class PlayerViewModel : Observable
 
     public void Seek(double seconds)
     {
+        if (IsLive) return;
         if (_room != null)
         {
             _room.Seek(seconds);
@@ -1803,7 +1880,9 @@ public sealed class PlayerViewModel : Observable
 
     // Tooltips of the transport: in a room without permission they say why the button is greyed out.
     public string PlayTip => _room != null && !_room.CanPause ? L.T("Only people with permission can pause (the host decides)") : L.T("Play / Pause (Space)");
-    public string NextTip => _room != null && !_room.CanSkip ? L.T("Only people with permission can skip songs (the host decides)") : L.T("Next");
+    public string NextTip => _room == null || _room.CanSkip ? L.T("Next")
+        : _room.CanVote ? (_room.MyVote ? L.T("Take back your vote to skip") : L.T("Vote to skip")) + " · " + _room.VoteText
+        : L.T("Only people with permission can skip songs (the host decides)");
     public string? SeekTip => _room != null && !_room.CanPause ? L.T("Only people with permission can skip forward or back (the host decides)") : null;
     public string PreviousTip => _room == null ? L.T("Previous")
         : _room.CanPause ? L.T("From the start") : L.T("Only people with permission can skip forward or back (the host decides)");

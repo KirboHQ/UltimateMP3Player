@@ -60,6 +60,16 @@ public sealed class TrayIcon : IDisposable
         _icon.ShowBalloonTip(4000, "Ultimate MP3 Player", L.T("Music keeps playing in the background. Click the icon to reopen the player."), ToolTipIcon.None);
     }
 
+    // A toast of the system (a followed artist's new release); a click on it runs clicked.
+    private Action? _clicked;
+
+    public void Notify(string title, string text, Action? clicked)
+    {
+        if (_clicked == null) _icon.BalloonTipClicked += (_, _) => _clicked?.Invoke();
+        _clicked = clicked ?? (() => { });
+        _icon.ShowBalloonTip(6000, title, text, ToolTipIcon.None);
+    }
+
     public void Dispose()
     {
         _icon.Visible = false;
