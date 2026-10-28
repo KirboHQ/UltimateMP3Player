@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Offscreen check of the Windows app (WPF), the twin of UltimateMP3Player.Headless: its real window, placed off the
+       screens and never activated, its pages drawn into pictures, a throwaway data folder. Not part of any release. The
+       command is in CLAUDE.md; it prints "wpf: ok" or what failed, and leaves screenshots in <folder>/shots. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UltimateMP3Player\UltimateMP3Player.csproj" />
+  </ItemGroup>
+
+</Project>

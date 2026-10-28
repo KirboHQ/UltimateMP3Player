@@ -6,6 +6,7 @@
 //   mp3cli shuffle <n> <rounds>
 //   mp3cli saver
 //   mp3cli albums [artist]
+//   mp3cli artist <name> [song titles…]
 using System.Diagnostics;
 using UltimateMP3Player.Core;
 
@@ -113,6 +114,23 @@ switch (args[0])
                       MusicMatcher.Score("Racing Into The Night", "YOASOBI", 262, "夜に駆ける", 0, Info("Someone Else", 262)).Total <= 0.3;
             Console.WriteLine("match: " + (ok ? "ok" : "SBAGLIATO"));
             return ok ? 0 : 1;
+        }
+
+    case "artist":
+        {
+            // Online: who a name is, proved by some of its songs' titles (mp3cli artist Envy "HOLD ONTO ME" "SELF AWARE"): every
+            // artist it may be, the likeliest first, and the first one's popular songs.
+            var name = args[1];
+            var songs = args.Skip(2).Select(t => new Track { Id = Ids.New(), Title = t, Artist = name }).ToList();
+            var found = await ArtistSites.CandidatesAsync(name, songs, CancellationToken.None);
+            foreach (var s in found) Console.WriteLine($"{s.Service} | {s.Id} | {s.Name} | fans {s.Fans} | songs {s.Songs} | {s.Url} | {s.Picture}");
+            if (found.FirstOrDefault() is { } best)
+            {
+                foreach (var h in await ArtistSites.TopAsync(best, 5, 0, CancellationToken.None)) Console.WriteLine($"  top: {h.Title} · {h.Artist}");
+                foreach (var rel in await ArtistSites.ReleasesAsync(best, best.Name, 5, CancellationToken.None)) Console.WriteLine($"  release: {rel.Date:d} {rel.Kind} {rel.Title}");
+                foreach (var a in (await ArtistSites.AlbumsAsync(best, CancellationToken.None)).Take(5)) Console.WriteLine($"  album: {a.Title} ({a.Year})");
+            }
+            return found.Count > 0 ? 0 : 1;
         }
 
     case "albums":

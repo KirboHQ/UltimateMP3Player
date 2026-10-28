@@ -522,6 +522,13 @@ public partial class NowPlayingView : UserControl
         e.Handled = true;
     }
 
+    // The artist's name: its page (which one, for a song of several).
+    private void Artist_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (_vm != null && Menus.ArtistsOfCurrent(_vm.Player) is { } menu) Menus.Open(menu, (UIElement)sender, false);
+        e.Handled = true;
+    }
+
     private void More_Click(object sender, RoutedEventArgs e)
     {
         if (_vm?.Player.Current is { } t) Menus.Open(Menus.ForTrack(t, null), (UIElement)sender, true);

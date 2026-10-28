@@ -431,6 +431,44 @@
         </Style>
     </ControlTheme>
 
+    <!-- A sidebar entry as an icon only (the row at the bottom: Listen together, DJ, Settings), lit like NavButton when open; its
+         content is a badge in the corner. -->
+    <ControlTheme x:Key="NavIconButton" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="36"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="Margin" Value="2,0,0,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusAdorner" Value="{x:Null}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bd" CornerRadius="10" Background="Transparent">
+                    <Panel>
+                        <TextBlock Name="Ico" Text="{Binding $parent[RadioButton].(local:Ui.Glyph), Converter={StaticResource Icon}}" FontFamily="{StaticResource IconFont}"
+                                   FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,5,0"/>
+                    </Panel>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#Bd">
+            <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+        </Style>
+        <Style Selector="^:checked">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ Border#Bd">
+            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ TextBlock#Ico">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+    </ControlTheme>
+
     <!-- Tabs as a segmented pill (DJ Console / Tap BPM, search: your songs / online), the open one tinted. -->
     <ControlTheme x:Key="Segment" TargetType="RadioButton">
         <Setter Property="local:Ui.GrayText" Value="True"/>

@@ -16,6 +16,7 @@ public sealed class ScrobblingViewModel : Observable
         _main = main;
         LastFmCommand = new RelayCommand(() => _ = LastFmOn ? Disconnect(Scrobbler.LastFmName) : ConnectLastFmAsync());
         ListenBrainzCommand = new RelayCommand(() => _ = ListenBrainzOn ? Disconnect(Scrobbler.ListenBrainzName) : ConnectListenBrainzAsync());
+        ImportLastFmCommand = new RelayCommand(() => _ = LastFmImport.RunAsync(main));
         main.Scrobbler.Changed += () => Application.Current.Dispatcher.BeginInvoke(Refresh);
         main.Scrobbler.Refused += service => Application.Current.Dispatcher.BeginInvoke(() => OnRefused(service));
     }
@@ -25,6 +26,7 @@ public sealed class ScrobblingViewModel : Observable
 
     public ICommand LastFmCommand { get; }
     public ICommand ListenBrainzCommand { get; }
+    public ICommand ImportLastFmCommand { get; }
 
     public bool LastFmOn => _main.Scrobbler.LastFmOn;
     public string LastFmText => LastFmOn ? L.F("Connected as {0}", P.LastFmUser) : L.T("Not connected");
@@ -74,6 +76,7 @@ public sealed class ScrobblingViewModel : Observable
             var (name, session) = await Task.Run(() => LastFm.SessionAsync(key, secret, token, CancellationToken.None));
             P.LastFmUser = name;
             P.LastFmSession = session;
+            P.LastFmSince ??= DateTime.Now;
             _main.Profile.Save();
             _told.Remove(Scrobbler.LastFmName);
             _main.Toast(L.F("Last.fm: connected as {0}, your plays go there from now on", name));

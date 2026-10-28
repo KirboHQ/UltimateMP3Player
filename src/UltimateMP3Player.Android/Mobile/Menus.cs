@@ -78,6 +78,7 @@ public static class Menus
             ("track", TrackRow r) => ForTrack(r.Track, r.Owner),
             ("card", TrackViewModel t) => ForTrack(t, null),
             ("hit", OnlineHitViewModel h) => ForHit(h),
+            ("artist", ArtistCardViewModel a) => ForArtistCard(a),
             // A finished download: the song's menu (play similar songs, playlists…), as anywhere else.
             ("download", DownloadJobViewModel { Song: { } song }) => ForTrack(song, null),
             ("download", DownloadJobViewModel job) => ForJob(job),
@@ -128,7 +129,7 @@ public static class Menus
             menu.Add(new(L.T("Play next"), GNext, () => player.PlayNext(t)));
             menu.Add(new(L.T("Add to queue"), GQueue, () => player.Enqueue(t)));
             menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
-            menu.Add(new(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
+            AddGoToArtist(menu, t.Main, t.T.Artist);
             menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         }
         menu.Line();
@@ -277,7 +278,7 @@ public static class Menus
             menu.Add(new(L.T("Play next"), GNext, () => { if (h.Song() is { } t) main.Player.PlayNext(t); }));
             menu.Add(new(L.T("Add to queue"), GQueue, () => h.QueueAction?.Invoke()));
             menu.Add(new(L.T("Play similar songs"), GRadio, () => { if (h.Song() is { } t) main.Player.PlayRadio(t); }));
-            menu.Add(new(L.T("Go to the artist"), "\uE77B", () => main.OpenArtist(ArtistNames.First(h.Hit.Artist) ?? "", null), !string.IsNullOrWhiteSpace(h.Hit.Artist)));
+            AddGoToArtist(menu, main, h.Hit.Artist);
             menu.Add(new(L.T("Play the artist's songs"), "", () => { if (h.Song() is { } t) main.Player.PlayArtist(t); },
                 !string.IsNullOrWhiteSpace(h.Hit.Artist)));
         }
@@ -319,7 +320,7 @@ public static class Menus
         menu.Add(FavoriteItem(t));
         menu.Add(new SheetEntry { Text = L.T("Lyrics"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
         menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
-        menu.Add(new(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
+        AddGoToArtist(menu, t.Main, t.T.Artist);
         menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Add(new(L.T("Copy original link"), GLink, () => { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copied")); }));
         if (row == null && player.Current != t)
@@ -345,7 +346,7 @@ public static class Menus
         menu.Add(new(L.T("Move to bottom"), GDown, () => player.MoveUpcoming(row.Index, last), row.Index < last));
         menu.Add(new(L.T("Remove from Up next"), GRemove, () => player.RemoveUpcoming(row.Index)));
         menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
-        menu.Add(new(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
+        AddGoToArtist(menu, t.Main, t.T.Artist);
         menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Line();
         AddSave(menu, new[] { t });
@@ -732,10 +733,44 @@ public static class Menus
         return menu;
     }
 
-    // An artist's page: its name on your songs, its picture.
+    // "Go to the artist": its page; a song of several artists ("A feat. B") gets one for each.
+    private static void AddGoToArtist(SheetMenu menu, MainViewModel main, string? artist)
+    {
+        var names = ArtistNames.Of(artist).Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
+        if (names.Count <= 1) menu.Add(new(L.T("Go to the artist"), "\uE77B", () => main.OpenArtist(names.FirstOrDefault() ?? "", null), names.Count == 1));
+        else foreach (var n in names) menu.Add(new(L.F("Go to {0}", n), "\uE77B", () => main.OpenArtist(n, null)));
+    }
+
+    // A tap on the artist's name (the player): its page, or which one when the song has several.
+    public static void OpenArtistsOf(MainViewModel main, string? artist)
+    {
+        var names = ArtistNames.Of(artist).Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
+        if (names.Count <= 1)
+        {
+            if (names.Count == 1) main.OpenArtist(names[0], null);
+            return;
+        }
+        var menu = new SheetMenu { Title = L.T("Go to the artist") };
+        foreach (var n in names) menu.Add(new(n, "\uE77B", () => main.OpenArtist(n, null)));
+        Open(menu);
+    }
+
+    // An artist of a list (Artists, the search): its page, following it, who it is.
+    public static SheetMenu ForArtistCard(ArtistCardViewModel a)
+    {
+        var menu = new SheetMenu { Title = a.Name, Subtitle = a.Subtitle };
+        menu.Add(new(L.T("Open"), "\uE77B", () => a.OpenCommand.Execute(null)));
+        menu.Add(new(a.FollowTip, a.FollowGlyph, () => a.FollowCommand.Execute(null)));
+        menu.Add(new(L.T("Choose the artist…"), "\uE748", () => a.ChooseCommand.Execute(null)));
+        return menu;
+    }
+
+    // An artist's page: who it is, its name on your songs, its picture.
     public static SheetMenu ForArtist(ArtistPageViewModel a)
     {
         var menu = new SheetMenu { Title = a.Name, Subtitle = a.Subtitle };
+        menu.Add(new(L.T("Choose the artist…"), "\uE748", () => a.ChooseCommand.Execute(null)));
+        if (a.Site?.Url != null) menu.Add(new(L.F("Open on {0}", a.Site.Service), "\uE774", () => a.SiteCommand.Execute(null)));
         menu.Add(new(L.T("Rename…"), GRename, () => a.RenameCommand.Execute(null)));
         menu.Add(new(L.T("Change image…"), GPicture, () => a.PictureCommand.Execute(null)));
         if (a.HasMyPicture) menu.Add(new(L.T("Remove image"), GRemove, () => a.RemovePictureCommand.Execute(null)));

@@ -9,7 +9,7 @@ using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
 
-// The search box drives the search view model itself (the computer apps' box is in the window's top bar: emptying it
+// The search box drives the search view model itself (the computer apps' box is in the sidebar: emptying it
 // there goes back to the page before, here the box is the page). The download page is shown here too (its part under the
 // box): MainView shows this page for it.
 public partial class SearchPage : UserControl, IPage
@@ -24,7 +24,7 @@ public partial class SearchPage : UserControl, IPage
     public SearchPage()
     {
         InitializeComponent();
-        Selection.SetOwner(LocalList, Picks);
+        Selection.SetOwner(List, Picks);
         DataContextChanged += (_, _) => Attach();
         AttachedToVisualTree += (_, _) => Watch(App.Host.Session);
         DetachedFromVisualTree += (_, _) => Watch(null);
@@ -82,9 +82,9 @@ public partial class SearchPage : UserControl, IPage
 
     private void OnVm(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(SearchViewModel.Rows) or nameof(SearchViewModel.PlaylistResults) or nameof(SearchViewModel.OnlineMode)
-            or nameof(SearchViewModel.LocalMode) or nameof(SearchViewModel.OnlineEnabled))
-            Update();
+        if (e.PropertyName is nameof(SearchViewModel.Items) or nameof(SearchViewModel.OnlineEnabled)) Update();
+        // (another chip: its results from the top)
+        if (e.PropertyName == nameof(SearchViewModel.Filter) && List.ItemCount > 0) List.ScrollIntoView(0);
     }
 
     private static bool IsLink(string s)
@@ -123,20 +123,16 @@ public partial class SearchPage : UserControl, IPage
         bool query = HasQuery;
         DownloadsPart.IsVisible = !query;
         if (query) DownloadsPart.Picks.Stop();
-        Tabs.IsVisible = query;
-        LocalList.IsVisible = query && _vm.LocalMode;
-        OnlinePane.IsVisible = query && _vm.OnlineMode;
-        if (!LocalList.IsVisible)
+        Chips.IsVisible = query;
+        List.IsVisible = query;
+        if (!query)
         {
             Picks.Stop();
             return;
         }
-        var items = new List<object>();
-        items.AddRange(_vm.PlaylistResults);
-        items.AddRange(_vm.Rows);
-        Picks.SetItems(items, _vm);
-        if (items.Count == 0) items.Add(new ListNote(L.T("No results"), _vm.LocalEmptyHint));
-        LocalList.ItemsSource = items;
+        // (only your songs and playlists can be chosen: Picks keeps those)
+        Picks.SetItems(_vm.Items, _vm);
+        List.ItemsSource = _vm.Items;
     }
 
     private void Clear_Click(object? sender, RoutedEventArgs e)
@@ -192,6 +188,6 @@ public partial class SearchPage : UserControl, IPage
     public void ScrollToTop()
     {
         if (DownloadsPart.IsVisible) DownloadsPart.ScrollToTop();
-        else if (LocalList.ItemCount > 0) LocalList.ScrollIntoView(0);
+        else if (List.ItemCount > 0) List.ScrollIntoView(0);
     }
 }

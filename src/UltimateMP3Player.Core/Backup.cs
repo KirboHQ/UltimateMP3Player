@@ -53,7 +53,7 @@ public static class Backup
     public const string Prefix = "UltimateMP3Player-backup-", Extension = ".zip", InfoName = "backup.json";
     // What goes in: these files and these folders of the data folder (the cache, the engines, the logins to the sites and the
     // log stay out: things to download again, or not to carry around).
-    private static readonly string[] Files_ = { "library.json", "settings.json", "profiles.json" };
+    private static readonly string[] Files_ = { "library.json", "settings.json", "profiles.json", "artists.json" };
     private static readonly string[] Folders = { "profiles", "covers", "lyrics" };
 
     // "UltimateMP3Player-backup-2026-10-28-153000.zip"; the safety copy taken before a restore ends in "-before-restore".

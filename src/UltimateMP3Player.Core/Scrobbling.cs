@@ -89,6 +89,51 @@ public static class LastFm
         return CallAsync(key, secret, p, true, ct);
     }
 
+    // The user's loved songs (title, artist), the latest first. Read-only: no session needed.
+    public static async Task<List<(string Title, string Artist)>> LovedAsync(string key, string secret, string user, CancellationToken ct)
+    {
+        var list = new List<(string, string)>();
+        for (int page = 1, pages = 1; page <= pages && page <= 100; page++)
+        {
+            var j = (await CallAsync(key, secret, new() { ["method"] = "user.getLovedTracks", ["user"] = user, ["limit"] = "1000", ["page"] = page.ToString() }, false, ct))["lovedtracks"];
+            pages = TotalPages(j);
+            foreach (var t in Items(j?["track"]))
+                if (Str(t["name"]) is { Length: > 0 } title && Str(t["artist"]?["name"]) is { Length: > 0 } artist) list.Add((title, artist));
+        }
+        return list;
+    }
+
+    // The user's scrobbles until to (when, title, artist, album), the oldest first: 200 a page, progress(page, pages).
+    public static async Task<List<(DateTime At, string Title, string Artist, string? Album)>> ScrobblesAsync(string key, string secret, string user, DateTime to,
+        Action<int, int> progress, CancellationToken ct)
+    {
+        var list = new List<(DateTime, string, string, string?)>();
+        var until = new DateTimeOffset(to).ToUnixTimeSeconds().ToString();
+        for (int page = 1, pages = 1; page <= pages; page++)
+        {
+            var j = (await CallAsync(key, secret, new() { ["method"] = "user.getRecentTracks", ["user"] = user, ["limit"] = "200", ["page"] = page.ToString(), ["to"] = until },
+                false, ct))["recenttracks"];
+            pages = TotalPages(j);
+            progress(page, pages);
+            foreach (var t in Items(j?["track"]))
+            {
+                // (the song playing now has no date)
+                if (!long.TryParse(Str(t["date"]?["uts"]), out var uts) || Str(t["name"]) is not { Length: > 0 } title
+                    || Str(t["artist"]?["#text"]) is not { Length: > 0 } artist) continue;
+                list.Add((DateTimeOffset.FromUnixTimeSeconds(uts).LocalDateTime, title, artist, Str(t["album"]?["#text"]) is { Length: > 0 } album ? album : null));
+            }
+        }
+        list.Reverse();
+        return list;
+    }
+
+    private static int TotalPages(JsonNode? j) => int.TryParse(Str(j?["@attr"]?["totalPages"]), out var n) ? n : 1;
+
+    // (a single result comes as an object, not in an array)
+    private static IEnumerable<JsonNode> Items(JsonNode? n) => n is JsonArray a ? a.OfType<JsonNode>() : n is JsonObject o ? new[] { o } : Enumerable.Empty<JsonNode>();
+
+    private static string? Str(JsonNode? n) => n is JsonValue v && v.TryGetValue<string>(out var s) ? s.Trim() : null;
+
     // At most 50 at a time.
     public static Task ScrobbleAsync(string key, string secret, string session, IReadOnlyList<Scrobble> batch, CancellationToken ct)
     {

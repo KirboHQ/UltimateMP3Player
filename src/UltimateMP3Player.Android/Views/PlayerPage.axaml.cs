@@ -24,6 +24,11 @@ public partial class PlayerPage : UserControl
     public PlayerPage()
     {
         InitializeComponent();
+        // A tap on the artist's name: its page (which one, for a song of several); not a radio's (that line is the song on air).
+        ArtistText.Tapped += (_, _) =>
+        {
+            if (_vm?.Player is { Current: { } t, IsLive: false }) Menus.OpenArtistsOf(t.Main, t.T.Artist);
+        };
         Tilt.RenderTransform = _tilt;
         Root.RenderTransform = _slide;
         CoverBox.RenderTransform = _swipe;

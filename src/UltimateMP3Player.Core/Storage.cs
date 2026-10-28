@@ -317,6 +317,8 @@ public sealed class AppSettings
     // platform's default folder; a path, or on the phones a bookmark of a folder chosen through the system), when the last one.
     // A system notification when an artist followed has a new release.
     public bool ReleaseNotifications { get; set; } = true;
+    // The computers' sidebar: its tags folded under their heading.
+    public bool TagsFolded { get; set; }
     public int BackupEvery { get; set; } = 7;
     public int BackupKeep { get; set; } = 5;
     public string? BackupFolder { get; set; }

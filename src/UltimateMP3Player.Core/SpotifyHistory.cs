@@ -18,6 +18,7 @@ public sealed class ImportedRange
 // Spotify's listening history (spotify.com › Account › Privacy › Download your data): the extended one
 // (Streaming_History_Audio_*.json, every play since the account began, "ts" and "ms_played") or the year's
 // (StreamingHistory_music_*.json, "endTime" and "msPlayed"), as its JSON files or the zip Spotify sends. Songs only.
+// The "Account data" zip also has the library: the liked songs (YourLibrary.json) and the playlists (Playlist1.json…).
 public static class SpotifyHistory
 {
     public const string Source = "spotify";
@@ -39,25 +40,80 @@ public static class SpotifyHistory
     public static List<Play> Read(IEnumerable<string> paths)
     {
         var plays = new List<Play>();
+        Each(paths, IsHistory, s => plays.AddRange(Parse(s)));
+        return plays.OrderBy(p => p.At).ToList();
+    }
+
+    // Each file wanted of a zip, or each file chosen by itself (read whatever its name).
+    private static void Each(IEnumerable<string> paths, Func<string, bool> wanted, Action<Stream> read)
+    {
         foreach (var path in paths)
         {
             if (path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
                 using var zip = ZipFile.OpenRead(path);
-                foreach (var e in zip.Entries.Where(e => IsHistory(e.FullName)))
+                foreach (var e in zip.Entries.Where(e => wanted(e.FullName)))
                 {
                     using var s = e.Open();
-                    plays.AddRange(Parse(s));
+                    read(s);
                 }
             }
             else
             {
                 using var s = File.OpenRead(path);
-                plays.AddRange(Parse(s));
+                read(s);
             }
         }
-        return plays.OrderBy(p => p.At).ToList();
     }
+
+    // A song of the library: title, artist, album and its Spotify id (none for a file of the device in a playlist).
+    public sealed record Song(string Title, string Artist, string? Album, string? SpotifyId);
+    public sealed record SavedPlaylist(string Name, List<Song> Songs);
+
+    private static bool IsLibrary(string name)
+    {
+        name = Path.GetFileName(name);
+        return name.Equals("YourLibrary.json", StringComparison.OrdinalIgnoreCase)
+               || name.StartsWith("Playlist", StringComparison.OrdinalIgnoreCase) && name.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // The liked songs ("tracks" of YourLibrary.json: track, artist, album, uri) and the playlists ("playlists" of
+    // Playlist*.json: name, items › track: trackName, artistName, albumName, trackUri; episodes and the device's files skipped).
+    public static (List<Song> Liked, List<SavedPlaylist> Playlists) ReadLibrary(IEnumerable<string> paths)
+    {
+        var liked = new List<Song>();
+        var playlists = new List<SavedPlaylist>();
+        Each(paths, IsLibrary, s =>
+        {
+            JsonDocument doc;
+            try { doc = JsonDocument.Parse(s); }
+            catch (JsonException) { return; }
+            using (doc)
+            {
+                var root = doc.RootElement;
+                foreach (var t in Objects(root, "tracks"))
+                    if (SongOf(t.Str("track"), t.Str("artist"), t.Str("album"), t.Str("uri")) is { } song) liked.Add(song);
+                foreach (var p in Objects(root, "playlists"))
+                {
+                    var songs = new List<Song>();
+                    foreach (var item in Objects(p, "items"))
+                        if (item.TryGetProperty("track", out var t) && t.ValueKind == JsonValueKind.Object
+                            && SongOf(t.Str("trackName"), t.Str("artistName"), t.Str("albumName"), t.Str("trackUri")) is { } song) songs.Add(song);
+                    if (songs.Count > 0) playlists.Add(new SavedPlaylist(p.Str("name") is { Length: > 0 } name ? name.Trim() : "Spotify", songs));
+                }
+            }
+        });
+        return (liked, playlists);
+    }
+
+    private static IEnumerable<JsonElement> Objects(JsonElement e, string name)
+        => e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var a) && a.ValueKind == JsonValueKind.Array
+            ? a.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.Object).ToList() : Enumerable.Empty<JsonElement>();
+
+    private static Song? SongOf(string? title, string? artist, string? album, string? uri)
+        => string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(artist) ? null
+            : new Song(title.Trim(), artist.Trim(), string.IsNullOrWhiteSpace(album) ? null : album.Trim(),
+                uri != null && uri.StartsWith("spotify:track:", StringComparison.Ordinal) ? uri["spotify:track:".Length..] : null);
 
     public static List<Play> Parse(Stream json)
     {
@@ -133,8 +189,12 @@ public static class SpotifyHistory
 
     // Those songs as a list for ListImport (a table: title, artist, Spotify link).
     public static string AsList(IEnumerable<(string Title, string Artist, string? Url, int Plays)> songs)
-    {
-        static string Cell(string? s) => (s ?? "").Replace('\t', ' ').Replace('\n', ' ').Replace('\r', ' ');
-        return "Track Name\tArtist Name(s)\tTrack URI\n" + string.Join("\n", songs.Select(s => $"{Cell(s.Title)}\t{Cell(s.Artist)}\t{Cell(s.Url)}"));
-    }
+        => "Track Name\tArtist Name(s)\tTrack URI\n" + string.Join("\n", songs.Select(s => $"{Cell(s.Title)}\t{Cell(s.Artist)}\t{Cell(s.Url)}"));
+
+    // Liked songs or a playlist the same way, with the album (with its Spotify id a song is known at once: nothing to look for).
+    public static string AsList(IEnumerable<Song> songs)
+        => "Track Name\tArtist Name(s)\tAlbum Name\tTrack URI\n" + string.Join("\n", songs.Select(s =>
+            $"{Cell(s.Title)}\t{Cell(s.Artist)}\t{Cell(s.Album)}\t{Cell(s.SpotifyId == null ? null : "spotify:track:" + s.SpotifyId)}"));
+
+    private static string Cell(string? s) => (s ?? "").Replace('\t', ' ').Replace('\n', ' ').Replace('\r', ' ');
 }

@@ -52,9 +52,6 @@ public partial class MainWindow : Window
         AddHandler(PointerWheelChangedEvent, Rows.OnWheel, RoutingStrategies.Tunnel);
         Opened += (_, _) => _host.OnTrackChanged();
 
-        SearchBox.GotFocus += (_, _) => SearchFocus();
-        SearchBox.LostFocus += (_, _) => SearchFocus();
-        SearchBox.AddHandler(KeyDownEvent, Search_KeyDown, RoutingStrategies.Tunnel);
         VolumeSlider.AddHandler(PointerWheelChangedEvent, Volume_Wheel, RoutingStrategies.Tunnel);
         SpeedButton.AddHandler(PointerWheelChangedEvent, Speed_Wheel, RoutingStrategies.Tunnel);
         SpeedSlider.AddHandler(PointerWheelChangedEvent, Speed_Wheel, RoutingStrategies.Tunnel);
@@ -154,8 +151,8 @@ public partial class MainWindow : Window
                 break;
             case Key.F when ctrl:
             case Key.L when ctrl:
-                SearchBox.Focus();
-                SearchBox.SelectAll();
+                vm.OpenSearch();
+                SearchView.FocusShown();
                 e.Handled = true;
                 break;
             case Key.V when ctrl && !inText:
@@ -183,40 +180,6 @@ public partial class MainWindow : Window
         }
         p.Speed += e.Text == ">" ? 0.25 : -0.25;
         vm.Toast(L.F("Speed: {0}", p.SpeedText));
-    }
-
-    private void Search_KeyDown(object? sender, KeyEventArgs e)
-    {
-        if (Vm == null) return;
-        if (e.Key == Key.Enter)
-        {
-            Vm.SubmitSearchCommand.Execute(null);
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Escape)
-        {
-            Vm.SearchText = "";
-            FocusManager?.ClearFocus();
-            e.Handled = true;
-        }
-        // A list of songs (several links, an exported playlist) opens as one card: the box would keep only its first line.
-        else if (e.Key == Key.V && (e.KeyModifiers & Command) != 0)
-        {
-            e.Handled = true;
-            _ = PasteIntoSearch();
-        }
-    }
-
-    private async Task PasteIntoSearch()
-    {
-        var text = await Ui.ClipboardTextAsync();
-        if (Vm?.PasteList(text) != true) SearchBox.Paste();
-    }
-
-    private void SearchFocus()
-    {
-        // (styles in MainWindow.axaml: they follow the light and dark look)
-        SearchPill.Classes.Set("focused", SearchBox.IsFocused);
     }
 
     private void Volume_Wheel(object? sender, PointerWheelEventArgs e)
@@ -344,5 +307,13 @@ public partial class MainWindow : Window
             Vm.StartDownload(link);
             e.Handled = true;
         }
+    }
+
+    // The artist's name in the player bar: its page (which one, for a song of several).
+    private void Artist_Click(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton != MouseButton.Left || sender is not Control { DataContext: PlayerViewModel p } c) return;
+        if (Menus.ArtistsOfCurrent(p) is { } menu) Menus.Open(menu, c, false);
+        e.Handled = true;
     }
 }

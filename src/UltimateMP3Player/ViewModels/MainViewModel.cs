@@ -561,9 +561,28 @@ public sealed class MainViewModel : Observable
     public bool IsTogether { get => Section == "together"; set { if (value) Navigate(Together); } }
     public bool IsArtists { get => Section == "artists"; set { if (value) OpenArtists(); } }
     public bool IsRadio { get => Section == "radio"; set { if (value) OpenStations(); } }
+    public bool IsSearch { get => Section == "search"; set { if (value) OpenSearch(); } }
     // On the DJ page the decks are the player.
     public bool ShowPlayerBar => Page is not DjViewModel;
     public bool IsSettings { get => Section == "settings"; set { if (value) GoSettings(); } }
+    // The computers' sidebar has one entry for the library: all the songs and the ones in no playlist are its two tabs.
+    public bool IsLibraryNav { get => Section is "library" or "unsorted"; set { if (value && !IsLibraryNav) Navigate(LibraryPage); } }
+
+    // The sidebar's tags shown or folded under their heading (kept in the settings).
+    public bool TagsOpen
+    {
+        get => !Host.Settings.TagsFolded;
+        set
+        {
+            if (Host.Settings.TagsFolded == !value) return;
+            Host.Settings.TagsFolded = !value;
+            Host.Settings.Save();
+            OnChanged(nameof(TagsOpen), nameof(TagsChevron));
+        }
+    }
+    public string TagsChevron => TagsOpen ? "" : "";
+    public ICommand ToggleTagsCommand => _toggleTags ??= new RelayCommand(() => TagsOpen = !TagsOpen);
+    private ICommand? _toggleTags;
     public bool IsNowPlaying => Section == "nowplaying";
 
     public void Navigate(object page)
@@ -588,7 +607,7 @@ public sealed class MainViewModel : Observable
     }
 
     private void OnNavChanged() => OnChanged(nameof(IsHome), nameof(IsLibrary), nameof(IsUnsorted), nameof(IsDownloads), nameof(IsDj), nameof(IsTogether), nameof(IsArtists),
-        nameof(IsRadio), nameof(IsSettings));
+        nameof(IsRadio), nameof(IsSettings), nameof(IsLibraryNav), nameof(IsSearch));
 
     // Where "back" goes (the phone shows it under the finger that swipes back).
     public object? BackPage => _back.FirstOrDefault(p => p is not PlaylistPageViewModel pp || IsShown(pp.Vm));
@@ -647,8 +666,7 @@ public sealed class MainViewModel : Observable
             if (IsLink) return;
             if (string.IsNullOrWhiteSpace(value))
             {
-                Search.Reset();
-                if (Page == Search) GoBack();
+                Search.Clear();
                 return;
             }
             _searchTimer.Start();
@@ -670,6 +688,14 @@ public sealed class MainViewModel : Observable
         if (string.IsNullOrWhiteSpace(SearchText) || IsLink) return;
         Search.Run(SearchText);
         if (Page != Search) Navigate(Search);
+    }
+
+    // The sidebar's Search (Ctrl+F): its page, with the last words and their results if there are any.
+    public void OpenSearch()
+    {
+        if (Page == Search) return;
+        if (!Search.HasQuery) Search.Clear();
+        Navigate(Search);
     }
 
     private void SubmitSearch()
@@ -1799,6 +1825,63 @@ public sealed class MainViewModel : Observable
         if (string.IsNullOrWhiteSpace(name)) return;
         if (Page is ArtistPageViewModel open && Text.Normalize(open.Name) == Text.Normalize(name)) return;
         Navigate(new ArtistPageViewModel(this, name.Trim(), deezerId));
+    }
+
+    // "Choose the artist…" (an artist's page or card): every artist the name may be on the music sites, the likeliest first; the
+    // one picked is kept for good (its picture, popular songs, releases).
+    public async Task ChooseArtist(string name)
+    {
+        Toast(L.F("Looking for “{0}” on the music sites…", name));
+        var songs = ArtistPictures.SongsOf(Library, name);
+        List<ArtistSite> found;
+        try { found = await Task.Run(() => ArtistSites.CandidatesAsync(name, songs, CancellationToken.None)); }
+        catch
+        {
+            Toast(L.T("Couldn't search: check your connection."));
+            return;
+        }
+        if (found.Count == 0)
+        {
+            Toast(L.T("No artist found with this name."));
+            return;
+        }
+        var current = ArtistSites.Get(name)?.Key;
+        // (the one shown now first, then the likeliest)
+        var choices = found.OrderByDescending(s => s.Key == current).Take(15).Select(s => new ArtistChoice(s, songs.Count, s.Key == current)).ToList();
+        if (await Dialogs.ChooseArtistAsync(name, choices) is not { } picked) return;
+        ArtistSites.Choose(name, picked.Site);
+        Profile.SetArtist(name, picked.Site.DeezerId, picked.Site.Picture);
+        Artists.Refresh();
+        if (Page is ArtistPageViewModel page && Text.Normalize(page.Name) == Text.Normalize(name)) page.Reload();
+        Toast(L.F("{0}: the one on {1}", name, picked.Site.Service));
+    }
+
+    // An album, an EP or a playlist heard without saving it (a release's play button, a found album's): its songs read from its
+    // link, then played like a link's songs; in a room, into the room's queue.
+    public async Task PlayLinkAsync(string url, string name)
+    {
+        if (InRoom && !Together.CanAdd) return;
+        Toast(L.F("Opening “{0}”…", name));
+        AnalysisResult r;
+        try { r = await Task.Run(() => Analyzer.AnalyzeAsync(new AnalyzeRequest(url, Host.Settings.CookiesBrowserOrNull, true), CancellationToken.None)); }
+        catch (Exception e)
+        {
+            Toast(e is EngineException ee ? ee.Message : L.T("Couldn't open the link: check your connection."));
+            return;
+        }
+        var items = r.Items.Where(i => i.Kind is MediaKind.Audio or MediaKind.Video).ToList();
+        if (items.Count == 0)
+        {
+            Toast(L.T("There's nothing to listen to in this link (images only)."));
+            return;
+        }
+        if (InRoom)
+        {
+            Together.AddFromLink(items);
+            Toast(L.Count(items.Count, "1 song goes into the room's queue", "{0} songs go into the room's queue"));
+            return;
+        }
+        Player.PlayStream(Radio.AddFromLink(items), string.IsNullOrWhiteSpace(r.Title) ? name : r.Title);
     }
 
     // The recap of a year (month 0) or of a month: Home in December, the statistics any time.

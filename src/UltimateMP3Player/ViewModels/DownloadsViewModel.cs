@@ -1328,35 +1328,41 @@ public sealed class LinkViewModel : Observable
         _main.Downloads.Queued(what + target + " ✓");
     }
 
-    // The songs into the library (and the playlists, with the tags) without downloading them: in the cloud, at once. One the
-    // library already has (saved or not) is that one; their covers come from the site in the background.
+    // A song of a link or a list into the library without downloading it: the one the library already has (saved or not), else
+    // a new one in the cloud, its cover from the site in the background. Null: a song of a list found nowhere by its name has no
+    // link to be heard from (only saving it searches for it).
+    internal static Track? ToCloud(MainViewModel main, MediaItem item, out bool added)
+    {
+        var lib = main.Library;
+        added = false;
+        var t = lib.FindByKeys(SourceKeys.ForItem(item)) ?? (item.Source == SourceKind.Search ? lib.FindSimilar(item.Title, item.Artist, item.Duration) : null);
+        if (t != null) return t;
+        if (string.IsNullOrEmpty(item.PageUrl ?? item.Url)) return null;
+        t = CloudSongs.FromItem(item);
+        lib.Add(t);
+        _ = main.FetchCover(t, CloudSongs.Pictures(item));
+        _ = main.SpellArtist(t, item.Info?.Artist, SongMeta.CleanChannel(item.Info?.Uploader));
+        added = true;
+        return t;
+    }
+
+    // The songs into the library (and the playlists, with the tags) without downloading them: in the cloud, at once.
     private void AddToCloud(List<LinkItemViewModel> selected, DownloadBatch batch, string target)
     {
-        var lib = _main.Library;
         int added = 0, noLink = 0;
         foreach (var it in selected)
         {
-            var item = it.Item;
-            var t = lib.FindByKeys(SourceKeys.ForItem(item)) ?? (item.Source == SourceKind.Search ? lib.FindSimilar(item.Title, item.Artist, item.Duration) : null);
-            // A song of a list found nowhere by its name has no link to be heard from: only saving it searches for it.
-            if (t == null && string.IsNullOrEmpty(item.PageUrl ?? item.Url))
+            if (ToCloud(_main, it.Item, out bool isNew) is not { } t)
             {
                 noLink++;
                 continue;
             }
-            if (t == null)
-            {
-                t = CloudSongs.FromItem(item);
-                lib.Add(t);
-                _ = _main.FetchCover(t, CloudSongs.Pictures(item));
-                _ = _main.SpellArtist(t, item.Info?.Artist, SongMeta.CleanChannel(item.Info?.Uploader));
-                added++;
-            }
+            if (isNew) added++;
             // (the quality chosen here is the one it's heard with, and saved with later)
             if (ChosenAudio is { } q && !t.IsSaved && t.AudioQuality != q)
             {
                 t.AudioQuality = q;
-                lib.Changed(t);
+                _main.Library.Changed(t);
             }
             batch.Place(it.Number - 1, t.Id);
             it.InLibrary = true;
@@ -1604,6 +1610,37 @@ public sealed class DownloadsPageViewModel : Observable
             return;
         }
         await ImportListAsync(text, Path.GetFileNameWithoutExtension(file));
+    }
+
+    // A list read in the background straight into a playlist, without a card (Spotify's liked songs and playlists): its songs
+    // into the library as a card's Add would (in the cloud, or downloaded with Settings › Download › "Save the audio"), into the
+    // playlist named so (made if missing: imported again, only what it lacks is added) or playlistId (Favorites).
+    public async Task ImportIntoPlaylistAsync(string text, string name, string? playlistId = null)
+    {
+        var cts = new CancellationTokenSource();
+        var group = Queue.AddReading(name, cts.Cancel);
+        try
+        {
+            var entries = ListImport.Parse(text);
+            if (entries.Count == 0) throw new EngineException(L.T("No songs found in this list."));
+            var ui = Application.Current.Dispatcher;
+            var cookies = _main.Host.Settings.CookiesBrowserOrNull;
+            var r = await Task.Run(() => ListImport.AnalyzeAsync(entries, name, cookies,
+                (done, total, wait) => ui.BeginInvoke(() => group.Read(done, total, wait != null)), cts.Token), cts.Token);
+            var profile = _main.Profile;
+            var id = playlistId ?? profile.Data.Playlists.FirstOrDefault(p => p.Name == name && !p.IsFavorites)?.Id ?? profile.CreatePlaylist(name).Id;
+            if (_main.Host.Settings.SaveAudio)
+                _main.Host.Downloads.Add(new DownloadBatch(profile, new[] { id }, r.Items.Count) { Title = name }, r.Items.Select((item, i) => (item, i)), false);
+            // (in the cloud: all at once into the playlist, in their order, with one refresh)
+            else if (profile.GetPlaylist(id) is { } playlist)
+                profile.AddTracks(playlist, r.Items.Select(item => LinkViewModel.ToCloud(_main, item, out _)?.Id).OfType<string>().ToList());
+            group.Ready(L.T("Loading complete") + " · " + L.Count(r.Items.Count, "1 song", "{0} songs"));
+        }
+        catch (OperationCanceledException) { Queue.RemoveGroup(group); }
+        catch (Exception ex)
+        {
+            group.Ready(L.T("The list couldn't be read") + (ex is EngineException ? ": " + ex.Message : ""));
+        }
     }
 
     // A list of songs (pasted, or from a file): one card with all of them, like a playlist's link. name: the file's.

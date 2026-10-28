@@ -36,11 +36,6 @@ public partial class MainWindow : Window
         };
         PreviewKeyDown += OnKeyDown;
         PreviewTextInput += OnTextInput;
-        // A list of songs (several links, an exported playlist) opens as one card: the box would keep only its first line.
-        DataObject.AddPastingHandler(SearchBox, (_, e) =>
-        {
-            if (e.DataObject.GetData(DataFormats.UnicodeText) is string text && Vm?.PasteList(text) == true) e.CancelCommand();
-        });
         PreviewMouseLeftButtonDown += (_, e) => SelectionBar.ClearOnOutsideClick(e.OriginalSource as DependencyObject);
         PreviewDragOver += OnDragOver;
         // Leaving one element for another is a leave followed by an over: only a real exit hides the pack overlay.
@@ -124,8 +119,8 @@ public partial class MainWindow : Window
                 break;
             case Key.F when ctrl:
             case Key.L when ctrl:
-                SearchBox.Focus();
-                SearchBox.SelectAll();
+                vm.OpenSearch();
+                SearchView.FocusShown();
                 e.Handled = true;
                 break;
             case Key.V when ctrl && !inText:
@@ -153,31 +148,6 @@ public partial class MainWindow : Window
         }
         p.Speed += e.Text == ">" ? 0.25 : -0.25;
         vm.Toast(L.F("Speed: {0}", p.SpeedText));
-    }
-
-    private void Search_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (Vm == null) return;
-        if (e.Key == Key.Enter)
-        {
-            Vm.SubmitSearchCommand.Execute(null);
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Escape)
-        {
-            Vm.SearchText = "";
-            Keyboard.ClearFocus();
-            e.Handled = true;
-        }
-    }
-
-    private void Search_Focus(object sender, KeyboardFocusChangedEventArgs e)
-    {
-        bool focused = SearchBox.IsKeyboardFocused;
-        // (references: they follow the light and dark look)
-        if (focused) SearchPill.SetResourceReference(Border.BorderBrushProperty, "AccentBrush");
-        else SearchPill.BorderBrush = Brushes.Transparent;
-        SearchIcon.SetResourceReference(TextBlock.ForegroundProperty, focused ? "TextBrush" : "SubTextBrush");
     }
 
     private void Volume_Wheel(object sender, MouseWheelEventArgs e)
@@ -363,5 +333,13 @@ public partial class MainWindow : Window
             Vm.StartDownload(link);
             e.Handled = true;
         }
+    }
+
+    // The artist's name in the player bar: its page (which one, for a song of several).
+    private void Artist_Click(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not PlayerViewModel p) return;
+        if (Menus.ArtistsOfCurrent(p) is { } menu) Menus.Open(menu, (UIElement)sender, false);
+        e.Handled = true;
     }
 }

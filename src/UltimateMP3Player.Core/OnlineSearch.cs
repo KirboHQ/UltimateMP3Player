@@ -19,6 +19,9 @@ public sealed class SearchHit
     public int Rank { get; init; }
     // Its id on its site when the link doesn't show it ("soundcloud:123").
     public string? SiteKey { get; init; }
+    // Its artist's id on its site (Deezer's artist, SoundCloud's uploader when it's the artist, YouTube Music's channel): who
+    // has a song of the library (ArtistSites).
+    public string? ArtistId { get; init; }
     // An album, an EP or a playlist instead of a song ("album", "ep", "playlist"): opened like its link, a card with its
     // songs to save into a playlist. Its year and how many songs, when the site says.
     public string? Collection { get; init; }
@@ -179,10 +182,12 @@ public static partial class OnlineSearchServices
             double? duration = groups.Select(g => ParseClock(Join(g))).LastOrDefault(d => d != null);
             var album = groups.Skip(1).FirstOrDefault(g => g.Any(r => PageType(r) == "MUSIC_PAGE_TYPE_ALBUM")) is { } ag ? Join(ag) : null;
             var artist = groups[0].Count > 0 && ParseClock(Join(groups[0])) == null ? Join(groups[0]) : null;
+            var artistId = groups[0].Where(r => PageType(r) == "MUSIC_PAGE_TYPE_ARTIST").Select(r => r.Prop("navigationEndpoint")?.Prop("browseEndpoint")?.Str("browseId"))
+                .FirstOrDefault(x => x != null);
             hits.Add(new SearchHit
             {
                 Service = YouTubeMusic, Title = title, Artist = artist, Album = album, Duration = duration, Thumb = MusicThumb(row), Rank = hits.Count,
-                Url = "https://music.youtube.com/watch?v=" + id,
+                Url = "https://music.youtube.com/watch?v=" + id, ArtistId = artistId,
             });
         }
         return hits;
@@ -279,12 +284,15 @@ public static partial class OnlineSearchServices
             // SNIP = only a 30-second preview without SoundCloud Go, BLOCK = not playable here.
             if (t.Str("policy") is "SNIP" or "BLOCK" || t.Str("permalink_url") is not { } url || t.Str("title") is not { Length: > 0 } title) continue;
             var art = t.Str("artwork_url") ?? t.Prop("user")?.Str("avatar_url");
+            var user = t.Prop("user");
+            var artist = t.Prop("publisher_metadata")?.Str("artist") is { Length: > 0 } a ? a : user?.Str("username");
+            // (the uploader is the artist only when it has the artist's name: not a label's or a fan's upload)
+            bool own = user is { } u && ArtistNames.Of(artist).Any(n => Text.Normalize(n) is var k && (k == Text.Normalize(u.Str("username")) || k == Text.Normalize(u.Str("full_name"))));
             hits.Add(new SearchHit
             {
-                Service = SoundCloud, Title = title,
-                Artist = t.Prop("publisher_metadata")?.Str("artist") is { Length: > 0 } a ? a : t.Prop("user")?.Str("username"),
+                Service = SoundCloud, Title = title, Artist = artist,
                 Duration = t.Num("duration") / 1000.0, Thumb = art?.Replace("-large.", "-t300x300."), Url = url, Rank = hits.Count,
-                SiteKey = t.Str("id") is { } id ? "soundcloud:" + id : null,
+                SiteKey = t.Str("id") is { } id ? "soundcloud:" + id : null, ArtistId = own ? user?.Str("id") : null,
             });
         }
         return hits;
@@ -311,7 +319,7 @@ public static partial class OnlineSearchServices
             hits.Add(new SearchHit
             {
                 Service = Deezer, Title = title, Artist = t.Prop("artist")?.Str("name"), Album = t.Prop("album")?.Str("title"), Duration = t.Num("duration"),
-                Thumb = t.Prop("album")?.Str("cover_medium"), Url = url, Rank = hits.Count,
+                Thumb = t.Prop("album")?.Str("cover_medium"), Url = url, Rank = hits.Count, ArtistId = t.Prop("artist")?.Str("id"),
             });
         }
         return hits;
@@ -518,7 +526,8 @@ public static partial class OnlineSearchServices
         var name = seed.Artist?.Split(',')[0].Trim();
         if (string.IsNullOrEmpty(name)) return new List<SearchHit>();
         var hits = new List<SearchHit>();
-        try { hits = await DeezerArtistTopAsync(name, limit, skip, ct); }
+        // (the artist the library's songs proved, or the one chosen by hand: Envy on SoundCloud, not Deezer's namesake)
+        try { hits = ArtistSites.Get(name) is { } site ? await ArtistSites.TopAsync(site, limit, skip, ct) : await DeezerArtistTopAsync(name, limit, skip, ct); }
         catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
         catch { }
         if (hits.Count == 0 && skip == 0)
@@ -587,7 +596,12 @@ public static partial class OnlineSearchServices
     private static async Task<(string, List<SearchHit>)?> DeezerArtistAlbumsAsync(string name, CancellationToken ct)
     {
         if (await FindArtistAsync(name, ct) is not { } artist) return null;
-        using var doc = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/artist/{artist.Id}/albums?limit=300", ct));
+        return (artist.Name, await DeezerAlbumsOfAsync(artist.Id, ct));
+    }
+
+    public static async Task<List<SearchHit>> DeezerAlbumsOfAsync(string id, CancellationToken ct)
+    {
+        using var doc = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/artist/{id}/albums?limit=300", ct));
         var hits = new List<SearchHit>();
         foreach (var a in doc.RootElement.Arr("data"))
             if (a.Str("record_type") is "album" or "ep" && a.Str("id") is { } aid && a.Str("title") is { Length: > 0 } title)
@@ -596,7 +610,7 @@ public static partial class OnlineSearchServices
                     Service = Deezer, Collection = a.Str("record_type"), Title = title, Year = a.Str("release_date") is { Length: >= 4 } d ? d[..4] : null,
                     Thumb = a.Str("cover_medium"), Url = a.Str("link") ?? "https://www.deezer.com/album/" + aid, Rank = hits.Count,
                 });
-        return (artist.Name, hits);
+        return hits;
     }
 
     // YouTube Music's: the artist's page (the first artist named exactly so, the best known), all of its albums (the
@@ -612,6 +626,11 @@ public static partial class OnlineSearchServices
             if (row.ValueKind != JsonValueKind.Object || row.Prop("navigationEndpoint")?.Prop("browseEndpoint")?.Str("browseId") is not { } page) return null;
             (id, found) = (page, RowName(row));
         }
+        return (found, await MusicAlbumsOfAsync(id, ct));
+    }
+
+    public static async Task<List<SearchHit>> MusicAlbumsOfAsync(string id, CancellationToken ct)
+    {
         using var artist = JsonDocument.Parse(await MusicBrowseAsync(id, null, ct));
         var hits = new List<SearchHit>();
         // (only the discography's shelves have albums: the albums, the singles and EPs)
@@ -634,7 +653,7 @@ public static partial class OnlineSearchServices
                 catch { } // (the shelf's own, the latest)
             hits.AddRange(shown);
         }
-        return (found, hits);
+        return hits;
     }
 
     private static Task<string> MusicBrowseAsync(string id, string? more, CancellationToken ct) => PostJsonAsync("https://music.youtube.com/youtubei/v1/browse?prettyPrint=false",
@@ -681,6 +700,11 @@ public static partial class OnlineSearchServices
             if (user.ValueKind != JsonValueKind.Object || user.Str("id") is not { } uid) return null;
             (id, found) = (uid, (Text.Normalize(user.Str("full_name")) == key ? user.Str("full_name") : user.Str("username")) ?? name);
         }
+        return (found, await SoundCloudAlbumsOfAsync(id, ct));
+    }
+
+    public static async Task<List<SearchHit>> SoundCloudAlbumsOfAsync(string id, CancellationToken ct)
+    {
         using var doc = JsonDocument.Parse(await SoundCloudGetAsync(c => $"https://api-v2.soundcloud.com/users/{id}/albums?client_id={c}&limit=50", ct));
         var hits = new List<SearchHit>();
         // (not a single with its remixes, filed as an album; not one with previews only of some songs, as labels' often are)
@@ -688,7 +712,7 @@ public static partial class OnlineSearchServices
             if (SoundCloudSet(p, hits.Count, owner: false) is { Collection: not "playlist" } h && !(h.Collection == "album" && h.Songs < 4)
                 && !p.Arr("tracks").Any(t => t.Str("policy") is "SNIP" or "BLOCK"))
                 hits.Add(h);
-        return (found, hits);
+        return hits;
     }
 
     // Spotify's (with the user's key): EPs are among its "singles", with four songs or more.

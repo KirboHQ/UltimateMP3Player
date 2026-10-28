@@ -1,33 +1,79 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
 
 public partial class SearchView : UserControl
 {
-    private Point? _dragStart;
+    // The page on screen, for Ctrl+F (a page that opens puts itself in its box).
+    private static SearchView? _shown;
 
-    public SearchView() => InitializeComponent();
-
-    private void Hit_MouseDown(object sender, MouseButtonEventArgs e) => _dragStart = e.GetPosition(null);
-
-    // A song found online pulled to the right goes into the queue, as the library's rows (RowSwipe). What the button shows
-    // takes the mouse: the button lets go of it and doesn't open the song when it's released.
-    private void Hit_MouseMove(object sender, MouseEventArgs e)
+    public SearchView()
     {
-        if (e.LeftButton != MouseButtonState.Pressed || _dragStart is not Point start) return;
-        var p = e.GetPosition(null);
-        if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
-        _dragStart = null;
-        if (p.X - start.X > 1.5 * Math.Abs(p.Y - start.Y) && sender is Button { Content: FrameworkElement row }) RowSwipe.StartDrag(row, p);
+        InitializeComponent();
+        // A list of songs (several links, an exported playlist) opens as one card: the box would keep only its first line.
+        DataObject.AddPastingHandler(SearchBox, (_, e) =>
+        {
+            if (e.DataObject.GetData(DataFormats.UnicodeText) is string text && Main?.PasteList(text) == true) e.CancelCommand();
+        });
+        // (the caret after the words, nothing selected: a key pressed by habit, Space, doesn't wipe them)
+        Loaded += (_, _) =>
+        {
+            _shown = this;
+            SearchBox.Focus();
+            SearchBox.CaretIndex = SearchBox.Text.Length;
+        };
+        Unloaded += (_, _) => { if (_shown == this) _shown = null; };
     }
 
-    private void Hit_RightClick(object sender, MouseButtonEventArgs e)
+    private MainViewModel? Main => (DataContext as SearchViewModel)?.Main;
+
+    public static void FocusShown()
     {
-        if (sender is not FrameworkElement { DataContext: OnlineHitViewModel h } fe || Menus.ForHit(h) is not { } menu) return;
-        Menus.Open(menu, fe, false);
+        if (_shown is not { } view) return;
+        view.SearchBox.Focus();
+        view.SearchBox.SelectAll();
+    }
+
+    private void Search_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (Main is not { } main) return;
+        if (e.Key == Key.Enter)
+        {
+            main.SubmitSearchCommand.Execute(null);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            main.SearchText = "";
+            e.Handled = true;
+        }
+    }
+
+    private void Search_Focus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        bool focused = SearchBox.IsKeyboardFocused;
+        // (references: they follow the light and dark look)
+        if (focused) SearchPill.SetResourceReference(Border.BorderBrushProperty, "AccentBrush");
+        else SearchPill.BorderBrush = Brushes.Transparent;
+        SearchIcon.SetResourceReference(TextBlock.ForegroundProperty, focused ? "TextBrush" : "SubTextBrush");
+    }
+
+    // Only your songs and playlists can be selected (the selection bar acts on them): headings, shelves and the sites' rows
+    // are let go at once.
+    private void List_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        foreach (var item in e.AddedItems)
+            if (item is not (TrackRow or PlaylistViewModel)) List.SelectedItems.Remove(item);
+    }
+
+    private void Artist_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as System.Windows.FrameworkElement)?.DataContext is not ArtistCardViewModel a) return;
+        Menus.Open(Menus.ForArtistCard(a), (System.Windows.UIElement)sender, false);
         e.Handled = true;
     }
 }

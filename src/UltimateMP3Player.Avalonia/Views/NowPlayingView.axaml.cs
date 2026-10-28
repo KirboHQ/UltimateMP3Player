@@ -448,6 +448,14 @@ public partial class NowPlayingView : UserControl
         e.Handled = true;
     }
 
+    // The artist's name: its page (which one, for a song of several).
+    private void Artist_Click(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton != MouseButton.Left || _vm == null || sender is not Control c) return;
+        if (Menus.ArtistsOfCurrent(_vm.Player) is { } menu) Menus.Open(menu, c, false);
+        e.Handled = true;
+    }
+
     // ------------------------------------------------------------------ reordering the queue
 
     private Point? _dragStart;

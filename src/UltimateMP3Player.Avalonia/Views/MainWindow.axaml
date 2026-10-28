@@ -94,19 +94,6 @@
         <Style Selector="Border.side.from TextBlock.name">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         </Style>
-        <!-- the search pill while it's being written in (MainWindow.SearchFocus) -->
-        <Style Selector="Border#SearchPill">
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <Style Selector="Border#SearchPill.focused">
-            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-        </Style>
-        <Style Selector="TextBlock#SearchIcon">
-            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
-        </Style>
-        <Style Selector="Border#SearchPill.focused TextBlock#SearchIcon">
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-        </Style>
         <Style Selector="TextBlock.heart.fav">
             <Setter Property="Foreground" Value="{DynamicResource PinkBrush}"/>
             <Setter Property="FontFamily" Value="{StaticResource IconFontFilled}"/>
@@ -118,7 +105,10 @@
 
             <!-- ============================================================ title bar -->
             <Grid x:Name="TitleBar" Background="{DynamicResource TitleBarBrush}">
-                <StackPanel x:Name="TitleText" Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                <!-- Back (the pages' history), in the title bar like a browser's -->
+                <Button x:Name="BackButton" Theme="{StaticResource TitleBarButton}" HorizontalAlignment="Left" FontSize="12" Content="{local:Icon E72B}"
+                        Command="{Binding BackCommand}" ToolTip.Tip="{local:T Back}"/>
+                <StackPanel x:Name="TitleText" Orientation="Horizontal" Margin="54,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
                     <Image Source="/Assets/app-256.png" Width="16" Height="16" RenderOptions.BitmapInterpolationMode="HighQuality"/>
                     <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" Margin="9,0,0,1"
                                VerticalAlignment="Center"/>
@@ -135,19 +125,15 @@
                 <!-- ======================================================== sidebar -->
                 <!-- no line against the page: its own tone is enough -->
                 <Border Background="{DynamicResource SidebarBrush}">
-                    <!-- the menu keeps its size; below it the playlists get 2/3 of what is left and the tags 1/3, so both shrink with the window -->
-                    <Grid Margin="14,14,14,12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="2*" MinHeight="60"/>
-                            <RowDefinition Height="*" MinHeight="44"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+                    <!-- the menu (Search among the pages: its box is at the top of its page); the playlists take what is left; the tags
+                         (folded under their heading if you like); the profile with the pages used less, as icons -->
+                    <Grid Margin="14,12,14,12" RowDefinitions="Auto,*,Auto,Auto">
                         <StackPanel>
                             <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE80F;" Content="{local:T Home}" IsChecked="{Binding IsHome}"/>
-                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE8F1;" Content="{local:T 'All songs'}" IsChecked="{Binding IsLibrary}"/>
-                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE8B7;" Content="{local:T 'Not in a playlist'}" IsChecked="{Binding IsUnsorted}"
-                                         ToolTip.Tip="{local:T 'Songs that aren\'t in any playlist'}"/>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE721;" Content="{local:T Search}" IsChecked="{Binding IsSearch}"
+                                         ToolTip.Tip="{local:T 'Search your songs and online, or paste a link to download (YouTube, Spotify, SoundCloud, TikTok…)'}"/>
+                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE8F1;" Content="{local:T Library}" IsChecked="{Binding IsLibraryNav}"
+                                         ToolTip.Tip="{local:T 'All your songs, and the ones in no playlist'}"/>
                             <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE77B;" IsChecked="{Binding IsArtists}"
                                          ToolTip.Tip="{local:T 'The artists you follow and their new releases'}">
                                 <StackPanel Orientation="Horizontal">
@@ -170,83 +156,10 @@
                                     </Border>
                                 </StackPanel>
                             </RadioButton>
-                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE716;" IsChecked="{Binding IsTogether}"
-                                         ToolTip.Tip="{local:T 'Listen to the same music with friends on the same network'}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:T 'Listen together'}"/>
-                                    <!-- in a room: how many are listening -->
-                                    <Border Margin="8,0,0,0" CornerRadius="9" MinWidth="18" Height="18" Padding="5,0" Background="{DynamicResource SuccessBrush}"
-                                            IsVisible="{Binding Together.InRoom}">
-                                        <TextBlock Text="{Binding Together.MemberCount}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BgBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                </StackPanel>
-                            </RadioButton>
-                            <!-- the least used one, last before the settings -->
-                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE8D6;" Content="DJ" IsChecked="{Binding IsDj}"
-                                         ToolTip.Tip="{local:T 'Mix two songs: tempo, pitch, trim and volume'}"/>
-                            <RadioButton Theme="{StaticResource NavButton}" GroupName="nav" local:Ui.Glyph="&#xE713;" Content="{local:T Settings}" IsChecked="{Binding IsSettings}"/>
                         </StackPanel>
 
-                        <!-- profile -->
-                        <Button Grid.Row="3" Theme="{StaticResource SubtleButton}" Padding="8,8" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                                Command="{Binding SwitchProfileCommand}" ToolTip.Tip="{local:T 'Switch or manage profiles'}" Margin="0,10,0,0">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
-                                <Panel>
-                                    <!-- both devices' music (Connect phone): the other device's profile behind this one's -->
-                                    <Panel Width="26" Height="26" Margin="20,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding HasSecondProfile}">
-                                        <Ellipse Fill="{Binding SecondBrush}"/>
-                                        <TextBlock Text="{Binding SecondInitial}" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <views:CoverImage Margin="2" IsCircle="True" Source="{Binding SecondAvatar}"/>
-                                    </Panel>
-                                    <Panel Width="32" Height="32" HorizontalAlignment="Left">
-                                        <Ellipse Margin="-2" Fill="{DynamicResource SidebarBrush}" IsVisible="{Binding HasSecondProfile}"/>
-                                        <Ellipse Fill="{Binding ProfileBrush}"/>
-                                        <TextBlock Text="{Binding ProfileInitial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <views:CoverImage Margin="2.5" IsCircle="True" Source="{Binding ProfileAvatar}"/>
-                                    </Panel>
-                                </Panel>
-                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding ProfileName}" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"/>
-                                    <TextBlock Text="{local:T 'Switch profile'}" FontSize="11.5" FontWeight="Normal" Foreground="{DynamicResource MutedBrush}"/>
-                                </StackPanel>
-                                <TextBlock Grid.Column="2" Text="{local:Icon E748}" Classes="glyph" Foreground="{DynamicResource MutedBrush}"/>
-                            </Grid>
-                        </Button>
-
-                        <!-- tags: each one opens the page of its songs; songs can be dropped on them -->
-                        <DockPanel Grid.Row="2" Margin="0,6,0,0">
-                            <DockPanel DockPanel.Dock="Top" Margin="8,6,0,4">
-                                <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
-                                        Command="{Binding NewTagCommand}" ToolTip.Tip="{local:T 'New tag'}"/>
-                                <TextBlock Text="{local:T TAGS}" Classes="small-caps" VerticalAlignment="Center"/>
-                            </DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Text="{local:T 'Colored labels to group songs and playlists your way.'}" Classes="hint"
-                                       FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" IsVisible="{Binding !HasTags}"/>
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
-                                <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Classes="side" Classes.selected="{Binding IsSelected}" CornerRadius="8" Padding="10,7" Cursor="Hand"
-                                                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0"
-                                                    views:Drops.Target="tag" views:Rows.Menu="tag" ToolTip.Tip="{Binding CountText}" local:Marquee.Host="True"
-                                                    views:Click.Command="{Binding $parent[Window].DataContext.OpenTagCommand}">
-                                                <DockPanel>
-                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
-                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="11"
-                                                               Foreground="{DynamicResource MutedBrush}" Margin="0,0,6,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
-                                                    <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
-                                                    <TextBlock Classes="name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                                                               local:Marquee.IsEnabled="True"/>
-                                                </DockPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
-                        </DockPanel>
-
                         <DockPanel Grid.Row="1">
-                            <DockPanel DockPanel.Dock="Top" Margin="8,22,0,8">
+                            <DockPanel DockPanel.Dock="Top" Margin="8,18,0,6">
                                 <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
                                         Command="{Binding NewPlaylistCommand}" ToolTip.Tip="{local:T 'New playlist'}"/>
                                 <TextBlock Text="{local:T 'YOUR PLAYLISTS'}" Classes="small-caps" VerticalAlignment="Center"/>
@@ -276,44 +189,94 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                         </DockPanel>
+
+                        <!-- tags: each one opens the page of its songs; songs can be dropped on them. A click on the heading folds them. -->
+                        <DockPanel Grid.Row="2" Margin="0,4,0,0">
+                            <DockPanel DockPanel.Dock="Top" Margin="0,6,0,4">
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
+                                        Command="{Binding NewTagCommand}" ToolTip.Tip="{local:T 'New tag'}"/>
+                                <Button Theme="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding ToggleTagsCommand}"
+                                        ToolTip.Tip="{local:T 'Show or hide the tags'}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:T TAGS}" Classes="small-caps" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding TagsChevron, Converter={StaticResource Icon}}" Classes="glyph" FontSize="9" Margin="7,0,0,0"
+                                                   Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Button>
+                            </DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Text="{local:T 'Colored labels to group songs and playlists your way.'}" Classes="hint"
+                                       FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap">
+                                <TextBlock.IsVisible>
+                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="TagsOpen"/>
+                                        <Binding Path="!HasTags"/>
+                                    </MultiBinding>
+                                </TextBlock.IsVisible>
+                            </TextBlock>
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False" MaxHeight="190" IsVisible="{Binding TagsOpen}">
+                                <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Classes="side" Classes.selected="{Binding IsSelected}" CornerRadius="8" Padding="10,7" Cursor="Hand"
+                                                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0"
+                                                    views:Drops.Target="tag" views:Rows.Menu="tag" ToolTip.Tip="{Binding CountText}" local:Marquee.Host="True"
+                                                    views:Click.Command="{Binding $parent[Window].DataContext.OpenTagCommand}">
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="11"
+                                                               Foreground="{DynamicResource MutedBrush}" Margin="0,0,6,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
+                                                    <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                                    <TextBlock Classes="name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                               local:Marquee.IsEnabled="True"/>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+
+                        <!-- the profile; the pages used less, as icons -->
+                        <Grid Grid.Row="3" Margin="0,10,0,0" ColumnDefinitions="*,Auto">
+                            <Button Theme="{StaticResource SubtleButton}" Padding="6,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                    Command="{Binding SwitchProfileCommand}" ToolTip.Tip="{local:T 'Switch or manage profiles'}">
+                                <Grid ColumnDefinitions="Auto,*">
+                                <Panel>
+                                    <!-- both devices' music (Connect phone): the other device's profile behind this one's -->
+                                    <Panel Width="26" Height="26" Margin="20,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding HasSecondProfile}">
+                                        <Ellipse Fill="{Binding SecondBrush}"/>
+                                        <TextBlock Text="{Binding SecondInitial}" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <views:CoverImage Margin="2" IsCircle="True" Source="{Binding SecondAvatar}"/>
+                                    </Panel>
+                                    <Panel Width="32" Height="32" HorizontalAlignment="Left">
+                                        <Ellipse Margin="-2" Fill="{DynamicResource SidebarBrush}" IsVisible="{Binding HasSecondProfile}"/>
+                                        <Ellipse Fill="{Binding ProfileBrush}"/>
+                                        <TextBlock Text="{Binding ProfileInitial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <views:CoverImage Margin="2.5" IsCircle="True" Source="{Binding ProfileAvatar}"/>
+                                    </Panel>
+                                </Panel>
+                                    <TextBlock Grid.Column="1" Margin="9,0,0,0" Text="{Binding ProfileName}" Foreground="{DynamicResource TextBrush}"
+                                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Button>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <RadioButton Theme="{StaticResource NavIconButton}" GroupName="nav" local:Ui.Glyph="&#xE716;" IsChecked="{Binding IsTogether}"
+                                             ToolTip.Tip="{local:T 'Listen together'}">
+                                    <!-- in a room -->
+                                    <Ellipse Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" IsVisible="{Binding Together.InRoom}"/>
+                                </RadioButton>
+                                <RadioButton Theme="{StaticResource NavIconButton}" GroupName="nav" local:Ui.Glyph="&#xE8D6;" IsChecked="{Binding IsDj}"
+                                             ToolTip.Tip="{local:T 'DJ: mix two songs (tempo, pitch, trim and volume)'}"/>
+                                <RadioButton Theme="{StaticResource NavIconButton}" GroupName="nav" local:Ui.Glyph="&#xE713;" IsChecked="{Binding IsSettings}"
+                                             ToolTip.Tip="{local:T Settings}"/>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </Border>
 
                 <!-- ======================================================== content -->
                 <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*">
-                    <Grid Margin="20,12,20,10" ColumnDefinitions="Auto,*,Auto">
-                        <Button Theme="{StaticResource ControlButton}" Content="{local:Icon E72B}" Command="{Binding BackCommand}"
-                                ToolTip.Tip="{local:T Back}" Margin="0,0,10,0"/>
-
-                        <Border x:Name="SearchPill" Grid.Column="1" Height="44" CornerRadius="22" Background="{DynamicResource SurfaceBrush}"
-                                BorderThickness="1" Padding="16,0,4,0">
-                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                <TextBlock x:Name="SearchIcon" Text="{local:Icon E721}" Classes="glyph" FontSize="15"/>
-                                <TextBox x:Name="SearchBox" Grid.Column="1" Theme="{StaticResource BareTextBox}" Margin="12,0,6,0"
-                                         Watermark="{local:T 'Search your songs and online, or paste a link to download (YouTube, Spotify, SoundCloud, TikTok…)'}"
-                                         Text="{Binding SearchText}"/>
-                                <Button Grid.Column="2" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="11" Content="{local:Icon E711}"
-                                        Command="{Binding ClearSearchCommand}" ToolTip.Tip="{local:T Clear}" IsVisible="{Binding HasSearchText}"/>
-                                <Button Grid.Column="3" Theme="{StaticResource PillPrimaryButton}" Margin="4,0,0,0"
-                                        Command="{Binding SubmitSearchCommand}" IsVisible="{Binding IsLink}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="13"/>
-                                        <TextBlock Text="{local:T 'Download|verb'}" Margin="7,0,0,0"/>
-                                    </StackPanel>
-                                </Button>
-                            </Grid>
-                        </Border>
-
-                        <Button Grid.Column="2" Theme="{StaticResource GhostButton}" Margin="10,0,0,0" Height="44" Padding="18,0"
-                                Command="{Binding PasteLinkCommand}" ToolTip.Tip="{local:T 'Paste a link from the clipboard and download it'}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{local:Icon E77F}" Classes="glyph" FontSize="14"/>
-                                <TextBlock Text="{local:T 'Paste link'}" Margin="8,0,0,0"/>
-                            </StackPanel>
-                        </Button>
-                    </Grid>
-
-                    <StackPanel Grid.Row="1" Margin="20,0,20,0">
+                    <StackPanel Grid.Row="1" Margin="20,10,20,0">
                         <Border Margin="0,0,0,8" CornerRadius="10" Padding="14,8" Background="{DynamicResource WarningSoftBrush}"
                                 IsVisible="{Binding Host.EngineStatus, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
                             <StackPanel Orientation="Horizontal">
@@ -395,7 +358,8 @@
                                 <TextBlock DockPanel.Dock="Left" Classes="glyph cloud" Classes.gone="{Binding Current.IsUnavailable, FallbackValue=False}"
                                            Text="{Binding Current.CloudGlyph, Converter={StaticResource Icon}}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"
                                            ToolTip.Tip="{Binding Current.CloudTip}" IsVisible="{Binding Current.IsCloud, FallbackValue=False}"/>
-                                <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                                <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"
+                                           Cursor="Hand" PointerReleased="Artist_Click" ToolTip.Tip="{local:T 'Go to the artist'}" ToolTip.ShowDelay="900"/>
                             </DockPanel>
                             <!-- a suggested song still downloading (it starts by itself), or more of them on their way -->
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0" IsVisible="{Binding IsWaiting}">

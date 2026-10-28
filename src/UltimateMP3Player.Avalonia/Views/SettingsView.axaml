@@ -742,11 +742,17 @@
                                     <TextBlock Text="{local:T 'All statistics'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
-                            <Button Theme="{StaticResource GhostButton}" Command="{Binding ImportSpotifyCommand}"
-                                    ToolTip.Tip="{local:T 'Your plays on Spotify into the statistics and the recaps'}">
+                            <Button Theme="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ImportSpotifyCommand}"
+                                    ToolTip.Tip="{local:T 'Your liked songs, playlists and plays on Spotify'}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Import your Spotify history…'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{local:T 'Import from Spotify…'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Theme="{StaticResource GhostButton}" Command="{Binding ImportLastFmCommand}" ToolTip.Tip="{local:T 'Your loved songs as a playlist, your scrobbles into the statistics'}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
+                                    <TextBlock Text="{local:T 'Import from Last.fm…'}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                         </WrapPanel>
@@ -882,6 +888,8 @@
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="Last.fm"/>
                                 <TextBlock Text="{Binding LastFmText}" Classes="hint"/>
+                                <Button Theme="{StaticResource LinkButton}" Content="{local:T 'Import your loved songs and scrobbles…'}" Command="{Binding ImportLastFmCommand}"
+                                        HorizontalAlignment="Left" Margin="0,4,0,0" IsVisible="{Binding LastFmOn}"/>
                             </StackPanel>
                             <Button Grid.Column="1" Theme="{StaticResource GhostButton}" Padding="16,8" Content="{Binding LastFmButton}" Command="{Binding LastFmCommand}"
                                     VerticalAlignment="Center"/>

@@ -871,13 +871,15 @@ public sealed class PlayerViewModel : Observable
 
     // The songs of a link heard without downloading them into the library (RadioViewModel.AddFromLink): each comes into
     // the cache just before its turn, like the suggested songs, and "Save" keeps one. A single song is followed by songs
-    // like it (Settings), a playlist plays as a list of its own.
-    public void PlayStream(IReadOnlyList<string> ids, string name)
+    // like it (Settings), a playlist plays as a list of its own (from start: an artist's popular song clicked).
+    public void PlayStream(IReadOnlyList<string> ids, string name, int start = 0)
     {
-        if (_room != null || ids.Count == 0 || TrackOf(ids[0]) is not { } first) return;
+        if (_room != null || ids.Count == 0) return;
+        start = Math.Clamp(start, 0, ids.Count - 1);
+        if (TrackOf(ids[start]) is not { } first) return;
         if (_remote != null)
         {
-            _remote.PlayList(ids.Select(TrackOf).OfType<Track>(), 0, name, true);
+            _remote.PlayList(ids.Select(TrackOf).OfType<Track>(), start, name, true);
             return;
         }
         if (ids.Count == 1)
@@ -889,7 +891,7 @@ public sealed class PlayerViewModel : Observable
             }
             _queue.Play(ids.ToList(), 0, null, null);
         }
-        else _queue.Play(ids.ToList(), 0, "link:" + Ids.New(), name, true);
+        else _queue.Play(ids.ToList(), start, "link:" + Ids.New(), name, true);
         _ = Load(first, true);
     }
 

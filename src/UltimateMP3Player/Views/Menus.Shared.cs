@@ -38,7 +38,7 @@ public static partial class Menus
             menu.Items.Add(Item(L.T("Play next"), "", () => main.Player.PlayNext(t)));
             menu.Items.Add(Item(L.T("Add to queue"), "", () => main.Player.Enqueue(t)));
             menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => main.Player.PlayRadio(t)));
-            menu.Items.Add(Item(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
+            menu.Items.Add(GoToArtist(t.Main, t.T.Artist));
             menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => main.Player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         }
         menu.Items.Add(new Separator());
@@ -206,7 +206,7 @@ public static partial class Menus
             menu.Items.Add(Item(L.T("Play next"), "", () => { if (h.Song() is { } t) main.Player.PlayNext(t); }));
             menu.Items.Add(Item(L.T("Add to queue"), "", () => h.QueueAction?.Invoke()));
             menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => { if (h.Song() is { } t) main.Player.PlayRadio(t); }));
-            menu.Items.Add(Item(L.T("Go to the artist"), "\uE77B", () => main.OpenArtist(ArtistNames.First(h.Hit.Artist) ?? "", null), !string.IsNullOrWhiteSpace(h.Hit.Artist)));
+            menu.Items.Add(GoToArtist(main, h.Hit.Artist));
             menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => { if (h.Song() is { } t) main.Player.PlayArtist(t); },
                 !string.IsNullOrWhiteSpace(h.Hit.Artist)));
         }
@@ -250,7 +250,7 @@ public static partial class Menus
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => player.PlayRadio(t)));
-        menu.Items.Add(Item(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
+        menu.Items.Add(GoToArtist(t.Main, t.T.Artist));
         menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copied")); } catch { } }));
         if (row == null && player.Current != t)
@@ -713,7 +713,7 @@ public static partial class Menus
         menu.Items.Add(Item(L.T("Move to bottom"), "", () => player.MoveUpcoming(row.Index, last), row.Index < last));
         menu.Items.Add(Item(L.T("Remove from Up next"), "", () => player.RemoveUpcoming(row.Index)));
         menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => player.PlayRadio(t)));
-        menu.Items.Add(Item(L.T("Go to the artist"), "\uE77B", () => t.Main.OpenArtist(ArtistNames.First(t.T.Artist) ?? "", null), !string.IsNullOrWhiteSpace(t.T.Artist)));
+        menu.Items.Add(GoToArtist(t.Main, t.T.Artist));
         menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(new Separator());
         AddSaveItems(menu, new[] { t });
@@ -781,9 +781,53 @@ public static partial class Menus
     }
 
     // An artist's page: its name on your songs, its picture.
+    // "Go to the artist": its page; a song of several artists ("A feat. B") lists them.
+    public static MenuItem GoToArtist(MainViewModel main, string? artist)
+    {
+        var names = ArtistNames.Of(artist).Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
+        if (names.Count <= 1) return Item(L.T("Go to the artist"), "\uE77B", () => main.OpenArtist(names.FirstOrDefault() ?? "", null), names.Count == 1);
+        var sub = new SubmenuEntry { Header = L.T("Go to the artist") };
+        Ui.SetGlyph(sub, "\uE77B");
+        foreach (var n in names) sub.Items.Add(Item(n, "", () => main.OpenArtist(n, null)));
+        return sub;
+    }
+
+    // A click on the artist's name (the player, the song's page): its page, or which one when the song has several.
+    public static ContextMenu? ArtistsOf(MainViewModel main, string? artist)
+    {
+        var names = ArtistNames.Of(artist).Distinct(StringComparer.CurrentCultureIgnoreCase).ToList();
+        if (names.Count <= 1)
+        {
+            if (names.Count == 1) main.OpenArtist(names[0], null);
+            return null;
+        }
+        var menu = new ContextMenu();
+        foreach (var n in names) menu.Items.Add(Item(n, "\uE77B", () => main.OpenArtist(n, null)));
+        return menu;
+    }
+
+    // A click on the artist's name of the song playing (the player bar, the song's page); not a radio's (that line is the
+    // song on air).
+    public static ContextMenu? ArtistsOfCurrent(PlayerViewModel player) =>
+        player.Current is { } t && !player.IsLive ? ArtistsOf(t.Main, t.T.Artist) : null;
+
+    // An artist's card (Artists, the search): its page, following it, who it is.
+    public static ContextMenu ForArtistCard(ArtistCardViewModel a)
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(L.T("Open"), "\uE77B", () => a.OpenCommand.Execute(null)));
+        menu.Items.Add(Item(a.FollowTip, a.FollowGlyph, () => a.FollowCommand.Execute(null)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Choose the artist…"), "\uE748", () => a.ChooseCommand.Execute(null)));
+        return menu;
+    }
+
     public static ContextMenu ForArtist(ArtistPageViewModel a)
     {
         var menu = new ContextMenu();
+        menu.Items.Add(Item(L.T("Choose the artist…"), "\uE748", () => a.ChooseCommand.Execute(null)));
+        if (a.Site?.Url != null) menu.Items.Add(Item(L.F("Open on {0}", a.Site.Service), "\uE774", () => a.SiteCommand.Execute(null)));
+        menu.Items.Add(new Separator());
         menu.Items.Add(Item(L.T("Rename…"), "\uE8AC", () => a.RenameCommand.Execute(null)));
         menu.Items.Add(Item(L.T("Change image…"), "\uEB9F", () => a.PictureCommand.Execute(null)));
         if (a.HasMyPicture) menu.Items.Add(Item(L.T("Remove image"), "\uE711", () => a.RemovePictureCommand.Execute(null)));

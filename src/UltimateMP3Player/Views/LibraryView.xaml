@@ -30,6 +30,16 @@
                 <TextBlock Text="{Binding Glyph}" Style="{StaticResource Glyph}" FontSize="56" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
             </Border>
             <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
+                <!-- the library's two tabs (one entry in the sidebar): all the songs, the ones in no playlist -->
+                <Border HorizontalAlignment="Left" Margin="0,0,0,12" CornerRadius="20" Padding="4" Background="{DynamicResource SurfaceBrush}"
+                        Visibility="{Binding ShowTabs, Converter={StaticResource BoolVis}}">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton Style="{StaticResource Segment}" GroupName="LibraryTabs" local:Ui.Glyph="&#xE8F1;" Content="{local:T 'All songs'}"
+                                     IsChecked="{Binding IsAll, Mode=OneWay}" Command="{Binding AllCommand}"/>
+                        <RadioButton Style="{StaticResource Segment}" GroupName="LibraryTabs" local:Ui.Glyph="&#xE8B7;" Content="{local:T 'Not in a playlist'}" Margin="4,0,0,0"
+                                     IsChecked="{Binding Unsorted, Mode=OneWay}" Command="{Binding UnsortedCommand}" ToolTip="{local:T 'Songs that aren\'t in any playlist'}"/>
+                    </StackPanel>
+                </Border>
                 <TextBlock Text="{Binding Kicker}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource SubTextBrush}"/>
                 <TextBlock Text="{Binding Title}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"/>
                 <!-- the count, and while some songs are in the cloud: save them all (the filter is next to "Tag") -->

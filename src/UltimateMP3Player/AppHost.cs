@@ -370,6 +370,7 @@ public sealed class AppHost : Observable
         Session?.Player.Pause();
         Settings.Save();
         try { Library.Flush(); } catch { }
+        try { ArtistSites.Flush(); } catch { }
         _songCache?.Flush();
         Profile.FlushAll();
         if (Updates.IsReady) Updates.Apply(false, null, false);

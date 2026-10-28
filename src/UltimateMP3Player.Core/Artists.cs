@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -34,13 +35,38 @@ public static class ArtistNames
 {
     private static readonly Regex Split = new(@"\s*(?:,|;|/|&|\+|\bx\b|\bvs\.?|\bfeat\.?|\bft\.?|\bfeaturing\b|\bcon\b|\bwith\b)\s*", RegexOptions.IgnoreCase);
 
-    public static IEnumerable<string> Of(string? artist)
-        => string.IsNullOrWhiteSpace(artist) ? Enumerable.Empty<string>() : Split.Split(artist).Select(a => a.Trim()).Where(a => a.Length > 0);
+    public static IEnumerable<string> Of(string? artist) => string.IsNullOrWhiteSpace(artist) ? Array.Empty<string>() : Parse(artist).Names;
 
     public static bool Has(string? artist, string name)
     {
-        var key = Text.Normalize(name);
-        return key.Length > 0 && (Text.Normalize(artist) == key || Of(artist).Any(a => Text.Normalize(a) == key));
+        var key = KeyOf(name);
+        return key.Length > 0 && !string.IsNullOrWhiteSpace(artist) && Array.IndexOf(Parse(artist).Keys, key) >= 0;
+    }
+
+    // An artist line's names and their keys (the whole line's first), kept: the same lines come back on every song of a library,
+    // and an artist's page, the mixes, the search and the pictures go through all of them.
+    private static readonly ConcurrentDictionary<string, (string[] Names, string[] Keys)> Parsed = new();
+
+    private static (string[] Names, string[] Keys) Parse(string artist)
+    {
+        if (Parsed.TryGetValue(artist, out var known)) return known;
+        // (a library has some thousands of lines: past that, the oldest ones are no better than the others)
+        if (Parsed.Count > 50_000) Parsed.Clear();
+        var names = Split.Split(artist).Select(a => a.Trim()).Where(a => a.Length > 0).ToArray();
+        return Parsed[artist] = (names, names.Select(Text.Normalize).Prepend(Text.Normalize(artist)).ToArray());
+    }
+
+    // The name looked for, normalized once for a whole loop over the library.
+    [ThreadStatic] private static string? _lastName, _lastKey;
+
+    private static string KeyOf(string name)
+    {
+        if (!ReferenceEquals(name, _lastName))
+        {
+            _lastKey = Text.Normalize(name);
+            _lastName = name;
+        }
+        return _lastKey!;
     }
 
     // The first name, as the library pages group songs.
@@ -158,10 +184,13 @@ public static class NewReleases
         foreach (var artist in profile.ArtistsSnapshot())
         {
             ct.ThrowIfCancellationRequested();
-            if (artist.DeezerId == null) continue;
+            // (the one chosen by hand wins over the Deezer id kept when it was followed; one not on Deezer, its own site's)
+            var site = ArtistSites.Get(artist.Name) is { } s && (s.Mine || artist.DeezerId == null) ? s
+                : artist.DeezerId != null ? new ArtistSite { Id = artist.DeezerId, Name = artist.Name } : null;
+            if (site == null) continue;
             try
             {
-                foreach (var r in await OnlineSearchServices.ReleasesAsync(artist.DeezerId, artist.Name, 12, ct))
+                foreach (var r in await ArtistSites.ReleasesAsync(site, artist.Name, 12, ct))
                 {
                     if (r.Date < since) break;
                     // (out before the follow, or announced for later: no news)

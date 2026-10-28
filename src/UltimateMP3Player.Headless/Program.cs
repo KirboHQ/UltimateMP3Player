@@ -67,7 +67,7 @@ foreach (var (name, section, go) in new (string, string, Action)[]
     ("library", "library", () => main.IsLibrary = true),
     ("unsorted", "unsorted", () => main.IsUnsorted = true),
     ("downloads", "downloads", () => main.IsDownloads = true),
-    ("search", "search", () => main.Navigate(main.Search)),
+    ("search", "search", () => main.IsSearch = true),
     ("stats", "settings", main.OpenStats),
     ("settings", "settings", main.GoSettings),
 })
@@ -196,10 +196,13 @@ main.OpenArtist("Headless Artist", null);
 Dispatcher.UIThread.RunJobs();
 Shot(win, "artist");
 var artistPage = main.Page as ArtistPageViewModel;
-Check(artistPage is { HasSongs: true } && Menus.ForArtist(artistPage).Items.Count == 2
-    && win.GetVisualDescendants().OfType<Button>().Any(b => b.Name == "PictureButton"), "artist: its page, Change image, the menu (Rename, Change image)");
+// (its menu: Choose the artist…, Open on its site once known, Rename, Change image)
+string[] MenuOf(ArtistPageViewModel a) => Menus.ForArtist(a).Items.OfType<MenuItem>().Select(m => m.Header as string ?? "").ToArray();
+Check(artistPage is { HasSongs: true } && MenuOf(artistPage) is [var choose, .., var rename, var change] && choose == L.T("Choose the artist…")
+    && rename == L.T("Rename…") && change == L.T("Change image…")
+    && win.GetVisualDescendants().OfType<Button>().Any(b => b.Name == "PictureButton"), "artist: its page, Change image, the menu (Choose the artist, Rename, Change image)");
 File.WriteAllBytes(ArtistPictures.Mine("Headless Artist"), clearLogo!);
-Check(artistPage!.HasMyPicture && Menus.ForArtist(artistPage).Items.Count == 3, "artist: a picture chosen by hand, and Remove image");
+Check(artistPage!.HasMyPicture && MenuOf(artistPage).Last() == L.T("Remove image"), "artist: a picture chosen by hand, and Remove image");
 main.Library.RenameArtist("Headless Artist", "Headless Band", inLines: true);
 Check(duet.Artist == "Headless Band feat. Someone", "artist: renamed where it's one of several: " + duet.Artist);
 // (a name written like a handle, spelled as the library or the song found write it; one with capitals stays; no network here)
@@ -255,6 +258,56 @@ Dispatcher.UIThread.RunJobs();
 Shot(win, "list-opened");
 Check(main.Section == "downloads" && queue.Groups.Count == 0 && main.Downloads.Link?.Items.Count == 2, "list: a click opens its card, the panel's line goes");
 
+// ---- 4.3.1: Search in the sidebar's menu, its box at the top of its page (online off: nothing reaches out), one list under chips;
+// the library's tabs
+host.Settings.OnlineSearch = false;
+main.Search.OnSettingsChanged();
+main.IsHome = true;
+main.IsSearch = true;
+Dispatcher.UIThread.RunJobs();
+Shot(win, "search-empty");
+Check(main.Page == main.Search && main.Search.Items is [SearchNote] && Shown(L.T("Search your music and online")), "search: the menu's Search opens its page, saying what it's for");
+var box = win.GetVisualDescendants().OfType<TextBox>().First(t => t.Name == "SearchBox");
+box.Focus();
+win.KeyTextInput("headless");
+Press(Key.Enter);
+Shot(win, "search-results");
+Check(main.Page == main.Search && main.Search.Items.OfType<SearchSection>().Any(x => x.Title == L.T("Songs"))
+    && main.Search.Items.OfType<TrackRow>().Any(r => r.Track.Title == "Duet") && Shown("Duet"), "search: the page's box (Enter), your song under Songs");
+main.Search.Filter = SearchViewModel.ArtistsKey;
+Shot(win, "search-artists");
+Check(main.Search.Items.OfType<CardShelf>().Any(x => x.Cards.OfType<ArtistCardViewModel>().Any(c => c.Name == "Headless Band")), "search: the Artists chip, your artist's card");
+main.Search.Filter = SearchViewModel.AlbumsKey;
+Dispatcher.UIThread.RunJobs();
+Check(main.Search.Items is [SearchNote], "search: Albums and EPs without the online search says so");
+box.Text = "";
+Dispatcher.UIThread.RunJobs();
+Check(main.Page == main.Search && main.Search.Items is [SearchNote] && !main.Search.HasQuery, "search: the box emptied, the page stays");
+main.IsUnsorted = true;
+Shot(win, "library-unsorted");
+Check(main.Page is LibraryViewModel { ShowTabs: true, IsAll: false }, "library: “Not in a playlist” is a tab of the library");
+main.IsHome = true;
+
+// ---- 4.3.1: Spotify's library in its zip (liked songs, a playlist) as lists for ListImport (their Spotify ids: nothing looked for)
+var zipPath = Path.Combine(root, "spotify.zip");
+using (var zip = System.IO.Compression.ZipFile.Open(zipPath, System.IO.Compression.ZipArchiveMode.Create))
+{
+    void Entry(string name, string json)
+    {
+        using var w = new StreamWriter(zip.CreateEntry("Spotify Account Data/" + name).Open());
+        w.Write(json);
+    }
+    Entry("YourLibrary.json", """{"tracks":[{"artist":"Rick Astley","album":"Whenever You Need Somebody","track":"Never Gonna Give You Up","uri":"spotify:track:4uLU6hMCjMI75M1A2tKUQC"},{"artist":"","track":"No artist"}],"albums":[]}""");
+    Entry("Playlist1.json", """{"playlists":[{"name":"Road trip","items":[{"track":{"trackName":"Heroes","artistName":"David Bowie","albumName":"Heroes","trackUri":"spotify:track:7ouMYWpwJ422jRcDASZB7P"},"episode":null},{"track":null,"episode":{"episodeName":"A podcast"}},{"track":{"trackName":"My file","artistName":"Me","albumName":"","trackUri":"spotify:local:Me::My+file:200"}}]}]}""");
+    Entry("StreamingHistory_music_0.json", """[{"endTime":"2025-01-02 10:00","artistName":"David Bowie","trackName":"Heroes","msPlayed":200000}]""");
+}
+var (liked, playlists) = SpotifyHistory.ReadLibrary(new[] { zipPath });
+Check(liked is [{ Title: "Never Gonna Give You Up", SpotifyId: "4uLU6hMCjMI75M1A2tKUQC" }], "spotify: the liked songs (one without an artist left out)");
+Check(playlists is [{ Name: "Road trip", Songs: [{ SpotifyId: "7ouMYWpwJ422jRcDASZB7P" }, { Title: "My file", SpotifyId: null }] }], "spotify: a playlist (the podcast left out)");
+var likedList = ListImport.Parse(SpotifyHistory.AsList(liked));
+Check(likedList is [{ SpotifyId: "4uLU6hMCjMI75M1A2tKUQC", Album: "Whenever You Need Somebody" }], "spotify: the liked songs as a list, with their ids");
+Check(SpotifyHistory.Read(new[] { zipPath }) is [{ Title: "Heroes" }], "spotify: the plays in the same zip");
+
 host.Exit(true);
 Check(!File.Exists(AppPaths.LogFile) || new FileInfo(AppPaths.LogFile).Length == 0, "nothing in errors.log");
 Console.WriteLine(failed.Count == 0 ? "headless: ok" : $"headless: {failed.Count} FAILED");
@@ -274,7 +327,7 @@ void Shot(TopLevel top, string name)
 
 void Press(Key key)
 {
-    var physical = key == Key.Space ? PhysicalKey.Space : PhysicalKey.Escape;
+    var physical = key switch { Key.Space => PhysicalKey.Space, Key.Enter => PhysicalKey.Enter, _ => PhysicalKey.Escape };
     win.KeyPress(key, RawInputModifiers.None, physical, null);
     win.KeyRelease(key, RawInputModifiers.None, physical, null);
     Dispatcher.UIThread.RunJobs();

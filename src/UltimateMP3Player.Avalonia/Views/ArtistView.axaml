@@ -28,7 +28,17 @@
                         <TextBlock Text="{local:T ARTIST}" Classes="small-caps" Foreground="{DynamicResource SubTextBrush}"/>
                         <TextBlock x:Name="NameText" Text="{Binding Name}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"
                                    Cursor="Hand" ToolTip.Tip="{local:T 'Click to rename'}"/>
-                        <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SubTextBrush}"/>
+                        <WrapPanel>
+                            <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <!-- who it is: its page on its site; ⋯ › Choose the artist… when it's someone else -->
+                            <Button Theme="{StaticResource LinkButton}" Command="{Binding SiteCommand}" IsVisible="{Binding HasSite}" VerticalAlignment="Center"
+                                    ToolTip.Tip="{local:T 'Not them? More options › Choose the artist…'}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E774}" Classes="glyph" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SiteText}" Margin="6,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
                     </StackPanel>
                 </Grid>
 
@@ -47,6 +57,13 @@
                             ToolTip.Tip="{local:T 'Search online'}"/>
                     <Button x:Name="MoreButton" Theme="{StaticResource ControlButton}" Content="{local:Icon E712}" Margin="4,0,0,0" VerticalAlignment="Center"
                             ToolTip.Tip="{local:T 'More options'}"/>
+                </StackPanel>
+
+                <!-- its most listened songs on its site: a click plays them from there without saving them -->
+                <StackPanel IsVisible="{Binding HasPopular}">
+                    <TextBlock Text="{local:T Popular}" Classes="section-title"/>
+                    <ItemsControl ItemsSource="{Binding Popular}" ItemTemplate="{StaticResource HitRowTemplate}" Margin="-8,0,8,0" Focusable="False"/>
+                    <Border Height="30"/>
                 </StackPanel>
 
                 <!-- your songs of it, the most played first -->

@@ -210,6 +210,8 @@ public sealed class ProfileData
     // Settings › Integrations: the accounts this profile's plays go to (Scrobbler).
     public string? LastFmUser { get; set; }
     public string? LastFmSession { get; set; }
+    // When Last.fm was connected here: its scrobbles before then can be imported (the later ones came from here, they're counted).
+    public DateTime? LastFmSince { get; set; }
     public string? ListenBrainzUser { get; set; }
     public string? ListenBrainzToken { get; set; }
 }
@@ -548,8 +550,12 @@ public sealed class Profile
     {
         int added = 0;
         lock (_lock)
+        {
+            // (a set: thousands of songs into a long playlist, an import, would compare each with all the others)
+            var had = p.Tracks.ToHashSet();
             foreach (var id in trackIds)
-                if (!p.Tracks.Contains(id)) { p.Tracks.Add(id); added++; }
+                if (had.Add(id)) { p.Tracks.Add(id); added++; }
+        }
         if (added == 0) return 0;
         Save();
         PlaylistChanged?.Invoke(p);
@@ -848,6 +854,20 @@ public sealed class Profile
                 a.DeezerId ??= id;
                 a.Picture = picture ?? a.Picture;
             }
+        Save();
+    }
+
+    // The artist chosen for the name (or proved by the library's songs): its releases are looked for there.
+    public void SetArtist(string name, string? deezerId, string? picture)
+    {
+        lock (_lock)
+            if (Data.Artists.FirstOrDefault(a => Text.Normalize(a.Name) == Text.Normalize(name)) is { } a)
+            {
+                if (a.DeezerId == deezerId && a.Picture == picture) return;
+                a.DeezerId = deezerId;
+                a.Picture = picture;
+            }
+            else return;
         Save();
     }
 

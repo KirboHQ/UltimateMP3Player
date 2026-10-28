@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.ViewModels;
 using UltimateMP3Player.Views;
 
 namespace UltimateMP3Player;
@@ -98,6 +99,84 @@ public static partial class Dialogs
         return result;
     }
 
+    // "Choose the artist…": the artists the name may be on the music sites (picture, site, fans, how many of your songs), the
+    // likeliest first. The chosen one, or null.
+    public static async Task<ArtistChoice?> ChooseArtistAsync(string name, IReadOnlyList<ArtistChoice> choices)
+    {
+        var sheets = Sheets;
+        if (sheets == null) return null;
+        var body = new DockPanel { Margin = new Thickness(20, 4, 20, 18) };
+        var head = new StackPanel { Margin = new Thickness(4, 0, 4, 12) };
+        head.Children.Add(new TextBlock { Text = L.F("Who is “{0}”?", name), FontSize = 20, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap });
+        head.Children.Add(new TextBlock
+        {
+            Text = L.T("The artists with this name on Deezer, YouTube Music and SoundCloud, the likeliest first: the ones that have your songs. The one you choose gives the picture, the popular songs and the new releases."),
+            Classes = { "hint" }, FontSize = 14, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0),
+        });
+        DockPanel.SetDock(head, Dock.Top);
+        body.Children.Add(head);
+        var use = new Button
+        {
+            Content = L.T("Use this artist"), Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch,
+            HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 14, 0, 0),
+        };
+        DockPanel.SetDock(use, Dock.Bottom);
+        body.Children.Add(use);
+        var rows = new StackPanel();
+        body.Children.Add(new Border { CornerRadius = new CornerRadius(14), Background = Ui.Res("BgBrush"), Padding = new Thickness(6), Child = new ScrollViewer { Content = rows } });
+
+        ArtistChoice? picked = null, result = null;
+        var borders = new List<Border>();
+        void Pick(int i)
+        {
+            picked = choices[i];
+            for (int k = 0; k < borders.Count; k++) borders[k].Background = k == i ? Ui.Res("AccentSoftBrush") : Brushes.Transparent;
+        }
+        for (int i = 0; i < choices.Count; i++)
+        {
+            var c = choices[i];
+            int n = i;
+            var line = new DockPanel();
+            line.Children.Add(ArtistCircle(c, 52));
+            var info = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            info.Children.Add(new TextBlock { Text = c.Name, FontSize = 15, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+            info.Children.Add(new TextBlock
+            {
+                Text = c.Details, FontSize = 13, Foreground = Ui.Res(c.Site.Songs > 0 ? "SuccessBrush" : "SubTextBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0),
+            });
+            if (c.IsCurrent) info.Children.Add(new TextBlock { Text = L.T("Shown now"), FontSize = 12.5, Foreground = Ui.Res("AccentTextBrush"), Margin = new Thickness(0, 2, 0, 0) });
+            line.Children.Add(info);
+            var row = new Border { CornerRadius = new CornerRadius(10), Padding = new Thickness(12, 9, 12, 9), Background = Brushes.Transparent, Child = line };
+            row.Tapped += (_, e) => { Pick(n); e.Handled = true; };
+            borders.Add(row);
+            rows.Children.Add(row);
+        }
+        use.Click += (_, _) =>
+        {
+            result = picked;
+            sheets.Close(body);
+        };
+        Pick(0);
+        await sheets.Show(body);
+        return result;
+    }
+
+    // An artist's picture in a circle, its initial on its colour until (or when no) picture comes.
+    private static Control ArtistCircle(ArtistChoice c, double size)
+    {
+        var circle = new Panel { Width = size, Height = size };
+        circle.Children.Add(new Avalonia.Controls.Shapes.Ellipse { Fill = c.Brush });
+        circle.Children.Add(new TextBlock
+        {
+            Text = c.Initial, Foreground = Brushes.White, FontWeight = FontWeight.Bold, FontSize = size * 0.42, HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        var photo = new Views.CoverImage { IsCircle = true };
+        photo.Bind(Views.CoverImage.SourceProperty, new Avalonia.Data.Binding(nameof(ArtistChoice.Picture)) { Source = c });
+        circle.Children.Add(photo);
+        return circle;
+    }
+
     public static async Task<(string Title, string Artist, string Album, string Bpm)?> EditTrackAsync(Track t)
     {
         var bpm = t.Bpm?.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture) ?? "";
@@ -135,6 +214,40 @@ public static partial class Dialogs
         }
         await sheets.Show(new ScrollViewer { Content = body });
         return chosen;
+    }
+
+    // Ticks to choose what to do (the parts of an import): which ones are ticked, or null. ok is enabled with one ticked.
+    public static async Task<bool[]?> ChecksAsync(string title, string message, (string Text, bool On)[] options, string ok)
+    {
+        var sheets = Sheets;
+        if (sheets == null) return null;
+        var body = new StackPanel { Margin = new Thickness(24, 4, 24, 18) };
+        body.Children.Add(new TextBlock { Text = title, FontSize = 20, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10) });
+        body.Children.Add(new TextBlock { Text = message, Classes = { "hint" }, FontSize = 14.5, LineHeight = 21, Margin = new Thickness(0, 0, 0, 4) });
+        var checks = options.Select(o => new CheckBox
+        {
+            Content = new TextBlock { Text = o.Text, TextWrapping = TextWrapping.Wrap, FontSize = 15 }, IsChecked = o.On, Margin = new Thickness(0, 12, 0, 0),
+        }).ToList();
+        var go = new Button
+        {
+            Content = ok, Theme = Ui.Theme("TouchPrimary"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center,
+            Margin = new Thickness(0, 20, 0, 0),
+        };
+        foreach (var c in checks)
+        {
+            body.Children.Add(c);
+            c.IsCheckedChanged += (_, _) => go.IsEnabled = checks.Any(x => x.IsChecked == true);
+        }
+        go.IsEnabled = checks.Any(x => x.IsChecked == true);
+        bool done = false;
+        go.Click += (_, _) =>
+        {
+            done = true;
+            sheets.Close(body);
+        };
+        body.Children.Add(go);
+        await sheets.Show(new ScrollViewer { Content = body });
+        return done ? checks.Select(c => c.IsChecked == true).ToArray() : null;
     }
 
     // Title, text, fields; the OK button's answer (the fields' texts), or null.

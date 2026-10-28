@@ -41,7 +41,7 @@
                         <StackPanel Grid.Column="1" Margin="24,0,0,0">
                             <TextBlock Text="{local:T 'Your music, offline and ad-free'}" FontSize="22" FontWeight="Bold"/>
                             <TextBlock Classes="hint" FontSize="14" LineHeight="21" Margin="0,8,0,16"
-                                       Text="{local:T 'Paste the link to a song or playlist in the bar at the top (YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram and almost any other site): it gets downloaded and saved here. You can also add music you already have on your computer, or drag files into the window.'}"/>
+                                       Text="{local:T 'Paste the link to a song or playlist in Search (YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram and almost any other site): it gets downloaded and saved here. You can also add music you already have on your computer, or drag files into the window.'}"/>
                             <StackPanel Orientation="Horizontal">
                                 <Button Theme="{StaticResource PrimaryButton}" Padding="18,10"
                                         Command="{Binding $parent[Window].DataContext.PasteLinkCommand}">
@@ -58,6 +58,23 @@
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
+                            <!-- coming from Spotify or Last.fm: the library, the playlists and the plays -->
+                            <TextBlock Classes="hint" FontSize="13" Margin="0,20,0,10" TextWrapping="Wrap"
+                                       Text="{local:T 'Coming from Spotify or Last.fm? Bring your liked songs, your playlists and your plays.'}"/>
+                            <WrapPanel>
+                                <Button Theme="{StaticResource GhostButton}" Padding="16,9" Margin="0,0,10,0" Command="{Binding ImportSpotifyCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Import from Spotify'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Theme="{StaticResource GhostButton}" Padding="16,9" Command="{Binding ImportLastFmCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Import from Last.fm'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
                         </StackPanel>
                     </Grid>
                 </Border>

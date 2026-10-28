@@ -39,7 +39,15 @@
                             </Panel>
                         </Border>
                         <TextBlock Text="{Binding Name}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="18,0"/>
-                        <TextBlock Text="{Binding Subtitle}" Classes="hint" FontSize="13.5" HorizontalAlignment="Center" TextAlignment="Center" Margin="18,4,18,16"/>
+                        <TextBlock Text="{Binding Subtitle}" Classes="hint" FontSize="13.5" HorizontalAlignment="Center" TextAlignment="Center" Margin="18,4,18,0"/>
+                        <!-- who it is: its page on its site (⋯ › Choose the artist… when it's someone else) -->
+                        <Button Theme="{StaticResource LinkButton}" Command="{Binding SiteCommand}" IsVisible="{Binding HasSite}" HorizontalAlignment="Center" Margin="0,6,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E774}" Classes="glyph" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SiteText}" Margin="6,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <Border Height="16"/>
                         <Grid ColumnDefinitions="Auto,Auto,Auto,*,Auto,Auto" Margin="16,0,16,20">
                             <Button Theme="{StaticResource SmallGhost}" Command="{Binding FollowCommand}" VerticalAlignment="Center">
                                 <StackPanel Orientation="Horizontal">
@@ -54,6 +62,12 @@
                                     VerticalAlignment="Center"/>
                             <Button Grid.Column="5" Theme="{StaticResource BigPlayButton}" Content="{local:Icon E768}" Command="{Binding PlayCommand}"/>
                         </Grid>
+
+                        <!-- its most listened songs on its site: a tap plays them from there without saving them -->
+                        <StackPanel IsVisible="{Binding HasPopular}" Margin="0,0,0,18">
+                            <TextBlock Text="{local:T Popular}" Classes="section-title" Margin="18,0,18,6"/>
+                            <ItemsControl ItemsSource="{Binding Popular}" ItemTemplate="{StaticResource HitRowTemplate}"/>
+                        </StackPanel>
 
                         <StackPanel IsVisible="{Binding HasReleases}">
                             <TextBlock Text="{local:T 'New releases'}" Classes="section-title" Margin="18,0,18,12"/>

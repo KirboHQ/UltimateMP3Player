@@ -51,6 +51,42 @@ public partial class Templates : ResourceDictionary
         e.Handled = true;
     }
 
+    private void Artist_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not ArtistCardViewModel a) return;
+        Menus.Open(Menus.ForArtistCard(a), (UIElement)sender, false);
+        e.Handled = true;
+    }
+
+    // A song found online (the search, an artist's popular songs).
+    private void Hit_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not OnlineHitViewModel h || Menus.ForHit(h) is not { } menu) return;
+        Menus.Open(menu, (UIElement)sender, false);
+        e.Handled = true;
+    }
+
+    // A song found online pulled to the right goes into the queue, as the library's rows; a click (not a drag, not on its
+    // button) is its TapCommand, on release so that pulling it doesn't play it.
+    private void Hit_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _dragStart is not Point start) return;
+        if (e.OriginalSource is DependencyObject d && Ui.FindAncestor<ButtonBase>(d) != null) return;
+        var p = e.GetPosition(null);
+        if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
+        _dragStart = null;
+        if (p.X - start.X > 1.5 * Math.Abs(p.Y - start.Y) && sender is FrameworkElement fe) RowSwipe.StartDrag(fe, p);
+    }
+
+    private void Hit_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_dragStart == null || (sender as FrameworkElement)?.DataContext is not OnlineHitViewModel h) return;
+        _dragStart = null;
+        if (e.OriginalSource is DependencyObject d && Ui.FindAncestor<ButtonBase>(d) != null) return;
+        h.TapCommand.Execute(null);
+        e.Handled = true;
+    }
+
     private void Playlist_RightClick(object sender, MouseButtonEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is not PlaylistViewModel p) return;

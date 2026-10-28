@@ -411,8 +411,15 @@
                     <Border Classes="line"/>
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportSpotifyCommand}" views:SettingsPage.Keywords="{local:T 'spotify history import plays wrapped'}">
                         <StackPanel>
-                            <TextBlock Text="{local:T 'Import your Spotify history…'}" Classes="setting"/>
-                            <TextBlock Text="{local:T 'Your plays on Spotify into the statistics and the recaps'}" Classes="setting-hint"/>
+                            <TextBlock Text="{local:T 'Import from Spotify…'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Your liked songs, playlists and plays on Spotify'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportLastFmCommand}" views:SettingsPage.Keywords="lastfm last.fm scrobble">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Import from Last.fm…'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Your loved songs as a playlist, your scrobbles into the statistics'}" Classes="setting-hint"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>

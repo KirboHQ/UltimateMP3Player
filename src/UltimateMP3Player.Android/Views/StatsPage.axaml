@@ -56,6 +56,12 @@
                                     <TextBlock Text="{local:T 'Import from Spotify'}" Margin="7,0,0,0"/>
                                 </StackPanel>
                             </Button>
+                            <Button Theme="{StaticResource SmallGhost}" Command="{Binding ImportLastFmCommand}" Margin="0,0,8,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E8E5}" Classes="glyph" FontSize="14"/>
+                                    <TextBlock Text="{local:T 'Import from Last.fm'}" Margin="7,0,0,0"/>
+                                </StackPanel>
+                            </Button>
                         </WrapPanel>
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <Button Theme="{StaticResource SmallGhost}" Click="Sort_Click">

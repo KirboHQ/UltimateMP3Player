@@ -109,6 +109,7 @@ public static class Rows
         {
             "track" when c.DataContext is TrackRow row => Menus.MenuFor(row, c),
             "hit" when c.DataContext is OnlineHitViewModel h => Menus.ForHit(h),
+            "artist" when c.DataContext is ArtistCardViewModel a => Menus.ForArtistCard(a),
             "card" when many.Count > 1 => Menus.ForSelection(SelectionBar.SongsOf(many), null),
             "card" when c.DataContext is TrackViewModel t => Menus.ForTrack(t, null),
             "playlist" when many.OfType<PlaylistViewModel>().ToList() is { Count: > 1 } lists => Menus.ForPlaylists(lists),

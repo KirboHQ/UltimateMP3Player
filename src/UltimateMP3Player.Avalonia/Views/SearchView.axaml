@@ -1,3 +1,5 @@
+<!-- The search: its box at the top, chips (All, Songs, Artists, Albums and EPs, Playlists) over one list made of headings, your songs,
+     the sites' songs, shelves of cards and notes (SearchViewModel.Items). -->
 <UserControl x:Class="UltimateMP3Player.Views.SearchView"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -5,17 +7,17 @@
              xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
     <UserControl.Resources>
-        <!-- a site filter over the online results: coloured dot, name, how many -->
+        <!-- a chip over the results (the kinds) or over the online songs (the sites) -->
         <ControlTheme x:Key="ServiceChip" TargetType="Button">
             <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
-            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="FocusAdorner" Value="{x:Null}"/>
             <Setter Property="Margin" Value="0,0,8,6"/>
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border Name="Bd" CornerRadius="15" Height="30" Padding="12,0" Background="{DynamicResource Surface2Brush}"
+                    <Border Name="Bd" CornerRadius="16" Height="32" Padding="14,0" Background="{DynamicResource Surface2Brush}"
                             BorderBrush="Transparent" BorderThickness="1">
                         <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
                     </Border>
@@ -35,97 +37,58 @@
                 <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
             </Style>
         </ControlTheme>
-
-        <!-- a song found online: the whole row is the button (it opens the download, as a pasted link) -->
-        <ControlTheme x:Key="HitRow" TargetType="Button">
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="FocusAdorner" Value="{x:Null}"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Name="Bd" CornerRadius="8" Padding="8,6" Margin="0,0,10,1" Background="Transparent">
-                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalContentAlignment="Stretch"/>
-                    </Border>
-                </ControlTemplate>
-            </Setter>
-            <Style Selector="^:pointerover /template/ Border#Bd">
-                <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
-            </Style>
-            <Style Selector="^:pressed /template/ Border#Bd">
-                <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
-            </Style>
-        </ControlTheme>
     </UserControl.Resources>
-    <!-- The "Scarica" pill lit under the mouse: outside the ControlTheme, which may not style its content (Avalonia threw
-         "ControlTheme style may not directly contain a child or descendent selector" when the online results appeared). -->
     <UserControl.Styles>
-        <Style Selector="Button.hit:pointerover Border.get">
-            <Setter Property="Background" Value="{DynamicResource AccentGradient}"/>
-        </Style>
-        <Style Selector="Button.hit:pointerover Border.get TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}"/>
-        </Style>
-        <!-- (the card's colour from a style, not set on it: a value set on it would win over the hover) -->
+        <!-- (the cards' colour from a style, not set on them: a value set on them would win over the hover) -->
         <Style Selector="Border.card">
             <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
         </Style>
-        <Style Selector="Button.featured:pointerover Border.card">
+        <Style Selector="Border.card:pointerover">
             <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+        </Style>
+        <!-- the box while it's being written in (SearchView: "focused") -->
+        <Style Selector="Border#SearchPill">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border#SearchPill.focused">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="TextBlock#SearchIcon">
+            <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+        </Style>
+        <Style Selector="Border#SearchPill.focused TextBlock#SearchIcon">
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         </Style>
     </UserControl.Styles>
 
-    <Grid Margin="20,6,12,0" RowDefinitions="Auto,*">
-        <DockPanel Margin="8,0,10,14">
-            <!-- your songs / the music sites -->
-            <Border DockPanel.Dock="Right" Margin="16,0,0,0" CornerRadius="20" Padding="4" Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Center"
-                    BorderBrush="Transparent" BorderThickness="1" IsVisible="{Binding OnlineEnabled}">
-                <StackPanel Orientation="Horizontal">
-                    <RadioButton Theme="{StaticResource Segment}" GroupName="SearchTabs" local:Ui.Glyph="&#xE8F1;" Content="{Binding LocalTabText}"
-                                 IsChecked="{Binding LocalMode, Mode=OneWay}" Command="{Binding ShowLocalCommand}"/>
-                    <RadioButton Theme="{StaticResource Segment}" GroupName="SearchTabs" local:Ui.Glyph="&#xE774;" Content="{Binding OnlineTabText}" Margin="4,0,0,0"
-                                 IsChecked="{Binding OnlineMode, Mode=OneWay}" Command="{Binding ShowOnlineCommand}"
-                                 ToolTip.Tip="{local:T 'Songs found on YouTube Music, SoundCloud, YouTube and Deezer: click one to download it'}"/>
-                </StackPanel>
-            </Border>
-            <TextBlock Text="{Binding Title}" Classes="section-title" Margin="0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-        </DockPanel>
-
-        <!-- ============================================================ your songs -->
-        <Grid Grid.Row="1" IsVisible="{Binding LocalMode}" RowDefinitions="Auto,Auto,*">
-            <StackPanel Margin="8,0,0,6" IsVisible="{Binding HasPlaylists}">
-                <TextBlock Text="PLAYLIST" Classes="small-caps" Margin="0,0,0,10"/>
-                <ItemsControl ItemsSource="{Binding PlaylistResults}" ItemTemplate="{StaticResource PlaylistCard}" Margin="0,0,10,12">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <views:CardGrid MaxRows="1"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
-            </StackPanel>
-
-            <ContentControl Grid.Row="1" ContentTemplate="{StaticResource TrackHeader}" Content="{Binding}" Margin="0,0,10,0"/>
-            <ListBox x:Name="List" Grid.Row="2" Theme="{StaticResource PlainList}" ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource TrackRowTemplate}"/>
-            <views:SelectionBar Grid.Row="2" List="{Binding #List}" ZIndex="1"/>
-            <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" IsVisible="{Binding NoResults}">
-                <TextBlock Text="{local:T 'No results'}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                <TextBlock Text="{Binding LocalEmptyHint}" Classes="hint" Margin="0,8,0,0" TextAlignment="Center" MaxWidth="460"/>
-            </StackPanel>
-        </Grid>
-
-        <!-- ============================================================ online -->
-        <Grid Grid.Row="1" IsVisible="{Binding OnlineMode}" RowDefinitions="Auto,*">
-            <DockPanel Margin="8,0,10,8" MinHeight="36">
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="12,0,0,0">
-                    <Ellipse Classes="spinner" Width="14" Height="14" StrokeThickness="2.5" Margin="0,0,8,0" VerticalAlignment="Center"
-                             IsVisible="{Binding OnlineBusy}"/>
+    <Grid Margin="20,12,12,0" RowDefinitions="Auto,*">
+        <StackPanel Margin="8,0,10,8">
+            <!-- the box (your songs and online, or a link to download) across the page, the sites' settings on its right -->
+            <Grid ColumnDefinitions="*,Auto">
+                <Border x:Name="SearchPill" Height="46" CornerRadius="23" Background="{DynamicResource SurfaceBrush}" BorderThickness="1" Padding="16,0,6,0"
+                        DataContext="{Binding Main}">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                        <TextBlock x:Name="SearchIcon" Text="{local:Icon E721}" Classes="glyph" FontSize="16"/>
+                        <TextBox x:Name="SearchBox" Grid.Column="1" Theme="{StaticResource BareTextBox}" FontSize="15" Margin="11,0,2,0"
+                                 Watermark="{local:T Search}" Text="{Binding SearchText}"
+                                 ToolTip.Tip="{local:T 'Search your songs and online, or paste a link to download (YouTube, Spotify, SoundCloud, TikTok…)'}"/>
+                        <Button Grid.Column="2" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="11" Content="{local:Icon E711}"
+                                Command="{Binding ClearSearchCommand}" ToolTip.Tip="{local:T Clear}" IsVisible="{Binding HasSearchText}"/>
+                        <Button Grid.Column="3" Theme="{StaticResource BigPlayButton}" Width="34" Height="34" FontSize="13" Margin="2,0,0,0" Content="{local:Icon E896}"
+                                Command="{Binding SubmitSearchCommand}" ToolTip.Tip="{local:T 'Download link'}" IsVisible="{Binding IsLink}"/>
+                    </Grid>
+                </Border>
+                <Button Grid.Column="1" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="{local:Icon E713}" Margin="12,0,0,0"
+                        Command="{Binding OnlineSettingsCommand}" ToolTip.Tip="{local:T 'Which sites to search and in what order (Settings)'}"/>
+            </Grid>
+            <!-- the kinds; on the right, under the gear, how the sites are doing (there the box keeps its width while they answer) -->
+            <DockPanel Margin="0,14,0,0" IsVisible="{Binding HasQuery}">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Height="32" VerticalAlignment="Top" Margin="12,0,0,0">
+                    <Ellipse Classes="spinner" Width="14" Height="14" StrokeThickness="2.5" Margin="0,0,8,0" VerticalAlignment="Center" IsVisible="{Binding OnlineBusy}"/>
                     <TextBlock Text="{Binding OnlineStatus}" Classes="hint" FontSize="12" VerticalAlignment="Center" TextWrapping="NoWrap"
                                TextTrimming="CharacterEllipsis" MaxWidth="360"/>
-                    <Button Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="{local:Icon E713}" Margin="6,0,0,0"
-                            Command="{Binding OnlineSettingsCommand}" ToolTip.Tip="{local:T 'Which sites to search and in what order (Settings)'}"/>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding ServiceTabs}" Focusable="False" IsVisible="{Binding HasServiceTabs}">
+                <ItemsControl ItemsSource="{Binding Filters}" Focusable="False">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel/>
@@ -133,121 +96,150 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Theme="{StaticResource ServiceChip}" Classes.selected="{Binding IsSelected}" CommandParameter="{Binding}"
-                                    Command="{Binding $parent[UserControl].DataContext.SelectServiceCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="8" Height="8" Fill="{Binding Brush}" Margin="0,0,7,0" VerticalAlignment="Center" IsVisible="{Binding HasDot}"/>
-                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Count}" Foreground="{DynamicResource MutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
+                            <Button Theme="{StaticResource ServiceChip}" Classes.selected="{Binding IsSelected}" Content="{Binding Label}" CommandParameter="{Binding}"
+                                    Command="{Binding $parent[UserControl].DataContext.SelectFilterCommand}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </DockPanel>
+        </StackPanel>
 
-            <ListBox Grid.Row="1" Theme="{StaticResource PlainList}" ItemsSource="{Binding OnlineHits}">
-                <ListBox.DataTemplates>
-                    <!-- the playlist named as the words: a big card first, so it's clear it's a whole playlist (before the rows: it's one of them too) -->
-                    <DataTemplate DataType="vm:FeaturedHitViewModel">
-                        <Button Theme="{StaticResource HitRow}" Classes="hit featured" Command="{Binding DownloadCommand}" Margin="0,0,0,8"
-                                ToolTip.Tip="{local:T 'Open it to choose its songs and the playlist to save them in'}" ToolTip.ShowDelay="1200">
-                            <Border Classes="card" CornerRadius="12" Padding="12">
-                                <Grid local:Marquee.Host="True" ColumnDefinitions="Auto,*,Auto">
-                                    <Panel Width="112" Height="112">
-                                        <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNull}}">
-                                            <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="30" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
-                                        </Border>
-                                        <views:CoverImage CornerRadius="8" Source="{Binding Thumb}"/>
-                                    </Panel>
-                                    <StackPanel Grid.Column="1" Margin="20,0,12,0" VerticalAlignment="Center">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="12" Foreground="{DynamicResource AccentTextBrush}"/>
-                                            <TextBlock Text="{Binding Kind}" FontSize="12.5" FontWeight="Bold" Margin="7,0,0,0" Foreground="{DynamicResource AccentTextBrush}"
-                                                       VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <TextBlock Text="{Binding Title}" FontSize="24" FontWeight="Bold" Margin="0,4,0,6" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Service}" FontSize="12.5" Margin="6,0,10,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Details}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                    <Border Classes="get" Grid.Column="2" CornerRadius="17" Height="34" Padding="16,0" Margin="14,0,4,0" VerticalAlignment="Center"
-                                            Background="{DynamicResource Surface3Brush}">
-                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="13" Foreground="{DynamicResource SubTextBrush}"/>
-                                            <TextBlock Text="{local:T 'Download|verb'}" FontSize="13" FontWeight="SemiBold" Margin="8,0,0,0"
-                                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Border>
-                                </Grid>
-                            </Border>
-                        </Button>
-                    </DataTemplate>
-                    <DataTemplate DataType="vm:OnlineHitViewModel">
-                        <Button Theme="{StaticResource HitRow}" Classes="hit" Command="{Binding DownloadCommand}" views:Rows.Menu="hit" views:Rows.Drag="True"
-                                ToolTip.Tip="{local:T 'Open it to download it: choose the playlist and press Download'}" ToolTip.ShowDelay="1200">
-                            <Grid local:Marquee.Host="True" ColumnDefinitions="Auto,*,Auto,56,Auto">
-                                <Panel Width="48" Height="48">
-                                    <Border CornerRadius="6" Background="{DynamicResource PlaceholderGradient}" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNull}}">
-                                        <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="17" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
-                                    </Border>
-                                    <views:CoverImage CornerRadius="6" Source="{Binding Thumb}"/>
-                                </Panel>
-                                <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                                    <DockPanel Margin="0,2,0,0">
-                                        <Border DockPanel.Dock="Left" CornerRadius="7" Padding="6,0" Margin="0,0,8,0" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center"
-                                                IsVisible="{Binding InLibrary}" ToolTip.Tip="{local:T 'You already have it in your library'}">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="9" Foreground="{DynamicResource SuccessBrush}"/>
-                                                <TextBlock Text="{local:T 'in library'}" FontSize="11" FontWeight="SemiBold" Margin="4,0,0,1" Foreground="{DynamicResource SuccessBrush}"/>
-                                            </StackPanel>
-                                        </Border>
-                                        <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
-                                                   local:Marquee.IsEnabled="True"/>
-                                    </DockPanel>
+        <ListBox x:Name="List" Grid.Row="1" Theme="{StaticResource PlainList}" ItemsSource="{Binding Items}">
+            <ListBox.DataTemplates>
+                <!-- your songs: as in every list (play, select, drag, the menu) -->
+                <DataTemplate DataType="vm:TrackRow">
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource TrackRowTemplate}"/>
+                </DataTemplate>
+
+                <!-- a heading, with "Show all" leading to its chip -->
+                <DataTemplate DataType="vm:SearchSection">
+                    <DockPanel Margin="8,22,18,8">
+                        <Button DockPanel.Dock="Right" Theme="{StaticResource LinkButton}" Content="{local:T 'Show all'}" Command="{Binding MoreCommand}"
+                                IsVisible="{Binding HasMore}" VerticalAlignment="Bottom"/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding Count}" FontSize="14" Foreground="{DynamicResource MutedBrush}" Margin="10,0,0,1" VerticalAlignment="Bottom"
+                                       IsVisible="{Binding HasCount}"/>
+                        </StackPanel>
+                    </DockPanel>
+                </DataTemplate>
+
+                <!-- artists, albums, playlists side by side: one row in "All", all of them under their chip -->
+                <DataTemplate DataType="vm:CardShelf">
+                    <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,18,4" Focusable="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <views:CardGrid MaxRows="{Binding MaxRows}"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.DataTemplates>
+                            <DataTemplate DataType="vm:ArtistCardViewModel">
+                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource ArtistCard}"/>
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:PlaylistViewModel">
+                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
+                            </DataTemplate>
+                            <DataTemplate DataType="vm:OnlineHitViewModel">
+                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AlbumCard}"/>
+                            </DataTemplate>
+                        </ItemsControl.DataTemplates>
+                    </ItemsControl>
+                </DataTemplate>
+
+                <!-- the artist the words name: big, first -->
+                <DataTemplate DataType="vm:TopArtistResult">
+                    <Border Classes="card" CornerRadius="14" Padding="18" Margin="0,4,18,0" Cursor="Hand" views:Click.Command="{Binding OpenCommand}"
+                            views:Rows.Menu="artist" DataContext="{Binding Artist}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Panel Width="112" Height="112">
+                                <Ellipse Fill="{Binding Brush}"/>
+                                <TextBlock Text="{Binding Initial}" FontSize="44" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
+                            </Panel>
+                            <StackPanel Grid.Column="1" Margin="22,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Text="{local:T ARTIST}" Classes="small-caps" Foreground="{DynamicResource AccentTextBrush}"/>
+                                <TextBlock Text="{Binding Name}" FontSize="30" FontWeight="Bold" Margin="0,2,0,4" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SubTextBrush}" IsVisible="{Binding HasSubtitle}"/>
+                            </StackPanel>
+                            <Button Grid.Column="2" Theme="{StaticResource GhostButton}" Padding="16,8" VerticalAlignment="Center" Command="{Binding FollowCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding FollowGlyph, Converter={StaticResource Icon}}" Classes="glyph"/>
+                                    <TextBlock Text="{Binding FollowTip}" Margin="8,0,0,0"/>
                                 </StackPanel>
-                                <Border Grid.Column="2" CornerRadius="10" Padding="8,2,9,2" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding Service}" FontSize="11.5" Margin="6,0,0,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                                <TextBlock Grid.Column="3" Text="{Binding DurationText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right"
-                                           VerticalAlignment="Center"/>
-                                <Border Classes="get" Grid.Column="4" CornerRadius="15" Height="30" Padding="13,0" Margin="14,0,4,0" VerticalAlignment="Center"
-                                        Background="{DynamicResource Surface3Brush}">
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
-                                        <TextBlock Text="{local:T 'Download|verb'}" FontSize="12.5" FontWeight="SemiBold" Margin="7,0,0,0"
-                                                   Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-                        </Button>
-                    </DataTemplate>
-                </ListBox.DataTemplates>
-            </ListBox>
+                            </Button>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
 
-            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" MaxWidth="460" IsVisible="{Binding NoOnlineResults}">
-                <TextBlock Text="{Binding NoOnlineText}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
-                <TextBlock Text="{local:T 'Try the title and the artist, or paste the song\'s link directly.'}" Classes="hint"
-                           Margin="0,8,0,0" TextAlignment="Center"/>
-            </StackPanel>
-            <!-- the Spotify tab without a key (or with one Spotify refuses): what it takes, and the way to Settings -->
-            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" MaxWidth="480" IsVisible="{Binding ShowSpotifySetup}">
-                <TextBlock Text="{local:T 'Search Spotify too'}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                <TextBlock Text="{Binding SpotifySetupText}" Classes="hint" Margin="0,8,0,0" TextAlignment="Center" TextWrapping="Wrap"/>
-                <Button Theme="{StaticResource PrimaryButton}" Content="{local:T 'Set it up in Settings'}" Command="{Binding SpotifySettingsCommand}"
-                        HorizontalAlignment="Center" Margin="0,18,0,0"/>
-            </StackPanel>
-            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,48,0,0" Orientation="Horizontal" IsVisible="{Binding ShowSearching}">
-                <Ellipse Classes="spinner" Width="20" Height="20" StrokeThickness="3"/>
-                <TextBlock Text="{local:T 'Searching online…'}" FontSize="14" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
-            </StackPanel>
-        </Grid>
+                <!-- the album or playlist named as the words: big, first -->
+                <DataTemplate DataType="vm:FeaturedHitViewModel">
+                    <Border Classes="card" CornerRadius="14" Padding="14" Margin="0,4,18,0" Cursor="Hand" views:Click.Command="{Binding DownloadCommand}"
+                            ToolTip.Tip="{local:T 'Open it to choose its songs and the playlist to save them in'}" ToolTip.ShowDelay="1200">
+                        <Grid local:Marquee.Host="True" ColumnDefinitions="Auto,*,Auto">
+                            <Panel Width="112" Height="112">
+                                <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNull}}">
+                                    <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="30" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                                </Border>
+                                <views:CoverImage CornerRadius="8" Source="{Binding Thumb}"/>
+                            </Panel>
+                            <StackPanel Grid.Column="1" Margin="20,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Kind}" Classes="small-caps" Foreground="{DynamicResource AccentTextBrush}"/>
+                                <TextBlock Text="{Binding Title}" FontSize="26" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Service}" FontSize="12.5" Margin="6,0,10,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Details}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <Button Grid.Column="2" Theme="{StaticResource BigPlayButton}" Width="48" Height="48" FontSize="18" Content="{local:Icon E768}"
+                                    VerticalAlignment="Center" Command="{Binding PlayCommand}" ToolTip.Tip="{local:T 'Play without saving'}"/>
+                        </Grid>
+                    </Border>
+                </DataTemplate>
+
+                <!-- a song (or a list) found online -->
+                <DataTemplate DataType="vm:OnlineHitViewModel">
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource HitRowTemplate}"/>
+                </DataTemplate>
+
+                <!-- the sites over the online songs -->
+                <DataTemplate DataType="vm:SiteChips">
+                    <ItemsControl ItemsSource="{Binding Tabs}" Margin="8,0,18,6" Focusable="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Theme="{StaticResource ServiceChip}" Classes.selected="{Binding IsSelected}" CommandParameter="{Binding}"
+                                        Command="{Binding $parent[ItemsControl].DataContext.SelectCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Fill="{Binding Brush}" Margin="0,0,7,0" VerticalAlignment="Center" IsVisible="{Binding HasDot}"/>
+                                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Count}" Foreground="{DynamicResource MutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DataTemplate>
+
+                <!-- searching, nothing found, Spotify without its key -->
+                <DataTemplate DataType="vm:SearchNote">
+                    <StackPanel HorizontalAlignment="Center" Margin="24,32,24,24" MaxWidth="480">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Ellipse Classes="spinner" Width="18" Height="18" StrokeThickness="3" Margin="0,0,12,0" VerticalAlignment="Center" IsVisible="{Binding Busy}"/>
+                            <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Text}" Classes="hint" Margin="0,8,0,0" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding HasText}"/>
+                        <Button Theme="{StaticResource PrimaryButton}" Content="{Binding ButtonText}" Command="{Binding Command}" HorizontalAlignment="Center"
+                                Margin="0,18,0,0" IsVisible="{Binding HasButton}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.DataTemplates>
+        </ListBox>
+        <views:SelectionBar Grid.Row="1" List="{Binding #List}" ZIndex="1"/>
     </Grid>
 </UserControl>

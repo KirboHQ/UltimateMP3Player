@@ -737,7 +737,8 @@
     <!-- An artist: its picture in a circle (or its initial on a colour of its own) and its name; a click opens its page. The
          round button follows it (a tick once followed); a dot = a release of its not seen yet. -->
     <DataTemplate x:Key="ArtistCard" DataType="{x:Type vm:ArtistCardViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" Cursor="Hand" local:Marquee.Host="True">
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" Cursor="Hand" local:Marquee.Host="True"
+                MouseRightButtonUp="Artist_RightClick">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding OpenCommand}"/>
             </Border.InputBindings>
@@ -811,7 +812,8 @@
         </DataTemplate.Triggers>
     </DataTemplate>
 
-    <!-- A new album, EP or single of a followed artist: its cover ("NEW" until seen); a click opens it like its link. -->
+    <!-- A new album, EP or single of a followed artist: its cover ("NEW" until seen); a click opens it like its link, its button
+         plays it without saving it. -->
     <DataTemplate x:Key="ReleaseCard" DataType="{x:Type vm:ReleaseCardViewModel}">
         <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" Cursor="Hand" local:Marquee.Host="True">
             <Border.InputBindings>
@@ -832,6 +834,9 @@
                                 Visibility="{Binding IsNew, Converter={StaticResource BoolVis}}">
                             <TextBlock Text="{local:T NEW}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"/>
                         </Border>
+                        <Button x:Name="Play" Style="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="17" Content="&#xE768;"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
+                                Command="{Binding PlayCommand}" ToolTip="{local:T 'Play without saving'}"/>
                     </Grid>
                 </views:SquareBox>
                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
@@ -842,11 +847,13 @@
         <DataTemplate.Triggers>
             <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
                 <Setter TargetName="Card" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                <Setter TargetName="Play" Property="Opacity" Value="1"/>
             </Trigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
-    <!-- An album found online (an artist's page): its cover; a click opens it like its link. -->
+    <!-- An album or a playlist found online (an artist's page, the search): its cover; a click opens it like its link, its button
+         plays it without saving it. -->
     <DataTemplate x:Key="AlbumCard" DataType="{x:Type vm:OnlineHitViewModel}">
         <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" Cursor="Hand" local:Marquee.Host="True">
             <Border.InputBindings>
@@ -863,6 +870,9 @@
                                 <ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/>
                             </Border.Background>
                         </Border>
+                        <Button x:Name="Play" Style="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="17" Content="&#xE768;"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
+                                Command="{Binding PlayCommand}" ToolTip="{local:T 'Play without saving'}"/>
                     </Grid>
                 </views:SquareBox>
                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
@@ -872,7 +882,99 @@
         <DataTemplate.Triggers>
             <Trigger SourceName="Card" Property="IsMouseOver" Value="True">
                 <Setter TargetName="Card" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                <Setter TargetName="Play" Property="Opacity" Value="1"/>
             </Trigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- A song found online (the search, an artist's popular songs): a click plays it without saving it, its button downloads it
+         (its card, as a pasted link); an album or a playlist the other way round: a click opens its card, its button plays it.
+         Your songs' columns (TrackRowTemplate), so the two line up under the search's "Songs": the site where the tags, the
+         cloud and the heart are, the button where "more" is. -->
+    <DataTemplate x:Key="HitRowTemplate" DataType="{x:Type vm:OnlineHitViewModel}">
+        <Border x:Name="Row" CornerRadius="8" Padding="8,5" Margin="0,0,0,1" Background="Transparent" Cursor="Hand" local:Marquee.Host="True"
+                MouseRightButtonUp="Hit_RightClick" PreviewMouseLeftButtonDown="Row_MouseDown" MouseMove="Hit_MouseMove" MouseLeftButtonUp="Hit_MouseUp">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40"/>
+                    <ColumnDefinition Width="2.6*"/>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
+                    <ColumnDefinition Width="32"/>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="64"/>
+                    <ColumnDefinition Width="36"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid>
+                    <TextBlock x:Name="Num" Text="{Binding Number}" Foreground="{DynamicResource SubTextBrush}" FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <!-- a song: "play" in its place under the mouse (the row plays it) -->
+                    <TextBlock x:Name="PlayGlyph" Text="&#xE768;" Style="{StaticResource Glyph}" FontSize="13" Foreground="{DynamicResource TextBrush}"
+                               HorizontalAlignment="Center" Visibility="Hidden"/>
+                </Grid>
+
+                <Grid Grid.Column="1" Margin="4,0,12,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid Width="40" Height="40">
+                        <Border CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
+                            <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" FontSize="15" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                        </Border>
+                        <Border CornerRadius="5">
+                            <Border.Background>
+                                <ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                        <DockPanel Margin="0,2,0,0">
+                            <Border DockPanel.Dock="Left" CornerRadius="7" Padding="6,0" Margin="0,0,8,0" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center"
+                                    Visibility="{Binding InLibrary, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'You already have it in your library'}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE73E;" Style="{StaticResource Glyph}" FontSize="9" Foreground="{DynamicResource SuccessBrush}"/>
+                                    <TextBlock Text="{local:T 'in library'}" FontSize="11" FontWeight="SemiBold" Margin="4,0,0,1" Foreground="{DynamicResource SuccessBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="{Binding Line}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                                       local:Marquee.IsEnabled="True"/>
+                        </DockPanel>
+                    </StackPanel>
+                </Grid>
+
+                <DockPanel Grid.Column="2" Grid.ColumnSpan="4">
+                    <Border DockPanel.Dock="Right" CornerRadius="10" Padding="8,2,9,2" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Service}" FontSize="11.5" Margin="6,0,0,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding AlbumText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center" Margin="0,0,12,0" local:Marquee.IsEnabled="True"/>
+                </DockPanel>
+
+                <TextBlock Grid.Column="6" Text="{Binding DurationText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                <Button Grid.Column="7" Style="{StaticResource RowIconButton}" Content="{Binding SideGlyph}" Command="{Binding SideCommand}"
+                        ToolTip="{Binding SideTip}" AutomationProperties.Name="{Binding SideTip}"/>
+            </Grid>
+        </Border>
+        <DataTemplate.Triggers>
+            <Trigger SourceName="Row" Property="IsMouseOver" Value="True">
+                <Setter TargetName="Row" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+            </Trigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsMouseOver, ElementName=Row}" Value="True"/>
+                    <Condition Binding="{Binding IsSong}" Value="True"/>
+                </MultiDataTrigger.Conditions>
+                <Setter TargetName="Num" Property="Visibility" Value="Hidden"/>
+                <Setter TargetName="PlayGlyph" Property="Visibility" Value="Visible"/>
+            </MultiDataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 

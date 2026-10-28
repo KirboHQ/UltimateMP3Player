@@ -25,3 +25,14 @@ src/UltimateMP3Player.Android/Engines/
 
 # the iPhone app's engines (tools/ios-deps.sh: Python for iOS, yt-dlp, certifi, LAME)
 deps/
+.idea/
+.DS_Store
+Thumbs.db
+
+# build logs
+*.binlog
+msbuild*.log
+
+# Claude Code: the project's settings and hooks are shared, the personal ones aren't
+.claude/settings.local.json
+__pycache__/

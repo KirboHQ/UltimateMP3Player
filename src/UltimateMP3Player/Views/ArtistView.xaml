@@ -41,7 +41,17 @@
                         <TextBlock Text="{local:T ARTIST}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource SubTextBrush}"/>
                         <TextBlock Text="{Binding Name}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" Cursor="Hand"
                                    MouseLeftButtonUp="Name_Click" ToolTip="{local:T 'Click to rename'}"/>
-                        <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SubTextBrush}"/>
+                        <WrapPanel>
+                            <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                            <!-- who it is: its page on its site; ⋯ › Choose the artist… when it's someone else -->
+                            <Button Style="{StaticResource LinkButton}" Command="{Binding SiteCommand}" VerticalAlignment="Center"
+                                    Visibility="{Binding HasSite, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Not them? More options › Choose the artist…'}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE774;" Style="{StaticResource Glyph}" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding SiteText}" Margin="6,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
                     </StackPanel>
                 </Grid>
 
@@ -60,6 +70,13 @@
                             ToolTip="{local:T 'Search online'}"/>
                     <Button Style="{StaticResource ControlButton}" Content="&#xE712;" Margin="4,0,0,0" VerticalAlignment="Center" Click="More_Click"
                             ToolTip="{local:T 'More options'}"/>
+                </StackPanel>
+
+                <!-- its most listened songs on its site: a click plays them from there without saving them -->
+                <StackPanel Visibility="{Binding HasPopular, Converter={StaticResource BoolVis}}">
+                    <TextBlock Text="{local:T Popular}" Style="{StaticResource SectionTitle}"/>
+                    <ItemsControl ItemsSource="{Binding Popular}" ItemTemplate="{StaticResource HitRowTemplate}" Margin="-8,0,8,0" Focusable="False"/>
+                    <Border Height="30"/>
                 </StackPanel>
 
                 <!-- your songs of it, the most played first -->

@@ -9,6 +9,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player;
 
@@ -123,6 +124,27 @@ public static partial class Dialogs
             };
         }
         return win.ShowDialog() == true ? chosen : -1;
+    }
+
+    // Ticks to choose what to do (the parts of an import): which ones are ticked, or null. ok is enabled with one ticked.
+    public static Task<bool[]?> ChecksAsync(string title, string message, (string Text, bool On)[] options, string ok)
+    {
+        var stack = new StackPanel();
+        stack.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap, Foreground = Res("SubTextBrush"), LineHeight = 20 });
+        var checks = options.Select(o => new CheckBox
+        {
+            Content = new TextBlock { Text = o.Text, TextWrapping = TextWrapping.Wrap }, IsChecked = o.On, Margin = new Thickness(0, 14, 0, 0),
+        }).ToList();
+        var go = Button(ok, "PrimaryButton", isDefault: true);
+        foreach (var c in checks)
+        {
+            stack.Children.Add(c);
+            c.IsCheckedChanged += (_, _) => go.IsEnabled = checks.Any(x => x.IsChecked == true);
+        }
+        go.IsEnabled = checks.Any(x => x.IsChecked == true);
+        var win = Frame(title, stack, 520, Button(L.T("Cancel"), "GhostButton", isCancel: true), go);
+        go.Click += (_, _) => win.DialogResult = true;
+        return Task.FromResult(win.ShowDialog() == true ? checks.Select(c => c.IsChecked == true).ToArray() : null);
     }
 
     // ok: the button's word ("Save" when none).
@@ -341,6 +363,86 @@ public static partial class Dialogs
         use.Click += (_, _) => win.DialogResult = true;
         Pick(0);
         return Task.FromResult(win.ShowDialog() == true ? picked : null);
+    }
+
+    // "Choose the artist…": the artists the name may be on the music sites (picture, site, fans, how many of your songs), the
+    // likeliest first. The chosen one, or null.
+    public static Task<ArtistChoice?> ChooseArtistAsync(string name, IReadOnlyList<ArtistChoice> choices)
+    {
+        var rows = new StackPanel();
+        ArtistChoice? picked = null;
+        var borders = new List<Border>();
+        DialogWindow? win = null;
+        void Pick(int i)
+        {
+            picked = choices[i];
+            for (int k = 0; k < borders.Count; k++) borders[k].Background = k == i ? Res("AccentSoftBrush") : Brushes.Transparent;
+        }
+        for (int i = 0; i < choices.Count; i++)
+        {
+            var c = choices[i];
+            int n = i;
+            var line = new DockPanel();
+            line.Children.Add(ArtistCircle(c, 48));
+            if (c.IsCurrent)
+            {
+                var now = new TextBlock { Text = L.T("Shown now"), FontSize = 12, Foreground = Res("AccentTextBrush"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 4, 0) };
+                DockPanel.SetDock(now, Dock.Right);
+                line.Children.Add(now);
+            }
+            var info = new StackPanel { Margin = new Thickness(14, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            info.Children.Add(new TextBlock { Text = c.Name, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+            info.Children.Add(new TextBlock
+            {
+                Text = c.Details, FontSize = 12.5, Foreground = Res(c.Site.Songs > 0 ? "SuccessBrush" : "SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(0, 2, 0, 0),
+            });
+            line.Children.Add(info);
+            var row = new Border
+            {
+                CornerRadius = new CornerRadius(10), Padding = new Thickness(10, 8, 10, 8), Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand), Child = line,
+            };
+            row.PointerPressed += (_, e) =>
+            {
+                Pick(n);
+                if (e.ClickCount == 2 && win != null) win.DialogResult = true;
+            };
+            borders.Add(row);
+            rows.Children.Add(row);
+        }
+
+        var body = new StackPanel();
+        body.Children.Add(new TextBlock
+        {
+            Text = L.T("The artists with this name on Deezer, YouTube Music and SoundCloud, the likeliest first: the ones that have your songs. The one you choose gives the picture, the popular songs and the new releases."),
+            TextWrapping = TextWrapping.Wrap, Foreground = Res("SubTextBrush"), LineHeight = 20,
+        });
+        body.Children.Add(new Border
+        {
+            CornerRadius = new CornerRadius(10), Background = Res("BgBrush"), Padding = new Thickness(6), Margin = new Thickness(0, 12, 0, 0), MaxHeight = 420,
+            Child = new ScrollViewer { VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, Content = rows },
+        });
+        var use = Button(L.T("Use this artist"), "PrimaryButton", isDefault: true);
+        win = Frame(L.F("Who is “{0}”?", name), body, 560, Button(L.T("Cancel"), "GhostButton", isCancel: true), use);
+        use.Click += (_, _) => win.DialogResult = true;
+        Pick(0);
+        return Task.FromResult(win.ShowDialog() == true ? picked : null);
+    }
+
+    // An artist's picture in a circle, its initial on its colour until (or when no) picture comes. Linked into the phones.
+    public static Control ArtistCircle(ArtistChoice c, double size)
+    {
+        var circle = new Panel { Width = size, Height = size };
+        circle.Children.Add(new Avalonia.Controls.Shapes.Ellipse { Fill = c.Brush });
+        circle.Children.Add(new TextBlock
+        {
+            Text = c.Initial, Foreground = Brushes.White, FontWeight = FontWeight.Bold, FontSize = size * 0.42, HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        });
+        var photo = new Views.CoverImage { IsCircle = true };
+        photo.Bind(Views.CoverImage.SourceProperty, new Avalonia.Data.Binding(nameof(ArtistChoice.Picture)) { Source = c });
+        circle.Children.Add(photo);
+        return circle;
     }
 
     public static Button Button(string text, string style, bool isDefault = false, bool isCancel = false)

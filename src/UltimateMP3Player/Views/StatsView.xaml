@@ -83,10 +83,16 @@
                 </StackPanel>
             </Button>
             <Button Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Command="{Binding ImportSpotifyCommand}"
-                    ToolTip="{local:T 'Your plays on Spotify into the statistics and the recaps'}">
+                    ToolTip="{local:T 'Your liked songs, playlists and plays on Spotify'}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE8E5;" Style="{StaticResource Glyph}"/>
                     <TextBlock Text="{local:T 'Import from Spotify'}" Margin="8,0,0,0"/>
+                </StackPanel>
+            </Button>
+            <Button Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="16,9" Command="{Binding ImportLastFmCommand}" ToolTip="{local:T 'Your loved songs as a playlist, your scrobbles into the statistics'}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE8E5;" Style="{StaticResource Glyph}"/>
+                    <TextBlock Text="{local:T 'Import from Last.fm'}" Margin="8,0,0,0"/>
                 </StackPanel>
             </Button>
             <ComboBox DockPanel.Dock="Right" Width="200" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"

@@ -240,6 +240,7 @@ public sealed class AppHost : Observable
             Session?.Player.SaveState();
             Settings.Save();
             try { Library.Flush(); } catch { }
+            try { ArtistSites.Flush(); } catch { }
             _songCache?.Flush();
             Profile.FlushAll();
             Images.Release();
@@ -399,6 +400,7 @@ public sealed class AppHost : Observable
         Session?.Player.SaveState();
         Settings.Save();
         try { Library.Flush(); } catch { }
+        try { ArtistSites.Flush(); } catch { }
         _songCache?.Flush();
         Profile.FlushAll();
         Updates.Apply(true, Session?.Profile.Info.Id, background);

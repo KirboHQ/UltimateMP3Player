@@ -26,6 +26,7 @@ public sealed class StatsViewModel : Observable, ITrackList
         // (the newest period with something in it)
         RecapCommand = new RelayCommand(() => _main.OpenRecap(DateTime.Now.Year, 0));
         ImportSpotifyCommand = new RelayCommand(() => _ = SpotifyImport.RunAsync(_main));
+        ImportLastFmCommand = new RelayCommand(() => _ = LastFmImport.RunAsync(_main));
     }
 
     public string ContextId => "stats";
@@ -36,6 +37,7 @@ public sealed class StatsViewModel : Observable, ITrackList
     public ICommand PlayCommand { get; }
     public ICommand RecapCommand { get; }
     public ICommand ImportSpotifyCommand { get; }
+    public ICommand ImportLastFmCommand { get; }
 
     public List<Choice> Sorts { get; }
     private Choice _sort;

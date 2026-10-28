@@ -2372,5 +2372,82 @@ public static partial class L
         ["Rename artist"] = "Rinomina artista",
         // 4.3: a radio whose stream is gone
         ["“{0}” isn't broadcasting right now: try again later, or choose another station."] = "«{0}» non sta trasmettendo in questo momento: riprova più tardi o scegli un'altra radio.",
+        // 4.3.1: the artist chosen among the sites, its popular songs
+        ["Who is “{0}”?"] = "Chi è «{0}»?",
+        ["Use this artist"] = "Usa questo artista",
+        ["Shown now"] = "Mostrato ora",
+        ["The artists with this name on Deezer, YouTube Music and SoundCloud, the likeliest first: the ones that have your songs. The one you choose gives the picture, the popular songs and the new releases."] =
+            "Gli artisti con questo nome su Deezer, YouTube Music e SoundCloud, i più probabili prima: quelli che hanno i tuoi brani. Quello che scegli dà l'immagine, i brani popolari e le nuove uscite.",
+        ["has 1 of your songs"] = "ha 1 dei tuoi brani",
+        ["has {0} of your songs"] = "ha {0} dei tuoi brani",
+        ["none of your songs"] = "nessuno dei tuoi brani",
+        ["{0} fans on {1}"] = "{0} fan su {1}",
+        ["On {0}"] = "Su {0}",
+        ["Open on {0}"] = "Apri su {0}",
+        ["Go to {0}"] = "Vai a {0}",
+        ["Choose the artist…"] = "Scegli l'artista…",
+        ["Not them? More options › Choose the artist…"] = "Non è lui? Altre opzioni › Scegli l'artista…",
+        ["Popular"] = "Popolari",
+        ["Play without saving"] = "Ascolta senza salvare",
+        ["{0}: the one on {1}"] = "{0}: quello su {1}",
+        ["Opening “{0}”…"] = "Apro «{0}»…",
+        ["Looking for “{0}” on the music sites…"] = "Cerco «{0}» sui siti di musica…",
+        ["Couldn't open the link: check your connection."] = "Impossibile aprire il link: controlla la connessione.",
+        ["1 song goes into the room's queue"] = "1 brano va nella coda della stanza",
+        // 4.3.1: the search (box in the sidebar, one list), the sidebar
+        ["Online"] = "Online",
+        ["All the sites"] = "Tutti i siti",
+        ["Albums and EPs"] = "Album ed EP",
+        ["No albums found online."] = "Nessun album trovato online.",
+        ["No playlists found."] = "Nessuna playlist trovata.",
+        ["Turn on the online search in Settings to find albums."] = "Attiva la ricerca online nelle Impostazioni per trovare gli album.",
+        ["All your songs, and the ones in no playlist"] = "Tutti i tuoi brani, e quelli senza playlist",
+        ["DJ: mix two songs (tempo, pitch, trim and volume)"] = "DJ: mixa due brani (tempo, tonalità, taglio e volume)",
+        ["Show or hide the tags"] = "Mostra o nascondi i tag",
+        ["Paste the link to a song or playlist in Search (YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram and almost any other site): it gets downloaded and saved here. You can also add music you already have on your computer, or drag files into the window."] =
+            "Incolla in Cerca il link di un brano o di una playlist (YouTube Music, Spotify, SoundCloud, YouTube, TikTok, Instagram e quasi ogni altro sito): viene scaricato e salvato qui. Puoi anche aggiungere la musica che hai già sul computer, o trascinare i file nella finestra.",
+        // 4.3.1: Spotify's library and Last.fm
+        ["Coming from Spotify or Last.fm? Bring your liked songs, your playlists and your plays."] =
+            "Arrivi da Spotify o Last.fm? Porta qui i brani che ti piacciono, le tue playlist e i tuoi ascolti.",
+        ["Import from Spotify…"] = "Importa da Spotify…",
+        ["Import from Last.fm"] = "Importa da Last.fm",
+        ["Import from Last.fm…"] = "Importa da Last.fm…",
+        ["Import your loved songs and scrobbles…"] = "Importa i brani amati e gli scrobble…",
+        ["Your liked songs, playlists and plays on Spotify"] = "I brani che ti piacciono, le playlist e gli ascolti di Spotify",
+        ["Your loved songs as a playlist, your scrobbles into the statistics"] = "I brani amati come playlist, gli scrobble nelle statistiche",
+        ["Your liked songs and playlists come here, their songs in your library, and your plays go into this profile's statistics and yearly recaps."] =
+            "I brani che ti piacciono e le playlist arrivano qui, con i loro brani nella tua libreria, e i tuoi ascolti vanno nelle statistiche e nei riepiloghi annuali di questo profilo.",
+        ["Get the files from Spotify: Account › Privacy settings › Download your data. “Account data” has your library, your playlists and the last year's plays; “Extended streaming history” every play since you started. Spotify emails a .zip within a few days: choose it here (both, if you asked for both), or the .json files inside."] =
+            "Prendi i file da Spotify: Account › Impostazioni privacy › Scarica i tuoi dati. «Dati dell'account» ha la tua libreria, le tue playlist e gli ascolti dell'ultimo anno; «Cronologia di streaming estesa» ogni ascolto da quando hai iniziato. Spotify manda per email uno .zip entro pochi giorni: sceglilo qui (tutti e due, se li hai chiesti entrambi), oppure i file .json che contiene.",
+        ["Do you use Last.fm? Connect it in Settings › Integrations: its loved songs and its scrobbles can come here too."] =
+            "Usi Last.fm? Collegalo in Impostazioni › Integrazioni: anche i suoi brani amati e i suoi scrobble possono arrivare qui.",
+        ["Spotify's files"] = "File di Spotify",
+        ["Reading Spotify's files…"] = "Leggo i file di Spotify…",
+        ["Nothing to import in these files: choose the .zip from Spotify or the .json files inside it."] =
+            "Niente da importare in questi file: scegli lo .zip di Spotify o i file .json che contiene.",
+        ["Your liked songs ({0}), into Favorites"] = "I brani che ti piacciono ({0}), nei Preferiti",
+        ["Your playlists ({0}, {1} songs)"] = "Le tue playlist ({0}, {1} brani)",
+        ["Your listening history ({0} plays), into the statistics"] = "La tua cronologia di ascolto ({0} ascolti), nelle statistiche",
+        ["Choose what to bring here."] = "Scegli cosa portare qui.",
+        ["Liked on Spotify"] = "Piaciuti su Spotify",
+        ["Your Spotify library is on its way: follow it in the downloads panel."] =
+            "La tua libreria di Spotify sta arrivando: seguila nel pannello dei download.",
+        ["Connect your Last.fm account first (Settings › Integrations): then its loved songs and its scrobbles can come here."] =
+            "Prima collega il tuo account Last.fm (Impostazioni › Integrazioni): poi i suoi brani amati e i suoi scrobble possono arrivare qui.",
+        ["Open Settings"] = "Apri le Impostazioni",
+        ["From the account {0}:"] = "Dall'account {0}:",
+        ["Your loved songs, into the playlist “Loved on Last.fm”"] = "I brani amati, nella playlist «Amati su Last.fm»",
+        ["Your scrobbles until {0}, into the statistics (the later ones went there from here: they're counted already)"] =
+            "Gli scrobble fino al {0}, nelle statistiche (quelli dopo sono partiti da qui: sono già contati)",
+        ["Loved on Last.fm"] = "Amati su Last.fm",
+        ["No loved songs on this Last.fm account."] = "Nessun brano amato su questo account Last.fm.",
+        ["Your loved songs are on their way: follow them in the downloads panel."] = "I brani amati stanno arrivando: seguili nel pannello dei download.",
+        ["Last.fm scrobbles"] = "Scrobble di Last.fm",
+        ["1 play imported"] = "1 ascolto importato",
+        ["{0} plays imported"] = "{0} ascolti importati",
+        ["Last.fm scrobbles imported"] = "Scrobble di Last.fm importati",
+        // 4.3.1: Search in the sidebar's menu, its box on its page
+        ["Search your music and online"] = "Cerca nella tua musica e online",
+        ["Songs, artists, albums and playlists. To download a song, paste its link here."] = "Brani, artisti, album e playlist. Per scaricare un brano, incolla qui il suo link.",
     };
 }

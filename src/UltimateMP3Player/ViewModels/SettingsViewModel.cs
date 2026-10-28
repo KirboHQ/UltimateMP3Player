@@ -1040,6 +1040,7 @@ public sealed class SettingsViewModel : Observable
 
     public ICommand OpenStatsCommand => new RelayCommand(_main.OpenStats);
     public ICommand ImportSpotifyCommand => new RelayCommand(() => _ = SpotifyImport.RunAsync(_main));
+    public ICommand ImportLastFmCommand => new RelayCommand(() => _ = LastFmImport.RunAsync(_main));
 
     // A song is playing: the card follows it.
     public void OnListened(bool reorder)

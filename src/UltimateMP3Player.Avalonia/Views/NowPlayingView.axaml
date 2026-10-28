@@ -156,7 +156,7 @@
                     <StackPanel x:Name="TitleBlock" Background="Transparent" local:Marquee.Host="True">
                         <TextBlock Text="{Binding Player.Current.Title}" FontSize="30" FontWeight="Bold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
                         <TextBlock Text="{Binding Player.Current.Artist}" FontSize="17" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
-                                   local:Marquee.IsEnabled="True"/>
+                                   local:Marquee.IsEnabled="True" HorizontalAlignment="Left" Cursor="Hand" PointerReleased="Artist_Click"/>
                         <TextBlock FontSize="12.5" Foreground="{DynamicResource MutedBrush}" Margin="0,6,0,0"
                                    IsVisible="{Binding Player.ContextName, Converter={x:Static ObjectConverters.IsNotNull}}">
                             <Run Text="{local:T 'Playing from:'}"/>

@@ -548,7 +548,7 @@
     <!-- An artist: its picture in a circle (or its initial on a colour of its own) and its name; a click opens its page. The
          round button follows it (a tick once followed); a dot = a release of its not seen yet. -->
     <DataTemplate x:Key="ArtistCard">
-        <Border Classes="card" CornerRadius="12" Padding="12" Cursor="Hand" local:Marquee.Host="True" views:Click.Command="{Binding OpenCommand}">
+        <Border Classes="card" CornerRadius="12" Padding="12" Cursor="Hand" local:Marquee.Host="True" views:Click.Command="{Binding OpenCommand}" views:Rows.Menu="artist">
             <Border.Styles>
                 <Style Selector="Border.card">
                     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
@@ -628,7 +628,8 @@
         </Border>
     </DataTemplate>
 
-    <!-- A new album, EP or single of a followed artist: its cover ("NEW" until seen); a click opens it like its link. -->
+    <!-- A new album, EP or single of a followed artist: its cover ("NEW" until seen); a click opens it like its link, its button
+         plays it without saving it. -->
     <DataTemplate x:Key="ReleaseCard">
         <Border Classes="card" CornerRadius="12" Padding="12" Cursor="Hand" local:Marquee.Host="True" views:Click.Command="{Binding OpenCommand}">
             <Border.Styles>
@@ -637,6 +638,9 @@
                 </Style>
                 <Style Selector="Border.card:pointerover">
                     <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                </Style>
+                <Style Selector="Border.card:pointerover Button.disc">
+                    <Setter Property="Opacity" Value="1"/>
                 </Style>
             </Border.Styles>
             <StackPanel>
@@ -650,6 +654,9 @@
                                 IsVisible="{Binding IsNew}">
                             <TextBlock Text="{local:T NEW}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"/>
                         </Border>
+                        <Button Classes="disc" Theme="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="17" Content="{local:Icon E768}"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
+                                Command="{Binding PlayCommand}" ToolTip.Tip="{local:T 'Play without saving'}"/>
                     </Panel>
                 </views:SquareBox>
                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
@@ -659,7 +666,8 @@
         </Border>
     </DataTemplate>
 
-    <!-- An album found online (an artist's page): its cover; a click opens it like its link. -->
+    <!-- An album or a playlist found online (an artist's page, the search): its cover; a click opens it like its link, its button
+         plays it without saving it. -->
     <DataTemplate x:Key="AlbumCard">
         <Border Classes="card" CornerRadius="12" Padding="12" Cursor="Hand" local:Marquee.Host="True" views:Click.Command="{Binding DownloadCommand}">
             <Border.Styles>
@@ -669,6 +677,9 @@
                 <Style Selector="Border.card:pointerover">
                     <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
                 </Style>
+                <Style Selector="Border.card:pointerover Button.disc">
+                    <Setter Property="Opacity" Value="1"/>
+                </Style>
             </Border.Styles>
             <StackPanel>
                 <views:SquareBox>
@@ -677,11 +688,101 @@
                             <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="34" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                         </Border>
                         <views:CoverImage CornerRadius="8" Source="{Binding Thumb}"/>
+                        <Button Classes="disc" Theme="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="17" Content="{local:Icon E768}"
+                                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
+                                Command="{Binding PlayCommand}" ToolTip.Tip="{local:T 'Play without saving'}"/>
                     </Panel>
                 </views:SquareBox>
                 <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
                 <TextBlock Text="{Binding Subtitle}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
             </StackPanel>
+        </Border>
+    </DataTemplate>
+
+    <!-- A song found online (the search, an artist's popular songs): a click plays it without saving it, its button downloads it
+         (its card, as a pasted link); an album or a playlist the other way round: a click opens its card, its button plays it.
+         Your songs' columns (TrackRowTemplate), so the two line up under the search's "Songs": the site where the tags, the
+         cloud and the heart are, the button where "more" is. -->
+    <DataTemplate x:Key="HitRowTemplate">
+        <Border Classes="hitrow" Classes.song="{Binding IsSong}" CornerRadius="8" Padding="8,5" Margin="0,0,0,1" Cursor="Hand" local:Marquee.Host="True"
+                views:Click.Command="{Binding TapCommand}" views:Rows.Menu="hit" views:Rows.Drag="True">
+            <Border.Styles>
+                <Style Selector="Border.hitrow">
+                    <Setter Property="Background" Value="Transparent"/>
+                </Style>
+                <Style Selector="Border.hitrow:pointerover">
+                    <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+                </Style>
+                <!-- a song: "play" in its number's place under the mouse (the row plays it) -->
+                <Style Selector="TextBlock.hitplay">
+                    <Setter Property="Opacity" Value="0"/>
+                </Style>
+                <Style Selector="Border.hitrow.song:pointerover TextBlock.hitplay">
+                    <Setter Property="Opacity" Value="1"/>
+                </Style>
+                <Style Selector="Border.hitrow.song:pointerover TextBlock.hitnum">
+                    <Setter Property="Opacity" Value="0"/>
+                </Style>
+            </Border.Styles>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40"/>
+                    <ColumnDefinition Width="2.6*"/>
+                    <ColumnDefinition Width="1.4*"/>
+                    <ColumnDefinition Width="{DynamicResource TagColumnWidth}"/>
+                    <ColumnDefinition Width="32"/>
+                    <ColumnDefinition Width="36"/>
+                    <ColumnDefinition Width="64"/>
+                    <ColumnDefinition Width="36"/>
+                </Grid.ColumnDefinitions>
+
+                <Panel>
+                    <TextBlock Classes="hitnum" Text="{Binding Number}" Foreground="{DynamicResource SubTextBrush}" FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <TextBlock Classes="hitplay glyph" Text="{local:Icon E768}" FontSize="13" Foreground="{DynamicResource TextBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Panel>
+
+                <Grid Grid.Column="1" Margin="4,0,12,0" ColumnDefinitions="40,*">
+                    <Panel Width="40" Height="40">
+                        <Border CornerRadius="5" Background="{DynamicResource PlaceholderGradient}" IsVisible="{Binding Thumb, Converter={x:Static ObjectConverters.IsNull}}">
+                            <TextBlock Text="{local:Icon EC4F}" Classes="glyph" FontSize="15" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                        </Border>
+                        <views:CoverImage CornerRadius="5" Source="{Binding Thumb}"/>
+                    </Panel>
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="14" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                        <DockPanel Margin="0,2,0,0">
+                            <Border DockPanel.Dock="Left" CornerRadius="7" Padding="6,0" Margin="0,0,8,0" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center"
+                                    IsVisible="{Binding InLibrary}" ToolTip.Tip="{local:T 'You already have it in your library'}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E73E}" Classes="glyph" FontSize="9" Foreground="{DynamicResource SuccessBrush}"/>
+                                    <TextBlock Text="{local:T 'in library'}" FontSize="11" FontWeight="SemiBold" Margin="4,0,0,1" Foreground="{DynamicResource SuccessBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="{Binding Line}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                                       local:Marquee.IsEnabled="True"/>
+                        </DockPanel>
+                    </StackPanel>
+                </Grid>
+
+                <DockPanel Grid.Column="2" Grid.ColumnSpan="4">
+                    <Border DockPanel.Dock="Right" CornerRadius="10" Padding="8,2,9,2" Background="{DynamicResource Surface3Brush}" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding Service}" FontSize="11.5" Margin="6,0,0,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Text="{Binding AlbumText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center" Margin="0,0,12,0" local:Marquee.IsEnabled="True"/>
+                </DockPanel>
+
+                <TextBlock Grid.Column="6" Text="{Binding DurationText}" FontSize="13" Foreground="{DynamicResource SubTextBrush}"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                <Button Grid.Column="7" Theme="{StaticResource RowIconButton}" Content="{Binding SideGlyph, Converter={StaticResource Icon}}"
+                        Command="{Binding SideCommand}" ToolTip.Tip="{Binding SideTip}"/>
+            </Grid>
         </Border>
     </DataTemplate>
 
