@@ -221,6 +221,20 @@ Serve il .NET 8 SDK, e per l'installer Inno Setup 6. I programmi esterni vanno i
 La cartella `cache` accanto alla libreria tiene i brani ascoltati senza salvarli (cloud, consigliati, stanze).
 </details>
 
+## ⚖️ Termini d'uso
+
+Ultimate MP3 Player è uno strumento: scarica soltanto quello che gli chiedi tu, attraverso programmi e siti di terze
+parti, e non ospita né distribuisce musica. Come l'app chiede al primo avvio, usandola dichiari che:
+
+- scaricherai solo brani, video e immagini che possiedi già legittimamente (per esempio musica che hai acquistato) o
+  che hai comunque il diritto di scaricare, come contenuti liberi o con il permesso di chi li ha creati;
+- sei l'unico responsabile di cosa scarichi, di come lo usi e di cosa condividi con gli altri (anche con Ascolta
+  insieme e i pacchetti `.ump`), nel rispetto delle leggi sul diritto d'autore del tuo paese e delle condizioni dei
+  siti da cui scarichi;
+- l'autore dell'app non controlla i contenuti che scarichi e non risponde in alcun modo dell'uso che ne fai.
+
+Se non sei d'accordo, non usarla.
+
 ## 📄 Licenza
 
 Software libero con la [GNU General Public License v3.0](LICENSE) o successiva. Usa [yt-dlp](https://github.com/yt-dlp/yt-dlp),
@@ -228,5 +242,3 @@ Software libero con la [GNU General Public License v3.0](LICENSE) o successiva. 
 [NAudio](https://github.com/naudio/NAudio), [SoundTouch.Net](https://github.com/owoudenberg/soundtouch.net),
 [Avalonia](https://avaloniaui.net), [SDL3](https://www.libsdl.org), [Python](https://www.python.org) e altri: licenze e
 sorgenti sono elencati in [licenses/THIRD-PARTY-NOTICES.txt](licenses/THIRD-PARTY-NOTICES.txt).
-
-<sub>Scarica solo contenuti che hai il diritto di scaricare.</sub>

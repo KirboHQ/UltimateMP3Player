@@ -218,6 +218,20 @@ Requirements: .NET 8 SDK, and for the installer Inno Setup 6. Put the external p
 The `cache` folder beside the library keeps songs heard without saving them (cloud, suggestions, rooms).
 </details>
 
+## ⚖️ Terms of use
+
+Ultimate MP3 Player is a tool: it only downloads what you ask it to, through third-party programs and sites, and it
+doesn't host or distribute any music. As the app asks on its first start, by using it you declare that:
+
+- you will only download songs, videos and images that you already lawfully own (for example music you bought) or that
+  you otherwise have the right to download, such as free content or content its creators allow;
+- you alone are responsible for what you download, how you use it and what you share with others (Listen together and
+  `.ump` packs included), in compliance with the copyright laws of your country and the terms of the sites you download
+  from;
+- the author of the app doesn't control the content you download and is in no way liable for the use you make of it.
+
+If you don't agree, don't use it.
+
 ## 📄 License
 
 Free software under the [GNU General Public License v3.0](LICENSE) or later. It uses [yt-dlp](https://github.com/yt-dlp/yt-dlp),
@@ -225,5 +239,3 @@ Free software under the [GNU General Public License v3.0](LICENSE) or later. It 
 [NAudio](https://github.com/naudio/NAudio), [SoundTouch.Net](https://github.com/owoudenberg/soundtouch.net),
 [Avalonia](https://avaloniaui.net), [SDL3](https://www.libsdl.org), [Python](https://www.python.org) and more: their
 licenses and sources are listed in [licenses/THIRD-PARTY-NOTICES.txt](licenses/THIRD-PARTY-NOTICES.txt).
-
-<sub>Download only content you have the right to download.</sub>
