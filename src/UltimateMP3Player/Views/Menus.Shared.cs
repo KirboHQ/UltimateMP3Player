@@ -457,23 +457,30 @@ public static partial class Menus
         return menu;
     }
 
-    // Tick more playlists for the songs of a download (Favorites, say), besides the one chosen next to it.
-    public static ContextMenu AlsoPicker(LinkViewModel link)
+    // The playlists the songs of a download go into: a new one (named in the card) and any of yours, as many as wanted.
+    public static ContextMenu PlaylistPicker(LinkViewModel link)
     {
         var menu = new ContextMenu();
         // (it stays open: several can be ticked)
-        menu.Items.Add(Item(L.T("Tick as many as you like"), "", () => { }, false));
-        menu.Items.Add(new Separator());
-        foreach (var c in link.AlsoChoices)
+        var fresh = Item(L.T("New playlist"), link.MakeNew ? Check : "", () => { });
+        fresh.StaysOpenOnClick = true;
+        fresh.Click += (_, _) =>
+        {
+            link.MakeNew = !link.MakeNew;
+            Ui.SetGlyph(fresh, link.MakeNew ? Check : null);
+        };
+        menu.Items.Add(fresh);
+        if (link.PlaylistChoices.Count > 0) menu.Items.Add(new Separator());
+        foreach (var c in link.PlaylistChoices)
         {
             var id = (string)c.Value!;
-            var item = Item(c.Label, link.AlsoIds.Contains(id) ? Check : "", () => { });
+            var item = Item(c.Label, link.TargetIds.Contains(id) ? Check : "", () => { });
             item.StaysOpenOnClick = true;
             item.Click += (_, _) =>
             {
-                if (!link.AlsoIds.Remove(id)) link.AlsoIds.Add(id);
-                Ui.SetGlyph(item, link.AlsoIds.Contains(id) ? Check : null);
-                link.OnAlsoChosen();
+                if (!link.TargetIds.Remove(id)) link.TargetIds.Add(id);
+                Ui.SetGlyph(item, link.TargetIds.Contains(id) ? Check : null);
+                link.OnTargetsChanged();
             };
             menu.Items.Add(item);
         }

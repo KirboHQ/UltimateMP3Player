@@ -1,0 +1,178 @@
+<UserControl x:Class="UltimateMP3Player.Views.QueuePopup"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <!-- Up next popping out over any page from the player bar (MainViewModel.QueueOpen): the song view's queue, smaller.
+         A press elsewhere or Esc folds it (MainWindow). -->
+    <UserControl.Resources>
+        <ControlTheme x:Key="QueueIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="2,0,0,0"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Bd" Background="{TemplateBinding Background}" CornerRadius="16">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+        <ControlTheme x:Key="RowPlayButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#B8000000"/>
+            <Setter Property="local:Ui.HoverBrush" Value="#E6000000"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="Bd" Background="{TemplateBinding Background}" CornerRadius="13">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover /template/ Border#Bd">
+                <Setter Property="Background" Value="{Binding $parent[Button].(local:Ui.HoverBrush)}"/>
+            </Style>
+        </ControlTheme>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- a row: hover shows its play and remove buttons in place of the suggestion's state -->
+        <Style Selector="Border.qrow">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.qrow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+        </Style>
+        <Style Selector="Border.qrow Button.rowplay, Border.qrow Button.rowremove">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="Border.qrow:pointerover Button.rowplay, Border.qrow:pointerover Button.rowremove">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+        <Style Selector="Border.qrow:pointerover Panel.radiostate, Border.qrow:pointerover ContentControl.cloudstate">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="ListBoxItem:selected Border.qrow">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        </Style>
+        <Style Selector="Panel.radiostate TextBlock.ready, Panel.radiostate TextBlock.failed, Panel.radiostate Panel.busy">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+        <Style Selector="Panel.radiostate.ready TextBlock.ready, Panel.radiostate.failed TextBlock.failed, Panel.radiostate.busy Panel.busy">
+            <Setter Property="IsVisible" Value="True"/>
+        </Style>
+        <Style Selector="Panel.radiostate.ready TextBlock.online, Panel.radiostate.failed TextBlock.online, Panel.radiostate.busy TextBlock.online">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Width="380" MinHeight="300" MaxHeight="580" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+            CornerRadius="18" Padding="14" BoxShadow="{DynamicResource PopupShadow}">
+        <Grid RowDefinitions="Auto,*">
+            <Grid Margin="6,2,0,10" ColumnDefinitions="*,Auto">
+                <StackPanel>
+                    <TextBlock Text="{local:T 'Up next'}" FontSize="17" FontWeight="Bold"/>
+                    <TextBlock FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,3,0,0" TextWrapping="Wrap"
+                               Text="{Binding Player.QueueHint}" IsVisible="{Binding Player.HasUpNext}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="8,-3,-4,0">
+                    <!-- your own queue only: in a room the queue is the room's -->
+                    <StackPanel Orientation="Horizontal" IsVisible="{Binding !Player.InRoom}">
+                        <Button Theme="{StaticResource QueueIconButton}" Content="{local:Icon E895}" Command="{Binding Player.GenerateQueueCommand}"
+                                IsVisible="{Binding Player.HasTrack}" ToolTip.Tip="{local:T 'Complete the queue (if it\'s already full, generate it again from scratch)'}"/>
+                        <Button Theme="{StaticResource QueueIconButton}" Content="{local:Icon E74D}" Command="{Binding Player.ClearQueueCommand}"
+                                IsVisible="{Binding Player.HasUpNext}" ToolTip.Tip="{local:T 'Clear the queue: the music stops after this song'}"/>
+                    </StackPanel>
+                    <!-- the big one, next to the video and the lyrics -->
+                    <Button Theme="{StaticResource QueueIconButton}" Content="{local:Icon E70E}" Command="{Binding GoNowPlayingCommand}"
+                            ToolTip.Tip="{local:T 'Open in the song view'}"/>
+                    <Button Theme="{StaticResource QueueIconButton}" Content="{local:Icon E711}" Command="{Binding ToggleQueueCommand}"
+                            ToolTip.Tip="{local:T 'Close (Esc)'}"/>
+                </StackPanel>
+            </Grid>
+            <!-- at most 150 rows: no virtualization, so scrolling and dragging stay exact -->
+            <ListBox x:Name="QueueList" Grid.Row="1" Theme="{StaticResource PlainList}" ItemsSource="{Binding Player.UpNext}" DragDrop.AllowDrop="True">
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel/>
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.Template>
+                    <ControlTemplate>
+                        <ScrollViewer Name="PART_ScrollViewer" Focusable="False" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                                <TextBlock Text="{Binding Player.MoreText}" Classes="small-caps" HorizontalAlignment="Center" Margin="0,14,0,8"
+                                           IsVisible="{Binding Player.MoreText, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </ControlTemplate>
+                </ListBox.Template>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel>
+                            <TextBlock Text="{Binding Header}" Classes="small-caps" Margin="8,10,0,6" TextTrimming="CharacterEllipsis"
+                                       IsVisible="{Binding Header, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            <Border Name="Row" Classes="qrow" CornerRadius="10" Padding="6" local:Marquee.Host="True"
+                                    views:Rows.Menu="queue" views:Click.Double="{Binding PlayCommand}">
+                                <Grid ColumnDefinitions="40,*,Auto">
+                                    <ContentControl Width="40" Height="40" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
+                                    <Button Classes="rowplay" Theme="{StaticResource RowPlayButton}" Content="{local:Icon E768}"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Command="{Binding PlayCommand}" ToolTip.Tip="{local:T 'Play now'}"/>
+                                    <StackPanel Grid.Column="1" Margin="10,0,6,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Track.Title}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
+                                        <TextBlock Text="{Binding Track.Artist}" TextTrimming="CharacterEllipsis" FontSize="12" Foreground="{DynamicResource SubTextBrush}"
+                                                   local:Marquee.IsEnabled="True"/>
+                                    </StackPanel>
+                                    <!-- a suggested song: online, downloading, ready or not to be found (the remove button on hover) -->
+                                    <Panel Classes="radiostate" Classes.ready="{Binding Radio.IsReady, FallbackValue=False}"
+                                           Classes.busy="{Binding Radio.IsBusy, FallbackValue=False}" Classes.failed="{Binding Radio.IsFailed, FallbackValue=False}"
+                                           Grid.Column="2" Width="30" Height="30" Background="Transparent" ToolTip.Tip="{Binding Radio.StateTip, FallbackValue={x:Null}}"
+                                           IsVisible="{Binding IsRadio}">
+                                        <TextBlock Classes="glyph online" Text="{local:Icon E753}" FontSize="13" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center"/>
+                                        <TextBlock Classes="glyph ready" Text="{local:Icon E73E}" FontSize="13" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center"/>
+                                        <TextBlock Classes="glyph failed" Text="{local:Icon E7BA}" FontSize="13" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center"/>
+                                        <Panel Classes="busy">
+                                            <Ellipse Classes="spinner" Width="26" Height="26" StrokeThickness="2"/>
+                                            <TextBlock Text="{Binding Radio.PctText, FallbackValue={x:Null}}" FontSize="8.5" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Panel>
+                                    </Panel>
+                                    <ContentControl Classes="cloudstate" Grid.Column="2" Content="{Binding Track}" ContentTemplate="{StaticResource TrackCloudCell}"
+                                                    IsVisible="{Binding ShowCloud}"/>
+                                    <Button Classes="rowremove" Grid.Column="2" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="11"
+                                            Content="{local:Icon E711}" Command="{Binding RemoveCommand}" ToolTip.Tip="{local:T 'Remove from Up next'}"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <views:SelectionBar Grid.Row="1" List="{Binding #QueueList}" Compact="True" ZIndex="1" Margin="0,0,0,10"/>
+            <!-- empty queue: what happens next, and the way to fill it -->
+            <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="14,0,14,20" MaxWidth="270"
+                        IsVisible="{Binding Player.UpNextCount, Converter={StaticResource IsZero}}">
+                <Panel Width="64" Height="64" HorizontalAlignment="Center">
+                    <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
+                    <TextBlock Text="{local:Icon E90B}" FontFamily="{StaticResource IconFont}" FontSize="26" Foreground="{DynamicResource AccentTextBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Panel>
+                <TextBlock Text="{local:T 'The queue is empty'}" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,14,0,0"/>
+                <TextBlock Text="{Binding Player.QueueEndHint}" Classes="hint" TextAlignment="Center" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                <Button Theme="{StaticResource PrimaryButton}" Command="{Binding Player.GenerateQueueCommand}" HorizontalAlignment="Center" Margin="0,16,0,0"
+                        IsVisible="{Binding Player.CanGenerate}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Icon E895}" Classes="glyph" FontSize="13"/>
+                        <TextBlock Text="{local:T 'Generate queue'}" Margin="8,0,0,0"/>
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

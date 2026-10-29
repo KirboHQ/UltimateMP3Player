@@ -66,8 +66,24 @@ public partial class SearchView : UserControl
     // are let go at once.
     private void List_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        foreach (var item in e.AddedItems)
-            if (item is not (TrackRow or PlaylistViewModel)) List.SelectedItems.Remove(item);
+        foreach (var item in e.AddedItems.Cast<object>().ToList())
+            if (item is not (TrackRow or PlaylistViewModel)) ((ListBox)sender).SelectedItems.Remove(item);
+    }
+
+    // The chips' lists on screen (two while one slides in): the selection bar acts on the newest one still there.
+    private readonly List<ListBox> _lists = new();
+
+    private void List_Loaded(object sender, RoutedEventArgs e)
+    {
+        var list = (ListBox)sender;
+        if (!_lists.Contains(list)) _lists.Add(list);
+        Bar.List = list;
+    }
+
+    private void List_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _lists.Remove((ListBox)sender);
+        Bar.List = _lists.LastOrDefault();
     }
 
     private void Artist_RightClick(object sender, MouseButtonEventArgs e)

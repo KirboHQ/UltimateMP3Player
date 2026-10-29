@@ -130,27 +130,6 @@
                         <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
                             <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
                         </DataTemplate>
-                        <DataTemplate DataType="{x:Type vm:NewPlaylistCard}">
-                            <Border CornerRadius="12" Cursor="Hand" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1.5">
-                                <Border.InputBindings>
-                                    <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.NewPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                                </Border.InputBindings>
-                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                    <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="26" HorizontalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
-                                    <TextBlock Text="{local:T 'New playlist'}" Margin="0,10,0,0" Foreground="{DynamicResource SubTextBrush}" FontWeight="SemiBold"/>
-                                </StackPanel>
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="Transparent"/>
-                                        <Style.Triggers>
-                                            <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                            </Border>
-                        </DataTemplate>
                     </ListBox.Resources>
                 </ListBox>
 

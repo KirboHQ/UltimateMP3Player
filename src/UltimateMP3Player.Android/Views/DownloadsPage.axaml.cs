@@ -34,21 +34,9 @@ public partial class DownloadsPage : UserControl
     private void OnJobs(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs? e) =>
         Picks.SetItems(_queue?.Jobs ?? (IEnumerable<object>)Array.Empty<object>());
 
-    private void Playlist_Click(object? sender, RoutedEventArgs e)
+    private void Playlists_Click(object? sender, RoutedEventArgs e)
     {
-        if (Vm?.Link is not { } link) return;
-        var menu = new SheetMenu { Title = L.T("Into playlist"), Subtitle = link.Title };
-        foreach (var c in link.PlaylistChoices)
-        {
-            var choice = c;
-            menu.Add(new SheetEntry(c.Label, c == link.Playlist ? "" : c.Hint == "♥" ? "" : "", () => link.Playlist = choice));
-        }
-        Menus.Open(menu);
-    }
-
-    private void Also_Click(object? sender, RoutedEventArgs e)
-    {
-        if (Vm?.Link is { } link) Menus.Open(Menus.AlsoPicker(link));
+        if (Vm?.Link is { } link) Menus.Open(Menus.PlaylistPicker(link));
     }
 
     // The audio or video quality of the songs of the card.

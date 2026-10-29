@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Threading;
 using UltimateMP3Player.Core;
@@ -33,6 +34,7 @@ public partial class App : Application
         CleanTemp();
         Updater.CleanUp();
         SliderDrag.Register();
+        LeftAlignedMenus();
         MenuAim.Register();
         SmoothScroll.Register();
         string? profileArg = Take(args, "--profile");
@@ -69,6 +71,19 @@ public partial class App : Application
         // .ump packs open with this copy of the app, with their icon.
         Dispatcher.BeginInvoke(FileAssociation.Register, DispatcherPriority.ApplicationIdle);
         Dispatcher.BeginInvoke(AppIdentity.EnsureShortcuts, DispatcherPriority.ApplicationIdle);
+    }
+
+    // Windows' "right-handed" tablet setting (Tablet PC Settings › Handedness, MenuDropAlignment) turns WPF's popups and menus round to the
+    // left: the playback panel opened across the screen. A desktop app drops them the usual way; read again when it changes.
+    private static void LeftAlignedMenus()
+    {
+        var field = typeof(SystemParameters).GetField("_menuDropAlignment", BindingFlags.NonPublic | BindingFlags.Static);
+        void Apply()
+        {
+            if (SystemParameters.MenuDropAlignment) field?.SetValue(null, false);
+        }
+        Apply();
+        SystemParameters.StaticPropertyChanged += (_, e) => { if (e.PropertyName == nameof(SystemParameters.MenuDropAlignment)) Apply(); };
     }
 
     // After a self-update the new exe waits for the old one to quit.

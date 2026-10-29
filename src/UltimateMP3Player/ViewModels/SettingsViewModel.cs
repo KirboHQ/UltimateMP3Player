@@ -633,7 +633,7 @@ public sealed class SettingsViewModel : Observable
     public bool SaveAudio
     {
         get => S.SaveAudio;
-        set { S.SaveAudio = value; Save(); OnChanged(); }
+        set { S.SaveAudio = value; Save(); OnChanged(); _main.RefreshSigns(); }
     }
 
     public List<Choice> VideoQualities { get; }

@@ -4,7 +4,7 @@ using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.Views;
 
-// The equalizer's real frequency response, drawn behind the sliders.
+// The equalizer's line behind the sliders: through every knob, smooth (Equalizer.CurveDb), the area to the 0 dB line tinted.
 public sealed class EqCurve : FrameworkElement
 {
     public static readonly DependencyProperty GainsProperty = DependencyProperty.Register(nameof(Gains), typeof(double[]), typeof(EqCurve),
@@ -32,7 +32,6 @@ public sealed class EqCurve : FrameworkElement
         double Y(double db) => mid - Math.Clamp(db, -Equalizer.MaxGain, Equalizer.MaxGain) / Equalizer.MaxGain * span / 2;
         // Band i sits at the centre of column i of ten.
         double col = w / Equalizer.BandCount;
-        double lo = Math.Log2(Equalizer.Frequencies[0]), hi = Math.Log2(Equalizer.Frequencies[^1]);
 
         var line = new StreamGeometry();
         var fill = new StreamGeometry();
@@ -43,8 +42,8 @@ public sealed class EqCurve : FrameworkElement
             for (int i = 0; i <= steps; i++)
             {
                 double x = i * w / steps;
-                double band = (x - col / 2) / (w - col) * (hi - lo) + lo;
-                double y = Y(Equalizer.ResponseDb(Math.Pow(2, band), gains));
+                // (band i at the centre of column i)
+                double y = Y(Equalizer.CurveDb((x - col / 2) / col, gains));
                 if (i == 0)
                 {
                     l.BeginFigure(new Point(x, y), false, false);

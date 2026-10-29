@@ -77,6 +77,10 @@
                     <DataTemplate DataType="vm:ArtistCardViewModel">
                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource ArtistRowTemplate}"/>
                     </DataTemplate>
+                    <!-- a radio (its chip): its row -->
+                    <DataTemplate DataType="vm:StationViewModel">
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource StationRowTemplate}"/>
+                    </DataTemplate>
 
                     <!-- a heading, with "Show all" leading to its chip -->
                     <DataTemplate DataType="vm:SearchSection">
@@ -127,6 +131,9 @@
                                     </DataTemplate>
                                     <DataTemplate DataType="vm:OnlineHitViewModel">
                                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource AlbumCardTemplate}"/>
+                                    </DataTemplate>
+                                    <DataTemplate DataType="vm:StationViewModel">
+                                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource StationCardTemplate}"/>
                                     </DataTemplate>
                                 </ItemsControl.DataTemplates>
                             </ItemsControl>

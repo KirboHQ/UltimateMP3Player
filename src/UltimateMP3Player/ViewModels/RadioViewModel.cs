@@ -638,20 +638,17 @@ public sealed class RadioViewModel : Observable
 
     // ------------------------------------------------------------------ deleted while it plays
 
-    // A suggestion saved to the library in this session.
-    public bool WasSaved(string libraryId) => _saved.ContainsKey(libraryId);
-
-    // A saved suggestion deleted from the library while it plays: it goes back to being a suggestion, with its file in
-    // the cache (the copy it was playing from, still there, or a copy of the library file), so this listen goes on.
-    // Afterwards the cache keeps or drops it like any other. playing: the file the player has open.
+    // A song deleted from the library while it plays (a saved suggestion or any other): it becomes a song heard without
+    // saving it, with its file in the cache (the copy it was playing from, still there, or a copy of the library file), so
+    // this listen goes on. Afterwards the cache keeps or drops it like any other. playing: the file the player has open.
     public RadioItemViewModel? Unsave(Track saved, string? playing)
     {
-        if (!_saved.Remove(saved.Id, out var song)) return null;
+        _saved.Remove(saved.Id, out var song);
         var cache = _main.Host.SongCache;
         var s = new RadioSong
         {
             Id = RadioSong.Prefix + Ids.New(), Title = saved.Title, Artist = saved.Artist, Album = saved.Album, Duration = saved.Duration,
-            Url = saved.SourceUrl ?? song.Url, Service = saved.Site ?? song.Service, Thumb = song.Thumb, Keys = saved.Keys.ToList(),
+            Url = saved.SourceUrl ?? song?.Url ?? "", Service = saved.Site ?? song?.Service ?? "", Thumb = song?.Thumb ?? saved.ArtUrl, Keys = saved.Keys.ToList(),
         };
         string? path = null;
         try

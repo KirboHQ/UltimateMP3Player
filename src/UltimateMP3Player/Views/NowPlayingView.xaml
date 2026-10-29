@@ -327,7 +327,6 @@
                     ToolTip="{local:T 'Show up next'}" AutomationProperties.Name="{local:T 'Show up next'}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="&#xE8A0;" Style="{StaticResource Glyph}" FontSize="13"/>
-                    <TextBlock Text="{local:T 'Up next'}" Margin="9,0,0,0" VerticalAlignment="Center"/>
                     <Border CornerRadius="9" MinWidth="22" Height="18" Padding="6,0" Margin="8,0,0,0" Background="{DynamicResource AccentBrush}"
                             Visibility="{Binding Player.UpcomingBadge, Converter={StaticResource NotNullVis}}">
                         <TextBlock Text="{Binding Player.UpcomingBadge}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}"

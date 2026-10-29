@@ -209,6 +209,39 @@ switch (args[0])
             return ok ? 0 : 1;
         }
 
+    case "glide":
+        {
+            // Glide (read every ~16 ms, like frames): on its way halfway, sent back: no jump at the turn, it keeps going a little
+            // before it turns round, it arrives at rest on time; the same target again doesn't start it over; a long wait
+            // between two frames counts as one frame.
+            var g = new Glide();
+            void Frames(int ms)
+            {
+                for (var t = Stopwatch.StartNew(); t.ElapsedMilliseconds < ms;)
+                {
+                    Thread.Sleep(5);
+                    _ = g.Value;
+                }
+            }
+            g.To(1, 200);
+            Frames(100);
+            double before = g.Value;
+            g.To(0, 200);
+            double after = g.Value;
+            Frames(15);
+            bool ok = before is > 0.2 and < 0.8 && Math.Abs(after - before) < 0.05 && g.Value > after - 0.02 && g.Moving;
+            Frames(60);
+            g.To(0, 200);
+            Frames(160);
+            ok &= !g.Moving && g.Value == 0;
+            g.To(1, 200);
+            Thread.Sleep(300);
+            double late = g.Value;
+            ok &= g.Moving && late < 0.2;
+            Console.WriteLine($"glide: {(ok ? "ok" : "SBAGLIATO")} (halfway {before:0.00}, after the turn {after:0.00}, after a 300 ms wait {late:0.00})");
+            return ok ? 0 : 1;
+        }
+
     case "spotifyhistory":
         {
             // mp3cli spotifyhistory [files]: both shapes of Spotify's history (podcasts and too-short plays aside), the list made for

@@ -119,10 +119,26 @@ public sealed class TrackViewModel : Observable
     public string SaveTip => SavingTip ?? (!InLibrary ? L.T("Add to library (without downloading it)")
         : IsUnavailable ? L.T("Try saving it on your device again") : L.T("Save to device"));
 
-    public void RefreshCloud() => OnChanged(nameof(IsSaved), nameof(IsCloud), nameof(IsUnavailable), nameof(ShowCloud), nameof(CloudGlyph), nameof(CloudTip),
-        nameof(SaveTip), nameof(SaveGlyph), nameof(InLibrary), nameof(IsSaving), nameof(SavePct), nameof(SaveIndeterminate));
+    // The sign on the rows, the cards and the player: only where a song is the exception to Settings › Download › "Save the
+    // audio on your device". On (MP3s saved): a cloud on the songs that aren't. Off (the default, the library in the cloud): a
+    // mark on the songs saved on the device, nothing on the others. A song gone from its site and not saved keeps its warning
+    // sign either way; a ring while one is being saved.
+    private bool SavesByDefault => Main.Host.Settings.SaveAudio;
+    private bool Gone => IsUnavailable && IsCloud;
+    public bool ShowSign => !IsSaving && (Gone || (SavesByDefault ? IsCloud : IsSaved));
+    public bool HasSign => ShowSign || IsSaving;
+    // The mark of a song saved on the device (the accent colour, like a downloaded song elsewhere).
+    public bool SignIsSaved => ShowSign && !Gone && !SavesByDefault;
+    public bool SignIsGone => ShowSign && Gone;
+    public string SignGlyph => Gone ? "" : SignIsSaved ? "" : "";
+    public string SignTip => SignIsSaved ? L.T("Saved on your device: it plays without the internet.") : CloudTip;
 
-    public void RefreshSaving() => OnChanged(nameof(IsSaving), nameof(SavePct), nameof(SaveIndeterminate), nameof(ShowCloud), nameof(CloudTip), nameof(SaveTip));
+    public void RefreshCloud() => OnChanged(nameof(IsSaved), nameof(IsCloud), nameof(IsUnavailable), nameof(ShowCloud), nameof(CloudGlyph), nameof(CloudTip),
+        nameof(SaveTip), nameof(SaveGlyph), nameof(InLibrary), nameof(IsSaving), nameof(SavePct), nameof(SaveIndeterminate),
+        nameof(ShowSign), nameof(HasSign), nameof(SignIsSaved), nameof(SignIsGone), nameof(SignGlyph), nameof(SignTip));
+
+    public void RefreshSaving() => OnChanged(nameof(IsSaving), nameof(SavePct), nameof(SaveIndeterminate), nameof(ShowCloud), nameof(CloudTip), nameof(SaveTip),
+        nameof(ShowSign), nameof(HasSign), nameof(SignIsSaved), nameof(SignTip));
 
     public void RefreshTags()
     {
@@ -204,6 +220,8 @@ public sealed class PlaylistViewModel : Observable
     public static string DisplayName(Playlist p) => p.IsFavorites ? L.T("Favorites") : p.Name;
 
     public int Count => P.Tracks.Count(id => _main.Get(id) != null);
+    // (an empty one has nothing to play: its cards show no play button)
+    public bool HasSongs => P.Tracks.Any(id => _main.Get(id) != null);
     public string CountText => L.Count(Count, "1 song", "{0} songs");
     public string Subtitle => "Playlist · " + CountText;
     // Its songs not saved on the device.
@@ -271,7 +289,7 @@ public sealed class PlaylistViewModel : Observable
     public void Refresh()
     {
         _coverTracks = null;
-        OnChanged(nameof(Name), nameof(Count), nameof(CountText), nameof(Subtitle), nameof(TotalText),
+        OnChanged(nameof(Name), nameof(Count), nameof(HasSongs), nameof(CountText), nameof(Subtitle), nameof(TotalText),
             nameof(HasCustomCover), nameof(CustomCover), nameof(CoverTracks), nameof(ShowMosaic), nameof(FirstCover), nameof(ShowPlaceholder),
             nameof(Tags), nameof(HasTags), nameof(DeviceGlyph), nameof(HasDevice));
     }

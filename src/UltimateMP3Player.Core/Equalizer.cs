@@ -28,6 +28,27 @@ public static class Equalizer
     // Headroom so boosts rarely hit the limiter.
     public static double PreampDb(IReadOnlyList<double> gains) => -Math.Max(0, gains.Max()) * 0.35;
 
+    // The line drawn over the sliders: through every band's knob, smooth (monotone cubic: never past two neighbouring knobs) and
+    // flat past the first and the last band. band: 0 = the first band's place, BandCount - 1 the last's. (The filters' real
+    // response overlaps and sums: drawn, it missed the knobs and looked crooked.)
+    public static double CurveDb(double band, IReadOnlyList<double> gains)
+    {
+        int n = Math.Min(BandCount, gains.Count);
+        if (n == 0) return 0;
+        if (band <= 0 || n == 1) return gains[0];
+        if (band >= n - 1) return gains[n - 1];
+        int k = (int)band;
+        double t = band - k;
+        double Tangent(int i)
+        {
+            if (i <= 0 || i >= n - 1) return 0;
+            double a = gains[i] - gains[i - 1], b = gains[i + 1] - gains[i];
+            return a * b <= 0 ? 0 : 2 * a * b / (a + b);
+        }
+        double t2 = t * t, t3 = t2 * t;
+        return (2 * t3 - 3 * t2 + 1) * gains[k] + (t3 - 2 * t2 + t) * Tangent(k) + (-2 * t3 + 3 * t2) * gains[k + 1] + (t3 - t2) * Tangent(k + 1);
+    }
+
     // Total response in dB at f (RBJ cookbook, same filters as the player).
     public static double ResponseDb(double f, IReadOnlyList<double> gains, double rate = 48000)
     {

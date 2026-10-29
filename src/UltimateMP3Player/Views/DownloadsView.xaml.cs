@@ -54,9 +54,9 @@ public partial class DownloadsView : UserControl
             Menus.Open(Menus.TagPicker(link.TagIds, main, link.OnTagsChosen), (UIElement)sender, true);
     }
 
-    private void Also_Click(object sender, RoutedEventArgs e)
+    private void Playlists_Click(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is LinkViewModel link) Menus.Open(Menus.AlsoPicker(link), (UIElement)sender, true);
+        if ((sender as FrameworkElement)?.DataContext is LinkViewModel link) Menus.Open(Menus.PlaylistPicker(link), (UIElement)sender, true);
     }
 
     // A downloaded song has the usual song menu; several selected downloads (Ctrl or Shift + click), theirs.

@@ -2,10 +2,12 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 
 namespace UltimateMP3Player.Views;
 
@@ -95,53 +97,313 @@ public static class SliderDrag
     public static void Register() { }
 }
 
-// Content host that fades and slides in each new page.
-public sealed class AnimatedContent : ContentControl
+// The page area. A new page slides in from the side its place says (the DataContext's IPageOrder: the sidebar's entries top to
+// bottom, or a page's tabs left to right, Horizontal) while the old one slides out the other way, a gap between them. The pages
+// on the move sit on a strip and the view glides along it (Core.Glide): another page picked halfway goes after the last one
+// still seen on its side, the one it was leaving just turns round, and the motion carries on from where it is at the speed it
+// has (never cut and started again). A page with no place fades in. A page keeps its view (no new copy) while it's on the
+// strip. With KeepViews the last pages left stay built (going back to one doesn't make its view again: the DJ's took several
+// frames). Like the Windows app's.
+public sealed class AnimatedContent : Panel
 {
-    private readonly TranslateTransform _shift = new();
+    public static readonly StyledProperty<object?> ContentProperty = AvaloniaProperty.Register<AnimatedContent, object?>(nameof(Content));
+    public static readonly StyledProperty<bool> HorizontalProperty = AvaloniaProperty.Register<AnimatedContent, bool>(nameof(Horizontal));
+    public static readonly StyledProperty<bool> KeepViewsProperty = AvaloniaProperty.Register<AnimatedContent, bool>(nameof(KeepViews));
+
+    public object? Content { get => GetValue(ContentProperty); set => SetValue(ContentProperty, value); }
+    public bool Horizontal { get => GetValue(HorizontalProperty); set => SetValue(HorizontalProperty, value); }
+    public bool KeepViews { get => GetValue(KeepViewsProperty); set => SetValue(KeepViewsProperty, value); }
+
+    // The selections that move with the page (SlidingPill) take the same time: they start and end together.
+    public const double Ms = 210;
+    private const double Gap = 56;
+
+    // The pages on the strip and their place on it (in page lengths); _shown is the one there, or on its way.
+    private readonly List<(ContentPresenter View, int Slot)> _strip = new();
+    private ContentPresenter _shown = new();
+    private readonly Core.Glide _at = new();
+    private readonly Tweener _fade;
+    private bool _ticking, _fading, _requested;
+    // The pages left and their views, newest last (KeepViews), at most Kept.
+    private readonly List<(object Page, Control View)> _kept = new();
+    private const int Kept = 6;
 
     public AnimatedContent()
     {
-        RenderTransform = _shift;
         Focusable = false;
-        HorizontalContentAlignment = HorizontalAlignment.Stretch;
-        VerticalContentAlignment = VerticalAlignment.Stretch;
+        ClipToBounds = true;
+        Children.Add(_shown);
+        _strip.Add((_shown, 0));
+        _fade = new Tweener(this, Fade);
+        // (another profile's pages: the ones kept are of no use)
+        DataContextChanged += (_, _) => Forget();
+    }
+
+    private int? Order(object? page) => page != null && DataContext is ViewModels.IPageOrder o ? o.OrderOf(page) : null;
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == ContentProperty) Swap(change.OldValue, change.NewValue);
+    }
+
+    private void Swap(object? old, object? now)
+    {
+        if (_fading) Settle();
+        if (old == null || now == null || !Ui.Animations || !IsLoaded || Bounds.Width < 1 || Bounds.Height < 1)
+        {
+            Settle();
+            var left = _shown;
+            _shown = ViewOf(now);
+            Children.Add(_shown);
+            _strip[0] = (_shown, 0);
+            Discard(left);
+            return;
+        }
+        int? from = Order(old), to = Order(now);
+        // (the keys don't stay in a box of the page going away: Ctrl+arrows work at once)
+        if (TopLevel.GetTopLevel(this)?.FocusManager is { } focus && focus.GetFocusedElement() is Visual focused && _shown.IsVisualAncestorOf(focused)) focus.ClearFocus();
+        if (_strip.FirstOrDefault(p => PageOf(p.View) == now).View is { } back) _shown = back;
+        else if (from is { } f && to is { } t && f != t)
+        {
+            int dir = Math.Sign(t - f);
+            double at = _at.Value;
+            // (the ones out of sight go: the new one comes after the last one still seen on its side)
+            foreach (var p in _strip.Where(p => p.View != _shown && Math.Abs(p.Slot - at) >= 1).ToList())
+            {
+                Discard(p.View);
+                _strip.Remove(p);
+            }
+            int slot = (dir > 0 ? _strip.Max(p => p.Slot) : _strip.Min(p => p.Slot)) + dir;
+            _shown = ViewOf(now);
+            Children.Add(_shown);
+            _strip.Add((_shown, slot));
+        }
+        else
+        {
+            FadeIn(now);
+            return;
+        }
+        foreach (var (view, _) in _strip) view.IsHitTestVisible = view == _shown;
+        _at.To(_strip.First(p => p.View == _shown).Slot, Ms);
+        // (in place before the first frame: the new page never shows over the old one)
+        Place();
+        if (_ticking) return;
+        _ticking = true;
+        Frame();
+    }
+
+    // (one frame asked at a time: a fade that stopped the slide and a slide again keep one loop)
+    private void Frame()
+    {
+        if (_requested) return;
+        if (TopLevel.GetTopLevel(this) is not { } top)
+        {
+            Settle();
+            return;
+        }
+        _requested = true;
+        top.RequestAnimationFrame(_ =>
+        {
+            _requested = false;
+            if (!_ticking) return;
+            Place();
+            if (_at.Moving) Frame();
+            else Settle();
+        });
+    }
+
+    private void Place()
+    {
+        double step = (Horizontal ? Bounds.Width : Bounds.Height) + Gap, at = _at.Value;
+        foreach (var (view, slot) in _strip)
+        {
+            if (view.RenderTransform is not TranslateTransform shift) view.RenderTransform = shift = new TranslateTransform();
+            if (Horizontal) shift.X = (slot - at) * step;
+            else shift.Y = (slot - at) * step;
+        }
+    }
+
+    // A page with no place: what's there fades out where it is, the new one fades in with a short rise.
+    private void FadeIn(object now)
+    {
+        _ticking = false;
+        foreach (var (view, _) in _strip) view.IsHitTestVisible = false;
+        _shown = ViewOf(now);
+        _shown.RenderTransform = new TranslateTransform();
+        _shown.Opacity = 0;
+        Children.Add(_shown);
+        _strip.Clear();
+        _strip.Add((_shown, 0));
+        _at.Set(0);
+        _fading = true;
+        _fade.To(1, 120, Ui.CubicOut, from: 0, completed: Settle);
+    }
+
+    private void Fade(double e)
+    {
+        if (!_fading) return;
+        foreach (var view in Children.OfType<ContentPresenter>())
+            if (view != _shown) view.Opacity = Math.Max(0, 1 - e * 1.7);
+        _shown.Opacity = e;
+        if (_shown.RenderTransform is TranslateTransform shift) shift.Y = 14 * (1 - e);
+    }
+
+    // A page's view: the one kept for it (in a new presenter: one put back in the tree makes its view again), or a new one.
+    private ContentPresenter ViewOf(object? page)
+    {
+        int i = _kept.FindIndex(k => k.Page == page);
+        if (i < 0) return new ContentPresenter { Content = page };
+        var view = _kept[i].View;
+        _kept.RemoveAt(i);
+        return new ContentPresenter { Content = view };
+    }
+
+    private static object? PageOf(ContentPresenter view) => view.Content is Control kept ? kept.DataContext : view.Content;
+
+    private void Discard(ContentPresenter presenter)
+    {
+        Children.Remove(presenter);
+        var page = PageOf(presenter);
+        var view = presenter.Child;
+        presenter.Content = null;
+        presenter.UpdateChild();
+        if (!KeepViews || page == null || view == null) return;
+        view.DataContext = page;
+        _kept.RemoveAll(k => k.Page == page);
+        _kept.Add((page, view));
+        if (_kept.Count > Kept) Forget(_kept[0].Page);
+    }
+
+    private void Forget(object? only = null)
+    {
+        foreach (var k in _kept.Where(k => only == null || k.Page == only).ToList())
+        {
+            k.View.DataContext = null;
+            _kept.Remove(k);
+        }
+    }
+
+    // Arrived (or cut short by a page with no place): the page shown alone, the others let go.
+    private void Settle()
+    {
+        _ticking = false;
+        _fading = false;
+        _fade.Stop();
+        foreach (var view in Children.OfType<ContentPresenter>().Where(v => v != _shown).ToList()) Discard(view);
+        _strip.Clear();
+        _strip.Add((_shown, 0));
+        _at.Set(0);
+        _shown.RenderTransform = null;
+        _shown.Opacity = 1;
+        _shown.IsHitTestVisible = true;
+    }
+}
+
+// The pill behind the checked one of a row or column of radio buttons (anywhere inside Target: a panel of them, an ItemsControl):
+// it glides from one to the next with the page (AnimatedContent's time, Core.Glide: a click halfway carries the motion on)
+// instead of jumping. The buttons' own checked background is none.
+public sealed class SlidingPill : Control
+{
+    public static readonly StyledProperty<Control?> TargetProperty = AvaloniaProperty.Register<SlidingPill, Control?>(nameof(Target));
+    public static readonly StyledProperty<IBrush?> FillProperty = AvaloniaProperty.Register<SlidingPill, IBrush?>(nameof(Fill));
+    public static readonly StyledProperty<double> RadiusProperty = AvaloniaProperty.Register<SlidingPill, double>(nameof(Radius), 999);
+
+    static SlidingPill() => AffectsRender<SlidingPill>(FillProperty, RadiusProperty);
+
+    public Control? Target { get => GetValue(TargetProperty); set => SetValue(TargetProperty, value); }
+    public IBrush? Fill { get => GetValue(FillProperty); set => SetValue(FillProperty, value); }
+    public double Radius { get => GetValue(RadiusProperty); set => SetValue(RadiusProperty, value); }
+
+    private readonly Core.Glide _x = new(), _y = new(), _w = new(), _h = new(), _show = new();
+    private bool _ticking;
+
+    public SlidingPill()
+    {
+        IsHitTestVisible = false;
+        // (placed at once, without gliding, when it first shows or the buttons move)
+        Loaded += (_, _) => Avalonia.Threading.Dispatcher.UIThread.Post(() => Place(false), Avalonia.Threading.DispatcherPriority.Loaded);
+        SizeChanged += (_, _) => Place(false);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property != ContentProperty || change.OldValue == null || !Ui.Animations || !IsLoaded) return;
-        // After the new page is in (not while the content is being set): 220 ms, cubic ease out, like the Windows app.
-        _started = null;
-        Opacity = 0;
-        _shift.Y = 14;
-        if (!_running)
+        if (change.Property != TargetProperty) return;
+        (change.OldValue as Control)?.RemoveHandler(Avalonia.Controls.Primitives.ToggleButton.IsCheckedChangedEvent, OnChecked);
+        (change.NewValue as Control)?.AddHandler(Avalonia.Controls.Primitives.ToggleButton.IsCheckedChangedEvent, OnChecked);
+    }
+
+    // (after the binding has unchecked the old one too)
+    private void OnChecked(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => Place(IsLoaded && Ui.Animations), Avalonia.Threading.DispatcherPriority.Input);
+
+    private static IEnumerable<RadioButton> Buttons(Visual parent)
+    {
+        foreach (var child in parent.GetVisualChildren())
         {
-            _running = true;
-            TopLevel.GetTopLevel(this)?.RequestAnimationFrame(OnFrame);
+            if (child is RadioButton r) yield return r;
+            else foreach (var inner in Buttons(child)) yield return inner;
         }
     }
 
-    private TimeSpan? _started;
-    private bool _running;
-
-    private void OnFrame(TimeSpan now)
+    private void Place(bool glide, bool again = false)
     {
-        _started ??= now;
-        double t = Math.Clamp((now - _started.Value).TotalMilliseconds / 220, 0, 1);
-        double e = 1 - Math.Pow(1 - t, 3);
-        Opacity = e;
-        _shift.Y = 14 * (1 - e);
-        if (t < 1 && TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(OnFrame);
-        else
+        if (Target == null || !IsLoaded) return;
+        var on = Buttons(Target).FirstOrDefault(r => r.IsChecked == true && r.IsVisible);
+        // (the row just shown, its buttons not laid out yet: once more after the layout)
+        if (on != null && on.Bounds.Width < 1)
         {
-            Opacity = 1;
-            _shift.Y = 0;
-            _running = false;
+            if (!again) Avalonia.Threading.Dispatcher.UIThread.Post(() => Place(glide, true), Avalonia.Threading.DispatcherPriority.Loaded);
+            return;
         }
+        if (on != null && on.TranslatePoint(default, this) is { } at)
+        {
+            // (coming back from nothing: it appears where it is, it doesn't fly in from the last place)
+            bool move = glide && _show.Value > 0.01;
+            Go(_x, at.X, move);
+            Go(_y, at.Y, move);
+            Go(_w, on.Bounds.Width, move);
+            Go(_h, on.Bounds.Height, move);
+        }
+        Go(_show, on == null ? 0 : 1, glide);
+        InvalidateVisual();
+        if (!glide || _ticking) return;
+        _ticking = true;
+        Frame();
+    }
+
+    private static void Go(Core.Glide g, double to, bool glide)
+    {
+        if (glide) g.To(to, AnimatedContent.Ms);
+        else g.Set(to);
+    }
+
+    private void Frame()
+    {
+        if (TopLevel.GetTopLevel(this) is not { } top)
+        {
+            _ticking = false;
+            return;
+        }
+        top.RequestAnimationFrame(_ =>
+        {
+            InvalidateVisual();
+            if (_x.Moving || _y.Moving || _w.Moving || _h.Moving || _show.Moving) Frame();
+            else _ticking = false;
+        });
+    }
+
+    public override void Render(DrawingContext dc)
+    {
+        double show = _show.Value, w = _w.Value, h = _h.Value;
+        if (Fill == null || show <= 0.001 || w < 1 || h < 1) return;
+        double r = Math.Min(Radius, h / 2);
+        using (dc.PushOpacity(show))
+            dc.DrawRectangle(Fill, null, new RoundedRect(new Rect(_x.Value, _y.Value, w, h), r));
     }
 }
+
 // Cards in equal columns that fill the width: as many as fit at MinItemWidth, then widened (no ragged gap on the right).
 public sealed class CardGrid : Panel
 {

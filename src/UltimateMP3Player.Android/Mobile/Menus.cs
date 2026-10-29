@@ -642,21 +642,23 @@ public static class Menus
         return menu;
     }
 
-    // Tick more playlists for the songs of a download (Favorites, say), besides the one chosen above it.
-    public static SheetMenu AlsoPicker(LinkViewModel link)
+    // The playlists the songs of a download go into: a new one (named in the card) and any of yours, as many as wanted.
+    public static SheetMenu PlaylistPicker(LinkViewModel link)
     {
-        var menu = new SheetMenu { Title = L.T("Also add to"), Subtitle = L.T("Tick as many as you like") };
-        foreach (var c in link.AlsoChoices)
+        var menu = new SheetMenu { Title = L.T("Add to playlists"), Subtitle = L.T("Tick as many as you like") };
+        menu.Add(new SheetEntry { Text = L.T("New playlist"), Checked = () => link.MakeNew, Click = () => link.MakeNew = !link.MakeNew });
+        if (link.PlaylistChoices.Count > 0) menu.Line();
+        foreach (var c in link.PlaylistChoices)
         {
             var id = (string)c.Value!;
             menu.Add(new SheetEntry
             {
                 Text = Short(c.Label),
-                Checked = () => link.AlsoIds.Contains(id),
+                Checked = () => link.TargetIds.Contains(id),
                 Click = () =>
                 {
-                    if (!link.AlsoIds.Remove(id)) link.AlsoIds.Add(id);
-                    link.OnAlsoChosen();
+                    if (!link.TargetIds.Remove(id)) link.TargetIds.Add(id);
+                    link.OnTargetsChanged();
                 },
             });
         }

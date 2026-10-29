@@ -1108,7 +1108,6 @@ public sealed class LinkViewModel : Observable
 {
     private readonly MainViewModel _main;
     private bool _bulk;
-    private const string NoPlaylist = "\0none", NewPlaylist = "\0new";
 
     public AnalysisResult R { get; }
     public List<LinkItemViewModel> Items { get; }
@@ -1130,17 +1129,20 @@ public sealed class LinkViewModel : Observable
         _audio = QualityChoices.Pick(AudioChoices, main.Host.Settings.AudioFormat);
         _video = QualityChoices.Pick(VideoChoices, main.Host.Settings.VideoMaxRes);
 
-        PlaylistChoices = new List<Choice> { new(L.T("None (only in “All songs”)"), NoPlaylist), new(L.T("New playlist…"), NewPlaylist) };
         // (this device's, also while only the other device's music is shown: the songs are downloaded here)
-        PlaylistChoices.AddRange(main.MenuPlaylists().Where(p => !p.IsOther).Select(p => new Choice(p.Name, p.Id, p.IsFavorites ? "♥" : null)));
+        PlaylistChoices = main.MenuPlaylists().Where(p => !p.IsOther).Select(p => new Choice(p.Name, p.Id, p.IsFavorites ? "♥" : null)).ToList();
         Title = System.Text.RegularExpressions.Regex.Replace(r.Title, @"^(Album|EP|Single|Playlist)\s+-\s+", "");
-        // The same playlist downloaded again (the songs added since): into the one already made from it, not a copy.
-        _playlist = !IsCollection ? PlaylistChoices[0]
-            : PlaylistChoices.Skip(2).FirstOrDefault(c => string.Equals(c.Label, Title, StringComparison.CurrentCultureIgnoreCase)) ?? PlaylistChoices[1];
+        // A collection: the same playlist downloaded again (the songs added since) goes into the one already made from it, not
+        // a copy; otherwise into a new one named after it. A song: into none (only "All songs").
+        if (IsCollection)
+        {
+            if (PlaylistChoices.FirstOrDefault(c => string.Equals(c.Label, Title, StringComparison.CurrentCultureIgnoreCase)) is { } same) _targets.Add((string)same.Value!);
+            else _makeNew = true;
+        }
         _newName = IsCollection ? Title : "";
 
         ToggleAllCommand = new RelayCommand(ToggleAll);
-        DownloadCommand = new RelayCommand(Download, () => SelectedCount > 0 && (!ShowNewName || !string.IsNullOrWhiteSpace(NewName)));
+        DownloadCommand = new RelayCommand(Download, () => SelectedCount > 0 && (!MakeNew || !string.IsNullOrWhiteSpace(NewName)));
         ListenCommand = new RelayCommand(Listen, () => SelectedCount > 0);
     }
 
@@ -1239,24 +1241,33 @@ public sealed class LinkViewModel : Observable
         OnChanged(nameof(Thumb));
     }
 
+    // The playlists the songs go into, all in one field: any of yours, ticked in one menu (Menus.PlaylistPicker), and a new one
+    // named in the card if "New playlist" is ticked too. Nothing ticked: only in "All songs".
     public List<Choice> PlaylistChoices { get; }
+    private readonly HashSet<string> _targets = new();
+    public ISet<string> TargetIds => _targets;
 
-    private Choice _playlist;
-    public Choice Playlist
+    private bool _makeNew;
+    public bool MakeNew
     {
-        get => _playlist;
-        set { if (value != null && Set(ref _playlist, value)) OnChanged(nameof(ShowNewName)); }
+        get => _makeNew;
+        set
+        {
+            if (!Set(ref _makeNew, value)) return;
+            OnTargetsChanged();
+        }
     }
 
-    public bool ShowNewName => Equals(_playlist.Value, NewPlaylist);
+    public bool HasTargets => _makeNew || _targets.Count > 0;
+    public string TargetsText => !HasTargets ? L.T("Only in “All songs”")
+        : string.Join(", ", (_makeNew ? new[] { L.F("New: “{0}”", string.IsNullOrWhiteSpace(NewName) ? "…" : NewName.Trim()) } : Array.Empty<string>())
+            .Concat(PlaylistChoices.Where(c => _targets.Contains((string)c.Value!)).Select(c => c.Label)));
 
-    // More playlists the songs go into as well (Favorites, say), ticked in a menu like the tags. Every card starts without.
-    private readonly HashSet<string> _also = new();
-    public ISet<string> AlsoIds => _also;
-    public IEnumerable<Choice> AlsoChoices => PlaylistChoices.Skip(2);
-    public string AlsoText => string.Join(", ", AlsoChoices.Where(c => _also.Contains((string)c.Value!)).Select(c => c.Label));
-    public bool HasAlso => _also.Count > 0;
-    public void OnAlsoChosen() => OnChanged(nameof(AlsoText), nameof(HasAlso));
+    public void OnTargetsChanged()
+    {
+        OnChanged(nameof(MakeNew), nameof(HasTargets), nameof(TargetsText));
+        CommandManager.InvalidateRequerySuggested();
+    }
 
     // Tags the downloaded songs get.
     private readonly HashSet<string> _tags = new();
@@ -1266,7 +1277,16 @@ public sealed class LinkViewModel : Observable
     public void OnTagsChosen() => OnChanged(nameof(ChosenTags), nameof(HasChosenTags));
 
     private string _newName;
-    public string NewName { get => _newName; set { if (Set(ref _newName, value)) CommandManager.InvalidateRequerySuggested(); } }
+    public string NewName
+    {
+        get => _newName;
+        set
+        {
+            if (!Set(ref _newName, value)) return;
+            OnChanged(nameof(TargetsText));
+            CommandManager.InvalidateRequerySuggested();
+        }
+    }
 
     private bool _withVideo;
     public bool WithVideo { get => _withVideo; set { if (Set(ref _withVideo, value)) OnChanged(nameof(ShowVideoQuality)); } }
@@ -1299,17 +1319,15 @@ public sealed class LinkViewModel : Observable
     {
         var selected = Items.Where(i => i.IsSelected).ToList();
         if (selected.Count == 0) return;
-        string? playlistId = _playlist.Value as string, created = null;
-        if (playlistId == NoPlaylist) playlistId = null;
-        else if (playlistId == NewPlaylist)
+        string? created = null;
+        var ids = new List<string>();
+        if (_makeNew)
         {
             // (a list of songs has no link of its own)
-            var p = _main.Profile.CreatePlaylist(NewName, R.SourceUrl.Length > 0 ? R.SourceUrl : null);
-            playlistId = created = p.Id;
+            var p = _main.Profile.CreatePlaylist(NewName.Trim(), R.SourceUrl.Length > 0 ? R.SourceUrl : null);
+            ids.Add(created = p.Id);
         }
-        var ids = new List<string>();
-        if (playlistId != null) ids.Add(playlistId);
-        ids.AddRange(_also.Where(id => !ids.Contains(id)));
+        ids.AddRange(PlaylistChoices.Select(c => (string)c.Value!).Where(_targets.Contains));
         var batch = new DownloadBatch(_main.Profile, ids, Items.Count, ChosenTags.Select(t => t.Id).ToList())
         {
             Title = selected.Count == 1 ? null : Title,
@@ -1456,7 +1474,7 @@ public sealed class DownloadsPageViewModel : Observable
         private set
         {
             if (!Set(ref _link, value)) return;
-            OnChanged(nameof(ShowIntro));
+            OnChanged(nameof(ShowIntro), nameof(Idle));
             DropListGroup();
         }
     }
@@ -1473,7 +1491,7 @@ public sealed class DownloadsPageViewModel : Observable
     }
 
     private bool _analyzing;
-    public bool IsAnalyzing { get => _analyzing; private set { if (Set(ref _analyzing, value)) OnChanged(nameof(ShowIntro)); } }
+    public bool IsAnalyzing { get => _analyzing; private set { if (Set(ref _analyzing, value)) OnChanged(nameof(ShowIntro), nameof(Idle)); } }
 
     private string _analyzingText = "";
     public string AnalyzingText { get => _analyzingText; private set => Set(ref _analyzingText, value); }
@@ -1485,7 +1503,7 @@ public sealed class DownloadsPageViewModel : Observable
         private set
         {
             if (!Set(ref _error, value)) return;
-            OnChanged(nameof(ShowIntro));
+            OnChanged(nameof(ShowIntro), nameof(Idle));
             DropListGroup();
         }
     }
@@ -1496,7 +1514,9 @@ public sealed class DownloadsPageViewModel : Observable
     private bool _suggestCookies;
     public bool SuggestCookies { get => _suggestCookies; private set => Set(ref _suggestCookies, value); }
 
-    public bool ShowIntro => Link == null && !IsAnalyzing && Error == null && !Queue.HasJobs;
+    public bool ShowIntro => Idle && !Queue.HasJobs;
+    // Nothing being added (no link open, read or refused): "Import a list" is offered only then.
+    public bool Idle => Link == null && !IsAnalyzing && Error == null;
 
     private string? _feedback;
     public string? Feedback { get => _feedback; private set => Set(ref _feedback, value); }
@@ -1506,7 +1526,7 @@ public sealed class DownloadsPageViewModel : Observable
     {
         Link = null;
         Feedback = message;
-        OnChanged(nameof(ShowIntro));
+        OnChanged(nameof(ShowIntro), nameof(Idle));
         _ = ClearFeedback(message);
     }
 

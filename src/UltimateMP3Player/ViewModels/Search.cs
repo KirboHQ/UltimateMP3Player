@@ -93,14 +93,24 @@ public sealed class SearchFilter : Observable
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
 }
 
+// One chip's list (SearchViewModel.Results).
+public sealed class SearchResults : Observable
+{
+    public SearchResults(string filter) => Filter = filter;
+
+    public string Filter { get; }
+    private List<object> _items = new();
+    public List<object> Items { get => _items; set => Set(ref _items, value); }
+}
+
 // The search box's results, your library and the music sites together (Settings › Search online): songs (yours first, then
 // the sites'), artists (yours, then Deezer's), albums and EPs, playlists (yours, then the sites'). "All" shows the best of
 // each, its chip all of them. Built as one list of items (Items): headings, rows, shelves of cards, notes; each app draws
 // each kind its way (the phones: artists, albums and playlists as rows under their chips).
-public sealed class SearchViewModel : Observable, ITrackList
+public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
 {
     private const int PerService = 15;
-    public const string All = "all", SongsKey = "songs", ArtistsKey = "artists", AlbumsKey = "albums", PlaylistsKey = "playlists";
+    public const string All = "all", SongsKey = "songs", ArtistsKey = "artists", AlbumsKey = "albums", PlaylistsKey = "playlists", RadioKey = "radio";
 #if ANDROID_APP || IOS_APP
     private const bool Phone = true;
 #else
@@ -121,8 +131,31 @@ public sealed class SearchViewModel : Observable, ITrackList
         Filters = new List<SearchFilter>
         {
             new(All, L.T("All")), new(SongsKey, L.T("Songs")), new(ArtistsKey, L.T("Artists")), new(AlbumsKey, L.T("Albums and EPs")), new(PlaylistsKey, L.T("Playlists")),
+            new(RadioKey, L.T("Radio")),
         };
         Filters[0].IsSelected = true;
+    }
+
+    // The computers' page shows the downloads part (a link open, a song found online opened: the words stay in the box, Back
+    // goes to the results), not the results. Set by MainViewModel while this is the page.
+    private bool _onDownloads;
+    public bool OnDownloads
+    {
+        get => _onDownloads;
+        set
+        {
+            if (!Set(ref _onDownloads, value)) return;
+            OnChanged(nameof(ShowResults), nameof(ShowDownloads));
+            _main.RefreshDownloadPanel();
+        }
+    }
+    public bool ShowResults => HasQuery && !OnDownloads;
+    public bool ShowDownloads => !ShowResults;
+
+    // A follow changed somewhere: the artists' cards say so at once.
+    public void RecheckArtists()
+    {
+        foreach (var a in _localArtists.Concat(_onlineArtists)) a.Recheck();
     }
 
     public string ContextId => "search";
@@ -157,8 +190,33 @@ public sealed class SearchViewModel : Observable, ITrackList
         }
     }
 
+    // (Ctrl+←/→)
+    public void StepFilter(int dir)
+    {
+        int i = Filters.FindIndex(f => f.Key == _filter) + dir;
+        if (i >= 0 && i < Filters.Count) Filter = Filters[i].Key;
+    }
+
     // What the page shows, top to bottom.
     public List<object> Items { get; private set; } = new();
+
+    // The same, as the chip's own page: the computers slide from one chip's to the next (AnimatedContent, OrderOf); new
+    // results under the same chip stay on its page.
+    public SearchResults Results { get; private set; } = new(All);
+
+    public int? OrderOf(object page) => page is SearchResults r && Filters.FindIndex(f => f.Key == r.Filter) is var i and >= 0 ? i : null;
+
+    private void SetItems(List<object> items)
+    {
+        Items = items;
+        if (Results.Filter == _filter) Results.Items = items;
+        else
+        {
+            Results = new SearchResults(_filter) { Items = items };
+            OnChanged(nameof(Results));
+        }
+        OnChanged(nameof(Items), nameof(NoResults));
+    }
 
     public void Run(string query)
     {
@@ -182,7 +240,9 @@ public sealed class SearchViewModel : Observable, ITrackList
         Rows = _order.Select((t, i) => new TrackRow(i + 1, t, this)).ToList();
         PlaylistResults = _main.Playlists.Where(q.Matches).ToList();
         _localArtists = LocalArtists(Query);
-        OnChanged(nameof(Query), nameof(HasQuery), nameof(Rows), nameof(PlaylistResults), nameof(Title), nameof(ContextName));
+        _savedStations = Query.StartsWith('#') ? new() : _main.Stations.SavedMatching(Query);
+        OnChanged(nameof(Query), nameof(HasQuery), nameof(Rows), nameof(PlaylistResults), nameof(Title), nameof(ContextName), nameof(ShowResults), nameof(ShowDownloads));
+        _main.RefreshDownloadPanel();
         if (Query != _onlineQuery)
         {
             // (the sites' results of other words are gone at once, not shown under these; their searches stop)
@@ -190,6 +250,7 @@ public sealed class SearchViewModel : Observable, ITrackList
             _byService.Clear();
             _allHits = new();
             _onlineArtists = new();
+            _onlineStations = new();
             _collections.Clear();
             _albumHits = null;
             _featured = null;
@@ -253,6 +314,7 @@ public sealed class SearchViewModel : Observable, ITrackList
         var artists = Artists();
         var albums = Albums();
         var lists = PlaylistResults.Cast<object>().Concat(OnlinePlaylists()).ToList();
+        var stations = _savedStations.Concat(_onlineStations).ToList();
         bool searching = OnlineBusy || _findingArtists;
         switch (_filter)
         {
@@ -271,6 +333,7 @@ public sealed class SearchViewModel : Observable, ITrackList
                     if (artists.Count > 0) AddShelf(items, L.T("Artists"), artists, ArtistsKey);
                     if (albums.Count > 0) AddShelf(items, L.T("Albums and EPs"), albums, AlbumsKey);
                     if (lists.Count > 0) AddShelf(items, L.T("Playlists"), lists, PlaylistsKey);
+                    if (stations.Count > 0) AddShelf(items, L.T("Radio"), stations, RadioKey);
                     if (searching) items.Add(new SearchNote(L.T("Searching online…"), null, busy: true));
                     else if (items.Count == 0) items.Add(new SearchNote(L.T("No results"), OnlineEnabled ? NoOnlineHint : LocalEmptyHint));
                     break;
@@ -301,6 +364,9 @@ public sealed class SearchViewModel : Observable, ITrackList
             case PlaylistsKey:
                 AddAll(items, lists, searching, L.T("No playlists found."));
                 break;
+            case RadioKey:
+                AddAll(items, stations, _findingStations, OnlineEnabled ? L.T("No radios found.") : L.T("None of your radios has this name."));
+                break;
         }
         // (the sites' songs numbered on from yours under the same heading: one list)
         int n = 0;
@@ -308,8 +374,7 @@ public sealed class SearchViewModel : Observable, ITrackList
             if (item is SearchSection) n = 0;
             else if (item is TrackRow) n++;
             else if (item is OnlineHitViewModel hit and not FeaturedHitViewModel) hit.Number = (++n).ToString();
-        Items = items;
-        OnChanged(nameof(Items), nameof(NoResults));
+        SetItems(items);
     }
 
     // The box emptied, or the page opened before any search: what it's for, no results (the sites' ones stay for the same words).
@@ -321,8 +386,10 @@ public sealed class SearchViewModel : Observable, ITrackList
         Rows = new();
         PlaylistResults = new();
         _localArtists = new();
-        Items = new List<object> { new SearchNote(L.T("Search your music and online"), L.T("Songs, artists, albums and playlists. To download a song, paste its link here.")) };
-        OnChanged(nameof(Query), nameof(HasQuery), nameof(Rows), nameof(PlaylistResults), nameof(Title), nameof(ContextName), nameof(Items), nameof(NoResults));
+        _savedStations = new();
+        SetItems(new List<object> { new SearchNote(L.T("Search your music and online"), L.T("Songs, artists, albums, playlists and radios. To download a song, paste its link here.")) });
+        OnChanged(nameof(Query), nameof(HasQuery), nameof(Rows), nameof(PlaylistResults), nameof(Title), nameof(ContextName), nameof(ShowResults), nameof(ShowDownloads));
+        _main.RefreshDownloadPanel();
     }
 
     private ICommand FilterCommand(string key) => new RelayCommand(() => Filter = key);
@@ -347,7 +414,32 @@ public sealed class SearchViewModel : Observable, ITrackList
         else if (list.Count == 0) items.Add(new SearchNote(none));
     }
 
-    public bool NoResults => Rows.Count == 0 && PlaylistResults.Count == 0 && _allHits.Count == 0 && Artists().Count == 0;
+    public bool NoResults => Rows.Count == 0 && PlaylistResults.Count == 0 && _allHits.Count == 0 && Artists().Count == 0 && _savedStations.Count == 0
+                             && _onlineStations.Count == 0;
+
+    // Your radios whose name has the words, then radio-browser's (the sites' search on: it's online too).
+    private List<StationViewModel> _savedStations = new(), _onlineStations = new();
+    private bool _findingStations;
+
+    private async Task FindStations(string query, CancellationTokenSource cts)
+    {
+        _findingStations = true;
+        try
+        {
+            var found = await _main.Stations.FindAsync(query, cts.Token);
+            if (_onlineCts != cts) return;
+            _onlineStations = found;
+        }
+        catch { }
+        finally
+        {
+            if (_onlineCts == cts)
+            {
+                _findingStations = false;
+                Rebuild();
+            }
+        }
+    }
 
     // ------------------------------------------------------------------ online
 
@@ -358,7 +450,7 @@ public sealed class SearchViewModel : Observable, ITrackList
     private bool Searchable(string q) => q.Length >= 2 && !q.StartsWith('#');
 
     public string LocalEmptyHint => OnlineEnabled
-        ? L.T("Search by title, artist or album. For a song you don't have, look in the Online tab or paste its link.")
+        ? L.T("Search by title, artist or album: the sites' songs show under yours. To download one, pick it or paste its link.")
         : L.T("Search by title, artist or album. To download a new song, paste its link.");
     private string NoOnlineHint => !Searchable(Query) ? L.T("Type at least two letters to search online.")
         : _failed.Count > 0 && _byService.Count == 0 ? L.T("The sites didn't answer: check your connection and try again.")
@@ -433,6 +525,7 @@ public sealed class SearchViewModel : Observable, ITrackList
         _serviceFilter = null;
         _albumHits = _playlistHits = null;
         _onlineArtists = new();
+        _onlineStations = new();
         _albumsBySite.Clear();
         _collections.Clear();
         _featured = null;
@@ -449,6 +542,7 @@ public sealed class SearchViewModel : Observable, ITrackList
         if (asked.Count > 0) _ = SearchOnline(Query, asked, S.SearchParallel, cts);
         _ = FindArtists(Query, cts);
         _ = FindCollections(Query, cts);
+        _ = FindStations(Query, cts);
     }
 
     // Your songs changed while another page was shown (a song downloaded from these results): looked for again when shown.

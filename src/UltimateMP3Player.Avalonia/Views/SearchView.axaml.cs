@@ -28,12 +28,29 @@ public partial class SearchView : UserControl
             SearchBox.CaretIndex = SearchBox.Text?.Length ?? 0;
         };
         Unloaded += (_, _) => { if (_shown == this) _shown = null; };
-        // Only your songs and playlists are chosen (Ctrl or Shift + click): a heading, a card or a note clicked isn't.
-        List.SelectionChanged += (_, e) =>
-        {
-            foreach (var item in e.AddedItems.Cast<object>().Where(i => i is not (TrackRow or PlaylistViewModel)).ToList())
-                List.SelectedItems?.Remove(item);
-        };
+    }
+
+    // Only your songs and playlists are chosen (Ctrl or Shift + click): a heading, a card or a note clicked isn't.
+    private void List_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        foreach (var item in e.AddedItems.Cast<object>().Where(i => i is not (TrackRow or PlaylistViewModel)).ToList())
+            (sender as ListBox)?.SelectedItems?.Remove(item);
+    }
+
+    // The chips' lists on screen (two while one slides in): the selection bar acts on the newest one still there.
+    private readonly List<ListBox> _lists = new();
+
+    private void List_Loaded(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not ListBox list) return;
+        if (!_lists.Contains(list)) _lists.Add(list);
+        Bar.List = list;
+    }
+
+    private void List_Unloaded(object? sender, RoutedEventArgs e)
+    {
+        if (sender is ListBox list) _lists.Remove(list);
+        Bar.List = _lists.LastOrDefault();
     }
 
     private MainViewModel? Main => (DataContext as SearchViewModel)?.Main;

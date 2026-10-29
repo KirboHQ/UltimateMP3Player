@@ -64,6 +64,12 @@
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Margin" Value="0,0,0,16"/>
         </Style>
+        <!-- a part of a card that holds several (Library: music on the computer, tags...) -->
+        <Style Selector="TextBlock.sub-title">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+        </Style>
         <Style Selector="StackPanel.dims:disabled">
             <Setter Property="Opacity" Value="0.45"/>
         </Style>
@@ -295,420 +301,419 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ==================================================== downloads -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'downloads format mp3 m4a opus flac quality video cookies browser chrome firefox edge folder music'}">
+                <!-- ==================================================== downloads and temporary storage -->
+                <Border Theme="{StaticResource Card}" Padding="22">
                     <StackPanel>
                         <TextBlock Text="{local:T Download}" Classes="card-title"/>
+                        <!-- downloads -->
+                        <StackPanel views:SettingsView.Keywords="{local:T 'downloads format mp3 m4a opus flac quality video cookies browser chrome firefox edge folder music'}">
 
-                        <TextBlock Text="{local:T 'Music folder (shared by all profiles)'}" Classes="field-label"/>
-                        <Grid Margin="0,0,0,16">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding MusicDir, Mode=OneWay}" IsReadOnly="True"/>
-                            <Button Grid.Column="1" Theme="{StaticResource GhostButton}" Content="{local:T 'Browse…'}" Margin="8,0,0,0" Command="{Binding BrowseCommand}"/>
-                            <Button Grid.Column="2" Theme="{StaticResource GhostButton}" Content="{local:T Open}" Margin="8,0,0,0" Command="{Binding OpenMusicDirCommand}"/>
-                        </Grid>
+                            <TextBlock Text="{local:T 'Music folder (shared by all profiles)'}" Classes="field-label"/>
+                            <Grid Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding MusicDir, Mode=OneWay}" IsReadOnly="True"/>
+                                <Button Grid.Column="1" Theme="{StaticResource GhostButton}" Content="{local:T 'Browse…'}" Margin="8,0,0,0" Command="{Binding BrowseCommand}"/>
+                                <Button Grid.Column="2" Theme="{StaticResource GhostButton}" Content="{local:T Open}" Margin="8,0,0,0" Command="{Binding OpenMusicDirCommand}"/>
+                            </Grid>
 
-                        <UniformGrid Columns="2" Margin="0,0,0,4">
-                            <StackPanel Margin="0,0,8,12">
-                                <TextBlock Text="{local:T 'Audio format'}" Classes="field-label"/>
-                                <ComboBox ItemsSource="{Binding AudioFormats}" SelectedItem="{Binding AudioFormat}"/>
-                            </StackPanel>
-                            <StackPanel Margin="8,0,0,12">
-                                <TextBlock Text="{local:T 'Maximum video quality'}" Classes="field-label"/>
-                                <ComboBox ItemsSource="{Binding VideoQualities}" SelectedItem="{Binding VideoQuality}"/>
-                            </StackPanel>
-                            <StackPanel Margin="0,0,8,12">
-                                <TextBlock Text="{local:T 'Simultaneous downloads'}" Classes="field-label"/>
-                                <ComboBox ItemsSource="{Binding ParallelChoices}" SelectedItem="{Binding Parallel}"/>
-                            </StackPanel>
-                        </UniformGrid>
+                            <UniformGrid Columns="2" Margin="0,0,0,4">
+                                <StackPanel Margin="0,0,8,12">
+                                    <TextBlock Text="{local:T 'Audio format'}" Classes="field-label"/>
+                                    <ComboBox ItemsSource="{Binding AudioFormats}" SelectedItem="{Binding AudioFormat}"/>
+                                </StackPanel>
+                                <StackPanel Margin="8,0,0,12">
+                                    <TextBlock Text="{local:T 'Maximum video quality'}" Classes="field-label"/>
+                                    <ComboBox ItemsSource="{Binding VideoQualities}" SelectedItem="{Binding VideoQuality}"/>
+                                </StackPanel>
+                                <StackPanel Margin="0,0,8,12">
+                                    <TextBlock Text="{local:T 'Simultaneous downloads'}" Classes="field-label"/>
+                                    <ComboBox ItemsSource="{Binding ParallelChoices}" SelectedItem="{Binding Parallel}"/>
+                                </StackPanel>
+                            </UniformGrid>
 
-                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding SaveAudio}">
+                            <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding SaveAudio}">
+                                <StackPanel>
+                                    <TextBlock Text="{local:T 'Save the audio on your device'}"/>
+                                    <TextBlock Text="{local:T 'Songs you add from a link or a pack are downloaded. Off: they go into your library in the cloud, you listen from their link and save them whenever you like.'}" Classes="hint"/>
+                                </StackPanel>
+                            </CheckBox>
+
+                            <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding PreferAudioOnly}">
+                                <StackPanel>
+                                    <TextBlock Text="{local:T 'Prefer audio only'}"/>
+                                    <TextBlock Text="{local:T 'You can always choose the video when downloading.'}" Classes="hint"/>
+                                </StackPanel>
+                            </CheckBox>
+
+                            <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding UseCookies}">
+                                <StackPanel>
+                                    <TextBlock Text="{local:T 'Use browser cookies'}"/>
+                                    <TextBlock Classes="hint"
+                                               Text="{local:T 'For content that requires signing in (Instagram, TikTok, age-restricted, private playlists). Off by default.'}"/>
+                                </StackPanel>
+                            </CheckBox>
+                            <StackPanel Width="280" HorizontalAlignment="Left" Margin="0,12,0,0" IsVisible="{Binding UseCookies}">
+                                <TextBlock Text="{local:T 'Browser (installed ones)'}" Classes="field-label"/>
+                                <ComboBox ItemsSource="{Binding BrowserChoices}" SelectedItem="{Binding Browser}"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <!-- storage -->
+                        <StackPanel Tag="whole" views:SettingsView.Keywords="{local:T 'storage space cache suggested cloud unsaved clear empty'}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,22"/>
+                            <TextBlock Text="{local:T 'Temporary storage (unsaved songs)'}" Classes="sub-title"/>
                             <StackPanel>
-                                <TextBlock Text="{local:T 'Save the audio on your device'}"/>
-                                <TextBlock Text="{local:T 'Songs you add from a link or a pack are downloaded. Off: they go into your library in the cloud, you listen from their link and save them whenever you like.'}" Classes="hint"/>
+                                <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding CacheChoices}" SelectedItem="{Binding CacheSize}"
+                                          AutomationProperties.Name="{local:T 'Temporary storage (unsaved songs)'}"/>
+                                <TextBlock Classes="hint" Margin="0,8,0,0"
+                                           Text="{local:T 'Songs you play without having saved them on your device (in the cloud, suggested, in rooms) stay ready for next time; beyond this number the oldest are deleted (never those in the queue). Saving one moves it out of here.'}"/>
+                                <TextBlock Text="{Binding CacheText}" Classes="hint" Margin="0,4,0,10"/>
+                                <WrapPanel>
+                                    <Button Theme="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ClearCacheCommand}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{local:Icon E74D}" Classes="glyph"/>
+                                            <TextBlock Text="{local:T Empty}" Margin="8,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Theme="{StaticResource GhostButton}" Command="{Binding OpenCacheCommand}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{local:Icon E838}" Classes="glyph"/>
+                                            <TextBlock Text="{local:T 'Open the folder'}" Margin="8,0,0,0"/>
+                                        </StackPanel>
+                                    </Button>
+                                </WrapPanel>
                             </StackPanel>
-                        </CheckBox>
-
-                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding PreferAudioOnly}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Prefer audio only'}"/>
-                                <TextBlock Text="{local:T 'You can always choose the video when downloading.'}" Classes="hint"/>
-                            </StackPanel>
-                        </CheckBox>
-
-                        <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding UseCookies}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Use browser cookies'}"/>
-                                <TextBlock Classes="hint"
-                                           Text="{local:T 'For content that requires signing in (Instagram, TikTok, age-restricted, private playlists). Off by default.'}"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <StackPanel Width="280" HorizontalAlignment="Left" Margin="0,12,0,0" IsVisible="{Binding UseCookies}">
-                            <TextBlock Text="{local:T 'Browser (installed ones)'}" Classes="field-label"/>
-                            <ComboBox ItemsSource="{Binding BrowserChoices}" SelectedItem="{Binding Browser}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- ==================================================== storage -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'storage space cache suggested cloud unsaved clear empty'}">
+                <!-- ==================================================== search and suggestions -->
+                <Border Theme="{StaticResource Card}" Padding="22">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Temporary storage (unsaved songs)'}" Classes="card-title"/>
-                        <StackPanel>
-                            <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding CacheChoices}" SelectedItem="{Binding CacheSize}"
-                                      AutomationProperties.Name="{local:T 'Temporary storage (unsaved songs)'}"/>
-                            <TextBlock Classes="hint" Margin="0,8,0,0"
-                                       Text="{local:T 'Songs you play without having saved them on your device (in the cloud, suggested, in rooms) stay ready for next time; beyond this number the oldest are deleted (never those in the queue). Saving one moves it out of here.'}"/>
-                            <TextBlock Text="{Binding CacheText}" Classes="hint" Margin="0,4,0,10"/>
+                        <TextBlock Text="{local:T 'Search and suggestions'}" Classes="card-title"/>
+                        <!-- online search -->
+                        <StackPanel views:SettingsView.Keywords="{local:T 'online search find sites youtube music soundcloud deezer spotify order'}">
+                            <TextBlock Text="{local:T 'Online search'}" Classes="sub-title"/>
+                            <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding OnlineSearch}">
+                                <StackPanel>
+                                    <TextBlock Text="{local:T 'Also search music sites'}"/>
+                                    <TextBlock Text="{local:T 'The search also finds songs you don\'t have: click one to download it, like a pasted link.'}"
+                                               Classes="hint"/>
+                                </StackPanel>
+                            </CheckBox>
+                            <StackPanel IsEnabled="{Binding OnlineSearch}">
+                                <TextBlock Text="{local:T 'Sites, in order of preference'}" Classes="field-label"/>
+                                <!-- dragged to another place like the songs of a playlist (SettingsView: ServiceList) -->
+                                <ListBox x:Name="ServiceList" ItemsSource="{Binding SearchServices}" Theme="{StaticResource PlainList}" Focusable="False" Margin="0,0,0,10"
+                                         DragDrop.AllowDrop="True">
+                                    <ListBox.Template>
+                                        <ControlTemplate>
+                                            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                                        </ControlTemplate>
+                                    </ListBox.Template>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:SearchServiceOption}">
+                                            <Border Name="Row" CornerRadius="10" Background="{DynamicResource BgBrush}" BorderBrush="Transparent" BorderThickness="1"
+                                                    Padding="12,8,6,8" Margin="0,0,0,6">
+                                                <DockPanel>
+                                                    <!-- the handle: three lines, like the phone's -->
+                                                    <Border DockPanel.Dock="Right" Background="Transparent" Cursor="SizeAll" VerticalAlignment="Center" Padding="10,8,8,8"
+                                                            ToolTip.Tip="{local:T 'Drag to change the order: the sites higher up are searched first'}">
+                                                        <StackPanel Width="14" Spacing="3">
+                                                            <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
+                                                            <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
+                                                            <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}">
+                                                        <StackPanel Margin="2,0,0,0">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding Number}" Foreground="{DynamicResource MutedBrush}" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                                                                <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                                            </StackPanel>
+                                                            <TextBlock Text="{Binding Description}" Classes="hint" FontSize="12"/>
+                                                        </StackPanel>
+                                                    </CheckBox>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <TextBlock Text="{local:T 'How to search'}" Classes="field-label"/>
+                                <ComboBox ItemsSource="{Binding SearchModes}" SelectedItem="{Binding SearchMode}" Width="280" HorizontalAlignment="Left"
+                                          AutomationProperties.Name="{local:T 'How to search'}"/>
+                                <TextBlock Text="{Binding SearchModeHint}" Classes="hint" FontSize="12" Margin="2,8,0,0"/>
+                                <DockPanel Margin="0,16,0,0">
+                                    <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding SpotifyKeyCommand}" Content="{local:T 'Enter key…'}"
+                                            VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{local:T 'Spotify key'}"/>
+                                        <TextBlock Text="{Binding SpotifyKeyText}" Classes="hint" FontSize="12"/>
+                                    </StackPanel>
+                                </DockPanel>
+                                <TextBlock Classes="hint" FontSize="12" Margin="2,8,0,0" Foreground="{DynamicResource MutedBrush}"
+                                           Text="{local:T 'Spotify only answers apps with a key: with yours (free; your Spotify account needs Premium) the search finds Spotify\'s songs and artists too. Without one, Deezer has the same catalogue. The audio comes from YouTube Music, as for Spotify links.'}"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <!-- suggested songs -->
+                        <StackPanel views:SettingsView.Keywords="{local:T 'suggested suggestions similar radio automatic queue online discover new songs ahead'}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,22"/>
+                            <TextBlock Text="{local:T 'Suggested songs'}" Classes="sub-title"/>
+                            <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding RadioAfterSingle}">
+                                <StackPanel>
+                                    <TextBlock Text="{local:T 'Outside a playlist, go on with similar songs'}"/>
+                                    <TextBlock Classes="hint"
+                                               Text="{local:T 'A song started from the downloads, the search or on its own is followed by similar songs found online (with the automatic queue on). Off: all your songs follow it.'}"/>
+                                </StackPanel>
+                            </CheckBox>
+                            <UniformGrid Columns="2">
+                                <StackPanel Margin="0,0,8,0">
+                                    <TextBlock Text="{local:T 'Where they come from'}" Classes="field-label"/>
+                                    <ComboBox ItemsSource="{Binding RadioSourceChoices}" SelectedItem="{Binding RadioSource}"
+                                              AutomationProperties.Name="{local:T 'Where suggested songs come from'}"/>
+                                </StackPanel>
+                                <StackPanel Margin="8,0,0,0">
+                                    <TextBlock Text="{local:T 'Ready ahead'}" Classes="field-label"/>
+                                    <ComboBox ItemsSource="{Binding TogetherAheadChoices}" SelectedItem="{Binding RadioAhead}"
+                                              AutomationProperties.Name="{local:T 'Suggested songs ready ahead'}"/>
+                                </StackPanel>
+                            </UniformGrid>
+                            <TextBlock Text="{Binding RadioSourceHint}" Classes="hint" FontSize="12" Margin="2,8,0,0"/>
+                            <TextBlock Classes="hint" FontSize="12" Margin="2,12,0,0" Foreground="{DynamicResource MutedBrush}"
+                                       Text="{local:T 'From any song: right-click → Play similar songs. They\'re downloaded shortly before their turn, as in Listen together and into the same storage, and don\'t go into your library: to keep one, right-click → Save to library.'}"/>
+                        </StackPanel>
+                        <!-- lyrics -->
+                        <StackPanel views:SettingsView.Keywords="{local:T 'lyrics text words karaoke lrclib synced timing'}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,22"/>
+                            <TextBlock Text="{local:T 'Song lyrics'}" Classes="sub-title"/>
+                            <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding AutoLyrics}">
+                                <StackPanel>
+                                    <TextBlock Text="{local:T 'Find lyrics automatically'}"/>
+                                    <TextBlock Text="{local:T 'For newly downloaded songs and for the ones you play, if they were never searched. When a song has lyrics, the Lyrics button appears on its page.'}"
+                                               Classes="hint"/>
+                                </StackPanel>
+                            </CheckBox>
+                            <TextBlock Text="{local:T 'In your library'}" Classes="field-label"/>
+                            <TextBlock Text="{Binding LyricsStats}" Margin="0,0,0,12" TextWrapping="Wrap"/>
+                            <!-- the missing ones of the whole library, one at a time -->
+                            <Button Theme="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding ScanLyricsCommand}"
+                                    IsVisible="{Binding !Lyrics.IsScanning}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E720}" Classes="glyph"/>
+                                    <TextBlock Text="{local:T 'Find missing lyrics'}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <Grid IsVisible="{Binding Lyrics.IsScanning}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
+                                    <TextBlock Text="{Binding Lyrics.ScanText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
+                                    <ProgressBar Maximum="1" Value="{Binding Lyrics.ScanProgress, Mode=OneWay}" Margin="0,7,0,0"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Theme="{StaticResource GhostButton}" Content="{local:T Stop}" Command="{Binding Lyrics.StopScanCommand}"/>
+                            </Grid>
+                            <TextBlock Classes="hint" FontSize="12" Margin="2,14,0,0" Foreground="{DynamicResource MutedBrush}"
+                                       Text="{local:T 'Lyrics come from LRCLIB, a free and open archive. Synced lyrics light up line by line as you listen; for one song right-click → Lyrics, for several songs select them and right-click.'}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ==================================================== library: music on the computer, tags, bulk edit, followed artists -->
+                <Border Theme="{StaticResource Card}" Padding="22">
+                    <StackPanel>
+                        <TextBlock Text="{local:T Library}" Classes="card-title"/>
+                        <!-- library -->
+                        <StackPanel Tag="whole" views:SettingsView.Keywords="{local:T 'import add files folder computer'}">
+                            <TextBlock Text="{local:T 'Music already on your computer'}" Classes="sub-title"/>
+                            <TextBlock Text="{local:T 'Add audio or video files you already have: they stay where they are. You can also drag them into the window.'}"
+                                       Classes="hint" Margin="0,-8,0,14"/>
                             <WrapPanel>
-                                <Button Theme="{StaticResource GhostButton}" Margin="0,0,10,0" Command="{Binding ClearCacheCommand}">
+                                <Button Theme="{StaticResource GhostButton}" Command="{Binding ImportFilesCommand}" Margin="0,0,10,0">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{local:Icon E74D}" Classes="glyph"/>
-                                        <TextBlock Text="{local:T Empty}" Margin="8,0,0,0"/>
+                                        <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Add files…'}" Margin="8,0,0,0"/>
                                     </StackPanel>
                                 </Button>
-                                <Button Theme="{StaticResource GhostButton}" Command="{Binding OpenCacheCommand}">
+                                <Button Theme="{StaticResource GhostButton}" Command="{Binding ImportFolderCommand}">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{local:Icon E838}" Classes="glyph"/>
-                                        <TextBlock Text="{local:T 'Open the folder'}" Margin="8,0,0,0"/>
+                                        <TextBlock Text="{local:Icon E8B7}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Add a folder…'}" Margin="8,0,0,0"/>
                                     </StackPanel>
                                 </Button>
                             </WrapPanel>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== online search -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'online search find sites youtube music soundcloud deezer spotify order'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Online search'}" Classes="card-title"/>
-                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding OnlineSearch}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Also search music sites'}"/>
-                                <TextBlock Text="{local:T 'The bar at the top also finds songs you don\'t have: click one to download it, like a pasted link.'}"
-                                           Classes="hint"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <StackPanel IsEnabled="{Binding OnlineSearch}">
-                            <TextBlock Text="{local:T 'Sites, in order of preference'}" Classes="field-label"/>
-                            <!-- dragged to another place like the songs of a playlist (SettingsView: ServiceList) -->
-                            <ListBox x:Name="ServiceList" ItemsSource="{Binding SearchServices}" Theme="{StaticResource PlainList}" Focusable="False" Margin="0,0,0,10"
-                                     DragDrop.AllowDrop="True">
-                                <ListBox.Template>
-                                    <ControlTemplate>
-                                        <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>
-                                    </ControlTemplate>
-                                </ListBox.Template>
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:SearchServiceOption}">
-                                        <Border Name="Row" CornerRadius="10" Background="{DynamicResource BgBrush}" BorderBrush="Transparent" BorderThickness="1"
-                                                Padding="12,8,6,8" Margin="0,0,0,6">
+                        <!-- tags -->
+                        <StackPanel Tag="whole" views:SettingsView.Keywords="{local:T 'tags labels color colors'}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,22"/>
+                            <TextBlock Text="{local:T Tags}" Classes="sub-title"/>
+                            <TextBlock Text="{local:T 'Colored labels for this profile only: put them on songs and playlists with a right-click, or by selecting several songs.'}"
+                                       Classes="hint" Margin="0,-8,0,12"/>
+                            <ItemsControl ItemsSource="{Binding $parent[Window].DataContext.Tags}" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:TagViewModel}">
+                                        <Border Classes="hoverrow" CornerRadius="8" Padding="10,4,4,4">
                                             <DockPanel>
-                                                <!-- the handle: three lines, like the phone's -->
-                                                <Border DockPanel.Dock="Right" Background="Transparent" Cursor="SizeAll" VerticalAlignment="Center" Padding="10,8,8,8"
-                                                        ToolTip.Tip="{local:T 'Drag to change the order: the sites higher up are searched first'}">
-                                                    <StackPanel Width="14" Spacing="3">
-                                                        <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
-                                                        <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
-                                                        <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
-                                                    </StackPanel>
-                                                </Border>
-                                                <CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Center" AutomationProperties.Name="{Binding Name}">
-                                                    <StackPanel Margin="2,0,0,0">
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="{Binding Number}" Foreground="{DynamicResource MutedBrush}" FontWeight="SemiBold" Margin="0,0,8,0"/>
-                                                            <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
-                                                        </StackPanel>
-                                                        <TextBlock Text="{Binding Description}" Classes="hint" FontSize="12"/>
-                                                    </StackPanel>
-                                                </CheckBox>
+                                                <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="{local:Icon E74D}"
+                                                        Command="{Binding $parent[Window].DataContext.DeleteTagCommand}" CommandParameter="{Binding}"
+                                                        ToolTip.Tip="{local:T 'Delete tag'}" AutomationProperties.Name="{local:T 'Delete tag'}"/>
+                                                <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="{local:Icon E70F}"
+                                                        Command="{Binding $parent[Window].DataContext.EditTagCommand}" CommandParameter="{Binding}"
+                                                        ToolTip.Tip="{local:T 'Edit name and color'}" AutomationProperties.Name="{local:T 'Edit tag'}"/>
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}"
+                                                           VerticalAlignment="Center" Margin="10,0,8,0"/>
+                                                <Ellipse Width="12" Height="12" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Name}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                             </DockPanel>
                                         </Border>
                                     </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            <TextBlock Text="{local:T 'How to search'}" Classes="field-label"/>
-                            <ComboBox ItemsSource="{Binding SearchModes}" SelectedItem="{Binding SearchMode}" Width="280" HorizontalAlignment="Left"
-                                      AutomationProperties.Name="{local:T 'How to search'}"/>
-                            <TextBlock Text="{Binding SearchModeHint}" Classes="hint" FontSize="12" Margin="2,8,0,0"/>
-                            <DockPanel Margin="0,16,0,0">
-                                <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding SpotifyKeyCommand}" Content="{local:T 'Enter key…'}"
-                                        VerticalAlignment="Center" Margin="12,0,0,0"/>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{local:T 'Spotify key'}"/>
-                                    <TextBlock Text="{Binding SpotifyKeyText}" Classes="hint" FontSize="12"/>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{local:T 'No tags yet.'}" Classes="hint" Margin="2,0,0,4"
+                                       IsVisible="{Binding !$parent[Window].DataContext.HasTags}"/>
+                            <Button Theme="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                                    Command="{Binding $parent[Window].DataContext.NewTagCommand}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{local:Icon E710}" Classes="glyph"/>
+                                    <TextBlock Text="{local:T 'New tag'}" Margin="8,0,0,0"/>
                                 </StackPanel>
-                            </DockPanel>
-                            <TextBlock Classes="hint" FontSize="12" Margin="2,8,0,0" Foreground="{DynamicResource MutedBrush}"
-                                       Text="{local:T 'Spotify only answers apps with a key: with yours (free; your Spotify account needs Premium) the search finds Spotify\'s songs and artists too. Without one, Deezer has the same catalogue. The audio comes from YouTube Music, as for Spotify links.'}"/>
+                            </Button>
+                        </StackPanel>
+                        <!-- bulk edit -->
+                        <StackPanel Tag="whole" views:SettingsView.Keywords="{local:T 'artist artists rename names edit'}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,22"/>
+                            <TextBlock Text="{local:T 'Bulk edit'}" Classes="sub-title"/>
+                            <TextBlock Text="{local:T 'Downloaded an artist with the wrong name? Pick it and rename it across all its songs.'}"
+                                       Classes="hint" Margin="0,-8,0,12"/>
+                            <TextBox Theme="{StaticResource FilterBox}" Text="{Binding ArtistFilter}"
+                                     Watermark="{local:T 'Search for an artist'}" AutomationProperties.Name="{local:T 'Search for an artist'}"/>
+                            <Border Margin="0,8,0,10" CornerRadius="10" Background="{DynamicResource BgBrush}" BorderBrush="Transparent"
+                                    BorderThickness="1" Padding="4" Height="190">
+                                <ListBox Theme="{StaticResource PlainList}" ItemsSource="{Binding Artists}" SelectedItem="{Binding SelectedArtist}"
+                                         AutomationProperties.Name="{local:T Artists}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type local:Choice}">
+                                            <Border Classes="hoverrow" CornerRadius="7" Padding="10,6">
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Hint}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="10,0,0,0"/>
+                                                    <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding NewArtistName}"
+                                         Watermark="{local:T 'New artist name'}" AutomationProperties.Name="{local:T 'New artist name'}"/>
+                                <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Content="{local:T Rename}" Margin="8,0,0,0"
+                                        Command="{Binding RenameArtistCommand}"/>
+                            </Grid>
+                        </StackPanel>
+                        <!-- followed artists -->
+                        <StackPanel Tag="whole" views:SettingsView.Keywords="{local:T 'artists follow new releases albums notifications'}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,22"/>
+                            <TextBlock Text="{local:T 'Artists you follow'}" Classes="sub-title"/>
+                            <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding ReleaseNotifications}" Margin="0">
+                                <StackPanel>
+                                    <TextBlock Text="{local:T 'Notify new releases'}"/>
+                                    <TextBlock Text="{local:T 'A notification when an artist you follow releases an album, an EP or a single (looked for every 12 hours).'}" Classes="hint"/>
+                                </StackPanel>
+                            </CheckBox>
                         </StackPanel>
                     </StackPanel>
                 </Border>
 
-                <!-- ==================================================== suggested songs -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'suggested suggestions similar radio automatic queue online discover new songs ahead'}">
+                <!-- ==================================================== backup, export and import -->
+                <Border Theme="{StaticResource Card}" Padding="22">
                     <StackPanel>
-                        <TextBlock Text="{local:T 'Suggested songs'}" Classes="card-title"/>
-                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding RadioAfterSingle}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Outside a playlist, go on with similar songs'}"/>
-                                <TextBlock Classes="hint"
-                                           Text="{local:T 'A song started from the downloads, the search or on its own is followed by similar songs found online (with the automatic queue on). Off: all your songs follow it.'}"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <UniformGrid Columns="2">
-                            <StackPanel Margin="0,0,8,0">
-                                <TextBlock Text="{local:T 'Where they come from'}" Classes="field-label"/>
-                                <ComboBox ItemsSource="{Binding RadioSourceChoices}" SelectedItem="{Binding RadioSource}"
-                                          AutomationProperties.Name="{local:T 'Where suggested songs come from'}"/>
-                            </StackPanel>
-                            <StackPanel Margin="8,0,0,0">
-                                <TextBlock Text="{local:T 'Ready ahead'}" Classes="field-label"/>
-                                <ComboBox ItemsSource="{Binding TogetherAheadChoices}" SelectedItem="{Binding RadioAhead}"
-                                          AutomationProperties.Name="{local:T 'Suggested songs ready ahead'}"/>
-                            </StackPanel>
-                        </UniformGrid>
-                        <TextBlock Text="{Binding RadioSourceHint}" Classes="hint" FontSize="12" Margin="2,8,0,0"/>
-                        <TextBlock Classes="hint" FontSize="12" Margin="2,12,0,0" Foreground="{DynamicResource MutedBrush}"
-                                   Text="{local:T 'From any song: right-click → Play similar songs. They\'re downloaded shortly before their turn, as in Listen together and into the same storage, and don\'t go into your library: to keep one, right-click → Save to library.'}"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== lyrics -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'lyrics text words karaoke lrclib synced timing'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Song lyrics'}" Classes="card-title"/>
-                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding AutoLyrics}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Find lyrics automatically'}"/>
-                                <TextBlock Text="{local:T 'For newly downloaded songs and for the ones you play, if they were never searched. When a song has lyrics, the Lyrics button appears on its page.'}"
-                                           Classes="hint"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <TextBlock Text="{local:T 'In your library'}" Classes="field-label"/>
-                        <TextBlock Text="{Binding LyricsStats}" Margin="0,0,0,12" TextWrapping="Wrap"/>
-                        <!-- the missing ones of the whole library, one at a time -->
-                        <Button Theme="{StaticResource GhostButton}" HorizontalAlignment="Left" Command="{Binding ScanLyricsCommand}"
-                                IsVisible="{Binding !Lyrics.IsScanning}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{local:Icon E720}" Classes="glyph"/>
-                                <TextBlock Text="{local:T 'Find missing lyrics'}" Margin="8,0,0,0"/>
-                            </StackPanel>
-                        </Button>
-                        <Grid IsVisible="{Binding Lyrics.IsScanning}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
-                                <TextBlock Text="{Binding Lyrics.ScanText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
-                                <ProgressBar Maximum="1" Value="{Binding Lyrics.ScanProgress, Mode=OneWay}" Margin="0,7,0,0"/>
-                            </StackPanel>
-                            <Button Grid.Column="1" Theme="{StaticResource GhostButton}" Content="{local:T Stop}" Command="{Binding Lyrics.StopScanCommand}"/>
-                        </Grid>
-                        <TextBlock Classes="hint" FontSize="12" Margin="2,14,0,0" Foreground="{DynamicResource MutedBrush}"
-                                   Text="{local:T 'Lyrics come from LRCLIB, a free and open archive. Synced lyrics light up line by line as you listen; for one song right-click → Lyrics, for several songs select them and right-click.'}"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== library -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'import add files folder computer'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Music already on your computer'}" Classes="card-title"/>
-                        <TextBlock Text="{local:T 'Add audio or video files you already have: they stay where they are. You can also drag them into the window.'}"
-                                   Classes="hint" Margin="0,-8,0,14"/>
-                        <WrapPanel>
-                            <Button Theme="{StaticResource GhostButton}" Command="{Binding ImportFilesCommand}" Margin="0,0,10,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:Icon E8E5}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Add files…'}" Margin="8,0,0,0"/>
+                        <TextBlock Text="{local:T 'Backup, export and import'}" Classes="card-title"/>
+                        <!-- .ump packs -->
+                        <StackPanel Tag="whole" views:SettingsView.Keywords="{local:T 'export import pack packs ump share backup copy move transfer friends playlist tag library'}">
+                            <TextBlock Text="{local:T 'Export and import'}" Classes="sub-title"/>
+                            <TextBlock Text="{local:T 'Put playlists, tags or the whole library into a .ump file: to keep a backup, move it to another computer or send it to a friend.'}"
+                                       Classes="hint" Margin="0,-8,0,14"/>
+                            <UniformGrid Columns="2">
+                                <Button Theme="{StaticResource SupportTile}" Command="{Binding ExportPackCommand}" Margin="0,0,6,0"
+                                        AutomationProperties.Name="{local:T 'Export…'}">
+                                    <StackPanel>
+                                        <Grid Width="38" Height="38" HorizontalAlignment="Left">
+                                            <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
+                                            <TextBlock Text="{local:Icon EDE1}" Classes="glyph" FontSize="17" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                                        </Grid>
+                                        <TextBlock Text="{local:T 'Export…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                        <TextBlock Text="{local:T 'Choose what goes into the pack'}" Classes="hint" FontSize="12"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Theme="{StaticResource SupportTile}" Command="{Binding ImportPackCommand}" Margin="6,0,0,0"
+                                        AutomationProperties.Name="{local:T 'Import a pack…'}">
+                                    <StackPanel>
+                                        <Image Source="/Assets/pack-256.png" Width="38" Height="38" HorizontalAlignment="Left" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                        <TextBlock Text="{local:T 'Import a pack…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                        <TextBlock Text="{local:T 'Songs you already have aren\'t duplicated'}" Classes="hint" FontSize="12"/>
+                                    </StackPanel>
+                                </Button>
+                            </UniformGrid>
+                            <TextBlock Classes="hint" FontSize="12" Margin="2,14,0,0" Foreground="{DynamicResource MutedBrush}"
+                                       Text="{local:T 'A .ump file also opens with a double click or by dragging it into the window. A playlist or a tag can also be exported with a right-click.'}"/>
+                        </StackPanel>
+                        <!-- backups -->
+                        <StackPanel DataContext="{Binding Backups}" views:SettingsView.Keywords="{local:T 'backup backups restore automatic copy safety data library playlists statistics zip reinstall'}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,22"/>
+                            <TextBlock Text="{local:T Backup}" Classes="sub-title"/>
+                            <TextBlock Text="{local:T 'Your library, playlists, tags, statistics, settings, covers and lyrics in one small file (not the music), made by itself now and then. Restore it after a reinstall or on a new computer.'}"
+                                       Classes="hint" Margin="0,-8,0,14"/>
+                            <UniformGrid Columns="2" Margin="0,0,0,4">
+                                <StackPanel Margin="0,0,8,12">
+                                    <TextBlock Text="{local:T 'Automatic backup'}" Classes="field-label"/>
+                                    <ComboBox ItemsSource="{Binding EveryChoices}" SelectedItem="{Binding Every}" AutomationProperties.Name="{local:T 'Automatic backup'}"/>
                                 </StackPanel>
-                            </Button>
-                            <Button Theme="{StaticResource GhostButton}" Command="{Binding ImportFolderCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:Icon E8B7}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Add a folder…'}" Margin="8,0,0,0"/>
+                                <StackPanel Margin="8,0,0,12">
+                                    <TextBlock Text="{local:T 'Backups kept'}" Classes="field-label"/>
+                                    <ComboBox ItemsSource="{Binding KeepChoices}" SelectedItem="{Binding Keep}" AutomationProperties.Name="{local:T 'Backups kept'}"/>
                                 </StackPanel>
-                            </Button>
-                        </WrapPanel>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== tags -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'tags labels color colors'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T Tags}" Classes="card-title"/>
-                        <TextBlock Text="{local:T 'Colored labels for this profile only: put them on songs and playlists with a right-click, or by selecting several songs.'}"
-                                   Classes="hint" Margin="0,-8,0,12"/>
-                        <ItemsControl ItemsSource="{Binding $parent[Window].DataContext.Tags}" Focusable="False">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate DataType="{x:Type vm:TagViewModel}">
-                                    <Border Classes="hoverrow" CornerRadius="8" Padding="10,4,4,4">
-                                        <DockPanel>
-                                            <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="{local:Icon E74D}"
-                                                    Command="{Binding $parent[Window].DataContext.DeleteTagCommand}" CommandParameter="{Binding}"
-                                                    ToolTip.Tip="{local:T 'Delete tag'}" AutomationProperties.Name="{local:T 'Delete tag'}"/>
-                                            <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="13" Content="{local:Icon E70F}"
-                                                    Command="{Binding $parent[Window].DataContext.EditTagCommand}" CommandParameter="{Binding}"
-                                                    ToolTip.Tip="{local:T 'Edit name and color'}" AutomationProperties.Name="{local:T 'Edit tag'}"/>
-                                            <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" FontSize="12.5" Foreground="{DynamicResource MutedBrush}"
-                                                       VerticalAlignment="Center" Margin="10,0,8,0"/>
-                                            <Ellipse Width="12" Height="12" Fill="{Binding Brush}" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Name}" Margin="12,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                        </DockPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <TextBlock Text="{local:T 'No tags yet.'}" Classes="hint" Margin="2,0,0,4"
-                                   IsVisible="{Binding !$parent[Window].DataContext.HasTags}"/>
-                        <Button Theme="{StaticResource GhostButton}" HorizontalAlignment="Left" Margin="0,12,0,0"
-                                Command="{Binding $parent[Window].DataContext.NewTagCommand}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{local:Icon E710}" Classes="glyph"/>
-                                <TextBlock Text="{local:T 'New tag'}" Margin="8,0,0,0"/>
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== bulk edit -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'artist artists rename names edit'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Bulk edit'}" Classes="card-title"/>
-                        <TextBlock Text="{local:T 'Downloaded an artist with the wrong name? Pick it and rename it across all its songs.'}"
-                                   Classes="hint" Margin="0,-8,0,12"/>
-                        <TextBox Theme="{StaticResource FilterBox}" Text="{Binding ArtistFilter}"
-                                 Watermark="{local:T 'Search for an artist'}" AutomationProperties.Name="{local:T 'Search for an artist'}"/>
-                        <Border Margin="0,8,0,10" CornerRadius="10" Background="{DynamicResource BgBrush}" BorderBrush="Transparent"
-                                BorderThickness="1" Padding="4" Height="190">
-                            <ListBox Theme="{StaticResource PlainList}" ItemsSource="{Binding Artists}" SelectedItem="{Binding SelectedArtist}"
-                                     AutomationProperties.Name="{local:T Artists}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type local:Choice}">
-                                        <Border Classes="hoverrow" CornerRadius="7" Padding="10,6">
-                                            <DockPanel>
-                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Hint}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="10,0,0,0"/>
-                                                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
-                                            </DockPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </Border>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding NewArtistName}"
-                                     Watermark="{local:T 'New artist name'}" AutomationProperties.Name="{local:T 'New artist name'}"/>
-                            <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Content="{local:T Rename}" Margin="8,0,0,0"
-                                    Command="{Binding RenameArtistCommand}"/>
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== followed artists -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'artists follow new releases albums notifications'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Artists you follow'}" Classes="card-title"/>
-                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding ReleaseNotifications}" Margin="0">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Notify new releases'}"/>
-                                <TextBlock Text="{local:T 'A notification when an artist you follow releases an album, an EP or a single (looked for every 12 hours).'}" Classes="hint"/>
-                            </StackPanel>
-                        </CheckBox>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== .ump packs -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole"
-                        views:SettingsView.Keywords="{local:T 'export import pack packs ump share backup copy move transfer friends playlist tag library'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Export and import'}" Classes="card-title"/>
-                        <TextBlock Text="{local:T 'Put playlists, tags or the whole library into a .ump file: to keep a backup, move it to another computer or send it to a friend.'}"
-                                   Classes="hint" Margin="0,-8,0,14"/>
-                        <UniformGrid Columns="2">
-                            <Button Theme="{StaticResource SupportTile}" Command="{Binding ExportPackCommand}" Margin="0,0,6,0"
-                                    AutomationProperties.Name="{local:T 'Export…'}">
-                                <StackPanel>
-                                    <Grid Width="38" Height="38" HorizontalAlignment="Left">
-                                        <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
-                                        <TextBlock Text="{local:Icon EDE1}" Classes="glyph" FontSize="17" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
-                                    </Grid>
-                                    <TextBlock Text="{local:T 'Export…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'Choose what goes into the pack'}" Classes="hint" FontSize="12"/>
-                                </StackPanel>
-                            </Button>
-                            <Button Theme="{StaticResource SupportTile}" Command="{Binding ImportPackCommand}" Margin="6,0,0,0"
-                                    AutomationProperties.Name="{local:T 'Import a pack…'}">
-                                <StackPanel>
-                                    <Image Source="/Assets/pack-256.png" Width="38" Height="38" HorizontalAlignment="Left" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                    <TextBlock Text="{local:T 'Import a pack…'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'Songs you already have aren\'t duplicated'}" Classes="hint" FontSize="12"/>
-                                </StackPanel>
-                            </Button>
-                        </UniformGrid>
-                        <TextBlock Classes="hint" FontSize="12" Margin="2,14,0,0" Foreground="{DynamicResource MutedBrush}"
-                                   Text="{local:T 'A .ump file also opens with a double click or by dragging it into the window. A playlist or a tag can also be exported with a right-click.'}"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== backups -->
-                <Border Theme="{StaticResource Card}" Padding="22" DataContext="{Binding Backups}"
-                        views:SettingsView.Keywords="{local:T 'backup backups restore automatic copy safety data library playlists statistics zip reinstall'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T Backup}" Classes="card-title"/>
-                        <TextBlock Text="{local:T 'Your library, playlists, tags, statistics, settings, covers and lyrics in one small file (not the music), made by itself now and then. Restore it after a reinstall or on a new computer.'}"
-                                   Classes="hint" Margin="0,-8,0,14"/>
-                        <UniformGrid Columns="2" Margin="0,0,0,4">
-                            <StackPanel Margin="0,0,8,12">
-                                <TextBlock Text="{local:T 'Automatic backup'}" Classes="field-label"/>
-                                <ComboBox ItemsSource="{Binding EveryChoices}" SelectedItem="{Binding Every}" AutomationProperties.Name="{local:T 'Automatic backup'}"/>
-                            </StackPanel>
-                            <StackPanel Margin="8,0,0,12">
-                                <TextBlock Text="{local:T 'Backups kept'}" Classes="field-label"/>
-                                <ComboBox ItemsSource="{Binding KeepChoices}" SelectedItem="{Binding Keep}" AutomationProperties.Name="{local:T 'Backups kept'}"/>
-                            </StackPanel>
-                        </UniformGrid>
-                        <TextBlock Text="{local:T 'Backup folder'}" Classes="field-label"/>
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding FolderText, Mode=OneWay}" IsReadOnly="True"
-                                     AutomationProperties.Name="{local:T 'Backup folder'}"/>
-                            <Button Grid.Column="1" Theme="{StaticResource GhostButton}" Content="{local:T 'Browse…'}" Margin="8,0,0,0" Command="{Binding ChooseFolderCommand}"/>
-                            <Button Grid.Column="2" Theme="{StaticResource GhostButton}" Content="{local:T Open}" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}"/>
-                            <Button Grid.Column="3" Theme="{StaticResource GhostButton}" Content="{local:T Default}" Margin="8,0,0,0" Command="{Binding DefaultFolderCommand}"
-                                    ToolTip.Tip="{local:T 'Back to the default folder'}" IsVisible="{Binding !IsDefaultFolder}"/>
-                        </Grid>
-                        <TextBlock Text="{Binding LastText}" Classes="hint" Margin="0,0,0,12"/>
-                        <WrapPanel>
-                            <Button Theme="{StaticResource PrimaryButton}" Margin="0,0,10,0" Padding="16,9" Command="{Binding BackupNowCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:Icon E74E}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Back up now'}" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button Theme="{StaticResource GhostButton}" Command="{Binding RestoreCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:Icon E777}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Restore a backup…'}" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                        </WrapPanel>
-                        <TextBlock Text="{Binding Status}" Classes="hint" Margin="2,10,0,0" IsVisible="{Binding Status, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            </UniformGrid>
+                            <TextBlock Text="{local:T 'Backup folder'}" Classes="field-label"/>
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding FolderText, Mode=OneWay}" IsReadOnly="True"
+                                         AutomationProperties.Name="{local:T 'Backup folder'}"/>
+                                <Button Grid.Column="1" Theme="{StaticResource GhostButton}" Content="{local:T 'Browse…'}" Margin="8,0,0,0" Command="{Binding ChooseFolderCommand}"/>
+                                <Button Grid.Column="2" Theme="{StaticResource GhostButton}" Content="{local:T Open}" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}"/>
+                                <Button Grid.Column="3" Theme="{StaticResource GhostButton}" Content="{local:T Default}" Margin="8,0,0,0" Command="{Binding DefaultFolderCommand}"
+                                        ToolTip.Tip="{local:T 'Back to the default folder'}" IsVisible="{Binding !IsDefaultFolder}"/>
+                            </Grid>
+                            <TextBlock Text="{Binding LastText}" Classes="hint" Margin="0,0,0,12"/>
+                            <WrapPanel>
+                                <Button Theme="{StaticResource PrimaryButton}" Margin="0,0,10,0" Padding="16,9" Command="{Binding BackupNowCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E74E}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Back up now'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Theme="{StaticResource GhostButton}" Command="{Binding RestoreCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E777}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Restore a backup…'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                            <TextBlock Text="{Binding Status}" Classes="hint" Margin="2,10,0,0" IsVisible="{Binding Status, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
@@ -907,145 +912,143 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ==================================================== updates -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'updates update version github engines yt-dlp gallery-dl data'}">
+                <!-- ==================================================== about: updates, help, support the project -->
+                <Border Theme="{StaticResource Card}" Padding="22">
                     <StackPanel>
-                        <TextBlock Text="{local:T Updates}" Classes="card-title"/>
-                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding AutoUpdateApp}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Update the app automatically'}"/>
-                                <TextBlock Text="{local:T 'Downloads the latest version by itself and installs it when you close the app.'}" Classes="hint"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <DockPanel Margin="0,0,0,16">
-                            <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding CheckAppUpdateCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:Icon E777}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Update now'}" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding WhatsNewCommand}"
-                                    Content="{local:T 'Release notes'}" Margin="0,0,10,0"/>
-                            <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
-                                <TextBlock Text="{Binding Version}"/>
-                                <TextBlock Text="{Binding Host.Updates.Status}" Classes="hint"
-                                           IsVisible="{Binding Host.Updates.Status, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                            </StackPanel>
-                        </DockPanel>
-                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding ShowWhatsNew}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Show the release notes after an update'}"/>
-                                <TextBlock Text="{local:T 'The changes of every version since the last one you opened.'}" Classes="hint"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding AutoUpdateEngines}">
-                            <StackPanel>
-                                <TextBlock Text="{local:T 'Update download engines'}"/>
-                                <TextBlock Text="{local:T 'Sites change often: yt-dlp and gallery-dl update once a day.'}" Classes="hint"/>
-                            </StackPanel>
-                        </CheckBox>
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding UpdateEnginesCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:Icon E895}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Update engines'}" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <TextBlock Text="{Binding EngineInfo}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
-                        </DockPanel>
-                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,18"/>
-                        <Button Theme="{StaticResource LinkButton}" Content="{local:T 'Open data folder'}" Command="{Binding OpenDataDirCommand}"
-                                HorizontalAlignment="Left"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== help -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole"
-                        views:SettingsView.Keywords="{local:T 'help support report problem bug error github issue idea suggestion feature contact terms use conditions copyright'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Help &amp; support'}" Classes="card-title"/>
-                        <TextBlock Text="{local:T 'Something wrong, or a feature you miss? Tell us on GitHub: first check whether someone has already reported it.'}"
-                                   Classes="hint" Margin="0,-8,0,14"/>
-                        <UniformGrid Columns="2">
-                            <Button Theme="{StaticResource SupportTile}" Command="{Binding ReportProblemCommand}" Margin="0,0,6,0"
-                                    AutomationProperties.Name="{local:T 'Report a problem'}">
+                        <TextBlock Text="{local:T About}" Classes="card-title"/>
+                        <!-- updates -->
+                        <StackPanel views:SettingsView.Keywords="{local:T 'updates update version github engines yt-dlp gallery-dl data'}">
+                            <TextBlock Text="{local:T Updates}" Classes="sub-title"/>
+                            <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding AutoUpdateApp}">
                                 <StackPanel>
-                                    <Grid Width="38" Height="38" HorizontalAlignment="Left">
-                                        <Ellipse Fill="{DynamicResource ErrorSoftBrush}"/>
-                                        <TextBlock Text="{local:Icon EBE8}" Classes="glyph" FontSize="17" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Center"/>
-                                    </Grid>
-                                    <TextBlock Text="{local:T 'Report a problem'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'Something doesn\'t work as it should'}" Classes="hint" FontSize="12"/>
+                                    <TextBlock Text="{local:T 'Update the app automatically'}"/>
+                                    <TextBlock Text="{local:T 'Downloads the latest version by itself and installs it when you close the app.'}" Classes="hint"/>
                                 </StackPanel>
-                            </Button>
-                            <Button Theme="{StaticResource SupportTile}" Command="{Binding SuggestIdeaCommand}" Margin="6,0,0,0"
-                                    AutomationProperties.Name="{local:T 'Suggest an idea'}">
+                            </CheckBox>
+                            <DockPanel Margin="0,0,0,16">
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding CheckAppUpdateCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E777}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Update now'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding WhatsNewCommand}"
+                                        Content="{local:T 'Release notes'}" Margin="0,0,10,0"/>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
+                                    <TextBlock Text="{Binding Version}"/>
+                                    <TextBlock Text="{Binding Host.Updates.Status}" Classes="hint"
+                                               IsVisible="{Binding Host.Updates.Status, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding ShowWhatsNew}">
                                 <StackPanel>
-                                    <Grid Width="38" Height="38" HorizontalAlignment="Left">
-                                        <Ellipse Fill="{DynamicResource WarningSoftBrush}"/>
-                                        <TextBlock Text="{local:Icon EA80}" Classes="glyph" FontSize="17" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center"/>
-                                    </Grid>
-                                    <TextBlock Text="{local:T 'Suggest an idea'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'A feature you\'d like'}" Classes="hint" FontSize="12"/>
+                                    <TextBlock Text="{local:T 'Show the release notes after an update'}"/>
+                                    <TextBlock Text="{local:T 'The changes of every version since the last one you opened.'}" Classes="hint"/>
                                 </StackPanel>
-                            </Button>
-                        </UniformGrid>
-                        <WrapPanel Margin="0,12,0,0">
-                            <Button Theme="{StaticResource GhostButton}" Command="{Binding OpenIssuesCommand}" Margin="0,0,8,8">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:Icon E721}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Existing reports'}" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            <Button Theme="{StaticResource GhostButton}" Command="{Binding OpenRepoCommand}" Margin="0,0,8,8">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:Icon E8A7}" Classes="glyph"/>
-                                    <TextBlock Text="{local:T 'Project page'}" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                        </WrapPanel>
-                        <TextBlock Text="{local:T 'GitHub opens in your browser (a free account is needed). The app and Windows versions are already filled in.'}"
-                                   Classes="hint" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
-                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16"/>
-                        <Button Theme="{StaticResource LinkButton}" Content="{local:T 'Terms of use'}" Command="{Binding ShowTermsCommand}" HorizontalAlignment="Left"/>
-                    </StackPanel>
-                </Border>
-
-                <!-- ==================================================== support the project: donations, the people who support it -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole"
-                        views:SettingsView.Keywords="{local:T 'support donate donation sponsor sponsors ko-fi coffee money thanks supporters'}">
-                    <StackPanel>
-                        <TextBlock Text="{local:T 'Support the project'}" Classes="card-title"/>
-                        <TextBlock Text="{local:T 'Ultimate MP3 Player is free, with no ads, and made in spare time. If it\'s useful to you, a donation helps keep it going.'}"
-                                   Classes="hint" Margin="0,-8,0,14"/>
-                        <UniformGrid Columns="2">
-                            <Button Theme="{StaticResource SupportTile}" Command="{Binding SponsorCommand}" Margin="0,0,6,0"
-                                    AutomationProperties.Name="GitHub Sponsors">
+                            </CheckBox>
+                            <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding AutoUpdateEngines}">
                                 <StackPanel>
-                                    <Grid Width="38" Height="38" HorizontalAlignment="Left">
-                                        <Ellipse Fill="{DynamicResource ErrorSoftBrush}"/>
-                                        <TextBlock Text="{local:Icon EB51}" Classes="glyph" FontSize="17" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Center"/>
-                                    </Grid>
-                                    <TextBlock Text="GitHub Sponsors" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'Monthly or once, with a GitHub account'}" Classes="hint" FontSize="12"/>
+                                    <TextBlock Text="{local:T 'Update download engines'}"/>
+                                    <TextBlock Text="{local:T 'Sites change often: yt-dlp and gallery-dl update once a day.'}" Classes="hint"/>
                                 </StackPanel>
-                            </Button>
-                            <Button Theme="{StaticResource SupportTile}" Command="{Binding KofiCommand}" Margin="6,0,0,0"
-                                    AutomationProperties.Name="Ko-fi">
-                                <StackPanel>
-                                    <Grid Width="38" Height="38" HorizontalAlignment="Left">
-                                        <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
-                                        <TextBlock Text="{local:Icon E734}" Classes="glyph" FontSize="17" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
-                                    </Grid>
-                                    <TextBlock Text="Ko-fi" FontWeight="SemiBold" Margin="0,12,0,2"/>
-                                    <TextBlock Text="{local:T 'Once, by card or PayPal, no account needed'}" Classes="hint" FontSize="12"/>
-                                </StackPanel>
-                            </Button>
-                        </UniformGrid>
-                        <StackPanel IsVisible="{Binding Supporters, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            </CheckBox>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding UpdateEnginesCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E895}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Update engines'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="{Binding EngineInfo}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                            </DockPanel>
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,18"/>
+                            <Button Theme="{StaticResource LinkButton}" Content="{local:T 'Open data folder'}" Command="{Binding OpenDataDirCommand}"
+                                    HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <!-- help -->
+                        <StackPanel Tag="whole" views:SettingsView.Keywords="{local:T 'help support report problem bug error github issue idea suggestion feature contact terms use conditions copyright'}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,22"/>
+                            <TextBlock Text="{local:T 'Help &amp; support'}" Classes="sub-title"/>
+                            <TextBlock Text="{local:T 'Something wrong, or a feature you miss? Tell us on GitHub: first check whether someone has already reported it.'}"
+                                       Classes="hint" Margin="0,-8,0,14"/>
+                            <UniformGrid Columns="2">
+                                <Button Theme="{StaticResource SupportTile}" Command="{Binding ReportProblemCommand}" Margin="0,0,6,0"
+                                        AutomationProperties.Name="{local:T 'Report a problem'}">
+                                    <StackPanel>
+                                        <Grid Width="38" Height="38" HorizontalAlignment="Left">
+                                            <Ellipse Fill="{DynamicResource ErrorSoftBrush}"/>
+                                            <TextBlock Text="{local:Icon EBE8}" Classes="glyph" FontSize="17" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Center"/>
+                                        </Grid>
+                                        <TextBlock Text="{local:T 'Report a problem'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                        <TextBlock Text="{local:T 'Something doesn\'t work as it should'}" Classes="hint" FontSize="12"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Theme="{StaticResource SupportTile}" Command="{Binding SuggestIdeaCommand}" Margin="6,0,0,0"
+                                        AutomationProperties.Name="{local:T 'Suggest an idea'}">
+                                    <StackPanel>
+                                        <Grid Width="38" Height="38" HorizontalAlignment="Left">
+                                            <Ellipse Fill="{DynamicResource WarningSoftBrush}"/>
+                                            <TextBlock Text="{local:Icon EA80}" Classes="glyph" FontSize="17" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center"/>
+                                        </Grid>
+                                        <TextBlock Text="{local:T 'Suggest an idea'}" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                        <TextBlock Text="{local:T 'A feature you\'d like'}" Classes="hint" FontSize="12"/>
+                                    </StackPanel>
+                                </Button>
+                            </UniformGrid>
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button Theme="{StaticResource GhostButton}" Command="{Binding OpenIssuesCommand}" Margin="0,0,8,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E721}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Existing reports'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Theme="{StaticResource GhostButton}" Command="{Binding OpenRepoCommand}" Margin="0,0,8,8">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:Icon E8A7}" Classes="glyph"/>
+                                        <TextBlock Text="{local:T 'Project page'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                            <TextBlock Text="{local:T 'GitHub opens in your browser (a free account is needed). The app and Windows versions are already filled in.'}"
+                                       Classes="hint" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,4,0,0"/>
                             <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16"/>
-                            <TextBlock Text="{local:T 'Thanks to'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                            <TextBlock Text="{Binding Supporters}" Classes="hint" TextWrapping="Wrap"/>
+                            <Button Theme="{StaticResource LinkButton}" Content="{local:T 'Terms of use'}" Command="{Binding ShowTermsCommand}" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <!-- support the project: donations, the people who support it -->
+                        <StackPanel Tag="whole" views:SettingsView.Keywords="{local:T 'support donate donation sponsor sponsors ko-fi coffee money thanks supporters'}">
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,22"/>
+                            <TextBlock Text="{local:T 'Support the project'}" Classes="sub-title"/>
+                            <TextBlock Text="{local:T 'Ultimate MP3 Player is free, with no ads, and made in spare time. If it\'s useful to you, a donation helps keep it going.'}"
+                                       Classes="hint" Margin="0,-8,0,14"/>
+                            <UniformGrid Columns="2">
+                                <Button Theme="{StaticResource SupportTile}" Command="{Binding SponsorCommand}" Margin="0,0,6,0"
+                                        AutomationProperties.Name="GitHub Sponsors">
+                                    <StackPanel>
+                                        <Grid Width="38" Height="38" HorizontalAlignment="Left">
+                                            <Ellipse Fill="{DynamicResource ErrorSoftBrush}"/>
+                                            <TextBlock Text="{local:Icon EB51}" Classes="glyph" FontSize="17" Foreground="{DynamicResource ErrorBrush}" HorizontalAlignment="Center"/>
+                                        </Grid>
+                                        <TextBlock Text="GitHub Sponsors" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                        <TextBlock Text="{local:T 'Monthly or once, with a GitHub account'}" Classes="hint" FontSize="12"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Theme="{StaticResource SupportTile}" Command="{Binding KofiCommand}" Margin="6,0,0,0"
+                                        AutomationProperties.Name="Ko-fi">
+                                    <StackPanel>
+                                        <Grid Width="38" Height="38" HorizontalAlignment="Left">
+                                            <Ellipse Fill="{DynamicResource AccentSoftBrush}"/>
+                                            <TextBlock Text="{local:Icon E734}" Classes="glyph" FontSize="17" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                                        </Grid>
+                                        <TextBlock Text="Ko-fi" FontWeight="SemiBold" Margin="0,12,0,2"/>
+                                        <TextBlock Text="{local:T 'Once, by card or PayPal, no account needed'}" Classes="hint" FontSize="12"/>
+                                    </StackPanel>
+                                </Button>
+                            </UniformGrid>
+                            <StackPanel IsVisible="{Binding Supporters, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16"/>
+                                <TextBlock Text="{local:T 'Thanks to'}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBlock Text="{Binding Supporters}" Classes="hint" TextWrapping="Wrap"/>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Border>

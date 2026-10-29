@@ -1,0 +1,38 @@
+<UserControl x:Class="UltimateMP3Player.Views.PlaylistsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <!-- Library › Playlists: every playlist as a card, then "New playlist" -->
+    <Grid>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="28,8,20,28">
+                <Grid Margin="0,0,8,22">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="148" Height="148" CornerRadius="10" Background="{DynamicResource AccentGradient}">
+                        <TextBlock Text="&#xE90B;" Style="{StaticResource Glyph}" FontSize="56" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
+                        <TextBlock Text="{local:T LIBRARY}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock Text="{local:T Playlists}" FontSize="40" FontWeight="Bold" Margin="0,2,0,8"/>
+                        <TextBlock Text="{Binding CountText}" Foreground="{DynamicResource SubTextBrush}"/>
+                    </StackPanel>
+                </Grid>
+                <ListBox x:Name="PlaylistList" Style="{StaticResource BareList}" ItemsSource="{Binding Cards}" ItemsPanel="{StaticResource CardGridTemplate}"
+                         Margin="0,0,8,0">
+                    <ListBox.Resources>
+                        <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
+                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
+                        </DataTemplate>
+                    </ListBox.Resources>
+                </ListBox>
+            </StackPanel>
+        </ScrollViewer>
+        <!-- playlists selected with Ctrl or Shift + click -->
+        <views:SelectionBar List="{Binding ElementName=PlaylistList}" Panel.ZIndex="1"/>
+    </Grid>
+</UserControl>

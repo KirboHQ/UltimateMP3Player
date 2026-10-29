@@ -265,14 +265,8 @@
                         <TextBlock x:Name="MusicDirHint" Text="{local:T 'In the phone\'s storage, in the app\'s folder: you can see it by connecting the phone to a computer (Android › data). If you uninstall the app, Android asks whether to keep it.'}"
                                    Classes="setting-hint"/>
                     </StackPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- ============================================================ storage -->
-            <TextBlock Text="{local:T STORAGE}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'storage space cache suggested cloud unsaved clear empty'}">
-                <StackPanel>
-                    <Button Theme="{StaticResource SettingRow}" Tag="CacheSize" Click="Choose_Click">
+                    <Border Classes="line"/>
+                    <Button views:SettingsPage.Keywords="{local:T 'storage space cache suggested cloud unsaved clear empty'}" Theme="{StaticResource SettingRow}" Tag="CacheSize" Click="Choose_Click">
                         <StackPanel>
                             <TextBlock Text="{local:T 'Temporary storage (unsaved songs)'}" Classes="setting"/>
                             <TextBlock Text="{Binding CacheSize.Label}" Classes="value"/>
@@ -286,8 +280,8 @@
                 </StackPanel>
             </Border>
 
-            <!-- ============================================================ online search -->
-            <TextBlock Text="{local:T 'ONLINE SEARCH'}" Classes="card-title"/>
+            <!-- ============================================================ search and suggestions: online search, suggested songs, lyrics -->
+            <TextBlock Text="{local:T 'SEARCH AND SUGGESTIONS'}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Keywords="{local:T 'search online internet sites youtube music soundcloud deezer order'}">
                 <StackPanel>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding OnlineSearch}">
@@ -341,14 +335,8 @@
                             </StackPanel>
                         </Button>
                     </StackPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- ============================================================ lyrics -->
-            <TextBlock Text="{local:T LYRICS}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'lyrics words karaoke lrclib synced'}">
-                <StackPanel>
-                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoLyrics}">
+                    <Border Classes="line"/>
+                    <CheckBox views:SettingsPage.Keywords="{local:T 'lyrics words karaoke lrclib synced'}" Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoLyrics}">
                         <StackPanel>
                             <TextBlock Text="{local:T 'Find lyrics automatically'}" Classes="setting"/>
                             <TextBlock Text="{local:T 'For new songs and for the one you\'re listening to, on LRCLIB (synced when available)'}" Classes="setting-hint"/>
@@ -551,8 +539,8 @@
                 </StackPanel>
             </Border>
 
-            <!-- ============================================================ updates -->
-            <TextBlock Text="{local:T UPDATES}" Classes="card-title"/>
+            <!-- ============================================================ about: updates, help, support the project -->
+            <TextBlock Text="{local:T ABOUT}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Keywords="{local:T 'updates version new github engines yt-dlp ffmpeg'}">
                 <StackPanel>
                     <CheckBox x:Name="AutoUpdateSwitch" Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoUpdateApp}">
@@ -587,14 +575,8 @@
                         <TextBlock Text="{Binding EngineInfo}" Classes="value" VerticalAlignment="Center"/>
                         <Button Grid.Column="1" Theme="{StaticResource SmallGhost}" Command="{Binding UpdateEnginesCommand}" Content="{local:T 'Update now'}" Margin="10,0,0,0"/>
                     </Grid>
-                </StackPanel>
-            </Border>
-
-            <!-- ============================================================ help -->
-            <TextBlock Text="{local:T 'HELP AND SUPPORT'}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'help support problem error bug idea github terms'}">
-                <StackPanel>
-                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ReportProblemCommand}">
+                    <Border Classes="line"/>
+                    <Button views:SettingsPage.Keywords="{local:T 'help support problem error bug idea github terms'}" Theme="{StaticResource SettingRow}" Command="{Binding ReportProblemCommand}">
                         <TextBlock Text="{local:T 'Report a problem'}" Classes="setting"/>
                     </Button>
                     <Border Classes="line"/>
@@ -609,14 +591,8 @@
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding ShowTermsCommand}">
                         <TextBlock Text="{local:T 'Terms of use'}" Classes="setting"/>
                     </Button>
-                </StackPanel>
-            </Border>
-
-            <!-- ============================================================ support the project: donations, the people who support it -->
-            <TextBlock Text="{local:T 'SUPPORT THE PROJECT'}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'support donate donation sponsor sponsors ko-fi coffee money thanks supporters'}">
-                <StackPanel>
-                    <TextBlock Text="{local:T 'Ultimate MP3 Player is free, with no ads, and made in spare time. If it\'s useful to you, a donation helps keep it going.'}"
+                    <Border Classes="line"/>
+                    <TextBlock views:SettingsPage.Keywords="{local:T 'support donate donation sponsor sponsors ko-fi coffee money thanks supporters'}" Text="{local:T 'Ultimate MP3 Player is free, with no ads, and made in spare time. If it\'s useful to you, a donation helps keep it going.'}"
                                Classes="setting-hint" Margin="0,12,0,0"/>
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding SponsorCommand}">
                         <StackPanel>

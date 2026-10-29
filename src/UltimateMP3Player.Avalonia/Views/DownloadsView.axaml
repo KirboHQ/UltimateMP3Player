@@ -68,28 +68,24 @@
 
                     <!-- options -->
                     <WrapPanel Grid.Row="1" Margin="0,20,0,0" VerticalAlignment="Bottom">
-                        <StackPanel Width="280" Margin="0,0,14,0">
-                            <TextBlock Text="{local:T 'Into playlist'}" Classes="field-label"/>
-                            <ComboBox ItemsSource="{Binding PlaylistChoices}" SelectedItem="{Binding Playlist}" HorizontalAlignment="Stretch"/>
-                        </StackPanel>
-                        <StackPanel Width="280" Margin="0,0,14,0" IsVisible="{Binding ShowNewName}">
-                            <TextBlock Text="{local:T 'New playlist name'}" Classes="field-label"/>
-                            <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding NewName}" Watermark="{local:T 'Playlist name'}"/>
-                        </StackPanel>
-                        <!-- more playlists the songs go into as well (Favorites, say) -->
+                        <!-- where the songs go: any of the playlists, a new one too (named next to it); none = only "All songs" -->
                         <StackPanel Margin="0,0,14,0">
-                            <TextBlock Text="{local:T 'Also add to'}" Classes="field-label"/>
-                            <Button Classes="also" Theme="{StaticResource GhostButton}" Height="38" Padding="14,0" MinWidth="150" MaxWidth="420" HorizontalAlignment="Left"
-                                    HorizontalContentAlignment="Left" ToolTip.Tip="{local:T 'Choose more playlists to put the downloaded songs in'}">
+                            <TextBlock Text="{local:T 'Add to playlists'}" Classes="field-label"/>
+                            <Button Classes="playlists" Theme="{StaticResource GhostButton}" Height="38" Padding="14,0" Width="280" HorizontalAlignment="Left"
+                                    HorizontalContentAlignment="Stretch" ToolTip.Tip="{local:T 'Tick the playlists to put the songs in, or a new one'}">
                                 <DockPanel>
                                     <TextBlock DockPanel.Dock="Right" Text="{local:Icon E70D}" Classes="glyph" FontSize="10" Margin="12,0,0,0"
                                                Foreground="{DynamicResource SubTextBrush}"/>
-                                    <TextBlock Text="{local:T 'Choose one or more…'}" FontWeight="Normal" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
-                                               IsVisible="{Binding !HasAlso}"/>
-                                    <TextBlock Text="{Binding AlsoText}" FontWeight="Normal" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                               IsVisible="{Binding HasAlso}"/>
+                                    <TextBlock Text="{Binding TargetsText}" FontWeight="Normal" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" IsVisible="{Binding !HasTargets}"/>
+                                    <TextBlock Text="{Binding TargetsText}" FontWeight="Normal" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                               IsVisible="{Binding HasTargets}"/>
                                 </DockPanel>
                             </Button>
+                        </StackPanel>
+                        <StackPanel Width="280" Margin="0,0,14,0" IsVisible="{Binding MakeNew}">
+                            <TextBlock Text="{local:T 'New playlist name'}" Classes="field-label"/>
+                            <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding NewName}" Watermark="{local:T 'Playlist name'}"/>
                         </StackPanel>
                         <!-- tags the songs get once downloaded -->
                         <StackPanel Margin="0,0,14,0">
@@ -256,24 +252,24 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid x:Name="Root" Margin="28,6,20,16" RowDefinitions="Auto,Auto,Auto,*">
-        <DockPanel Margin="0,0,8,16">
-            <!-- a list of songs: a file exported from Apple Music, iTunes, Exportify… (pasting several links does the same) -->
-            <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" VerticalAlignment="Center" Command="{Binding ImportListCommand}"
-                    ToolTip.Tip="{local:T 'Choose a playlist exported from Apple Music, iTunes or Exportify (txt, csv, m3u, xml), with no limit on the songs. You can also paste several links at once: in the Spotify app select the songs (Ctrl+A) and copy them (Ctrl+C).'}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="13"/>
-                    <TextBlock Text="{local:T 'Import a list'}" Margin="8,0,0,0"/>
-                </StackPanel>
-            </Button>
-            <TextBlock Text="{local:T 'Download music'}" FontSize="30" FontWeight="Bold"/>
-        </DockPanel>
-
+    <!-- the search's page without words (its box above): the link being added, then the downloads -->
+    <Grid x:Name="Root" Margin="8,4,10,16" RowDefinitions="0,Auto,Auto,*">
         <!-- intro / analyzing / error / result -->
-        <Panel Grid.Row="1" Margin="0,0,8,20">
+        <Panel Grid.Row="1" Margin="0,0,0,20">
             <Border Theme="{StaticResource Card}" Padding="22" IsVisible="{Binding ShowIntro}">
                 <StackPanel>
-                    <TextBlock Text="{local:T 'Paste a link in the bar at the top'}" FontSize="17" FontWeight="SemiBold"/>
+                    <DockPanel>
+                        <!-- a list of songs: a file exported from Apple Music, iTunes, Exportify… (pasting several links does the same); only
+                             here, with nothing being added -->
+                        <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" VerticalAlignment="Top" Margin="16,0,0,0" Command="{Binding ImportListCommand}"
+                                ToolTip.Tip="{local:T 'Choose a playlist exported from Apple Music, iTunes or Exportify (txt, csv, m3u, xml), with no limit on the songs. You can also paste several links at once: in the Spotify app select the songs (Ctrl+A) and copy them (Ctrl+C).'}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="13"/>
+                                <TextBlock Text="{local:T 'Import a list'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{local:T 'Paste a link in the box above'}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    </DockPanel>
                     <TextBlock Classes="hint" Margin="0,6,0,14" FontSize="13.5" LineHeight="20"
                                Text="{local:T 'Songs, albums and whole playlists: choose which playlist to save them to and, if available, the video too. Songs you already have won\'t be downloaded again. You can also drag a link into the window.'}"/>
                     <ItemsControl ItemsSource="{Binding FeaturedSites}">
@@ -338,8 +334,15 @@
         </Panel>
 
         <!-- queue header: title, summary, then the actions in a wrapping toolbar -->
-        <StackPanel Grid.Row="2" Margin="0,0,8,6" IsVisible="{Binding Queue.HasJobs}">
+        <StackPanel Grid.Row="2" Margin="0,0,0,6" IsVisible="{Binding Queue.HasJobs}">
             <DockPanel LastChildFill="False" Margin="0,0,0,10">
+                <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" VerticalAlignment="Center" Command="{Binding ImportListCommand}" IsVisible="{Binding Idle}"
+                        ToolTip.Tip="{local:T 'Choose a playlist exported from Apple Music, iTunes or Exportify (txt, csv, m3u, xml), with no limit on the songs. You can also paste several links at once: in the Spotify app select the songs (Ctrl+A) and copy them (Ctrl+C).'}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Icon E8FD}" Classes="glyph" FontSize="13"/>
+                        <TextBlock Text="{local:T 'Import a list'}" Margin="8,0,0,0"/>
+                    </StackPanel>
+                </Button>
                 <TextBlock Text="{local:T Download}" Classes="section-title" Margin="0"/>
                 <TextBlock Text="{Binding Queue.Summary}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="14,4,0,0"/>
             </DockPanel>

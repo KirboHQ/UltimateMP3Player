@@ -363,7 +363,8 @@ public sealed class TogetherViewModel : Observable
         if (Scanning || InRoom) return;
         Scanning = true;
         List<RoomAd> found;
-        try { found = await Discovery.ScanAsync(900); }
+        // (on a worker: reading the network cards and sending to every address of the subnets took the page's first frames)
+        try { found = await Task.Run(() => Discovery.ScanAsync(900)); }
         catch { found = new List<RoomAd>(); }
         Scanning = false;
         if (InRoom) return;

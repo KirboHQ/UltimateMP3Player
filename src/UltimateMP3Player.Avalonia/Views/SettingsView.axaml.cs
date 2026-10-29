@@ -105,7 +105,8 @@ public partial class SettingsView : UserControl
                 continue;
             }
             var units = Units(card);
-            var matching = units.Where(u => Matches(string.Join(" ", u.Select(TextOf)), words)).ToList();
+            // (a part of a card that holds several has its own hidden words)
+            var matching = units.Where(u => Matches(string.Join(" ", u.Select(el => TextOf(el) + " " + GetKeywords(el))), words)).ToList();
             if (matching.Count == 0 && !Matches(TextOf(card) + " " + GetKeywords(card), words))
             {
                 Show(card, false);

@@ -4,7 +4,8 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
     <Grid RowDefinitions="Auto,Auto,*">
-        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False"/>
+        <!-- (the library's tabs have the glow behind them: only a tag's page has its own) -->
+        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False" IsVisible="{Binding IsTagPage}"/>
 
         <Grid Margin="28,8,28,18" ColumnDefinitions="Auto,*">
             <Panel Width="148" Height="148">
@@ -13,15 +14,6 @@
                 <TextBlock Text="{Binding Glyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="56" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"/>
             </Panel>
             <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
-                <!-- the library's two tabs (one entry in the sidebar): all the songs, the ones in no playlist -->
-                <Border HorizontalAlignment="Left" Margin="0,0,0,12" CornerRadius="20" Padding="4" Background="{DynamicResource SurfaceBrush}" IsVisible="{Binding ShowTabs}">
-                    <StackPanel Orientation="Horizontal">
-                        <RadioButton Theme="{StaticResource Segment}" GroupName="LibraryTabs" local:Ui.Glyph="&#xE8F1;" Content="{local:T 'All songs'}"
-                                     IsChecked="{Binding IsAll, Mode=OneWay}" Command="{Binding AllCommand}"/>
-                        <RadioButton Theme="{StaticResource Segment}" GroupName="LibraryTabs" local:Ui.Glyph="&#xE8B7;" Content="{local:T 'Not in a playlist'}" Margin="4,0,0,0"
-                                     IsChecked="{Binding Unsorted, Mode=OneWay}" Command="{Binding UnsortedCommand}" ToolTip.Tip="{local:T 'Songs that aren\'t in any playlist'}"/>
-                    </StackPanel>
-                </Border>
                 <TextBlock Text="{Binding Kicker}" Classes="small-caps" Foreground="{DynamicResource SubTextBrush}"/>
                 <TextBlock Text="{Binding Title}" FontSize="40" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis"/>
                 <!-- the count, and while some songs are in the cloud: save them all (the filter is next to "Tag") -->

@@ -69,6 +69,10 @@ public static class Program
             ("home", "home", () => main.IsHome = true),
             ("library", "library", () => main.IsLibrary = true),
             ("unsorted", "unsorted", () => main.IsUnsorted = true),
+            ("playlists", "playlists", () => main.LibraryHub.PlaylistsCommand.Execute(null)),
+            ("artists", "artists", main.OpenArtists),
+            ("radio", "radio", main.OpenStations),
+            ("together", "together", () => main.IsTogether = true),
             ("downloads", "downloads", () => main.IsDownloads = true),
             ("stats", "settings", main.OpenStats),
             ("settings", "settings", main.GoSettings),
@@ -78,6 +82,23 @@ public static class Program
             Shot(win, name);
             Check(main.Section == section, $"page {name} opens");
         }
+        // ---- the library's parts are tabs of one page; back and forward; the keyboard's pages
+        main.OpenArtists();
+        Pump(600);
+        Check(main.Shown == main.LibraryHub && main.LibraryHub.IsArtists && main.IsLibraryNav, "library: Artists is a tab of the library");
+        main.IsHome = true;
+        main.BackCommand.Execute(null);
+        Check(main.Page is ArtistsViewModel && main.ForwardCommand.CanExecute(null), "back: the page before, forward possible");
+        main.ForwardCommand.Execute(null);
+        Check(main.Page is HomeViewModel && !main.ForwardCommand.CanExecute(null), "forward: the page left with back");
+        main.StepMenu(1);
+        Check(main.IsSearch, "Ctrl+down: from Home to Search");
+        main.GoMenu(2);
+        main.StepTab(1);
+        Check(main.IsLibraryNav && main.LibraryHub.IsRadio, "Ctrl+3 then Ctrl+right: the library's next tab");
+        main.IsDownloads = true;
+        Check(main.Shown == main.Search && main.IsSearch, "downloads: shown inside Search");
+
         main.IsHome = true;
         Shot(win, "home-empty");
         Check(Shown(win, L.T("Import from Spotify")) && Shown(win, L.T("Import from Last.fm")), "home: an empty library suggests Spotify and Last.fm");
@@ -85,9 +106,12 @@ public static class Program
         // ---- Search: an entry of the sidebar's menu, its box at the top of its page; one list under chips
         main.IsSearch = true;
         Shot(win, "search-empty");
-        Check(main.Page == main.Search && Shown(win, L.T("Search your music and online")) && Descendants(win).OfType<TextBox>().Any(t => t.Name == "SearchBox" && t.IsVisible),
-            "search: the menu's Search opens its page, its box at the top");
-        var duet = new Track { Id = "wpf-duet", Title = "Duet", Artist = "Headless Band feat. Someone", Duration = 200, SourceUrl = "https://example.com/duet" };
+        Check(main.Page == main.Search && Shown(win, L.T("Paste a link in the box above")) && Descendants(win).OfType<TextBox>().Any(t => t.Name == "SearchBox" && t.IsVisible),
+            "search: the menu's Search opens its page, its box at the top, the downloads under it");
+        // (a few seconds of silence saved on the device: it can play in the player bar)
+        var wav = Path.Combine(root, "music", "duet.wav");
+        WriteSilence(wav, 3);
+        var duet = new Track { Id = "wpf-duet", Title = "Duet", Artist = "Headless Band feat. Someone", Duration = 3, SourceUrl = "https://example.com/duet", Path = wav };
         main.Library.Add(duet);
         Pump();
         main.SearchText = "headless";
@@ -106,6 +130,35 @@ public static class Program
         Shot(win, "artist", 1500);
         Check(main.Page is ArtistPageViewModel { HasSongs: true } && Shown(win, "Headless Band"), "artist: its page");
         main.BackCommand.Execute(null);
+
+        // ---- a song in the player bar: up next popped out, the playback panel
+        main.Player.PlayFrom(main.LibraryPage, main.AllVms().First(t => t.Id == "wpf-duet"));
+        main.Player.PlayPauseCommand.Execute(null);
+        main.IsHome = true;
+        main.QueueOpen = true;
+        Shot(win, "queue", 600);
+        Check(Descendants(win).OfType<QueuePopup>().Any(q => q.IsVisible), "up next pops out over the page");
+        main.QueueOpen = false;
+        main.Player.Speed = 1.25;
+        var panel = (System.Windows.Controls.Primitives.Popup)win.FindName("PlaybackPopup");
+        panel.IsOpen = true;
+        Pump(400);
+        if (panel.Child is FrameworkElement body) ShotOf(body, "playback");
+        Check(Shown(body: panel.Child, L.T("Playback speed")) && Shown(body: panel.Child, L.T("Equalizer")), "playback panel: speed and equalizer");
+        panel.IsOpen = false;
+        main.Player.Speed = 1;
+        Shot(win, "playing");
+
+        // ---- a page left and opened again keeps its view (the DJ's took several frames to build again)
+        main.IsDj = true;
+        Pump(600);
+        var djView = Descendants(win).OfType<DjView>().FirstOrDefault();
+        main.IsTogether = true;
+        Pump(600);
+        main.IsDj = true;
+        Pump(600);
+        Check(djView != null && Descendants(win).OfType<DjView>().SingleOrDefault() == djView, "a page opened again keeps its view");
+        main.IsHome = true;
 
         if (online)
         {
@@ -160,7 +213,7 @@ public static class Program
         } while (DateTime.UtcNow < until);
     }
 
-    private static void Shot(Window w, string name, int ms = 250)
+    private static void Shot(Window w, string name, int ms = 600)
     {
         Pump(ms);
         // (off the screens WPF doesn't always lay the window out again by itself)
@@ -174,7 +227,30 @@ public static class Program
         png.Save(f);
     }
 
-    private static bool Shown(Window w, string text) => Descendants(w).OfType<TextBlock>().Any(t => t.Text == text && t.IsVisible);
+    private static void WriteSilence(string file, int seconds)
+    {
+        const int rate = 44100;
+        int bytes = rate * 4 * seconds;
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        using var w = new BinaryWriter(File.Create(file));
+        w.Write("RIFF"u8); w.Write(36 + bytes); w.Write("WAVE"u8); w.Write("fmt "u8); w.Write(16); w.Write((short)1); w.Write((short)2);
+        w.Write(rate); w.Write(rate * 4); w.Write((short)4); w.Write((short)16); w.Write("data"u8); w.Write(bytes); w.Write(new byte[bytes]);
+    }
+
+    private static void ShotOf(FrameworkElement e, string name)
+    {
+        e.UpdateLayout();
+        if (e.ActualWidth < 1) return;
+        var rtb = new RenderTargetBitmap((int)e.ActualWidth, (int)e.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(e);
+        var png = new PngBitmapEncoder();
+        png.Frames.Add(BitmapFrame.Create(rtb));
+        using var f = File.Create(Path.Combine(_shots, name + ".png"));
+        png.Save(f);
+    }
+
+    private static bool Shown(Window w, string text) => Shown(body: w, text);
+    private static bool Shown(DependencyObject body, string text) => Descendants(body).OfType<TextBlock>().Any(t => t.Text == text && t.IsVisible);
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject d)
     {

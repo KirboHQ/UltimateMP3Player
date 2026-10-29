@@ -477,7 +477,8 @@
         </Setter>
     </Style>
 
-    <!-- Sidebar navigation entry. -->
+    <!-- Sidebar navigation entry: a pill like the rest of the app. The open one's background is a SlidingPill behind the entries
+         (it glides with the page); hovering tints the pill's place. -->
     <Style x:Key="NavButton" TargetType="RadioButton">
         <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
         <Setter Property="FontSize" Value="14"/>
@@ -488,20 +489,21 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="Bd" CornerRadius="9" Padding="12,9" Background="Transparent">
-                        <StackPanel Orientation="Horizontal">
+                    <Border x:Name="Bd" CornerRadius="19" Padding="14,9" Background="Transparent">
+                        <DockPanel>
                             <TextBlock x:Name="Ico" Text="{TemplateBinding local:Ui.Glyph}" FontFamily="{StaticResource IconFont}" FontSize="16"
                                        VerticalAlignment="Center" Width="20"/>
                             <ContentPresenter Margin="12,0,0,0" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        </DockPanel>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
-                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="Transparent"/>
                             <Setter TargetName="Ico" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -570,6 +572,38 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
                             <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                            <Setter TargetName="Ico" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A page's tabs (the library's parts): like Segment, the open one's tint a SlidingPill behind the tabs (it glides with the part). -->
+    <Style x:Key="TabSegment" TargetType="RadioButton" BasedOn="{StaticResource Segment}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" CornerRadius="16" Padding="16,7" Background="Transparent">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="Ico" Text="{TemplateBinding local:Ui.Glyph}" FontFamily="{StaticResource IconFont}" FontSize="13" FontWeight="Normal"
+                                       Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <!-- (words only: the search's kinds) -->
+                        <Trigger Property="local:Ui.Glyph" Value="{x:Null}">
+                            <Setter TargetName="Ico" Property="Visibility" Value="Collapsed"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="Transparent"/>
                             <Setter TargetName="Ico" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>

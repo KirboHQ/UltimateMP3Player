@@ -210,16 +210,31 @@ public sealed class StationsViewModel : Observable
     {
         Saved.Clear();
         foreach (var s in _main.Profile.StationsSnapshot()) Saved.Add(Vm(s));
-        foreach (var vm in _found) vm.Refresh();
+        foreach (var vm in _found.Concat(_searched)) vm.Refresh();
         OnChanged(nameof(HasSaved), nameof(SavedText));
-
     }
 
     // The playing marks follow the player.
     public void RefreshPlaying()
     {
-        foreach (var vm in Saved) vm.Refresh();
-        foreach (var vm in _found) vm.Refresh();
+        foreach (var vm in Saved.Concat(_found).Concat(_searched)) vm.Refresh();
+    }
+
+    // The search's radios (SearchViewModel): yours whose name has the words, then radio-browser's ones of that name.
+    private List<StationViewModel> _searched = new();
+
+    public List<StationViewModel> SavedMatching(string words)
+    {
+        var tokens = Text.Normalize(words).Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return tokens.Length == 0 ? new() : Saved.Where(s => tokens.All(Text.Normalize(s.Name + " " + s.Subtitle).Contains)).ToList();
+    }
+
+    public async Task<List<StationViewModel>> FindAsync(string name, CancellationToken ct)
+    {
+        var list = await Task.Run(() => RadioBrowser.SearchAsync(name, null, null, Mp3Only, ct), ct);
+        ct.ThrowIfCancellationRequested();
+        var mine = Saved.Select(s => s.S.Id).ToHashSet();
+        return _searched = list.Where(s => !mine.Contains(s.Id)).Take(24).Select(Vm).ToList();
     }
 
     public bool IsSaved(string stationId) => _main.Profile.HasStation(stationId);
@@ -249,7 +264,8 @@ public sealed class StationsViewModel : Observable
     // A station tapped: it plays, the list it's in (saved or found) after it.
     public void Play(StationViewModel station)
     {
-        var list = Saved.Contains(station) ? Saved.ToList() : _found.Contains(station) ? _found : new List<StationViewModel> { station };
+        var list = Saved.Contains(station) ? Saved.ToList() : _found.Contains(station) ? _found : _searched.Contains(station) ? _searched
+            : new List<StationViewModel> { station };
         int start = Math.Max(0, list.IndexOf(station));
         var ids = list.Select(s => TrackOf(s.S).Id).ToList();
         if (_main.Player.PlayStations(ids, start, L.T("Radio"))) RadioBrowser.Clicked(station.S.Id);

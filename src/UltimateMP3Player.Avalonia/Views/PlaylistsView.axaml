@@ -1,0 +1,52 @@
+<UserControl x:Class="UltimateMP3Player.Views.PlaylistsView"
+             xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:vm="clr-namespace:UltimateMP3Player.ViewModels"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <!-- Library › Playlists: every playlist as a card, then "New playlist" -->
+    <UserControl.Styles>
+        <Style Selector="Border.newcard">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.newcard:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        </Style>
+    </UserControl.Styles>
+    <Panel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
+            <StackPanel Margin="28,8,20,28">
+                <Grid Margin="0,0,8,22" ColumnDefinitions="Auto,*">
+                    <Border Width="148" Height="148" CornerRadius="10" Background="{DynamicResource AccentGradient}">
+                        <TextBlock Text="{local:Icon E90B}" Classes="glyph" FontSize="56" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Bottom">
+                        <TextBlock Text="{local:T LIBRARY}" Classes="small-caps" Foreground="{DynamicResource SubTextBrush}"/>
+                        <TextBlock Text="{local:T Playlists}" FontSize="40" FontWeight="Bold" Margin="0,2,0,8"/>
+                        <TextBlock Text="{Binding CountText}" Foreground="{DynamicResource SubTextBrush}"/>
+                    </StackPanel>
+                </Grid>
+                <ListBox x:Name="PlaylistList" Theme="{StaticResource BareList}" ItemsSource="{Binding Cards}" ItemsPanel="{StaticResource CardGridTemplate}"
+                         Margin="0,0,8,0">
+                    <ListBox.DataTemplates>
+                        <DataTemplate DataType="vm:PlaylistViewModel">
+                            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
+                        </DataTemplate>
+                        <DataTemplate DataType="vm:NewPlaylistCard">
+                            <Border Classes="newcard" CornerRadius="12" Cursor="Hand" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1.5"
+                                    views:Click.Command="{Binding $parent[Window].DataContext.NewPlaylistCommand}">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                    <TextBlock Text="{local:Icon E710}" Classes="glyph" FontSize="26" HorizontalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
+                                    <TextBlock Text="{local:T 'New playlist'}" Margin="0,10,0,0" Foreground="{DynamicResource SubTextBrush}" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.DataTemplates>
+                </ListBox>
+            </StackPanel>
+        </ScrollViewer>
+        <!-- playlists selected with Ctrl or Shift + click -->
+        <views:SelectionBar List="{Binding #PlaylistList}" ZIndex="1"/>
+    </Panel>
+</UserControl>

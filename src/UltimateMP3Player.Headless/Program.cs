@@ -66,6 +66,9 @@ foreach (var (name, section, go) in new (string, string, Action)[]
     ("home", "home", () => main.IsHome = true),
     ("library", "library", () => main.IsLibrary = true),
     ("unsorted", "unsorted", () => main.IsUnsorted = true),
+    ("playlists", "playlists", () => main.LibraryHub.PlaylistsCommand.Execute(null)),
+    ("artists", "artists", main.OpenArtists),
+    ("together", "together", () => main.IsTogether = true),
     ("downloads", "downloads", () => main.IsDownloads = true),
     ("search", "search", () => main.IsSearch = true),
     ("stats", "settings", main.OpenStats),
@@ -82,10 +85,14 @@ var view = win.GetVisualDescendants().OfType<SettingsView>().First();
 var cards = view.FindControl<Panel>("Cards")!;
 var titles = cards.Children.Select(Title).ToList();
 Console.WriteLine("        cards: " + string.Join(" · ", titles.Where(t => t != null)));
+// (4.4: several small cards are parts of one: Download with the temporary storage, Search and suggestions, Library, Backup with
+// export and import, About with updates, help and support)
 int download = titles.IndexOf(L.T("Download"));
-Check(download >= 0 && titles.IndexOf(L.T("Temporary storage (unsaved songs)")) == download + 1, "settings: Temporary storage right after Download");
-Check(titles.IndexOf(L.T("Listening statistics")) > titles.IndexOf(L.T("Export and import")), "settings: statistics with the library's cards");
-Check(titles.LastOrDefault(t => t != null) == L.T("Support the project"), "settings: Support the project last, after Help");
+Check(download >= 0 && TextOf(cards.Children[download]).Contains(L.T("Temporary storage (unsaved songs)")) && titles.IndexOf(L.T("Search and suggestions")) == download + 1,
+    "settings: Temporary storage inside Download, then Search and suggestions");
+Check(titles.IndexOf(L.T("Listening statistics")) == titles.IndexOf(L.T("Backup, export and import")) + 1
+    && titles.IndexOf(L.T("Backup, export and import")) == titles.IndexOf(L.T("Library")) + 1, "settings: Library, Backup, then statistics");
+Check(titles.LastOrDefault(t => t != null) == L.T("About") && TextOf(cards.Children[^1]).Contains(L.T("Support the project")), "settings: About last, with Support the project");
 
 var save = view.GetLogicalDescendants().OfType<CheckBox>().First(c => TextOf(c).Contains(L.T("Save the audio on your device")));
 Check(save.IsChecked == false, "settings: “Save the audio on your device” is off");
@@ -107,7 +114,9 @@ search.Focus();
 win.KeyTextInput("donazione");
 Shot(win, "settings-support");
 shown = cards.Children.Where(c => c.IsVisible).Select(Title).ToList();
-Check(shown is [var only] && only == L.T("Support the project"), $"settings search “donazione”: {string.Join(", ", shown)}");
+var parts = cards.Children[^1] is Border { Child: Panel about } ? about.Children.Where(c => c.IsVisible).Select(TextOf).ToList() : new();
+Check(shown is [var only] && only == L.T("About") && parts.Count == 2 && parts[1].Contains(L.T("Support the project")),
+    $"settings search “donazione”: only Support the project, in About: {string.Join(", ", shown)}");
 Press(Key.Escape);
 
 // ---- packs: the export dialog, and the import of a links-only pack (its songs into the cloud unless Settings say otherwise)
@@ -266,7 +275,7 @@ main.IsHome = true;
 main.IsSearch = true;
 Dispatcher.UIThread.RunJobs();
 Shot(win, "search-empty");
-Check(main.Page == main.Search && main.Search.Items is [SearchNote] && Shown(L.T("Search your music and online")), "search: the menu's Search opens its page, saying what it's for");
+Check(main.Page == main.Search && main.Search.ShowDownloads && Shown(L.T("Headless list")), "search: the menu's Search opens its page, the downloads (the list's card) under its box");
 var box = win.GetVisualDescendants().OfType<TextBox>().First(t => t.Name == "SearchBox");
 box.Focus();
 win.KeyTextInput("headless");
@@ -285,8 +294,52 @@ Dispatcher.UIThread.RunJobs();
 Check(main.Page == main.Search && main.Search.Items is [SearchNote] && !main.Search.HasQuery, "search: the box emptied, the page stays");
 main.IsUnsorted = true;
 Shot(win, "library-unsorted");
-Check(main.Page is LibraryViewModel { ShowTabs: true, IsAll: false }, "library: “Not in a playlist” is a tab of the library");
+Check(main.Shown == main.LibraryHub && main.LibraryHub.IsUnsorted && Shown(L.T("Playlists")), "library: “Not in a playlist” is a tab of the library, with Playlists");
+
+// ---- 4.4: the library's parts are tabs of one page; back and forward; the keyboard's pages; up next popped out
+main.OpenArtists();
+Shot(win, "library-artists");
+Check(main.Shown == main.LibraryHub && main.LibraryHub.IsArtists && main.IsLibraryNav, "library: Artists is a tab of the library");
 main.IsHome = true;
+main.BackCommand.Execute(null);
+Check(main.Page is ArtistsViewModel && main.ForwardCommand.CanExecute(null), "back: the page before, forward possible");
+main.ForwardCommand.Execute(null);
+Check(main.Page is HomeViewModel && !main.ForwardCommand.CanExecute(null), "forward: the page left with back");
+win.KeyPress(Key.Down, RawInputModifiers.Control, PhysicalKey.ArrowDown, null);
+win.KeyRelease(Key.Down, RawInputModifiers.Control, PhysicalKey.ArrowDown, null);
+Dispatcher.UIThread.RunJobs();
+Check(main.IsSearch, "Ctrl+down: from Home to Search");
+win.KeyPress(Key.D3, RawInputModifiers.Control, PhysicalKey.Digit3, null);
+win.KeyRelease(Key.D3, RawInputModifiers.Control, PhysicalKey.Digit3, null);
+win.KeyPress(Key.Right, RawInputModifiers.Control, PhysicalKey.ArrowRight, null);
+win.KeyRelease(Key.Right, RawInputModifiers.Control, PhysicalKey.ArrowRight, null);
+Dispatcher.UIThread.RunJobs();
+Check(main.IsLibraryNav && main.LibraryHub.IsRadio, "Ctrl+3 then Ctrl+right: the library's next tab (the search box left behind lets go of the keys)");
+win.KeyPress(Key.Left, RawInputModifiers.Alt, PhysicalKey.ArrowLeft, null);
+win.KeyRelease(Key.Left, RawInputModifiers.Alt, PhysicalKey.ArrowLeft, null);
+Dispatcher.UIThread.RunJobs();
+Check(main.LibraryHub.IsArtists, "Alt+left: back");
+// ---- a page left and opened again keeps its view (not built again); Ctrl+↓ goes on from the search's box
+main.IsTogether = true;
+Shot(win, "together-again");
+var together = win.GetVisualDescendants().OfType<TogetherView>().FirstOrDefault();
+main.IsHome = true;
+Shot(win, "home-again");
+main.IsTogether = true;
+Shot(win, "together-again");
+Check(together != null && win.GetVisualDescendants().OfType<TogetherView>().SingleOrDefault() == together, "a page opened again keeps its view");
+main.IsSearch = true;
+Shot(win, "search-focus");
+win.KeyPress(Key.Down, RawInputModifiers.Control, PhysicalKey.ArrowDown, null);
+win.KeyRelease(Key.Down, RawInputModifiers.Control, PhysicalKey.ArrowDown, null);
+Dispatcher.UIThread.RunJobs();
+Check(main.IsLibraryNav, "Ctrl+down: from the search's box to the library");
+main.IsHome = true;
+main.QueueOpen = true;
+Shot(win, "queue");
+Check(win.GetVisualDescendants().OfType<QueuePopup>().Any(q => q.IsEffectivelyVisible) && Shown(L.T("The queue is empty")), "up next pops out over the page");
+Press(Key.Escape);
+Check(!main.QueueOpen, "Esc folds up next");
 
 // ---- 4.3.1: Spotify's library in its zip (liked songs, a playlist) as lists for ListImport (their Spotify ids: nothing looked for)
 var zipPath = Path.Combine(root, "spotify.zip");
@@ -316,7 +369,8 @@ return failed.Count == 0 ? 0 : 1;
 // Lets the queued work, the layout and a frame happen, then saves what's drawn.
 void Shot(TopLevel top, string name)
 {
-    for (int i = 0; i < 10; i++)
+    // (past the pages' slide)
+    for (int i = 0; i < 30; i++)
     {
         Dispatcher.UIThread.RunJobs();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();

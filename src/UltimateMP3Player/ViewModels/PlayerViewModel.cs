@@ -28,8 +28,8 @@ public sealed class QueueRow
     public PlayerViewModel Player { get; }
     public RadioItemViewModel? Radio { get; }
     public bool IsRadio => Radio != null;
-    // A song of the library in the cloud (a suggested one shows its own state instead).
-    public bool ShowCloud => Radio == null && Track.IsCloud;
+    // A song of the library: its own sign (TrackViewModel.ShowSign); a suggested one shows its state instead.
+    public bool ShowCloud => Radio == null;
 
     public ICommand PlayCommand => new RelayCommand(() => _ = Player.JumpTo(Index));
     public ICommand RemoveCommand => new RelayCommand(() => Player.RemoveUpcoming(Index));
@@ -370,7 +370,7 @@ public sealed class PlayerViewModel : Observable
             if (!Set(ref _current, value)) return;
             if (old != null) old.IsCurrent = false;
             if (value != null) value.IsCurrent = true;
-            OnChanged(nameof(HasTrack), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(ContextName), nameof(IsTemporary), nameof(IsLive), nameof(DurationText));
+            OnChanged(nameof(HasTrack), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(ContextName), nameof(IsTemporary), nameof(CanAddToLibrary), nameof(ShowNothingPlaying), nameof(IsLive), nameof(DurationText));
         }
     }
 
@@ -394,11 +394,18 @@ public sealed class PlayerViewModel : Observable
     // The connected device's music changed (where the song is saved).
     internal void RefreshTemporary()
     {
-        OnChanged(nameof(IsTemporary));
+        OnChanged(nameof(IsTemporary), nameof(CanAddToLibrary));
         CommandManager.InvalidateRequerySuggested();
     }
+    // (the player bar's panels reach the settings through it: crossfade, the equalizer)
+    public MainViewModel Main => _main;
     // The song block of the player bar: also in a room with nothing playing (it shows the room's name).
     public bool ShowNowPlaying => Current != null || _room != null || _remote != null || _main.PhoneLinked;
+    // Nothing at all: the player bar says so where the song would be (not an empty space).
+    public bool ShowNothingPlaying => !ShowNowPlaying;
+    // The library icon next to the heart: only for a song that isn't in the library (suggested, heard from a link); saving one of
+    // the library on the device is in its menu, not here.
+    public bool CanAddToLibrary => IsTemporary && Current is { InLibrary: false };
     // "Generate queue" (the song page): your own queue only.
     public bool CanGenerate => Current != null && _room == null;
     public string? ContextId => _queue.ContextId;
@@ -1009,16 +1016,12 @@ public sealed class PlayerViewModel : Observable
         }
     }
 
-    public string NormalizeTip => Normalize
-        ? L.T("Normalize volume on: all songs at the same volume (click to turn it off)")
-        : L.T("Normalize volume off: each song at its own volume (click to turn it on)");
-
     internal void SetNormalize(bool value)
     {
         _main.Profile.Data.Normalize = value;
         _main.Profile.Save();
         ApplyNormalization();
-        OnChanged(nameof(Normalize), nameof(NormalizeTip));
+        OnChanged(nameof(Normalize));
     }
 
     private async Task Load(Track t, bool play, bool crossfade = false)
@@ -1237,11 +1240,11 @@ public sealed class PlayerViewModel : Observable
         _queue.Replace(oldId, saved.Id);
     }
 
-    // The other way round: a suggested song saved in this session and now deleted from the library while it plays goes
-    // on as a suggestion (from the cache) instead of jumping to the next song. False: it wasn't one of those.
+    // The other way round: the song playing, deleted from the library, goes on as a song heard without saving it (from the
+    // cache) instead of jumping to the next one. False: it couldn't (not playing, in a room, no file to go on from).
     internal async Task<bool> KeepAsSuggestion(Track saved)
     {
-        if (_room != null || Current?.Id != saved.Id || !_main.Radio.WasSaved(saved.Id)) return false;
+        if (_room != null || _remote != null || Current?.Id != saved.Id) return false;
         var item = _main.Radio.Unsave(saved, _opened ? _audio.SourcePath : null);
         if (item == null) return false;
         // Still playing the library copy (it's about to be deleted): on from the cache one, at the same point.
@@ -1772,7 +1775,7 @@ public sealed class PlayerViewModel : Observable
 
     private void OnRoomChanged()
     {
-        OnChanged(nameof(InRoom), nameof(NotInRoom), nameof(RoomName), nameof(ContextName), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(PlayTip), nameof(NextTip), nameof(PreviousTip),
+        OnChanged(nameof(InRoom), nameof(NotInRoom), nameof(RoomName), nameof(ContextName), nameof(ShowNowPlaying), nameof(ShowNothingPlaying), nameof(CanGenerate), nameof(PlayTip), nameof(NextTip), nameof(PreviousTip),
             nameof(SeekTip), nameof(QueueHint), nameof(RepeatOn), nameof(RepeatGlyph), nameof(RepeatTip), nameof(CanSetSpeed), nameof(SpeedTip), nameof(SpeedHint));
         OnSpeedChanged();
         RefreshUpNext();
@@ -1978,7 +1981,7 @@ public sealed class PlayerViewModel : Observable
     private void OnRemoteChanged()
     {
         OnRemoteLink();
-        OnChanged(nameof(IsRemote), nameof(ShowNowPlaying), nameof(IsTemporary), nameof(Volume), nameof(Muted), nameof(VolumeGlyph));
+        OnChanged(nameof(IsRemote), nameof(ShowNowPlaying), nameof(IsTemporary), nameof(CanAddToLibrary), nameof(ShowNothingPlaying), nameof(Volume), nameof(Muted), nameof(VolumeGlyph));
         OnRemoteValues();
         RefreshUpNext();
         _main.Host.OnTrackChanged();
@@ -2026,7 +2029,7 @@ public sealed class PlayerViewModel : Observable
     public bool PhoneAway => _main.PhoneLinked && _main.PhoneLink.IsReconnecting;
     public ICommand OpenPhoneCommand => new RelayCommand(() => PhoneLinkViewModel.ShowWindow?.Invoke(_main));
 
-    internal void OnPhoneLink() => OnChanged(nameof(ShowNowPlaying), nameof(PhoneLinked), nameof(PhoneName), nameof(PhoneTip), nameof(PhoneAway));
+    internal void OnPhoneLink() => OnChanged(nameof(ShowNowPlaying), nameof(ShowNothingPlaying), nameof(PhoneLinked), nameof(PhoneName), nameof(PhoneTip), nameof(PhoneAway));
 
     internal string? WaitingId => _waiting;
     internal bool WaitingMore => _waitMore;

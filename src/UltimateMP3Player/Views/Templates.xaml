@@ -132,13 +132,14 @@
         </Setter>
     </Style>
 
-    <!-- Only a sign, next to the heart: a cloud for a song not saved on the device, a ring while it's being saved, a warning
-         sign when it's no longer available online; nothing for a saved song. Saving is in the menu and next to the heart below. -->
+    <!-- Only a sign, next to the heart, where the song is the exception to Settings › Download (TrackViewModel.ShowSign): a cloud on
+         one not saved while MP3s are saved, a mark on one saved while the library is in the cloud; a warning sign when it's no longer
+         online, a ring while it's being saved. -->
     <DataTemplate x:Key="TrackCloudCell" DataType="{x:Type vm:TrackViewModel}">
         <Grid Width="32" Height="32">
-            <Grid Background="Transparent" ToolTip="{Binding CloudTip}" Visibility="{Binding ShowCloud, Converter={StaticResource BoolVis}}">
-                <TextBlock x:Name="Cloud" Text="{Binding CloudGlyph}" Style="{StaticResource Glyph}" FontSize="15" Foreground="{DynamicResource MutedBrush}"
-                           HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding CloudTip}"/>
+            <Grid Background="Transparent" ToolTip="{Binding SignTip}" Visibility="{Binding ShowSign, Converter={StaticResource BoolVis}}">
+                <TextBlock x:Name="Cloud" Text="{Binding SignGlyph}" Style="{StaticResource Glyph}" FontSize="15" Foreground="{DynamicResource MutedBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" AutomationProperties.Name="{Binding SignTip}"/>
             </Grid>
             <Grid Background="Transparent" ToolTip="{Binding CloudTip}" Visibility="{Binding IsSaving, Converter={StaticResource BoolVis}}">
                 <views:ProgressRing Width="17" Height="17" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}"
@@ -146,8 +147,11 @@
             </Grid>
         </Grid>
         <DataTemplate.Triggers>
-            <DataTrigger Binding="{Binding IsUnavailable}" Value="True">
+            <DataTrigger Binding="{Binding SignIsGone}" Value="True">
                 <Setter TargetName="Cloud" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding SignIsSaved}" Value="True">
+                <Setter TargetName="Cloud" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
@@ -526,12 +530,12 @@
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0">
                             <TextBlock x:Name="PlayIco" Text="&#xE768;" Style="{StaticResource Glyph}" Foreground="{DynamicResource OnAccentBrush}" FontSize="16" HorizontalAlignment="Center"/>
                         </Border>
-                        <!-- not saved on the device: a cloud on the cover (only a sign; a ring while it's being saved) -->
-                        <Border Width="28" Height="28" CornerRadius="14" Background="#A6000000" ToolTip="{Binding CloudTip}" HorizontalAlignment="Left"
-                                VerticalAlignment="Top" Margin="7" Visibility="{Binding IsCloud, Converter={StaticResource BoolVis}}">
+                        <!-- the song's sign on the cover (the exception to Settings › Download: TrackViewModel.ShowSign; a ring while it's saved) -->
+                        <Border Width="28" Height="28" CornerRadius="14" Background="#A6000000" ToolTip="{Binding SignTip}" HorizontalAlignment="Left"
+                                VerticalAlignment="Top" Margin="7" Visibility="{Binding HasSign, Converter={StaticResource BoolVis}}">
                             <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding CloudGlyph}" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="White"
-                                           Visibility="{Binding ShowCloud, Converter={StaticResource BoolVis}}"/>
+                                <TextBlock Text="{Binding SignGlyph}" FontFamily="{StaticResource IconFont}" FontSize="13" Foreground="White"
+                                           Visibility="{Binding ShowSign, Converter={StaticResource BoolVis}}"/>
                                 <views:ProgressRing Width="16" Height="16" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}" Stroke="White"
                                                     Track="#50FFFFFF" Visibility="{Binding IsSaving, Converter={StaticResource BoolVis}}"/>
                             </Grid>
@@ -580,7 +584,7 @@
                         <Button x:Name="PlayDisc" Style="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="16" Content="&#xE768;"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
                                 Command="{Binding DataContext.PlayPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                CommandParameter="{Binding}" ToolTip="{local:T Play}"/>
+                                CommandParameter="{Binding}" ToolTip="{local:T Play}" Visibility="{Binding HasSongs, Converter={StaticResource BoolVis}}"/>
                     </Grid>
                 </views:SquareBox>
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
@@ -605,6 +609,29 @@
                 <Setter TargetName="PlayDisc" Property="ToolTip" Value="{local:T 'Add all to the room\'s queue'}"/>
             </DataTrigger>
         </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <!-- The "New playlist" card at the end of the playlists (Home, Library › Playlists). -->
+    <DataTemplate DataType="{x:Type vm:NewPlaylistCard}">
+        <Border CornerRadius="12" Cursor="Hand" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1.5">
+            <Border.InputBindings>
+                <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.NewPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+            </Border.InputBindings>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="26" HorizontalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
+                <TextBlock Text="{local:T 'New playlist'}" Margin="0,10,0,0" Foreground="{DynamicResource SubTextBrush}" FontWeight="SemiBold"/>
+            </StackPanel>
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+        </Border>
     </DataTemplate>
 
     <!-- The big play / shuffle buttons of a page: in a room they put the whole list in the room's queue. -->

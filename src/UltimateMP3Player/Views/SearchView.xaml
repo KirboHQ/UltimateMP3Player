@@ -89,195 +89,217 @@
                         Command="{Binding OnlineSettingsCommand}" ToolTip="{local:T 'Which sites to search and in what order (Settings)'}"/>
             </Grid>
             <!-- the kinds; on the right, under the gear, how the sites are doing (there the box keeps its width while they answer) -->
-            <DockPanel Margin="0,14,0,0" Visibility="{Binding HasQuery, Converter={StaticResource BoolVis}}">
+            <DockPanel Margin="0,14,0,0" Visibility="{Binding ShowResults, Converter={StaticResource BoolVis}}">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Height="32" VerticalAlignment="Top" Margin="12,0,0,0">
                     <Ellipse Style="{StaticResource Spinner}" Width="14" Height="14" StrokeThickness="2.5" Margin="0,0,8,0" VerticalAlignment="Center"
                              Visibility="{Binding OnlineBusy, Converter={StaticResource BoolVis}}"/>
                     <TextBlock Text="{Binding OnlineStatus}" Style="{StaticResource Hint}" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding Filters}" Focusable="False">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:SearchFilter}">
-                            <Button Style="{StaticResource ServiceChip}" Content="{Binding Label}" CommandParameter="{Binding}"
-                                    Command="{Binding DataContext.SelectFilterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <!-- tabs like the library's: the tint glides to the one picked and its list slides in from that side (Ctrl+←/→ too) -->
+                <Border HorizontalAlignment="Left" CornerRadius="20" Padding="4" Background="{DynamicResource SurfaceBrush}">
+                    <Grid>
+                        <views:SlidingPill Target="{Binding ElementName=FilterTabs}" Fill="{DynamicResource AccentSoftBrush}"/>
+                        <ItemsControl x:Name="FilterTabs" ItemsSource="{Binding Filters}" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:SearchFilter}">
+                                    <RadioButton Style="{StaticResource TabSegment}" GroupName="SearchFilter" Content="{Binding Label}" IsChecked="{Binding IsSelected, Mode=OneWay}"
+                                                 CommandParameter="{Binding}" Command="{Binding DataContext.SelectFilterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Grid>
+                </Border>
             </DockPanel>
         </StackPanel>
 
-        <ListBox x:Name="List" Grid.Row="1" Style="{StaticResource PlainList}" ItemsSource="{Binding Items}" SelectionChanged="List_SelectionChanged">
-            <ListBox.Resources>
-                <!-- your songs: as in every list (play, select, drag, the menu) -->
-                <DataTemplate DataType="{x:Type vm:TrackRow}">
-                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource TrackRowTemplate}"/>
-                </DataTemplate>
+        <!-- no words (or a link open, a song found online opened): the downloads part, the link being added and the queue -->
+        <Border Grid.Row="1" Visibility="{Binding ShowDownloads, Converter={StaticResource BoolVis}}">
+            <views:DownloadsView DataContext="{Binding Main.Downloads}"/>
+        </Border>
 
-                <!-- a heading, with "Show all" leading to its chip -->
-                <DataTemplate DataType="{x:Type vm:SearchSection}">
-                    <DockPanel Margin="8,22,18,8">
-                        <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="{local:T 'Show all'}" Command="{Binding MoreCommand}"
-                                Visibility="{Binding HasMore, Converter={StaticResource BoolVis}}" VerticalAlignment="Bottom"/>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="Bold"/>
-                            <TextBlock Text="{Binding Count}" FontSize="14" Foreground="{DynamicResource MutedBrush}" Margin="10,0,0,2" VerticalAlignment="Bottom"
-                                       Visibility="{Binding HasCount, Converter={StaticResource BoolVis}}"/>
-                        </StackPanel>
-                    </DockPanel>
-                </DataTemplate>
-
-                <!-- artists, albums, playlists side by side: one row in "All", all of them under their chip -->
-                <DataTemplate DataType="{x:Type vm:CardShelf}">
-                    <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,18,4" Focusable="False">
-                        <ItemsControl.Resources>
-                            <DataTemplate DataType="{x:Type vm:ArtistCardViewModel}">
-                                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource ArtistCard}"/>
+        <!-- the chip's list (SearchViewModel.Results): it slides in from the side of its chip -->
+        <views:AnimatedContent Grid.Row="1" Horizontal="True" Content="{Binding Results}" Visibility="{Binding ShowResults, Converter={StaticResource BoolVis}}">
+            <views:AnimatedContent.Resources>
+                <DataTemplate DataType="{x:Type vm:SearchResults}">
+                    <ListBox Style="{StaticResource PlainList}" ItemsSource="{Binding Items}" SelectionMode="Extended" SelectionChanged="List_SelectionChanged"
+                             Loaded="List_Loaded" Unloaded="List_Unloaded">
+                        <ListBox.Resources>
+                            <!-- your songs: as in every list (play, select, drag, the menu) -->
+                            <DataTemplate DataType="{x:Type vm:TrackRow}">
+                                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource TrackRowTemplate}"/>
                             </DataTemplate>
-                            <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
-                                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
-                            </DataTemplate>
-                            <DataTemplate DataType="{x:Type vm:OnlineHitViewModel}">
-                                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource AlbumCard}"/>
-                            </DataTemplate>
-                            <!-- (the albums and playlists are FeaturedHitViewModel: without its own template here, WPF would take the big card's
-                                 below, an exact match, over this one) -->
-                            <DataTemplate DataType="{x:Type vm:FeaturedHitViewModel}">
-                                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource AlbumCard}"/>
-                            </DataTemplate>
-                        </ItemsControl.Resources>
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <views:CardGrid MaxRows="{Binding MaxRows}"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
-                </DataTemplate>
-
-                <!-- the artist the words name: big, first -->
-                <DataTemplate DataType="{x:Type vm:TopArtistResult}">
-                    <Border Style="{StaticResource Card}" CornerRadius="14" Padding="18" Margin="0,4,18,0" DataContext="{Binding Artist}"
-                            MouseRightButtonUp="Artist_RightClick">
-                        <Border.InputBindings>
-                            <MouseBinding Gesture="LeftClick" Command="{Binding OpenCommand}"/>
-                        </Border.InputBindings>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid Width="112" Height="112">
-                                <Ellipse Fill="{Binding Brush}"/>
-                                <TextBlock Text="{Binding Initial}" FontSize="44" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <Ellipse Visibility="{Binding HasPicture, Converter={StaticResource BoolVis}}">
-                                    <Ellipse.Fill>
-                                        <ImageBrush ImageSource="{Binding Picture}" Stretch="UniformToFill"/>
-                                    </Ellipse.Fill>
-                                </Ellipse>
-                            </Grid>
-                            <StackPanel Grid.Column="1" Margin="22,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Text="{local:T ARTIST}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="{Binding Name}" FontSize="30" FontWeight="Bold" Margin="0,2,0,4" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SubTextBrush}" Visibility="{Binding HasSubtitle, Converter={StaticResource BoolVis}}"/>
-                            </StackPanel>
-                            <Button Grid.Column="2" Style="{StaticResource GhostButton}" Padding="16,8" VerticalAlignment="Center" Command="{Binding FollowCommand}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding FollowGlyph}" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{Binding FollowTip}" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-
-                <!-- the album or playlist named as the words: big, first -->
-                <DataTemplate DataType="{x:Type vm:FeaturedHitViewModel}">
-                    <Border Style="{StaticResource Card}" CornerRadius="14" Padding="14" Margin="0,4,18,0" local:Marquee.Host="True"
-                            ToolTip="{local:T 'Open it to choose its songs and the playlist to save them in'}" ToolTipService.InitialShowDelay="1200">
-                        <Border.InputBindings>
-                            <MouseBinding Gesture="LeftClick" Command="{Binding DownloadCommand}"/>
-                        </Border.InputBindings>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid Width="112" Height="112">
-                                <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}">
-                                    <TextBlock Text="&#xE8FD;" Style="{StaticResource Glyph}" FontSize="30" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
-                                </Border>
-                                <Border CornerRadius="8">
-                                    <Border.Background>
-                                        <ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/>
-                                    </Border.Background>
-                                </Border>
-                            </Grid>
-                            <StackPanel Grid.Column="1" Margin="20,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Kind}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource AccentTextBrush}"/>
-                                <TextBlock Text="{Binding Title}" FontSize="26" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
-                                <StackPanel Orientation="Horizontal">
-                                    <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Service}" FontSize="12.5" Margin="6,0,10,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Details}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                </StackPanel>
-                            </StackPanel>
-                            <Button Grid.Column="2" Style="{StaticResource BigPlayButton}" Width="48" Height="48" FontSize="18" Content="&#xE768;"
-                                    VerticalAlignment="Center" Command="{Binding PlayCommand}" ToolTip="{local:T 'Play without saving'}"/>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-
-                <!-- a song (or a list) found online -->
-                <DataTemplate DataType="{x:Type vm:OnlineHitViewModel}">
-                    <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource HitRowTemplate}"/>
-                </DataTemplate>
-
-                <!-- the sites over the online songs -->
-                <DataTemplate DataType="{x:Type vm:SiteChips}">
-                    <ItemsControl ItemsSource="{Binding Tabs}" Margin="8,0,18,6" Focusable="False">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:ServiceTab}">
-                                <Button Style="{StaticResource ServiceChip}" CommandParameter="{Binding}"
-                                        Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+            
+                            <!-- a heading, with "Show all" leading to its chip -->
+                            <DataTemplate DataType="{x:Type vm:SearchSection}">
+                                <DockPanel Margin="8,22,18,8">
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="{local:T 'Show all'}" Command="{Binding MoreCommand}"
+                                            Visibility="{Binding HasMore, Converter={StaticResource BoolVis}}" VerticalAlignment="Bottom"/>
                                     <StackPanel Orientation="Horizontal">
-                                        <Ellipse Width="8" Height="8" Fill="{Binding Brush}" Margin="0,0,7,0" VerticalAlignment="Center"
-                                                 Visibility="{Binding HasDot, Converter={StaticResource BoolVis}}"/>
-                                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding Count}" Foreground="{DynamicResource MutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding Count}" FontSize="14" Foreground="{DynamicResource MutedBrush}" Margin="10,0,0,2" VerticalAlignment="Bottom"
+                                                   Visibility="{Binding HasCount, Converter={StaticResource BoolVis}}"/>
                                     </StackPanel>
-                                </Button>
+                                </DockPanel>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+            
+                            <!-- artists, albums, playlists side by side: one row in "All", all of them under their chip -->
+                            <DataTemplate DataType="{x:Type vm:CardShelf}">
+                                <ItemsControl ItemsSource="{Binding Cards}" Margin="0,0,18,4" Focusable="False">
+                                    <ItemsControl.Resources>
+                                        <DataTemplate DataType="{x:Type vm:ArtistCardViewModel}">
+                                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource ArtistCard}"/>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
+                                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="{x:Type vm:OnlineHitViewModel}">
+                                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource AlbumCard}"/>
+                                        </DataTemplate>
+                                        <!-- (the albums and playlists are FeaturedHitViewModel: without its own template here, WPF would take the big card's
+                                             below, an exact match, over this one) -->
+                                        <DataTemplate DataType="{x:Type vm:FeaturedHitViewModel}">
+                                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource AlbumCard}"/>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="{x:Type vm:StationViewModel}">
+                                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource StationCard}"/>
+                                        </DataTemplate>
+                                    </ItemsControl.Resources>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <views:CardGrid MaxRows="{Binding MaxRows}"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </DataTemplate>
+            
+                            <!-- the artist the words name: big, first -->
+                            <DataTemplate DataType="{x:Type vm:TopArtistResult}">
+                                <Border Style="{StaticResource Card}" CornerRadius="14" Padding="18" Margin="0,4,18,0" DataContext="{Binding Artist}"
+                                        MouseRightButtonUp="Artist_RightClick">
+                                    <Border.InputBindings>
+                                        <MouseBinding Gesture="LeftClick" Command="{Binding OpenCommand}"/>
+                                    </Border.InputBindings>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid Width="112" Height="112">
+                                            <Ellipse Fill="{Binding Brush}"/>
+                                            <TextBlock Text="{Binding Initial}" FontSize="44" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            <Ellipse Visibility="{Binding HasPicture, Converter={StaticResource BoolVis}}">
+                                                <Ellipse.Fill>
+                                                    <ImageBrush ImageSource="{Binding Picture}" Stretch="UniformToFill"/>
+                                                </Ellipse.Fill>
+                                            </Ellipse>
+                                        </Grid>
+                                        <StackPanel Grid.Column="1" Margin="22,0,12,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{local:T ARTIST}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource AccentTextBrush}"/>
+                                            <TextBlock Text="{Binding Name}" FontSize="30" FontWeight="Bold" Margin="0,2,0,4" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SubTextBrush}" Visibility="{Binding HasSubtitle, Converter={StaticResource BoolVis}}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Style="{StaticResource GhostButton}" Padding="16,8" VerticalAlignment="Center" Command="{Binding FollowCommand}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding FollowGlyph}" Style="{StaticResource Glyph}"/>
+                                                <TextBlock Text="{Binding FollowTip}" Margin="8,0,0,0"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+            
+                            <!-- the album or playlist named as the words: big, first -->
+                            <DataTemplate DataType="{x:Type vm:FeaturedHitViewModel}">
+                                <Border Style="{StaticResource Card}" CornerRadius="14" Padding="14" Margin="0,4,18,0" local:Marquee.Host="True"
+                                        ToolTip="{local:T 'Open it to choose its songs and the playlist to save them in'}" ToolTipService.InitialShowDelay="1200">
+                                    <Border.InputBindings>
+                                        <MouseBinding Gesture="LeftClick" Command="{Binding DownloadCommand}"/>
+                                    </Border.InputBindings>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid Width="112" Height="112">
+                                            <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}">
+                                                <TextBlock Text="&#xE8FD;" Style="{StaticResource Glyph}" FontSize="30" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
+                                            </Border>
+                                            <Border CornerRadius="8">
+                                                <Border.Background>
+                                                    <ImageBrush ImageSource="{Binding Thumb}" Stretch="UniformToFill"/>
+                                                </Border.Background>
+                                            </Border>
+                                        </Grid>
+                                        <StackPanel Grid.Column="1" Margin="20,0,12,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Kind}" Style="{StaticResource SmallCaps}" Foreground="{DynamicResource AccentTextBrush}"/>
+                                            <TextBlock Text="{Binding Title}" FontSize="26" FontWeight="Bold" Margin="0,2,0,6" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Ellipse Width="7" Height="7" Fill="{Binding ServiceBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Service}" FontSize="12.5" Margin="6,0,10,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Details}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Style="{StaticResource BigPlayButton}" Width="48" Height="48" FontSize="18" Content="&#xE768;"
+                                                VerticalAlignment="Center" Command="{Binding PlayCommand}" ToolTip="{local:T 'Play without saving'}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+            
+                            <!-- a song (or a list) found online -->
+                            <DataTemplate DataType="{x:Type vm:OnlineHitViewModel}">
+                                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource HitRowTemplate}"/>
+                            </DataTemplate>
+            
+                            <!-- the sites over the online songs -->
+                            <DataTemplate DataType="{x:Type vm:SiteChips}">
+                                <ItemsControl ItemsSource="{Binding Tabs}" Margin="8,0,18,6" Focusable="False">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:ServiceTab}">
+                                            <Button Style="{StaticResource ServiceChip}" CommandParameter="{Binding}"
+                                                    Command="{Binding DataContext.SelectCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="8" Height="8" Fill="{Binding Brush}" Margin="0,0,7,0" VerticalAlignment="Center"
+                                                             Visibility="{Binding HasDot, Converter={StaticResource BoolVis}}"/>
+                                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Count}" Foreground="{DynamicResource MutedBrush}" Margin="7,0,0,0" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DataTemplate>
+            
+                            <!-- searching, nothing found, Spotify without its key -->
+                            <DataTemplate DataType="{x:Type vm:SearchNote}">
+                                <StackPanel HorizontalAlignment="Center" Margin="24,32,24,24" MaxWidth="480">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Ellipse Style="{StaticResource Spinner}" Width="18" Height="18" StrokeThickness="3" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                 Visibility="{Binding Busy, Converter={StaticResource BoolVis}}"/>
+                                        <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Text}" Style="{StaticResource Hint}" Margin="0,8,0,0" TextAlignment="Center" TextWrapping="Wrap"
+                                               Visibility="{Binding HasText, Converter={StaticResource BoolVis}}"/>
+                                    <Button Style="{StaticResource PrimaryButton}" Content="{Binding ButtonText}" Command="{Binding Command}" HorizontalAlignment="Center"
+                                            Margin="0,18,0,0" Visibility="{Binding HasButton, Converter={StaticResource BoolVis}}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.Resources>
+                    </ListBox>
                 </DataTemplate>
-
-                <!-- searching, nothing found, Spotify without its key -->
-                <DataTemplate DataType="{x:Type vm:SearchNote}">
-                    <StackPanel HorizontalAlignment="Center" Margin="24,32,24,24" MaxWidth="480">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <Ellipse Style="{StaticResource Spinner}" Width="18" Height="18" StrokeThickness="3" Margin="0,0,12,0" VerticalAlignment="Center"
-                                     Visibility="{Binding Busy, Converter={StaticResource BoolVis}}"/>
-                            <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap"/>
-                        </StackPanel>
-                        <TextBlock Text="{Binding Text}" Style="{StaticResource Hint}" Margin="0,8,0,0" TextAlignment="Center" TextWrapping="Wrap"
-                                   Visibility="{Binding HasText, Converter={StaticResource BoolVis}}"/>
-                        <Button Style="{StaticResource PrimaryButton}" Content="{Binding ButtonText}" Command="{Binding Command}" HorizontalAlignment="Center"
-                                Margin="0,18,0,0" Visibility="{Binding HasButton, Converter={StaticResource BoolVis}}"/>
-                    </StackPanel>
-                </DataTemplate>
-            </ListBox.Resources>
-        </ListBox>
-        <views:SelectionBar Grid.Row="1" List="{Binding ElementName=List}" Panel.ZIndex="1"/>
+            </views:AnimatedContent.Resources>
+        </views:AnimatedContent>
+        <views:SelectionBar x:Name="Bar" Grid.Row="1" Panel.ZIndex="1"/>
     </Grid>
 </UserControl>

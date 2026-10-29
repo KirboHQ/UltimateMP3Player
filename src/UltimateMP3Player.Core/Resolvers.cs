@@ -343,7 +343,7 @@ public static class AppleMusic
             || Regex.Match(html, "\"numTracks\":\\s*(\\d+)") is { Success: true } total && int.Parse(total.Groups[1].Value) > result.Items.Count)
         {
             result.Notes.Add(L.F("Apple Music only shows the first {0} songs of this playlist: those are listed.", result.Items.Count));
-            result.Notes.Add(L.T("To get them all: export the playlist from Apple Music on a Mac or from iTunes (File › Library › Export Playlist) and open the file with “Import a list” on the Download page."));
+            result.Notes.Add(L.T("To get them all: export the playlist from Apple Music on a Mac or from iTunes (File › Library › Export Playlist) and open the file with “Import a list” in Search."));
         }
         return result;
     }

@@ -4,7 +4,6 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
     <Grid>
-        <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
             <StackPanel Margin="28,8,20,28">
                 <Grid Margin="0,0,8,22">

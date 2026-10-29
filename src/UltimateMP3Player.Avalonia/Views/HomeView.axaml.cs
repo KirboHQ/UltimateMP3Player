@@ -16,7 +16,7 @@ public partial class HomeView : UserControl
             list.AddHandler(PointerPressedEvent, OnCardPressed, RoutingStrategies.Tunnel);
     }
 
-    private static void OnCardPressed(object? sender, PointerPressedEventArgs e)
+    internal static void OnCardPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is not ListBox list || !e.GetCurrentPoint(list).Properties.IsLeftButtonPressed) return;
         if ((e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Shift | KeyModifiers.Meta)) != 0) return;

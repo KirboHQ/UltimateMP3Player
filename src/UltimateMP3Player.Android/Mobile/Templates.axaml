@@ -80,12 +80,13 @@
 
     <!-- ============================================================ song rows -->
 
-    <!-- Only a sign, before the "⋯": a cloud for a song not saved on the phone, a ring while it's being saved, a warning sign
-         when it's no longer online; nothing for a saved song. Saving is in the song's menu and next to the heart in the player. -->
+    <!-- Only a sign, before the menu dots, where the song is the exception to Settings › Download (TrackViewModel.ShowSign): a cloud
+         on one not saved while MP3s are saved, a mark on one saved while the library is in the cloud; a warning sign when it's no longer
+         online, a ring while it's being saved. -->
     <DataTemplate x:Key="TrackCloudCell" DataType="vm:TrackViewModel" x:DataType="vm:TrackViewModel" x:CompileBindings="True">
         <Panel>
-            <TextBlock Classes="glyph cloud" Classes.gone="{Binding IsUnavailable}" Width="40" FontSize="17" TextAlignment="Center" VerticalAlignment="Center"
-                       Text="{Binding CloudGlyph, Converter={x:Static views:Converters.Glyph}}" IsVisible="{Binding ShowCloud}"/>
+            <TextBlock Classes="glyph cloud" Classes.gone="{Binding SignIsGone}" Classes.saved="{Binding SignIsSaved}" Width="40" FontSize="17"
+                       TextAlignment="Center" VerticalAlignment="Center" Text="{Binding SignGlyph, Converter={x:Static views:Converters.Glyph}}" IsVisible="{Binding ShowSign}"/>
             <Panel Width="40" IsVisible="{Binding IsSaving}">
                 <views:ProgressRing Width="20" Height="20" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}"
                                     Stroke="{DynamicResource AccentBrush}" Track="{DynamicResource Surface3Brush}"/>
@@ -179,8 +180,8 @@
                         <!-- suggested online, or a song of the library in the cloud -->
                         <TextBlock Text="{local:Icon E93E}" Classes="glyph" FontSize="12" Foreground="{DynamicResource AccentTextBrush}" Margin="0,0,6,0"
                                    IsVisible="{Binding IsRadio}"/>
-                        <TextBlock Text="{local:Icon E753}" Classes="glyph" FontSize="12" Foreground="{DynamicResource MutedBrush}" Margin="0,0,6,0"
-                                   IsVisible="{Binding ShowCloud}"/>
+                        <TextBlock Classes="glyph cloud" Classes.gone="{Binding Track.SignIsGone}" Classes.saved="{Binding Track.SignIsSaved}" FontSize="12" Margin="0,0,6,0"
+                                   Text="{Binding Track.SignGlyph, Converter={x:Static views:Converters.Glyph}}" IsVisible="{Binding Track.ShowSign}"/>
                         <TextBlock Grid.Column="1" Text="{Binding Track.Artist}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
                     </Grid>
                 </StackPanel>
@@ -274,12 +275,12 @@
                         <TextBlock Classes="glyph" Text="{Binding IsPlaying, Converter={x:Static views:Converters.PlayGlyph}}" Foreground="{DynamicResource OnAccentBrush}"
                                    FontSize="15" HorizontalAlignment="Center"/>
                     </Border>
-                    <!-- not saved on the phone: a cloud on the cover (only a sign; a ring while it's being saved) -->
+                    <!-- the song's sign on the cover (the exception to Settings › Download: TrackViewModel.ShowSign; a ring while it's saved) -->
                     <Border Width="30" Height="30" CornerRadius="15" Background="#A6000000" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="7"
-                            IsVisible="{Binding IsCloud}">
+                            IsVisible="{Binding HasSign}">
                         <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock Classes="glyph" Text="{Binding CloudGlyph, Converter={x:Static views:Converters.Glyph}}" FontSize="14" Foreground="White"
-                                       HorizontalAlignment="Center" IsVisible="{Binding ShowCloud}"/>
+                            <TextBlock Classes="glyph" Text="{Binding SignGlyph, Converter={x:Static views:Converters.Glyph}}" FontSize="14" Foreground="White"
+                                       HorizontalAlignment="Center" IsVisible="{Binding ShowSign}"/>
                             <views:ProgressRing Width="18" Height="18" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}" Stroke="White"
                                                 Track="#50FFFFFF" IsVisible="{Binding IsSaving}"/>
                         </Panel>

@@ -18,12 +18,12 @@ public partial class DownloadsView : UserControl
         DataContextChanged += (_, _) => Attach(DataContext as DownloadsPageViewModel);
         DetachedFromVisualTree += (_, _) => Attach(null);
         AttachedToVisualTree += (_, _) => Attach(DataContext as DownloadsPageViewModel);
-        // The tags and "Also add to" buttons of the analyzed link (inside its template).
+        // The tags and playlists buttons of the analyzed link (inside its template).
         AddHandler(Button.ClickEvent, (_, e) =>
         {
             if (e.Source is not Button { Classes: var c } b || b.DataContext is not LinkViewModel link) return;
             if (c.Contains("tags") && App.Host.Session is { } main) Menus.Open(Menus.TagPicker(link.TagIds, main, link.OnTagsChosen), b, true);
-            else if (c.Contains("also")) Menus.Open(Menus.AlsoPicker(link), b, true);
+            else if (c.Contains("playlists")) Menus.Open(Menus.PlaylistPicker(link), b, true);
         });
         // A downloaded song has the usual song menu (several selected downloads, theirs); a double click plays it within "All songs".
         JobList.AddHandler(PointerReleasedEvent, (_, e) =>

@@ -79,25 +79,298 @@ public sealed class ProgressRing : FrameworkElement
     }
 }
 
-// Content host that fades and slides in each new page.
-public sealed class AnimatedContent : ContentControl
+// The page area. A new page slides in from the side its place says (the DataContext's IPageOrder: the sidebar's entries top to
+// bottom, or a page's tabs left to right, Horizontal) while the old one slides out the other way, a gap between them. The pages
+// on the move sit on a strip and the view glides along it (Core.Glide): another page picked halfway goes after the last one
+// still seen on its side, the one it was leaving just turns round, and the motion carries on from where it is at the speed it
+// has (never cut and started again). A page with no place fades in. A page keeps its view (no new copy) while it's on the strip;
+// while they move they're cached as pictures (only moved, not drawn again).
+// With KeepViews the last pages left stay built (going back to one doesn't make its view again: the DJ's took several frames).
+public sealed class AnimatedContent : Grid
 {
-    private readonly TranslateTransform _shift = new();
+    public static readonly DependencyProperty ContentProperty = DependencyProperty.Register(nameof(Content), typeof(object), typeof(AnimatedContent),
+        new PropertyMetadata(null, (d, e) => ((AnimatedContent)d).Swap(e.OldValue, e.NewValue)));
+
+    public static readonly DependencyProperty HorizontalProperty = DependencyProperty.Register(nameof(Horizontal), typeof(bool), typeof(AnimatedContent));
+    public static readonly DependencyProperty KeepViewsProperty = DependencyProperty.Register(nameof(KeepViews), typeof(bool), typeof(AnimatedContent));
+
+    public object? Content { get => GetValue(ContentProperty); set => SetValue(ContentProperty, value); }
+    public bool Horizontal { get => (bool)GetValue(HorizontalProperty); set => SetValue(HorizontalProperty, value); }
+    public bool KeepViews { get => (bool)GetValue(KeepViewsProperty); set => SetValue(KeepViewsProperty, value); }
+
+    // The selections that move with the page (SlidingPill) take the same time: they start and end together.
+    public const double Ms = 210;
+    private const double Gap = 56;
+
+    // The pages on the strip and their place on it (in page lengths); _shown is the one there, or on its way.
+    private readonly List<(ContentPresenter View, int Slot)> _strip = new();
+    private ContentPresenter _shown = new();
+    private readonly Core.Glide _at = new();
+    private bool _ticking, _fading;
+    // The pages left, newest last (KeepViews), at most Kept.
+    private readonly List<ContentPresenter> _kept = new();
+    private const int Kept = 6;
 
     public AnimatedContent()
     {
-        RenderTransform = _shift;
         Focusable = false;
+        ClipToBounds = true;
+        Children.Add(_shown);
+        _strip.Add((_shown, 0));
+        // (another profile's pages: the ones kept are of no use)
+        DataContextChanged += (_, _) => Forget();
     }
 
-    protected override void OnContentChanged(object oldContent, object newContent)
+    private int? Order(object? page) => page != null && DataContext is ViewModels.IPageOrder o ? o.OrderOf(page) : null;
+
+    private void Swap(object? old, object? now)
     {
-        base.OnContentChanged(oldContent, newContent);
-        if (!Ui.Animations || oldContent == null || !IsLoaded) return;
+        if (_fading) Settle();
+        if (old == null || now == null || !Ui.Animations || !IsLoaded || ActualWidth < 1 || ActualHeight < 1)
+        {
+            Settle();
+            var left = _shown;
+            _shown = ViewOf(now);
+            Children.Add(_shown);
+            _strip[0] = (_shown, 0);
+            Discard(left);
+            return;
+        }
+        int? from = Order(old), to = Order(now);
+        // (the keys don't stay in a box of the page going away: Ctrl+arrows work at once)
+        if (_shown.IsKeyboardFocusWithin) Window.GetWindow(this)?.Focus();
+        if (_strip.FirstOrDefault(p => p.View.Content == now).View is { } back) _shown = back;
+        else if (from is { } f && to is { } t && f != t)
+        {
+            int dir = Math.Sign(t - f);
+            double at = _at.Value;
+            // (the ones out of sight go: the new one comes after the last one still seen on its side)
+            foreach (var p in _strip.Where(p => p.View != _shown && Math.Abs(p.Slot - at) >= 1).ToList())
+            {
+                Discard(p.View);
+                _strip.Remove(p);
+            }
+            int slot = (dir > 0 ? _strip.Max(p => p.Slot) : _strip.Min(p => p.Slot)) + dir;
+            _shown = ViewOf(now);
+            Children.Add(_shown);
+            _strip.Add((_shown, slot));
+        }
+        else
+        {
+            FadeIn(now);
+            return;
+        }
+        var scale = VisualTreeHelper.GetDpi(this).DpiScaleX;
+        foreach (var (view, _) in _strip)
+        {
+            view.IsHitTestVisible = view == _shown;
+            view.CacheMode ??= new BitmapCache(scale) { SnapsToDevicePixels = true };
+        }
+        _at.To(_strip.First(p => p.View == _shown).Slot, Ms);
+        // (in place before the first frame: the new page never shows over the old one)
+        Place();
+        if (_ticking) return;
+        _ticking = true;
+        CompositionTarget.Rendering += OnFrame;
+    }
+
+    private void OnFrame(object? sender, EventArgs e)
+    {
+        Place();
+        if (!_at.Moving) Settle();
+    }
+
+    private void Place()
+    {
+        double step = (Horizontal ? ActualWidth : ActualHeight) + Gap, at = _at.Value;
+        foreach (var (view, slot) in _strip)
+        {
+            if (view.RenderTransform is not TranslateTransform { IsFrozen: false } shift) view.RenderTransform = shift = new TranslateTransform();
+            if (Horizontal) shift.X = (slot - at) * step;
+            else shift.Y = (slot - at) * step;
+        }
+    }
+
+    // A page with no place: what's there fades out where it is, the new one fades in with a short rise.
+    private void FadeIn(object now)
+    {
+        StopTicking();
+        foreach (var (view, _) in _strip)
+        {
+            view.IsHitTestVisible = false;
+            view.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(70)));
+        }
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var time = TimeSpan.FromMilliseconds(220);
-        BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, time) { EasingFunction = ease });
-        _shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(14, 0, time) { EasingFunction = ease });
+        var shift = new TranslateTransform();
+        var view2 = _shown = ViewOf(now);
+        view2.RenderTransform = shift;
+        Children.Add(view2);
+        _strip.Clear();
+        _strip.Add((view2, 0));
+        _at.Set(0);
+        _fading = true;
+        var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(120)) { EasingFunction = ease };
+        fade.Completed += (_, _) => { if (_fading && _shown == view2) Settle(); };
+        view2.BeginAnimation(OpacityProperty, fade);
+        shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(14, 0, TimeSpan.FromMilliseconds(120)) { EasingFunction = ease });
+    }
+
+    private void StopTicking()
+    {
+        if (!_ticking) return;
+        _ticking = false;
+        CompositionTarget.Rendering -= OnFrame;
+    }
+
+    // A page's view: the one kept for it, or a new one.
+    private ContentPresenter ViewOf(object? page)
+    {
+        var view = _kept.FirstOrDefault(v => v.Content == page);
+        if (view == null) return new ContentPresenter { Content = page };
+        _kept.Remove(view);
+        return view;
+    }
+
+    private void Discard(ContentPresenter view)
+    {
+        Children.Remove(view);
+        view.BeginAnimation(OpacityProperty, null);
+        view.RenderTransform = Transform.Identity;
+        view.CacheMode = null;
+        if (!KeepViews || view.Content == null)
+        {
+            view.Content = null;
+            return;
+        }
+        _kept.Remove(view);
+        _kept.Add(view);
+        if (_kept.Count > Kept) Forget(_kept[0]);
+    }
+
+    private void Forget(ContentPresenter? only = null)
+    {
+        foreach (var view in _kept.Where(v => only == null || v == only).ToList())
+        {
+            view.Content = null;
+            _kept.Remove(view);
+        }
+    }
+
+    // Arrived (or cut short by a page with no place): the page shown alone, the others let go.
+    private void Settle()
+    {
+        StopTicking();
+        _fading = false;
+        foreach (var view in Children.OfType<ContentPresenter>().Where(v => v != _shown).ToList()) Discard(view);
+        _strip.Clear();
+        _strip.Add((_shown, 0));
+        _at.Set(0);
+        _shown.BeginAnimation(OpacityProperty, null);
+        _shown.RenderTransform = Transform.Identity;
+        _shown.CacheMode = null;
+        _shown.IsHitTestVisible = true;
+    }
+}
+
+// The selection under a row (or column) of RadioButtons (anywhere inside Target: a panel of them, an ItemsControl) that glides to
+// the one checked with the page it opens (AnimatedContent's time, Core.Glide: a click halfway carries the motion on), and fades
+// away when none is. Put it in the same cell as the buttons, behind them.
+public sealed class SlidingPill : FrameworkElement
+{
+    public static readonly DependencyProperty TargetProperty = DependencyProperty.Register(nameof(Target), typeof(FrameworkElement), typeof(SlidingPill),
+        new PropertyMetadata(null, (d, e) => ((SlidingPill)d).Attach(e.OldValue as FrameworkElement, e.NewValue as FrameworkElement)));
+    public static readonly DependencyProperty FillProperty = DependencyProperty.Register(nameof(Fill), typeof(Brush), typeof(SlidingPill),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+    public static readonly DependencyProperty RadiusProperty = DependencyProperty.Register(nameof(Radius), typeof(double), typeof(SlidingPill),
+        new FrameworkPropertyMetadata(999.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public FrameworkElement? Target { get => (FrameworkElement?)GetValue(TargetProperty); set => SetValue(TargetProperty, value); }
+    public Brush? Fill { get => (Brush?)GetValue(FillProperty); set => SetValue(FillProperty, value); }
+    public double Radius { get => (double)GetValue(RadiusProperty); set => SetValue(RadiusProperty, value); }
+
+    private readonly Core.Glide _x = new(), _y = new(), _w = new(), _h = new(), _show = new();
+    private bool _ticking;
+
+    public SlidingPill()
+    {
+        IsHitTestVisible = false;
+        // (placed at once, without gliding, when it first shows or the buttons move)
+        Loaded += (_, _) => Dispatcher.BeginInvoke(() => Place(false), System.Windows.Threading.DispatcherPriority.Loaded);
+        SizeChanged += (_, _) => Place(false);
+    }
+
+    private void Attach(FrameworkElement? old, FrameworkElement? now)
+    {
+        old?.RemoveHandler(ToggleButton.CheckedEvent, (RoutedEventHandler)OnChecked);
+        old?.RemoveHandler(ToggleButton.UncheckedEvent, (RoutedEventHandler)OnChecked);
+        now?.AddHandler(ToggleButton.CheckedEvent, (RoutedEventHandler)OnChecked);
+        now?.AddHandler(ToggleButton.UncheckedEvent, (RoutedEventHandler)OnChecked);
+    }
+
+    // (after the binding has unchecked the old one too)
+    private void OnChecked(object sender, RoutedEventArgs e) =>
+        Dispatcher.BeginInvoke(() => Place(IsLoaded && Ui.Animations), System.Windows.Threading.DispatcherPriority.Input);
+
+    private static IEnumerable<RadioButton> Buttons(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is RadioButton r) yield return r;
+            else foreach (var inner in Buttons(child)) yield return inner;
+        }
+    }
+
+    private void Place(bool glide, bool again = false)
+    {
+        if (Target == null || !IsLoaded) return;
+        // (its own Visibility: IsVisible catches up only after the layout, a strip just shown would have none)
+        var on = Buttons(Target).FirstOrDefault(r => r.IsChecked == true && r.Visibility == Visibility.Visible);
+        // (the row just shown, its buttons not laid out yet: once more after the layout)
+        if (on != null && on.RenderSize.Width < 1)
+        {
+            if (!again) Dispatcher.BeginInvoke(() => Place(glide, true), System.Windows.Threading.DispatcherPriority.Loaded);
+            return;
+        }
+        if (on != null)
+        {
+            var at = on.TransformToVisual(this).TransformBounds(new Rect(on.RenderSize));
+            // (coming back from nothing: it appears where it is, it doesn't fly in from the last place)
+            bool move = glide && _show.Value > 0.01;
+            Go(_x, at.X, move);
+            Go(_y, at.Y, move);
+            Go(_w, at.Width, move);
+            Go(_h, at.Height, move);
+        }
+        Go(_show, on == null ? 0 : 1, glide);
+        InvalidateVisual();
+        if (!glide || _ticking) return;
+        _ticking = true;
+        CompositionTarget.Rendering += OnFrame;
+    }
+
+    private static void Go(Core.Glide g, double to, bool glide)
+    {
+        if (glide) g.To(to, AnimatedContent.Ms);
+        else g.Set(to);
+    }
+
+    private void OnFrame(object? sender, EventArgs e)
+    {
+        InvalidateVisual();
+        if (_x.Moving || _y.Moving || _w.Moving || _h.Moving || _show.Moving) return;
+        _ticking = false;
+        CompositionTarget.Rendering -= OnFrame;
+    }
+
+    protected override void OnRender(DrawingContext dc)
+    {
+        double show = _show.Value, w = _w.Value, h = _h.Value;
+        if (Fill == null || show <= 0.001 || w < 1 || h < 1) return;
+        double r = Math.Min(Radius, h / 2);
+        dc.PushOpacity(show);
+        dc.DrawRoundedRectangle(Fill, null, new Rect(_x.Value, _y.Value, w, h), r, r);
+        dc.Pop();
     }
 }
 

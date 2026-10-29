@@ -1,0 +1,46 @@
+<UserControl x:Class="UltimateMP3Player.Views.LibraryHubView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:UltimateMP3Player"
+             xmlns:views="clr-namespace:UltimateMP3Player.Views">
+    <!-- The library's parts as tabs (one entry in the sidebar): the strip and the colour behind stay, only the part under them
+         slides sideways, toward the tab picked (Ctrl+←/→ too) -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Border Grid.RowSpan="2" Height="300" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
+
+        <Border HorizontalAlignment="Left" Margin="28,8,28,6" CornerRadius="20" Padding="4" Background="{DynamicResource SurfaceBrush}">
+            <Grid>
+                <views:SlidingPill Target="{Binding ElementName=Tabs}" Fill="{DynamicResource AccentSoftBrush}"/>
+                <StackPanel x:Name="Tabs" Orientation="Horizontal">
+                    <RadioButton Style="{StaticResource TabSegment}" GroupName="LibraryHub" local:Ui.Glyph="&#xE8F1;" Content="{local:T 'All songs'}"
+                                 IsChecked="{Binding IsAll, Mode=OneWay}" Command="{Binding AllCommand}"/>
+                    <RadioButton Style="{StaticResource TabSegment}" GroupName="LibraryHub" local:Ui.Glyph="&#xE8B7;" Content="{local:T 'Not in a playlist'}" Margin="4,0,0,0"
+                                 IsChecked="{Binding IsUnsorted, Mode=OneWay}" Command="{Binding UnsortedCommand}" ToolTip="{local:T 'Songs that aren\'t in any playlist'}"/>
+                    <RadioButton Style="{StaticResource TabSegment}" GroupName="LibraryHub" local:Ui.Glyph="&#xE90B;" Content="{local:T Playlists}" Margin="4,0,0,0"
+                                 IsChecked="{Binding IsPlaylists, Mode=OneWay}" Command="{Binding PlaylistsCommand}"/>
+                    <RadioButton Style="{StaticResource TabSegment}" GroupName="LibraryHub" local:Ui.Glyph="&#xE77B;" Margin="4,0,0,0"
+                                 IsChecked="{Binding IsArtists, Mode=OneWay}" Command="{Binding ArtistsCommand}" ToolTip="{local:T 'The artists you follow and their new releases'}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{local:T Artists}"/>
+                            <!-- new releases not seen yet -->
+                            <Border Margin="7,0,0,0" CornerRadius="8" MinWidth="16" Height="16" Padding="4,0" Background="{DynamicResource AccentGradient}"
+                                    Visibility="{Binding Main.HasNewReleases, Converter={StaticResource BoolVis}}">
+                                <TextBlock Text="{Binding Main.NewReleases}" FontSize="10.5" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"/>
+                            </Border>
+                        </StackPanel>
+                    </RadioButton>
+                    <RadioButton Style="{StaticResource TabSegment}" GroupName="LibraryHub" local:Ui.Glyph="&#xE93E;" Content="{local:T Radio}" Margin="4,0,0,0"
+                                 IsChecked="{Binding IsRadio, Mode=OneWay}" Command="{Binding RadioCommand}"
+                                 ToolTip="{local:T 'Internet radios: find them, save the ones you like, listen live'}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <views:AnimatedContent Grid.Row="1" Horizontal="True" Content="{Binding Current}" KeepViews="True"/>
+    </Grid>
+</UserControl>

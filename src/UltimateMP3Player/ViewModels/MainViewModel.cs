@@ -11,10 +11,11 @@ using UltimateMP3Player.Core;
 namespace UltimateMP3Player.ViewModels;
 
 // Everything the window shows for one profile.
-public sealed class MainViewModel : Observable
+public sealed class MainViewModel : Observable, IPageOrder
 {
     private readonly Dictionary<string, TrackViewModel> _vms = new();
     private readonly Stack<object> _back = new();
+    private readonly Stack<object> _forward = new();
     private readonly DispatcherTimer _searchTimer;
     private readonly DispatcherTimer _toastTimer;
     private readonly DispatcherTimer _refreshTimer = new() { Interval = TimeSpan.FromMilliseconds(80) };
@@ -63,10 +64,11 @@ public sealed class MainViewModel : Observable
         GoSettingsCommand = new RelayCommand(GoSettings);
         GoTogetherCommand = new RelayCommand(() => Navigate(Together));
         GoNowPlayingCommand = new RelayCommand(() => { if (Page == NowPlaying) GoBack(); else Navigate(NowPlaying); });
-        BackCommand = new RelayCommand(GoBack, () => _back.Count > 0);
+        BackCommand = new RelayCommand(GoBack, () => _back.Any(Usable));
+        ForwardCommand = new RelayCommand(GoForward, () => _forward.Any(Usable));
         NewPlaylistCommand = new RelayCommand(() => _ = NewPlaylist(null));
         OpenPlaylistCommand = new RelayCommand(p => { if (p is PlaylistViewModel vm) OpenPlaylist(vm); });
-        PlayPlaylistCommand = new RelayCommand(p => { if (p is PlaylistViewModel vm) PlayPlaylist(vm); });
+        PlayPlaylistCommand = new RelayCommand(p => { if (p is PlaylistViewModel vm) PlayPlaylist(vm); }, p => p is not PlaylistViewModel { HasSongs: false });
         // A song card: the one already playing pauses and resumes. In a room: into the room's queue.
         PlayTrackCommand = new RelayCommand(p =>
         {
@@ -191,6 +193,12 @@ public sealed class MainViewModel : Observable
         m.PlaylistsChanged -= _playlistsChanged;
         m.TagsChanged -= _tagsChanged;
         m.TrackTagsChanged -= _trackTagsChanged;
+    }
+
+    // Settings › "Save the audio on your device" changed: which songs carry a sign changes with it (TrackViewModel.ShowSign).
+    internal void RefreshSigns()
+    {
+        foreach (var vm in _vms.Values) vm.RefreshCloud();
     }
 
     // The other device's music arrived or went, or whose is shown changed: every page again.
@@ -434,6 +442,7 @@ public sealed class MainViewModel : Observable
     public ICommand GoTogetherCommand { get; }
     public ICommand GoNowPlayingCommand { get; }
     public ICommand BackCommand { get; }
+    public ICommand ForwardCommand { get; }
     public ICommand NewPlaylistCommand { get; }
     public ICommand OpenPlaylistCommand { get; }
     public ICommand PlayPlaylistCommand { get; }
@@ -526,14 +535,73 @@ public sealed class MainViewModel : Observable
             if (old is ArtistsViewModel) Profile.SeeReleases();
             // (a list read meanwhile: its card is in sight now)
             if (value is DownloadsPageViewModel downloads) downloads.DropListGroup();
-            OnChanged(nameof(ShowPlayerBar), nameof(ShowDownloadPanel));
-            Player.UpNextVisible = value == NowPlaying;
+            // (what the search's page and the library's tabs show changes only while they're the page: the one sliding away
+            // keeps its own)
+            if (value is SearchViewModel or DownloadsPageViewModel) Search.OnDownloads = value is DownloadsPageViewModel;
+            if (LibraryHub.Has(value)) LibraryHub.Current = value;
+            OnChanged(nameof(ShowPlayerBar), nameof(ShowDownloadPanel), nameof(Shown));
+            // (the song's page has its own big "Up next": the small one over the player bar closes)
+            if (value == NowPlaying) _queueOpen = false;
+            Player.UpNextVisible = value == NowPlaying || _queueOpen;
+            OnChanged(nameof(QueueOpen), nameof(QueueShown));
             foreach (var p in Playlists) p.IsSelected = value is PlaylistPageViewModel pp && pp.Vm == p;
             foreach (var t in Tags) t.IsSelected = value is LibraryViewModel { Tag: { } tag } && tag == t;
             OnChanged(nameof(Section), nameof(IsNowPlaying));
             if (value == NowPlaying) NowPlaying.Refresh();
         }
     }
+
+    // What the computers' page area shows: the search's page for the downloads too (one sidebar entry, the box at its top), the
+    // library's tabs around its parts (the tabs stay, the part slides).
+    public object Shown => Page switch
+    {
+        DownloadsPageViewModel => Search,
+        _ when LibraryHub.Has(Page) => LibraryHub,
+        _ => Page,
+    };
+
+    // The player bar's queue button (computers): on the song's page it shows or hides the big "Up next" there, on any other page
+    // the small one popping out over the bar.
+    private bool _queueOpen;
+    public bool QueueOpen
+    {
+        get => _queueOpen;
+        set
+        {
+            if (!Set(ref _queueOpen, value)) return;
+            Player.UpNextVisible = Page == NowPlaying || value;
+            OnChanged(nameof(QueueShown), nameof(ShowDownloadPanel));
+        }
+    }
+    public bool QueueShown => Page == NowPlaying ? !NowPlaying.QueueHidden : _queueOpen;
+    public ICommand ToggleQueueCommand => _toggleQueue ??= new RelayCommand(() =>
+    {
+        if (Page == NowPlaying) NowPlaying.QueueHidden = !NowPlaying.QueueHidden;
+        else QueueOpen = !QueueOpen;
+    });
+    private ICommand? _toggleQueue;
+    internal void RefreshQueueShown() => OnChanged(nameof(QueueShown));
+
+    // The library's parts as tabs (computers): All songs, Not in a playlist, Playlists, Artists, Radio.
+    public LibraryHubViewModel LibraryHub => _hub ??= new LibraryHubViewModel(this);
+    private LibraryHubViewModel? _hub;
+    public PlaylistsPageViewModel PlaylistsPage => _playlistsPage ??= new PlaylistsPageViewModel(this);
+    private PlaylistsPageViewModel? _playlistsPage;
+
+    // Where a page sits in the sidebar, top to bottom: one further down comes in from below (the page host slides by it);
+    // null = not in the sidebar (it fades in).
+    public int? OrderOf(object page) => page switch
+    {
+        HomeViewModel => 0,
+        SearchViewModel or DownloadsPageViewModel => 1,
+        LibraryHubViewModel => 2,
+        TogetherViewModel => 3,
+        DjViewModel => 4,
+        PlaylistPageViewModel pp => Playlists.IndexOf(pp.Vm) is var i and >= 0 ? 10 + i : null,
+        LibraryViewModel { Tag: { } tag } => Tags.IndexOf(tag) is var j and >= 0 ? 10000 + j : null,
+        SettingsViewModel or StatsViewModel => 100000,
+        _ => null,
+    };
 
     public string Section => Page switch
     {
@@ -550,6 +618,7 @@ public sealed class MainViewModel : Observable
         SettingsViewModel or StatsViewModel => "settings",
         NowPlayingViewModel => "nowplaying",
         SearchViewModel => "search",
+        PlaylistsPageViewModel => "playlists",
         _ => "",
     };
 
@@ -561,12 +630,48 @@ public sealed class MainViewModel : Observable
     public bool IsTogether { get => Section == "together"; set { if (value) Navigate(Together); } }
     public bool IsArtists { get => Section == "artists"; set { if (value) OpenArtists(); } }
     public bool IsRadio { get => Section == "radio"; set { if (value) OpenStations(); } }
-    public bool IsSearch { get => Section == "search"; set { if (value) OpenSearch(); } }
+    // (the computers' Search: the downloads are its page too)
+    public bool IsSearch { get => Section is "search" or "downloads"; set { if (value) OpenSearch(); } }
     // On the DJ page the decks are the player.
     public bool ShowPlayerBar => Page is not DjViewModel;
     public bool IsSettings { get => Section == "settings"; set { if (value) GoSettings(); } }
-    // The computers' sidebar has one entry for the library: all the songs and the ones in no playlist are its two tabs.
-    public bool IsLibraryNav { get => Section is "library" or "unsorted"; set { if (value && !IsLibraryNav) Navigate(LibraryPage); } }
+    // The computers' sidebar has one entry for the library: its parts are tabs (the one seen last opens again).
+    public bool IsLibraryNav { get => LibraryHub.Has(Page); set { if (value && !IsLibraryNav) OpenLibrary(); } }
+
+    public void OpenLibrary()
+    {
+        var page = LibraryHub.Current;
+        if (page == Artists) OpenArtists();
+        else if (page == Stations) OpenStations();
+        else Navigate(page);
+    }
+
+    // Ctrl+1…5: the sidebar's pages, top to bottom.
+    public void GoMenu(int index)
+    {
+        switch (index)
+        {
+            case 0: IsHome = true; break;
+            case 1: OpenSearch(); break;
+            case 2: IsLibraryNav = true; break;
+            case 3: IsTogether = true; break;
+            case 4: IsDj = true; break;
+        }
+    }
+
+    // Ctrl+↑/↓: the page above or below the open one in the sidebar (from one that isn't there: the first or the last).
+    public void StepMenu(int dir)
+    {
+        int at = OrderOf(Shown) is int o and < 5 ? o : dir > 0 ? -1 : 5;
+        if (at + dir is var next and >= 0 and < 5) GoMenu(next);
+    }
+
+    // Ctrl+←/→: the tab beside the open one (the library's parts, the search's kinds of results).
+    public void StepTab(int dir)
+    {
+        if (LibraryHub.Has(Page)) LibraryHub.Step(dir);
+        else if (Page == Search && Search.ShowResults) Search.StepFilter(dir);
+    }
 
     // The sidebar's tags shown or folded under their heading (kept in the settings).
     public bool TagsOpen
@@ -599,8 +704,22 @@ public sealed class MainViewModel : Observable
         if (page == UnsortedPage) UnsortedPage.Rebuild();
         else if (page is LibraryViewModel lib) lib.EnsureFresh();
         else if (page is SearchViewModel search) search.EnsureFresh();
-        if (Page is not SearchViewModel || page is SearchViewModel) _back.Push(Page);
+        // The search without words and the downloads are the same page: no step in the history between them.
+        if (Page is SearchViewModel or DownloadsPageViewModel && page is SearchViewModel or DownloadsPageViewModel && !Search.HasQuery)
+        {
+            Page = page;
+            OnNavChanged();
+            return;
+        }
+        Go(page);
+    }
+
+    // A new page with the one left behind in the history (a new step: what was ahead is forgotten, like a browser's).
+    private void Go(object page)
+    {
+        _back.Push(Page);
         if (_back.Count > 30) { var keep = _back.Take(30).Reverse().ToList(); _back.Clear(); foreach (var k in keep) _back.Push(k); }
+        _forward.Clear();
         Page = page;
         OnNavChanged();
         CommandManager.InvalidateRequerySuggested();
@@ -610,23 +729,33 @@ public sealed class MainViewModel : Observable
         nameof(IsRadio), nameof(IsSettings), nameof(IsLibraryNav), nameof(IsSearch));
 
     // Where "back" goes (the phone shows it under the finger that swipes back).
-    public object? BackPage => _back.FirstOrDefault(p => p is not PlaylistPageViewModel pp || IsShown(pp.Vm));
+    public object? BackPage => _back.FirstOrDefault(Usable);
 
-    private void GoBack()
+    // (a playlist deleted meanwhile, or the other device's gone, is skipped)
+    private bool Usable(object p) => p is not PlaylistPageViewModel pp || IsShown(pp.Vm);
+
+    private void GoBack() => Step(_back, _forward);
+
+    // The title bar's forward arrow (and the mouse's forward button): the page left with Back.
+    private void GoForward() => Step(_forward, _back);
+
+    private void Step(Stack<object> from, Stack<object> to)
     {
-        while (_back.Count > 0)
+        while (from.Count > 0)
         {
-            var p = _back.Pop();
-            if (p is PlaylistPageViewModel pp && !IsShown(pp.Vm)) continue;
+            var p = from.Pop();
+            if (!Usable(p)) continue;
             if (p is HomeViewModel) Home.Refresh();
             // (a filter changed meanwhile)
             if (p is PlaylistPageViewModel playlist) playlist.EnsureFresh();
             else if (p is LibraryViewModel lib) lib.EnsureFresh();
             else if (p is SearchViewModel search) search.EnsureFresh();
+            to.Push(Page);
             Page = p;
             break;
         }
         OnNavChanged();
+        CommandManager.InvalidateRequerySuggested();
     }
 
     public void GoSettings()
@@ -643,10 +772,7 @@ public sealed class MainViewModel : Observable
         if (fromSearch && Page == Search)
         {
             Settings.Refresh();
-            _back.Push(Search);
-            Page = Settings;
-            OnNavChanged();
-            CommandManager.InvalidateRequerySuggested();
+            Go(Settings);
             return;
         }
         GoSettings();
@@ -715,10 +841,7 @@ public sealed class MainViewModel : Observable
     {
         if (fromSearch && Page == Search)
         {
-            _back.Push(Search);
-            Page = Downloads;
-            OnNavChanged();
-            CommandManager.InvalidateRequerySuggested();
+            Go(Downloads);
             _ = Downloads.AnalyzeAsync(url);
             return;
         }
@@ -758,7 +881,7 @@ public sealed class MainViewModel : Observable
         }
         var again = tracks.Where(t => t.HasSavedFile).ToList();
         int n = again.Count > 0 ? Host.Downloads.Redownload(Profile, again, plan.CanVideo && plan.WithVideo) : 0;
-        Toast(n > 0 ? L.Count(n, "The song is being downloaded again: see Downloads", "{0} songs are being downloaded again: see Downloads") : L.T("Quality saved"));
+        Toast(n > 0 ? L.Count(n, "The song is being downloaded again", "{0} songs are being downloaded again") : L.T("Quality saved"));
     }
 
     // A result of the online search: in a room it goes straight into the room's queue (like a double click on a song of
@@ -772,13 +895,7 @@ public sealed class MainViewModel : Observable
             return;
         }
         // (from the search page it's like StartDownload: the search stays as it was, to go back to it)
-        if (Page == Search)
-        {
-            _back.Push(Search);
-            Page = Downloads;
-            OnNavChanged();
-            CommandManager.InvalidateRequerySuggested();
-        }
+        if (Page == Search) Go(Downloads);
         else Navigate(Downloads);
         Downloads.ShowHit(hit);
     }
@@ -805,8 +922,10 @@ public sealed class MainViewModel : Observable
 #if ANDROID_APP || IOS_APP
     public bool ShowDownloadPanel => Queue.HasGroups && Page is not (DownloadsPageViewModel or SearchViewModel);
 #else
-    public bool ShowDownloadPanel => Queue.HasGroups && Page is not (DownloadsPageViewModel or DjViewModel);
+    // (the search's page shows them under its box when it has no results on it; hidden under up next popped out)
+    public bool ShowDownloadPanel => Queue.HasGroups && !_queueOpen && Page is not (DownloadsPageViewModel or DjViewModel) && !(Page is SearchViewModel && Search.ShowDownloads);
 #endif
+    internal void RefreshDownloadPanel() => OnChanged(nameof(ShowDownloadPanel));
 
     // ------------------------------------------------------------------ toast
 
@@ -842,6 +961,7 @@ public sealed class MainViewModel : Observable
         if (Page is PlaylistPageViewModel page && !IsShown(page.Vm)) Navigate(Home);
         UnsortedPage.MarkDirty();
         Home.Refresh();
+        _playlistsPage?.Refresh();
     }
 
     // Still there and shown (deleted, or the other device's gone or hidden).
@@ -1551,8 +1671,7 @@ public sealed class MainViewModel : Observable
     // Removes the song everywhere: files, cover, playlists, history, statistics, queue.
     private async Task Delete(List<TrackViewModel> tracks)
     {
-        // A song suggested online, saved and deleted while it plays: this listen goes on (from the cache) instead of
-        // jumping to the next song.
+        // The song playing, deleted: this listen goes on (from the cache) instead of jumping to the next song.
         if (Player.Current is { } playing && tracks.Contains(playing)) await Player.KeepAsSuggestion(playing.T);
         await Player.RemoveTracks(tracks.Select(t => t.Id).ToHashSet());
         var files = new List<string>();
@@ -1655,7 +1774,7 @@ public sealed class MainViewModel : Observable
             if (page == Page) page.Rebuild();
             else page.MarkDirty();
         if (Page is PlaylistPageViewModel current) current.Rebuild();
-        foreach (var behind in _back.OfType<PlaylistPageViewModel>()) behind.MarkDirty();
+        foreach (var behind in _back.Concat(_forward).OfType<PlaylistPageViewModel>()) behind.MarkDirty();
     }
 
     public void OpenTag(TagViewModel t)
@@ -1902,7 +2021,9 @@ public sealed class MainViewModel : Observable
     public void OnArtistsChanged()
     {
         OnChanged(nameof(NewReleases), nameof(HasNewReleases));
-        if (Page is ArtistPageViewModel page) page.OnFollowChanged();
+        // (every follow button, wherever it is: the search's cards, the artists' pages in the history too)
+        Search.RecheckArtists();
+        foreach (var page in _back.Concat(_forward).Append(Page).OfType<ArtistPageViewModel>()) page.OnFollowChanged();
         if (Page == Home) Home.Refresh();
     }
 

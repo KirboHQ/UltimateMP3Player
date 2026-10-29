@@ -218,6 +218,80 @@ public sealed class NewPlaylistCard
     public static readonly NewPlaylistCard Instance = new();
 }
 
+// Where a page sits among its neighbours (the sidebar's entries, a page's tabs): the page host slides the new one in from that side.
+public interface IPageOrder
+{
+    int? OrderOf(object page);
+}
+
+// The computers' Library: its parts as tabs over them (All songs, Not in a playlist, Playlists, Artists, Radio). The tabs stay,
+// the part under them changes sideways, in the tabs' order. Each part is still a page of its own (the history goes through them).
+public sealed class LibraryHubViewModel : Observable, IPageOrder
+{
+    private readonly MainViewModel _main;
+
+    public LibraryHubViewModel(MainViewModel main)
+    {
+        _main = main;
+        _current = main.LibraryPage;
+        AllCommand = new RelayCommand(() => _main.IsLibrary = true);
+        UnsortedCommand = new RelayCommand(() => _main.IsUnsorted = true);
+        PlaylistsCommand = new RelayCommand(() => _main.Navigate(_main.PlaylistsPage));
+        ArtistsCommand = new RelayCommand(_main.OpenArtists);
+        RadioCommand = new RelayCommand(_main.OpenStations);
+    }
+
+    public MainViewModel Main => _main;
+
+    // The part shown (the last one seen while another page is on screen: the sidebar's Library opens it again).
+    private object _current;
+    public object Current
+    {
+        get => _current;
+        set
+        {
+            if (Set(ref _current, value)) OnChanged(nameof(IsAll), nameof(IsUnsorted), nameof(IsPlaylists), nameof(IsArtists), nameof(IsRadio));
+        }
+    }
+
+    public bool Has(object? page) => page == _main.LibraryPage || page == _main.UnsortedPage || page is PlaylistsPageViewModel or ArtistsViewModel or StationsViewModel;
+
+    public int? OrderOf(object page) => page == _main.LibraryPage ? 0 : page == _main.UnsortedPage ? 1
+        : page is PlaylistsPageViewModel ? 2 : page is ArtistsViewModel ? 3 : page is StationsViewModel ? 4 : null;
+
+    public bool IsAll => _current == _main.LibraryPage;
+    public bool IsUnsorted => _current == _main.UnsortedPage;
+    public bool IsPlaylists => _current is PlaylistsPageViewModel;
+    public bool IsArtists => _current is ArtistsViewModel;
+    public bool IsRadio => _current is StationsViewModel;
+
+    public ICommand AllCommand { get; }
+    public ICommand UnsortedCommand { get; }
+    public ICommand PlaylistsCommand { get; }
+    public ICommand ArtistsCommand { get; }
+    public ICommand RadioCommand { get; }
+
+    // (Ctrl+←/→)
+    public void Step(int dir)
+    {
+        var tabs = new[] { AllCommand, UnsortedCommand, PlaylistsCommand, ArtistsCommand, RadioCommand };
+        if (OrderOf(_current) is int i && i + dir is var next and >= 0 and < 5) tabs[next].Execute(null);
+    }
+}
+
+// Library › Playlists (computers): every playlist as a card, then the "New playlist" card.
+public sealed class PlaylistsPageViewModel : Observable
+{
+    public PlaylistsPageViewModel(MainViewModel main) => Main = main;
+
+    public MainViewModel Main { get; }
+    public List<object> Cards => [.. Main.Playlists, NewPlaylistCard.Instance];
+    public string CountText => L.Count(Main.Playlists.Count, "1 playlist", "{0} playlists");
+
+    // (the playlists rebuilt: MainViewModel.RebuildPlaylists)
+    public void Refresh() => OnChanged(nameof(Cards), nameof(CountText));
+}
+
 // "All songs"; with unsorted = the songs in no playlist; with a tag = the songs with that tag.
 public sealed class LibraryViewModel : Observable, ITrackList
 {
@@ -291,7 +365,7 @@ public sealed class LibraryViewModel : Observable, ITrackList
         ? L.T("Right-click a song → Tags, or select several songs and press Tags.")
         : L.T(Unsorted
             ? "Every song is in at least one playlist."
-            : "Paste a link in the bar at the top to download music, or add files from your computer.");
+            : "Search for a song or paste its link in Search to download music, or add files from your computer.");
 
     // A tag page also lists the playlists with that tag.
     public List<PlaylistViewModel> TaggedPlaylists { get; private set; } = new();
@@ -693,6 +767,8 @@ public sealed class NowPlayingViewModel : Observable
             Main.Profile.Data.QueueHidden = value;
             Main.Profile.Save();
             OnChanged();
+            // (the player bar's queue button lights with it)
+            Main.RefreshQueueShown();
         }
     }
 

@@ -100,13 +100,14 @@
         </Setter>
     </ControlTheme>
 
-    <!-- Only a sign, next to the heart: a cloud for a song not saved on the device, a ring while it's being saved, a warning
-         sign when it's no longer available online; nothing for a saved song. Saving is in the menu and next to the heart below. -->
+    <!-- Only a sign, next to the heart, where the song is the exception to Settings › Download (TrackViewModel.ShowSign): a cloud on
+         one not saved while MP3s are saved, a mark on one saved while the library is in the cloud; a warning sign when it's no longer
+         online, a ring while it's being saved. -->
     <DataTemplate x:Key="TrackCloudCell">
         <Panel Width="32" Height="32">
-            <Panel Background="Transparent" ToolTip.Tip="{Binding CloudTip}" IsVisible="{Binding ShowCloud}">
-                <TextBlock Classes="glyph cloud" Classes.gone="{Binding IsUnavailable}" Text="{Binding CloudGlyph, Converter={StaticResource Icon}}"
-                           FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <Panel Background="Transparent" ToolTip.Tip="{Binding SignTip}" IsVisible="{Binding ShowSign}">
+                <TextBlock Classes="glyph cloud" Classes.gone="{Binding SignIsGone}" Classes.saved="{Binding SignIsSaved}"
+                           Text="{Binding SignGlyph, Converter={StaticResource Icon}}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Panel>
             <Panel Background="Transparent" ToolTip.Tip="{Binding CloudTip}" IsVisible="{Binding IsSaving}">
                 <views:ProgressRing Width="17" Height="17" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}"
@@ -391,12 +392,12 @@
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0">
                             <TextBlock Classes="glyph ico" Foreground="{DynamicResource OnAccentBrush}" FontSize="17" HorizontalAlignment="Center"/>
                         </Border>
-                        <!-- not saved on the device: a cloud on the cover (only a sign; a ring while it's being saved) -->
-                        <Border Width="28" Height="28" CornerRadius="14" Background="#A6000000" ToolTip.Tip="{Binding CloudTip}"
-                                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="7" IsVisible="{Binding IsCloud}">
+                        <!-- the song's sign on the cover (the exception to Settings › Download: TrackViewModel.ShowSign; a ring while it's saved) -->
+                        <Border Width="28" Height="28" CornerRadius="14" Background="#A6000000" ToolTip.Tip="{Binding SignTip}"
+                                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="7" IsVisible="{Binding HasSign}">
                             <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding CloudGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="14" Foreground="White"
-                                           IsVisible="{Binding ShowCloud}"/>
+                                <TextBlock Text="{Binding SignGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="14" Foreground="White"
+                                           IsVisible="{Binding ShowSign}"/>
                                 <views:ProgressRing Width="16" Height="16" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}" Stroke="White"
                                                     Track="#50FFFFFF" IsVisible="{Binding IsSaving}"/>
                             </Panel>
@@ -434,7 +435,8 @@
                         <Button Classes="disc" Theme="{StaticResource BigPlayButton}" Width="44" Height="44" FontSize="17"
                                 Content="{Binding $parent[Window].DataContext.InRoom, Converter={StaticResource PlayOrAdd}, FallbackValue={local:Icon E768}}"
                                 HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,8,8" Opacity="0"
-                                Command="{Binding $parent[Window].DataContext.PlayPlaylistCommand}" CommandParameter="{Binding}" ToolTip.Tip="{local:T Play}"/>
+                                Command="{Binding $parent[Window].DataContext.PlayPlaylistCommand}" CommandParameter="{Binding}" ToolTip.Tip="{local:T Play}"
+                                IsVisible="{Binding HasSongs}"/>
                     </Panel>
                 </views:SquareBox>
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,10,0,2" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>

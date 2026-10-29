@@ -65,6 +65,10 @@
         <Style Selector="TextBlock.cloud.gone">
             <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
         </Style>
+        <!-- the mark of a song saved on the device (the library in the cloud by default) -->
+        <Style Selector="TextBlock.cloud.saved">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
         <Style Selector="Border.row.gone.cloud TextBlock.title">
             <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
         </Style>

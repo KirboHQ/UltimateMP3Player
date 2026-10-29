@@ -142,6 +142,9 @@
     <Style Selector="TextBlock.cloud">
         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
     </Style>
+    <Style Selector="TextBlock.cloud.saved">
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+    </Style>
     <Style Selector="TextBlock.cloud.gone">
         <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
     </Style>

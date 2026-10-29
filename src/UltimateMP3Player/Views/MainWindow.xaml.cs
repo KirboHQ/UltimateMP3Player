@@ -35,6 +35,8 @@ public partial class MainWindow : Window
             if (WindowState != WindowState.Minimized) s.WindowMaximized = WindowState == WindowState.Maximized;
         };
         PreviewKeyDown += OnKeyDown;
+        PreviewMouseUp += OnMouseSideButton;
+        PreviewMouseDown += FoldQueue;
         PreviewTextInput += OnTextInput;
         PreviewMouseLeftButtonDown += (_, e) => SelectionBar.ClearOnOutsideClick(e.OriginalSource as DependencyObject);
         PreviewDragOver += OnDragOver;
@@ -81,9 +83,30 @@ public partial class MainWindow : Window
         var vm = Vm;
         if (vm == null) return;
         bool inText = Keyboard.FocusedElement is TextBox;
-        bool ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
+        // (Ctrl+↑/↓ go on from a one-line box, Search's: there they have nothing to move, and the box takes the keys as the page opens)
+        bool inLines = Keyboard.FocusedElement is TextBox { AcceptsReturn: true };
+        var mods = Keyboard.Modifiers;
+        bool ctrl = (mods & ModifierKeys.Control) != 0, shift = (mods & ModifierKeys.Shift) != 0;
+        // Alt+←/→: back and forward, like a browser (WPF hands Alt+key over as a system key).
+        if (e.Key == Key.System && mods == ModifierKeys.Alt && e.SystemKey is Key.Left or Key.Right)
+        {
+            Step(vm, e.SystemKey == Key.Right);
+            e.Handled = true;
+            return;
+        }
+        // Ctrl+1…5: the sidebar's pages, like a browser's tabs.
+        if (ctrl && !shift && e.Key is >= Key.D1 and <= Key.D5 or >= Key.NumPad1 and <= Key.NumPad5)
+        {
+            vm.GoMenu(e.Key >= Key.NumPad1 ? e.Key - Key.NumPad1 : e.Key - Key.D1);
+            e.Handled = true;
+            return;
+        }
         switch (e.Key)
         {
+            case Key.Escape when vm.QueueOpen:
+                vm.QueueOpen = false;
+                e.Handled = true;
+                break;
             case Key.Space when !inText:
                 vm.TogglePlay();
                 e.Handled = true;
@@ -93,12 +116,31 @@ public partial class MainWindow : Window
                 dj.TapKey();
                 e.Handled = true;
                 break;
-            case Key.Right when ctrl && !inText:
+            // Ctrl+Shift+arrows: the songs and the volume; Ctrl+arrows: the pages (up/down the sidebar, sideways the tabs).
+            case Key.Right when ctrl && shift && !inText:
                 vm.Player.NextCommand.Execute(null);
                 e.Handled = true;
                 break;
-            case Key.Left when ctrl && !inText:
+            case Key.Left when ctrl && shift && !inText:
                 vm.Player.PreviousCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.Up when ctrl && shift && !inText:
+                vm.Player.Volume += 0.05;
+                e.Handled = true;
+                break;
+            case Key.Down when ctrl && shift && !inText:
+                vm.Player.Volume -= 0.05;
+                e.Handled = true;
+                break;
+            case Key.Right when ctrl && !inText:
+            case Key.Left when ctrl && !inText:
+                vm.StepTab(e.Key == Key.Right ? 1 : -1);
+                e.Handled = true;
+                break;
+            case Key.Up when ctrl && !shift && !inLines:
+            case Key.Down when ctrl && !shift && !inLines:
+                vm.StepMenu(e.Key == Key.Down ? 1 : -1);
                 e.Handled = true;
                 break;
             case Key.Right when !inText:
@@ -109,18 +151,14 @@ public partial class MainWindow : Window
                 vm.Player.Seek(vm.Player.Position - 5);
                 e.Handled = true;
                 break;
-            case Key.Up when ctrl && !inText:
-                vm.Player.Volume += 0.05;
-                e.Handled = true;
-                break;
-            case Key.Down when ctrl && !inText:
-                vm.Player.Volume -= 0.05;
-                e.Handled = true;
-                break;
             case Key.F when ctrl:
             case Key.L when ctrl:
                 vm.OpenSearch();
                 SearchView.FocusShown();
+                e.Handled = true;
+                break;
+            case Key.OemComma when ctrl:
+                vm.GoSettings();
                 e.Handled = true;
                 break;
             case Key.V when ctrl && !inText:
@@ -129,10 +167,38 @@ public partial class MainWindow : Window
                 break;
             case Key.Back when !inText:
             case Key.BrowserBack:
-                if (vm.BackCommand.CanExecute(null)) vm.BackCommand.Execute(null);
+                Step(vm, false);
+                e.Handled = true;
+                break;
+            case Key.BrowserForward:
+                Step(vm, true);
                 e.Handled = true;
                 break;
         }
+    }
+
+    private static void Step(MainViewModel vm, bool forward)
+    {
+        var command = forward ? vm.ForwardCommand : vm.BackCommand;
+        if (command.CanExecute(null)) command.Execute(null);
+    }
+
+    // Up next popped out over the page: a click anywhere else folds it (its own button toggles it; menus opened from it are
+    // windows of their own, not this one).
+    private void FoldQueue(object sender, MouseButtonEventArgs e)
+    {
+        if (Vm is not { QueueOpen: true } vm || e.OriginalSource is not Visual v || PresentationSource.FromVisual(v)?.RootVisual != this) return;
+        for (DependencyObject? d = v; d != null; d = VisualTreeHelper.GetParent(d))
+            if (d == QueuePanel || d == QueueButton) return;
+        vm.QueueOpen = false;
+    }
+
+    // The mouse's side buttons: back and forward.
+    private void OnMouseSideButton(object sender, MouseButtonEventArgs e)
+    {
+        if (Vm is not { } vm || e.ChangedButton is not (MouseButton.XButton1 or MouseButton.XButton2)) return;
+        Step(vm, e.ChangedButton == MouseButton.XButton2);
+        e.Handled = true;
     }
 
     // "<" and ">" slow down and speed up like on YouTube (by the character, so whatever key types them here).
@@ -165,7 +231,8 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    // On a narrow window the volume slider gives up some width, so the right side of the player bar fits its column.
+    // On a narrow window the volume slider gives up some width, or goes (the wheel on the speaker still works), so the right
+    // side of the player bar fits its column.
     private void PlayerBar_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         double column = PlayerGrid.ColumnDefinitions[2].ActualWidth;
@@ -174,8 +241,29 @@ public partial class MainWindow : Window
         foreach (UIElement child in RightBlock.Children)
             if (child is FrameworkElement fe && fe != VolumeSlider && fe.Visibility == Visibility.Visible)
                 others += fe.ActualWidth + fe.Margin.Left + fe.Margin.Right;
-        double width = Math.Clamp(column - others - VolumeSlider.Margin.Left - 2, 56, 110);
+        double room = column - others - VolumeSlider.Margin.Left - 2;
+        VolumeSlider.Visibility = room < 44 ? Visibility.Collapsed : Visibility.Visible;
+        double width = Math.Clamp(room, 44, 110);
         if (Math.Abs(VolumeSlider.Width - width) > 0.5) VolumeSlider.Width = width;
+    }
+
+    // The playback panel's equalizer, like the one in Settings: the wheel moves a band by half a dB, a double click resets it.
+    private void Eq_Wheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not Slider { IsEnabled: true } s || s.DataContext is not EqBandViewModel band) return;
+        band.Gain += e.Delta > 0 ? 0.5 : -0.5;
+        e.Handled = true;
+    }
+
+    private void Eq_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Slider { IsEnabled: true } s && s.DataContext is EqBandViewModel band) band.Gain = 0;
+    }
+
+    private void PlaybackSettings_Click(object sender, RoutedEventArgs e)
+    {
+        PlaybackPopup.IsOpen = false;
+        Vm?.GoSettings();
     }
 
     private void AddCurrentToPlaylist_Click(object sender, RoutedEventArgs e)

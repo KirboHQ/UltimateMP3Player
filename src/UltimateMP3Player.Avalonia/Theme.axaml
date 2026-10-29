@@ -395,7 +395,7 @@
         </Style>
     </ControlTheme>
 
-    <!-- Sidebar navigation entry. -->
+    <!-- Sidebar navigation entry: a pill; the open one's pill is a SlidingPill behind the entries (it glides with the page). -->
     <ControlTheme x:Key="NavButton" TargetType="RadioButton">
         <Setter Property="local:Ui.GrayText" Value="True"/>
         <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
@@ -408,23 +408,26 @@
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="Template">
             <ControlTemplate>
-                <Border Name="Bd" CornerRadius="9" Padding="12,9" Background="Transparent">
-                    <StackPanel Orientation="Horizontal">
+                <Border Name="Bd" CornerRadius="19" Padding="14,9" Background="Transparent">
+                    <DockPanel>
                         <TextBlock Name="Ico" Text="{Binding $parent[RadioButton].(local:Ui.Glyph), Converter={StaticResource Icon}}" FontFamily="{StaticResource IconFont}"
                                    FontSize="16" VerticalAlignment="Center" Width="20"/>
                         <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Margin="12,0,0,0" VerticalAlignment="Center"/>
-                    </StackPanel>
+                    </DockPanel>
                 </Border>
             </ControlTemplate>
         </Setter>
         <Style Selector="^:pointerover">
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         </Style>
+        <Style Selector="^:pointerover /template/ Border#Bd">
+            <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+        </Style>
         <Style Selector="^:checked">
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         </Style>
         <Style Selector="^:checked /template/ Border#Bd">
-            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
         <Style Selector="^:checked /template/ TextBlock#Ico">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
@@ -482,9 +485,11 @@
             <ControlTemplate>
                 <Border Name="Bd" CornerRadius="16" Padding="16,7" Background="Transparent">
                     <StackPanel Orientation="Horizontal">
+                        <!-- (none: words only, the search's kinds) -->
                         <TextBlock Name="Ico" Text="{Binding $parent[RadioButton].(local:Ui.Glyph), Converter={StaticResource Icon}}" FontFamily="{StaticResource IconFont}"
-                                   FontSize="13" FontWeight="Normal" VerticalAlignment="Center"/>
-                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                   FontSize="13" FontWeight="Normal" Margin="0,0,8,0" VerticalAlignment="Center"
+                                   IsVisible="{Binding $parent[RadioButton].(local:Ui.Glyph), Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Border>
             </ControlTemplate>
@@ -503,6 +508,16 @@
         </Style>
         <Style Selector="^:checked /template/ TextBlock#Ico">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        </Style>
+    </ControlTheme>
+
+    <!-- A page's tabs (the library's parts): a Segment whose open one's tint is a SlidingPill behind the row (it glides with the part). -->
+    <ControlTheme x:Key="TabSegment" TargetType="RadioButton" BasedOn="{StaticResource Segment}">
+        <Style Selector="^:pointerover /template/ Border#Bd">
+            <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+        </Style>
+        <Style Selector="^:checked /template/ Border#Bd">
+            <Setter Property="Background" Value="Transparent"/>
         </Style>
     </ControlTheme>
 
