@@ -81,7 +81,7 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
 
     public static MainActivity? Current { get; private set; }
 
-    protected override AppBuilder CustomizeAppBuilder(AppBuilder builder) => base.CustomizeAppBuilder(builder);
+    protected override AppBuilder CustomizeAppBuilder(AppBuilder builder) => FallbackFonts.Add(base.CustomizeAppBuilder(builder));
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {

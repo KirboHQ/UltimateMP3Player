@@ -38,12 +38,13 @@ public partial class NowPlayingView : UserControl
         LyricsPane.CanSeek = () => _vm?.Player.SeekCommand.CanExecute(null) == true;
         LyricsPane.SeekRequested += t => _vm?.Player.Seek(t);
         LyricsPane.FollowingChanged += ShowFollowButton;
+        // ("Up next" folding away over the whole screen: the song takes its room)
+        QueuePane.SizeChanged += (_, _) => { if (_vm?.FullScreen == true) PlaceFullScreen(); };
     }
 
     // ------------------------------------------------------------------ video frame
 
-    private void Stage_SizeChanged(object sender, SizeChangedEventArgs e)
-        => StageVideo.Clip = new RectangleGeometry(new Rect(e.NewSize), 16, 16);
+    private void Stage_SizeChanged(object sender, SizeChangedEventArgs e) => ClipStage();
 
     private void VideoArea_SizeChanged(object sender, SizeChangedEventArgs e) => FitVideo();
 
@@ -68,6 +69,7 @@ public partial class NowPlayingView : UserControl
         WatchCover();
         Update();
         PlaceQueue(false);
+        PlaceFullScreen();
         _lyricsShown = null;
         ShowLyricsText();
     }
@@ -106,6 +108,29 @@ public partial class NowPlayingView : UserControl
         if (e.PropertyName is nameof(NowPlayingViewModel.VideoPath) or nameof(NowPlayingViewModel.ShowVideo)) Update();
         else if (e.PropertyName == nameof(NowPlayingViewModel.QueueHidden)) PlaceQueue(true);
         else if (e.PropertyName == nameof(NowPlayingViewModel.LyricsVisible)) ShowLyricsText();
+        else if (e.PropertyName == nameof(NowPlayingViewModel.FullScreen)) PlaceFullScreen();
+    }
+
+    // ------------------------------------------------------------------ over the whole screen
+
+    // The stage loses its frame and reaches under "Up next" and the see-through player bar (its backdrop behind them); the
+    // song and its buttons stay clear of both (MainWindow.ApplyFullScreen).
+    private void PlaceFullScreen()
+    {
+        bool full = _vm?.FullScreen == true;
+        double bar = full && _window is MainWindow w ? w.PlayerBar.ActualHeight : 0;
+        Grid.SetColumnSpan(Stage, full ? 2 : 1);
+        Stage.Margin = full ? new Thickness(0) : new Thickness(20, 0, 0, 16);
+        foreach (var b in Stage.Children.OfType<Border>()) b.CornerRadius = new CornerRadius(full ? 0 : 16);
+        StageContent.Margin = new Thickness(28, 28, 28 + (full ? QueuePane.ActualWidth : 0), 28 + bar);
+        QueueCard.Margin = full ? new Thickness(10, 16, 16, 16 + bar) : new Thickness(10, 0, 0, 16);
+        ClipStage();
+    }
+
+    private void ClipStage()
+    {
+        double r = _vm?.FullScreen == true ? 0 : 16;
+        StageVideo.Clip = new RectangleGeometry(new Rect(Stage.RenderSize), r, r);
     }
 
     // ------------------------------------------------------------------ lyrics

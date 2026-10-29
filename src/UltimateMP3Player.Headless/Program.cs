@@ -348,6 +348,19 @@ Check(!playerBar.IsVisible, "dj: the player bar went away");
 main.IsHome = true;
 Shot(win, "bar-back");
 Check(playerBar.IsVisible && playerBar.Margin.Bottom == 0 && playerBar.IsHitTestVisible, "dj left: the player bar back in its place");
+// ---- 4.4.2: the song's page over the whole screen, Esc and another page end it
+var titleBar = win.FindControl<Grid>("TitleBar")!;
+main.GoNowPlayingCommand.Execute(null);
+main.FullScreen = true;
+Shot(win, "fullscreen");
+Check(main.NowPlaying.FullScreen && win.WindowState == WindowState.FullScreen && !titleBar.IsVisible && playerBar.Background == Brushes.Transparent,
+      "full screen: the window over the screen, no title bar, the player bar see-through");
+Press(Key.Escape);
+Check(!main.FullScreen && win.WindowState != WindowState.FullScreen && titleBar.IsVisible && playerBar.Background != Brushes.Transparent, "full screen: Esc ends it");
+main.FullScreen = true;
+main.IsHome = true;
+Dispatcher.UIThread.RunJobs();
+Check(!main.FullScreen && titleBar.IsVisible, "full screen: another page ends it");
 
 // ---- 4.3.1: Spotify's library in its zip (liked songs, a playlist) as lists for ListImport (their Spotify ids: nothing looked for)
 var zipPath = Path.Combine(root, "spotify.zip");

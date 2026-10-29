@@ -107,7 +107,8 @@
             <!-- a moving video behind the lyrics: calmed down -->
             <Border CornerRadius="16" Background="{DynamicResource LyricsVeilBrush}" IsVisible="{Binding LyricsOverVideo}"/>
 
-            <Grid Margin="28" RowDefinitions="*,Auto">
+            <!-- (over the whole screen it stays above the see-through player bar: NowPlayingView.PlaceFullScreen) -->
+            <Grid x:Name="StageContent" Margin="28" RowDefinitions="*,Auto">
 
                 <!-- cover, tilting in 3D with the mouse -->
                 <Panel x:Name="CoverArea" IsVisible="{Binding ShowCover}">
@@ -184,6 +185,14 @@
                                 <TextBlock Text="{local:Icon E720}" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{local:T Lyrics}" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
+                        </ToggleButton>
+                        <!-- the song's page over the whole screen, and back (Esc too) -->
+                        <ToggleButton Theme="{StaticResource ToggleIcon}" IsChecked="{Binding FullScreen}" Margin="6,0,0,0"
+                                      ToolTip.Tip="{Binding FullScreenTip}" AutomationProperties.Name="{local:T 'Full screen'}">
+                            <Panel>
+                                <TextBlock Text="{local:Icon E740}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !FullScreen}"/>
+                                <TextBlock Text="{local:Icon E73F}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding FullScreen}"/>
+                            </Panel>
                         </ToggleButton>
                     </StackPanel>
                 </Grid>

@@ -548,6 +548,7 @@ public sealed class MainViewModel : Observable, IPageOrder
             foreach (var t in Tags) t.IsSelected = value is LibraryViewModel { Tag: { } tag } && tag == t;
             OnChanged(nameof(Section), nameof(IsNowPlaying));
             if (value == NowPlaying) NowPlaying.Refresh();
+            else FullScreen = false;
         }
     }
 
@@ -581,6 +582,18 @@ public sealed class MainViewModel : Observable, IPageOrder
     });
     private ICommand? _toggleQueue;
     internal void RefreshQueueShown() => OnChanged(nameof(QueueShown));
+
+    // The song's page over the whole screen (computers): no title bar or sidebar, the player bar see-through on the song's
+    // backdrop. Only that page: going anywhere else ends it, and Esc.
+    private bool _fullScreen;
+    public bool FullScreen
+    {
+        get => _fullScreen;
+        set
+        {
+            if (Set(ref _fullScreen, value && Page == NowPlaying)) NowPlaying.OnFullScreen();
+        }
+    }
 
     // The library's parts as tabs (computers): All songs, Not in a playlist, Playlists, Artists, Radio.
     public LibraryHubViewModel LibraryHub => _hub ??= new LibraryHubViewModel(this);

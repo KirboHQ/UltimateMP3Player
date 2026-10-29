@@ -41,6 +41,12 @@ public static class Program
 
         var app = new App();
         app.InitializeComponent();
+        // The App's constructor posts its OnStartup, which ran at the first pump: a second host, its window on the screens, the
+        // profile picker with more profiles, this folder taken as a file to open. Skipped, as WPF does when Shutdown came before Run.
+        var shuttingDown = typeof(Application).GetField("_isShuttingDown", BindingFlags.NonPublic | BindingFlags.Static)!;
+        shuttingDown.SetValue(null, true);
+        Pump(50);
+        shuttingDown.SetValue(null, false);
         // (what Application.Run would give: the awaits come back here, as in the app, not on other threads)
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
         Dispatcher.CurrentDispatcher.UnhandledException += (_, e) =>
@@ -157,6 +163,20 @@ public static class Program
         panel.IsOpen = false;
         main.Player.Speed = 1;
         Shot(win, "playing");
+
+        // ---- the song's page over the whole screen (the window hidden meanwhile: full screen puts it on a real one)
+        main.GoNowPlayingCommand.Execute(null);
+        win.Hide();
+        main.FullScreen = true;
+        Shot(win, "fullscreen");
+        var titleBar = (FrameworkElement)win.FindName("TitleBar");
+        var playerBar = (Border)win.FindName("PlayerBar");
+        Check(main.NowPlaying.FullScreen && titleBar.Visibility == Visibility.Collapsed && playerBar.Background == Brushes.Transparent && win.Left > -30000,
+              "full screen: the window over its screen, no title bar, the player bar see-through");
+        main.IsHome = true;
+        Pump(300);
+        Check(!main.FullScreen && titleBar.Visibility == Visibility.Visible && win.Left == -32000 && win.Width == 1400, "full screen: another page ends it, the window back");
+        win.Show();
 
         // ---- a page left and opened again keeps its view (the DJ's took several frames to build again)
         main.IsDj = true;

@@ -136,11 +136,11 @@
                 </StackPanel>
             </Grid>
 
-            <Grid Grid.Row="1" ColumnDefinitions="248,*">
+            <Grid x:Name="Body" Grid.Row="1" ColumnDefinitions="248,*">
 
                 <!-- ======================================================== sidebar -->
                 <!-- no line against the page: its own tone is enough -->
-                <Border Background="{DynamicResource SidebarBrush}">
+                <Border x:Name="Sidebar" Background="{DynamicResource SidebarBrush}">
                     <!-- the pages (Ctrl+1…5, Ctrl+↑/↓); the playlists take what is left; the tags (folded under their heading if you like);
                          the profile and the settings -->
                     <Grid Margin="14,12,14,12" RowDefinitions="Auto,*,Auto,Auto">
@@ -333,7 +333,7 @@
 
                     <!-- downloads going on, seen from any page: each group (a song, or the songs of a link) with how far it is and a
                          button that cancels it; a click opens the downloads (the search's page without words) -->
-                    <Border Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,16" Width="320" CornerRadius="14" Padding="4"
+                    <Border x:Name="DownloadPanel" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,16" Width="320" CornerRadius="14" Padding="4"
                             Background="{DynamicResource PopupBrush}" BoxShadow="{DynamicResource PopupShadow}" IsVisible="{Binding ShowDownloadPanel}">
                         <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding Queue.Groups}">

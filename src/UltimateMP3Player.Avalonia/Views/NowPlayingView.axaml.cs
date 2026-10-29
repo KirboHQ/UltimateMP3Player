@@ -59,6 +59,8 @@ public partial class NowPlayingView : UserControl
         LyricsPane.FollowingChanged += ShowFollowButton;
         FollowBtn.Click += (_, _) => LyricsPane.Follow();
         VideoArea.SizeChanged += (_, _) => FitVideo();
+        // ("Up next" folding away over the whole screen: the song takes its room)
+        QueuePane.SizeChanged += (_, _) => { if (_vm?.FullScreen == true) PlaceFullScreen(); };
         CoverHit.PointerMoved += Cover_MouseMove;
         CoverHit.PointerExited += (_, _) =>
         {
@@ -106,6 +108,7 @@ public partial class NowPlayingView : UserControl
         WatchCover();
         Update();
         PlaceQueue(false);
+        PlaceFullScreen();
         _lyricsShown = null;
         ShowLyricsText();
     }
@@ -147,6 +150,25 @@ public partial class NowPlayingView : UserControl
         if (e.PropertyName is nameof(NowPlayingViewModel.VideoPath) or nameof(NowPlayingViewModel.ShowVideo)) Update();
         else if (e.PropertyName == nameof(NowPlayingViewModel.QueueHidden)) PlaceQueue(true);
         else if (e.PropertyName == nameof(NowPlayingViewModel.LyricsVisible)) ShowLyricsText();
+        else if (e.PropertyName == nameof(NowPlayingViewModel.FullScreen)) PlaceFullScreen();
+    }
+
+    // ------------------------------------------------------------------ over the whole screen
+
+    // The stage loses its frame and reaches under "Up next" and the see-through player bar (its backdrop behind them); the
+    // song and its buttons stay clear of both (MainWindow.ApplyFullScreen).
+    private void PlaceFullScreen()
+    {
+        bool full = _vm?.FullScreen == true;
+        double bar = full && _window is MainWindow w ? w.PlayerBar.Bounds.Height : 0;
+        Grid.SetColumnSpan(Stage, full ? 2 : 1);
+        Stage.Margin = full ? default : new Thickness(20, 0, 0, 16);
+        var corner = new CornerRadius(full ? 0 : 16);
+        foreach (var c in Stage.Children)
+            if (c is Border b) b.CornerRadius = corner;
+            else if (c is CoverImage i) i.CornerRadius = corner;
+        StageContent.Margin = new Thickness(28, 28, 28 + (full ? QueuePane.Bounds.Width : 0), 28 + bar);
+        QueueCard.Margin = full ? new Thickness(10, 16, 16, 16 + bar) : new Thickness(10, 0, 0, 16);
     }
 
     // ------------------------------------------------------------------ lyrics

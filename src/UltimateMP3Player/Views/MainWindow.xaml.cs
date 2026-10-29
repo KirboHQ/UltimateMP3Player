@@ -1,10 +1,13 @@
 using System.ComponentModel;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Shell;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.Services;
 using UltimateMP3Player.ViewModels;
@@ -33,9 +36,10 @@ public partial class MainWindow : Window
         StateChanged += (_, _) =>
         {
             Vm?.Player.SetVisible(WindowState != WindowState.Minimized);
-            if (WindowState != WindowState.Minimized) s.WindowMaximized = WindowState == WindowState.Maximized;
+            if (WindowState != WindowState.Minimized && _windowed == null) s.WindowMaximized = WindowState == WindowState.Maximized;
         };
         SetBinding(BarShownProperty, nameof(MainViewModel.ShowPlayerBar));
+        SetBinding(FullScreenProperty, nameof(MainViewModel.FullScreen));
         PreviewKeyDown += OnKeyDown;
         PreviewMouseUp += OnMouseSideButton;
         PreviewMouseDown += FoldQueue;
@@ -61,6 +65,8 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
+        // (the size kept is the window's own, not the screen's)
+        if (Vm is { FullScreen: true } vm) vm.FullScreen = false;
         var s = _host.Settings;
         if (WindowState == WindowState.Normal)
         {
@@ -105,6 +111,10 @@ public partial class MainWindow : Window
         }
         switch (e.Key)
         {
+            case Key.Escape when vm.FullScreen:
+                vm.FullScreen = false;
+                e.Handled = true;
+                break;
             case Key.Escape when vm.QueueOpen:
                 vm.QueueOpen = false;
                 e.Handled = true;
@@ -236,6 +246,57 @@ public partial class MainWindow : Window
         };
         slide.Completed += (_, _) => { if ((bool)GetValue(BarShownProperty) == show) Done(); };
         _barShift.BeginAnimation(TranslateTransform.YProperty, slide);
+    }
+
+    // ------------------------------------------------------------------ the song's page over the whole screen
+
+    private static readonly DependencyProperty FullScreenProperty = DependencyProperty.Register("FullScreen", typeof(bool), typeof(MainWindow),
+        new PropertyMetadata(false, (d, e) => ((MainWindow)d).ApplyFullScreen((bool)e.NewValue)));
+
+    // Where the window was before (null: not over the whole screen).
+    private Rect? _windowed;
+    private WindowState _windowedState;
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
+
+    // The window covers its screen, taskbar too (in pixels: the screen may not have this window's DPI), without title bar
+    // and sidebar; the page reaches under the player bar, see-through (NowPlayingView.PlaceFullScreen). Then back where it was.
+    private void ApplyFullScreen(bool on)
+    {
+        TitleBar.Visibility = Sidebar.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
+        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : 248);
+        Grid.SetRow(Body, on ? 0 : 1);
+        Grid.SetRowSpan(Body, on ? 3 : 1);
+        if (on) PlayerBar.Background = Brushes.Transparent;
+        else PlayerBar.SetResourceReference(Border.BackgroundProperty, "SidebarBrush");
+        double bar = on ? PlayerBar.ActualHeight : 0;
+        ToastBox.Margin = new Thickness(0, 0, 0, 18 + bar);
+        DownloadPanel.Margin = new Thickness(0, 0, 20, 16 + bar);
+        if (WindowChrome.GetWindowChrome(this) is { } chrome)
+        {
+            chrome.CaptionHeight = on ? 0 : WindowFrame.CaptionHeight;
+            chrome.ResizeBorderThickness = new Thickness(on ? 0 : 6);
+        }
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (on && _windowed == null && hwnd != IntPtr.Zero)
+        {
+            _windowedState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+            _windowed = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
+            var screen = System.Windows.Forms.Screen.FromHandle(hwnd).Bounds;
+            WindowState = WindowState.Normal;
+            // (SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED)
+            SetWindowPos(hwnd, IntPtr.Zero, screen.Left, screen.Top, screen.Width, screen.Height, 0x0004 | 0x0010 | 0x0020);
+        }
+        else if (!on && _windowed is { } r)
+        {
+            _windowed = null;
+            Left = r.Left;
+            Top = r.Top;
+            Width = r.Width;
+            Height = r.Height;
+            WindowState = _windowedState;
+        }
     }
 
     // The mouse's side buttons: back and forward.

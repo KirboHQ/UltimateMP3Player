@@ -2479,5 +2479,7 @@ public static partial class L
         ["Saved on your device: it plays without the internet."] = "Salvato sul dispositivo: si ascolta anche senza internet.",
         ["Songs, artists, albums, playlists and radios. To download a song, paste its link here."] =
             "Brani, artisti, album, playlist e radio. Per scaricare un brano, incolla qui il suo link.",
+        ["Full screen"] = "Schermo intero",
+        ["Exit full screen (Esc)"] = "Esci dallo schermo intero (Esc)",
     };
 }

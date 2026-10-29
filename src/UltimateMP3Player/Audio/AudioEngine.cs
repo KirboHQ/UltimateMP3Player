@@ -136,7 +136,7 @@ public sealed class AudioEngine : IDisposable
     public double RemainingSeconds => _master.RemainingSeconds;
 
     // The transition matched to the next song's BPM (MasterProvider.SetBend).
-    public void SetBend(double ratio, double seconds) => _master.SetBend(ratio, seconds);
+    public void SetBend(double ratio, double seconds, double bpm = 0, double firstBeat = 0) => _master.SetBend(ratio, seconds, bpm, firstBeat);
 
     public void SetEqualizer(bool enabled, IReadOnlyList<double> gains) => _master.SetEqualizer(enabled, gains);
 
@@ -179,7 +179,8 @@ public sealed class AudioEngine : IDisposable
         Cut(ended);
     }
 
-    public async Task CrossfadeToAsync(string path, double durationHint, double trackGainDb)
+    // bpm and firstBeat: the coming song's beats, for it to come in on the beat of the one matched to it (SetBend).
+    public async Task CrossfadeToAsync(string path, double durationHint, double trackGainDb, double bpm = 0, double firstBeat = 0)
     {
         int version = ++_openVersion;
         var source = await OpenSource(path, durationHint);
@@ -189,7 +190,7 @@ public sealed class AudioEngine : IDisposable
             return;
         }
         double seconds = Math.Clamp(Math.Min(_crossfade, _master.RemainingSeconds), 0.3, 12);
-        _master.Crossfade(source, trackGainDb, durationHint, _crossfade, seconds);
+        _master.Crossfade(source, trackGainDb, durationHint, _crossfade, seconds, bpm, firstBeat);
         SourcePath = path;
     }
 

@@ -633,47 +633,56 @@ public sealed class PlayerViewModel : Observable
     // ------------------------------------------------------------------ the transition at the next song's tempo
 
     // The song playing glides to the next one's BPM in its last seconds (Settings), the key unchanged, when both BPMs are
-    // known and close enough (half or double time too); it keeps that tempo while it fades out. Set again whenever the song
-    // or what comes after it changes.
+    // known and close enough (half or double time too); it keeps that tempo while it fades out, and the next one comes in
+    // on its beat (their first beats known: MasterProvider.OnTheBeat). Set again whenever the song or what comes after it changes.
     private const double MaxBend = 0.15;
 
     public void ApplyBend()
     {
         var d = _main.Profile.Data;
-        double ratio = 1;
+        double ratio = 1, bpm = 0, first = 0;
         var coming = _queue.PeekNext() is { } next ? TrackOf(next) : null;
         if (d.BpmMatch && _room == null && Repeat != RepeatMode.One)
         {
-            // (BPMs not known yet are detected, as the DJ does: the bend is set again once they are)
+            // (BPMs and first beats not known yet are detected, as the DJ does: the bend is set again once they are)
             DetectBpm(Current?.T);
             DetectBpm(coming);
-            if (Current?.T.Bpm is double from and > 0 && coming?.Bpm is double to and > 0) ratio = BendRatio(from, to);
+            if (Current?.T is { Bpm: double from and > 0 } cur && coming?.Bpm is double to and > 0 && BendRatio(from, to) is double r)
+            {
+                ratio = r;
+                if (cur.BeatOffset is double b) (bpm, first) = (from, b);
+            }
         }
-        _audio.SetBend(ratio, Math.Clamp(d.BpmMatchSeconds, 2, 30));
+        _audio.SetBend(ratio, Math.Clamp(d.BpmMatchSeconds, 2, 30), bpm, first);
     }
 
     // Once per song and session (one that can't be read isn't tried again at every change).
     private readonly HashSet<string> _bpmAsked = new();
 
+    // A BPM typed by hand or from the tags is kept: only the first beat is added.
     private async void DetectBpm(Track? t)
     {
-        if (t == null || t.Bpm is > 0 || t.AudioPath is not { } path || !_bpmAsked.Add(t.Id)) return;
+        if (t == null || (t.Bpm is > 0 && t.BeatOffset != null) || t.AudioPath is not { } path || !_bpmAsked.Add(t.Id)) return;
         DjAnalysis? a = null;
         try { a = await Task.Run(() => DjAnalyzer.AnalyzeAsync(path)); }
         catch { }
-        if (a?.Bpm is not double bpm || t.Bpm is > 0) return;
-        t.Bpm = Math.Round(bpm, 1);
+        if (a?.Bpm is not double bpm || (t.Bpm is > 0 && t.BeatOffset != null)) return;
+        if (t.Bpm is not > 0) t.Bpm = Math.Round(bpm, 1);
         t.BeatOffset ??= a.FirstBeat;
         if (_main.Library.Get(t.Id) == t) _main.Library.Changed(t);
         ApplyBend();
     }
 
-    // The tempo change that brings one BPM to the other: the nearest of the same, half and double time; 1 when it's too far.
-    internal static double BendRatio(double from, double to)
+    // The tempo change that brings one BPM to the other: the nearest of the same, half and double time (1 when they're
+    // already the same); null when it's too far.
+    internal static double? BendRatio(double from, double to)
     {
         var r = new[] { to / from, to * 2 / from, to / (2 * from) }.OrderBy(x => Math.Abs(Math.Log(x))).First();
-        return Math.Abs(r - 1) < 0.005 || Math.Abs(r - 1) > MaxBend ? 1 : r;
+        return Math.Abs(r - 1) > MaxBend ? null : Math.Abs(r - 1) < 0.005 ? 1 : r;
     }
+
+    // The coming song's beats for the crossfade (0: not known).
+    private static (double Bpm, double FirstBeat) BeatsOf(Track t) => t is { Bpm: double b and > 0, BeatOffset: double f } ? (b, f) : (0, 0);
 
     private double TrackGain(Track t)
     {
@@ -1072,7 +1081,7 @@ public sealed class PlayerViewModel : Observable
         {
             if (live != null) await _audio.OpenLiveAsync(live, title => OnAir(t, title));
             else if (link != null) await _audio.OpenAsync(link, t.Duration, TrackGain(t));
-            else if (crossfade) await _audio.CrossfadeToAsync(path, t.Duration, TrackGain(t));
+            else if (crossfade) await _audio.CrossfadeToAsync(path, t.Duration, TrackGain(t), BeatsOf(t).Bpm, BeatsOf(t).FirstBeat);
             else await _audio.OpenAsync(path, t.Duration, TrackGain(t));
             if (version != _loadVersion) return;
             _opened = true;

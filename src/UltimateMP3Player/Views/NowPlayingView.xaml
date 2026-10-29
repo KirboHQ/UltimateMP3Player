@@ -62,7 +62,8 @@
             <!-- a moving video behind the lyrics: calmed down -->
             <Border CornerRadius="16" Background="{DynamicResource LyricsVeilBrush}" Visibility="{Binding LyricsOverVideo, Converter={StaticResource BoolVis}}"/>
 
-            <Grid Margin="28">
+            <!-- (over the whole screen it stays above the see-through player bar: NowPlayingView.PlaceFullScreen) -->
+            <Grid x:Name="StageContent" Margin="28">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
@@ -316,6 +317,22 @@
                                 <TextBlock Text="&#xE720;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center"/>
                                 <TextBlock Text="{local:T Lyrics}" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
+                        </ToggleButton>
+                        <!-- the page over the whole screen (Esc, or any other page, leaves it) -->
+                        <ToggleButton Style="{StaticResource ToggleIcon}" Width="36" Height="36" IsChecked="{Binding FullScreen}" Margin="6,0,0,0"
+                                      ToolTip="{Binding FullScreenTip}" AutomationProperties.Name="{local:T 'Full screen'}">
+                            <TextBlock FontFamily="{StaticResource IconFont}" FontSize="15">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="&#xE740;"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding FullScreen}" Value="True">
+                                                <Setter Property="Text" Value="&#xE73F;"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </ToggleButton>
                     </StackPanel>
                 </Grid>

@@ -3,7 +3,8 @@
 # only added, never removed, so the ones written by hand (Ko-fi) stay. A sponsor who wants to leave the list makes their
 # sponsorship private on GitHub, then their name is taken out by hand.
 # Needs the secret SPONSORS_TOKEN: a classic token of the account (Settings › Developer settings › Personal access tokens ›
-# Tokens (classic)) with only the read:user scope; GitHub's own token can't read sponsorships.
+# Tokens (classic)) with only the read:user and read:org scopes (read:org for the names of sponsoring organizations: without
+# it GitHub refuses the whole query); GitHub's own token can't read sponsorships.
 name: Supporters
 
 on:
@@ -26,7 +27,7 @@ jobs:
           OWNER: ${{ github.repository_owner }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
-            echo "::error::The secret SPONSORS_TOKEN is missing (a classic token with the read:user scope)."
+            echo "::error::The secret SPONSORS_TOKEN is missing (a classic token with the read:user and read:org scopes)."
             exit 1
           fi
           gh api graphql --paginate -F owner="$OWNER" -f query='

@@ -36,6 +36,10 @@ internal sealed class Voice : IDisposable
     // The transition matched to the next song's BPM: from BendFrom (seconds of the song) its tempo glides to BendRatio in
     // BendSeconds, the key unchanged, and stays there while it fades out. Only this song: the next one plays as it is.
     public double BendFrom = double.MaxValue, BendSeconds, BendRatio = 1;
+    // Its beats (Bpm 0: not known) while the next song is matched to it, and the silence a song coming in keeps before it
+    // starts so that its beats fall on the other one's (MasterProvider.OnTheBeat).
+    public double Bpm, FirstBeat;
+    public int StartDelay;
     private SoundTouchProcessor? _bend;
     private float[] _bendIn = Array.Empty<float>(), _bendOut = Array.Empty<float>();
     private bool _bendEnded;
@@ -51,12 +55,26 @@ internal sealed class Voice : IDisposable
     }
 
     // The tempo wanted now: 1 before the bend, then a smooth glide to the ratio.
-    private double BendTempo(double position)
+    public double BendTempo(double position)
     {
         if (BendRatio == 1 || position < BendFrom) return 1;
         double p = BendSeconds <= 0 ? 1 : Math.Clamp((position - BendFrom) / BendSeconds, 0, 1);
         return 1 + (BendRatio - 1) * p * p * (3 - 2 * p);
     }
+
+    // The point of the song this voice gives out now: its stretcher still holds a little of what was read, and what it
+    // gives out next starts where its search for the best overlap lands, on average half its window (~18 ms) further on,
+    // plus what a sequence out is longer than a sequence in (measured with click tracks: within 1 ms).
+    public double HeardPosition(int rate)
+    {
+        double pos = Source.Position.TotalSeconds;
+        if (_bend is { } b)
+            pos -= (b.UnprocessedSampleCount + b.AvailableSamples * b.Tempo
+                    - b.GetSetting(SettingId.NominalOutputSequence) + b.GetSetting(SettingId.NominalInputSequence)) / rate - SearchLag;
+        return pos;
+    }
+
+    private const double SearchLag = 0.009;
 
     // Reads the song, through its own stretcher while it bends.
     public int Read(float[] dst, int offset, int count, int rate)
@@ -314,8 +332,8 @@ public sealed class MasterProvider : ISampleProvider
         v.FadeTo(0, seconds, _rate);
     }
 
-    // Next song fades in while this one fades out.
-    public void Crossfade(ITrackSource source, double gainDb, double duration, double crossfadeSeconds, double seconds)
+    // Next song fades in while this one fades out; with its beats known (bpm, firstBeat), on the beat of this one.
+    public void Crossfade(ITrackSource source, double gainDb, double duration, double crossfadeSeconds, double seconds, double bpm = 0, double firstBeat = 0)
     {
         Voice? drop;
         lock (_lock)
@@ -323,6 +341,7 @@ public sealed class MasterProvider : ISampleProvider
             var v = NewVoice(source, gainDb, duration, crossfadeSeconds);
             v.Fade = 0;
             v.FadeTo(1, seconds, _rate);
+            if (_current is { } cur) v.StartDelay = OnTheBeat(cur, bpm, firstBeat);
             drop = _outgoing;
             _outgoing = _current;
             if (_outgoing != null) Leave(_outgoing, seconds);
@@ -343,7 +362,7 @@ public sealed class MasterProvider : ISampleProvider
             {
                 GainTarget = cur.GainTarget, GainStep = cur.GainStep,
                 CrossfadeAt = cur.CrossfadeAt, NearEndRaised = cur.NearEndRaised, Ended = cur.Ended,
-                BendFrom = cur.BendFrom, BendSeconds = cur.BendSeconds, BendRatio = cur.BendRatio,
+                BendFrom = cur.BendFrom, BendSeconds = cur.BendSeconds, BendRatio = cur.BendRatio, Bpm = cur.Bpm, FirstBeat = cur.FirstBeat,
             };
             v.Rebuild(_rate);
             // Fade 0 with a jump pending: the first read seeks it there and fades it in.
@@ -380,8 +399,9 @@ public sealed class MasterProvider : ISampleProvider
     }
 
     // The song playing glides to ratio × its tempo during the last seconds before the next one comes in (the crossfade's
-    // start, or its end without one), and keeps that tempo while it fades out. 1: no bend.
-    public void SetBend(double ratio, double seconds)
+    // start, or its end without one), and keeps that tempo while it fades out. 1: no bend. bpm and firstBeat: its beats,
+    // when the next song is matched to it (0: not matched), for the next one to come in on them.
+    public void SetBend(double ratio, double seconds, double bpm = 0, double firstBeat = 0)
     {
         lock (_lock)
         {
@@ -391,7 +411,27 @@ public sealed class MasterProvider : ISampleProvider
             v.BendRatio = fits ? ratio : 1;
             v.BendSeconds = seconds;
             v.BendFrom = fits ? end - seconds : double.MaxValue;
+            v.Bpm = fits || ratio == 1 ? bpm : 0;
+            v.FirstBeat = firstBeat;
         }
+    }
+
+    // The silence (frames) a song coming in keeps so that its first beat, and so all the others, falls on a beat of the
+    // one going out: the tempos are matched already (SetBend), the phase is left. Half and double time fall on the
+    // shorter beat. 0 when a grid isn't known or the tempos don't match.
+    private int OnTheBeat(Voice cur, double bpm, double firstBeat)
+    {
+        if (cur.Bpm <= 0 || bpm <= 0 || cur.Ended) return 0;
+        double pos = cur.HeardPosition(_rate), songBeat = 60 / cur.Bpm;
+        double outBeat = songBeat / cur.BendTempo(pos), inBeat = 60 / bpm;
+        double grid = Math.Min(outBeat, inBeat), times = Math.Max(outBeat, inBeat) / grid;
+        if (Math.Abs(times - Math.Round(times)) > 0.03 || Math.Round(times) > 2) return 0;
+        // (seconds, as heard, until the next beat of the one going out)
+        double x = (pos - cur.FirstBeat) / songBeat;
+        double toBeat = (Math.Ceiling(x) - x) * outBeat;
+        double delay = toBeat - firstBeat;
+        delay -= Math.Floor(delay / grid) * grid;
+        return (int)Math.Round(delay * _rate);
     }
 
     public double RemainingSeconds
@@ -588,6 +628,17 @@ public sealed class MasterProvider : ISampleProvider
 
     private int ReadVoice(Voice v, float[] dst, int offset, int count)
     {
+        // A song coming in on the beat: silent until then (dst is silence already), its fade-in not started yet.
+        int silent = 0;
+        if (v.PendingSeek != null) v.StartDelay = 0;
+        if (v.StartDelay > 0)
+        {
+            silent = Math.Min(v.StartDelay, count / 2) * 2;
+            v.StartDelay -= silent / 2;
+            if (silent == count) return count;
+            offset += silent;
+            count -= silent;
+        }
         if (v.PendingSeek is { } seek)
         {
             // Fade out, jump, fade in: no click.
@@ -600,7 +651,7 @@ public sealed class MasterProvider : ISampleProvider
             }
             else if (v.FadeTarget > 0f) v.FadeTo(0, SeekFade, _rate);
         }
-        if (v.Chain == null) return 0;
+        if (v.Chain == null) return silent;
         int read;
         try { read = v.Read(dst, offset, count, _rate); }
         catch { read = 0; }
@@ -617,7 +668,7 @@ public sealed class MasterProvider : ISampleProvider
         // A jump asked at the end of the song (repeat one, back to the start): no sound left to fade out,
         // so the fade would never finish and the song stayed stuck in silence. Jump on the next read.
         if (v.PendingSeek != null && read < count) v.Fade = 0f;
-        return read;
+        return silent + read;
     }
 
     private void Process(float[] buf, int offset, int count)

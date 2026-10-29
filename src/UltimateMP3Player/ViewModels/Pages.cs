@@ -789,6 +789,15 @@ public sealed class NowPlayingViewModel : Observable
     public bool ShowCover => VideoPath == null && !LyricsVisible;
     public bool CoverTilt => Main.Host.Settings.CoverTilt;
 
+    // The page over the whole screen (MainViewModel.FullScreen): its button, by the lyrics'.
+    public bool FullScreen
+    {
+        get => Main.FullScreen;
+        set => Main.FullScreen = value;
+    }
+    public string FullScreenTip => FullScreen ? L.T("Exit full screen (Esc)") : L.T("Full screen");
+    internal void OnFullScreen() => OnChanged(nameof(FullScreen), nameof(FullScreenTip));
+
     public void Refresh() => OnChanged(nameof(ShowVideo), nameof(VideoPath), nameof(HasVideo), nameof(ShowCover), nameof(CoverTilt), nameof(ShowLyrics),
         nameof(HasLyrics), nameof(LyricsVisible), nameof(IsVideo), nameof(Subtitles), nameof(LyricsPage), nameof(ShowVideoFrame), nameof(LyricsOverCover),
         nameof(LyricsOverVideo));

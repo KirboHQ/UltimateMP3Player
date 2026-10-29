@@ -35,11 +35,13 @@ public partial class MainWindow : Window
         PropertyChanged += (_, e) =>
         {
             if (e.Property == BarShownProperty) SlideBar(e.GetNewValue<bool>());
+            if (e.Property == FullScreenProperty) ApplyFullScreen(e.GetNewValue<bool>());
             if (e.Property != WindowStateProperty) return;
             Ui.Hidden = WindowState == WindowState.Minimized || !IsVisible;
             Vm?.Player.SetVisible(WindowState != WindowState.Minimized);
-            if (WindowState != WindowState.Minimized) s.WindowMaximized = WindowState == WindowState.Maximized;
+            if (WindowState is WindowState.Normal or WindowState.Maximized) s.WindowMaximized = WindowState == WindowState.Maximized;
         };
+        this.Bind(FullScreenProperty, new Avalonia.Data.Binding(nameof(MainViewModel.FullScreen)));
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, (_, e) => _down.Remove(e.Key), RoutingStrategies.Tunnel, true);
         Deactivated += (_, _) => _down.Clear();
@@ -102,6 +104,8 @@ public partial class MainWindow : Window
 
     private void OnClosing(object? sender, WindowClosingEventArgs e)
     {
+        // (the size kept is the window's own, not the screen's)
+        if (Vm is { FullScreen: true } vm) vm.FullScreen = false;
         var s = _host.Settings;
         if (WindowState == WindowState.Normal)
         {
@@ -154,6 +158,10 @@ public partial class MainWindow : Window
         }
         switch (e.Key)
         {
+            case Key.Escape when vm.FullScreen:
+                vm.FullScreen = false;
+                e.Handled = true;
+                break;
             case Key.Escape when vm.QueueOpen:
                 vm.QueueOpen = false;
                 e.Handled = true;
@@ -249,6 +257,31 @@ public partial class MainWindow : Window
         if (vm.QueueOpen && e.Source is Visual v && TopLevel.GetTopLevel(v) == this
             && !QueuePanel.IsVisualAncestorOf(v) && !QueueButton.IsVisualAncestorOf(v) && v != QueueButton)
             vm.QueueOpen = false;
+    }
+
+    // ------------------------------------------------------------------ the song's page over the whole screen
+
+    private static readonly StyledProperty<bool> FullScreenProperty = AvaloniaProperty.Register<MainWindow, bool>("FullScreen");
+    private WindowState _windowedState;
+
+    // The system's full screen, without title bar and sidebar; the page reaches under the player bar, see-through
+    // (NowPlayingView.PlaceFullScreen). Then back to how the window was.
+    private void ApplyFullScreen(bool on)
+    {
+        TitleBar.IsVisible = Sidebar.IsVisible = !on;
+        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : 248);
+        Grid.SetRow(Body, on ? 0 : 1);
+        Grid.SetRowSpan(Body, on ? 3 : 1);
+        PlayerBar.Background = on ? Brushes.Transparent : Ui.Find<IBrush>("SidebarBrush");
+        double bar = on ? PlayerBar.Bounds.Height : 0;
+        ToastBox.Margin = new Thickness(0, 0, 0, 18 + bar);
+        DownloadPanel.Margin = new Thickness(0, 0, 20, 16 + bar);
+        if (on && WindowState != WindowState.FullScreen)
+        {
+            _windowedState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
+            WindowState = WindowState.FullScreen;
+        }
+        else if (!on && WindowState == WindowState.FullScreen) WindowState = _windowedState;
     }
 
     // ------------------------------------------------------------------ the player bar, away for the DJ
