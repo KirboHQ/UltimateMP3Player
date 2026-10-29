@@ -85,7 +85,7 @@
          online, a ring while it's being saved. -->
     <DataTemplate x:Key="TrackCloudCell" DataType="vm:TrackViewModel" x:DataType="vm:TrackViewModel" x:CompileBindings="True">
         <Panel>
-            <TextBlock Classes="glyph cloud" Classes.gone="{Binding SignIsGone}" Classes.saved="{Binding SignIsSaved}" Width="40" FontSize="17"
+            <TextBlock Classes="glyph cloud" Classes.gone="{Binding SignIsGone}" Width="40" FontSize="17"
                        TextAlignment="Center" VerticalAlignment="Center" Text="{Binding SignGlyph, Converter={x:Static views:Converters.Glyph}}" IsVisible="{Binding ShowSign}"/>
             <Panel Width="40" IsVisible="{Binding IsSaving}">
                 <views:ProgressRing Width="20" Height="20" Value="{Binding SavePct}" IsIndeterminate="{Binding SaveIndeterminate}"
@@ -180,7 +180,7 @@
                         <!-- suggested online, or a song of the library in the cloud -->
                         <TextBlock Text="{local:Icon E93E}" Classes="glyph" FontSize="12" Foreground="{DynamicResource AccentTextBrush}" Margin="0,0,6,0"
                                    IsVisible="{Binding IsRadio}"/>
-                        <TextBlock Classes="glyph cloud" Classes.gone="{Binding Track.SignIsGone}" Classes.saved="{Binding Track.SignIsSaved}" FontSize="12" Margin="0,0,6,0"
+                        <TextBlock Classes="glyph cloud" Classes.gone="{Binding Track.SignIsGone}" FontSize="12" Margin="0,0,6,0"
                                    Text="{Binding Track.SignGlyph, Converter={x:Static views:Converters.Glyph}}" IsVisible="{Binding Track.ShowSign}"/>
                         <TextBlock Grid.Column="1" Text="{Binding Track.Artist}" FontSize="13" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"/>
                     </Grid>

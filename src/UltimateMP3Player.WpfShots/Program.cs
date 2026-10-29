@@ -82,6 +82,15 @@ public static class Program
             Shot(win, name);
             Check(main.Section == section, $"page {name} opens");
         }
+        // ---- Settings opened again: the window isn't held up (Windows listing its audio outputs took 0.2 s of it, every time)
+        main.IsHome = true;
+        Pump(400);
+        var busy = System.Diagnostics.Stopwatch.StartNew();
+        main.GoSettings();
+        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Check(busy.ElapsedMilliseconds < 150, $"settings: opened again in {busy.ElapsedMilliseconds} ms");
+        Pump(400);
+        Check(main.Settings.OutputDevices.Count > UltimateMP3Player.Audio.AudioPlatform.OutputDevices().Count, "settings: the audio outputs listed meanwhile");
         // ---- the library's parts are tabs of one page; back and forward; the keyboard's pages
         main.OpenArtists();
         Pump(600);
@@ -151,7 +160,9 @@ public static class Program
 
         // ---- a page left and opened again keeps its view (the DJ's took several frames to build again)
         main.IsDj = true;
-        Pump(600);
+        Shot(win, "dj", 600);
+        var bar = (FrameworkElement)win.FindName("PlayerBar");
+        Check(bar.Visibility == Visibility.Collapsed, "dj: the player bar went away");
         var djView = Descendants(win).OfType<DjView>().FirstOrDefault();
         main.IsTogether = true;
         Pump(600);
@@ -159,6 +170,9 @@ public static class Program
         Pump(600);
         Check(djView != null && Descendants(win).OfType<DjView>().SingleOrDefault() == djView, "a page opened again keeps its view");
         main.IsHome = true;
+        Shot(win, "bar-rising", 90);
+        Shot(win, "bar-back", 600);
+        Check(bar.Visibility == Visibility.Visible && bar.Margin.Bottom == 0 && bar.IsHitTestVisible, "dj left: the player bar back in its place");
 
         if (online)
         {

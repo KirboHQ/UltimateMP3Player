@@ -419,9 +419,9 @@
         </Grid>
 
         <!-- ============================================================ player bar -->
+        <!-- (away while the DJ is the page, sliding down out of the window: MainWindow.SlideBar) -->
         <Border x:Name="PlayerBar" Grid.Row="2" Background="{DynamicResource SidebarBrush}"
-                Padding="14,10" DataContext="{Binding Player}"
-                Visibility="{Binding DataContext.ShowPlayerBar, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolVis}}">
+                Padding="14,10" DataContext="{Binding Player}">
             <Grid x:Name="PlayerGrid" SizeChanged="PlayerBar_SizeChanged">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*" MinWidth="300" MaxWidth="400"/>
@@ -468,9 +468,6 @@
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Current.SignIsSaved}" Value="True">
-                                                <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
-                                            </DataTrigger>
                                             <DataTrigger Binding="{Binding Current.SignIsGone}" Value="True">
                                                 <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
                                             </DataTrigger>

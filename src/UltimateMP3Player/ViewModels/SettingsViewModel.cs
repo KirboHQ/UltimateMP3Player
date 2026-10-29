@@ -249,7 +249,9 @@ public sealed class SettingsViewModel : Observable
         OpenRepoCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.RepoUrl!), () => hasRepo);
         BuildBrowsers();
         RefreshStartupChoices();
-        RefreshOutputDevices();
+        // (the chosen output as it was, until the list is read: Refresh, when the page opens)
+        OutputDevices.Add(new Choice(L.T("System default"), null));
+        if (S.OutputDevice is { } device) OutputDevices.Add(new Choice(S.OutputDeviceName ?? device, device));
         _ = RefreshEngineInfo();
     }
 
@@ -431,8 +433,18 @@ public sealed class SettingsViewModel : Observable
     // music goes to the default one until it's back.
     public void RefreshOutputDevices()
     {
+#if AVALONIA
+        ShowOutputDevices(AudioPlatform.OutputDevices());
+#else
+        // (Windows takes some 0.2 s to list them, the whole page waited for it: off the UI thread, the list follows a moment later)
+        _ = Task.Run(AudioPlatform.OutputDevices).ContinueWith(t => ShowOutputDevices(t.Result), TaskScheduler.FromCurrentSynchronizationContext());
+#endif
+    }
+
+    private void ShowOutputDevices(List<(string Id, string Name)> found)
+    {
         var list = new List<Choice> { new(L.T("System default"), null) };
-        list.AddRange(AudioPlatform.OutputDevices().Select(d => new Choice(d.Name, d.Id)));
+        list.AddRange(found.Select(d => new Choice(d.Name, d.Id)));
         if (S.OutputDevice is { } id && list.All(c => !Equals(c.Value, id)))
             list.Add(new Choice(S.OutputDeviceName ?? id, id, L.T("not connected")));
         OutputDevices = list;

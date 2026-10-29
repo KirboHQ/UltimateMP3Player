@@ -40,6 +40,16 @@ public static class MenuAim
         EventManager.RegisterClassHandler(typeof(ContextMenu), UIElement.PreviewMouseMoveEvent, new MouseEventHandler(OnMove), true);
         EventManager.RegisterClassHandler(typeof(ContextMenu), ContextMenu.ClosedEvent, new RoutedEventHandler(OnClosed), true);
         EventManager.RegisterClassHandler(typeof(MenuItem), MenuItem.SubmenuOpenedEvent, new RoutedEventHandler(OnSubmenuOpened), true);
+        // A menu closed by pressing on a row of a list: the list takes the mouse on the press (to select by dragging), the
+        // closing menu swallows the release, and the list kept the mouse: every later press, anywhere, went to it (up next
+        // over the page didn't fold, its row stayed selected). Its first move with the button up lets go, taking the mouse again
+        // first: Windows had already given it to the closing menu, and a release alone changed nothing.
+        EventManager.RegisterClassHandler(typeof(ListBox), UIElement.PreviewMouseMoveEvent, new MouseEventHandler((sender, e) =>
+        {
+            if (sender is not ListBox { IsMouseCaptured: true } list || e.LeftButton != MouseButtonState.Released) return;
+            list.CaptureMouse();
+            list.ReleaseMouseCapture();
+        }), true);
         Linger.Tick += (_, _) =>
         {
             // Resting on the entry that opened it is fine: it's still the one open.

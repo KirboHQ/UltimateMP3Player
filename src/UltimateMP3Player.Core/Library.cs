@@ -294,7 +294,7 @@ public static class SongMeta
         @"\s*[\(\[【]\s*[^\)\]】]*?\b(official|video|audio|lyrics?|visuali[sz]er|videoclip|clip|testo|hd|hq|4k|mv|m/v|music\s*video|video\s*ufficiale|ufficiale)\b[^\)\]】]*[\)\]】]",
         RegexOptions.IgnoreCase);
 
-    private static readonly Regex ArtistTitle = new(@"^(.{1,80}?)\s+[-–—]\s+(.+)$");
+    internal static readonly Regex ArtistTitle = new(@"^(.{1,80}?)\s+[-–—]\s+(.+)$");
 
     public static string CleanTitle(string title)
     {

@@ -15,13 +15,14 @@ public static class AudioPlatform
     // The output chosen in Settings (an endpoint id), null = the system's default.
     public static string? Device { get; set; }
 
-    // The outputs plugged in now, to choose from in Settings.
+    // The outputs plugged in now, to choose from in Settings (read off the UI thread: with an enumerator of its own there).
     public static List<(string Id, string Name)> OutputDevices()
     {
         var list = new List<(string Id, string Name)>();
         try
         {
-            foreach (var d in Devices.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
+            using var devices = new MMDeviceEnumerator();
+            foreach (var d in devices.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
                 using (d)
                     try { list.Add((d.ID, d.FriendlyName)); } catch { }
         }

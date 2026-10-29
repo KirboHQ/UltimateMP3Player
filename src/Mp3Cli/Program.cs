@@ -1,5 +1,5 @@
 // Developer harness for the Core, without the UI (set UMP_DATA to use a throw-away library).
-//   mp3cli download <url> [--items 1,3] [--video] [--original] [--out dir] [--cookies firefox]
+//   mp3cli download <url> [--analyze] [--items 1,3] [--video] [--original] [--out dir] [--cookies firefox]
 //   mp3cli import <file-or-folder>
 //   mp3cli list
 //   mp3cli songlist [file]
@@ -436,6 +436,16 @@ catch (EngineException ex)
     return 2;
 }
 Console.WriteLine($"[{sw.Elapsed.TotalSeconds:0.0}s] {r.Site} | {r.Title} | {r.Uploader} | collection={r.IsCollection} items={r.Items.Count}");
+// --analyze: what the card would add (title and artist as the library takes them, the cover), nothing downloaded.
+if (Flag("--analyze"))
+{
+    foreach (var item in r.Items)
+    {
+        var meta = SongMeta.From(item);
+        Console.WriteLine($"  {meta.Artist ?? "?"} - {meta.Title} | {item.Thumbnail ?? "no cover"}");
+    }
+    return 0;
+}
 var picks = Opt("--items")?.Split(',').Select(int.Parse).ToList() ?? new List<int> { 1 };
 var musicDir = Opt("--out") ?? Path.Combine(Path.GetTempPath(), "ump-test-music");
 foreach (var n in picks)

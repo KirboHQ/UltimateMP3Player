@@ -31,8 +31,10 @@ public partial class MainWindow : Window
         Height = Math.Clamp(s.WindowHeight, MinHeight, Math.Max(MinHeight, screen?.Height ?? s.WindowHeight));
         if (s.WindowMaximized) WindowState = WindowState.Maximized;
         Closing += OnClosing;
+        this.Bind(BarShownProperty, new Avalonia.Data.Binding(nameof(MainViewModel.ShowPlayerBar)));
         PropertyChanged += (_, e) =>
         {
+            if (e.Property == BarShownProperty) SlideBar(e.GetNewValue<bool>());
             if (e.Property != WindowStateProperty) return;
             Ui.Hidden = WindowState == WindowState.Minimized || !IsVisible;
             Vm?.Player.SetVisible(WindowState != WindowState.Minimized);
@@ -247,6 +249,47 @@ public partial class MainWindow : Window
         if (vm.QueueOpen && e.Source is Visual v && TopLevel.GetTopLevel(v) == this
             && !QueuePanel.IsVisualAncestorOf(v) && !QueueButton.IsVisualAncestorOf(v) && v != QueueButton)
             vm.QueueOpen = false;
+    }
+
+    // ------------------------------------------------------------------ the player bar, away for the DJ
+
+    private static readonly StyledProperty<bool> BarShownProperty = AvaloniaProperty.Register<MainWindow, bool>("BarShown", true);
+    private readonly TranslateTransform _barShift = new();
+    private double _barHeight;
+    private int _barRun;
+
+    // The page gets the bar's room at once (under its own slide: AnimatedContent), and the bar goes down out of the window over
+    // it; coming back it rises over the page and only then takes its room again. The page is laid out once, not on every frame.
+    private void SlideBar(bool show)
+    {
+        if (PlayerBar.IsVisible && PlayerBar.Margin.Bottom == 0) _barHeight = PlayerBar.Bounds.Height;
+        double h = _barHeight;
+        // (how far down it is now: 0 in its place, h out of the window; halfway when it's turned back)
+        double down = !PlayerBar.IsVisible ? h : PlayerBar.Margin.Bottom < 0 ? h + _barShift.Y : 0;
+        int run = ++_barRun;
+        PlayerBar.RenderTransform = _barShift;
+        PlayerBar.IsVisible = true;
+        PlayerBar.IsHitTestVisible = show;
+        void Done()
+        {
+            _barShift.Y = 0;
+            PlayerBar.Margin = default;
+            PlayerBar.IsVisible = show;
+        }
+        if (!Ui.Animations || h <= 0 || !IsVisible)
+        {
+            Done();
+            return;
+        }
+        // (laid out below the window, drawn back up where it is)
+        PlayerBar.Margin = new Thickness(0, 0, 0, -h);
+        double from = down - h, to = show ? -h : 0;
+        Ui.Tween(PlayerBar, AnimatedContent.Ms * Math.Abs(to - from) / h, Ui.CubicOut, t =>
+        {
+            if (run != _barRun) return;
+            _barShift.Y = from + (to - from) * t;
+            if (t >= 1) Done();
+        });
     }
 
     // "<" and ">" slow down and speed up like on YouTube (by the character, so whatever key types them here).

@@ -106,7 +106,7 @@
     <DataTemplate x:Key="TrackCloudCell">
         <Panel Width="32" Height="32">
             <Panel Background="Transparent" ToolTip.Tip="{Binding SignTip}" IsVisible="{Binding ShowSign}">
-                <TextBlock Classes="glyph cloud" Classes.gone="{Binding SignIsGone}" Classes.saved="{Binding SignIsSaved}"
+                <TextBlock Classes="glyph cloud" Classes.gone="{Binding SignIsGone}"
                            Text="{Binding SignGlyph, Converter={StaticResource Icon}}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Panel>
             <Panel Background="Transparent" ToolTip.Tip="{Binding CloudTip}" IsVisible="{Binding IsSaving}">

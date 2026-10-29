@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.Services;
 using UltimateMP3Player.ViewModels;
@@ -34,6 +35,7 @@ public partial class MainWindow : Window
             Vm?.Player.SetVisible(WindowState != WindowState.Minimized);
             if (WindowState != WindowState.Minimized) s.WindowMaximized = WindowState == WindowState.Maximized;
         };
+        SetBinding(BarShownProperty, nameof(MainViewModel.ShowPlayerBar));
         PreviewKeyDown += OnKeyDown;
         PreviewMouseUp += OnMouseSideButton;
         PreviewMouseDown += FoldQueue;
@@ -191,6 +193,49 @@ public partial class MainWindow : Window
         for (DependencyObject? d = v; d != null; d = VisualTreeHelper.GetParent(d))
             if (d == QueuePanel || d == QueueButton) return;
         vm.QueueOpen = false;
+    }
+
+    // ------------------------------------------------------------------ the player bar, away for the DJ
+
+    private static readonly DependencyProperty BarShownProperty = DependencyProperty.Register("BarShown", typeof(bool), typeof(MainWindow),
+        new PropertyMetadata(true, (d, e) => ((MainWindow)d).SlideBar((bool)e.NewValue)));
+
+    private readonly TranslateTransform _barShift = new();
+    private double _barHeight;
+
+    // The page gets the bar's room at once (under its own slide: AnimatedContent), and the bar goes down out of the window over
+    // it; coming back it rises over the page and only then takes its room again. The page is laid out once, not on every frame.
+    private void SlideBar(bool show)
+    {
+        if (PlayerBar.Visibility == Visibility.Visible && PlayerBar.Margin.Bottom == 0) _barHeight = PlayerBar.ActualHeight;
+        double h = _barHeight;
+        // (how far down it is now: 0 in its place, h out of the window; halfway when it's turned back)
+        double down = PlayerBar.Visibility != Visibility.Visible ? h : PlayerBar.Margin.Bottom < 0 ? h + _barShift.Y : 0;
+        _barShift.BeginAnimation(TranslateTransform.YProperty, null);
+        PlayerBar.RenderTransform = _barShift;
+        PlayerBar.Visibility = Visibility.Visible;
+        PlayerBar.IsHitTestVisible = show;
+        void Done()
+        {
+            _barShift.BeginAnimation(TranslateTransform.YProperty, null);
+            _barShift.Y = 0;
+            PlayerBar.Margin = new Thickness(0);
+            if (!show) PlayerBar.Visibility = Visibility.Collapsed;
+        }
+        if (!Ui.Animations || h <= 0 || !IsVisible)
+        {
+            Done();
+            return;
+        }
+        // (laid out below the window, drawn back up where it is)
+        PlayerBar.Margin = new Thickness(0, 0, 0, -h);
+        double from = down - h, to = show ? -h : 0;
+        var slide = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(AnimatedContent.Ms * Math.Abs(to - from) / h))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        slide.Completed += (_, _) => { if ((bool)GetValue(BarShownProperty) == show) Done(); };
+        _barShift.BeginAnimation(TranslateTransform.YProperty, slide);
     }
 
     // The mouse's side buttons: back and forward.

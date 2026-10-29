@@ -340,6 +340,14 @@ Shot(win, "queue");
 Check(win.GetVisualDescendants().OfType<QueuePopup>().Any(q => q.IsEffectivelyVisible) && Shown(L.T("The queue is empty")), "up next pops out over the page");
 Press(Key.Escape);
 Check(!main.QueueOpen, "Esc folds up next");
+// ---- 4.4.1: the player bar goes down out of the window for the DJ, and comes back up
+var playerBar = win.FindControl<Border>("PlayerBar")!;
+main.IsDj = true;
+Shot(win, "dj");
+Check(!playerBar.IsVisible, "dj: the player bar went away");
+main.IsHome = true;
+Shot(win, "bar-back");
+Check(playerBar.IsVisible && playerBar.Margin.Bottom == 0 && playerBar.IsHitTestVisible, "dj left: the player bar back in its place");
 
 // ---- 4.3.1: Spotify's library in its zip (liked songs, a playlist) as lists for ListImport (their Spotify ids: nothing looked for)
 var zipPath = Path.Combine(root, "spotify.zip");

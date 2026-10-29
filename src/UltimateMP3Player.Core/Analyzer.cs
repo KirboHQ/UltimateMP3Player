@@ -106,6 +106,7 @@ public static class Analyzer
                 if (item != null) result.Items.Add(item);
             }
             if (result.Items.Count == 0) throw new EngineException(L.T("The playlist is empty or not accessible.")) { NoMedia = true };
+            if (siteName == "SoundCloud") await FillFromSoundCloudAsync(result.Items, ct);
             if (result.Thumbnails.Count == 0 && result.Items[0].Thumbnails.Count > 0) result.Thumbnails = result.Items[0].Thumbnails.ToList();
             if (result.Items.Count == 1 && root.Str("_type") == "multi_video") result.IsCollection = false;
             if (!result.IsCollection) { result.Title = result.Items[0].Title; }
@@ -188,18 +189,7 @@ public static class Analyzer
         string? title = null, artist = null, cover = null;
         if (site == "SoundCloud")
         {
-            try
-            {
-                var json = await Http.GetStringAsync("https://soundcloud.com/oembed?format=json&url=" + Uri.EscapeDataString(url), ct: ct);
-                using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-                artist = Text.FirstNonEmpty(root.Str("author_name"));
-                title = root.Str("title");
-                // "Song by Artist"
-                if (title != null && artist != null && title.EndsWith(" by " + artist, StringComparison.OrdinalIgnoreCase))
-                    title = title[..^(" by " + artist).Length];
-                cover = root.Str("thumbnail_url");
-            }
+            try { (title, artist, cover) = await SoundCloudCardAsync(url, ct); }
             catch (Exception ex) when (!ct.IsCancellationRequested && ex is HttpRequestException or JsonException or EngineException or OperationCanceledException) { }
         }
         if (string.IsNullOrWhiteSpace(title))
@@ -234,6 +224,40 @@ public static class Analyzer
         result.Items.Add(item);
         return result;
     }
+
+    // SoundCloud's own card of a song (its oEmbed, no key needed): title, uploader and cover.
+    private static async Task<(string? Title, string? Artist, string? Cover)> SoundCloudCardAsync(string url, CancellationToken ct)
+    {
+        var json = await Http.GetStringAsync("https://soundcloud.com/oembed?format=json&url=" + Uri.EscapeDataString(url), ct: ct);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var artist = Text.FirstNonEmpty(root.Str("author_name"));
+        var title = root.Str("title");
+        // "Song by Artist"
+        if (title != null && artist != null && title.EndsWith(" by " + artist, StringComparison.OrdinalIgnoreCase))
+            title = title[..^(" by " + artist).Length];
+        return (title, artist, root.Str("thumbnail_url"));
+    }
+
+    // yt-dlp reads a SoundCloud playlist as bare links (the title only from the link, no artist, no cover; they used to come
+    // with the download, but the songs go to the cloud now): each song's card instead, a few at a time.
+    private static Task FillFromSoundCloudAsync(List<MediaItem> items, CancellationToken ct) =>
+        Parallel.ForEachAsync(items.Where(i => i.Info == null), new ParallelOptions { MaxDegreeOfParallelism = 8, CancellationToken = ct }, async (item, token) =>
+        {
+            // (past the first songs the links are api-v2.soundcloud.com/tracks/<id>: the card knows them as api.soundcloud.com)
+            var url = item.Url.Replace("://api-v2.soundcloud.com/", "://api.soundcloud.com/", StringComparison.OrdinalIgnoreCase);
+            try
+            {
+                var (title, artist, cover) = await SoundCloudCardAsync(url, token);
+                if (string.IsNullOrWhiteSpace(title)) return;
+                item.Title = title;
+                item.TitleIsGuess = false;
+                // The uploader is the artist unless the title names one ("Artist - Song"), as for a downloaded song (SongMeta.From).
+                if (!SongMeta.ArtistTitle.IsMatch(title)) item.Artist = artist;
+                if (cover != null && cover.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) item.Thumbnails.Insert(0, cover);
+            }
+            catch (Exception ex) when (!token.IsCancellationRequested && ex is HttpRequestException or JsonException or EngineException or OperationCanceledException) { }
+        });
 
     // "…/world-on-fire-1" → "World on fire 1", until the real title.
     private static string? TitleFromUrl(string url)

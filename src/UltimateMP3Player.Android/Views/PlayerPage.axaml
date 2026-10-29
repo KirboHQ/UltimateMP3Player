@@ -84,7 +84,6 @@
                     <!-- the artist; before it a small cloud when the song isn't saved on the phone (only a sign) -->
                     <DockPanel Margin="0,3,0,0" IsVisible="{Binding !Player.IsWaiting}">
                         <TextBlock DockPanel.Dock="Left" Classes="glyph cloud" Classes.gone="{Binding Player.Current.SignIsGone, FallbackValue=False}"
-                                   Classes.saved="{Binding Player.Current.SignIsSaved, FallbackValue=False}"
                                    Text="{Binding Player.Current.SignGlyph, Converter={x:Static views:Converters.Glyph}}" FontSize="14" Margin="0,0,7,0"
                                    VerticalAlignment="Center" IsVisible="{Binding Player.Current.ShowSign, FallbackValue=False}"/>
                         <TextBlock x:Name="ArtistText" Text="{Binding Player.Current.Artist}" FontSize="15" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis"

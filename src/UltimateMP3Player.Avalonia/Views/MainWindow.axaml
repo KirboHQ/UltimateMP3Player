@@ -361,8 +361,9 @@
             </Grid>
 
             <!-- ============================================================ player bar -->
+            <!-- (away while the DJ is the page, sliding down out of the window: MainWindow.SlideBar) -->
             <Border x:Name="PlayerBar" Grid.Row="2" Background="{DynamicResource SidebarBrush}"
-                    Padding="14,10" IsVisible="{Binding ShowPlayerBar}">
+                    Padding="14,10">
                 <Grid x:Name="PlayerGrid" DataContext="{Binding Player}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="3*" MinWidth="300" MaxWidth="400"/>
@@ -394,7 +395,6 @@
                             <!-- the artist; before it the song's sign (the exception to Settings › Download: TrackViewModel.ShowSign) -->
                             <DockPanel Margin="0,2,0,0">
                                 <TextBlock DockPanel.Dock="Left" Classes="glyph cloud" Classes.gone="{Binding Current.SignIsGone, FallbackValue=False}"
-                                           Classes.saved="{Binding Current.SignIsSaved, FallbackValue=False}"
                                            Text="{Binding Current.SignGlyph, Converter={StaticResource Icon}}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"
                                            ToolTip.Tip="{Binding Current.SignTip}" IsVisible="{Binding Current.ShowSign, FallbackValue=False}"/>
                                 <TextBlock Text="{Binding Current.Artist}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"

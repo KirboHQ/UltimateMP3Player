@@ -150,9 +150,6 @@
             <DataTrigger Binding="{Binding SignIsGone}" Value="True">
                 <Setter TargetName="Cloud" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
             </DataTrigger>
-            <DataTrigger Binding="{Binding SignIsSaved}" Value="True">
-                <Setter TargetName="Cloud" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
-            </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 
