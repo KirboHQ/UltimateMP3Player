@@ -1047,8 +1047,11 @@ public sealed class PlayerViewModel : Observable
         var live = _main.Stations.StreamOf(t);
         if (live != null) t.Artist = _main.Stations.SubtitleOf(t) ?? t.Artist;
         var path = t.AudioPath ?? _main.Radio.PathFor(t.Id);
-        // Not here yet: heard from its site while it downloads (once its analysis is done), otherwise waited for.
-        var link = path == null && live == null && _main.Radio.Streams(t) ? _main.Radio.StreamOf(t.Id) : null;
+        // Not here yet: heard from its site while it downloads (once its analysis is done), otherwise waited for. From its
+        // site only when it starts now with nothing else to hear (stopped, paused, the song before just ended): asked for
+        // while another one plays, or not to play yet, it waits for its file, so the site isn't read twice.
+        if (_waiting != t.Id) _waitFile = !play || IsPlaying && _opened && !_audio.AtEnd;
+        var link = path == null && live == null && !_waitFile && _main.Radio.Streams(t) ? _main.Radio.StreamOf(t.Id) : null;
         if (path == null && link == null && live == null && _main.Radio.Streams(t))
         {
             Wait(t, play);
@@ -1138,6 +1141,8 @@ public sealed class PlayerViewModel : Observable
     // meanwhile). At the end of the queue the next suggestions may still be on their way: the same, until they come.
     private string? _waiting;
     private bool _waitPlay, _waitMore;
+    // The song waited for starts from its file only, not from its site meanwhile (Load).
+    private bool _waitFile;
 
     public bool IsWaiting => _remote != null ? _remote.State.Waiting || _remote.State.WaitMore : _waiting != null || _waitMore;
     public string? WaitText => _remote != null ? RemoteWaitText
@@ -1180,8 +1185,8 @@ public sealed class PlayerViewModel : Observable
     internal void OnRadioProgress(string id)
     {
         if (_waiting != id) return;
-        // Its analysis is done: it starts from its site while the rest downloads.
-        if (_main.Radio.StreamOf(id) != null && TrackOf(id) is { } t) _ = Load(t, _waitPlay);
+        // Its analysis is done: it starts from its site while the rest downloads (unless it waits for its file).
+        if (!_waitFile && _main.Radio.StreamOf(id) != null && TrackOf(id) is { } t) _ = Load(t, _waitPlay);
         else OnWaitChanged();
     }
 
@@ -1407,6 +1412,16 @@ public sealed class PlayerViewModel : Observable
         if (_waiting != null)
         {
             _waitPlay = !_waitPlay;
+            // Asked to play with nothing else playing: from its site meanwhile, when it can.
+            if (_waitPlay && _waitFile)
+            {
+                _waitFile = false;
+                if (_main.Radio.StreamOf(_waiting) != null && TrackOf(_waiting) is { } w)
+                {
+                    _ = Load(w, true);
+                    return;
+                }
+            }
             OnWaitChanged();
             return;
         }

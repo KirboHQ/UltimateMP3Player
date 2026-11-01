@@ -82,6 +82,8 @@ public sealed class AudioEngine : IDisposable
     public string? SourcePath { get; private set; }
     // Heard from its site while it downloads (SourcePath is the link), until its file takes over (SwapAsync).
     public bool Streaming => SourcePath?.StartsWith("http", StringComparison.OrdinalIgnoreCase) == true;
+    // The song played to its end (the next one isn't in yet).
+    public bool AtEnd => _master.ReadToEnd;
 
 #if IOS_APP
     // The speaker, the headphones or Bluetooth hold some more (iOS says how much): in time with the others in a room.

@@ -45,6 +45,11 @@ public static class AndroidEngines
         // brings other packages takes the links away, so Engines.Missing() asks for them to be unpacked again.
         try
         {
+            // What Unpack left aside (the version a program was still using, one cut off halfway): nothing of ours runs yet.
+            foreach (var pattern in new[] { "*.old-*", "*.new-*" })
+                foreach (var dir in Directory.Exists(Base) ? Directory.GetDirectories(Base, pattern) : Array.Empty<string>())
+                    try { Directory.Delete(dir, true); }
+                    catch { }
             if (!Directory.Exists(Bin)) return;
             if (Stale("libpython.zip.so", "python") || Stale("libffmpeg.zip.so", "ffmpeg")) File.Delete(Path.Combine(Bin, "ffmpeg"));
             else Links();
@@ -189,9 +194,20 @@ public static class AndroidEngines
         var stamp = Stamp(zipName);
         if (Directory.Exists(dir) && !Stale(zipName, dirName)) return;
         try { File.Delete(stampFile); } catch { }
-        if (Directory.Exists(dir)) Directory.Delete(dir, true);
-        Directory.CreateDirectory(dir);
-        using var za = ZipFile.OpenRead(zip);
+        // Unpacked aside, then put in place with a rename: deleting the old folder in place failed ("Directory not empty")
+        // while a Python still wrote into it (its compiled files), and left no engines until the next start. What stays
+        // aside goes at the next start (Configure).
+        var fresh = $"{dir}.new-{DateTime.UtcNow.Ticks}";
+        Directory.CreateDirectory(fresh);
+        using (var za = ZipFile.OpenRead(zip))
+            Extract(za, fresh, text, progress, ct);
+        if (Directory.Exists(dir)) Directory.Move(dir, $"{dir}.old-{DateTime.UtcNow.Ticks}");
+        Directory.Move(fresh, dir);
+        File.WriteAllText(stampFile, stamp);
+    }
+
+    private static void Extract(ZipArchive za, string dir, string text, Action<string, double?> progress, CancellationToken ct)
+    {
         int done = 0, total = za.Entries.Count;
         var root = Path.GetFullPath(dir) + Path.DirectorySeparatorChar;
         foreach (var e in za.Entries)
@@ -216,6 +232,5 @@ public static class AndroidEngines
             }
             else e.ExtractToFile(dest, true);
         }
-        File.WriteAllText(stampFile, stamp);
     }
 }

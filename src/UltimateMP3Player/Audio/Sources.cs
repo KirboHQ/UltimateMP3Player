@@ -167,7 +167,9 @@ public sealed class LinkTrackSource : ITrackSource, ISampleProvider
         ChildProcess p;
         try
         {
-            p = ChildProcess.Start(Engines.Ffmpeg, new[] { "-nostdin", "-loglevel", "quiet", "-headers", _link.Headers, "-reconnect", "1",
+            // A small socket buffer: the ring above already holds ten seconds, and the system's own (about 1 MB on Wi-Fi)
+            // was filled by the site at once and thrown away at the swap to the file, a MB more per song (measured).
+            p = ChildProcess.Start(Engines.Ffmpeg, new[] { "-nostdin", "-loglevel", "quiet", "-recv_buffer_size", "65536", "-headers", _link.Headers, "-reconnect", "1",
                 "-reconnect_streamed", "1", "-reconnect_delay_max", "4", "-ss", at.TotalSeconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
                 "-i", _link.Url, "-vn", "-f", "f32le", "-ac", "2", "-ar", Rate.ToString(), "pipe:1" }, errors: false);
         }

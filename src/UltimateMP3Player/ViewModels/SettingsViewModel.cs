@@ -448,12 +448,19 @@ public sealed class SettingsViewModel : Observable
         if (S.OutputDevice is { } id && list.All(c => !Equals(c.Value, id)))
             list.Add(new Choice(S.OutputDeviceName ?? id, id, L.T("not connected")));
         OutputDevices = list;
-        OnChanged(nameof(OutputDevices), nameof(OutputDevice));
+        // A WPF ComboBox given a new list drops its selection and reads the chosen one back while it's still swapping,
+        // then shows nothing (SelectedIndex -1, the page opened again): nothing chosen meanwhile, the chosen one after.
+        _listing = true;
+        OnChanged(nameof(OutputDevices));
+        _listing = false;
+        OnChanged(nameof(OutputDevice));
     }
+
+    private bool _listing;
 
     public Choice OutputDevice
     {
-        get => OutputDevices.FirstOrDefault(c => Equals(c.Value, S.OutputDevice)) ?? OutputDevices[0];
+        get => _listing ? null! : OutputDevices.FirstOrDefault(c => Equals(c.Value, S.OutputDevice)) ?? OutputDevices[0];
         set
         {
             if (value == null || Equals(value.Value, S.OutputDevice)) return;

@@ -2012,9 +2012,6 @@ public static partial class L
         ["Couldn't get this version's notes: check your connection."] = "Impossibile scaricare le novità di questa versione: controlla la connessione.",
         // 4.0.1: songs heard from their site while they download
         ["Start songs while they download"] = "Avvia i brani mentre si scaricano",
-        ["Songs in the cloud and suggested ones play right away, while they download. Off: they wait for the whole file (less mobile data)."] = "I brani nel cloud e quelli suggeriti partono subito, mentre si scaricano. Spento: aspettano il file intero (meno dati mobili).",
-        ["Songs in the cloud and suggested ones play right away. Off: they wait for the whole download (less mobile data)"] =
-            "I brani nel cloud e quelli suggeriti partono subito. Spento: aspettano il download completo (meno dati mobili)",
         // 4.0.1: normalize volume button next to the song
         ["Normalize volume on: all songs at the same volume"] = "Normalizzazione del volume attiva: tutti i brani allo stesso volume",
         ["Normalize volume off: each song at its own volume"] = "Normalizzazione del volume spenta: ogni brano al suo volume",
@@ -2481,5 +2478,10 @@ public static partial class L
             "Brani, artisti, album, playlist e radio. Per scaricare un brano, incolla qui il suo link.",
         ["Full screen"] = "Schermo intero",
         ["Exit full screen (Esc)"] = "Esci dallo schermo intero (Esc)",
+        // 4.4.3: songs start from their site only when nothing else is playing
+        ["Songs in the cloud and suggested ones play right away, while they download, when nothing else is playing. Off: they wait for the whole file (less mobile data)."] =
+            "I brani nel cloud e quelli suggeriti partono subito, mentre si scaricano, se non sta suonando nient'altro. Spento: aspettano il file intero (meno dati mobili).",
+        ["Songs in the cloud and suggested ones play right away when nothing else is playing. Off: they wait for the whole download (less mobile data)"] =
+            "I brani nel cloud e quelli suggeriti partono subito se non sta suonando nient'altro. Spento: aspettano il download completo (meno dati mobili)",
     };
 }

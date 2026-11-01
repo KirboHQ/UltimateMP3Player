@@ -97,6 +97,8 @@ public static class Program
         Check(busy.ElapsedMilliseconds < 150, $"settings: opened again in {busy.ElapsedMilliseconds} ms");
         Pump(400);
         Check(main.Settings.OutputDevices.Count > UltimateMP3Player.Audio.AudioPlatform.OutputDevices().Count, "settings: the audio outputs listed meanwhile");
+        var output = Descendants(win).OfType<ComboBox>().FirstOrDefault(c => System.Windows.Automation.AutomationProperties.GetName(c) == L.T("Audio output"));
+        Check(output?.SelectedIndex >= 0 && output.SelectionBoxItem is Choice, $"settings opened again: the audio output still shown ({output?.SelectionBoxItem})");
         // ---- the library's parts are tabs of one page; back and forward; the keyboard's pages
         main.OpenArtists();
         Pump(600);

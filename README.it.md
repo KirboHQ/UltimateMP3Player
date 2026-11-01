@@ -94,7 +94,7 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
   <tr>
     <td><b>iPhone e iPad</b><br><sub>iOS 15 o successivo</sub></td>
     <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-ios.ipa"><img alt="Scarica per iPhone" src="https://img.shields.io/badge/Scarica-IPA-7C5CFF?style=for-the-badge&labelColor=5B3FD9&logo=apple&logoColor=white"></a></td>
-    <td><sub>si installa con SideStore, vedi sotto</sub></td>
+    <td><sub>si installa con SideStore o xtool, vedi sotto</sub></td>
   </tr>
 </table>
 
@@ -157,6 +157,14 @@ chiede prima di installarle.
 Con un Apple ID gratuito un'app resta firmata 7 giorni e SideStore la rinnova (aprilo ogni tanto). I download vogliono
 l'app aperta. Per mandare un link da un'altra app, crea un Comando rapido che apre `ump://add?url=` seguito dall'URL
 condiviso.
+
+**Oppure con [xtool](https://github.com/xtool-org/xtool)**, da un computer (Linux, macOS, Windows con WSL) con l'iPhone
+collegato via cavo: preparalo con la sua [guida](https://xtool.sh/documentation/xtool/installation-linux/) (per
+installare un IPA non servono Swift e Xcode, salta quei passi; su Windows l'app Dispositivi Apple più
+`networkingMode=mirrored` in `.wslconfig` ed `export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015` sostituiscono USBIPD), poi
+esegui `xtool auth` e `xtool install UltimateMP3Player-ios.ipa`. Attiva la Modalità sviluppatore e autorizza il tuo Apple
+ID in Impostazioni › Generali › VPN e gestione dispositivi. Nessuno la rinnova per te: rilancia `xtool install` entro 7
+giorni e a ogni nuova versione.
 </details>
 
 ## ❤️ Sostieni il progetto

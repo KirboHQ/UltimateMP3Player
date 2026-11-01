@@ -319,6 +319,11 @@ win.KeyPress(Key.Left, RawInputModifiers.Alt, PhysicalKey.ArrowLeft, null);
 win.KeyRelease(Key.Left, RawInputModifiers.Alt, PhysicalKey.ArrowLeft, null);
 Dispatcher.UIThread.RunJobs();
 Check(main.LibraryHub.IsArtists, "Alt+left: back");
+// ---- Settings opened again: its audio output box still shows the one chosen (the outputs are read again)
+main.GoSettings();
+Shot(win, "settings-again");
+var output = win.GetVisualDescendants().OfType<ComboBox>().FirstOrDefault(c => Avalonia.Automation.AutomationProperties.GetName(c) == L.T("Audio output"));
+Check(output is { SelectedIndex: >= 0 }, "settings opened again: the audio output still shown");
 // ---- a page left and opened again keeps its view (not built again); Ctrl+↓ goes on from the search's box
 main.IsTogether = true;
 Shot(win, "together-again");

@@ -170,7 +170,7 @@
                         <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding PlayWhileDownloading}">
                             <StackPanel>
                                 <TextBlock Text="{local:T 'Start songs while they download'}"/>
-                                <TextBlock Text="{local:T 'Songs in the cloud and suggested ones play right away, while they download. Off: they wait for the whole file (less mobile data).'}" Classes="hint"/>
+                                <TextBlock Text="{local:T 'Songs in the cloud and suggested ones play right away, while they download, when nothing else is playing. Off: they wait for the whole file (less mobile data).'}" Classes="hint"/>
                             </StackPanel>
                         </CheckBox>
                         <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding Crossfade}" AutomationProperties.Name="{local:T Crossfade}">
