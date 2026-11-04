@@ -95,8 +95,8 @@ public partial class SelectionBar : UserControl
         if (show && Visibility != Visibility.Visible && Ui.Animations)
         {
             var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.3 };
-            BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
-            Shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(24, 0, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+            BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Ui.Time(160)));
+            Shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(24, 0, Ui.Time(260)) { EasingFunction = ease });
         }
         Visibility = show ? Visibility.Visible : Visibility.Collapsed;
         Buttons.Children.Clear();

@@ -59,7 +59,8 @@ public static class SmoothScroll
 
     private static void OnWheel(TopLevel top, PointerWheelEventArgs e)
     {
-        if (e.Handled) return;
+        // (Ctrl or ⌘: the interface's size, MainWindow)
+        if (e.Handled || (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0) return;
         if (_dropDown is { IsDropDownOpen: true } open && TopLevel.GetTopLevel(open) == top && (e.Source as Visual)?.GetVisualRoot() is not PopupRoot)
         {
             e.Handled = true;

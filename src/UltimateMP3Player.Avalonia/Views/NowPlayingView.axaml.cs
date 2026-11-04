@@ -30,6 +30,8 @@ public partial class NowPlayingView : UserControl
     {
         InitializeComponent();
         Tilt.RenderTransform = _tilt;
+        CoverBox.RenderTransform = _coverShift;
+        VideoFrame.RenderTransform = _videoShift;
         QueueCard.RenderTransform = _queueShiftT;
         _glow = new Tweener(this, v => LyricsGlow.Opacity = v);
         _lyricsIn = new Tweener(this, v => LyricsHost.Opacity = v, 1);
@@ -61,6 +63,7 @@ public partial class NowPlayingView : UserControl
         VideoArea.SizeChanged += (_, _) => FitVideo();
         // ("Up next" folding away over the whole screen: the song takes its room)
         QueuePane.SizeChanged += (_, _) => { if (_vm?.FullScreen == true) PlaceFullScreen(); };
+        LayoutUpdated += (_, _) => CenterSong();
         CoverHit.PointerMoved += Cover_MouseMove;
         CoverHit.PointerExited += (_, _) =>
         {
@@ -156,19 +159,62 @@ public partial class NowPlayingView : UserControl
     // ------------------------------------------------------------------ over the whole screen
 
     // The stage loses its frame and reaches under "Up next" and the see-through player bar (its backdrop behind them); the
-    // song and its buttons stay clear of both (MainWindow.ApplyFullScreen).
+    // song and its buttons stay clear of both (MainWindow.ApplyFullScreen), the song in the middle of the screen.
     private void PlaceFullScreen()
     {
         bool full = _vm?.FullScreen == true;
         double bar = full && _window is MainWindow w ? w.PlayerBar.Bounds.Height : 0;
         Grid.SetColumnSpan(Stage, full ? 2 : 1);
-        Stage.Margin = full ? default : new Thickness(20, 0, 0, 16);
+        Stage.Margin = full ? default : new Thickness(0, 0, 0, 14);
         var corner = new CornerRadius(full ? 0 : 16);
         foreach (var c in Stage.Children)
             if (c is Border b) b.CornerRadius = corner;
             else if (c is CoverImage i) i.CornerRadius = corner;
-        StageContent.Margin = new Thickness(28, 28, 28 + (full ? QueuePane.Bounds.Width : 0), 28 + bar);
-        QueueCard.Margin = full ? new Thickness(10, 16, 16, 16 + bar) : new Thickness(10, 0, 0, 16);
+        double pane = full ? QueuePane.Bounds.Width : 0;
+        StageContent.Margin = new Thickness(28, 28, 28, 28 + bar);
+        StageFooter.Margin = new Thickness(0, 22, pane, 0);
+        CoverArea.Margin = VideoArea.Margin = new Thickness(pane, 0, pane, 0);
+        LyricsHost.Margin = new Thickness(0, -8, pane, 0);
+        QueueCard.Margin = full ? new Thickness(14, 14, 0, 14 + bar) : new Thickness(14, 0, 0, 14);
+    }
+
+    private readonly TranslateTransform _coverShift = new(), _videoShift = new();
+
+    // The song above the play button, halfway up the stage (over the whole screen: its very middle), whatever stands around it,
+    // as far as its place allows.
+    // (By a transform: nothing to lay out again, and it stays still while "Up next" folds away.)
+    private void CenterSong()
+    {
+        if (_window is not MainWindow w || !this.IsAttachedToVisualTree()) return;
+        var stage = Stage.TranslatePoint(new Point(Stage.Bounds.Width / 2, Stage.Bounds.Height / 2), this) ?? default;
+        var middle = new Point(w.PagesMiddleX, stage.Y);
+        if (CoverArea.IsVisible)
+        {
+            // (of the box, only the picture counts: the rest is room for its shadow; it may use the gaps above and below its row)
+            double picture = CoverBox.Bounds.Width * 400 / 460;
+            var shift = Toward(CoverArea, picture, picture - 40, middle);
+            _coverShift.X = shift.X;
+            _coverShift.Y = shift.Y;
+            // (the line of "in the center" goes through the middle of the cover)
+            Visualizer.Middle = (CoverArea.TranslatePoint(new Point(0, CoverArea.Bounds.Height / 2), Stage)?.Y ?? 0) + shift.Y;
+        }
+        if (VideoArea.IsVisible)
+        {
+            var shift = Toward(VideoArea, VideoFrame.Bounds.Width, VideoFrame.Bounds.Height, middle);
+            _videoShift.X = shift.X;
+            _videoShift.Y = shift.Y;
+        }
+        // Mirrored bars have their middle there too: what stands past the stage's edge just isn't seen.
+        bool mirrored = _vm?.VisualizerFlow is VisualizerFlow.MirrorSides or VisualizerFlow.MirrorCenter;
+        double off = mirrored ? Math.Round(2 * (stage.X - middle.X)) : 0;
+        Visualizer.Margin = new Thickness(-Math.Max(0, off), 0, Math.Min(0, off), 0);
+    }
+
+    private Vector Toward(Control area, double width, double height, Point middle)
+    {
+        var at = area.TranslatePoint(new Point(area.Bounds.Width / 2, area.Bounds.Height / 2), this) ?? middle;
+        static double Within(double want, double room) => Math.Clamp(want, -Math.Max(0, room) / 2, Math.Max(0, room) / 2);
+        return new Vector(Within(middle.X - at.X, area.Bounds.Width - width), Within(middle.Y - at.Y, area.Bounds.Height - height));
     }
 
     // ------------------------------------------------------------------ lyrics
@@ -240,8 +286,9 @@ public partial class NowPlayingView : UserControl
 
     // ------------------------------------------------------------------ folding "next up" away
 
-    // Pane width with the card, and without (the gap at the page edge stays).
-    private const double PaneOpen = 350, PaneClosed = 20;
+    // Pane width with the card, and without (the gap at the page edge stays). Open: as wide as the sidebar, its mirror (the card
+    // as wide as the sidebar's entries, the same 14 on each side), so that the stage stands in the middle of the window.
+    private const double PaneOpen = 280, PaneClosed = 14;
 
     // The pane narrows while the card slides out to the right; the stage takes the room and a pill brings it back.
     private void PlaceQueue(bool animate)
@@ -412,6 +459,7 @@ public partial class NowPlayingView : UserControl
         }
         CoverImage.Source = bmp;
         LyricsGlow.Source = CoverGlow.Bake(img);
+        Visualizer.Color = CoverGlow.Bright(img);
         CoverBackdrop.Source = BakeBackdrop(img);
     }
 

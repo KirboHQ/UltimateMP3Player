@@ -580,6 +580,40 @@
         </Setter>
     </Style>
 
+    <!-- A choice drawn as a tile (the looks of a stream overlay): outlined when chosen. -->
+    <Style x:Key="ChoiceTile" TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Padding" Value="10,9"/>
+        <Setter Property="Margin" Value="4"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Border x:Name="Bd" CornerRadius="12" Padding="{TemplateBinding Padding}" Background="{DynamicResource BgBrush}" BorderBrush="Transparent" BorderThickness="1.5">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- A page's tabs (the library's parts): like Segment, the open one's tint a SlidingPill behind the tabs (it glides with the part). -->
     <Style x:Key="TabSegment" TargetType="RadioButton" BasedOn="{StaticResource Segment}">
         <Setter Property="Template">
@@ -856,13 +890,13 @@
                         <Popup x:Name="PART_Popup" Placement="Bottom" VerticalOffset="4" AllowsTransparency="True"
                                Focusable="False" PopupAnimation="Fade"
                                IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                            <Border Margin="0,0,8,8" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                            <Border Margin="0,0,8,8" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                     MaxHeight="{TemplateBinding MaxDropDownHeight}" Background="{DynamicResource PopupBrush}"
                                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="14" Padding="5">
                                 <Border.Effect>
                                     <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.45" Color="{DynamicResource PopupShadowColor}"/>
                                 </Border.Effect>
-                                <ScrollViewer SnapsToDevicePixels="True" HorizontalScrollBarVisibility="Disabled">
+                                <ScrollViewer SnapsToDevicePixels="True" HorizontalScrollBarVisibility="Disabled" CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}">
                                     <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
                                 </ScrollViewer>
                             </Border>
@@ -1120,7 +1154,14 @@
                         <Trigger Property="IsIndeterminate" Value="True">
                             <Setter TargetName="PART_Indicator" Property="Visibility" Value="Collapsed"/>
                             <Setter TargetName="Runner" Property="Visibility" Value="Visible"/>
-                            <Trigger.EnterActions>
+                        </Trigger>
+                        <!-- only while shown: an animation running out of sight makes WPF draw the window at every frame of the screen -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsIndeterminate" Value="True"/>
+                                <Condition Property="IsVisible" Value="True"/>
+                            </MultiTrigger.Conditions>
+                            <MultiTrigger.EnterActions>
                                 <BeginStoryboard x:Name="RunnerAnim">
                                     <Storyboard RepeatBehavior="Forever">
                                         <DoubleAnimation Storyboard.TargetName="Runner"
@@ -1128,11 +1169,11 @@
                                                          From="-90" To="420" Duration="0:0:1.4"/>
                                     </Storyboard>
                                 </BeginStoryboard>
-                            </Trigger.EnterActions>
-                            <Trigger.ExitActions>
-                                <StopStoryboard BeginStoryboardName="RunnerAnim"/>
-                            </Trigger.ExitActions>
-                        </Trigger>
+                            </MultiTrigger.EnterActions>
+                            <MultiTrigger.ExitActions>
+                                <RemoveStoryboard BeginStoryboardName="RunnerAnim"/>
+                            </MultiTrigger.ExitActions>
+                        </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -1249,6 +1290,7 @@
     </Style>
 
     <Style TargetType="ToolTip">
+        <Setter Property="LayoutTransform" Value="{Binding Source={x:Static local:Ui.ZoomTransform}}"/>
         <Setter Property="Background" Value="{DynamicResource PopupBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
@@ -1274,6 +1316,7 @@
 
     <!-- ============================================================ menus -->
     <Style TargetType="ContextMenu">
+        <Setter Property="LayoutTransform" Value="{Binding Source={x:Static local:Ui.ZoomTransform}}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
         <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
         <Setter Property="FontSize" Value="13.5"/>
@@ -1329,7 +1372,7 @@
                         <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="0" VerticalOffset="-6" AllowsTransparency="True"
                                IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}" Focusable="False" PopupAnimation="Fade">
                             <Border Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                    CornerRadius="10" Padding="5" Margin="0,0,10,10" MinWidth="200">
+                                    CornerRadius="10" Padding="5" Margin="0,0,10,10" MinWidth="200" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}">
                                 <Border.Effect>
                                     <DropShadowEffect BlurRadius="18" ShadowDepth="5" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
                                 </Border.Effect>
@@ -1368,15 +1411,21 @@
                 <RotateTransform/>
             </Setter.Value>
         </Setter>
+        <!-- only while shown: an animation running out of sight makes WPF draw the window at every frame of the screen -->
         <Style.Triggers>
-            <EventTrigger RoutedEvent="Loaded">
-                <BeginStoryboard>
-                    <Storyboard RepeatBehavior="Forever">
-                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                         From="0" To="360" Duration="0:0:0.9"/>
-                    </Storyboard>
-                </BeginStoryboard>
-            </EventTrigger>
+            <Trigger Property="IsVisible" Value="True">
+                <Trigger.EnterActions>
+                    <BeginStoryboard x:Name="SpinnerTurns">
+                        <Storyboard RepeatBehavior="Forever">
+                            <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                             From="0" To="360" Duration="0:0:0.9"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                    <RemoveStoryboard BeginStoryboardName="SpinnerTurns"/>
+                </Trigger.ExitActions>
+            </Trigger>
         </Style.Triggers>
     </Style>
 </ResourceDictionary>

@@ -19,7 +19,7 @@ public partial class QueuePopup : UserControl
         IsVisibleChanged += (_, _) =>
         {
             if (!IsVisible || !Ui.Animations) return;
-            var time = TimeSpan.FromMilliseconds(220);
+            var time = Ui.Time(220);
             _rise.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(18, 0, time) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
             BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, time));
         };

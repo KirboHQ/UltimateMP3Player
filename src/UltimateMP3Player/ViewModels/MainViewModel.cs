@@ -546,6 +546,7 @@ public sealed class MainViewModel : Observable, IPageOrder
             OnChanged(nameof(QueueOpen), nameof(QueueShown));
             foreach (var p in Playlists) p.IsSelected = value is PlaylistPageViewModel pp && pp.Vm == p;
             foreach (var t in Tags) t.IsSelected = value is LibraryViewModel { Tag: { } tag } && tag == t;
+            if (Artists != null) foreach (var a in Artists.Followed) a.RecheckOpen();
             OnChanged(nameof(Section), nameof(IsNowPlaying));
             if (value == NowPlaying) NowPlaying.Refresh();
             else FullScreen = false;
@@ -686,21 +687,26 @@ public sealed class MainViewModel : Observable, IPageOrder
         else if (Page == Search && Search.ShowResults) Search.StepFilter(dir);
     }
 
-    // The sidebar's tags shown or folded under their heading (kept in the settings).
-    public bool TagsOpen
+    // The computers' interface size, by tenths: at most what fits the screen (the layout has a minimum size).
+    public void SetZoom(double zoom, bool tell = true)
     {
-        get => !Host.Settings.TagsFolded;
-        set
+        zoom = Math.Round(Math.Clamp(zoom, 0.5, Math.Min(2, Ui.ZoomLimit())) * 10) / 10;
+        if (zoom != Ui.Zoom)
         {
-            if (Host.Settings.TagsFolded == !value) return;
-            Host.Settings.TagsFolded = !value;
+            Ui.Zoom = zoom;
+            Host.Settings.UiZoom = zoom;
             Host.Settings.Save();
-            OnChanged(nameof(TagsOpen), nameof(TagsChevron));
+            Settings.OnZoom();
         }
+        if (tell) Toast(L.F("Interface size: {0}%", Math.Round(zoom * 100)));
     }
-    public string TagsChevron => TagsOpen ? "" : "";
-    public ICommand ToggleTagsCommand => _toggleTags ??= new RelayCommand(() => TagsOpen = !TagsOpen);
-    private ICommand? _toggleTags;
+
+    // The computers' sidebar: each kind folded under its heading or not.
+    public SideSection PlaylistsSection => _playlistsSection ??= new(Host.Settings, () => Host.Settings.PlaylistsFolded, v => Host.Settings.PlaylistsFolded = v);
+    public SideSection ArtistsSection => _artistsSection ??= new(Host.Settings, () => Host.Settings.ArtistsFolded, v => Host.Settings.ArtistsFolded = v);
+    public SideSection RadiosSection => _radiosSection ??= new(Host.Settings, () => Host.Settings.RadiosFolded, v => Host.Settings.RadiosFolded = v);
+    public SideSection TagsSection => _tagsSection ??= new(Host.Settings, () => Host.Settings.TagsFolded, v => Host.Settings.TagsFolded = v);
+    private SideSection? _playlistsSection, _artistsSection, _radiosSection, _tagsSection;
     public bool IsNowPlaying => Section == "nowplaying";
 
     public void Navigate(object page)

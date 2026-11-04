@@ -36,13 +36,13 @@
 - ☁️ **Songs in the cloud**: add a playlist in seconds without downloading it; save on the device only what you want
   offline.
 - 🎧 **A player that feels like Spotify**: waveform seek bar, synced lyrics, crossfade, a 10-band equalizer, loudness
-  normalization, a queue that fills itself.
+  normalization, a queue that fills itself, bars that move with the music.
 - 🏷️ **Your library, your way**: playlists, favorites, coloured tags, followed artists, internet radio, listening
   stats and your year in music.
 - 👥 **Listen together**: rooms with friends on your network, computers and phones hearing the same song at the same
   moment, with a chat and a shared queue.
 - 📱 **Your phone as a remote**: over Wi-Fi or the cable, it drives the computer's player and shares its library.
-- 🎚️ **DJ mode**: two decks, BPM sync, EQ kills, scratching, and your mix recorded into the library.
+- 🎚️ **DJ mode and stream overlays**: two decks, BPM sync, scratching, your mix recorded into the library; overlays for OBS, spinning vinyl included.
 - 📦 **Bring your music**: Spotify and Last.fm imports, `.ump` packs to share playlists, MP3 folders for the car.
 
 <table>

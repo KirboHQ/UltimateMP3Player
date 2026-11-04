@@ -8,6 +8,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shell;
+using System.Windows.Threading;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.Services;
 using UltimateMP3Player.ViewModels;
@@ -23,7 +24,13 @@ public partial class MainWindow : Window
     {
         _host = host;
         InitializeComponent();
+        Root.LayoutTransform = Ui.ZoomTransform;
+        Ui.ZoomLimit = () => Math.Min(SystemParameters.WorkArea.Width / MinSize.Width, SystemParameters.WorkArea.Height / MinSize.Height);
+        Ui.ZoomChanged += FitZoom;
+        Closed += (_, _) => Ui.ZoomChanged -= FitZoom;
         WindowFrame.Apply(this, Root, MinButton, MaxButton, CloseButton);
+        if (Ui.Zoom > Ui.ZoomLimit()) Ui.Zoom = Math.Floor(Ui.ZoomLimit() * 10) / 10;
+        FitZoom();
         SmoothScroll.Attach(this);
         // Two fingers sideways on the touchpad over a song's row: the row is pulled (into the queue).
         RowSwipe.Attach(this);
@@ -33,14 +40,20 @@ public partial class MainWindow : Window
         Height = Math.Clamp(s.WindowHeight, MinHeight, SystemParameters.VirtualScreenHeight);
         if (s.WindowMaximized) WindowState = WindowState.Maximized;
         Closing += OnClosing;
+        var sight = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1) };
+        sight.Tick += (_, _) => CheckCovered();
+        Loaded += (_, _) => sight.Start();
+        Closed += (_, _) => sight.Stop();
+        Activated += (_, _) => CheckCovered();
         StateChanged += (_, _) =>
         {
-            Vm?.Player.SetVisible(WindowState != WindowState.Minimized);
+            UpdateShown();
             if (WindowState != WindowState.Minimized && _windowed == null) s.WindowMaximized = WindowState == WindowState.Maximized;
         };
         SetBinding(BarShownProperty, nameof(MainViewModel.ShowPlayerBar));
         SetBinding(FullScreenProperty, nameof(MainViewModel.FullScreen));
         PreviewKeyDown += OnKeyDown;
+        PreviewMouseWheel += OnZoomWheel;
         PreviewMouseUp += OnMouseSideButton;
         PreviewMouseDown += FoldQueue;
         PreviewTextInput += OnTextInput;
@@ -86,6 +99,32 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------------ keyboard
 
+    // The size the layout needs, at zoom 1.
+    private static readonly Size MinSize = new(980, 640);
+
+    // The window's minimum and its caption are in the window's pixels, the rest is inside the zoom.
+    private void FitZoom()
+    {
+        MinWidth = MinSize.Width * Ui.Zoom;
+        MinHeight = MinSize.Height * Ui.Zoom;
+        if (WindowChrome.GetWindowChrome(this) is { } chrome && Vm is not { FullScreen: true }) chrome.CaptionHeight = WindowFrame.CaptionHeight * Ui.Zoom;
+        PlaybackPopup.HorizontalOffset = -600 * Ui.Zoom;
+    }
+
+    // Ctrl+wheel: the interface's size, like a browser's (a touchpad's small steps add up to a notch).
+    private double _zoomWheel;
+
+    private void OnZoomWheel(object sender, MouseWheelEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
+        e.Handled = true;
+        _zoomWheel += e.Delta / 120.0;
+        int notches = (int)_zoomWheel;
+        if (notches == 0) return;
+        _zoomWheel -= notches;
+        Vm?.SetZoom(Ui.Zoom + notches * 0.1);
+    }
+
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
         var vm = Vm;
@@ -99,6 +138,13 @@ public partial class MainWindow : Window
         if (e.Key == Key.System && mods == ModifierKeys.Alt && e.SystemKey is Key.Left or Key.Right)
         {
             Step(vm, e.SystemKey == Key.Right);
+            e.Handled = true;
+            return;
+        }
+        // Ctrl + and -: the interface's size; Ctrl+0: back to normal.
+        if ((mods & ModifierKeys.Control) != 0 && e.Key is Key.OemPlus or Key.Add or Key.OemMinus or Key.Subtract or Key.D0 or Key.NumPad0)
+        {
+            vm.SetZoom(e.Key is Key.D0 or Key.NumPad0 ? 1 : Ui.Zoom + (e.Key is Key.OemPlus or Key.Add ? 0.1 : -0.1));
             e.Handled = true;
             return;
         }
@@ -240,7 +286,7 @@ public partial class MainWindow : Window
         // (laid out below the window, drawn back up where it is)
         PlayerBar.Margin = new Thickness(0, 0, 0, -h);
         double from = down - h, to = show ? -h : 0;
-        var slide = new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(AnimatedContent.Ms * Math.Abs(to - from) / h))
+        var slide = new DoubleAnimation(from, to, Ui.Time(AnimatedContent.Ms * Math.Abs(to - from) / h))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
         };
@@ -252,6 +298,9 @@ public partial class MainWindow : Window
 
     private static readonly DependencyProperty FullScreenProperty = DependencyProperty.Register("FullScreen", typeof(bool), typeof(MainWindow),
         new PropertyMetadata(false, (d, e) => ((MainWindow)d).ApplyFullScreen((bool)e.NewValue)));
+
+    // Where the play button stands as a page sees it: the middle of the window, and pages start past the sidebar.
+    public double PagesMiddleX => ((FrameworkElement)Body.Parent).ActualWidth / 2 - Body.ColumnDefinitions[0].ActualWidth;
 
     // Where the window was before (null: not over the whole screen).
     private Rect? _windowed;
@@ -265,17 +314,16 @@ public partial class MainWindow : Window
     private void ApplyFullScreen(bool on)
     {
         TitleBar.Visibility = Sidebar.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
-        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : 248);
+        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : 280);
         Grid.SetRow(Body, on ? 0 : 1);
         Grid.SetRowSpan(Body, on ? 3 : 1);
-        if (on) PlayerBar.Background = Brushes.Transparent;
-        else PlayerBar.SetResourceReference(Border.BackgroundProperty, "SidebarBrush");
+        PlayerBar.SetResourceReference(Border.BackgroundProperty, on ? "PlayerBarVeil" : "SidebarBrush");
         double bar = on ? PlayerBar.ActualHeight : 0;
         ToastBox.Margin = new Thickness(0, 0, 0, 18 + bar);
         DownloadPanel.Margin = new Thickness(0, 0, 20, 16 + bar);
         if (WindowChrome.GetWindowChrome(this) is { } chrome)
         {
-            chrome.CaptionHeight = on ? 0 : WindowFrame.CaptionHeight;
+            chrome.CaptionHeight = on ? 0 : WindowFrame.CaptionHeight * Ui.Zoom;
             chrome.ResizeBorderThickness = new Thickness(on ? 0 : 6);
         }
         var hwnd = new WindowInteropHelper(this).Handle;
@@ -298,6 +346,72 @@ public partial class MainWindow : Window
             WindowState = _windowedState;
         }
     }
+
+    // ------------------------------------------------------------------ out of sight
+
+    // Another window over the whole of this one (a game, a maximized browser): nobody sees the bars, the waveform or the lyrics
+    // moving, so they rest as when it's minimized. Looked at once a second, going up the pile of windows from this one: only one
+    // that's really there and solid counts (not hidden or on another desktop, not minimized, not see-through like a game's overlay).
+    private bool _covered;
+
+    private void UpdateShown()
+    {
+        bool shown = WindowState != WindowState.Minimized && !_covered;
+        Ui.Hidden = !shown;
+        Vm?.Player.SetVisible(shown);
+    }
+
+    private void CheckCovered()
+    {
+        if (WindowState == WindowState.Minimized || !IsVisible) return;
+        bool covered = IsCovered();
+        if (covered == _covered) return;
+        _covered = covered;
+        UpdateShown();
+    }
+
+    private bool IsCovered()
+    {
+        const int ExtendedFrameBounds = 9, Cloaked = 14, ExStyle = -20, Layered = 0x80000, ClickThrough = 0x20;
+        const uint Above = 3;
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero || DwmGetWindowAttribute(hwnd, ExtendedFrameBounds, out Box mine, Marshal.SizeOf<Box>()) != 0) return false;
+        // (maximized, a window stands a few pixels past the edges of the screen, where no other reaches; over the whole screen,
+        // what stands past them is under the taskbar as soon as another window is above)
+        var area = System.Windows.Forms.Screen.FromHandle(hwnd).WorkingArea;
+        int past = _windowed != null ? 200 : 16;
+        if (area.Left - mine.Left > 0 && area.Left - mine.Left <= past) mine.Left = area.Left;
+        if (area.Top - mine.Top > 0 && area.Top - mine.Top <= past) mine.Top = area.Top;
+        if (mine.Right - area.Right > 0 && mine.Right - area.Right <= past) mine.Right = area.Right;
+        if (mine.Bottom - area.Bottom > 0 && mine.Bottom - area.Bottom <= past) mine.Bottom = area.Bottom;
+        for (var other = GetWindow(hwnd, Above); other != IntPtr.Zero; other = GetWindow(other, Above))
+        {
+            if (!IsWindowVisible(other) || IsIconic(other) || (GetWindowLongPtr(other, ExStyle).ToInt64() & (Layered | ClickThrough)) != 0) continue;
+            if (DwmGetWindowAttribute(other, Cloaked, out int cloaked, sizeof(int)) == 0 && cloaked != 0) continue;
+            if (DwmGetWindowAttribute(other, ExtendedFrameBounds, out Box box, Marshal.SizeOf<Box>()) != 0) continue;
+            if (box.Left <= mine.Left && box.Top <= mine.Top && box.Right >= mine.Right && box.Bottom >= mine.Bottom) return true;
+        }
+        return false;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Box
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetWindow(IntPtr hwnd, uint command);
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hwnd);
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hwnd);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    private static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out Box value, int size);
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, out int value, int size);
 
     // The mouse's side buttons: back and forward.
     private void OnMouseSideButton(object sender, MouseButtonEventArgs e)
@@ -386,10 +500,11 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void PlaylistList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void Artist_RightClick(object sender, MouseButtonEventArgs e)
     {
-        if (PlaylistList.SelectedItem is PlaylistViewModel p) Vm?.OpenPlaylist(p);
-        PlaylistList.SelectedItem = null;
+        if ((sender as FrameworkElement)?.DataContext is not ArtistCardViewModel a) return;
+        Menus.Open(Menus.ForArtistCard(a), (UIElement)sender, false);
+        e.Handled = true;
     }
 
     private void Playlist_RightClick(object sender, MouseButtonEventArgs e)

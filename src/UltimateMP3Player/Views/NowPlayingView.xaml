@@ -31,7 +31,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- ======================================================== stage -->
-        <Grid x:Name="Stage" Margin="20,0,0,16" ClipToBounds="True" SizeChanged="Stage_SizeChanged">
+        <Grid x:Name="Stage" Margin="0,0,0,14" ClipToBounds="True" SizeChanged="Stage_SizeChanged">
             <Border CornerRadius="16" Background="{DynamicResource SurfaceBrush}"/>
             <!-- backdrop: the cover, or the video itself blurred -->
             <Border CornerRadius="16" Opacity="0.22" Visibility="{Binding IsVideo, Converter={StaticResource InvBoolVis}}">
@@ -62,6 +62,13 @@
             <!-- a moving video behind the lyrics: calmed down -->
             <Border CornerRadius="16" Background="{DynamicResource LyricsVeilBrush}" Visibility="{Binding LyricsOverVideo, Converter={StaticResource BoolVis}}"/>
 
+            <!-- the bars of the music, behind the title (with the cover; Settings > Appearance), as wide as the stage, its corners
+                 cutting them (NowPlayingView.ClipStage) -->
+            <Grid x:Name="BarsClip">
+            <views:WaveVisualizer x:Name="Visualizer" IsPlaying="{Binding Player.Animate}" Flow="{Binding VisualizerFlow}" Place="{Binding VisualizerPlace}" BarStyle="{Binding VisualizerStyle}" Tint="{Binding VisualizerTint}" Thickness="{Binding VisualizerThickness}" HeightShare="{Binding VisualizerHeight}" Strength="{Binding VisualizerStrength}"
+                                  Visibility="{Binding ShowVisualizer, Converter={StaticResource BoolVis}}"/>
+            </Grid>
+
             <!-- (over the whole screen it stays above the see-through player bar: NowPlayingView.PlaceFullScreen) -->
             <Grid x:Name="StageContent" Margin="28">
                 <Grid.RowDefinitions>
@@ -71,7 +78,10 @@
 
                 <!-- cover, tilting in 3D with the mouse -->
                 <Grid x:Name="CoverArea" Visibility="{Binding ShowCover, Converter={StaticResource BoolVis}}">
-                    <Viewbox MaxWidth="460" MaxHeight="460" Stretch="Uniform">
+                    <Viewbox x:Name="CoverBox" MaxWidth="460" MaxHeight="460" Stretch="Uniform">
+                        <Viewbox.RenderTransform>
+                            <TranslateTransform x:Name="CoverShift"/>
+                        </Viewbox.RenderTransform>
                         <Grid Width="460" Height="460">
                             <!-- shadow drawn once and cached, under the tilting cover -->
                             <Border Width="330" Height="330" CornerRadius="30" Background="Black" Opacity="0.8" CacheMode="BitmapCache"
@@ -255,6 +265,9 @@
                         </Style>
                     </Grid.Style>
                     <Grid x:Name="VideoFrame" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Grid.RenderTransform>
+                            <TranslateTransform x:Name="VideoShift"/>
+                        </Grid.RenderTransform>
                         <Border CornerRadius="14" Background="Black">
                             <Border.Effect>
                                 <DropShadowEffect BlurRadius="40" ShadowDepth="10" Opacity="0.6" Color="Black"/>
@@ -280,12 +293,14 @@
                     </Button>
                 </Grid>
 
-                <Grid Grid.Row="1" Margin="0,22,0,0">
+                <Grid x:Name="StageFooter" Grid.Row="1" Margin="0,22,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel Background="Transparent" MouseRightButtonUp="Current_RightClick" local:Marquee.Host="True">
+                    <!-- so it reads over the bars of the music -->
+                    <views:TextShadow Target="{Binding ElementName=TitleBlock}" Visibility="{Binding ShowVisualizer, Converter={StaticResource BoolVis}}"/>
+                    <StackPanel x:Name="TitleBlock" Background="Transparent" MouseRightButtonUp="Current_RightClick" local:Marquee.Host="True">
                         <TextBlock Text="{Binding Player.Current.Title}" FontSize="30" FontWeight="Bold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
                         <TextBlock Text="{Binding Player.Current.Artist}" FontSize="17" Foreground="{DynamicResource SubTextBrush}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"
                                    local:Marquee.IsEnabled="True" HorizontalAlignment="Left" Cursor="Hand" MouseLeftButtonUp="Artist_Click"/>
@@ -299,8 +314,10 @@
                             <TextBlock Text="{Binding Player.WaitText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
-                        <Button Style="{StaticResource ControlButton}" Content="&#xE712;" Click="More_Click" ToolTip="{local:T 'More options'}"
+                    <Grid Grid.Column="1" VerticalAlignment="Bottom">
+                    <views:TextShadow Target="{Binding ElementName=StageButtons}" Heavy="True" Visibility="{Binding ShowVisualizer, Converter={StaticResource BoolVis}}"/>
+                    <StackPanel x:Name="StageButtons" Orientation="Horizontal">
+                        <Button Style="{StaticResource ControlButton}" Foreground="{DynamicResource TextBrush}" Content="&#xE712;" Click="More_Click" ToolTip="{local:T 'More options'}"
                                 AutomationProperties.Name="{local:T 'More options'}" Visibility="{Binding Player.HasTrack, Converter={StaticResource BoolVis}}"/>
                         <ToggleButton Style="{StaticResource ToggleIcon}" Width="Auto" Height="36" IsChecked="{Binding ShowVideo}" Margin="6,0,0,0"
                                       Visibility="{Binding HasVideo, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Show video instead of cover'}">
@@ -335,6 +352,7 @@
                             </TextBlock>
                         </ToggleButton>
                     </StackPanel>
+                    </Grid>
                 </Grid>
             </Grid>
 
@@ -355,8 +373,8 @@
 
         <!-- ======================================================== up next -->
         <!-- the pane shrinks and the card slides out to the right when folded away -->
-        <Grid x:Name="QueuePane" Grid.Column="1" Width="350" ClipToBounds="True">
-            <Border x:Name="QueueCard" Width="320" HorizontalAlignment="Left" Margin="10,0,0,16" Style="{StaticResource Card}" Padding="14">
+        <Grid x:Name="QueuePane" Grid.Column="1" Width="280" ClipToBounds="True">
+            <Border x:Name="QueueCard" Width="252" HorizontalAlignment="Left" Margin="14,0,0,14" Style="{StaticResource Card}" Padding="14">
                 <Border.RenderTransform>
                     <TranslateTransform x:Name="QueueShift"/>
                 </Border.RenderTransform>

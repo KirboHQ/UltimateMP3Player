@@ -259,7 +259,25 @@ public sealed class AppSettings
     // Off: "Don't show again" was ticked (Settings › Updates turns it back on).
     public bool ShowWhatsNew { get; set; } = true;
     public bool Animations { get; set; } = true;
+    // How fast the animations go, 0.25-3 (Glide.Speed).
+    public double AnimationSpeed { get; set; } = 1;
+    // The computers' interface size, 0.5-2 (Ui.Zoom).
+    public double UiZoom { get; set; } = 1;
     public bool SmoothScroll { get; set; } = true;
+    // The bars of the music in the song's page, from below (Settings › Appearance): where the bass goes, bars or one line.
+    public bool Visualizer { get; set; } = true;
+    public VisualizerFlow VisualizerFlow { get; set; } = VisualizerFlow.MirrorSides;
+    public VisualizerPlace VisualizerPlace { get; set; } = VisualizerPlace.Bottom;
+    public VisualizerStyle VisualizerStyle { get; set; } = VisualizerStyle.Bars;
+    public VisualizerTint VisualizerTint { get; set; } = VisualizerTint.Cover;
+    // 0 thin, 1 normal, 2 wide.
+    public int VisualizerThickness { get; set; } = 1;
+    // How much of the page they can reach, how strong they are.
+    public double VisualizerHeight { get; set; } = 0.38;
+    public double VisualizerStrength { get; set; } = 1;
+    // The stream overlays (OBS), and the port they were last served on: the links pasted in OBS keep working.
+    public List<OverlaySource> OverlaySources { get; set; } = new();
+    public int OverlayPort { get; set; }
     public bool CoverTilt { get; set; } = true;
     public bool DiscordPresence { get; set; } = true;
     // The output the music plays on (an id of AudioPlatform.OutputDevices: the endpoint's on Windows, the name on Linux
@@ -317,8 +335,11 @@ public sealed class AppSettings
     // platform's default folder; a path, or on the phones a bookmark of a folder chosen through the system), when the last one.
     // A system notification when an artist followed has a new release.
     public bool ReleaseNotifications { get; set; } = true;
-    // The computers' sidebar: its tags folded under their heading.
+    // The computers' sidebar: what's folded under its heading.
     public bool TagsFolded { get; set; }
+    public bool PlaylistsFolded { get; set; }
+    public bool ArtistsFolded { get; set; }
+    public bool RadiosFolded { get; set; }
     public int BackupEvery { get; set; } = 7;
     public int BackupKeep { get; set; } = 5;
     public string? BackupFolder { get; set; }

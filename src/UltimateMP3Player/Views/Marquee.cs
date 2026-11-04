@@ -62,6 +62,9 @@ public static class Marquee
         }
     }
 
+    // While it scrolls (TextShadow leaves it out of its picture).
+    public static bool IsMoving(FrameworkElement el) => el.GetValue(StateProperty) is State { Shift: not null };
+
     private static void OnLoaded(object sender, RoutedEventArgs e) => Attach((FrameworkElement)sender);
     private static void OnUnloaded(object sender, RoutedEventArgs e) => Detach((FrameworkElement)sender);
 

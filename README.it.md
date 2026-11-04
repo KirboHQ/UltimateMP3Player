@@ -36,13 +36,13 @@
 - ☁️ **Brani nel cloud**: aggiungi una playlist in pochi secondi senza scaricarla; salvi sul dispositivo solo quello che
   vuoi offline.
 - 🎧 **Un lettore come Spotify**: barra con la forma d'onda, testi sincronizzati, dissolvenza incrociata, equalizzatore
-  a 10 bande, volume normalizzato, una coda che si riempie da sola.
+  a 10 bande, volume normalizzato, una coda che si riempie da sola, barre che seguono la musica.
 - 🏷️ **La libreria come vuoi tu**: playlist, preferiti, tag colorati, artisti seguiti, radio online, statistiche
   d'ascolto e il tuo anno in musica.
 - 👥 **Ascolta insieme**: stanze con gli amici sulla tua rete, computer e telefoni sullo stesso brano nello stesso
   istante, con una chat e una coda in comune.
 - 📱 **Il telefono come telecomando**: con il Wi-Fi o il cavo comanda il lettore del computer e ne condivide la libreria.
-- 🎚️ **Modalità DJ**: due piatti, sincronizzazione dei BPM, kill dell'EQ, scratch, e il mix registrato nella libreria.
+- 🎚️ **Modalità DJ e overlay per le live**: due piatti, sincronizzazione dei BPM, scratch, il mix registrato nella libreria; overlay per OBS, vinile che gira compreso.
 - 📦 **Porta la tua musica**: importazioni da Spotify e Last.fm, pacchetti `.ump` per condividere le playlist, cartelle
   di MP3 per l'auto.
 

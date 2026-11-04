@@ -788,6 +788,15 @@ public sealed class NowPlayingViewModel : Observable
     public bool HasVideo => Player.Current?.HasVideo == true && !Player.IsRemote;
     public bool ShowCover => VideoPath == null && !LyricsVisible;
     public bool CoverTilt => Main.Host.Settings.CoverTilt;
+    // The bars of the music from below, with the cover (Settings › Appearance).
+    public bool ShowVisualizer => ShowCover && Main.Host.Settings.Visualizer && !Player.IsRemote;
+    public VisualizerFlow VisualizerFlow => Main.Host.Settings.VisualizerFlow;
+    public VisualizerPlace VisualizerPlace => Main.Host.Settings.VisualizerPlace;
+    public VisualizerStyle VisualizerStyle => Main.Host.Settings.VisualizerStyle;
+    public VisualizerTint VisualizerTint => Main.Host.Settings.VisualizerTint;
+    public int VisualizerThickness => Main.Host.Settings.VisualizerThickness;
+    public double VisualizerHeight => Math.Clamp(Main.Host.Settings.VisualizerHeight, 0.15, 1);
+    public double VisualizerStrength => Math.Clamp(Main.Host.Settings.VisualizerStrength, 0.2, 1);
 
     // The page over the whole screen (MainViewModel.FullScreen): its button, by the lyrics'.
     public bool FullScreen
@@ -800,5 +809,6 @@ public sealed class NowPlayingViewModel : Observable
 
     public void Refresh() => OnChanged(nameof(ShowVideo), nameof(VideoPath), nameof(HasVideo), nameof(ShowCover), nameof(CoverTilt), nameof(ShowLyrics),
         nameof(HasLyrics), nameof(LyricsVisible), nameof(IsVideo), nameof(Subtitles), nameof(LyricsPage), nameof(ShowVideoFrame), nameof(LyricsOverCover),
-        nameof(LyricsOverVideo));
+        nameof(LyricsOverVideo), nameof(ShowVisualizer), nameof(VisualizerFlow), nameof(VisualizerPlace), nameof(VisualizerStyle), nameof(VisualizerTint),
+        nameof(VisualizerThickness), nameof(VisualizerHeight), nameof(VisualizerStrength));
 }

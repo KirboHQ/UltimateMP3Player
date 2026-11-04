@@ -305,7 +305,7 @@ public sealed class LyricsView : Grid
             r.Element.BeginAnimation(OpacityProperty, null);
             r.Element.Opacity = target;
         }
-        else r.Element.BeginAnimation(OpacityProperty, new DoubleAnimation(target, TimeSpan.FromMilliseconds(hoverOnly ? 120 : 260)));
+        else r.Element.BeginAnimation(OpacityProperty, new DoubleAnimation(target, Ui.Time(hoverOnly ? 120 : 260)));
     }
 
     private static void FillDots(Row gap, double pos)
@@ -341,7 +341,7 @@ public sealed class LyricsView : Grid
             _scroll.ScrollToVerticalOffset(target);
             return;
         }
-        BeginAnimation(OffsetProperty, new DoubleAnimation(_scroll.VerticalOffset, target, TimeSpan.FromMilliseconds(620))
+        BeginAnimation(OffsetProperty, new DoubleAnimation(_scroll.VerticalOffset, target, Ui.Time(620))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
         });

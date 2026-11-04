@@ -79,7 +79,7 @@
 
             <!-- ============================================================ appearance -->
             <TextBlock Text="{local:T APPEARANCE}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'appearance theme colours colors light dark night mode language english italian animations motion cover 3d'}">
+            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'appearance theme colours colors light dark night mode language english italian animations motion cover 3d speed visualizer bars waves'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Tag="Appearance" Click="Choose_Click">
                         <StackPanel>
@@ -119,6 +119,11 @@
                             <TextBlock Text="{local:T 'Sliding pages and sheets, moving cover'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10" IsVisible="{Binding Animations}">
+                        <Slider Theme="{StaticResource KnobSlider}" Minimum="0.25" Maximum="3" Value="{Binding AnimationSpeed}" SmallChange="0.25" LargeChange="0.25"
+                                IsSnapToTickEnabled="True" TickFrequency="0.25" Height="40"/>
+                        <TextBlock Grid.Column="1" Text="{Binding AnimationSpeedText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
+                    </Grid>
                     <Border Classes="line"/>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding CoverTilt}">
                         <StackPanel>
@@ -126,6 +131,59 @@
                             <TextBlock Text="{local:T 'On the song\'s screen it tilts under your finger, with a glint of light'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
+                    <Border Classes="line"/>
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding Visualizer}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Bars of the music'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'On the song\'s screen, bars that follow the music'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
+                    <StackPanel IsVisible="{Binding Visualizer}">
+                        <!-- what the song's screen will show: the music playing, otherwise a made-up sound -->
+                        <Border CornerRadius="12" Background="{DynamicResource BgBrush}" Height="64" Padding="10,8,10,0" Margin="0,4,0,6" ClipToBounds="True">
+                            <views:WaveVisualizer IsPreview="True" HeightShare="1" Flow="{Binding NowPlaying.VisualizerFlow}" Place="{Binding NowPlaying.VisualizerPlace}" BarStyle="{Binding NowPlaying.VisualizerStyle}" Tint="{Binding NowPlaying.VisualizerTint}" Thickness="{Binding NowPlaying.VisualizerThickness}" Strength="{Binding NowPlaying.VisualizerStrength}"/>
+                        </Border>
+                        <Button Theme="{StaticResource SettingRow}" Tag="VisualizerStyleChoice" Click="Choose_Click">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Shape of the bars'}" Classes="setting"/>
+                                <TextBlock Text="{Binding VisualizerStyleChoice.Label}" Classes="value"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Theme="{StaticResource SettingRow}" Tag="VisualizerFlowChoice" Click="Choose_Click">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Direction of the bars'}" Classes="setting"/>
+                                <TextBlock Text="{Binding VisualizerFlowChoice.Label}" Classes="value"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Theme="{StaticResource SettingRow}" Tag="VisualizerPlaceChoice" Click="Choose_Click">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Position of the bars'}" Classes="setting"/>
+                                <TextBlock Text="{Binding VisualizerPlaceChoice.Label}" Classes="value"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Theme="{StaticResource SettingRow}" Tag="VisualizerTintChoice" Click="Choose_Click">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Color of the bars'}" Classes="setting"/>
+                                <TextBlock Text="{Binding VisualizerTintChoice.Label}" Classes="value"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Theme="{StaticResource SettingRow}" Tag="VisualizerThicknessChoice" Click="Choose_Click" IsVisible="{Binding VisualizerHasThickness}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding VisualizerThicknessLabel}" Classes="setting"/>
+                                <TextBlock Text="{Binding VisualizerThicknessChoice.Label}" Classes="value"/>
+                            </StackPanel>
+                        </Button>
+                        <TextBlock Text="{local:T Height}" Classes="setting" Margin="0,8,0,0"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="0.15" Maximum="1" Value="{Binding VisualizerHeight}" SmallChange="0.05" LargeChange="0.05" Height="40"/>
+                            <TextBlock Grid.Column="1" Text="{Binding VisualizerHeightText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
+                        </Grid>
+                        <TextBlock Text="{local:T Strength}" Classes="setting" Margin="0,4,0,0"/>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="0.2" Maximum="1" Value="{Binding VisualizerStrength}" SmallChange="0.05" LargeChange="0.05" Height="40"/>
+                            <TextBlock Grid.Column="1" Text="{Binding VisualizerStrengthText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
+                        </Grid>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

@@ -60,7 +60,8 @@ public static class DragVisuals
             return DragOutcome.None;
         }
 
-        var ghost = new Ghost(Snapshot(row, top.RenderScaling), row.Bounds.Size, start.GetPosition(row));
+        // (the layer is above the interface's size: the copy has to be as big as the row looks)
+        var ghost = new Ghost(Snapshot(row, top.RenderScaling), row.Bounds.Size * Ui.Zoom, start.GetPosition(row) * Ui.Zoom);
         AdornerLayer.SetAdornedElement(ghost, root);
         layer.Children.Add(ghost);
         ghost.MoveTo(start.GetPosition(root));

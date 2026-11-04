@@ -111,6 +111,7 @@
     </Window.Styles>
 
     <Panel x:Name="Root">
+        <LayoutTransformControl LayoutTransform="{x:Static local:Ui.ZoomTransform}">
         <Grid RowDefinitions="32,*,Auto">
 
             <!-- ============================================================ title bar -->
@@ -136,14 +137,15 @@
                 </StackPanel>
             </Grid>
 
-            <Grid x:Name="Body" Grid.Row="1" ColumnDefinitions="248,*">
+            <!-- (the sidebar as wide as "Up next": NowPlayingView.PaneOpen) -->
+            <Grid x:Name="Body" Grid.Row="1" ColumnDefinitions="280,*">
 
                 <!-- ======================================================== sidebar -->
                 <!-- no line against the page: its own tone is enough -->
                 <Border x:Name="Sidebar" Background="{DynamicResource SidebarBrush}">
-                    <!-- the pages (Ctrl+1…5, Ctrl+↑/↓); the playlists take what is left; the tags (folded under their heading if you like);
+                    <!-- the pages (Ctrl+1…5, Ctrl+↑/↓); playlists, artists, radios and tags take what is left;
                          the profile and the settings -->
-                    <Grid Margin="14,12,14,12" RowDefinitions="Auto,*,Auto,Auto">
+                    <Grid Margin="14,12,14,12" RowDefinitions="Auto,*,Auto">
                         <Panel>
                             <!-- the open page's pill, gliding with the page -->
                             <views:SlidingPill Target="{Binding #NavPanel}" Fill="{DynamicResource Surface2Brush}"/>
@@ -188,86 +190,169 @@
                             </StackPanel>
                         </Panel>
 
-                        <DockPanel Grid.Row="1">
-                            <DockPanel DockPanel.Dock="Top" Margin="8,18,0,6">
-                                <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
-                                        Command="{Binding NewPlaylistCommand}" ToolTip.Tip="{local:T 'New playlist'}"/>
-                                <TextBlock Text="{local:T 'YOUR PLAYLISTS'}" Classes="small-caps" VerticalAlignment="Center"/>
-                            </DockPanel>
-
-                            <ListBox x:Name="PlaylistList" Theme="{StaticResource PlainList}" ItemsSource="{Binding Playlists}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Classes="side" Classes.selected="{Binding IsSelected}" Classes.from="{Binding IsPlayingFrom}" CornerRadius="12" Padding="6" Cursor="Hand"
-                                                BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0"
-                                                views:Drops.Target="playlist" views:Rows.Menu="playlist" local:Marquee.Host="True">
-                                            <Grid ColumnDefinitions="42,*,Auto">
-                                                <ContentControl Width="42" Height="42" Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
-                                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                                    <TextBlock Classes="name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
-                                                    <DockPanel>
-                                                        <TextBlock DockPanel.Dock="Left" Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="10.5"
-                                                                   Foreground="{DynamicResource MutedBrush}" Margin="0,0,5,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
-                                                        <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
-                                                    </DockPanel>
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="2" Text="{local:Icon E995}" Classes="glyph" Foreground="{DynamicResource AccentTextBrush}"
-                                                           FontSize="12" Margin="6,0,2,0" IsVisible="{Binding IsPlayingFrom}"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                        </DockPanel>
-
-                        <!-- tags: each one opens the page of its songs; songs can be dropped on them. A click on the heading folds them. -->
-                        <DockPanel Grid.Row="2" Margin="0,4,0,0">
-                            <DockPanel DockPanel.Dock="Top" Margin="0,6,0,4">
-                                <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
-                                        Command="{Binding NewTagCommand}" ToolTip.Tip="{local:T 'New tag'}"/>
-                                <Button Theme="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding ToggleTagsCommand}"
-                                        ToolTip.Tip="{local:T 'Show or hide the tags'}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{local:T TAGS}" Classes="small-caps" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding TagsChevron, Converter={StaticResource Icon}}" Classes="glyph" FontSize="9" Margin="7,0,0,0"
-                                                   Foreground="{DynamicResource MutedBrush}"/>
-                                    </StackPanel>
-                                </Button>
-                            </DockPanel>
-                            <TextBlock DockPanel.Dock="Top" Text="{local:T 'Colored labels to group songs and playlists your way.'}" Classes="hint"
-                                       FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap">
-                                <TextBlock.IsVisible>
-                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
-                                        <Binding Path="TagsOpen"/>
-                                        <Binding Path="!HasTags"/>
-                                    </MultiBinding>
-                                </TextBlock.IsVisible>
-                            </TextBlock>
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False" MaxHeight="190" IsVisible="{Binding TagsOpen}">
-                                <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
+                        <!-- what's yours, each kind folded under its heading if you like (SideSection); they scroll together -->
+                        <ScrollViewer Grid.Row="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto" Focusable="False">
+                            <StackPanel>
+                                <DockPanel Margin="0,4,0,4">
+                                    <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
+                                            Command="{Binding NewPlaylistCommand}" ToolTip.Tip="{local:T 'New playlist'}"/>
+                                    <Button Theme="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding PlaylistsSection.ToggleCommand}"
+                                            ToolTip.Tip="{local:T 'Show or hide the playlists'}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{local:T 'YOUR PLAYLISTS'}" Classes="small-caps" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding PlaylistsSection.Chevron, Converter={StaticResource Icon}}" Classes="glyph" FontSize="9" Margin="7,0,0,0"
+                                                       Foreground="{DynamicResource MutedBrush}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DockPanel>
+                                <ItemsControl ItemsSource="{Binding Playlists}" Focusable="False" IsVisible="{Binding PlaylistsSection.Open}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Classes="side" Classes.selected="{Binding IsSelected}" CornerRadius="17" Padding="12,7" Cursor="Hand"
+                                            <Border Classes="side" Classes.selected="{Binding IsSelected}" Classes.from="{Binding IsPlayingFrom}" CornerRadius="12" Padding="6" Cursor="Hand"
                                                     BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0"
-                                                    views:Drops.Target="tag" views:Rows.Menu="tag" ToolTip.Tip="{Binding CountText}" local:Marquee.Host="True"
-                                                    views:Click.Command="{Binding $parent[Window].DataContext.OpenTagCommand}">
-                                                <DockPanel>
-                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
-                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="11"
-                                                               Foreground="{DynamicResource MutedBrush}" Margin="0,0,6,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
-                                                    <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
-                                                    <TextBlock Classes="name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                                                               local:Marquee.IsEnabled="True"/>
-                                                </DockPanel>
+                                                    views:Drops.Target="playlist" views:Rows.Menu="playlist" local:Marquee.Host="True"
+                                                    views:Click.Command="{Binding $parent[Window].DataContext.OpenPlaylistCommand}">
+                                                <Grid ColumnDefinitions="42,*,Auto">
+                                                    <ContentControl Width="42" Height="42" Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
+                                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                        <TextBlock Classes="name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
+                                                        <DockPanel>
+                                                            <TextBlock DockPanel.Dock="Left" Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="10.5"
+                                                                       Foreground="{DynamicResource MutedBrush}" Margin="0,0,5,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
+                                                            <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                                        </DockPanel>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2" Text="{local:Icon E995}" Classes="glyph" Foreground="{DynamicResource AccentTextBrush}"
+                                                               FontSize="12" Margin="6,0,2,0" IsVisible="{Binding IsPlayingFrom}"/>
+                                                </Grid>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </ScrollViewer>
-                        </DockPanel>
+
+                                <!-- the artists you follow: a click opens the page; + goes to Library, to find more -->
+                                <DockPanel Margin="0,10,0,4">
+                                    <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
+                                            Command="{Binding GoArtistsCommand}" ToolTip.Tip="{local:T 'Find artists to follow'}"/>
+                                    <Button Theme="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding ArtistsSection.ToggleCommand}"
+                                            ToolTip.Tip="{local:T 'Show or hide the artists'}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{local:T ARTISTS}" Classes="small-caps" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding ArtistsSection.Chevron, Converter={StaticResource Icon}}" Classes="glyph" FontSize="9" Margin="7,0,0,0"
+                                                       Foreground="{DynamicResource MutedBrush}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DockPanel>
+                                <StackPanel IsVisible="{Binding ArtistsSection.Open}">
+                                    <TextBlock Text="{local:T 'The artists you follow show up here.'}" Classes="hint" FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap"
+                                               IsVisible="{Binding !Artists.HasFollowed}"/>
+                                    <ItemsControl ItemsSource="{Binding Artists.Followed}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Classes="side" Classes.selected="{Binding IsOpen}" CornerRadius="12" Padding="6" Cursor="Hand"
+                                                        views:Rows.Menu="artist" local:Marquee.Host="True" views:Click.Command="{Binding OpenCommand}">
+                                                    <Grid ColumnDefinitions="42,*,Auto">
+                                                        <Panel Width="42" Height="42">
+                                                            <Ellipse Fill="{Binding Brush}"/>
+                                                            <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
+                                                        </Panel>
+                                                        <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" VerticalAlignment="Center"
+                                                                   local:Marquee.IsEnabled="True"/>
+                                                        <!-- a release not seen yet -->
+                                                        <Ellipse Grid.Column="2" Width="8" Height="8" Margin="6,0,4,0" Fill="{DynamicResource AccentGradient}" VerticalAlignment="Center"
+                                                                 IsVisible="{Binding HasNew}" ToolTip.Tip="{local:T 'New release'}"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <!-- the radios you saved: a click plays them; + goes to Library, to find more -->
+                                <DockPanel Margin="0,10,0,4">
+                                    <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
+                                            Command="{Binding GoStationsCommand}" ToolTip.Tip="{local:T 'Find radios'}"/>
+                                    <Button Theme="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding RadiosSection.ToggleCommand}"
+                                            ToolTip.Tip="{local:T 'Show or hide the radios'}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{local:T RADIOS}" Classes="small-caps" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding RadiosSection.Chevron, Converter={StaticResource Icon}}" Classes="glyph" FontSize="9" Margin="7,0,0,0"
+                                                       Foreground="{DynamicResource MutedBrush}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DockPanel>
+                                <StackPanel IsVisible="{Binding RadiosSection.Open}">
+                                    <TextBlock Text="{local:T 'The radios you save show up here.'}" Classes="hint" FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap"
+                                               IsVisible="{Binding !Stations.HasSaved}"/>
+                                    <ItemsControl ItemsSource="{Binding Stations.Saved}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Classes="side" Classes.from="{Binding IsCurrent}" CornerRadius="12" Padding="6" Cursor="Hand"
+                                                        local:Marquee.Host="True" views:Click.Command="{Binding PlayCommand}">
+                                                    <Grid ColumnDefinitions="42,*,Auto">
+                                                        <Border Width="42" Height="42" CornerRadius="8" Background="{Binding Brush}">
+                                                            <Panel>
+                                                                <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                           IsVisible="{Binding !HasPicture}"/>
+                                                                <Image Source="{Binding Picture}" Stretch="Uniform" Margin="5"/>
+                                                            </Panel>
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                            <TextBlock Classes="name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
+                                                            <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"
+                                                                       IsVisible="{Binding HasSubtitle}"/>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="2" Text="{local:Icon E995}" Classes="glyph" Foreground="{DynamicResource AccentTextBrush}"
+                                                                   FontSize="12" Margin="6,0,2,0" IsVisible="{Binding IsCurrent}"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+
+                                <!-- tags: each one opens the page of its songs; songs can be dropped on them -->
+                                <DockPanel Margin="0,10,0,4">
+                                    <Button DockPanel.Dock="Right" Theme="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="{local:Icon E710}"
+                                            Command="{Binding NewTagCommand}" ToolTip.Tip="{local:T 'New tag'}"/>
+                                    <Button Theme="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding TagsSection.ToggleCommand}"
+                                            ToolTip.Tip="{local:T 'Show or hide the tags'}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{local:T TAGS}" Classes="small-caps" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding TagsSection.Chevron, Converter={StaticResource Icon}}" Classes="glyph" FontSize="9" Margin="7,0,0,0"
+                                                       Foreground="{DynamicResource MutedBrush}"/>
+                                        </StackPanel>
+                                    </Button>
+                                </DockPanel>
+                                <StackPanel IsVisible="{Binding TagsSection.Open}">
+                                    <TextBlock Text="{local:T 'Colored labels to group songs and playlists your way.'}" Classes="hint"
+                                               FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" IsVisible="{Binding !HasTags}"/>
+                                    <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Classes="side" Classes.selected="{Binding IsSelected}" CornerRadius="17" Padding="12,7" Cursor="Hand"
+                                                        BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0"
+                                                        views:Drops.Target="tag" views:Rows.Menu="tag" ToolTip.Tip="{Binding CountText}" local:Marquee.Host="True"
+                                                        views:Click.Command="{Binding $parent[Window].DataContext.OpenTagCommand}">
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                        <TextBlock DockPanel.Dock="Right" Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="11"
+                                                                   Foreground="{DynamicResource MutedBrush}" Margin="0,0,6,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
+                                                        <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                                        <TextBlock Classes="name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                                                   local:Marquee.IsEnabled="True"/>
+                                                    </DockPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
 
                         <!-- the profile; the settings -->
-                        <Grid Grid.Row="3" Margin="0,10,0,0" ColumnDefinitions="*,Auto">
+                        <Grid Grid.Row="2" Margin="0,10,0,0" ColumnDefinitions="*,Auto">
                             <Button Theme="{StaticResource SubtleButton}" Padding="6,6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                     Command="{Binding SwitchProfileCommand}" ToolTip.Tip="{local:T 'Switch or manage profiles'}">
                                 <Grid ColumnDefinitions="Auto,*">
@@ -503,7 +588,7 @@
                                                Foreground="{DynamicResource AccentTextBrush}" IsVisible="{Binding IsSpeedChanged}"/>
                                 </StackPanel>
                             </ToggleButton>
-                            <Popup x:Name="PlaybackPopup" PlacementTarget="{Binding #PlaybackButton}" Placement="TopEdgeAlignedRight" IsLightDismissEnabled="True"
+                            <Popup x:Name="PlaybackPopup" PlacementTarget="{Binding #PlaybackButton}" Placement="TopEdgeAlignedRight" IsLightDismissEnabled="True" InheritsTransform="True"
                                    HorizontalOffset="120" VerticalOffset="-4">
                                 <!-- two columns: speed and volume on the left, the equalizer on the right -->
                                 <Border Margin="10" Width="720" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -633,7 +718,8 @@
                         </Panel>
                         <Button Theme="{StaticResource ControlButton}" Content="{Binding VolumeGlyph, Converter={StaticResource Icon}}" Command="{Binding ToggleMuteCommand}"
                                 Margin="2,0,0,0" ToolTip.Tip="{local:T Mute}"/>
-                        <Slider x:Name="VolumeSlider" Width="110" Minimum="0" Maximum="1" Value="{Binding Volume}" Margin="4,0,0,0" VerticalAlignment="Center"
+                        <!-- (its track stops 6 short of its ends: the track lines up with "Up next" above it) -->
+                        <Slider x:Name="VolumeSlider" Width="110" Minimum="0" Maximum="1" Value="{Binding Volume}" Margin="4,0,-6,0" VerticalAlignment="Center"
                                 SmallChange="0.02" LargeChange="0.1" ToolTip.Tip="{local:T Volume}"/>
                     </StackPanel>
                 </Grid>
@@ -654,6 +740,7 @@
                 </Panel>
             </Border>
         </Grid>
+        </LayoutTransformControl>
 
         <!-- Linux: the window has no frame of its own, these edges resize it (WindowFrame) -->
         <Panel x:Name="ResizeEdges" IsVisible="False"/>

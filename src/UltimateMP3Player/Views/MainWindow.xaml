@@ -125,20 +125,20 @@
 
         <Grid x:Name="Body" Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="248"/>
+                <!-- (as wide as "Up next": NowPlayingView.PaneOpen) -->
+                <ColumnDefinition Width="280"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- ======================================================== sidebar -->
             <!-- no line against the page: its own tone is enough -->
             <Border x:Name="Sidebar" Background="{DynamicResource SidebarBrush}">
-                <!-- the pages (Ctrl+1…5, Ctrl+↑/↓); the playlists take what is left; the tags (folded under their heading if you like);
+                <!-- the pages (Ctrl+1…5, Ctrl+↑/↓); playlists, artists, radios and tags take what is left;
                      the profile and the settings -->
                 <Grid Margin="14,12,14,12">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*" MinHeight="60"/>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
@@ -187,95 +187,49 @@
                         </StackPanel>
                     </Grid>
 
-                    <DockPanel Grid.Row="1">
-                        <DockPanel DockPanel.Dock="Top" Margin="8,18,0,6">
-                            <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
-                                    Command="{Binding NewPlaylistCommand}" ToolTip="{local:T 'New playlist'}"/>
-                            <TextBlock Text="{local:T 'YOUR PLAYLISTS'}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
-                        </DockPanel>
-
-                    <ListBox x:Name="PlaylistList" Style="{StaticResource PlainList}" ItemsSource="{Binding Playlists}"
-                             SelectionChanged="PlaylistList_SelectionChanged" AutomationProperties.Name="Playlist">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
-                                <Border x:Name="Item" CornerRadius="12" Padding="6" Background="Transparent" Cursor="Hand" AllowDrop="True"
-                                        Drop="Playlist_Drop" DragOver="Playlist_DragOver" DragLeave="Playlist_DragLeave"
-                                        MouseRightButtonUp="Playlist_RightClick" local:Marquee.Host="True">
-                                    <Border.InputBindings>
-                                        <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                      CommandParameter="{Binding}"/>
-                                    </Border.InputBindings>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="42"/>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <ContentPresenter Width="42" Height="42" Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
-                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                            <TextBlock x:Name="Name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
-                                            <DockPanel>
-                                                <TextBlock DockPanel.Dock="Left" Text="{Binding DeviceGlyph}" Style="{StaticResource Glyph}" FontSize="10.5" Foreground="{DynamicResource MutedBrush}"
-                                                           Margin="0,0,5,0" VerticalAlignment="Center" Visibility="{Binding HasDevice, Converter={StaticResource BoolVis}}"/>
-                                                <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
-                                            </DockPanel>
-                                        </StackPanel>
-                                        <TextBlock Grid.Column="2" Text="&#xE995;" Style="{StaticResource Glyph}" Foreground="{DynamicResource AccentTextBrush}"
-                                                   FontSize="12" Margin="6,0,2,0" Visibility="{Binding IsPlayingFrom, Converter={StaticResource BoolVis}}"/>
-                                    </Grid>
-                                </Border>
-                                <DataTemplate.Triggers>
-                                    <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Item" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
-                                    </Trigger>
-                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                        <Setter TargetName="Item" Property="Background" Value="{DynamicResource Surface2Brush}"/>
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding IsPlayingFrom}" Value="True">
-                                        <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                    </DockPanel>
-
-                    <!-- tags: each one opens the page of its songs; songs can be dropped on them. A click on the heading folds them. -->
-                    <DockPanel Grid.Row="2" Margin="0,4,0,0">
-                        <DockPanel DockPanel.Dock="Top" Margin="0,6,0,4">
-                            <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
-                                    Command="{Binding NewTagCommand}" ToolTip="{local:T 'New tag'}" AutomationProperties.Name="{local:T 'New tag'}"/>
-                            <Button Style="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding ToggleTagsCommand}"
-                                    ToolTip="{local:T 'Show or hide the tags'}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{local:T TAGS}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding TagsChevron}" Style="{StaticResource Glyph}" FontSize="9" Margin="7,0,0,0" Foreground="{DynamicResource MutedBrush}"/>
-                                </StackPanel>
-                            </Button>
-                        </DockPanel>
-                        <Border DockPanel.Dock="Top" Visibility="{Binding TagsOpen, Converter={StaticResource BoolVis}}">
-                            <TextBlock Text="{local:T 'Colored labels to group songs and playlists your way.'}" Style="{StaticResource Hint}"
-                                       FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" Visibility="{Binding HasTags, Converter={StaticResource InvBoolVis}}"/>
-                        </Border>
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False" MaxHeight="190"
-                                      Visibility="{Binding TagsOpen, Converter={StaticResource BoolVis}}">
-                            <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
+                    <!-- what's yours, each kind folded under its heading if you like (SideSection); they scroll together -->
+                    <ScrollViewer Grid.Row="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto" Focusable="False">
+                        <StackPanel>
+                            <DockPanel Margin="0,4,0,4">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
+                                        Command="{Binding NewPlaylistCommand}" ToolTip="{local:T 'New playlist'}" AutomationProperties.Name="{local:T 'New playlist'}"/>
+                                <Button Style="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding PlaylistsSection.ToggleCommand}"
+                                        ToolTip="{local:T 'Show or hide the playlists'}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:T 'YOUR PLAYLISTS'}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding PlaylistsSection.Chevron}" Style="{StaticResource Glyph}" FontSize="9" Margin="7,0,0,0" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Button>
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding Playlists}" Focusable="False" AutomationProperties.Name="Playlist"
+                                          Visibility="{Binding PlaylistsSection.Open, Converter={StaticResource BoolVis}}">
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate DataType="{x:Type vm:TagViewModel}">
-                                        <Border x:Name="Item" CornerRadius="17" Padding="12,7" Background="Transparent" Cursor="Hand" AllowDrop="True"
-                                                Drop="Tag_Drop" DragOver="Playlist_DragOver" DragLeave="Playlist_DragLeave" MouseRightButtonUp="Tag_RightClick"
-                                                ToolTip="{Binding CountText}" local:Marquee.Host="True">
+                                    <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
+                                        <Border x:Name="Item" CornerRadius="12" Padding="6" Background="Transparent" Cursor="Hand" AllowDrop="True"
+                                                Drop="Playlist_Drop" DragOver="Playlist_DragOver" DragLeave="Playlist_DragLeave"
+                                                MouseRightButtonUp="Playlist_RightClick" local:Marquee.Host="True">
                                             <Border.InputBindings>
-                                                <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenTagCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                               CommandParameter="{Binding}"/>
                                             </Border.InputBindings>
-                                            <DockPanel>
-                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
-                                                <TextBlock DockPanel.Dock="Right" Text="{Binding DeviceGlyph}" Style="{StaticResource Glyph}" FontSize="11" Foreground="{DynamicResource MutedBrush}"
-                                                           Margin="0,0,6,0" VerticalAlignment="Center" Visibility="{Binding HasDevice, Converter={StaticResource BoolVis}}"/>
-                                                <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
-                                                <TextBlock x:Name="Name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" local:Marquee.IsEnabled="True"/>
-                                            </DockPanel>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="42"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <ContentPresenter Width="42" Height="42" Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
+                                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                    <TextBlock x:Name="Name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
+                                                    <DockPanel>
+                                                        <TextBlock DockPanel.Dock="Left" Text="{Binding DeviceGlyph}" Style="{StaticResource Glyph}" FontSize="10.5" Foreground="{DynamicResource MutedBrush}"
+                                                                   Margin="0,0,5,0" VerticalAlignment="Center" Visibility="{Binding HasDevice, Converter={StaticResource BoolVis}}"/>
+                                                        <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"/>
+                                                    </DockPanel>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="2" Text="&#xE995;" Style="{StaticResource Glyph}" Foreground="{DynamicResource AccentTextBrush}"
+                                                           FontSize="12" Margin="6,0,2,0" Visibility="{Binding IsPlayingFrom, Converter={StaticResource BoolVis}}"/>
+                                            </Grid>
                                         </Border>
                                         <DataTemplate.Triggers>
                                             <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
@@ -284,15 +238,178 @@
                                             <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                 <Setter TargetName="Item" Property="Background" Value="{DynamicResource Surface2Brush}"/>
                                             </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsPlayingFrom}" Value="True">
+                                                <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                                            </DataTrigger>
                                         </DataTemplate.Triggers>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </ScrollViewer>
-                    </DockPanel>
+
+                            <!-- the artists you follow: a click opens the page; + goes to Library, to find more -->
+                            <DockPanel Margin="0,10,0,4">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
+                                        Command="{Binding GoArtistsCommand}" ToolTip="{local:T 'Find artists to follow'}" AutomationProperties.Name="{local:T 'Find artists to follow'}"/>
+                                <Button Style="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding ArtistsSection.ToggleCommand}"
+                                        ToolTip="{local:T 'Show or hide the artists'}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:T ARTISTS}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding ArtistsSection.Chevron}" Style="{StaticResource Glyph}" FontSize="9" Margin="7,0,0,0" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Button>
+                            </DockPanel>
+                            <StackPanel Visibility="{Binding ArtistsSection.Open, Converter={StaticResource BoolVis}}">
+                                <TextBlock Text="{local:T 'The artists you follow show up here.'}" Style="{StaticResource Hint}" FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap"
+                                           Visibility="{Binding Artists.HasFollowed, Converter={StaticResource InvBoolVis}}"/>
+                                <ItemsControl ItemsSource="{Binding Artists.Followed}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:ArtistCardViewModel}">
+                                            <Border x:Name="Item" CornerRadius="12" Padding="6" Background="Transparent" Cursor="Hand" MouseRightButtonUp="Artist_RightClick" local:Marquee.Host="True">
+                                                <Border.InputBindings>
+                                                    <MouseBinding Gesture="LeftClick" Command="{Binding OpenCommand}"/>
+                                                </Border.InputBindings>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="42"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid Width="42" Height="42">
+                                                        <Ellipse Fill="{Binding Brush}"/>
+                                                        <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        <Ellipse Visibility="{Binding HasPicture, Converter={StaticResource BoolVis}}">
+                                                            <Ellipse.Fill>
+                                                                <ImageBrush ImageSource="{Binding Picture}" Stretch="UniformToFill"/>
+                                                            </Ellipse.Fill>
+                                                        </Ellipse>
+                                                    </Grid>
+                                                    <TextBlock Grid.Column="1" Margin="10,0,0,0" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" VerticalAlignment="Center"
+                                                               local:Marquee.IsEnabled="True"/>
+                                                    <!-- a release not seen yet -->
+                                                    <Ellipse Grid.Column="2" Width="8" Height="8" Margin="6,0,4,0" Fill="{DynamicResource AccentGradient}" VerticalAlignment="Center"
+                                                             Visibility="{Binding HasNew, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'New release'}"/>
+                                                </Grid>
+                                            </Border>
+                                            <DataTemplate.Triggers>
+                                                <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding IsOpen}" Value="True">
+                                                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- the radios you saved: a click plays them; + goes to Library, to find more -->
+                            <DockPanel Margin="0,10,0,4">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
+                                        Command="{Binding GoStationsCommand}" ToolTip="{local:T 'Find radios'}" AutomationProperties.Name="{local:T 'Find radios'}"/>
+                                <Button Style="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding RadiosSection.ToggleCommand}"
+                                        ToolTip="{local:T 'Show or hide the radios'}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:T RADIOS}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding RadiosSection.Chevron}" Style="{StaticResource Glyph}" FontSize="9" Margin="7,0,0,0" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Button>
+                            </DockPanel>
+                            <StackPanel Visibility="{Binding RadiosSection.Open, Converter={StaticResource BoolVis}}">
+                                <TextBlock Text="{local:T 'The radios you save show up here.'}" Style="{StaticResource Hint}" FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap"
+                                           Visibility="{Binding Stations.HasSaved, Converter={StaticResource InvBoolVis}}"/>
+                                <ItemsControl ItemsSource="{Binding Stations.Saved}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:StationViewModel}">
+                                            <Border x:Name="Item" CornerRadius="12" Padding="6" Background="Transparent" Cursor="Hand" local:Marquee.Host="True">
+                                                <Border.InputBindings>
+                                                    <MouseBinding Gesture="LeftClick" Command="{Binding PlayCommand}"/>
+                                                </Border.InputBindings>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="42"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="42" Height="42" CornerRadius="8" Background="{Binding Brush}">
+                                                        <Grid>
+                                                            <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Visibility="{Binding HasPicture, Converter={StaticResource InvBoolVis}}"/>
+                                                            <Image Source="{Binding Picture}" Stretch="Uniform" Margin="5" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                        </Grid>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                                        <TextBlock x:Name="Name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" FontSize="13.5" local:Marquee.IsEnabled="True"/>
+                                                        <TextBlock Text="{Binding Subtitle}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis"
+                                                                   Visibility="{Binding HasSubtitle, Converter={StaticResource BoolVis}}"/>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2" Text="&#xE995;" Style="{StaticResource Glyph}" Foreground="{DynamicResource AccentTextBrush}"
+                                                               FontSize="12" Margin="6,0,2,0" Visibility="{Binding IsCurrent, Converter={StaticResource BoolVis}}"/>
+                                                </Grid>
+                                            </Border>
+                                            <DataTemplate.Triggers>
+                                                <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                    <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
+                            <!-- tags: each one opens the page of its songs; songs can be dropped on them -->
+                            <DockPanel Margin="0,10,0,4">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
+                                        Command="{Binding NewTagCommand}" ToolTip="{local:T 'New tag'}" AutomationProperties.Name="{local:T 'New tag'}"/>
+                                <Button Style="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding TagsSection.ToggleCommand}"
+                                        ToolTip="{local:T 'Show or hide the tags'}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{local:T TAGS}" Style="{StaticResource SmallCaps}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding TagsSection.Chevron}" Style="{StaticResource Glyph}" FontSize="9" Margin="7,0,0,0" Foreground="{DynamicResource MutedBrush}"/>
+                                    </StackPanel>
+                                </Button>
+                            </DockPanel>
+                            <StackPanel Visibility="{Binding TagsSection.Open, Converter={StaticResource BoolVis}}">
+                                <TextBlock Text="{local:T 'Colored labels to group songs and playlists your way.'}" Style="{StaticResource Hint}"
+                                           FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" Visibility="{Binding HasTags, Converter={StaticResource InvBoolVis}}"/>
+                                <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:TagViewModel}">
+                                            <Border x:Name="Item" CornerRadius="17" Padding="12,7" Background="Transparent" Cursor="Hand" AllowDrop="True"
+                                                    Drop="Tag_Drop" DragOver="Playlist_DragOver" DragLeave="Playlist_DragLeave" MouseRightButtonUp="Tag_RightClick"
+                                                    ToolTip="{Binding CountText}" local:Marquee.Host="True">
+                                                <Border.InputBindings>
+                                                    <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenTagCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                  CommandParameter="{Binding}"/>
+                                                </Border.InputBindings>
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding DeviceGlyph}" Style="{StaticResource Glyph}" FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                                                               Margin="0,0,6,0" VerticalAlignment="Center" Visibility="{Binding HasDevice, Converter={StaticResource BoolVis}}"/>
+                                                    <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center"/>
+                                                    <TextBlock x:Name="Name" Text="{Binding Name}" Margin="11,0,8,0" FontSize="13.5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" local:Marquee.IsEnabled="True"/>
+                                                </DockPanel>
+                                            </Border>
+                                            <DataTemplate.Triggers>
+                                                <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource Surface2Brush}"/>
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
 
                     <!-- the profile; the settings -->
-                    <Grid Grid.Row="3" Margin="0,10,0,0">
+                    <Grid Grid.Row="2" Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -613,7 +730,7 @@
                         <Popup x:Name="PlaybackPopup" PlacementTarget="{Binding ElementName=PlaybackButton}" Placement="Top" StaysOpen="False"
                                AllowsTransparency="True" PopupAnimation="Fade" HorizontalOffset="-600" VerticalOffset="-6">
                             <!-- two columns: speed and volume on the left, the equalizer on the right -->
-                            <Border Margin="10" Width="720" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            <Border Margin="10" Width="720" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}"
                                     BorderThickness="1" CornerRadius="18" Padding="22,18,22,18">
                                 <Border.Effect>
                                     <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
@@ -777,7 +894,8 @@
                     </Grid>
                     <Button Style="{StaticResource ControlButton}" Content="{Binding VolumeGlyph}" AutomationProperties.Name="{local:T Mute}" Command="{Binding ToggleMuteCommand}"
                             Margin="2,0,0,0" ToolTip="{local:T Mute}"/>
-                    <Slider x:Name="VolumeSlider" Width="110" Minimum="0" Maximum="1" Value="{Binding Volume}" Margin="4,0,0,0" VerticalAlignment="Center"
+                    <!-- (its track stops 6 short of its ends: the track lines up with "Up next" above it) -->
+                    <Slider x:Name="VolumeSlider" Width="110" Minimum="0" Maximum="1" Value="{Binding Volume}" Margin="4,0,-6,0" VerticalAlignment="Center"
                             SmallChange="0.02" LargeChange="0.1" PreviewMouseWheel="Volume_Wheel" ToolTip="{local:T Volume}" AutomationProperties.Name="{local:T Volume}"/>
                 </StackPanel>
             </Grid>

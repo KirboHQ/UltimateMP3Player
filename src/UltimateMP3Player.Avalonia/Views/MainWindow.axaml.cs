@@ -25,6 +25,10 @@ public partial class MainWindow : Window
         Icon = App.WindowIcon;
         PhoneLinkViewModel.ShowWindow = PhoneDialogs.Show;
         WindowFrame.Apply(this, Root, TitleBar, TitleText, WindowButtons, MinButton, MaxButton, CloseButton, ResizeEdges);
+        Ui.ZoomLimit = () => Screens.ScreenFromWindow(this) is { } on ? Math.Min(on.WorkingArea.Width / on.Scaling / MinSize.Width, on.WorkingArea.Height / on.Scaling / MinSize.Height) : 2;
+        Ui.ZoomChanged += FitZoom;
+        Closed += (_, _) => Ui.ZoomChanged -= FitZoom;
+        FitZoom();
         var s = host.Settings;
         var screen = Screens.Primary?.WorkingArea.Size.ToSize(Screens.Primary.Scaling);
         Width = Math.Clamp(s.WindowWidth, MinWidth, Math.Max(MinWidth, screen?.Width ?? s.WindowWidth));
@@ -43,6 +47,7 @@ public partial class MainWindow : Window
         };
         this.Bind(FullScreenProperty, new Avalonia.Data.Binding(nameof(MainViewModel.FullScreen)));
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(PointerWheelChangedEvent, OnZoomWheel, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, (_, e) => _down.Remove(e.Key), RoutingStrategies.Tunnel, true);
         Deactivated += (_, _) => _down.Clear();
         AddHandler(TextInputEvent, OnTextInput, RoutingStrategies.Tunnel);
@@ -82,14 +87,6 @@ public partial class MainWindow : Window
         AddToPlaylistButton.Click += (_, _) =>
         {
             if (Vm?.Player.Current is { } t) Menus.Open(Menus.AddToPlaylistMenu(t), AddToPlaylistButton, false);
-        };
-        PlaylistList.SelectionChanged += (_, _) =>
-        {
-            if (PlaylistList.SelectedItem is PlaylistViewModel p)
-            {
-                PlaylistList.SelectedItem = null;
-                Vm?.OpenPlaylist(p);
-            }
         };
     }
 
@@ -133,6 +130,30 @@ public partial class MainWindow : Window
     // (Ctrl+↑/↓ go on from a one-line box, Search's: there they have nothing to move, and the box takes the keys as the page opens)
     private bool InLines => FocusManager?.GetFocusedElement() is TextBox { AcceptsReturn: true };
 
+    // The size the layout needs, at zoom 1.
+    private static readonly Size MinSize = new(980, 640);
+
+    // The window's minimum is in the window's pixels, the rest is inside the zoom.
+    private void FitZoom()
+    {
+        MinWidth = MinSize.Width * Ui.Zoom;
+        MinHeight = MinSize.Height * Ui.Zoom;
+    }
+
+    // Ctrl+wheel: the interface's size, like a browser's (a touchpad's small steps add up to a notch).
+    private double _zoomWheel;
+
+    private void OnZoomWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if ((e.KeyModifiers & Command) == 0) return;
+        e.Handled = true;
+        _zoomWheel += e.Delta.Y;
+        int notches = (int)_zoomWheel;
+        if (notches == 0) return;
+        _zoomWheel -= notches;
+        Vm?.SetZoom(Ui.Zoom + notches * 0.1);
+    }
+
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         bool repeat = !_down.Add(e.Key);
@@ -146,6 +167,13 @@ public partial class MainWindow : Window
             || OperatingSystem.IsMacOS() && mods == KeyModifiers.Meta && e.Key is Key.OemOpenBrackets or Key.OemCloseBrackets)
         {
             Step(vm, e.Key is Key.Right or Key.OemCloseBrackets);
+            e.Handled = true;
+            return;
+        }
+        // Ctrl + and -: the interface's size; Ctrl+0: back to normal.
+        if ((mods & Command) != 0 && e.Key is Key.OemPlus or Key.Add or Key.OemMinus or Key.Subtract or Key.D0 or Key.NumPad0)
+        {
+            vm.SetZoom(e.Key is Key.D0 or Key.NumPad0 ? 1 : Ui.Zoom + (e.Key is Key.OemPlus or Key.Add ? 0.1 : -0.1));
             e.Handled = true;
             return;
         }
@@ -264,15 +292,18 @@ public partial class MainWindow : Window
     private static readonly StyledProperty<bool> FullScreenProperty = AvaloniaProperty.Register<MainWindow, bool>("FullScreen");
     private WindowState _windowedState;
 
+    // Where the play button stands as a page sees it: the middle of the window, and pages start past the sidebar.
+    public double PagesMiddleX => ((Control)Body.Parent!).Bounds.Width / 2 - Body.ColumnDefinitions[0].ActualWidth;
+
     // The system's full screen, without title bar and sidebar; the page reaches under the player bar, see-through
     // (NowPlayingView.PlaceFullScreen). Then back to how the window was.
     private void ApplyFullScreen(bool on)
     {
         TitleBar.IsVisible = Sidebar.IsVisible = !on;
-        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : 248);
+        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : 280);
         Grid.SetRow(Body, on ? 0 : 1);
         Grid.SetRowSpan(Body, on ? 3 : 1);
-        PlayerBar.Background = on ? Brushes.Transparent : Ui.Find<IBrush>("SidebarBrush");
+        PlayerBar.Background = Ui.Find<IBrush>(on ? "PlayerBarVeil" : "SidebarBrush");
         double bar = on ? PlayerBar.Bounds.Height : 0;
         ToastBox.Margin = new Thickness(0, 0, 0, 18 + bar);
         DownloadPanel.Margin = new Thickness(0, 0, 20, 16 + bar);

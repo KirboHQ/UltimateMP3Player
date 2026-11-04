@@ -108,7 +108,7 @@
             <views:MasonryPanel x:Name="Cards" ColumnWidth="500" MaxColumns="3" Gap="16">
 
                 <!-- ==================================================== appearance -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'theme colors light dark night mode language english italian animations scrolling mouse wheel cover 3d parallax'}">
+                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'theme colors light dark night mode language english italian animations scrolling mouse wheel cover 3d parallax speed zoom size bigger smaller visualizer bars waves'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Appearance}" Classes="card-title"/>
                         <TextBlock Text="{local:T 'Theme (for this profile)'}" Classes="field-label"/>
@@ -139,6 +139,27 @@
                                 <TextBlock Text="{local:T 'Smooth transitions between tabs. Turn them off if you prefer everything instant.'}" Classes="hint"/>
                             </StackPanel>
                         </CheckBox>
+                        <Grid Margin="0,-6,0,18" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding Animations}">
+                            <TextBlock Text="{local:T Speed}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <Slider Grid.Column="1" Minimum="0.25" Maximum="3" SmallChange="0.25" LargeChange="0.25" IsSnapToTickEnabled="True" TickFrequency="0.25"
+                                    Value="{Binding AnimationSpeed}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Animation speed'}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding AnimationSpeedText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                        </Grid>
+                        <!-- the same as Ctrl+wheel, Ctrl + and - -->
+                        <DockPanel Margin="0,0,0,18">
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Theme="{StaticResource ControlButton}" Width="32" Height="32" FontSize="12" Content="{local:Icon E738}" Command="{Binding ZoomOutCommand}"
+                                        ToolTip.Tip="{local:T Smaller}"/>
+                                <Button Theme="{StaticResource SubtleButton}" Padding="8,4" MinWidth="58" HorizontalContentAlignment="Center" Content="{Binding ZoomText}" Command="{Binding ZoomResetCommand}"
+                                        ToolTip.Tip="{local:T 'Back to 100% (Ctrl+0)'}"/>
+                                <Button Theme="{StaticResource ControlButton}" Width="32" Height="32" FontSize="12" Content="{local:Icon E710}" Command="{Binding ZoomInCommand}"
+                                        ToolTip.Tip="{local:T Bigger}"/>
+                            </StackPanel>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock Text="{local:T 'Interface size'}"/>
+                                <TextBlock Text="{local:T 'Ctrl + mouse wheel, or Ctrl + and Ctrl -, from any page.'}" Classes="hint"/>
+                            </StackPanel>
+                        </DockPanel>
                         <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding SmoothScrolling}">
                             <StackPanel>
                                 <TextBlock Text="{local:T 'Smooth scrolling'}"/>
@@ -151,6 +172,38 @@
                                 <TextBlock Text="{local:T 'In the song view, the cover tilts to follow your mouse.'}" Classes="hint"/>
                             </StackPanel>
                         </CheckBox>
+                        <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding Visualizer}" Margin="0,18,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Bars of the music'}"/>
+                                <TextBlock Text="{local:T 'In the song view, bars that follow the music, behind the title.'}" Classes="hint"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <StackPanel Margin="0,12,0,0" IsVisible="{Binding Visualizer}">
+                            <!-- what the song's page will show: the music playing, otherwise a made-up sound -->
+                            <Border CornerRadius="12" Background="{DynamicResource BgBrush}" Height="76" Padding="14,10,14,0" ClipToBounds="True">
+                                <views:WaveVisualizer IsPreview="True" HeightShare="1" Flow="{Binding NowPlaying.VisualizerFlow}" Place="{Binding NowPlaying.VisualizerPlace}" BarStyle="{Binding NowPlaying.VisualizerStyle}" Tint="{Binding NowPlaying.VisualizerTint}" Thickness="{Binding NowPlaying.VisualizerThickness}" Strength="{Binding NowPlaying.VisualizerStrength}"/>
+                            </Border>
+                            <Grid Margin="0,14,0,0" ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                                <TextBlock Text="{local:T 'Shape of the bars'}" Classes="field-label"/>
+                                <ComboBox Grid.Row="1" HorizontalAlignment="Stretch" ItemsSource="{Binding VisualizerStyles}" SelectedItem="{Binding VisualizerStyleChoice}" AutomationProperties.Name="{local:T 'Shape of the bars'}"/>
+                                <TextBlock Grid.Column="2" Text="{local:T 'Direction of the bars'}" Classes="field-label"/>
+                                <ComboBox Grid.Row="1" Grid.Column="2" HorizontalAlignment="Stretch" ItemsSource="{Binding VisualizerFlows}" SelectedItem="{Binding VisualizerFlowChoice}" AutomationProperties.Name="{local:T 'Direction of the bars'}"/>
+                                <TextBlock Grid.Row="2" Text="{local:T 'Position of the bars'}" Classes="field-label" Margin="2,12,0,6"/>
+                                <ComboBox Grid.Row="3" HorizontalAlignment="Stretch" ItemsSource="{Binding VisualizerPlaces}" SelectedItem="{Binding VisualizerPlaceChoice}" AutomationProperties.Name="{local:T 'Position of the bars'}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="{local:T 'Color of the bars'}" Classes="field-label" Margin="2,12,0,6"/>
+                                <ComboBox Grid.Row="3" Grid.Column="2" HorizontalAlignment="Stretch" ItemsSource="{Binding VisualizerTints}" SelectedItem="{Binding VisualizerTintChoice}" AutomationProperties.Name="{local:T 'Color of the bars'}"/>
+                                <TextBlock Grid.Row="4" Text="{Binding VisualizerThicknessLabel}" Classes="field-label" Margin="2,12,0,6" IsVisible="{Binding VisualizerHasThickness}"/>
+                                <ComboBox Grid.Row="5" HorizontalAlignment="Stretch" ItemsSource="{Binding VisualizerThicknesses}" SelectedItem="{Binding VisualizerThicknessChoice}" AutomationProperties.Name="{local:T 'Thickness of the bars'}" IsVisible="{Binding VisualizerHasThickness}"/>
+                            </Grid>
+                            <Grid Margin="0,14,0,0" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                                <TextBlock Text="{local:T Height}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                <Slider Grid.Column="1" Minimum="0.15" Maximum="1" SmallChange="0.05" LargeChange="0.05" Value="{Binding VisualizerHeight}" VerticalAlignment="Center" AutomationProperties.Name="{local:T Height}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding VisualizerHeightText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                                <TextBlock Grid.Row="1" Text="{local:T Strength}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,12,14,0"/>
+                                <Slider Grid.Row="1" Grid.Column="1" Minimum="0.2" Maximum="1" SmallChange="0.05" LargeChange="0.05" Value="{Binding VisualizerStrength}" VerticalAlignment="Center" Margin="0,12,0,0" AutomationProperties.Name="{local:T Strength}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding VisualizerStrengthText}" Margin="14,12,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                            </Grid>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 
@@ -874,6 +927,33 @@
                                 </StackPanel>
                             </Button>
                         </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ==================================================== stream overlays (OBS) -->
+                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'obs stream streaming streamer overlay browser source twitch youtube now playing vinyl'}">
+                    <StackPanel DataContext="{x:Static local:OverlaySourcesViewModel.Shared}">
+                        <TextBlock Text="{local:T 'Stream overlay'}" Classes="card-title"/>
+                        <TextBlock Classes="hint" Text="{local:T 'What you are listening to, on your stream: copy the link and add it in OBS as a Browser source. Transparent background, it fits any size, and it only works from this computer.'}"/>
+                        <ItemsControl ItemsSource="{Binding Sources}" Margin="0,6,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,10,0,0" ColumnDefinitions="*,Auto">
+                                        <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                            <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Summary}" Classes="hint"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Theme="{StaticResource GhostButton}" Padding="14,7" Margin="0,0,6,0" Content="{local:T 'Copy link'}" Command="{Binding CopyCommand}"/>
+                                            <Button Theme="{StaticResource IconButton}" Width="32" Height="32" FontSize="14" Content="{local:Icon E8A7}" ToolTip.Tip="{local:T Preview}" Command="{Binding PreviewCommand}"/>
+                                            <Button Theme="{StaticResource IconButton}" Width="32" Height="32" FontSize="14" Content="{local:Icon E70F}" ToolTip.Tip="{local:T Edit}" Command="{Binding EditCommand}"/>
+                                            <Button Theme="{StaticResource IconButton}" Width="32" Height="32" FontSize="14" Content="{local:Icon E74D}" ToolTip.Tip="{local:T Delete}" Command="{Binding DeleteCommand}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Theme="{StaticResource GhostButton}" Padding="16,8" Margin="0,14,0,0" HorizontalAlignment="Left" Content="{local:T 'Add an overlay'}" Command="{Binding AddCommand}"/>
                     </StackPanel>
                 </Border>
 

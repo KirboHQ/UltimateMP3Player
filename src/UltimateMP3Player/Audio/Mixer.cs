@@ -566,6 +566,8 @@ public sealed class MasterProvider : ISampleProvider
                 Mix(buffer, offset, count, ref finished, ref ended, ref nearEnd);
             }
             else Stretch(buffer, offset, count, ref finished, ref ended, ref nearEnd);
+            // (before the volume: the bars don't shrink when it's turned down)
+            if (Spectrum.Shared.Wanted) Spectrum.Shared.Feed(buffer, offset, count);
             if (sound || finished != null) Process(buffer, offset, count);
         }
         finished?.Dispose();

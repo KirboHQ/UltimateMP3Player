@@ -98,9 +98,9 @@ public sealed class Tweener
         _run++;
         _from = Value;
         _to = target;
-        _ms = ms;
+        _ms = ms / Core.Glide.Speed;
         _ease = ease ?? Ui.Linear;
-        _delay = delay;
+        _delay = delay / Core.Glide.Speed;
         _completed = completed;
         _start = null;
         IsRunning = true;

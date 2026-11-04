@@ -1,0 +1,903 @@
+<!doctype html>
+<!-- A stream overlay (OverlayServer): one page drawing every look of Settings > Stream overlay. Light on purpose: only the bars are
+     drawn per frame, and only while the music plays and the overlay is shown; the clock moves 4 times a second, the rest is
+     CSS the browser moves by itself. The blurred colours are baked once per song, never blurred live. -->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ultimate MP3 Player</title>
+<style>
+:root {
+  --accent: #8b7cff; --soft: #2e2858; --accent-text: #c9c0ff; --solid: #2a2547; --win: #26252c; --win2: #1e1d23; --disc: #232428; --glow: #8b7cff8c; --plate: #5d48d8; --p: 0;
+  --text: #fff; --text2: rgba(255,255,255,.78); --rk: 1; --glass: 1;
+  --font: "Segoe UI Variable Display", "Segoe UI", "SF Pro Display", -apple-system, Inter, Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "Cascadia Code", "JetBrains Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --hand: "Segoe Print", "Bradley Hand", "Noteworthy", "Comic Neue", "Comic Sans MS", cursive;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+body { font-family: var(--font); color: var(--text); -webkit-font-smoothing: antialiased; }
+body.preview { background: #101116 radial-gradient(circle at 1px 1px, #ffffff14 1px, transparent 0) 0 0 / 22px 22px; }
+#fit { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+#stage { position: relative; visibility: hidden; }
+
+/* ------------------------------------------------ the pieces */
+.card { position: relative; overflow: hidden; border-radius: calc(20px * var(--rk)); box-shadow: 0 10px 34px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.13); }
+.solid { background: var(--solid); }
+.mesh { background: var(--solid); }
+/* (a square wider than the card: it covers a long thin one too, turned) */
+.mesh .bg { position: absolute; left: -30%; width: 160%; aspect-ratio: 1; top: 50%; margin-top: -80%; opacity: var(--glass); animation: drift 26s ease-in-out infinite alternate; will-change: transform; }
+.mesh .bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 1.1s ease; }
+.mesh > :not(.bg) { position: relative; }
+@keyframes drift { from { transform: translate3d(-7%, -5%, 0) rotate(-5deg); } to { transform: translate3d(7%, 5%, 0) rotate(7deg); } }
+
+.marquee { overflow: hidden; white-space: nowrap; }
+.marquee > span { display: inline-block; }
+.marquee.run > span { animation: slide var(--t) ease-in-out infinite alternate; }
+@keyframes slide { 0%, 18% { transform: translateX(0); } 82%, 100% { transform: translateX(var(--d)); } }
+.title { font-weight: 800; letter-spacing: -.012em; text-shadow: 0 1px 14px rgba(0,0,0,.22); }
+.artist { color: var(--text2); font-weight: 500; }
+.time { font-weight: 800; color: var(--accent-text); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.bar { height: 16px; border-radius: calc(99px * var(--rk)); background: var(--soft); overflow: hidden; position: relative; }
+.bar i { position: absolute; inset: 0; border-radius: inherit; background: var(--accent); transform: translateX(-100%); transition: transform .26s linear; }
+canvas.wave { display: block; }
+/* only the progress: a thin line where the small bars would be, the progress on it */
+.rule { display: none; flex: 1; min-width: 0; height: 5px; border-radius: 99px; background: var(--soft); overflow: hidden; position: relative; }
+.rule i { position: absolute; inset: 0; border-radius: inherit; background: var(--accent); transform: translateX(-100%); transition: transform .26s linear; }
+.no-bars canvas.wave { display: none; }
+.no-bars .rule { display: block; }
+.no-bars.compact > .bar, .no-bars.boxy .clock > .bar { display: none; }
+.no-artist .artist, .no-artist .dot, .no-artist .line-artist { display: none; }
+.no-time .time, .no-time .stamp { display: none; }
+.no-time .times { display: none !important; }
+.no-progress .bar, .no-progress .rule, .no-progress .ascii { display: none; }
+.empty-clock .clock { display: none !important; }
+.live { display: none; align-items: center; gap: 9px; font-weight: 800; color: var(--accent-text); letter-spacing: .08em; }
+.live::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
+.is-live .live { display: flex; }
+.is-live .time, .is-live .bar, .is-live .rule { display: none; }
+
+/* ------------------------------------------------ the cover */
+.art { position: relative; flex: none; aspect-ratio: 1; will-change: transform; }
+.art .disc { position: absolute; inset: 0; overflow: hidden; border-radius: calc(22px * var(--rk)); background: var(--solid); box-shadow: 0 14px 34px rgba(0,0,0,.42), inset 0 0 0 1px rgba(255,255,255,.08); }
+.art .pics img, .art video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .7s ease; }
+.art video { opacity: 0; }
+.art .note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--accent-text); opacity: .75; }
+.art .note svg { width: 38%; height: 38%; }
+.art .glow, .art .grooves, .art .sheen, .art .spindle, .art .arm { display: none; }
+.cover-none .art { display: none; }
+/* (the shape of the cover: a square lights up square. A shadow on its own layer: painted once, only moved after that) */
+.cover-square .art .glow { display: block; position: absolute; inset: 5%; border-radius: calc(22px * var(--rk)); background: var(--glow); box-shadow: 0 0 44px 24px var(--glow); transition: transform .12s linear; will-change: transform; }
+.no-glow .art .glow { display: none !important; }
+.no-arm .art .arm { display: none !important; }
+
+/* the vinyl: the cover on the record spinning under a light that stays still */
+.cover-vinyl .art .note { display: none; }
+.cover-vinyl .art .disc { background: #17171c; border-radius: 50%; animation: spin 7s linear infinite; animation-play-state: paused; will-change: transform; box-shadow: none; }
+.cover-vinyl.playing .art .disc { animation-play-state: running; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.cover-vinyl .art .glow { display: block; position: absolute; inset: -16%; border-radius: 50%; background: radial-gradient(closest-side, var(--glow) 56%, transparent 100%); transition: transform .12s linear; will-change: transform; }
+.cover-vinyl .art .grooves { display: block; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle, transparent 0 15%, rgba(0,0,0,.42) 15.4% 16.4%, transparent 17%),
+              repeating-radial-gradient(circle, rgba(0,0,0,.17) 0 1px, rgba(0,0,0,0) 1.5px 4px),
+              radial-gradient(circle, transparent 60%, rgba(0,0,0,.38) 100%); }
+.cover-vinyl .art .sheen { display: block; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; mix-blend-mode: screen;
+  background: conic-gradient(from 28deg, transparent 0 7%, rgba(255,255,255,.24) 12%, transparent 19% 51%, rgba(255,255,255,.17) 58%, transparent 66%); }
+.cover-vinyl .art .spindle { display: block; position: absolute; inset: 39%; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 1px rgba(255,255,255,.14), 0 2px 8px rgba(0,0,0,.4); }
+.cover-vinyl .art .spindle::after { content: ""; position: absolute; inset: 31%; border-radius: 50%; background: #ffffffc4; box-shadow: inset 0 1px 3px rgba(0,0,0,.45); }
+.cover-vinyl .art .arm { display: block; position: absolute; right: -1%; top: -3%; width: 36%; height: 54%; transform-origin: 82% 12%; transform: rotate(-26deg); transition: transform .9s cubic-bezier(.3,1.2,.4,1); filter: drop-shadow(0 3px 5px rgba(0,0,0,.45)); }
+.cover-vinyl.playing .art .arm { transform: rotate(0deg); }
+
+/* the canvas: the picture fills the whole card and moves (the song's video when there is one, otherwise its cover), the rest floats
+   over it, always light on dark whatever the look */
+.cover-canvas { --text: #fff; --text2: rgba(255,255,255,.88); --accent-text: #fff; position: relative; overflow: hidden; border-radius: calc(26px * var(--rk)); padding: 18px; box-shadow: 0 16px 44px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.1); }
+.cover-canvas .art { position: absolute !important; inset: 0; width: auto !important; aspect-ratio: auto; align-self: stretch !important; margin: 0 !important; z-index: 0; }
+.cover-canvas .art .disc { border-radius: 0; box-shadow: none; background: linear-gradient(135deg, var(--accent), var(--soft)); }
+.cover-canvas .art .note { display: none; }
+.cover-canvas .art .pics { position: absolute; inset: -16%; animation: float 13s ease-in-out infinite alternate; will-change: transform; }
+.cover-canvas .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,.62), rgba(0,0,0,.08) 72%); pointer-events: none; }
+.has-video video { opacity: 1; }
+.has-video .pics { animation: none !important; }
+@keyframes float { from { transform: scale(1) translate3d(-6%, 5%, 0); } to { transform: scale(1.24) translate3d(6%, -5%, 0); } }
+.cover-canvas > :not(.art), .cover-canvas .mesh > :not(.bg):not(.art) { position: relative; z-index: 1; }
+.cover-canvas .card:not(.line) { background: rgba(12,12,18,.34); box-shadow: inset 0 1px 0 rgba(255,255,255,.14); }
+.cover-canvas .mesh .bg { display: none; }
+.cover-canvas .title, .cover-canvas .artist { text-shadow: 0 1px 10px rgba(0,0,0,.55); }
+.cover-canvas .bar, .cover-canvas .rule { background: rgba(255,255,255,.24); }
+.cover-canvas .bar i, .cover-canvas .rule i { background: #fff; }
+.compact.cover-canvas { grid-template-columns: minmax(0, 1fr); }
+.gallery.cover-canvas { padding-top: 264px; }
+.minimal.cover-canvas, .discord.cover-canvas { padding: 0; }
+.minimal.cover-canvas .line { background: none; box-shadow: none; }
+.discord.cover-canvas .panel { background: none; box-shadow: none; border-radius: 0; position: relative; overflow: hidden; }
+.discord.cover-canvas .head, .discord.cover-canvas .names { position: relative; z-index: 1; }
+.cover-canvas .window { background: rgba(14,14,20,.5); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.cover-canvas .chrome { background: rgba(14,14,20,.42); }
+
+/* ------------------------------------------------ big bars rising from behind the card */
+canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%; height: 100%; z-index: -1; }
+.bars-behind canvas.behind { display: block; }
+.place-0 { padding-top: 102px; }
+.place-1 { padding-bottom: 102px; }
+.place-2 { padding: 102px 0; }
+.place-3 { padding: 60px 130px; }
+.place-3 canvas.behind { left: 0; width: 100%; }
+
+/* ------------------------------------------------ compact: cover, song, time, and the bar under them */
+.compact { width: 760px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px 18px; align-items: stretch; }
+.compact .art { width: 190px; }
+.compact .right { display: flex; flex-direction: column; gap: 12px; min-width: 0; justify-content: center; }
+.compact .info { padding: 18px 26px; }
+.compact .title { font-size: 36px; line-height: 1.16; }
+.compact .artist { font-size: 22px; margin-top: 3px; }
+.compact .clock { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 13px 26px; }
+.compact .time { font-size: 27px; }
+.compact canvas.wave { flex: 1; min-width: 0; height: 38px; }
+.compact > .bar { grid-column: 1 / -1; height: 18px; }
+.compact .live { font-size: 22px; }
+.cover-none.compact { grid-template-columns: minmax(0, 1fr); }
+
+/* ------------------------------------------------ boxy: two boxes side by side */
+.boxy { width: 860px; display: flex; gap: 14px; align-items: stretch; }
+.boxy .art { width: 172px; align-self: center; }
+.boxy .info { flex: 1.15; min-width: 0; padding: 22px 28px; display: flex; flex-direction: column; justify-content: center; }
+.boxy .title { font-size: 33px; line-height: 1.16; }
+.boxy .artist { font-size: 21px; margin-top: 4px; }
+.boxy .clock { flex: 1; min-width: 0; padding: 20px 26px; display: flex; flex-direction: column; justify-content: center; gap: 15px; }
+.boxy .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.boxy .time { font-size: 25px; }
+.boxy canvas.wave { flex: 1; min-width: 0; height: 36px; }
+.boxy .bar { height: 15px; }
+.boxy .live { font-size: 21px; }
+
+/* ------------------------------------------------ gallery: the cover first */
+.gallery { width: 380px; display: flex; flex-direction: column; gap: 14px; }
+.gallery .art { width: 100%; }
+.cover-vinyl.gallery .art { width: 88%; align-self: center; margin: 12px 0; }
+.gallery .info { padding: 18px 24px; }
+.gallery .title { font-size: 28px; line-height: 1.16; }
+.gallery .artist { font-size: 19px; margin-top: 3px; }
+.gallery .clock { padding: 13px 22px 15px; display: flex; flex-direction: column; gap: 10px; }
+.gallery .row { display: flex; align-items: center; justify-content: space-between; gap: 15px; }
+.gallery .time { font-size: 21px; }
+.gallery .bar { flex: 1; height: 13px; }
+.gallery canvas.wave { width: 100%; height: 30px; }
+.gallery .live { font-size: 19px; }
+
+/* ------------------------------------------------ minimal: one line */
+.minimal { width: 880px; }
+.minimal .line { display: flex; align-items: center; gap: 22px; padding: 14px 30px 14px 22px; height: 76px; border-radius: calc(24px * var(--rk)); }
+.minimal .art { width: 50px; }
+.minimal .art .disc { border-radius: calc(13px * var(--rk)); box-shadow: 0 3px 10px rgba(0,0,0,.3); }
+.cover-vinyl.minimal .art .disc { border-radius: 50%; }
+.minimal .art .arm, .minimal .art .glow { display: none !important; }
+.minimal .names { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 16px; }
+.minimal .title { font-size: 28px; flex: 0 1 auto; max-width: 66%; }
+.minimal .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text); opacity: .75; flex: none; align-self: center; }
+.minimal .artist { font-size: 26px; flex: 1 1 0; min-width: 40px; }
+.minimal canvas.wave { width: 96px; height: 34px; flex: none; }
+.minimal .bar { width: 190px; flex: none; height: 16px; background: rgba(255,255,255,.2); }
+.minimal .bar i { background: var(--text); opacity: .92; }
+.minimal .live { font-size: 19px; color: var(--text); }
+.minimal .live::before { background: var(--text); }
+
+/* ------------------------------------------------ a window: macOS and the terminal */
+.window { border-radius: calc(26px * var(--rk)); overflow: hidden; background: var(--win); box-shadow: 0 18px 44px rgba(0,0,0,.5), inset 0 0 0 1.5px rgba(255,255,255,.1); }
+.chrome { display: flex; align-items: center; height: 58px; padding: 0 24px; background: var(--win2); box-shadow: inset 0 -1px 0 rgba(255,255,255,.07); }
+
+.macos { width: 560px; display: flex; gap: 18px; align-items: center; }
+.macos .window { flex: 1; min-width: 0; }
+.macos .art { width: 180px; }
+.macos .lights { display: flex; gap: 11px; }
+.macos .lights b { width: 17px; height: 17px; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.2), inset 0 1px 1px rgba(255,255,255,.35); }
+.macos .lights b:nth-child(1) { background: #ff5f57; }
+.macos .lights b:nth-child(2) { background: #febc2e; }
+.macos .lights b:nth-child(3) { background: #28c840; }
+.macos canvas.wave { margin-left: auto; width: 96px; height: 28px; }
+.macos .body { padding: 26px 34px 32px; }
+.macos .title { font-size: 34px; color: var(--accent-text); line-height: 1.16; text-shadow: none; }
+.macos .artist { font-size: 22px; color: var(--accent-text); opacity: .85; margin-top: 2px; }
+.macos .times { display: flex; justify-content: space-between; margin: 18px 0 9px; }
+.macos.no-time .bar { margin-top: 18px; }
+.macos .time { font-size: 24px; }
+.macos .bar { height: 15px; }
+.macos .live { font-size: 21px; margin-top: 18px; }
+
+.shell { width: 720px; display: flex; gap: 18px; align-items: center; }
+.shell .window { flex: 1; min-width: 0; font-family: var(--mono); font-variant-ligatures: none; }
+.shell .art { width: 170px; }
+.shell .chrome { justify-content: center; position: relative; font-weight: 700; font-size: 21px; color: var(--text); }
+.shell .controls { position: absolute; right: 16px; top: 0; bottom: 0; display: flex; align-items: center; gap: 16px; color: var(--text2); }
+.shell .controls u { width: 15px; text-decoration: none; text-align: center; font-size: 15px; line-height: 1; }
+.shell .controls u:last-child { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; }
+.shell .body { padding: 22px 28px 26px; font-size: 25px; line-height: 1.5; color: var(--text); }
+.shell .prompt b { color: var(--accent); font-weight: 700; }
+.shell .prompt i { color: var(--accent-text); font-style: normal; }
+.shell .prompt em { color: var(--text2); font-style: normal; opacity: .7; }
+.shell .ascii, .shell .spark { white-space: nowrap; overflow: hidden; }
+.shell .ascii b { color: var(--accent); font-weight: 700; }
+.shell .spark { color: var(--accent); line-height: 1.2; letter-spacing: -.02em; }
+.no-bars .spark { display: none; }
+.shell .cursor { display: inline-block; width: .6em; height: 1em; vertical-align: -.14em; background: var(--text); animation: blink 1.1s steps(1) infinite; margin-left: .3em; }
+.shell:not(.playing) .cursor { animation: none; opacity: .35; }
+@keyframes blink { 50% { opacity: 0; } }
+.shell .live { font-size: 21px; }
+
+/* ------------------------------------------------ the Discord card */
+.discord { width: 560px; }
+.discord .panel { border-radius: calc(16px * var(--rk)); background: var(--disc); padding: 18px 20px 20px; box-shadow: 0 12px 34px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06); }
+.discord .head { font-size: 14px; font-weight: 800; letter-spacing: .05em; color: var(--text2); margin-bottom: 13px; text-transform: uppercase; display: flex; align-items: center; gap: 9px; }
+.discord canvas.wave { margin-left: auto; width: 74px; height: 18px; }
+.discord .row { display: flex; gap: 16px; align-items: center; }
+.discord .art { width: 104px; }
+.discord .art .disc { border-radius: calc(12px * var(--rk)); }
+.cover-vinyl.discord .art .disc { border-radius: 50%; }
+.discord .art .arm, .discord .art .glow { display: none !important; }
+.discord .names { flex: 1; min-width: 0; }
+.discord .title { font-size: 21px; font-weight: 700; text-shadow: none; }
+.discord .artist { font-size: 17px; margin-top: 2px; }
+.discord .times { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; }
+.discord.no-time .times { display: flex !important; }
+.discord .time { font-size: 14px; font-weight: 600; color: var(--text2); }
+.discord .bar { flex: 1; height: 7px; background: rgba(128,132,142,.34); }
+.discord .bar i { background: var(--text); }
+.discord .live { font-size: 15px; margin-top: 12px; }
+
+/* ------------------------------------------------ pill: a capsule, the progress going round the cover */
+.pill { width: 660px; }
+.pill .line { display: flex; align-items: center; gap: 20px; height: 112px; padding: 12px 36px 12px 12px; border-radius: calc(56px * var(--rk)); }
+.pill .ring { position: relative; flex: none; width: 88px; height: 88px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 1turn), var(--soft) 0); }
+.no-progress .ring, .is-live .ring { background: var(--soft); }
+.cover-none .ring { display: none; }
+.pill .art { position: absolute !important; inset: 6px; width: auto; }
+.pill .art .disc { border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.pill .art .arm, .pill .art .glow, .pill .art .spindle, .pill .art .sheen { display: none !important; }
+.pill .names { flex: 1; min-width: 0; }
+.pill .title { font-size: 30px; line-height: 1.18; }
+.pill .artist { font-size: 20px; margin-top: 2px; }
+.pill canvas.wave { width: 104px; height: 44px; flex: none; }
+.pill .time { font-size: 20px; flex: none; }
+.pill .live { font-size: 18px; flex: none; }
+
+/* ------------------------------------------------ neon: no card, the letters lit up (their glow painted once, with the text) */
+.neon { width: 760px; display: flex; align-items: center; gap: 24px; }
+.neon .art { width: 124px; }
+.neon .art .disc { border-radius: calc(18px * var(--rk)); box-shadow: 0 0 0 2px var(--accent), 0 0 26px var(--accent); }
+.cover-vinyl.neon .art .disc { border-radius: 50%; }
+.neon .names { flex: 1; min-width: 0; }
+.neon .marquee { padding: 16px 24px; margin: -16px -24px; }
+.neon .title { font-size: 48px; line-height: 1.12; color: #fff; text-shadow: 0 0 5px #ffffffa0, 0 0 18px var(--accent), 0 0 44px var(--accent), 0 2px 6px rgba(0,0,0,.55); }
+.neon .artist { font-size: 24px; margin-top: 18px; color: var(--accent-text); text-shadow: 0 0 12px var(--accent), 0 1px 4px rgba(0,0,0,.7); }
+.neon canvas.wave { width: 100%; height: 40px; margin-top: 2px; }
+.neon .times { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 4px; }
+.neon .time { font-size: 18px; color: #fff; text-shadow: 0 0 10px var(--accent), 0 1px 3px rgba(0,0,0,.7); }
+.neon .bar { flex: 1; height: 5px; background: rgba(255,255,255,.16); overflow: visible; }
+.neon .bar i { box-shadow: 0 0 12px var(--accent); }
+.neon .live { font-size: 20px; margin-top: 8px; }
+.cover-canvas.neon { padding: 26px; }
+
+/* ------------------------------------------------ cassette: the song on the label, the reels turning, the tape going from one to the other */
+.cassette { width: 600px; }
+.cassette .tape { position: relative; border-radius: calc(26px * var(--rk)); background: linear-gradient(160deg, #34343c, #1f1f25); padding: 22px 26px 44px; box-shadow: 0 16px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.4); overflow: hidden; }
+.cassette .tape::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: 0; height: 32px; background: #15151a; clip-path: polygon(7% 0, 93% 0, 100% 100%, 0 100%); }
+.cassette .screw { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #8b8b93, #3b3b42 70%); }
+.cassette .screw.a { left: 9px; top: 9px; } .cassette .screw.b { right: 9px; top: 9px; } .cassette .screw.c { left: 9px; bottom: 9px; } .cassette .screw.d { right: 9px; bottom: 9px; }
+.cassette .sticker { position: relative; overflow: hidden; border-radius: calc(14px * var(--rk)); padding: 16px 18px 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.cassette .head { display: flex; align-items: center; gap: 16px; }
+.cassette .art { width: 74px; }
+.cassette .art .disc { border-radius: calc(10px * var(--rk)); box-shadow: 0 3px 10px rgba(0,0,0,.35); }
+.cover-vinyl.cassette .art .disc { border-radius: 50%; }
+.cassette .art .arm, .cassette .art .glow { display: none !important; }
+.cassette .names { flex: 1; min-width: 0; }
+.cassette .title { font-size: 30px; line-height: 1.16; }
+.cassette .artist { font-size: 20px; margin-top: 2px; }
+.cassette .window { display: flex; align-items: center; gap: 14px; margin-top: 16px; padding: 10px 14px; border-radius: 40px; background: rgba(8,8,12,.62); box-shadow: inset 0 2px 8px rgba(0,0,0,.6); }
+.cassette .reel { position: relative; flex: none; width: 70px; height: 70px; }
+/* (the tape wound on each reel: one empties as the other fills) */
+.cassette .reel::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: #2b2523; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); transform: scale(calc(.5 + .5 * (1 - var(--p)))); }
+.cassette .reel.r::before { transform: scale(calc(.5 + .5 * var(--p))); }
+.cassette .reel i { position: absolute; inset: 24%; border-radius: 50%; background: conic-gradient(#e8e8ec 0 10%, #0000 0 33.3%, #e8e8ec 0 43.3%, #0000 0 66.6%, #e8e8ec 0 76.6%, #0000 0); -webkit-mask: radial-gradient(circle, #0000 26%, #000 28%); animation: spin 3.2s linear infinite; animation-play-state: paused; will-change: transform; }
+.cassette.playing .reel i { animation-play-state: running; }
+.cassette canvas.wave { flex: 1; min-width: 0; height: 40px; }
+.cassette .times { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; }
+.cassette .time { font-size: 19px; }
+.cassette .bar { flex: 1; height: 9px; }
+.cassette .live { font-size: 18px; margin-top: 12px; }
+
+/* ------------------------------------------------ polaroid: the cover as a photo, the song written under it */
+.polaroid { width: 360px; transform: rotate(-2.4deg); }
+.polaroid .frame { background: #f7f5ef; border-radius: calc(5px * var(--rk)); padding: 18px 18px 16px; box-shadow: 0 18px 40px rgba(0,0,0,.45); --text: #1e1d1a; --text2: #5d5a53; --accent-text: #3a3833; }
+.polaroid .art { width: 100%; }
+.polaroid .art .disc { border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); background: #d9d6cc; }
+.cover-vinyl.polaroid .art .disc { border-radius: 50%; }
+.polaroid .art .arm, .polaroid .art .glow { display: none !important; }
+.polaroid .title { font-family: var(--hand); font-size: 28px; font-weight: 700; color: var(--text); text-shadow: none; margin-top: 12px; line-height: 1.3; }
+.polaroid .artist { font-family: var(--hand); font-size: 19px; color: var(--text2); line-height: 1.3; }
+.polaroid canvas.wave { width: 100%; height: 32px; margin-top: 6px; }
+.polaroid .times { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; }
+.polaroid .time { font-family: var(--hand); font-size: 15px; font-weight: 700; color: var(--text2); }
+.polaroid .bar { flex: 1; height: 5px; background: rgba(0,0,0,.12); }
+.polaroid .live { font-size: 15px; margin-top: 6px; }
+
+/* ------------------------------------------------ broadcast: a lower third, like the name under someone on TV */
+.broadcast { width: 940px; display: flex; align-items: flex-end; gap: 0; }
+.broadcast .art { width: 136px; z-index: 1; margin-right: -10px; }
+.broadcast .art .disc { border-radius: calc(10px * var(--rk)); box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+.cover-vinyl.broadcast .art .disc { border-radius: 50%; }
+.broadcast .art .arm, .broadcast .art .glow { display: none !important; }
+.broadcast .plates { flex: 1; min-width: 0; }
+.broadcast .plate1 { display: flex; align-items: center; gap: 20px; padding: 12px 40px 12px 34px; background: var(--plate); color: #fff; clip-path: polygon(0 0, 100% 0, calc(100% - 26px) 100%, 0 100%); }
+.broadcast .title { flex: 1; min-width: 0; font-size: 38px; line-height: 1.16; color: #fff; }
+.broadcast canvas.wave { width: 120px; height: 42px; flex: none; }
+.broadcast .plate2 { display: flex; align-items: center; gap: 18px; width: 72%; padding: 8px 26px 8px 34px; background: var(--solid); clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%); }
+.broadcast .artist { flex: 1; min-width: 0; font-size: 22px; }
+.broadcast .time { font-size: 18px; flex: none; }
+.broadcast .bar { height: 5px; border-radius: 0; background: rgba(0,0,0,.28); width: calc(100% - 26px); }
+.broadcast .live { font-size: 18px; flex: none; }
+</style>
+</head>
+<body>
+<div id="fit"><div id="stage"></div></div>
+<script>
+"use strict";
+const id = location.pathname.split("/").pop(), preview = new URLSearchParams(location.search).has("preview");
+if (preview) document.body.classList.add("preview");
+const fit = document.getElementById("fit"), stage = document.getElementById("stage"), root = document.documentElement;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const NOTE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 18.5a3 3 0 1 1-2-2.83V5.6l12-2.4v12.3a3 3 0 1 1-2-2.83V7.04L9 8.64z"/></svg>';
+const ARM = '<svg class="arm" viewBox="0 0 60 90" fill="none"><circle cx="49" cy="11" r="9" fill="#d8dae0"/><circle cx="49" cy="11" r="3.5" fill="#6d7079"/><path d="M49 11 L46 52 L27 76" stroke="#d8dae0" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="17" y="72" width="14" height="10" rx="2.5" transform="rotate(38 24 77)" fill="#eef0f4"/></svg>';
+const ART = `<div class="art"><div class="glow"></div><div class="disc"><div class="note">${NOTE}</div><div class="pics"></div><video muted playsinline preload="auto"></video><div class="grooves"></div></div><div class="sheen"></div><div class="spindle"></div>${ARM}</div>`;
+const NAMES = '<div class="title marquee"><span></span></div><div class="artist marquee"><span></span></div>';
+const REEL = c => `<div class="reel ${c}"><i></i></div>`, SCREWS = '<b class="screw a"></b><b class="screw b"></b><b class="screw c"></b><b class="screw d"></b>';
+const WAVE = '<canvas class="wave"></canvas>', BAR = '<div class="bar"><i></i></div>', RULE = '<div class="rule"><i></i></div>', CUR = '<span class="time cur">00:00</span>', DUR = '<span class="time dur">00:00</span>', LIVE = '<div class="live">LIVE</div>';
+
+// Each look's pieces, in order.
+const SKINS = {
+  compact: () => `${ART}<div class="right"><div class="card mesh info"><div class="bg"></div>${NAMES}</div><div class="card solid clock">${CUR}${WAVE}${RULE}${DUR}${LIVE}</div></div>${BAR}`,
+  boxy: () => `${ART}<div class="card mesh info"><div class="bg"></div>${NAMES}</div><div class="card solid clock"><div class="row">${CUR}${WAVE}${RULE}${DUR}${LIVE}</div>${BAR}</div>`,
+  gallery: () => `${ART}<div class="card mesh info"><div class="bg"></div>${NAMES}</div><div class="card solid clock">${WAVE}<div class="row">${CUR}${BAR}${DUR}${LIVE}</div></div>`,
+  minimal: () => `<div class="card mesh line"><div class="bg"></div>${ART}<div class="names"><div class="title marquee"><span></span></div><div class="dot"></div><div class="artist marquee"><span></span></div></div>${WAVE}${BAR}${LIVE}</div>`,
+  macos: () => `${ART}<div class="window"><div class="chrome"><div class="lights"><b></b><b></b><b></b></div>${WAVE}</div><div class="body">${NAMES}<div class="times">${CUR}${DUR}</div>${BAR}${LIVE}</div></div>`,
+  shell: () => `${ART}<div class="window"><div class="chrome">root@ump<div class="controls"><u>&#8211;</u><u>&#9633;</u><u>&#10005;</u></div></div><div class="body"><div class="prompt"><b>root@ump</b><i>&gt;./ump</i> <em>--nowplaying</em></div><div class="line-title marquee"><span></span></div><div class="line-artist marquee"><span></span></div><div class="spark"></div><div class="ascii"></div><div class="stamp"></div>${LIVE}</div></div>`,
+  discord: () => `<div class="panel"><div class="head"><span class="what"></span>${WAVE}</div><div class="row">${ART}<div class="names">${NAMES}<div class="times">${CUR}${BAR}${DUR}</div>${LIVE}</div></div></div>`,
+  pill: () => `<div class="card mesh line"><div class="bg"></div><div class="ring">${ART}</div><div class="names">${NAMES}</div>${WAVE}${CUR}${LIVE}</div>`,
+  neon: () => `${ART}<div class="names">${NAMES}${WAVE}<div class="times">${CUR}${BAR}${DUR}</div>${LIVE}</div>`,
+  cassette: () => `<div class="tape">${SCREWS}<div class="sticker mesh"><div class="bg"></div><div class="head">${ART}<div class="names">${NAMES}</div></div><div class="window">${REEL("l")}${WAVE}${REEL("r")}</div><div class="times">${CUR}${BAR}${DUR}</div>${LIVE}</div></div>`,
+  polaroid: () => `<div class="frame">${ART}${NAMES}${WAVE}<div class="times">${CUR}${BAR}${DUR}</div>${LIVE}</div>`,
+  broadcast: () => `${ART}<div class="plates"><div class="plate1"><div class="title marquee"><span></span></div>${WAVE}</div>${BAR}<div class="plate2"><div class="artist marquee"><span></span></div>${CUR}${DUR}${LIVE}</div></div>`,
+};
+
+let cfg = null, st = { playing: false, pos: 0, dur: 0, rate: 1, live: false }, stAt = performance.now();
+let widget = null, shown = false, hideTimer = 0, prevKey = null, announced = null, palette = null, cover = null;
+const ANIM = {
+  original: { from: { opacity: 0, transform: "translateY(16px) scale(.965)" }, ease: "cubic-bezier(.2,.95,.25,1.08)", ms: 560 },
+  fade: { from: { opacity: 0 }, ease: "ease", ms: 420 },
+  "slide-left": { from: { opacity: 0, transform: "translateX(-90%)" }, ease: "cubic-bezier(.2,.9,.25,1)", ms: 560 },
+  "slide-right": { from: { opacity: 0, transform: "translateX(90%)" }, ease: "cubic-bezier(.2,.9,.25,1)", ms: 560 },
+  "slide-up": { from: { opacity: 0, transform: "translateY(-90%)" }, ease: "cubic-bezier(.2,.9,.25,1)", ms: 560 },
+  "slide-down": { from: { opacity: 0, transform: "translateY(90%)" }, ease: "cubic-bezier(.2,.9,.25,1)", ms: 560 },
+  grow: { from: { opacity: 0, transform: "scale(.55)" }, ease: "cubic-bezier(.2,1.2,.3,1)", ms: 520 },
+  shrink: { from: { opacity: 0, transform: "scale(1.4)" }, ease: "cubic-bezier(.2,.9,.25,1)", ms: 480 },
+  "swing-left": { from: { opacity: 0, transform: "perspective(1100px) rotateY(72deg)", transformOrigin: "left center" }, to: { transformOrigin: "left center" }, ease: "cubic-bezier(.2,.9,.3,1.05)", ms: 640 },
+  "swing-right": { from: { opacity: 0, transform: "perspective(1100px) rotateY(-72deg)", transformOrigin: "right center" }, to: { transformOrigin: "right center" }, ease: "cubic-bezier(.2,.9,.3,1.05)", ms: 640 },
+  "tilt-left": { from: { opacity: 0, transform: "rotate(-9deg) translateY(34px)" }, ease: "cubic-bezier(.2,.95,.3,1.08)", ms: 560 },
+  "tilt-right": { from: { opacity: 0, transform: "rotate(9deg) translateY(34px)" }, ease: "cubic-bezier(.2,.95,.3,1.08)", ms: 560 },
+};
+
+// ------------------------------------------------------------ shown or hidden
+function move(kind, entering) {
+  // (the motion seen is what counts: going away, "grow" grows and "shrink" shrinks, they don't go back the way they came in)
+  const a = ANIM[entering ? kind : { grow: "shrink", shrink: "grow" }[kind] || kind] || ANIM.original, end = Object.assign({ opacity: 1, transform: "none" }, a.to || {});
+  return stage.animate(entering ? [a.from, end] : [end, a.from], { duration: a.ms * (entering ? 1 : .72), easing: entering ? a.ease : "ease-in", fill: "both" });
+}
+function show() {
+  clearTimeout(hideTimer);
+  hideTimer = 0;
+  if (shown) return;
+  shown = true;
+  stage.style.visibility = "visible";
+  move(cfg.Reveal, true);
+  startFrames();
+}
+function hide() {
+  clearTimeout(hideTimer);
+  hideTimer = 0;
+  if (!shown) return;
+  shown = false;
+  move(cfg.Exit, false).onfinish = () => { if (!shown) stage.style.visibility = "hidden"; };
+}
+// "playing": there with the music, gone a while after it stops. "change": only when a song starts (songStarted). "always": unless
+// there's nothing at all to say.
+function placeOnScreen() {
+  // (a preview is there to be looked at, whatever the music is doing)
+  if (preview) { show(); return; }
+  const nothing = !st.title;
+  if (cfg.Show === "always") {
+    if (nothing && !cfg.NothingTitle && !cfg.NothingArtist) hide();
+    else show();
+    return;
+  }
+  if (nothing) { hide(); return; }
+  if (cfg.Show === "change") return;
+  if (st.playing) { show(); return; }
+  if (!shown) return;
+  if (!hideTimer) hideTimer = setTimeout(hide, (cfg.HideAfter || 5) * 1000);
+}
+function songStarted() {
+  if (preview || cfg.Show !== "change" || !st.title) return;
+  show();
+  hideTimer = setTimeout(hide, (cfg.ShowFor || 8) * 1000);
+}
+
+// ------------------------------------------------------------ colours
+function hsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+  if (d < 1e-5) return [0, 0, l];
+  const s = l > .5 ? d / (2 - max - min) : d / (max + min);
+  const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h * 60, s, l];
+}
+// The cover's two strongest colours: by hue, the vivid pixels counting more. A grey has no hue, so it says nothing about them (white
+// and black used to fall in the first bucket, red). A cover with hardly any colour gets a grey palette, not one made up from its noise.
+function readPalette(img) {
+  const c = document.createElement("canvas"); c.width = c.height = 28;
+  const x = c.getContext("2d", { willReadFrequently: true });
+  x.drawImage(img, 0, 0, 28, 28);
+  const data = x.getImageData(0, 0, 28, 28).data, buckets = Array.from({ length: 18 }, () => ({ w: 0, s: 0, h: 0 }));
+  let vivid = 0, light = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const [h, s, l] = hsl(data[i], data[i + 1], data[i + 2]);
+    light += l;
+    const w = s * s * Math.max(0, 1 - Math.abs(l - .5) * 1.7);
+    if (w <= 0) continue;
+    const b = buckets[Math.floor(h / 20) % 18];
+    b.w += w; b.s += s * w; b.h += h * w;
+    vivid += w;
+  }
+  light /= data.length / 4;
+  if (vivid < data.length / 4 * .02) return { h1: 0, s1: 0, h2: 0, s2: 0, grey: true, light };
+  const sorted = buckets.filter(b => b.w > 0).sort((a, b) => b.w - a.w), first = sorted[0];
+  const h1 = first.h / first.w, s1 = first.s / first.w;
+  const other = sorted.find(b => { const d = Math.abs(b.h / b.w - h1); return Math.min(d, 360 - d) > 40 && b.w > first.w * .12; });
+  return { h1, s1, h2: other ? other.h / other.w : (h1 + 30) % 360, s2: other ? other.s / other.w : s1, light };
+}
+function tintPalette() {
+  const m = /^#?([0-9a-f]{6})$/i.exec(cfg.Tint || "") || [0, "7c5cff"], n = parseInt(m[1], 16);
+  const [h, s] = hsl(n >> 16, n >> 8 & 255, n & 255);
+  return { h1: h, s1: s, h2: (h + 34) % 360, s2: s };
+}
+function paint() {
+  const p = cfg.MagicColors && palette ? palette : tintPalette(), dark = !cfg.Light, g = !!p.grey, S = (v, a, b) => g ? 0 : clamp(v * 100, a, b);
+  const glass = clamp(cfg.Solid ?? 1, .15, 1);
+  const v = {
+    "--accent": `hsl(${p.h1} ${S(p.s1, 55, 92)}% ${g ? (dark ? 86 : 24) : dark ? 60 : 42}%)`,
+    "--soft": `hsl(${p.h1} ${S(p.s1, 36, 78)}% ${dark ? 25 : 84}%)`,
+    "--accent-text": `hsl(${p.h1} ${S(p.s1, 40, 78)}% ${g ? (dark ? 90 : 22) : dark ? 78 : 30}%)`,
+    "--plate": `hsl(${p.h1} ${S(p.s1, 50, 80)}% ${g ? 16 : dark ? 38 : 36}%)`,
+    "--solid": `hsl(${p.h2} ${S(p.s2 * .6, 18, 46)}% ${dark ? 22 : 93}% / ${glass})`,
+    "--win": `hsl(${p.h1} ${g ? 0 : 9}% ${dark ? 18 : 97}% / ${glass})`,
+    "--win2": `hsl(${p.h1} ${g ? 0 : 10}% ${dark ? 14 : 91}% / ${glass})`,
+    "--disc": dark ? `rgb(35 36 40 / ${glass})` : `rgb(255 255 255 / ${glass})`,
+    "--glow": g ? `hsl(0 0% 96% / .34)` : `hsl(${p.h1} 92% 62% / .6)`,
+    "--text": dark ? "#fff" : "#16161c",
+    "--text2": dark ? "rgba(255,255,255,.78)" : "rgba(22,22,28,.68)",
+    "--glass": glass,
+    "--rk": clamp(cfg.Corners ?? 1, 0, 2),
+  };
+  for (const k in v) root.style.setProperty(k, v[k]);
+  accent = null;
+  bakeMesh();
+}
+// The cover's colours blurred, once: a small picture stretched over the card (a live blur would cost every frame).
+function bakeMesh() {
+  const hosts = widget ? widget.querySelectorAll(".mesh .bg") : [];
+  if (!hosts.length) return;
+  const p = cfg.MagicColors && palette ? palette : tintPalette(), dark = !cfg.Light;
+  hosts.forEach(host => {
+    const c = document.createElement("canvas"); c.width = c.height = 72;
+    const x = c.getContext("2d");
+    if (cover && cfg.MagicColors) {
+      x.filter = "blur(7px) saturate(1.55)";
+      x.drawImage(cover, -12, -12, 96, 96);
+      x.filter = "none";
+    } else {
+      const g = x.createLinearGradient(0, 0, 72, 72);
+      g.addColorStop(0, `hsl(${p.h1} ${clamp(p.s1 * 100, 50, 90)}% ${dark ? 42 : 80}%)`);
+      g.addColorStop(1, `hsl(${p.h2} ${clamp(p.s2 * 100, 50, 90)}% ${dark ? 30 : 88}%)`);
+      x.fillStyle = g; x.fillRect(0, 0, 72, 72);
+    }
+    // (the letters stay readable on a white cover too, and on a black one in the light look)
+    const light = palette ? palette.light : .4;
+    x.fillStyle = dark ? `rgba(0,0,0,${clamp(.32 + (light - .45) * .9, .32, .8)})` : `rgba(255,255,255,${clamp(.62 + (.55 - light) * .5, .62, .85)})`;
+    x.fillRect(0, 0, 72, 72);
+    const old = [...host.children];
+    c.style.opacity = old.length ? 0 : 1;
+    host.appendChild(c);
+    if (old.length) requestAnimationFrame(() => {
+      c.style.opacity = 1;
+      setTimeout(() => old.forEach(o => o.remove()), 1200);
+    });
+  });
+}
+
+// ------------------------------------------------------------ the cover and the video
+function setCover(url) {
+  if (!url) { cover = null; palette = null; drawPics(null); paint(); return; }
+  const img = new Image();
+  img.onload = () => {
+    if (st.cover !== url) return;
+    cover = img;
+    try { palette = readPalette(img); } catch (e) { palette = null; }
+    drawPics(url);
+    paint();
+  };
+  img.src = url;
+}
+function drawPics(url) {
+  if (!widget) return;
+  widget.querySelectorAll(".pics").forEach(p => {
+    const old = [...p.children];
+    if (url) {
+      const n = new Image();
+      n.src = url; n.style.opacity = old.length ? 0 : 1;
+      p.appendChild(n);
+      n.decode().catch(() => {}).then(() => { n.style.opacity = 1; setTimeout(() => old.forEach(o => o.remove()), 800); });
+    } else old.forEach(o => o.remove());
+  });
+}
+function syncVideo() {
+  const v = widget && widget.querySelector("video");
+  if (!v) return;
+  const want = coverKind() === "canvas" && st.video ? st.video : "";
+  if (v.dataset.src !== want) {
+    v.dataset.src = want;
+    widget.classList.remove("has-video");
+    if (want) { v.src = want; v.load(); }
+    else v.removeAttribute("src");
+    v.oncanplay = () => { if (v.dataset.src) widget.classList.add("has-video"); };
+    v.onerror = () => widget.classList.remove("has-video");
+  }
+  if (!want) return;
+  v.playbackRate = st.rate || 1;
+  if (Math.abs(v.currentTime - position()) > .6) v.currentTime = position();
+  if (st.playing) v.play().catch(() => {});
+  else v.pause();
+}
+
+// ------------------------------------------------------------ building a look
+// (a look whose cover is part of its drawing has no picture filling the card: the editor doesn't offer it, a source moved there shows it square)
+const coverKind = () => cfg.Cover === "canvas" && ["pill", "cassette", "polaroid", "broadcast"].includes(cfg.Skin) ? "square" : cfg.Cover;
+function build() {
+  stage.innerHTML = `<canvas class="behind"></canvas><div id="w">${(SKINS[cfg.Skin] || SKINS.compact)()}</div>`;
+  widget = document.getElementById("w");
+  widget.className = `${cfg.Skin} cover-${coverKind()}`;
+  flags();
+  stage.className = cfg.BarsBehind ? `bars-behind place-${cfg.BarsPlace || 0}` : "";
+  const font = cfg.Font ? `"${cfg.Font.replace(/["\\]/g, "")}", "Segoe UI", -apple-system, Roboto, sans-serif` : "";
+  for (const name of ["--font", "--hand"]) {
+    if (font) root.style.setProperty(name, font);
+    else root.style.removeProperty(name);
+  }
+  sized = false;
+  drawPics(st.cover || null);
+  paint();
+  fillText(true);
+  tick();
+  syncVideo();
+  refit();
+}
+
+function flags() {
+  if (!widget) return;
+  const c = widget.classList;
+  c.toggle("playing", !!st.playing || preview);
+  c.toggle("is-live", !!st.live);
+  c.toggle("no-bars", !cfg.Bars);
+  c.toggle("no-glow", !cfg.Glow);
+  c.toggle("no-arm", cfg.Arm === false);
+  c.toggle("no-artist", cfg.ShowArtist === false);
+  c.toggle("no-time", cfg.ShowTime === false);
+  c.toggle("no-progress", cfg.ShowBar === false);
+  c.toggle("empty-clock", !cfg.Bars && cfg.ShowTime === false && cfg.ShowBar === false && !st.live);
+}
+
+function text(selector, value) {
+  if (!widget) return;
+  widget.querySelectorAll(selector).forEach(e => { e.textContent = value; });
+}
+function fillText(changed) {
+  if (!widget) return;
+  const demo = preview && !st.title;
+  const title = st.title || (demo ? "Your song's title" : cfg.NothingTitle || "");
+  const artist = st.artist || (demo ? "The artist" : st.title ? "" : cfg.NothingArtist || "");
+  text(".title > span", title);
+  text(".artist > span", artist);
+  text(".what", "Listening to music");
+  if (cfg.Skin === "shell") {
+    text(".line-title > span", "Title: " + title);
+    text(".line-artist > span", "Artist: " + artist);
+  }
+  if (changed) {
+    widget.querySelectorAll(".title, .artist, .line-title, .line-artist").forEach(e =>
+      e.animate([{ opacity: 0, transform: "translateY(7px)" }, { opacity: 1, transform: "none" }], { duration: 460, easing: "cubic-bezier(.2,.8,.2,1)" }));
+    requestAnimationFrame(marquees);
+  }
+}
+// A name too long for its box goes slowly to its end and back.
+function marquees() {
+  if (!widget) return;
+  widget.querySelectorAll(".marquee").forEach(m => {
+    const span = m.firstElementChild, over = span.scrollWidth - m.clientWidth;
+    m.classList.toggle("run", over > 2);
+    if (over > 2) {
+      span.style.setProperty("--d", -over + "px");
+      span.style.setProperty("--t", clamp(over / 26 + 3, 5, 26) + "s");
+    }
+  });
+}
+
+// As big as the browser source allows, by the source's Size, where its Anchor says; always with room for the shadows and the light
+// around it, or the source's edge would cut them in a straight line.
+function refit() {
+  const w = stage.offsetWidth, h = stage.offsetHeight, room = 46;
+  if (!w || !cfg) return;
+  const most = Math.min(innerWidth / (w + 2 * room), innerHeight / (h + 2 * room));
+  const s = (preview ? Math.min(most, 1.5) : most) * clamp(cfg.Size ?? 1, .2, 1), m = room * s;
+  const x = m + (innerWidth - 2 * m - w * s) * clamp(cfg.AnchorX ?? .5, 0, 1), y = m + (innerHeight - 2 * m - h * s) * clamp(cfg.AnchorY ?? .5, 0, 1);
+  fit.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+  sized = false;
+}
+addEventListener("resize", refit);
+
+// ------------------------------------------------------------ the clock: 4 times a second
+function position() {
+  return Math.max(0, st.playing ? st.pos + (performance.now() - stAt) / 1000 * (st.rate || 1) : st.pos);
+}
+const mmss = s => { s = Math.floor(s || 0); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+function tick() {
+  if (!widget || !cfg) return;
+  const demo = preview && !st.title, dur = demo ? 206 : st.dur;
+  const now = demo ? (performance.now() / 1000) % 206 : Math.min(position(), dur || Infinity);
+  text(".cur", mmss(now));
+  text(".dur", mmss(dur));
+  const p = dur > 0 ? clamp(now / dur, 0, 1) : 0;
+  widget.querySelectorAll(".bar i, .rule i").forEach(i => { i.style.transform = `translateX(${(p - 1) * 100}%)`; });
+  if (cfg.Skin === "pill" || cfg.Skin === "cassette") widget.style.setProperty("--p", p.toFixed(4));
+  if (cfg.Skin === "shell") {
+    const a = widget.querySelector(".ascii"), width = 26, done = Math.round(p * width);
+    a.innerHTML = `[<b>${"#".repeat(done)}</b>${"-".repeat(width - done)}]`;
+    widget.querySelector(".stamp").innerHTML = `${mmss(now)} - ${mmss(dur)}<span class="cursor"></span>`;
+  }
+}
+setInterval(tick, 250);
+
+// ------------------------------------------------------------ the bars: per frame, only while there's something to move
+const COUNT = 48, PEAKS = 1, BLOCKS = 2, DOTS = 3, LINE = 4, WAVEFORM = 5, SPARK = "▁▂▃▄▅▆▇█";
+let target = new Float32Array(COUNT), bands = new Float32Array(COUNT), peaks = new Float32Array(COUNT), running = false, accent = null, sized = false, lastFrame = 0, lastSpark = 0, fed = 0, presence = 0;
+function place(x) {
+  switch (cfg.Flow) {
+    case 1: return 1 - x;
+    case 2: return Math.abs(2 * x - 1);
+    case 3: return 1 - Math.abs(2 * x - 1);
+    default: return x;
+  }
+}
+function at(list, p) {
+  const f = clamp(p, 0, 1) * (COUNT - 1), i = Math.floor(f), j = Math.min(COUNT - 1, i + 1);
+  return list[i] + (list[j] - list[i]) * (f - i);
+}
+const valueAt = p => at(bands, p);
+function startFrames() {
+  if (running || !cfg) return;
+  running = true;
+  lastFrame = performance.now();
+  requestAnimationFrame(frame);
+}
+function frame(now) {
+  if (!running) return;
+  // (hidden: nothing to draw; showing it starts them again)
+  if (!shown) { running = false; return; }
+  // (at every frame of the screen, or of OBS's source: the bands move by the clock towards what the last event said)
+  const ms = Math.max(0, Math.min(now - lastFrame, 100)), dt = ms / 16.7;
+  lastFrame = now;
+  const demo = preview && !st.playing;
+  // (they fade when the music stops and when it's back, at the speed of the app's animations: a flat line would pop)
+  presence = clamp(presence + (st.playing || demo ? 1 : -1) * ms * (st.speed || 1) / 320, 0, 1);
+  if (demo) for (let i = 0; i < COUNT; i++) target[i] = clamp(.62 - i / COUNT * .42 + .34 * Math.sin(now / 240 + i * .55) * Math.sin(now / 410 + i * .17), 0, 1);
+  else if (!st.playing || now - fed > 500) target.fill(0);
+  let any = false;
+  const k = 1 - Math.pow(.62, dt);
+  for (let i = 0; i < COUNT; i++) {
+    bands[i] += (target[i] - bands[i]) * k;
+    peaks[i] = Math.max(bands[i], peaks[i] - .009 * dt);
+    if (bands[i] > .004 || peaks[i] > .004) any = true;
+  }
+  if (!accent) accent = getComputedStyle(root).getPropertyValue("--accent").trim();
+  if (!sized) sizeCanvases();
+  if (cfg.Bars && widget) widget.querySelectorAll("canvas.wave").forEach(c => { if (c.width > 1) drawMini(c); });
+  if (cfg.BarsBehind) drawBehind(stage.querySelector("canvas.behind"));
+  if (cfg.Skin === "shell" && cfg.Bars && now - lastSpark > 80) {
+    lastSpark = now;
+    let s = "";
+    for (let i = 0; i < 30; i++) s += SPARK[Math.round(valueAt(place((i + .5) / 30)) * 7)];
+    text(".spark", s);
+  }
+  const bass = valueAt(.06);
+  const glow = cfg.Glow && widget && widget.querySelector(".art .glow");
+  if (glow) glow.style.transform = `scale(${(1 + bass * .17).toFixed(3)})`;
+  if (cfg.Pulse && coverKind() !== "canvas" && widget) {
+    const art = widget.querySelector(".art");
+    if (art) art.style.transform = `scale(${(1 + bass * .06).toFixed(3)})`;
+  }
+  if (any || presence > 0 || st.playing || demo) requestAnimationFrame(frame);
+  else {
+    running = false;
+    clearCanvases();
+  }
+}
+function sizeCanvases() {
+  sized = true;
+  const scale = (fit.getBoundingClientRect().width / (fit.offsetWidth || 1)) * (devicePixelRatio || 1);
+  stage.querySelectorAll("canvas.wave, canvas.behind").forEach(c => {
+    c.width = Math.max(1, Math.round(c.offsetWidth * scale));
+    c.height = Math.max(1, Math.round(c.offsetHeight * scale));
+    c._k = scale;
+  });
+}
+function clearCanvases() {
+  stage.querySelectorAll("canvas.wave, canvas.behind").forEach(c => c.getContext("2d").clearRect(0, 0, c.width, c.height));
+}
+// Where they start and how far they go: each lane a line they grow from, up (-1) or down (+1).
+const around = h => [{ from: h / 2, way: -1, reach: h / 2 }, { from: h / 2, way: 1, reach: h / 2 }];
+// One draw per column, never one path with all of them: a rounded rectangle goes straight to the GPU, a long path doesn't.
+function columns(x, w, count, gapShare, lanes, k) {
+  const slot = w / count, bw = Math.max(1, slot * (1 - gapShare)), rad = bw / 2, style = cfg.Style;
+  for (const { from, way, reach, fill } of lanes) {
+    if (fill) x.fillStyle = fill;
+    for (let i = 0; i < count; i++) {
+      const p = place((i + .5) / count), v = valueAt(p), left = i * slot + (slot - bw) / 2;
+      if (style === DOTS) {
+        x.beginPath();
+        x.arc(left + rad, from + way * (rad + v * Math.max(0, reach - bw)), rad, 0, 7);
+        x.fill();
+      } else if (style === BLOCKS) {
+        const cell = Math.max(3 * k, Math.min(bw, 9 * k)), step = cell + 2 * k, n = Math.max(1, Math.floor(v * reach / step));
+        for (let c = 0; c < n; c++) x.fillRect(left, way < 0 ? from - (c + 1) * step + 2 * k : from + c * step, bw, cell);
+      } else {
+        const bh = Math.max(rad, v * reach), top = way < 0 ? from - bh : from;
+        x.beginPath();
+        if (x.roundRect) x.roundRect(left, top, bw, bh, way < 0 ? [rad, rad, 0, 0] : [0, 0, rad, rad]);
+        else x.rect(left, top, bw, bh);
+        x.fill();
+        if (style === PEAKS) {
+          const ph = at(peaks, p) * reach, cap = 2.5 * k;
+          if (ph > bh + cap) x.fillRect(left, way < 0 ? from - ph - cap : from + ph, bw, cap);
+        }
+      }
+    }
+  }
+}
+// One line through the tips of each lane (at rest, in the center, the two are one line).
+function curves(x, w, points, lanes) {
+  x.beginPath();
+  for (const { from, way, reach } of lanes) {
+    const y = i => from + way * valueAt(place(i / (points - 1))) * reach;
+    x.moveTo(0, y(0));
+    for (let i = 1; i < points; i++) {
+      const px = (i - 1) / (points - 1) * w, nx = i / (points - 1) * w, py = y(i - 1), ny = y(i);
+      x.quadraticCurveTo(px, py, (px + nx) / 2, (py + ny) / 2);
+    }
+    x.lineTo(w, y(points - 1));
+  }
+  x.stroke();
+}
+// The filled wave: each lane closed along the line it starts from; two lanes on one line are one shape, or a seam would show along the middle.
+function waves(x, w, points, lanes) {
+  const edge = (i, l) => l.from + l.way * valueAt(place(i / (points - 1))) * l.reach, X = i => i / (points - 1) * w;
+  if (lanes.length === 2 && lanes[0].from === lanes[1].from) {
+    const [a, b] = lanes, least = a.reach * .06, top = i => Math.min(a.from - least, edge(i, a)), bottom = i => Math.max(b.from + least, edge(i, b));
+    if (a.fill) x.fillStyle = a.fill;
+    x.beginPath();
+    x.moveTo(0, top(0));
+    for (let i = 1; i < points; i++) x.lineTo(X(i), top(i));
+    for (let i = points - 1; i >= 0; i--) x.lineTo(X(i), bottom(i));
+    x.closePath();
+    x.fill();
+    return;
+  }
+  for (const l of lanes) {
+    if (l.fill) x.fillStyle = l.fill;
+    x.beginPath();
+    x.moveTo(0, l.from);
+    for (let i = 0; i < points; i++) x.lineTo(X(i), edge(i, l));
+    x.lineTo(w, l.from);
+    x.closePath();
+    x.fill();
+  }
+}
+function drawMini(c) {
+  const x = c.getContext("2d"), w = c.width, h = c.height, k = c._k || 1, lanes = around(h);
+  x.clearRect(0, 0, w, h);
+  x.globalAlpha = presence;
+  x.fillStyle = x.strokeStyle = accent;
+  if (cfg.Style === LINE) {
+    x.lineWidth = 3 * k; x.lineCap = "round"; x.lineJoin = "round";
+    curves(x, w, Math.max(8, Math.round(w / k / 9)), lanes);
+  } else if (cfg.Style === WAVEFORM) waves(x, w, Math.max(8, Math.round(w / k / 6)), lanes);
+  else columns(x, w, Math.max(5, Math.round(w / k / 14)), .42, lanes, k);
+}
+// The big bars. Their canvas is as big as the whole overlay: they start behind the card (a little inside it, so nothing shows where
+// they begin) and go out of it above, below, or from its middle.
+function behindLanes(x, h, k) {
+  const room = 102 * k, over = 22 * k, solid = (from, to) => {
+    const g = x.createLinearGradient(0, from, 0, to);
+    g.addColorStop(0, accent); g.addColorStop(1, accent.replace(")", " / .28)"));
+    return g;
+  };
+  const above = { from: room + over, way: -1, reach: room + over }, below = { from: h - room - over, way: 1, reach: room + over };
+  const lanes = cfg.BarsPlace === 3 ? around(h) : cfg.BarsPlace === 2 ? [above, below] : cfg.BarsPlace === 1 ? [below] : [above];
+  for (const l of lanes) l.fill = solid(l.from, l.from + l.way * l.reach);
+  return lanes;
+}
+function drawBehind(c) {
+  if (!c || c.width < 2) return;
+  const x = c.getContext("2d"), w = c.width, h = c.height, k = c._k || 1, lanes = behindLanes(x, h, k);
+  x.clearRect(0, 0, w, h);
+  x.globalAlpha = presence;
+  x.strokeStyle = accent;
+  if (cfg.Style === LINE) {
+    x.lineWidth = 3.5 * k; x.lineCap = "round"; x.lineJoin = "round";
+    curves(x, w, Math.max(16, Math.round(w / k / 14)), lanes);
+  } else if (cfg.Style === WAVEFORM) waves(x, w, Math.max(16, Math.round(w / k / 8)), lanes);
+  else columns(x, w, Math.max(16, Math.round(w / k / 11)), .36, lanes, k);
+}
+
+// ------------------------------------------------------------ what the app says
+function connect() {
+  const es = new EventSource("/events/" + id);
+  es.addEventListener("config", e => {
+    const next = JSON.parse(e.data), old = cfg;
+    cfg = next;
+    const replayReveal = old && preview && old.Reveal !== next.Reveal, replayExit = old && preview && old.Exit !== next.Exit;
+    if (!old || old.Skin !== next.Skin || old.Cover !== next.Cover || old.BarsBehind !== next.BarsBehind || old.BarsPlace !== next.BarsPlace || old.Font !== next.Font) build();
+    else { flags(); paint(); fillText(false); syncVideo(); refit(); }
+    if (old && widget) {
+      const art = widget.querySelector(".art");
+      if (art && (!next.Pulse || coverKind() === "canvas")) art.style.transform = "";
+    }
+    placeOnScreen();
+    startFrames();
+    sized = false;
+    if (replayExit) { hide(); setTimeout(() => { shown = false; show(); }, 800); }
+    else if (replayReveal) { stage.getAnimations().forEach(a => a.cancel()); shown = false; show(); }
+  });
+  es.addEventListener("state", e => {
+    const next = JSON.parse(e.data), oldCover = st.cover, key = next.title + "\n" + next.artist;
+    st = next;
+    stAt = performance.now();
+    if (!cfg) return;
+    if (next.cover !== oldCover) setCover(next.cover);
+    fillText(key !== prevKey);
+    prevKey = key;
+    flags();
+    syncVideo();
+    tick();
+    placeOnScreen();
+    // (once per song, when it really starts: a song loading says paused first)
+    if (st.playing && key !== announced) { announced = key; songStarted(); }
+    if (st.playing) startFrames();
+  });
+  es.addEventListener("bars", e => {
+    const s = e.data;
+    for (let i = 0; i < COUNT; i++) target[i] = parseInt(s.substr(i * 2, 2), 16) / 255;
+    fed = performance.now();
+  });
+  // (the app closed: gone after a while; EventSource comes back by itself when it opens again)
+  es.onerror = () => { if (cfg && !preview) { st = { playing: false, pos: 0, dur: 0, rate: 1 }; placeOnScreen(); } };
+}
+connect();
+</script>
+</body>
+</html>

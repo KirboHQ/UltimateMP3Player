@@ -120,6 +120,8 @@ public static class Themes
         r["HeaderGlowStrong"] = Linear(C("HeaderTop"), bg, top, bottom, 0.6);
         // The song page over the blurred cover: the page's background, see-through on top, nearly solid at the bottom.
         r["NowPlayingVeil"] = Stops(top, bottom, (bg, 0x55, 0), (bg, 0xEE, 1));
+        // Over the whole screen the player bar lies on the page: its buttons read over the bars of the music, whose colours die out behind them.
+        r["PlayerBarVeil"] = Stops(top, bottom, (bg, 0x00, 0), (bg, 0xB8, 0.3), (bg, 0xE6, 1));
         r["NowPlayingVeilLyrics"] = Stops(top, bottom, (bg, 0x1A, 0), (bg, 0x33, 0.55), (bg, 0xD9, 1));
         r["PlayerPageVeil"] = Stops(top, bottom, (bg, 0x33, 0), (bg, 0x99, 0.55), (bg, 0xF2, 1));
         r["LyricsVeilBrush"] = Solid(Color.FromArgb(0x59, bg.R, bg.G, bg.B));

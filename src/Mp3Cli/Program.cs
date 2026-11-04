@@ -209,6 +209,151 @@ switch (args[0])
             return ok ? 0 : 1;
         }
 
+    case "overlay":
+        {
+            // mp3cli overlay [seconds] [cover] [video]: the stream overlays' server with a song and bars made up, every look at /s/<skin>?preview. Its
+            // addresses are checked first: what isn't one of them, or doesn't come from this computer's name, gets nothing.
+            var server = OverlayServer.Shared;
+            var sources = new[] { "compact", "boxy", "gallery", "minimal", "macos", "shell", "discord", "pill", "neon", "cassette", "polaroid", "broadcast" }
+                .Select(s => new OverlaySource { Id = s, Name = s, Skin = s, NothingTitle = "Nothing playing", NothingArtist = "Get the music started" }).ToList();
+            foreach (var skin in sources.Select(s => s.Skin).ToList())
+            {
+                sources.Add(new OverlaySource { Id = "canvas-" + skin, Name = skin, Skin = skin, Cover = "canvas" });
+                sources.Add(new OverlaySource { Id = "square-" + skin, Name = skin, Skin = skin, Cover = "square" });
+                sources.Add(new OverlaySource { Id = "nobars-" + skin, Name = skin, Skin = skin, Bars = false });
+            }
+            sources.Add(new OverlaySource { Id = "none", Name = "none", Skin = "compact", Cover = "none" });
+            sources.Add(new OverlaySource { Id = "photo", Name = "photo", Skin = "polaroid", Cover = "square" });
+            sources.Add(new OverlaySource { Id = "vinyl-compact", Name = "vinyl", Skin = "compact", Cover = "vinyl" });
+            sources.Add(new OverlaySource { Id = "light", Name = "light", Skin = "compact", Cover = "square", Light = true });
+            sources.Add(new OverlaySource { Id = "tint", Name = "tint", Skin = "boxy", Cover = "canvas", MagicColors = false, Tint = "#1DB954" });
+            sources.Add(new OverlaySource { Id = "behind", Name = "behind", Skin = "gallery", Cover = "square", BarsBehind = true, Flow = VisualizerFlow.MirrorSides });
+            sources.Add(new OverlaySource { Id = "line", Name = "line", Skin = "compact", Cover = "none", BarsBehind = true, Style = VisualizerStyle.Line, Flow = VisualizerFlow.LeftToRight });
+            foreach (VisualizerStyle style in Enum.GetValues<VisualizerStyle>())
+                sources.Add(new OverlaySource { Id = "style-" + (int)style, Name = "style", Skin = "gallery", Cover = "none", BarsBehind = true, Style = style, Flow = VisualizerFlow.LeftToRight });
+            foreach (VisualizerPlace place in Enum.GetValues<VisualizerPlace>())
+                foreach (VisualizerStyle style in new[] { VisualizerStyle.Bars, VisualizerStyle.Line, VisualizerStyle.Wave })
+                    sources.Add(new OverlaySource { Id = $"place-{(int)place}-{(int)style}", Name = "place", Skin = "compact", Cover = "square", BarsBehind = true, BarsPlace = place, Style = style });
+            sources.Add(new OverlaySource { Id = "noarm", Name = "noarm", Skin = "compact", Cover = "vinyl", Arm = false });
+            foreach (var inside in new[] { "bars", "line", "both", "none" })
+                sources.Add(new OverlaySource { Id = "inside-" + inside, Name = inside, Skin = "compact", Cover = "square", Bars = inside is "bars" or "both", ShowBar = inside is "line" or "both" });
+            sources.Add(new OverlaySource { Id = "small", Name = "small", Size = 0.5, AnchorX = 0, AnchorY = 1, Pulse = true });
+            sources.Add(new OverlaySource { Id = "round", Name = "round", Skin = "boxy", Cover = "square", Corners = 2 });
+            sources.Add(new OverlaySource { Id = "sharp", Name = "sharp", Skin = "boxy", Cover = "square", Corners = 0, Glow = false });
+            sources.Add(new OverlaySource { Id = "glass", Name = "glass", Skin = "macos", Cover = "square", Solid = 0.5 });
+            sources.Add(new OverlaySource { Id = "bare", Name = "bare", Skin = "compact", Bars = false, ShowArtist = false, ShowTime = false, ShowBar = false });
+            sources.Add(new OverlaySource { Id = "change", Name = "change", Show = "change", ShowFor = 2 });
+            int port = server.Apply(sources, 0);
+            async Task<int> Status(string path, string? host = null)
+            {
+                using var http = new HttpClient();
+                using var request = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{port}{path}");
+                if (host != null) request.Headers.Host = host;
+                using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                return (int)response.StatusCode;
+            }
+            var cover = args.Length > 2 ? args[2] : Path.GetTempFileName();
+            if (args.Length <= 2) File.WriteAllBytes(cover, new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 });
+            server.Push(new OverlayState(Environment.GetEnvironmentVariable("UMP_OVERLAY_TITLE") ?? "A song with a rather long title (feat. Someone)", Environment.GetEnvironmentVariable("UMP_OVERLAY_ARTIST") ?? "An artist", "c1", cover, args.Length > 3 ? "v1" : null, args.Length > 3 ? args[3] : null, 62, 206, 1, Environment.GetEnvironmentVariable("UMP_OVERLAY_PAUSED") == null, false));
+            bool ok = await Status("/s/compact") == 200 && await Status("/s/nope") == 404 && await Status("/s/compact", "evil.example") == 403
+                      && await Status("/../../etc/passwd") == 404 && await Status("/cover/other") == 404 && await Status("/cover/c1") == 200
+                      && await Status("/video/c1") == 404 && await Status("/") == 404;
+            Console.WriteLine("overlay: " + (ok ? "ok" : "SBAGLIATO") + $" (http://127.0.0.1:{port}/s/compact?preview)");
+            int seconds = args.Length > 1 && int.TryParse(args[1], out var n) ? n : 0;
+            for (var t = Stopwatch.StartNew(); t.Elapsed.TotalSeconds < seconds;)
+            {
+                var block = new float[9600];
+                // (something like music: tones over the whole range, each coming and going)
+                double now = t.Elapsed.TotalSeconds;
+                for (int k = 0; k < 28; k++)
+                {
+                    double hz = 50 * Math.Pow(2, k / 3.2), level = 0.05 * (1 + Math.Sin(now * (1.3 + k * 0.17) + k * 0.9)) * (1 - k / 40.0);
+                    for (int i = 0; i < block.Length; i += 2) block[i] = block[i + 1] += (float)(level * Math.Sin(2 * Math.PI * hz * (i / 2) / 48000));
+                }
+                Spectrum.Shared.Feed(block, 0, block.Length);
+                await Task.Delay(50);
+            }
+            server.Stop();
+            if (args.Length <= 2) File.Delete(cover);
+            return ok ? 0 : 1;
+        }
+
+    case "spectrum":
+        {
+            // Spectrum: a sine lands in the band of its frequency, silence stays at rest, and the flows put the bass where they say.
+            var sp = new Spectrum();
+            sp.Acquire();
+            int Loudest(double hz)
+            {
+                var block = new float[9600];
+                for (int i = 0; i < block.Length; i += 2) block[i] = block[i + 1] = (float)(0.5 * Math.Sin(2 * Math.PI * hz * (i / 2) / 48000));
+                // (the sound before it has had time to fall)
+                float[] b = Array.Empty<float>();
+                for (int round = 0; round < 12; round++)
+                {
+                    sp.Feed(block, 0, block.Length);
+                    Thread.Sleep(35);
+                    b = sp.Read();
+                }
+                return Array.IndexOf(b, b.Max());
+            }
+            int low = Loudest(100), mid = Loudest(1000), high = Loudest(8000);
+            bool ok = low < mid && mid < high && low < 20 && high > 70;
+            var quiet = new float[9600];
+            sp.Feed(quiet, 0, quiet.Length);
+            float[] bands = Array.Empty<float>();
+            for (int i = 0; i < 40; i++)
+            {
+                sp.Feed(quiet, 0, quiet.Length);
+                Thread.Sleep(35);
+                bands = sp.Read();
+            }
+            ok &= bands.Max() < 0.05f;
+            ok &= Spectrum.PlaceOf(0, VisualizerFlow.LeftToRight) == 0 && Spectrum.PlaceOf(1, VisualizerFlow.RightToLeft) == 0
+                  && Spectrum.PlaceOf(0.5, VisualizerFlow.MirrorCenter) == 0 && Spectrum.PlaceOf(0, VisualizerFlow.MirrorSides) == 0;
+            sp.Release();
+            ok &= !sp.Wanted;
+            ok &= new AppSettings().VisualizerFlow == VisualizerFlow.MirrorSides && new OverlaySource().Flow == VisualizerFlow.MirrorSides;
+            // Thin, normal and wide look different at any size, a 2560 px window (columns at their cap) too.
+            foreach (double width in new[] { 400.0, 1280, 2560 })
+            {
+                double Bar(int thickness) => SpectrumColumns.BarOf(width / SpectrumColumns.CountFor(width, thickness, VisualizerStyle.Bars), thickness, VisualizerStyle.Bars);
+                ok &= Bar(1) > Bar(0) * 1.5 && Bar(2) > Bar(1) * 1.5;
+            }
+            // The two lanes of "in the center" start from the same line and go opposite ways, sharing the height; solid where they start.
+            var (up, wayUp) = SpectrumColumns.Lane(VisualizerPlace.Center, 0, 800, 300);
+            var (down, wayDown) = SpectrumColumns.Lane(VisualizerPlace.Center, 1, 800, 300);
+            ok &= up == 300 && down == 300 && wayUp == -1 && wayDown == 1 && SpectrumColumns.ReachOf(VisualizerPlace.Center, 800, 1) == 400;
+            ok &= SpectrumColumns.Lane(VisualizerPlace.Top, 0, 800, 300) == (0, 1) && SpectrumColumns.Lane(VisualizerPlace.Bottom, 0, 800, 300) == (800, -1);
+            var solid = SpectrumColumns.FadeOf(VisualizerPlace.Center, 800, 400, 300);
+            ok &= solid.All(s => s.At is >= 0 and <= 1) && solid.MaxBy(s => s.Alpha).At == 300.0 / 800;
+            // They fade in and out by the clock, and only when they've gone are the frames over.
+            var columns = new SpectrumColumns();
+            float first = -1;
+            for (int i = 0; i < 6; i++)
+            {
+                columns.Update(16, VisualizerFlow.MirrorSides, true, true);
+                if (i == 1) first = columns.Presence;
+                Thread.Sleep(30);
+            }
+            bool fadedIn = first is > 0 and < 0.5f && columns.Presence > first;
+            for (int i = 0; i < 40; i++)
+            {
+                columns.Update(16, VisualizerFlow.MirrorSides, true, true);
+                Thread.Sleep(15);
+            }
+            fadedIn &= columns.Presence == 1;
+            int frames = 0;
+            while (columns.Update(16, VisualizerFlow.MirrorSides, false, false) && frames < 200)
+            {
+                frames++;
+                Thread.Sleep(15);
+            }
+            ok &= fadedIn && frames is > 5 and < 100 && columns.Presence == 0;
+            Console.WriteLine($"spectrum: {(ok ? "ok" : "SBAGLIATO")} (bands 100 Hz {low}, 1 kHz {mid}, 8 kHz {high}, silence {bands.Max():0.000}, fade {frames} frames)");
+            return ok ? 0 : 1;
+        }
+
     case "glide":
         {
             // Glide (read every ~16 ms, like frames): on its way halfway, sent back: no jump at the turn, it keeps going a little

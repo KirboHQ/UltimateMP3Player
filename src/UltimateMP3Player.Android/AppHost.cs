@@ -42,6 +42,8 @@ public sealed class AppHost : Observable
             Profiles.Save();
         }
         Ui.Animations = Settings.Animations;
+        Spectrum.Shared.AnalyzeMs = 16;
+        Glide.Speed = Math.Clamp(Settings.AnimationSpeed, 0.25, 3);
 
         Audio = new AudioEngine(System.Windows.Application.Current.Dispatcher) { OutputDevice = Settings.OutputDevice };
         Downloads = new DownloadQueue(this);

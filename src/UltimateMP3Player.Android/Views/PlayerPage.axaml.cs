@@ -90,12 +90,12 @@ public partial class PlayerPage : UserControl
         Body.RowDefinitions = wide ? new RowDefinitions("Auto,*,Auto,Auto,Auto,Auto,*") : new RowDefinitions("Auto,*,Auto,Auto,Auto,Auto");
         Grid.SetColumnSpan(TopBar, wide ? 2 : 1);
         Grid.SetRowSpan(Stage, wide ? 6 : 1);
-        foreach (var c in new Control[] { TitleBlock, SeekBlock, Buttons, Extras }) Grid.SetColumn(c, wide ? 1 : 0);
+        foreach (var c in new Control[] { TitleBlock, SeekBlock, ButtonsBox, ExtrasBox }) Grid.SetColumn(c, wide ? 1 : 0);
         Stage.Margin = wide ? new Thickness(24, 4, 16, 16) : new Thickness(24, 8, 24, 8);
         TitleBlock.Margin = wide ? new Thickness(16, 4, 14, 6) : new Thickness(24, 4, 14, 6);
         SeekBlock.Margin = wide ? new Thickness(16, 2, 24, 0) : new Thickness(24, 2, 24, 0);
-        Buttons.Margin = wide ? new Thickness(4, 8, 12, 2) : new Thickness(12, 10, 12, 4);
-        Extras.Margin = wide ? new Thickness(6, 2, 14, 6) : new Thickness(14, 4, 14, 10);
+        ButtonsBox.Margin = wide ? new Thickness(4, 8, 12, 2) : new Thickness(12, 10, 12, 4);
+        ExtrasBox.Margin = wide ? new Thickness(6, 2, 14, 6) : new Thickness(14, 4, 14, 10);
     }
 
     // ------------------------------------------------------------------ in and out
@@ -212,6 +212,7 @@ public partial class PlayerPage : UserControl
         var img = _coverTrack?.Cover300 as Bitmap;
         CoverImage.Source = CoverArt.Bake(img);
         Glow.Source = CoverGlow.Bake(img, true);
+        Visualizer.Color = CoverGlow.Bright(img);
     }
 
     // The cover as big as the stage allows, square.

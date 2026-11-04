@@ -8,4 +8,8 @@
     <RootNamespace>UltimateMP3Player.Core</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Overlay.html" LogicalName="UltimateMP3Player.Core.Overlay.html" />
+  </ItemGroup>
+
 </Project>

@@ -161,6 +161,21 @@ public static class Ui
     // App-wide switch for the light animations.
     public static bool Animations { get; set; } = true;
 
+    // The interface's size on the computers (Ctrl+wheel, Ctrl + and -, Settings): the window, the menus, the tooltips and the
+    // dialogs share this transform.
+    public static readonly ScaleTransform ZoomTransform = new(1, 1);
+    public static event Action? ZoomChanged;
+    public static Func<double> ZoomLimit { get; set; } = () => 2;
+    public static double Zoom
+    {
+        get => ZoomTransform.ScaleX;
+        set
+        {
+            ZoomTransform.ScaleX = ZoomTransform.ScaleY = value;
+            ZoomChanged?.Invoke();
+        }
+    }
+
     public static readonly AttachedProperty<IBrush?> HoverBrushProperty = AvaloniaProperty.RegisterAttached<Control, IBrush?>("HoverBrush", typeof(Ui));
     public static IBrush? GetHoverBrush(Control o) => o.GetValue(HoverBrushProperty);
     public static void SetHoverBrush(Control o, IBrush? value) => o.SetValue(HoverBrushProperty, value);
@@ -262,6 +277,7 @@ public static class Ui
     // The app isn't on screen (another app in front on the phone, the window minimized): what waits to be shown (Later)
     // isn't looked at again until it's back, so the app really rests.
     private static bool _hidden;
+    public static event Action? HiddenChanged;
     public static bool Hidden
     {
         get => _hidden;
@@ -269,6 +285,7 @@ public static class Ui
         {
             if (_hidden == value) return;
             _hidden = value;
+            HiddenChanged?.Invoke();
             if (!value && Waiting.Count > 0 && _poll == null) _poll = Avalonia.Threading.DispatcherTimer.RunOnce(Poll, TimeSpan.FromMilliseconds(30));
         }
     }
@@ -311,7 +328,7 @@ public static class Ui
         void Frame(TimeSpan now)
         {
             start ??= now;
-            double t = Math.Clamp((now - start.Value).TotalMilliseconds / ms, 0, 1);
+            double t = Math.Clamp((now - start.Value).TotalMilliseconds * Core.Glide.Speed / ms, 0, 1);
             apply(ease(t));
             if (t < 1) top.RequestAnimationFrame(Frame);
         }

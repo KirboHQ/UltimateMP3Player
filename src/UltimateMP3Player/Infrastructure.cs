@@ -269,6 +269,38 @@ public static class Ui
     // App-wide switch for the light animations.
     public static bool Animations { get; set; } = true;
 
+    // The app isn't seen (the window minimized, in the tray, or covered by another: MainWindow.UpdateShown): what moves by itself rests.
+    private static bool _hidden;
+    public static event Action? HiddenChanged;
+    public static bool Hidden
+    {
+        get => _hidden;
+        set
+        {
+            if (_hidden == value) return;
+            _hidden = value;
+            HiddenChanged?.Invoke();
+        }
+    }
+
+    // An animation's time at the speed chosen in Settings.
+    public static TimeSpan Time(double ms) => TimeSpan.FromMilliseconds(ms / Core.Glide.Speed);
+
+    // The interface's size (Ctrl+wheel, Ctrl + and -, Settings): the window, the menus, the tooltips and the dialogs share this
+    // transform. As Binding Source in the XAML: a style's setter would freeze it.
+    public static readonly ScaleTransform ZoomTransform = new(1, 1);
+    public static event Action? ZoomChanged;
+    public static Func<double> ZoomLimit { get; set; } = () => 2;
+    public static double Zoom
+    {
+        get => ZoomTransform.ScaleX;
+        set
+        {
+            ZoomTransform.ScaleX = ZoomTransform.ScaleY = value;
+            ZoomChanged?.Invoke();
+        }
+    }
+
     public static readonly DependencyProperty IsHotProperty = DependencyProperty.RegisterAttached(
         "IsHot", typeof(bool), typeof(Ui), new PropertyMetadata(false));
 

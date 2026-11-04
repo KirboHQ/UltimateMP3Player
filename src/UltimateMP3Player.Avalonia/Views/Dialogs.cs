@@ -491,7 +491,7 @@ public static partial class Dialogs
                                         v.FindAncestorOfType<ListBox>(true) != null || v.FindAncestorOfType<Slider>(true) != null)) return;
             try { win.BeginMoveDrag(e); } catch { }
         };
-        win.Content = card;
+        win.Content = new LayoutTransformControl { LayoutTransform = Ui.ZoomTransform, Child = card };
         return win;
     }
 

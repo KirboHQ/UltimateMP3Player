@@ -412,6 +412,7 @@ public static partial class Dialogs
             Margin = new Thickness(18),
             Child = stack,
             Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 6, Opacity = 0.55, Color = Colors.Black },
+            LayoutTransform = Ui.ZoomTransform,
         };
         // Dragging the card moves the dialog, but not from something clickable (its release would be lost).
         card.MouseLeftButtonDown += (_, e) =>

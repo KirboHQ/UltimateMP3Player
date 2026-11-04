@@ -123,9 +123,9 @@ public sealed class LyricsCaptions : Grid
         // From line to line it only dips; after a pause it rises in.
         bool shown = _box.Opacity > 0.5;
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-        _box.BeginAnimation(OpacityProperty, new DoubleAnimation(shown ? 0.35 : 0, 1, TimeSpan.FromMilliseconds(shown ? 140 : 200)));
+        _box.BeginAnimation(OpacityProperty, new DoubleAnimation(shown ? 0.35 : 0, 1, Ui.Time(shown ? 140 : 200)));
         _rise.BeginAnimation(TranslateTransform.YProperty,
-            new DoubleAnimation(shown ? 3 : _text.FontSize * 0.35, 0, TimeSpan.FromMilliseconds(shown ? 160 : 260)) { EasingFunction = ease });
+            new DoubleAnimation(shown ? 3 : _text.FontSize * 0.35, 0, Ui.Time(shown ? 160 : 260)) { EasingFunction = ease });
     }
 
     private void Hide()
@@ -135,7 +135,7 @@ public sealed class LyricsCaptions : Grid
             _box.BeginAnimation(OpacityProperty, null);
             _box.Opacity = 0;
         }
-        else _box.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(220)));
+        else _box.BeginAnimation(OpacityProperty, new DoubleAnimation(0, Ui.Time(220)));
     }
 
     // New lyrics, or shown again: start clean, the next tick puts the line up.

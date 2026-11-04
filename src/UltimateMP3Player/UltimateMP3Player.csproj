@@ -12,7 +12,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>4.4.3</Version>
+    <Version>4.5.0</Version>
     <Product>Ultimate MP3 Player</Product>
     <!-- File description: the name Windows shows in the volume mixer and the Task Manager. -->
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
@@ -41,6 +41,7 @@
     <Resource Include="app.ico" />
     <!-- icon of the .ump packs: written next to the data for the file association (Services\FileAssociation.cs) -->
     <Resource Include="pack.ico" />
+    <Resource Include="..\UltimateMP3Player.Avalonia\Assets\overlay\*.png" Link="Assets\overlay\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Windows' own APIs (only the media controls use them, Services\MediaControls.cs): left out of ReadyToRun, the few

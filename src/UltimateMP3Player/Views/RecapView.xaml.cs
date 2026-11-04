@@ -67,13 +67,13 @@ public partial class RecapView : UserControl
         if (Ui.Animations)
         {
             var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
-            page.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(350)));
+            page.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Ui.Time(350)));
             var move = new TranslateTransform(0, 30);
             page.RenderTransform = move;
-            move.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(30, 0, TimeSpan.FromMilliseconds(450)) { EasingFunction = ease });
+            move.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(30, 0, Ui.Time(450)) { EasingFunction = ease });
             if (_vm.IsClock && BarsHost.RenderTransform is ScaleTransform grow)
                 grow.BeginAnimation(ScaleTransform.ScaleYProperty,
-                    new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(700)) { EasingFunction = ease, BeginTime = TimeSpan.FromMilliseconds(150) });
+                    new DoubleAnimation(0, 1, Ui.Time(700)) { EasingFunction = ease, BeginTime = Ui.Time(150) });
         }
         if (_vm.IsTime) CountUp(_vm.Minutes);
     }

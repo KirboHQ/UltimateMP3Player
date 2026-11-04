@@ -99,8 +99,9 @@ public sealed class AudioEngine : IDisposable
             var p = _master.Position;
             // The output buffer holds LatencyMs of sound, that is more of the song when it plays faster. An output that
             // measures what it holds (the phone's) is asked, playing or not: emptied at a pause, it holds nothing.
-            if (_out is IOutputLatency o) p -= TimeSpan.FromMilliseconds(o.LatencyMs * _master.Speed);
-            else if (_playing) p -= TimeSpan.FromMilliseconds((LatencyMs + DeviceLatencyMs) * _master.Speed);
+            int held = _out is IOutputLatency o ? o.LatencyMs : _playing ? LatencyMs + DeviceLatencyMs : 0;
+            p -= TimeSpan.FromMilliseconds(held * _master.Speed);
+            Spectrum.Shared.LatencyMs = held;
             return p < TimeSpan.Zero ? TimeSpan.Zero : p;
         }
     }

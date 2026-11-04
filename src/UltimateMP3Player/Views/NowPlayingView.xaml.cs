@@ -64,6 +64,7 @@ public partial class NowPlayingView : UserControl
     {
         _window = Window.GetWindow(this);
         if (_window != null) _window.StateChanged += OnWindowState;
+        LayoutUpdated += OnLayoutUpdated;
         Themes.Changed += BakeCover;
         Attach(DataContext as NowPlayingViewModel);
         WatchCover();
@@ -77,6 +78,7 @@ public partial class NowPlayingView : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         if (_window != null) _window.StateChanged -= OnWindowState;
+        LayoutUpdated -= OnLayoutUpdated;
         Themes.Changed -= BakeCover;
         Attach(null);
         CloseVideo();
@@ -114,23 +116,66 @@ public partial class NowPlayingView : UserControl
     // ------------------------------------------------------------------ over the whole screen
 
     // The stage loses its frame and reaches under "Up next" and the see-through player bar (its backdrop behind them); the
-    // song and its buttons stay clear of both (MainWindow.ApplyFullScreen).
+    // song and its buttons stay clear of both (MainWindow.ApplyFullScreen), the song in the middle of the screen.
     private void PlaceFullScreen()
     {
         bool full = _vm?.FullScreen == true;
         double bar = full && _window is MainWindow w ? w.PlayerBar.ActualHeight : 0;
         Grid.SetColumnSpan(Stage, full ? 2 : 1);
-        Stage.Margin = full ? new Thickness(0) : new Thickness(20, 0, 0, 16);
+        Stage.Margin = full ? new Thickness(0) : new Thickness(0, 0, 0, 14);
         foreach (var b in Stage.Children.OfType<Border>()) b.CornerRadius = new CornerRadius(full ? 0 : 16);
-        StageContent.Margin = new Thickness(28, 28, 28 + (full ? QueuePane.ActualWidth : 0), 28 + bar);
-        QueueCard.Margin = full ? new Thickness(10, 16, 16, 16 + bar) : new Thickness(10, 0, 0, 16);
+        double pane = full ? QueuePane.ActualWidth : 0;
+        StageContent.Margin = new Thickness(28, 28, 28, 28 + bar);
+        StageFooter.Margin = new Thickness(0, 22, pane, 0);
+        CoverArea.Margin = VideoArea.Margin = new Thickness(pane, 0, pane, 0);
+        LyricsHost.Margin = new Thickness(0, -8, pane, 0);
+        QueueCard.Margin = full ? new Thickness(14, 14, 0, 14 + bar) : new Thickness(14, 0, 0, 14);
         ClipStage();
+    }
+
+    private void OnLayoutUpdated(object? sender, EventArgs e) => CenterSong();
+
+    // The song above the play button, halfway up the stage (over the whole screen: its very middle), whatever stands around it,
+    // as far as its place allows.
+    // (By a transform: nothing to lay out again, and it stays still while "Up next" folds away.)
+    private void CenterSong()
+    {
+        if (_window is not MainWindow w) return;
+        var stage = Stage.TransformToAncestor(this).Transform(new Point(Stage.ActualWidth / 2, Stage.ActualHeight / 2));
+        var middle = new Point(w.PagesMiddleX, stage.Y);
+        if (CoverArea.IsVisible)
+        {
+            // (of the box, only the picture counts: the rest is room for its shadow; it may use the gaps above and below its row)
+            double picture = CoverBox.ActualWidth * 400 / 460;
+            var shift = Toward(CoverArea, picture, picture - 40, middle);
+            CoverShift.X = shift.X;
+            CoverShift.Y = shift.Y;
+            // (the line of "in the center" goes through the middle of the cover)
+            Visualizer.Middle = CoverArea.TransformToAncestor(Stage).Transform(new Point(0, CoverArea.ActualHeight / 2)).Y + shift.Y;
+        }
+        if (VideoArea.IsVisible)
+        {
+            var shift = Toward(VideoArea, VideoFrame.ActualWidth, VideoFrame.ActualHeight, middle);
+            VideoShift.X = shift.X;
+            VideoShift.Y = shift.Y;
+        }
+        // Mirrored bars have their middle there too: what stands past the stage's edge just isn't seen.
+        bool mirrored = _vm?.VisualizerFlow is VisualizerFlow.MirrorSides or VisualizerFlow.MirrorCenter;
+        double off = mirrored ? Math.Round(2 * (stage.X - middle.X)) : 0;
+        Visualizer.Margin = new Thickness(-Math.Max(0, off), 0, Math.Min(0, off), 0);
+    }
+
+    private Vector Toward(FrameworkElement area, double width, double height, Point middle)
+    {
+        var at = area.TransformToAncestor(this).Transform(new Point(area.ActualWidth / 2, area.ActualHeight / 2));
+        static double Within(double want, double room) => Math.Clamp(want, -Math.Max(0, room) / 2, Math.Max(0, room) / 2);
+        return new Vector(Within(middle.X - at.X, area.ActualWidth - width), Within(middle.Y - at.Y, area.ActualHeight - height));
     }
 
     private void ClipStage()
     {
         double r = _vm?.FullScreen == true ? 0 : 16;
-        StageVideo.Clip = new RectangleGeometry(new Rect(Stage.RenderSize), r, r);
+        BarsClip.Clip = StageVideo.Clip = new RectangleGeometry(new Rect(Stage.RenderSize), r, r);
     }
 
     // ------------------------------------------------------------------ lyrics
@@ -168,8 +213,8 @@ public partial class NowPlayingView : UserControl
         // Cross-fade: what comes in fades up, the glow of the cover's colours spreads behind the lyrics.
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
         (visible ? (UIElement)LyricsHost : CoverArea).BeginAnimation(OpacityProperty,
-            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(visible ? 320 : 260)) { EasingFunction = ease });
-        LyricsGlow.BeginAnimation(OpacityProperty, new DoubleAnimation(visible ? GlowOpacity : 0, TimeSpan.FromMilliseconds(visible ? 500 : 200)));
+            new DoubleAnimation(0, 1, Ui.Time(visible ? 320 : 260)) { EasingFunction = ease });
+        LyricsGlow.BeginAnimation(OpacityProperty, new DoubleAnimation(visible ? GlowOpacity : 0, Ui.Time(visible ? 500 : 200)));
     }
 
     private static long FileStamp(Core.Track t)
@@ -199,15 +244,16 @@ public partial class NowPlayingView : UserControl
             return;
         }
         if (show) FollowBtn.Visibility = Visibility.Visible;
-        var fade = new DoubleAnimation(show ? 1 : 0, TimeSpan.FromMilliseconds(show ? 200 : 140));
+        var fade = new DoubleAnimation(show ? 1 : 0, Ui.Time(show ? 200 : 140));
         if (!show) fade.Completed += (_, _) => { if (LyricsPane.IsFollowing || !LyricsPane.IsSynced) FollowBtn.Visibility = Visibility.Collapsed; };
         FollowBtn.BeginAnimation(OpacityProperty, fade);
     }
 
     // ------------------------------------------------------------------ folding "next up" away
 
-    // Pane width with the card, and without (the gap at the page edge stays).
-    private const double PaneOpen = 350, PaneClosed = 20;
+    // Pane width with the card, and without (the gap at the page edge stays). Open: as wide as the sidebar, its mirror (the card
+    // as wide as the sidebar's entries, the same 14 on each side), so that the stage stands in the middle of the window.
+    private const double PaneOpen = 280, PaneClosed = 14;
 
     // The pane narrows while the card slides out to the right; the stage takes the room and a pill brings it back.
     private void PlaceQueue(bool animate)
@@ -234,7 +280,7 @@ public partial class NowPlayingView : UserControl
             Settle();
             return;
         }
-        var time = TimeSpan.FromMilliseconds(hidden ? 280 : 320);
+        var time = Ui.Time(hidden ? 280 : 320);
         var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
         var narrow = new DoubleAnimation(width, time) { EasingFunction = ease };
         narrow.Completed += (_, _) => Settle();
@@ -242,8 +288,8 @@ public partial class NowPlayingView : UserControl
         QueueShift.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(shift, time) { EasingFunction = ease });
         QueueCard.BeginAnimation(OpacityProperty, new DoubleAnimation(hidden ? 0 : 1, time));
         ShowQueueBtn.BeginAnimation(OpacityProperty, hidden
-            ? new DoubleAnimation(1, TimeSpan.FromMilliseconds(220)) { BeginTime = TimeSpan.FromMilliseconds(160) }
-            : new DoubleAnimation(0, TimeSpan.FromMilliseconds(120)));
+            ? new DoubleAnimation(1, Ui.Time(220)) { BeginTime = Ui.Time(160) }
+            : new DoubleAnimation(0, Ui.Time(120)));
     }
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
@@ -460,6 +506,7 @@ public partial class NowPlayingView : UserControl
         bmp.Freeze();
         CoverImage.ImageSource = bmp;
         LyricsBackdrop.ImageSource = BakeGlow(img);
+        Visualizer.Color = Bright(img is { PixelWidth: > 0, PixelHeight: > 0 } ? Mood(img, Themes.IsLight) : Themes.Get("Accent"), Themes.IsLight);
     }
 
     // Behind the lyrics, like Spotify: the cover's strongest colour, with a very blurred copy of the cover over it. In the
@@ -508,6 +555,13 @@ public partial class NowPlayingView : UserControl
             return Tone(Color.FromRgb((byte)(r / sum), (byte)(g / sum), (byte)(b / sum)), light);
         }
         catch { return Tone(Color.FromRgb(0x2A, 0x24, 0x3A), light); }
+    }
+
+    // The same colour for the bars of the music: bright on the page.
+    private static Color Bright(Color c, bool light)
+    {
+        var (hue, s, _) = ToHsl(c.R / 255.0, c.G / 255.0, c.B / 255.0);
+        return FromHsl(hue, s < 0.08 ? s : Math.Max(s, 0.55), light ? 0.42 : 0.64);
     }
 
     // Vivid enough to be a colour, dark enough for white text (light enough for dark text in the light look).
@@ -625,7 +679,7 @@ public partial class NowPlayingView : UserControl
             return;
         }
         TrashZone.Visibility = Visibility.Visible;
-        var time = TimeSpan.FromMilliseconds(show ? 300 : 170);
+        var time = Ui.Time(show ? 300 : 170);
         var pop = show
             ? new DoubleAnimation(0.3, 1, time) { EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.6 } }
             : new DoubleAnimation(0.25, time) { EasingFunction = new BackEase { EasingMode = EasingMode.EaseIn, Amplitude = 0.4 } };
@@ -641,8 +695,8 @@ public partial class NowPlayingView : UserControl
         if (show) TrashShift.BeginAnimation(TranslateTransform.XProperty,
             new DoubleAnimation(40, 0, time) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         TrashZone.BeginAnimation(OpacityProperty, show
-            ? new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160))
-            : new DoubleAnimation(0, TimeSpan.FromMilliseconds(150)));
+            ? new DoubleAnimation(0, 1, Ui.Time(160))
+            : new DoubleAnimation(0, Ui.Time(150)));
         if (show) Ripple(true);
     }
 
@@ -652,7 +706,7 @@ public partial class NowPlayingView : UserControl
         AnimationTimeline? grow = null, fade = null;
         if (on)
         {
-            var period = TimeSpan.FromMilliseconds(1200);
+            var period = Ui.Time(1200);
             grow = new DoubleAnimation(1, 1.75, period) { RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
             fade = new DoubleAnimation(0.8, 0, period) { RepeatBehavior = RepeatBehavior.Forever };
         }
@@ -671,19 +725,19 @@ public partial class NowPlayingView : UserControl
             TrashScale.ScaleX = TrashScale.ScaleY = hot ? 1.2 : 1;
             return;
         }
-        TrashFill.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(hot ? TrashHot : TrashIdle, TimeSpan.FromMilliseconds(140)));
+        TrashFill.BeginAnimation(SolidColorBrush.ColorProperty, new ColorAnimation(hot ? TrashHot : TrashIdle, Ui.Time(140)));
         var ease = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.6 };
-        var scale = new DoubleAnimation(hot ? 1.22 : 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease };
+        var scale = new DoubleAnimation(hot ? 1.22 : 1, Ui.Time(200)) { EasingFunction = ease };
         TrashScale.BeginAnimation(ScaleTransform.ScaleXProperty, scale);
         TrashScale.BeginAnimation(ScaleTransform.ScaleYProperty, scale);
         if (hot)
         {
-            var wiggle = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(420), RepeatBehavior = RepeatBehavior.Forever };
+            var wiggle = new DoubleAnimationUsingKeyFrames { Duration = Ui.Time(420), RepeatBehavior = RepeatBehavior.Forever };
             foreach (var (t, a) in new[] { (0, 0.0), (80, -14.0), (180, 12.0), (280, -8.0), (360, 4.0), (420, 0.0) })
-                wiggle.KeyFrames.Add(new EasingDoubleKeyFrame(a, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(t))));
+                wiggle.KeyFrames.Add(new EasingDoubleKeyFrame(a, KeyTime.FromTimeSpan(Ui.Time(t))));
             TrashTilt.BeginAnimation(RotateTransform.AngleProperty, wiggle);
         }
-        else TrashTilt.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(120)));
+        else TrashTilt.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0, Ui.Time(120)));
     }
 
     // The move itself happens when the drag ends (Row_MouseMove).

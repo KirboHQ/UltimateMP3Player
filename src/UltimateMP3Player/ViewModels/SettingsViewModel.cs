@@ -348,6 +348,176 @@ public sealed class SettingsViewModel : Observable
         set { S.Animations = value; Ui.Animations = value; Save(); OnChanged(); }
     }
 
+    public double AnimationSpeed
+    {
+        get => S.AnimationSpeed;
+        set
+        {
+            double v = Math.Round(Math.Clamp(value, 0.25, 3) * 4) / 4;
+            if (v == S.AnimationSpeed) return;
+            S.AnimationSpeed = Core.Glide.Speed = v;
+            Save();
+            OnChanged(nameof(AnimationSpeed), nameof(AnimationSpeedText));
+        }
+    }
+
+    public string AnimationSpeedText => $"{S.AnimationSpeed:0.##}x";
+
+    // The computers' interface size (MainViewModel.SetZoom: the buttons, Ctrl+wheel, Ctrl + and -).
+    public string ZoomText => $"{Math.Round(Ui.Zoom * 100)}%";
+    public ICommand ZoomInCommand => _zoomIn ??= new RelayCommand(() => _main.SetZoom(Ui.Zoom + 0.1, false));
+    public ICommand ZoomOutCommand => _zoomOut ??= new RelayCommand(() => _main.SetZoom(Ui.Zoom - 0.1, false));
+    public ICommand ZoomResetCommand => _zoomReset ??= new RelayCommand(() => _main.SetZoom(1, false));
+    private ICommand? _zoomIn, _zoomOut, _zoomReset;
+    internal void OnZoom() => OnChanged(nameof(ZoomText));
+
+    // The bars of the music in the song's page.
+    public bool Visualizer
+    {
+        get => S.Visualizer;
+        set { S.Visualizer = value; Save(); OnChanged(); _main.NowPlaying.Refresh(); }
+    }
+
+    public List<Choice> VisualizerFlows { get; } = new()
+    {
+        new(L.T("Left to right"), VisualizerFlow.LeftToRight),
+        new(L.T("Right to left"), VisualizerFlow.RightToLeft),
+        new(L.T("Mirrored, bass in the center"), VisualizerFlow.MirrorCenter),
+        new(L.T("Mirrored, bass at the sides"), VisualizerFlow.MirrorSides),
+    };
+
+    public Choice VisualizerFlowChoice
+    {
+        get => VisualizerFlows.FirstOrDefault(c => Equals(c.Value, S.VisualizerFlow)) ?? VisualizerFlows[0];
+        set
+        {
+            if (value?.Value is not VisualizerFlow f) return;
+            S.VisualizerFlow = f;
+            Save();
+            OnChanged();
+            _main.NowPlaying.Refresh();
+        }
+    }
+
+    public List<Choice> VisualizerPlaces { get; } = new()
+    {
+        new(L.T("From the bottom"), VisualizerPlace.Bottom),
+        new(L.T("From the top"), VisualizerPlace.Top),
+        new(L.T("Top and bottom"), VisualizerPlace.Both),
+#if !ANDROID_APP && !IOS_APP
+        // (on a phone the cover takes the whole width: next to nothing of them would show around it)
+        new(L.T("In the center, with the cover"), VisualizerPlace.Center),
+#endif
+    };
+
+    public Choice VisualizerPlaceChoice
+    {
+        get => VisualizerPlaces.FirstOrDefault(c => Equals(c.Value, S.VisualizerPlace)) ?? VisualizerPlaces[0];
+        set
+        {
+            if (value?.Value is not VisualizerPlace place) return;
+            S.VisualizerPlace = place;
+            SaveBars();
+        }
+    }
+
+    public List<Choice> VisualizerStyles { get; } = new()
+    {
+        new(L.T("Bars"), VisualizerStyle.Bars),
+        new(L.T("Bars with falling peaks"), VisualizerStyle.Peaks),
+        new(L.T("Blocks"), VisualizerStyle.Blocks),
+        new(L.T("Dots"), VisualizerStyle.Dots),
+        new(L.T("One line"), VisualizerStyle.Line),
+        new(L.T("Filled wave"), VisualizerStyle.Wave),
+    };
+
+    public Choice VisualizerStyleChoice
+    {
+        get => VisualizerStyles.FirstOrDefault(c => Equals(c.Value, S.VisualizerStyle)) ?? VisualizerStyles[0];
+        set
+        {
+            if (value?.Value is not VisualizerStyle style) return;
+            S.VisualizerStyle = style;
+            SaveBars();
+        }
+    }
+
+    public List<Choice> VisualizerTints { get; } = new()
+    {
+        new(L.T("From the cover"), VisualizerTint.Cover),
+        new(L.T("The app's color"), VisualizerTint.Accent),
+        new(L.T("Like the text"), VisualizerTint.Text),
+        new(L.T("Rainbow"), VisualizerTint.Rainbow),
+    };
+
+    public Choice VisualizerTintChoice
+    {
+        get => VisualizerTints.FirstOrDefault(c => Equals(c.Value, S.VisualizerTint)) ?? VisualizerTints[0];
+        set
+        {
+            if (value?.Value is not VisualizerTint tint) return;
+            S.VisualizerTint = tint;
+            SaveBars();
+        }
+    }
+
+    public List<Choice> VisualizerThicknesses { get; } = new() { new(L.T("Thin|bars"), 0), new(L.T("Normal|bars"), 1), new(L.T("Wide|bars"), 2) };
+
+    public Choice VisualizerThicknessChoice
+    {
+        get => VisualizerThicknesses.FirstOrDefault(c => Equals(c.Value, S.VisualizerThickness)) ?? VisualizerThicknesses[1];
+        set
+        {
+            if (value?.Value is not int thickness) return;
+            S.VisualizerThickness = thickness;
+            SaveBars();
+        }
+    }
+
+    // Only what the chosen shape can show: a filled wave has no thickness.
+    public bool VisualizerHasThickness => S.VisualizerStyle != VisualizerStyle.Wave;
+    public string VisualizerThicknessLabel => S.VisualizerStyle switch
+    {
+        VisualizerStyle.Line => L.T("Thickness of the line"),
+        VisualizerStyle.Dots => L.T("Size of the dots"),
+        _ => L.T("Thickness of the bars"),
+    };
+
+    public double VisualizerHeight
+    {
+        get => S.VisualizerHeight;
+        set
+        {
+            S.VisualizerHeight = Math.Clamp(value, 0.15, 1);
+            SaveBars();
+        }
+    }
+
+    public string VisualizerHeightText => $"{Math.Round(S.VisualizerHeight * 100)}%";
+
+    public double VisualizerStrength
+    {
+        get => S.VisualizerStrength;
+        set
+        {
+            S.VisualizerStrength = Math.Clamp(value, 0.2, 1);
+            SaveBars();
+        }
+    }
+
+    public string VisualizerStrengthText => $"{Math.Round(S.VisualizerStrength * 100)}%";
+
+    // (the small preview above these settings shows what the song's page will)
+    public NowPlayingViewModel NowPlaying => _main.NowPlaying;
+
+    private void SaveBars()
+    {
+        Save();
+        OnChanged(nameof(VisualizerStyleChoice), nameof(VisualizerPlaceChoice), nameof(VisualizerTintChoice), nameof(VisualizerThicknessChoice), nameof(VisualizerHasThickness),
+            nameof(VisualizerThicknessLabel), nameof(VisualizerHeight), nameof(VisualizerHeightText), nameof(VisualizerStrength), nameof(VisualizerStrengthText));
+        _main.NowPlaying.Refresh();
+    }
+
     public bool SmoothScrolling
     {
         get => S.SmoothScroll;

@@ -11,6 +11,9 @@ public sealed class Glide
 
     public Glide(double value = 0) => _from = _to = value;
 
+    // Settings › Appearance: how fast the app's animations go (1 = as designed). Every motion's time is divided by it.
+    public static double Speed { get; set; } = 1;
+
     // The clock the glides follow (the UI thread's): real time, but a gap longer than a slow frame (the app busy building the
     // page coming in) counts as one frame, so a motion that had to wait goes on from where it was instead of jumping ahead.
     private static double _real = double.NaN, _clock;
@@ -37,6 +40,7 @@ public sealed class Glide
 
     public void To(double target, double ms)
     {
+        ms /= Speed;
         double now = Now;
         var (value, speed) = At(now);
         if (target == _to && (now < _start + _ms || value == target)) return;

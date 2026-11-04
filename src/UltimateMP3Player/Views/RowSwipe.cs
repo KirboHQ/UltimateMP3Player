@@ -163,7 +163,7 @@ public sealed class RowSwipe
         EventHandler? frame = null;
         frame = (_, _) =>
         {
-            double t = Math.Min(1, clock.Elapsed.TotalMilliseconds / ms);
+            double t = Math.Min(1, clock.Elapsed.TotalMilliseconds * Core.Glide.Speed / ms);
             apply(1 - Math.Pow(1 - t, 3));
             if (t >= 1) FrameClock.Remove(frame!);
         };

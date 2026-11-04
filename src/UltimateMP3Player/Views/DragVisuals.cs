@@ -281,7 +281,7 @@ public static class DragVisuals
             _place.Children.Add(_at);
             if (Ui.Animations)
             {
-                var pop = new DoubleAnimation(0.9, 1.03, TimeSpan.FromMilliseconds(160)) { EasingFunction = new BackEase { Amplitude = 0.4 } };
+                var pop = new DoubleAnimation(0.9, 1.03, Ui.Time(160)) { EasingFunction = new BackEase { Amplitude = 0.4 } };
                 _scale.BeginAnimation(ScaleTransform.ScaleXProperty, pop);
                 _scale.BeginAnimation(ScaleTransform.ScaleYProperty, pop);
             }
@@ -317,7 +317,7 @@ public static class DragVisuals
             IsHitTestVisible = false;
             _top = _toTop = top;
             _bottom = _toBottom = bottom;
-            if (Ui.Animations) BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(100)));
+            if (Ui.Animations) BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Ui.Time(100)));
         }
 
         public void GoTo(double top, double bottom)

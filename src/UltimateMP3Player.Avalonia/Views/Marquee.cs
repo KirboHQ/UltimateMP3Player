@@ -158,6 +158,9 @@ public static class Marquee
         }, Avalonia.Threading.DispatcherPriority.Background);
     }
 
+    // While it scrolls (TextShadow leaves it out of its picture).
+    public static bool IsMoving(Control el) => el.GetValue(StateProperty) is State { Shift: not null };
+
     private static void Detach(Control el)
     {
         if (el.GetValue(StateProperty) is State st) Stop(st);

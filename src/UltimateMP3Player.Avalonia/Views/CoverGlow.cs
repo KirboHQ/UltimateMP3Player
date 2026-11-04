@@ -56,6 +56,15 @@ public static class CoverGlow
         return new Bitmap(stream);
     }
 
+    // The cover's colour for the bars of the music: bright on the page.
+    public static Color Bright(Bitmap? img)
+    {
+        bool light = Themes.IsLight;
+        var c = img is { PixelSize.Width: > 0, PixelSize.Height: > 0 } ? Mood(img, light) : Themes.Get("Accent");
+        var (hue, s, _) = ToHsl(c.R / 255.0, c.G / 255.0, c.B / 255.0);
+        return FromHsl(hue, s < 0.08 ? s : Math.Max(s, 0.55), light ? 0.42 : 0.64);
+    }
+
     // The picture this big at most, its pixels copied straight to Skia (not the whole picture encoded and decoded again).
     private static SKBitmap? Small(Bitmap img, int max)
     {

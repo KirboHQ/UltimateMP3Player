@@ -171,8 +171,13 @@ public sealed class AnimatedContent : Grid
         Place();
         if (_ticking) return;
         _ticking = true;
+        Sliding++;
         CompositionTarget.Rendering += OnFrame;
     }
+
+    // Pages on their way, each a cached picture: what changes in one at every frame (the bars of the music) waits, or the
+    // whole page would be drawn again at each of them.
+    public static int Sliding { get; private set; }
 
     private void OnFrame(object? sender, EventArgs e)
     {
@@ -198,7 +203,7 @@ public sealed class AnimatedContent : Grid
         foreach (var (view, _) in _strip)
         {
             view.IsHitTestVisible = false;
-            view.BeginAnimation(OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(70)));
+            view.BeginAnimation(OpacityProperty, new DoubleAnimation(0, Ui.Time(70)));
         }
         var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
         var shift = new TranslateTransform();
@@ -209,16 +214,17 @@ public sealed class AnimatedContent : Grid
         _strip.Add((view2, 0));
         _at.Set(0);
         _fading = true;
-        var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(120)) { EasingFunction = ease };
+        var fade = new DoubleAnimation(0, 1, Ui.Time(120)) { EasingFunction = ease };
         fade.Completed += (_, _) => { if (_fading && _shown == view2) Settle(); };
         view2.BeginAnimation(OpacityProperty, fade);
-        shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(14, 0, TimeSpan.FromMilliseconds(120)) { EasingFunction = ease });
+        shift.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(14, 0, Ui.Time(120)) { EasingFunction = ease });
     }
 
     private void StopTicking()
     {
         if (!_ticking) return;
         _ticking = false;
+        Sliding--;
         CompositionTarget.Rendering -= OnFrame;
     }
 

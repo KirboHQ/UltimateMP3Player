@@ -20,6 +20,9 @@
         <views:CoverImage x:Name="Glow"/>
         <!-- (the page's background, see-through on top: Themes) -->
         <Border IsHitTestVisible="False" Background="{DynamicResource PlayerPageVeil}"/>
+        <!-- the bars of the music, behind the buttons (with the cover; Settings > Appearance) -->
+        <views:WaveVisualizer x:Name="Visualizer" Dim="0.6" IsPlaying="{Binding Player.Animate}" Flow="{Binding VisualizerFlow}" Place="{Binding VisualizerPlace}" BarStyle="{Binding VisualizerStyle}" Tint="{Binding VisualizerTint}" Thickness="{Binding VisualizerThickness}" HeightShare="{Binding VisualizerHeight}" Strength="{Binding VisualizerStrength}"
+                              IsVisible="{Binding ShowVisualizer}"/>
 
         <Grid x:Name="Body" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto">
             <!-- top: close, where it plays from, the song's menu -->
@@ -78,7 +81,9 @@
 
             <!-- title, artist, heart -->
             <Grid x:Name="TitleBlock" Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="24,4,14,6" Background="Transparent" views:Touch.Menu="current">
-                <StackPanel VerticalAlignment="Center">
+                <!-- so it reads over the bars of the music -->
+                <views:TextShadow Target="{Binding #TitleText}" IsVisible="{Binding ShowVisualizer}"/>
+                <StackPanel x:Name="TitleText" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Player.Current.Title}" FontSize="21" FontWeight="Bold" TextTrimming="CharacterEllipsis"
                                local:Marquee.IsEnabled="True" local:Marquee.Auto="True"/>
                     <!-- the artist; before it a small cloud when the song isn't saved on the phone (only a sign) -->
@@ -124,14 +129,18 @@
                     <TextBlock Text="{Binding Player.DurationText}" FontSize="13.5" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" Margin="8,0,0,0"
                                VerticalAlignment="Center"/>
                 </StackPanel>
+                <!-- (in full colour: they change every second, too often for a picture of their shadow, and the bars go behind them) -->
                 <Grid ColumnDefinitions="*,*" Margin="0,6,0,0" IsVisible="{Binding !Player.IsLive}">
-                    <TextBlock Text="{Binding Player.PositionText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}"/>
-                    <TextBlock Grid.Column="1" Text="{Binding Player.DurationText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right"/>
+                    <TextBlock Text="{Binding Player.PositionText}" FontSize="12.5" Foreground="{DynamicResource TextBrush}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Player.DurationText}" FontSize="12.5" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Right"/>
                 </Grid>
             </StackPanel>
 
             <!-- the buttons -->
-            <Grid x:Name="Buttons" Grid.Row="4" ColumnDefinitions="*,*,Auto,*,*" Margin="12,10,12,4">
+            <!-- (the margin on the box: the shadow's picture starts where its target does) -->
+            <Panel x:Name="ButtonsBox" Grid.Row="4" Margin="12,10,12,4">
+            <views:TextShadow Target="{Binding #Buttons}" Heavy="True" IsVisible="{Binding ShowVisualizer}"/>
+            <Grid x:Name="Buttons" ColumnDefinitions="*,*,Auto,*,*">
                 <ToggleButton Theme="{StaticResource TouchToggle}" Content="{local:Icon E8B1}" IsChecked="{Binding Player.Shuffle}" HorizontalAlignment="Center"/>
                 <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="58" Height="58" FontSize="30" Foreground="{DynamicResource TextBrush}"
                         Content="{local:Icon E892}" Command="{Binding Player.PreviousCommand}" HorizontalAlignment="Center"/>
@@ -142,9 +151,12 @@
                 <local:CommandToggle Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{Binding Player.RepeatGlyph, Converter={StaticResource Icon}}"
                                      IsChecked="{Binding Player.RepeatOn, Mode=OneWay}" Command="{Binding Player.CycleRepeatCommand}" HorizontalAlignment="Center"/>
             </Grid>
+            </Panel>
 
             <!-- what else: speed, lyrics, video, automatic queue, even volume, add to a playlist, next up -->
-            <Grid x:Name="Extras" Grid.Row="5" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto" Margin="14,4,14,10">
+            <Panel x:Name="ExtrasBox" Grid.Row="5" Margin="14,4,14,10">
+            <views:TextShadow Target="{Binding #Extras}" Heavy="True" IsVisible="{Binding ShowVisualizer}"/>
+            <Grid x:Name="Extras" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto">
                 <Button x:Name="SpeedButton" Theme="{StaticResource PillButton}" Height="36" MinWidth="50" Padding="10,0" FontSize="13.5"
                         Background="Transparent" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1.5" Content="{Binding Player.SpeedText}" Click="Speed_Click"/>
                 <!-- driving a computer: its volume (the phone's buttons are the phone's own) -->
@@ -160,6 +172,7 @@
                 <Button Grid.Column="6" Theme="{StaticResource TouchIcon}" Content="{local:Icon E710}" Click="AddToPlaylist_Click"/>
                 <Button Grid.Column="7" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8FD}" Click="Queue_Click"/>
             </Grid>
+            </Panel>
         </Grid>
     </Panel>
 </UserControl>

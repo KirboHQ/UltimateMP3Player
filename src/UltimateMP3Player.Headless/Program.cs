@@ -19,7 +19,10 @@ using UltimateMP3Player.Views;
 // updates, no rooms or DJ (network, audio device), no file association (only Settings reads the supporters' list from
 // GitHub). Screenshots go to <folder>/shots.
 
-var root = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine(Path.GetTempPath(), "ump-headless"));
+// ("perf": the real window on the screen with its real GPU, on top for half a minute, frames counted while a silent song plays)
+bool perf = args.Contains("perf");
+var folder = args.FirstOrDefault(a => a != "perf");
+var root = Path.GetFullPath(folder ?? Path.Combine(Path.GetTempPath(), "ump-headless"));
 if (Directory.Exists(root)) Directory.Delete(root, true);
 var shots = Directory.CreateDirectory(Path.Combine(root, "shots")).FullName;
 Environment.SetEnvironmentVariable("UMP_DATA", Path.Combine(root, "data"));
@@ -40,7 +43,8 @@ first.AutoUpdateApp = first.AutoUpdateEngines = first.ShowWhatsNew = false;
 first.MusicDir = Path.Combine(root, "music");
 first.Save();
 
-AppBuilder.Configure<App>()
+if (perf) AppBuilder.Configure<App>().UsePlatformDetect().SetupWithoutStarting();
+else AppBuilder.Configure<App>()
     .UseSkia()
     .UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })
     .With(new FontManagerOptions { DefaultFamilyName = OperatingSystem.IsWindows() ? "Segoe UI" : "avares://UltimateMP3Player/Assets/Fonts#Selawik" })
@@ -60,6 +64,12 @@ var win = host.Window!;
 win.Width = 1400;
 win.Height = 900;
 var main = host.Session!;
+if (perf)
+{
+    Perf();
+    host.Exit(true);
+    return 0;
+}
 
 foreach (var (name, section, go) in new (string, string, Action)[]
 {
@@ -356,16 +366,260 @@ Check(playerBar.IsVisible && playerBar.Margin.Bottom == 0 && playerBar.IsHitTest
 // ---- 4.4.2: the song's page over the whole screen, Esc and another page end it
 var titleBar = win.FindControl<Grid>("TitleBar")!;
 main.GoNowPlayingCommand.Execute(null);
+// The song above the play button, halfway up the stage, with as much on its left as on its right.
+void SongInTheMiddle(string when)
+{
+    Dispatcher.UIThread.RunJobs();
+    var songPage = win.GetVisualDescendants().OfType<NowPlayingView>().First(v => v.IsEffectivelyVisible);
+    var songHit = songPage.GetVisualDescendants().OfType<Control>().First(c => c.Name == "CoverHit");
+    var songBars = songPage.GetVisualDescendants().OfType<WaveVisualizer>().First();
+    var barsStage = songPage.GetVisualDescendants().OfType<Control>().First(c => c.Name == "Stage");
+    double barsFrom = songBars.TranslatePoint(default, barsStage)?.X ?? 1;
+    Check(barsFrom <= 0 && barsFrom + songBars.Bounds.Width >= barsStage.Bounds.Width, $"song's page, {when}: the bars reach both sides of the stage ({barsFrom:0}, {barsFrom + songBars.Bounds.Width:0} of {barsStage.Bounds.Width:0})");
+    var songAt = songHit.TranslatePoint(new Point(songHit.Bounds.Width / 2, songHit.Bounds.Height / 2), win) ?? default;
+    var playerGrid = win.FindControl<Control>("PlayerGrid")!;
+    var playAt = playerGrid.TranslatePoint(new Point(playerGrid.Bounds.Width / 2, 0), win) ?? default;
+    var songStage = songPage.GetVisualDescendants().OfType<Control>().First(c => c.Name == "Stage");
+    var stageAt = songStage.TranslatePoint(new Point(0, songStage.Bounds.Height / 2), win) ?? default;
+    Check(Math.Abs(songAt.X - playAt.X) < 1 && Math.Abs(songAt.Y - stageAt.Y) < 1, $"song's page, {when}: the cover above play, halfway up the stage ({songAt.X:0},{songAt.Y:0} of {win.Bounds.Width:0}x{win.Bounds.Height:0})");
+}
+Shot(win, "song-page");
+SongInTheMiddle("with up next");
+{
+    var songView = win.GetVisualDescendants().OfType<NowPlayingView>().First(v => v.IsEffectivelyVisible);
+    var entries = ((Border)win.GetVisualDescendants().OfType<Control>().First(c => c.Name == "Sidebar")).Child!;
+    var stageCard = songView.GetVisualDescendants().OfType<Control>().First(c => c.Name == "Stage");
+    var upNext = songView.GetVisualDescendants().OfType<Control>().First(c => c.Name == "QueueCard");
+    double FromLeft(Control c) => c.TranslatePoint(default, win)?.X ?? -1;
+    double[] sideGaps = { FromLeft(entries), FromLeft(stageCard) - FromLeft(entries) - entries.Bounds.Width, FromLeft(upNext) - FromLeft(stageCard) - stageCard.Bounds.Width, win.Bounds.Width - FromLeft(upNext) - upNext.Bounds.Width };
+    Check(sideGaps.All(g => Math.Abs(g - 14) < 1) && Math.Abs(entries.Bounds.Width - upNext.Bounds.Width) < 1, $"song's page: the same gaps, the sidebar's entries as wide as up next ({string.Join(", ", sideGaps.Select(g => g.ToString("0")))}; {entries.Bounds.Width:0} and {upNext.Bounds.Width:0})");
+}
 main.FullScreen = true;
 Shot(win, "fullscreen");
-Check(main.NowPlaying.FullScreen && win.WindowState == WindowState.FullScreen && !titleBar.IsVisible && playerBar.Background == Brushes.Transparent,
+SongInTheMiddle("over the whole screen");
+Check(main.NowPlaying.FullScreen && win.WindowState == WindowState.FullScreen && !titleBar.IsVisible && playerBar.Background is LinearGradientBrush,
       "full screen: the window over the screen, no title bar, the player bar see-through");
 Press(Key.Escape);
-Check(!main.FullScreen && win.WindowState != WindowState.FullScreen && titleBar.IsVisible && playerBar.Background != Brushes.Transparent, "full screen: Esc ends it");
+Check(!main.FullScreen && win.WindowState != WindowState.FullScreen && titleBar.IsVisible && playerBar.Background is not LinearGradientBrush, "full screen: Esc ends it");
 main.FullScreen = true;
 main.IsHome = true;
 Dispatcher.UIThread.RunJobs();
 Check(!main.FullScreen && titleBar.IsVisible, "full screen: another page ends it");
+
+// ---- 4.5: the speed of the animations; the interface's size; the sidebar's sections; the bars of the music; the stream overlays
+main.GoSettings();
+main.Settings.AnimationSpeed = 2;
+Check(Glide.Speed == 2 && main.Settings.AnimationSpeedText == "2x", "animations: 2x reaches the glide");
+main.Settings.AnimationSpeed = 1;
+void Ctrl(Key key, PhysicalKey physical)
+{
+    win.KeyPress(key, RawInputModifiers.Control, physical, null);
+    win.KeyRelease(key, RawInputModifiers.Control, physical, null);
+    Dispatcher.UIThread.RunJobs();
+}
+main.IsHome = true;
+Ctrl(Key.OemMinus, PhysicalKey.Minus);
+Check(Math.Abs(Ui.Zoom - 0.9) < 0.01 && Math.Abs(host.Settings.UiZoom - 0.9) < 0.01, "zoom: Ctrl - makes it smaller, saved");
+Shot(win, "zoom-90");
+Ctrl(Key.D0, PhysicalKey.Digit0);
+Check(Ui.Zoom == 1, "zoom: Ctrl 0 back to 100%");
+main.SetZoom(1.3, false);
+Shot(win, "zoom-130");
+var zoomed = Dialogs.Frame("Zoom", new TextBlock { Text = "A dialog at this size" }, 400, Dialogs.Button(L.T("Done"), "PrimaryButton", isCancel: true));
+zoomed.Show();
+Shot(zoomed, "zoom-130-dialog");
+zoomed.Close();
+main.SetZoom(1, false);
+foreach (var side in new[] { main.PlaylistsSection, main.ArtistsSection, main.RadiosSection }) side.ToggleCommand.Execute(null);
+Shot(win, "sidebar-folded");
+Check(host.Settings.PlaylistsFolded && host.Settings.ArtistsFolded && host.Settings.RadiosFolded && !main.PlaylistsSection.Open, "sidebar: playlists, artists and radios fold, and stay so");
+foreach (var side in new[] { main.PlaylistsSection, main.ArtistsSection, main.RadiosSection }) side.ToggleCommand.Execute(null);
+Shot(win, "sidebar-open");
+
+main.GoNowPlayingCommand.Execute(null);
+Shot(win, "song-page");
+var bars = win.GetVisualDescendants().OfType<WaveVisualizer>().FirstOrDefault();
+Check(bars is { IsEffectivelyVisible: true } && main.NowPlaying.ShowVisualizer, "bars of the music: behind the song's title");
+void Sound()
+{
+    // (a made-up sound for them: the output is the mixer's, and nothing plays here)
+    var block = new float[9600];
+    for (int t = 0; t < 40; t++)
+    {
+        for (int i = 0; i < block.Length; i += 2)
+        {
+            double at = (t * 4800 + i / 2) / 48000.0;
+            block[i] = block[i + 1] = (float)(0.3 * Math.Sin(2 * Math.PI * 70 * at) + 0.15 * Math.Sin(2 * Math.PI * 440 * at) + 0.1 * Math.Sin(2 * Math.PI * 3000 * at));
+        }
+        Spectrum.Shared.Feed(block, 0, block.Length);
+        Dispatcher.UIThread.RunJobs();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Thread.Sleep(25);
+    }
+}
+if (bars != null)
+{
+    bars.IsPlaying = true;
+    int baked = TextShadow.Baked;
+    Sound();
+    win.CaptureRenderedFrame()?.Save(Path.Combine(shots, "bars-center.png"));
+    Check(baked > 0 && TextShadow.Baked == baked, "song's title: its shadow is ready, and not made again while the bars move");
+    main.Settings.VisualizerFlowChoice = main.Settings.VisualizerFlows[0];
+    foreach (var shape in main.Settings.VisualizerStyles)
+    {
+        main.Settings.VisualizerStyleChoice = shape;
+        Sound();
+        win.CaptureRenderedFrame()?.Save(Path.Combine(shots, "bars-" + shape.Value + ".png"));
+    }
+    Check(bars.BarStyle == VisualizerStyle.Wave && bars.Flow == VisualizerFlow.LeftToRight, "bars of the music: their direction and shape follow the settings");
+    Check(!main.Settings.VisualizerHasThickness, "bars of the music: no thickness to choose for a filled wave");
+    main.Settings.VisualizerStyleChoice = main.Settings.VisualizerStyles[0];
+    Check(main.Settings.VisualizerHasThickness, "bars of the music: a thickness for the bars");
+    main.Settings.VisualizerFlowChoice = main.Settings.VisualizerFlows[3];
+    foreach (var place in main.Settings.VisualizerPlaces)
+    {
+        main.Settings.VisualizerPlaceChoice = place;
+        foreach (var shape in new[] { 0, 4, 5 })
+        {
+            main.Settings.VisualizerStyleChoice = main.Settings.VisualizerStyles[shape];
+            Sound();
+            win.CaptureRenderedFrame()?.Save(Path.Combine(shots, $"place-{place.Value}-{main.Settings.VisualizerStyleChoice.Value}.png"));
+        }
+    }
+    Check(bars.Place == VisualizerPlace.Center && bars.Middle > 0 && bars.Middle < bars.Bounds.Height * 0.6, $"bars of the music: in the center, on the middle of the cover ({bars.Middle:0})");
+    main.Settings.VisualizerPlaceChoice = main.Settings.VisualizerPlaces[0];
+    main.Settings.VisualizerStyleChoice = main.Settings.VisualizerStyles[0];
+    foreach (var thickness in main.Settings.VisualizerThicknesses)
+    {
+        main.Settings.VisualizerThicknessChoice = thickness;
+        Sound();
+        win.CaptureRenderedFrame()?.Save(Path.Combine(shots, "thickness-" + thickness.Value + ".png"));
+    }
+    main.Settings.VisualizerThicknessChoice = main.Settings.VisualizerThicknesses[1];
+    main.Settings.VisualizerHeight = 1;
+    Check(bars.HeightShare == 1, "bars of the music: as high as the whole page");
+    // The tallest bars behind everything: what the title and the buttons have to be read over.
+    main.FullScreen = true;
+    Sound();
+    win.CaptureRenderedFrame()?.Save(Path.Combine(shots, "fullscreen-bars.png"));
+    main.FullScreen = false;
+    Dispatcher.UIThread.RunJobs();
+    main.Settings.VisualizerHeight = 0.38;
+    bars.IsPlaying = false;
+}
+main.Settings.Visualizer = false;
+Dispatcher.UIThread.RunJobs();
+Check(bars is { IsEffectivelyVisible: false }, "bars of the music: switched off in the settings");
+main.Settings.Visualizer = true;
+
+var overlay = OverlaySourcesViewModel.Shared.Add();
+Check(OverlayServer.Shared.Running && host.Settings.OverlayPort == OverlayServer.Shared.Port, "overlay: the first source starts its server");
+using (var http = new HttpClient())
+    Check(http.GetAsync(OverlayServer.Shared.LinkOf(overlay.Source)).GetAwaiter().GetResult().IsSuccessStatusCode, "overlay: its link answers");
+main.GoSettings();
+Shot(win, "settings-page");
+var settingsNow = win.GetVisualDescendants().OfType<SettingsView>().First();
+settingsNow.FindControl<TextBox>("SearchBox")!.Focus();
+win.KeyTextInput("obs");
+Shot(win, "settings-overlay");
+Check(Shown(L.T("Stream overlay")) && Shown(overlay.Name) && Shown(overlay.Summary), "overlay: Settings finds it by “obs”, its row");
+Press(Key.Escape);
+settingsNow.FindControl<TextBox>("SearchBox")!.Focus();
+win.KeyTextInput(L.T("Bars of the music"));
+Shot(win, "settings-bars");
+Press(Key.Escape);
+var editor = Dialogs.Frame(L.T("Stream overlay"), Dialogs.OverlayEditor(overlay), Dialogs.OverlayEditorWidth(), Dialogs.Button(L.T("Done"), "PrimaryButton", isCancel: true));
+editor.Show();
+Shot(editor, "overlay-editor");
+var pictures = editor.GetVisualDescendants().OfType<Image>().ToList();
+Check(pictures.Count(i => i.Source is Avalonia.Media.Imaging.Bitmap { PixelSize.Width: 240 }) >= 16, "overlay: the looks and covers are real pictures");
+// The overlay itself, moving, over the options.
+if (OverlayPreview.FindBrowser() != null)
+{
+    for (int i = 0; i < 60 && OverlayPreview.Frames < 8; i++)
+    {
+        Thread.Sleep(250);
+        Dispatcher.UIThread.RunJobs();
+    }
+    long liveFrames = OverlayPreview.Frames;
+    Thread.Sleep(1500);
+    Dispatcher.UIThread.RunJobs();
+    Check(liveFrames >= 8 && OverlayPreview.Frames > liveFrames && OverlayPreview.Running == 1, $"overlay: the preview moves inside the editor ({(OverlayPreview.Frames - liveFrames) / 1.5:0} pictures a second)");
+    Shot(editor, "overlay-live");
+}
+// Only what makes sense for the look and the cover.
+// (a tile hidden from the start has no template yet: its words aren't on screen, whatever they say of themselves)
+bool InEditor(string text) => editor.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == text && t.IsEffectivelyVisible && t.GetVisualRoot() != null);
+RadioButton Tile(string text) => editor.GetLogicalDescendants().OfType<RadioButton>().First(r => r.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == text));
+Tile(L.T("Vinyl")).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(InEditor(L.T("The needle on the record")) && InEditor(L.T("Light around the cover")), "overlay: the needle with the vinyl");
+Tile(L.T("Square")).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(!InEditor(L.T("The needle on the record")) && InEditor(L.T("Light around the cover")), "overlay: no needle without it");
+Tile(L.T("Neon")).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(!InEditor(L.T("Card opacity")) && !InEditor(L.T("Corners")), "overlay: a look without cards has no opacity or corners");
+Tile(L.T("Cassette")).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(!InEditor(L.T("Canvas")) && !InEditor(L.T("Light around the cover")), "overlay: the cassette has its cover on its label: no canvas, no light");
+Tile(L.T("Small bars")).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(overlay.Source is { Bars: true, ShowBar: false } && InEditor(L.T("Shape of the bars")), "overlay: small bars alone, in place of the line");
+Tile(L.T("Progress line")).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(overlay.Source is { Bars: false, ShowBar: true } && !InEditor(L.T("Shape of the bars")), "overlay: the line alone, and no shape of bars to choose");
+Tile(L.T("Small bars")).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(!InEditor(L.T("Above and below")), "overlay: no place for the big bars while they're off");
+var behindSwitch = editor.GetLogicalDescendants().OfType<CheckBox>().First(c => c.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == L.T("Big bars behind the card")));
+behindSwitch.IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(InEditor(L.T("Above and below")), "overlay: their places when they're on");
+Tile(L.T("Through the middle")).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(overlay.Source.BarsPlace == VisualizerPlace.Center, "overlay: the big bars through the middle");
+behindSwitch.IsChecked = false;
+Tile(L.T("Compact")).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+// Each font in its own face, and only the ones in view made.
+var fontCombo = editor.GetLogicalDescendants().OfType<ComboBox>().Last();
+var opening = System.Diagnostics.Stopwatch.StartNew();
+fontCombo.IsDropDownOpen = true;
+Dispatcher.UIThread.RunJobs();
+long openMs = opening.ElapsedMilliseconds;
+var fontPopup = fontCombo.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().First();
+Shot(editor, "overlay-fonts");
+var madeFonts = ((Visual)fontPopup.Host!).GetVisualDescendants().OfType<ComboBoxItem>().ToList();
+var inOwnFace = madeFonts.Skip(1).Select(i => i.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault()).Where(t => t != null).ToList();
+Check(fontCombo.ItemCount > 2 && madeFonts.Count < 40 && inOwnFace.Count > 0 && inOwnFace.All(t => t!.FontFamily.Name == t.Text), $"overlay: {fontCombo.ItemCount} fonts, {madeFonts.Count} made, each in its face (opened in {openMs} ms)");
+fontCombo.IsDropDownOpen = false;
+// Size, place and when: they reach the source, and only the line that counts stays.
+editor.GetLogicalDescendants().OfType<Slider>().First().Value = 0.6;
+editor.GetLogicalDescendants().OfType<RadioButton>().Where(r => r.GroupName == "overlay-place").ElementAt(6).IsChecked = true;
+editor.GetLogicalDescendants().OfType<RadioButton>().First(r => r.GroupName == "overlay-when" && TextOf(r).Contains(L.T("At every new song"))).IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(overlay.Source is { Size: 0.6, AnchorX: 0, AnchorY: 1, Show: "change" } && File.ReadAllText(AppPaths.SettingsFile).Contains("\"change\""), "overlay: size, place and when are saved");
+Check(editor.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == L.T("It stays for") && t.IsEffectivelyVisible) && !editor.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == L.T("With the music paused, hide it") && t.IsEffectivelyVisible), "overlay: only the line of the choice shows");
+overlay.Source.Show = "playing";
+overlay.Source.Size = 1;
+var minimalTile = editor.GetLogicalDescendants().OfType<RadioButton>().First(r => TextOf(r).Contains(L.T("Minimal")));
+minimalTile.IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(overlay.Source.Skin == "minimal" && overlay.Summary.StartsWith(L.T("Minimal")) && File.ReadAllText(AppPaths.SettingsFile).Contains("\"minimal\""), "overlay: a look picked is saved at once");
+var editorScroll = editor.GetVisualDescendants().OfType<ScrollViewer>().First();
+foreach (var (at, part) in new[] { (620, 2), (1240, 3), (1860, 4), (2480, 5) })
+{
+    editorScroll.Offset = new Vector(0, at);
+    Shot(editor, "overlay-editor-" + part);
+}
+editor.Close();
+for (int i = 0; i < 20 && OverlayPreview.Running > 0; i++)
+{
+    Thread.Sleep(150);
+    Dispatcher.UIThread.RunJobs();
+}
+Check(OverlayPreview.Running == 0, "overlay: its browser goes with the editor");
 
 // ---- 4.3.1: Spotify's library in its zip (liked songs, a playlist) as lists for ListImport (their Spotify ids: nothing looked for)
 var zipPath = Path.Combine(root, "spotify.zip");
@@ -391,6 +645,160 @@ host.Exit(true);
 Check(!File.Exists(AppPaths.LogFile) || new FileInfo(AppPaths.LogFile).Length == 0, "nothing in errors.log");
 Console.WriteLine(failed.Count == 0 ? "headless: ok" : $"headless: {failed.Count} FAILED");
 return failed.Count == 0 ? 0 : 1;
+
+// Frames of the real window, with the bars and without.
+void Perf()
+{
+    var wav = Path.Combine(root, "music", "perf.wav");
+    Directory.CreateDirectory(Path.GetDirectoryName(wav)!);
+    WriteMusic(wav, 300);
+    var song = new Track { Id = "perf", Title = "A song with a title", Artist = "An artist", Duration = 300, SourceUrl = "https://example.com/perf", Path = wav, HasCover = true };
+    WriteCover(AppPaths.TrackCover(song.Id));
+    main.Library.Add(song);
+    Wait(300);
+    main.Player.Volume = 0;
+    win.Topmost = true;
+    main.Player.PlayFrom(main.LibraryPage, main.AllVms().First(t => t.Id == song.Id));
+    main.GoNowPlayingCommand.Execute(null);
+    Wait(1500);
+    Console.WriteLine($"  window {win.Bounds.Size}, render scale {win.RenderScaling}, playing {main.Player.IsPlaying}, animate {main.Player.Animate}");
+    Measure("bars on, window");
+    main.Settings.VisualizerThicknessChoice = main.Settings.VisualizerThicknesses[0];
+    Wait(600);
+    Measure("thin, window", 4000);
+    main.Settings.VisualizerThicknessChoice = main.Settings.VisualizerThicknesses[1];
+    Wait(600);
+    main.Settings.Visualizer = false;
+    Wait(800);
+    Measure("bars off, window");
+    main.Settings.Visualizer = true;
+    win.WindowState = WindowState.Maximized;
+    Wait(1500);
+    Console.WriteLine($"  maximized {win.Bounds.Size}");
+    Measure("bars on, maximized");
+    main.Settings.Visualizer = false;
+    Wait(800);
+    Measure("bars off, maximized");
+    main.Settings.Visualizer = true;
+    Wait(600);
+    // The tallest bars behind everything: what the buttons have to be read over.
+    var usual = main.Settings.VisualizerHeight;
+    main.Settings.VisualizerHeight = 1;
+    main.FullScreen = true;
+    Wait(1500);
+    Measure("full screen, the tallest bars");
+    main.FullScreen = false;
+    main.Settings.VisualizerHeight = usual;
+    Wait(800);
+    foreach (var place in main.Settings.VisualizerPlaces)
+    {
+        main.Settings.VisualizerPlaceChoice = place;
+        Wait(600);
+        Measure(place.Label + ", maximized", 4000);
+    }
+    main.Settings.VisualizerPlaceChoice = main.Settings.VisualizerPlaces[0];
+    foreach (var thickness in main.Settings.VisualizerThicknesses)
+    {
+        main.Settings.VisualizerThicknessChoice = thickness;
+        Wait(600);
+        Measure(thickness.Label + ", maximized", 4000);
+    }
+    foreach (var style in main.Settings.VisualizerStyles)
+    {
+        main.Settings.VisualizerStyleChoice = style;
+        Wait(600);
+        Measure(style.Label + ", maximized", 4000);
+    }
+    main.Settings.VisualizerStyleChoice = main.Settings.VisualizerStyles[0];
+    // Thin and tall: the most there is to draw.
+    main.Settings.VisualizerThicknessChoice = main.Settings.VisualizerThicknesses[0];
+    main.Settings.VisualizerHeight = 0.8;
+    Wait(600);
+    Measure("thin and tall, maximized");
+    main.GoSettings();
+    Wait(900);
+    var box = win.GetVisualDescendants().OfType<TextBox>().First(t => t.Name == "SearchBox" && t.IsEffectivelyVisible);
+    box.Text = L.T("Bars of the music");
+    Wait(900);
+    Measure("settings, the preview in sight");
+    box.Text = "";
+    Wait(500);
+    foreach (var scroller in win.GetVisualDescendants().OfType<ScrollViewer>().Where(s => s.IsEffectivelyVisible && s.Extent.Height - s.Viewport.Height > 500)) scroller.ScrollToEnd();
+    Wait(900);
+    Measure("settings, the preview scrolled away");
+    win.Topmost = false;
+    main.GoNowPlayingCommand.Execute(null);
+    win.WindowState = WindowState.Minimized;
+    Wait(1500);
+    Measure("minimized, playing", 6000, false);
+    main.Player.PlayPauseCommand.Execute(null);
+    Wait(1500);
+    Measure("minimized, paused", 6000, false);
+    win.WindowState = WindowState.Maximized;
+    Wait(1500);
+    Measure("on screen, paused", 6000, false);
+}
+
+void Wait(int ms)
+{
+    using var done = new CancellationTokenSource(ms);
+    Dispatcher.UIThread.MainLoop(done.Token);
+}
+
+void Measure(string what, int ms = 6000, bool ask = true)
+{
+    long drawn = WaveVisualizer.Drawn;
+    int ticks = 0;
+    bool on = true;
+    void Tick(TimeSpan _)
+    {
+        ticks++;
+        if (on) win.RequestAnimationFrame(Tick);
+    }
+    if (ask) win.RequestAnimationFrame(Tick);
+    var me = System.Diagnostics.Process.GetCurrentProcess();
+    var cpu = me.TotalProcessorTime;
+    var clock = System.Diagnostics.Stopwatch.StartNew();
+    Wait(ms);
+    on = false;
+    me.Refresh();
+    double seconds = clock.Elapsed.TotalSeconds;
+    Console.WriteLine($"  {what}: {ticks / seconds:0.0} fps, bars drawn {(WaveVisualizer.Drawn - drawn) / seconds:0.0} a second, CPU {(me.TotalProcessorTime - cpu).TotalSeconds / seconds * 100:0}% of a core");
+}
+
+// Something for the bars to follow: chords, a beat and a hiss that come and go.
+static void WriteMusic(string file, int seconds)
+{
+    const int rate = 44100;
+    int frames = rate * seconds;
+    using var w = new BinaryWriter(new BufferedStream(File.Create(file), 1 << 20));
+    w.Write("RIFF"u8); w.Write(36 + frames * 4); w.Write("WAVE"u8); w.Write("fmt "u8); w.Write(16); w.Write((short)1); w.Write((short)2);
+    w.Write(rate); w.Write(rate * 4); w.Write((short)4); w.Write((short)16); w.Write("data"u8); w.Write(frames * 4);
+    var random = new Random(7);
+    for (int i = 0; i < frames; i++)
+    {
+        double t = (double)i / rate, beat = t * 2 % 1, chord = Math.Floor(t / 2) % 4;
+        double kick = Math.Exp(-beat * 9) * Math.Sin(2 * Math.PI * 62 * t);
+        double pad = 0;
+        foreach (var note in new[] { 220 + chord * 30, 330 + chord * 45, 660 + chord * 90, 1760 + chord * 120 }) pad += 0.1 * Math.Sin(2 * Math.PI * note * t);
+        double hiss = Math.Exp(-((beat + 0.5) % 1) * 14) * (random.NextDouble() - 0.5);
+        short s = (short)(Math.Clamp(0.5 * kick + 0.5 * pad + 0.3 * hiss, -1, 1) * 30000);
+        w.Write(s); w.Write(s);
+    }
+}
+
+static void WriteCover(string file)
+{
+    using var bmp = new SkiaSharp.SKBitmap(1000, 1000);
+    using (var c = new SkiaSharp.SKCanvas(bmp))
+    {
+        using var paint = new SkiaSharp.SKPaint { Shader = SkiaSharp.SKShader.CreateLinearGradient(new SkiaSharp.SKPoint(0, 0), new SkiaSharp.SKPoint(1000, 1000), new[] { new SkiaSharp.SKColor(0x2B, 0x10, 0x70), new SkiaSharp.SKColor(0xF0, 0x40, 0x80) }, SkiaSharp.SKShaderTileMode.Clamp) };
+        c.DrawRect(0, 0, 1000, 1000, paint);
+    }
+    Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+    using var img = SkiaSharp.SKImage.FromBitmap(bmp);
+    File.WriteAllBytes(file, img.Encode(SkiaSharp.SKEncodedImageFormat.Jpeg, 90).ToArray());
+}
 
 // Lets the queued work, the layout and a frame happen, then saves what's drawn.
 void Shot(TopLevel top, string name)

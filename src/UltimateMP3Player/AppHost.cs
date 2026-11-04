@@ -53,6 +53,8 @@ public sealed class AppHost : Observable
             Profiles.Save();
         }
         Ui.Animations = Settings.Animations;
+        Glide.Speed = Math.Clamp(Settings.AnimationSpeed, 0.25, 3);
+        Ui.Zoom = Math.Clamp(Settings.UiZoom, 0.5, 2);
         SmoothScroll.Enabled = Settings.SmoothScroll;
 
 #if !AVALONIA
@@ -63,6 +65,7 @@ public sealed class AppHost : Observable
         Downloads = new DownloadQueue(this);
         Updates = new Updater();
         Presence = new DiscordPresence { Enabled = Settings.DiscordPresence };
+        Settings.OverlayPort = OverlayServer.Shared.Apply(Settings.OverlaySources, Settings.OverlayPort);
         Lyrics = new LyricsService(this);
 #if !AVALONIA
         Media = new MediaControls(_ui);
@@ -296,9 +299,7 @@ public sealed class AppHost : Observable
         Window.Activate();
         Window.Topmost = true;
         Window.Topmost = false;
-#if AVALONIA
         Ui.Hidden = false;
-#endif
         Session.Player.SetVisible(true);
         if (!_notesChecked)
         {
@@ -327,9 +328,7 @@ public sealed class AppHost : Observable
         if (Settings.CloseToTray && Tray.Available)
 #endif
         {
-#if AVALONIA
             Ui.Hidden = true;
-#endif
             Session?.Player.SetVisible(false);
             Session?.Player.SaveState();
             Tray.ShowBackgroundHint();
@@ -375,6 +374,7 @@ public sealed class AppHost : Observable
         Profile.FlushAll();
         if (Updates.IsReady) Updates.Apply(false, null, false);
         Presence.Dispose();
+        OverlayServer.Shared.Stop();
         Tray.Dispose();
         Media.Dispose();
         Audio.Dispose();
@@ -456,6 +456,18 @@ public sealed class AppHost : Observable
         double speed = p?.Speed is > 0 and var s ? s : 1;
         var room = Session is { InRoom: true, Together: var t } ? new DiscordPresence.Room(t.RoomId, t.RoomName, t.MemberCount, t.RoomMax) : null;
         Presence.Update(p?.Current?.T, p?.IsPlaying == true, (p?.EnginePosition ?? TimeSpan.Zero) / speed, duration / speed, room);
+        if (OverlayServer.Shared.Running) OverlayServer.Shared.Push(OverlayNow(p));
+    }
+
+    // (the keys change with the song and its cover: a page asks again, and nothing of the disk is named in a link)
+    private static OverlayState OverlayNow(PlayerViewModel? p)
+    {
+        if (p?.Current is not { } c) return OverlayState.Nothing;
+        var id = Uri.EscapeDataString(c.Id);
+        var cover = c.T.HasCover ? AppPaths.TrackCover(c.Id) : null;
+        var video = c.T.VideoPath is { Length: > 0 } path && File.Exists(path) ? path : null;
+        return new OverlayState(c.Title, c.T.DisplayArtist, cover != null ? $"{id}-{c.T.CoverVersion}" : null, cover, video != null ? id : null, video,
+            p.EnginePosition.TotalSeconds, p.Duration, p.Speed, p.IsPlaying, p.IsLive);
     }
 
     public void SetDiscordPresence(bool on)
