@@ -627,8 +627,6 @@ public static class Icons
 
     // The font for a Segoe code (the filled one for the few filled icons).
     public static FontFamily FontFor(string? segoe) => segoe is { Length: > 0 } && FilledCodes.Contains(segoe[0]) ? Filled : Regular;
-
-    public static bool IsFilled(string? segoe) => segoe is { Length: > 0 } && FilledCodes.Contains(segoe[0]);
 }
 
 // The app's resources and styles read again from their files (a language change: the texts in them follow it). The

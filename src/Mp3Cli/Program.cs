@@ -243,6 +243,18 @@ switch (args[0])
             sources.Add(new OverlaySource { Id = "glass", Name = "glass", Skin = "macos", Cover = "square", Solid = 0.5 });
             sources.Add(new OverlaySource { Id = "bare", Name = "bare", Skin = "compact", Bars = false, ShowArtist = false, ShowTime = false, ShowBar = false });
             sources.Add(new OverlaySource { Id = "change", Name = "change", Show = "change", ShowFor = 2 });
+            // Every look with every cover, what's inside the card and the big bars: m-<look>-<cover>-<inside>-<where, or x>. Something switched off: t-<look>-<what>.
+            foreach (var look in sources.Select(s => s.Skin).Distinct().ToList())
+            {
+                foreach (var kind in new[] { "square", "canvas", "vinyl", "none" })
+                    foreach (var inside in new[] { "bars", "line", "both", "none" })
+                        foreach (var behind in new[] { -1, 0, 1, 2, 3 })
+                            sources.Add(new OverlaySource { Id = $"m-{look}-{kind}-{inside}-{(behind < 0 ? "x" : behind.ToString())}", Name = look, Skin = look, Cover = kind, Bars = inside is "bars" or "both", ShowBar = inside is "line" or "both", BarsBehind = behind >= 0, BarsPlace = behind < 0 ? VisualizerPlace.Bottom : (VisualizerPlace)behind });
+                sources.Add(new OverlaySource { Id = $"t-{look}-noartist", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = true, ShowArtist = false });
+                sources.Add(new OverlaySource { Id = $"t-{look}-notime", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = true, ShowTime = false });
+                sources.Add(new OverlaySource { Id = $"t-{look}-bare", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = false, ShowTime = false });
+                sources.Add(new OverlaySource { Id = $"t-{look}-light", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = true, Light = true });
+            }
             int port = server.Apply(sources, 0);
             async Task<int> Status(string path, string? host = null)
             {
@@ -254,14 +266,18 @@ switch (args[0])
             }
             var cover = args.Length > 2 ? args[2] : Path.GetTempFileName();
             if (args.Length <= 2) File.WriteAllBytes(cover, new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 });
-            server.Push(new OverlayState(Environment.GetEnvironmentVariable("UMP_OVERLAY_TITLE") ?? "A song with a rather long title (feat. Someone)", Environment.GetEnvironmentVariable("UMP_OVERLAY_ARTIST") ?? "An artist", "c1", cover, args.Length > 3 ? "v1" : null, args.Length > 3 ? args[3] : null, 62, 206, 1, Environment.GetEnvironmentVariable("UMP_OVERLAY_PAUSED") == null, false));
+            var nowPlaying = new OverlayState(Environment.GetEnvironmentVariable("UMP_OVERLAY_TITLE") ?? "A song with a rather long title (feat. Someone)", Environment.GetEnvironmentVariable("UMP_OVERLAY_ARTIST") ?? "An artist", "c1", cover, args.Length > 3 ? "v1" : null, args.Length > 3 ? args[3] : null, 62, 206, 1, Environment.GetEnvironmentVariable("UMP_OVERLAY_PAUSED") == null, false);
+            server.Push(nowPlaying);
             bool ok = await Status("/s/compact") == 200 && await Status("/s/nope") == 404 && await Status("/s/compact", "evil.example") == 403
                       && await Status("/../../etc/passwd") == 404 && await Status("/cover/other") == 404 && await Status("/cover/c1") == 200
                       && await Status("/video/c1") == 404 && await Status("/") == 404;
             Console.WriteLine("overlay: " + (ok ? "ok" : "SBAGLIATO") + $" (http://127.0.0.1:{port}/s/compact?preview)");
             int seconds = args.Length > 1 && int.TryParse(args[1], out var n) ? n : 0;
+            long said = 0;
             for (var t = Stopwatch.StartNew(); t.Elapsed.TotalSeconds < seconds;)
             {
+                // (as the app does, for the clock)
+                if (t.ElapsedMilliseconds / 3000 > said) { said = t.ElapsedMilliseconds / 3000; server.Push(nowPlaying); }
                 var block = new float[9600];
                 // (something like music: tones over the whole range, each coming and going)
                 double now = t.Elapsed.TotalSeconds;

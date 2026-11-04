@@ -1028,11 +1028,6 @@ public sealed class DjViewModel : Observable
         }
     }
 
-    public void LoadCurrent(DjDeckViewModel deck)
-    {
-        if (Main.Player.Current is { } cur) Load(cur, deck);
-    }
-
     // "Load": the song browser (library, playlists, tags, the song playing, a file); the song goes on the deck chosen there.
     public void Pick(DjDeckViewModel deck)
     {

@@ -770,8 +770,6 @@ public sealed class DownloadQueue : Observable
     // Slowed down (one at a time, pauses between requests) until it stays calm for a while.
     public bool IsGentle(string service) => _throttles.ContainsKey(service);
 
-    private bool IsPaused(string service) => _throttles.TryGetValue(service, out var t) && DateTime.Now < t.PauseUntil;
-
     public bool IsThrottled => _throttles.Count > 0;
 
     public string? ThrottleText

@@ -34,14 +34,6 @@ public static class FormatSelector
     public static IEnumerable<YtFormat> VideoFormats(YtInfo i) => i.Formats.Where(f => f.HasVideo && !f.IsStoryboard);
     public static IEnumerable<YtFormat> AudioOnlyFormats(YtInfo i) => i.Formats.Where(f => f.HasAudio && !f.HasVideo && !f.IsStoryboard);
 
-    // Native resolutions (short side), highest first.
-    public static List<int> NativeRes(YtInfo i)
-        => VideoFormats(i).Where(f => f.Res is > 0).Select(f => f.Res!.Value).Distinct().OrderByDescending(r => r).ToList();
-
-    // Native frame rates at a resolution (null = highest).
-    public static List<double> NativeFps(YtInfo i, int? res)
-        => AtRes(i, res).Where(f => f.Fps > 0).Select(f => Math.Round(f.Fps!.Value)).Distinct().OrderByDescending(x => x).ToList();
-
     // Formats at the native res used; SDR preferred (HDR looks washed out).
     private static List<YtFormat> AtRes(YtInfo info, int? res)
     {

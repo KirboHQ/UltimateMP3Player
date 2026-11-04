@@ -383,6 +383,14 @@ void SongInTheMiddle(string when)
     var stageAt = songStage.TranslatePoint(new Point(0, songStage.Bounds.Height / 2), win) ?? default;
     Check(Math.Abs(songAt.X - playAt.X) < 1 && Math.Abs(songAt.Y - stageAt.Y) < 1, $"song's page, {when}: the cover above play, halfway up the stage ({songAt.X:0},{songAt.Y:0} of {win.Bounds.Width:0}x{win.Bounds.Height:0})");
 }
+// Every icon of the map is in the fonts the apps carry (a new code: python tools/make-icon-fonts.py).
+{
+    var mapped = (Dictionary<char, char>)typeof(Icons).GetField("Map_", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!;
+    FontManager.Current.TryGetGlyphTypeface(new Typeface(Icons.Regular), out var regularIcons);
+    FontManager.Current.TryGetGlyphTypeface(new Typeface(Icons.Filled), out var filledIcons);
+    var gone = mapped.Values.Where(c => (regularIcons?.GetGlyph(c) ?? 0) == 0 && (filledIcons?.GetGlyph(c) ?? 0) == 0).ToList();
+    Check(mapped.Count > 0 && gone.Count == 0, $"icons: all {mapped.Count} of the map are in the fonts{(gone.Count > 0 ? ", missing " + string.Join(" ", gone.Select(c => ((int)c).ToString("X4"))) : "")}");
+}
 Shot(win, "song-page");
 SongInTheMiddle("with up next");
 {
@@ -464,6 +472,35 @@ if (bars != null)
     Sound();
     win.CaptureRenderedFrame()?.Save(Path.Combine(shots, "bars-center.png"));
     Check(baked > 0 && TextShadow.Baked == baked, "song's title: its shadow is ready, and not made again while the bars move");
+    // (a song only shown, nothing plays: the output stays closed)
+    var showSong = typeof(PlayerViewModel).GetProperty(nameof(PlayerViewModel.Current))!.GetSetMethod(true)!;
+    var look = main.Settings.Appearance;
+    showSong.Invoke(main.Player, new object?[] { main.AllVms().First(t => t.Id == "headless-duet") });
+    main.Settings.Appearance = main.Settings.Appearances[2];
+    Sound();
+    win.CaptureRenderedFrame()?.Save(Path.Combine(shots, "title-shadow.png"));
+    var title = win.GetVisualDescendants().OfType<TextShadow>().First(s => s.Target?.Name == "TitleBlock").Target!;
+    using (var phone = TextShadow.Picture(title, 3, false))
+    {
+        phone.Save(Path.Combine(shots, "title-shadow-x3.png"));
+        // (as it's drawn on such a screen, here at 1:3)
+        using var small = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(phone.PixelSize.Width / 3, phone.PixelSize.Height / 3));
+        using (var dc = small.CreateDrawingContext()) dc.DrawImage(phone, new Rect(phone.Size), new Rect(phone.Size / 3));
+        small.Save(Path.Combine(shots, "title-shadow-x3-small.png"));
+        Check(Math.Abs(phone.PixelSize.Width / 3.0 - (title.Bounds.Right + 48)) < 1, "song's title: its shadow at the screen's own pixels, the same size");
+    }
+    var buttons = win.GetVisualDescendants().OfType<TextShadow>().First(s => s.Target?.Name == "StageButtons").Target!;
+    foreach (var scale in new[] { 1.0, 2.0, 3.0 })
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        TextShadow.Picture(title, scale, false).Dispose();
+        long letters = clock.ElapsedMilliseconds;
+        clock.Restart();
+        TextShadow.Picture(buttons, scale, true).Dispose();
+        Console.WriteLine($"  shadow pictures x{scale:0}: title {letters} ms, buttons {clock.ElapsedMilliseconds} ms");
+    }
+    main.Settings.Appearance = look;
+    showSong.Invoke(main.Player, new object?[] { null });
     main.Settings.VisualizerFlowChoice = main.Settings.VisualizerFlows[0];
     foreach (var shape in main.Settings.VisualizerStyles)
     {

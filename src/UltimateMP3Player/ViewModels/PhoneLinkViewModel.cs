@@ -15,12 +15,9 @@ namespace UltimateMP3Player.ViewModels;
 // A phone in "Connect to computer", found nearby.
 public sealed class PhoneRowViewModel : Observable
 {
-    private readonly PhoneLinkViewModel _owner;
-
     public PhoneRowViewModel(PhoneAd ad, PhoneLinkViewModel owner)
     {
         Ad = ad;
-        _owner = owner;
         ConnectCommand = new RelayCommand(() => _ = owner.Connect(Ad), () => !owner.IsConnecting);
     }
 

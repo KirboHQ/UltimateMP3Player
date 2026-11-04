@@ -12,6 +12,7 @@ namespace UltimateMP3Player.Views;
 // A soft shadow behind a block of text, so it reads over the bars of the music moving behind it: the block's letters blurred
 // once into a picture, made again only when the text changes. (An effect on the text would be worked out again at every frame
 // of the bars.) Goes right before its Target, in the same place; drawn with Skia, like CoverGlow. Linked into the phones.
+// Made at the screen's own pixels: a phone has three for each of ours, and a smaller picture stretched comes out in blocks.
 // A text that's scrolling (Marquee) stays out of it: the picture doesn't move, and its letters would smear beside the ones going by.
 public sealed class TextShadow : Control
 {
@@ -27,6 +28,7 @@ public sealed class TextShadow : Control
 
     private const int Spill = 24;
     private Bitmap? _picture;
+    private double _pictureScale = 1;
     private string _made = "";
     private bool _pending;
 
@@ -46,11 +48,14 @@ public sealed class TextShadow : Control
         Dispatcher.UIThread.Post(Bake, DispatcherPriority.Background);
     }
 
-    private static string Key(Control target)
+    // (it's made on the UI thread: a phone's 3x would stop the bars. Letters stay sharp at 2x; the buttons' wide blur, redone at each play or pause, needs no more than 1x)
+    private double Scale => Math.Min(TopLevel.GetTopLevel(this)?.RenderScaling ?? 1, Heavy ? 1 : 2);
+
+    private string Key(Control target)
     {
         var key = new StringBuilder();
         Texts(target, key);
-        return key.Append(target.Bounds).Append(Themes.IsLight).ToString();
+        return key.Append(target.Bounds).Append(Themes.IsLight).Append(Scale).ToString();
     }
 
     private static void Texts(Visual parent, StringBuilder to)
@@ -71,9 +76,22 @@ public sealed class TextShadow : Control
         _pending = false;
         if (Target is not { } target || target.Bounds.Width <= 0 || target.Bounds.Height <= 0) return;
         _made = Key(target);
+        // (coloured fringes around the letters, beside the dark of the shadow, are all one sees)
+        RenderOptions.SetTextRenderingMode(target, TextRenderingMode.Antialias);
+        _picture?.Dispose();
+        _pictureScale = Scale;
+        _picture = Picture(target, _pictureScale, Heavy);
+        Baked++;
+        InvalidateVisual();
+    }
+
+    public static Bitmap Picture(Control target, double scale, bool heavy)
+    {
         // (a picture of it comes out moved by as much as it stands inside its parent, which is where this one stands too)
-        int w = (int)Math.Ceiling(target.Bounds.Right), h = (int)Math.Ceiling(target.Bounds.Bottom);
-        using var letters = new RenderTargetBitmap(new PixelSize(w, h), new Vector(96, 96));
+        int w = (int)Math.Ceiling(target.Bounds.Right * scale), h = (int)Math.Ceiling(target.Bounds.Bottom * scale);
+        int spill = (int)Math.Ceiling(Spill * scale);
+        var dpi = new Vector(96 * scale, 96 * scale);
+        using var letters = new RenderTargetBitmap(new PixelSize(w, h), dpi);
         var moving = target.GetVisualDescendants().OfType<TextBlock>().Where(t => Marquee.IsMoving(t)).ToList();
         foreach (var text in moving) text.Opacity = 0;
         letters.Render(target);
@@ -82,26 +100,22 @@ public sealed class TextShadow : Control
         var type = letters.Format == Avalonia.Platform.PixelFormat.Bgra8888 ? SKColorType.Bgra8888 : SKColorType.Rgba8888;
         using var source = new SKBitmap(new SKImageInfo(w, h, type, SKAlphaType.Premul));
         letters.CopyPixels(new PixelRect(0, 0, w, h), source.GetPixels(), source.ByteCount, source.RowBytes);
-        using var surface = SKSurface.Create(new SKImageInfo(w + 2 * Spill, h + 2 * Spill, SKColorType.Bgra8888, SKAlphaType.Premul));
+        using var surface = SKSurface.Create(new SKImageInfo(w + 2 * spill, h + 2 * spill, SKColorType.Bgra8888, SKAlphaType.Premul));
         var ink = Themes.IsLight ? Themes.Get("Bg") : Colors.Black;
         using var tint = SKColorFilter.CreateBlendMode(new SKColor(ink.R, ink.G, ink.B), SKBlendMode.SrcIn);
         // Close and dense, then wide and soft: letters are thin, one blur alone fades them away.
-        foreach (float sigma in Heavy ? new[] { 2f, 2f, 2f, 2f, 4.7f, 4.7f } : new[] { 1.3f, 1.3f, 4f })
+        foreach (float sigma in heavy ? new[] { 2f, 2f, 2f, 2f, 4.7f, 4.7f } : new[] { 1.3f, 1.3f, 4f })
         {
-            using var paint = new SKPaint { ColorFilter = tint, ImageFilter = SKImageFilter.CreateBlur(sigma, sigma) };
-            surface.Canvas.DrawBitmap(source, Spill, Spill, paint);
+            float blur = sigma * (float)scale;
+            using var paint = new SKPaint { ColorFilter = tint, ImageFilter = SKImageFilter.CreateBlur(blur, blur) };
+            surface.Canvas.DrawBitmap(source, (float)(Spill * scale), (float)(Spill * scale), paint);
         }
-        using var image = surface.Snapshot();
-        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-        using var stream = data.AsStream();
-        _picture?.Dispose();
-        _picture = new Bitmap(stream);
-        Baked++;
-        InvalidateVisual();
+        using var pixels = surface.PeekPixels();
+        return new Bitmap(Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul, pixels.GetPixels(), new PixelSize(pixels.Width, pixels.Height), new Vector(96, 96), pixels.RowBytes);
     }
 
     public override void Render(DrawingContext context)
     {
-        if (_picture != null) context.DrawImage(_picture, new Rect(_picture.Size));
+        if (_picture != null) context.DrawImage(_picture, new Rect(_picture.Size), new Rect(_picture.Size / _pictureScale));
     }
 }

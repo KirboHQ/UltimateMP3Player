@@ -327,22 +327,4 @@ public static class Codecs
         "pcm" => "wav",
         _ => "mka",
     };
-
-    public static string Pretty(string? family) => family switch
-    {
-        "h264" => "H.264",
-        "hevc" => "H.265",
-        "av1" => "AV1",
-        "vp9" => "VP9",
-        "vp8" => "VP8",
-        "aac" => "AAC",
-        "opus" => "Opus",
-        "vorbis" => "Vorbis",
-        "mp3" => "MP3",
-        "flac" => "FLAC",
-        "alac" => "ALAC",
-        "pcm" => "PCM",
-        null or "" => "?",
-        _ => family.ToUpperInvariant(),
-    };
 }

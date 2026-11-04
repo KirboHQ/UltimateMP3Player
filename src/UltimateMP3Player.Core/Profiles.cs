@@ -846,17 +846,6 @@ public sealed class Profile
         ArtistsChanged?.Invoke();
     }
 
-    public void SetArtistPicture(string name, string? id, string? picture)
-    {
-        lock (_lock)
-            if (Data.Artists.FirstOrDefault(a => Text.Normalize(a.Name) == Text.Normalize(name)) is { } a)
-            {
-                a.DeezerId ??= id;
-                a.Picture = picture ?? a.Picture;
-            }
-        Save();
-    }
-
     // The artist chosen for the name (or proved by the library's songs): its releases are looked for there.
     public void SetArtist(string name, string? deezerId, string? picture)
     {
