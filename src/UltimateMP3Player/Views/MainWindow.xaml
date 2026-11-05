@@ -235,9 +235,6 @@
                                             <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="Item" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                                             </Trigger>
-                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                <Setter TargetName="Item" Property="Background" Value="{DynamicResource Surface2Brush}"/>
-                                            </DataTrigger>
                                             <DataTrigger Binding="{Binding IsPlayingFrom}" Value="True">
                                                 <Setter TargetName="Name" Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
                                             </DataTrigger>
@@ -294,9 +291,6 @@
                                                 <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="Item" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                                                 </Trigger>
-                                                <DataTrigger Binding="{Binding IsOpen}" Value="True">
-                                                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource Surface2Brush}"/>
-                                                </DataTrigger>
                                             </DataTemplate.Triggers>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -397,9 +391,6 @@
                                                 <Trigger SourceName="Item" Property="IsMouseOver" Value="True">
                                                     <Setter TargetName="Item" Property="Background" Value="{DynamicResource RowHoverBrush}"/>
                                                 </Trigger>
-                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                    <Setter TargetName="Item" Property="Background" Value="{DynamicResource Surface2Brush}"/>
-                                                </DataTrigger>
                                             </DataTemplate.Triggers>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -500,11 +491,15 @@
 
                 <!-- downloads going on, seen from any page: each group (a song, or the songs of a link) with how far it is and a
                      button that cancels it; a click opens the downloads (the search's page without words) -->
-                <Border x:Name="DownloadPanel" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,16" Width="320" CornerRadius="14" Padding="4"
-                        Background="{DynamicResource PopupBrush}" Visibility="{Binding ShowDownloadPanel, Converter={StaticResource BoolVis}}">
-                    <Border.Effect>
-                        <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.45" Color="{DynamicResource PopupShadowColor}"/>
-                    </Border.Effect>
+                <Grid x:Name="DownloadPanel" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,16" Width="320"
+                      Visibility="{Binding ShowDownloadPanel, Converter={StaticResource BoolVis}}">
+                    <!-- (the shadow on its own, kept as a picture: on the panel, each step of a bar drew the whole blur again) -->
+                    <Border Background="{DynamicResource PopupBrush}" CornerRadius="14" CacheMode="BitmapCache" IsHitTestVisible="False">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.45" Color="{DynamicResource PopupShadowColor}"/>
+                        </Border.Effect>
+                    </Border>
+                    <Border Padding="4" Background="Transparent">
                     <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding Queue.Groups}">
                             <ItemsControl.ItemTemplate>
@@ -532,6 +527,7 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Border>
+                </Grid>
             </Grid>
         </Grid>
 
@@ -679,7 +675,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding PositionText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"
                                    Visibility="{Binding IsLive, Converter={StaticResource InvBoolVis}}"/>
-                        <views:WaveformBar Grid.Column="1" Height="30" Peaks="{Binding Current.Wave}" Progress="{Binding Progress}"
+                        <views:WaveformBar Grid.Column="1" Height="30" Peaks="{Binding Current.Wave}" Progress="{Binding Progress}" Shape="{Binding SeekShape}" Mirrored="{Binding SeekMirrored}"
                                            IsPlaying="{Binding Animate}" Duration="{Binding Duration}" Rate="{Binding Speed}"
                                            PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}"
                                            SeekCommand="{Binding SeekCommand}" ToolTip="{Binding SeekTip}"
@@ -730,11 +726,14 @@
                         <Popup x:Name="PlaybackPopup" PlacementTarget="{Binding ElementName=PlaybackButton}" Placement="Top" StaysOpen="False"
                                AllowsTransparency="True" PopupAnimation="Fade" HorizontalOffset="-600" VerticalOffset="-6">
                             <!-- two columns: speed and volume on the left, the equalizer on the right -->
-                            <Border Margin="10" Width="720" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                                    BorderThickness="1" CornerRadius="18" Padding="22,18,22,18">
-                                <Border.Effect>
-                                    <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
-                                </Border.Effect>
+                            <Grid Margin="10" Width="720" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}">
+                                <!-- (the shadow on its own, kept as a picture: on the panel, each move of a slider drew the whole blur again) -->
+                                <Border Background="{DynamicResource PopupBrush}" CornerRadius="18" CacheMode="BitmapCache" IsHitTestVisible="False">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
+                                    </Border.Effect>
+                                </Border>
+                                <Border Background="Transparent" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="18" Padding="22,18,22,18">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600" Focusable="False">
                                     <Grid>
                                     <Grid.ColumnDefinitions>
@@ -890,6 +889,7 @@
                                     </Grid>
                                 </ScrollViewer>
                             </Border>
+                            </Grid>
                         </Popup>
                     </Grid>
                     <Button Style="{StaticResource ControlButton}" Content="{Binding VolumeGlyph}" AutomationProperties.Name="{local:T Mute}" Command="{Binding ToggleMuteCommand}"
@@ -918,5 +918,8 @@
                 <Rectangle RadiusX="24" RadiusY="24" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2" StrokeDashArray="5 3" Margin="8"/>
             </Grid>
         </Border>
+
+        <!-- Behind a dialog the window steps back (DimForDialog) -->
+        <Border x:Name="DialogDim" Grid.RowSpan="3" Background="Black" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False"/>
     </Grid>
 </Window>

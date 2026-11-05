@@ -79,7 +79,54 @@
                     <StackPanel>
                         <TextBlock Text="{local:T Appearance}" Style="{StaticResource CardTitle}"/>
                         <TextBlock Text="{local:T 'Theme (for this profile)'}" Style="{StaticResource FieldLabel}"/>
-                        <ItemsControl ItemsSource="{Binding Themes}" Margin="0,2,0,14">
+                        <StackPanel>
+                            <TextBlock Text="{local:T Dynamic}" Style="{StaticResource Hint}" Margin="2,2,0,6"/>
+                            <ItemsControl ItemsSource="{Binding MovingThemes}" Margin="0,0,0,6">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:ThemeOption}">
+                                        <Button Height="38" Margin="0,0,8,8" Cursor="Hand" AutomationProperties.Name="{Binding Label}" FocusVisualStyle="{x:Null}"
+                                                Command="{Binding DataContext.SelectThemeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding Id}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="Pill" CornerRadius="19" Padding="6,0,16,0" Background="{DynamicResource Surface2Brush}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Ellipse Width="26" Height="26" Fill="{Binding Swatch}"/>
+                                                            <TextBlock Text="{Binding Label}" Margin="9,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextBrush}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Pill" Property="Background" Value="{DynamicResource Surface3Brush}"/>
+                                                        </Trigger>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter TargetName="Pill" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                                        </DataTrigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Grid Margin="2,0,0,14" Visibility="{Binding IsRgbTheme, Converter={StaticResource BoolVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{local:T Speed}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                <Slider Grid.Column="1" Minimum="1" Maximum="10" SmallChange="0.5" LargeChange="0.5" IsSnapToTickEnabled="True" TickFrequency="0.5"
+                                        Value="{Binding RgbSpeed}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'RGB speed'}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding RgbSpeedText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                            </Grid>
+                            <TextBlock Text="{local:T Colors}" Style="{StaticResource Hint}" Margin="2,0,0,6"/>
+                        <ItemsControl ItemsSource="{Binding ColorThemes}" Margin="0,0,0,14">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel/>
@@ -111,10 +158,34 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+                        </StackPanel>
+                        <Grid Margin="2,-6,0,14" Visibility="{Binding IsCustomTheme, Converter={StaticResource BoolVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{local:T Hue}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <Slider Grid.Column="1" Minimum="0" Maximum="359" Value="{Binding CustomHue}" VerticalAlignment="Center" AutomationProperties.Name="{local:T Hue}"/>
+                            <TextBox Grid.Column="2" Style="{StaticResource BoxTextBox}" Width="100" Margin="14,0,0,0" MaxLength="7" Text="{Binding CustomColorText, UpdateSourceTrigger=PropertyChanged}"
+                                     AutomationProperties.Name="{local:T 'Custom colour'}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding ThemeHint}" Style="{StaticResource Hint}" Margin="0,-8,0,14" Visibility="{Binding HasThemeHint, Converter={StaticResource BoolVis}}"/>
 
                         <TextBlock Text="{local:T 'Light or dark'}" Style="{StaticResource FieldLabel}"/>
                         <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding Appearances}" SelectedItem="{Binding Appearance}"
                                   Margin="0,0,0,18" AutomationProperties.Name="{local:T 'Light or dark'}"/>
+
+                        <TextBlock Text="{local:T 'Shape of the song bar'}" Style="{StaticResource FieldLabel}"/>
+                        <StackPanel Margin="0,0,0,18">
+                            <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding VisualizerStyles}" SelectedItem="{Binding SeekStyleChoice}"
+                                      AutomationProperties.Name="{local:T 'Shape of the song bar'}"/>
+                            <CheckBox Style="{StaticResource SettingSwitch}" IsChecked="{Binding SeekMirrored}" Margin="0,10,0,0">
+                                <TextBlock Text="{local:T Mirrored}"/>
+                            </CheckBox>
+                            <views:WaveformBar Height="30" Margin="0,10,0,0" Peaks="{Binding SeekSample}" Progress="0.4" Shape="{Binding SeekStyle}" Mirrored="{Binding SeekMirrored}" IsHitTestVisible="False"
+                                               PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}"/>
+                        </StackPanel>
 
                         <TextBlock Text="{local:T Language}" Style="{StaticResource FieldLabel}"/>
                         <ComboBox Width="240" HorizontalAlignment="Left" ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}"
@@ -986,14 +1057,21 @@
                                 <DataTemplate>
                                     <Grid Margin="0,10,0,0">
                                         <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <!-- how it looks: what its editor last showed, or the picture of its look -->
+                                        <Border Width="96" Height="60" CornerRadius="8" Margin="0,0,12,0">
+                                            <Border.Background>
+                                                <ImageBrush ImageSource="{Binding Picture}" Stretch="UniformToFill" AlignmentY="{Binding PictureY}"/>
+                                            </Border.Background>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
                                             <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
                                             <TextBlock Text="{Binding Summary}" Style="{StaticResource Hint}"/>
                                         </StackPanel>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                             <Button Style="{StaticResource GhostButton}" Padding="14,7" Margin="0,0,6,0" Content="{local:T 'Copy link'}" Command="{Binding CopyCommand}"/>
                                             <Button Style="{StaticResource IconButton}" Width="32" Height="32" FontSize="14" Content="&#xE8A7;" ToolTip="{local:T Preview}" Command="{Binding PreviewCommand}"/>
                                             <Button Style="{StaticResource IconButton}" Width="32" Height="32" FontSize="14" Content="&#xE70F;" ToolTip="{local:T Edit}" Command="{Binding EditCommand}"/>

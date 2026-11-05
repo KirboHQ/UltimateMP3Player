@@ -232,6 +232,7 @@ public partial class SettingsPage : UserControl, IPage
             "Language" => (L.T("Language"), vm.Languages, vm.Language, x => vm.Language = x),
             "VisualizerFlowChoice" => (L.T("Direction of the bars"), vm.VisualizerFlows, vm.VisualizerFlowChoice, x => vm.VisualizerFlowChoice = x),
             "VisualizerPlaceChoice" => (L.T("Position of the bars"), vm.VisualizerPlaces, vm.VisualizerPlaceChoice, x => vm.VisualizerPlaceChoice = x),
+            "SeekStyleChoice" => (L.T("Shape of the song bar"), vm.VisualizerStyles, vm.SeekStyleChoice, x => vm.SeekStyleChoice = x),
             "VisualizerStyleChoice" => (L.T("Shape of the bars"), vm.VisualizerStyles, vm.VisualizerStyleChoice, x => vm.VisualizerStyleChoice = x),
             "VisualizerTintChoice" => (L.T("Color of the bars"), vm.VisualizerTints, vm.VisualizerTintChoice, x => vm.VisualizerTintChoice = x),
             "VisualizerThicknessChoice" => (vm.VisualizerThicknessLabel, vm.VisualizerThicknesses, vm.VisualizerThicknessChoice, x => vm.VisualizerThicknessChoice = x),

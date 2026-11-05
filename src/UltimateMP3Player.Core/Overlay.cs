@@ -28,8 +28,8 @@ public sealed class OverlaySource
     // When it's on screen: "playing" (with the music, gone HideAfter seconds after it stops), "change" (ShowFor seconds at every
     // new song), "always".
     public string Show { get; set; } = "playing";
-    public int HideAfter { get; set; } = 5;
-    public int ShowFor { get; set; } = 8;
+    public double HideAfter { get; set; } = 5;
+    public double ShowFor { get; set; } = 8;
     // Where it sits in the browser source (0 left or top, 1 right or bottom) and how much of the source it takes.
     public double AnchorX { get; set; } = 0.5;
     public double AnchorY { get; set; } = 0.5;
@@ -43,6 +43,8 @@ public sealed class OverlaySource
     public bool Arm { get; set; } = true;
     public bool ShowArtist { get; set; } = true;
     public bool ShowTime { get; set; } = true;
+    // Where the title and the artist stand in their space: left, center, right.
+    public string TextAlign { get; set; } = "left";
     // Inside the card: the small bars, the line of the progress, both or neither.
     public bool Bars { get; set; } = true;
     public bool ShowBar { get; set; }
@@ -51,6 +53,8 @@ public sealed class OverlaySource
     public VisualizerPlace BarsPlace { get; set; } = VisualizerPlace.Bottom;
     public VisualizerFlow Flow { get; set; } = VisualizerFlow.MirrorSides;
     public VisualizerStyle Style { get; set; } = VisualizerStyle.Bars;
+    // The small bars' shape (Style is the big ones'); null: a source of before they had one, like the big ones until it's edited.
+    public VisualizerStyle? InsideStyle { get; set; }
 }
 
 // What's playing, as the overlays need it. CoverPath and VideoPath stay here: the pages only get a link to the current ones.
@@ -81,6 +85,7 @@ public sealed class OverlayServer
 
     public const int FirstPort = 47800;
     private const int PortsTried = 20;
+    private const string HexDigits = "0123456789abcdef";
 
     private readonly object _lock = new();
     private readonly List<Client> _clients = new();
@@ -314,6 +319,8 @@ public sealed class OverlayServer
             client.Send("state", _state.Json());
             long lastWrite = Environment.TickCount64;
             var text = new StringBuilder();
+            // (one for all the writes: a new one at each, 60 times a second, is a new timer each time)
+            using var timeout = new CancellationTokenSource();
             while (!client.Closed)
             {
                 bool bars = _state.Playing && (source.Bars || source.BarsBehind || source.Glow || source.Pulse);
@@ -331,14 +338,19 @@ public sealed class OverlayServer
                     text.Append("event: bars\ndata: ");
                     // (every second band is plenty for a card, and each one in two hex digits)
                     var bands = Spectrum.Shared.Read();
-                    for (int i = 0; i < bands.Length; i += 2) text.Append(((int)(bands[i] * 255)).ToString("x2"));
+                    for (int i = 0; i < bands.Length; i += 2)
+                    {
+                        int band = (int)(bands[i] * 255);
+                        text.Append(HexDigits[band >> 4]).Append(HexDigits[band & 15]);
+                    }
                     text.Append("\n\n");
                 }
                 // (a comment now and then: a page gone is noticed by the write failing)
                 if (text.Length == 0 && Environment.TickCount64 - lastWrite > 15000) text.Append(": still here\n\n");
                 if (text.Length == 0) continue;
-                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                timeout.CancelAfter(5000);
                 await stream.WriteAsync(Encoding.UTF8.GetBytes(text.ToString()), timeout.Token);
+                timeout.CancelAfter(Timeout.Infinite);
                 lastWrite = Environment.TickCount64;
             }
         }

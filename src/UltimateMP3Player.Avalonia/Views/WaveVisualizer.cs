@@ -52,8 +52,13 @@ public sealed class WaveVisualizer : Control
     public static long Drawn;
 
     private CompositionCustomVisual? _visual;
-    private readonly Painter _painter = new();
     private bool _looking, _seen = true;
+    private bool? _sent;
+
+    // Something around them hidden or shown (the song's page closed, another tab) says nothing to them, and on the render thread
+    // they'd never look: they'd go on unseen, with the sound analyzed and the strip they run in redrawn at every frame.
+    private static event Action? AnyShown;
+    static WaveVisualizer() => IsVisibleProperty.Changed.AddClassHandler<Visual>((_, _) => AnyShown?.Invoke());
 
     public WaveVisualizer()
     {
@@ -75,7 +80,7 @@ public sealed class WaveVisualizer : Control
         base.OnPropertyChanged(change);
         if (change.Property == BoundsProperty && _visual != null)
             _visual.Size = new Vector2((float)Bounds.Width, (float)Bounds.Height);
-        if (change.Property == IsPlayingProperty || change.Property == IsPreviewProperty || change.Property == IsVisibleProperty) UpdateRun();
+        if (change.Property == IsPlayingProperty || change.Property == IsPreviewProperty) UpdateRun();
         if (change.Property == FlowProperty || change.Property == PlaceProperty || change.Property == BarStyleProperty || change.Property == TintProperty || change.Property == ColorProperty
             || change.Property == ThicknessProperty || change.Property == StrengthProperty || change.Property == DimProperty || change.Property == IsPreviewProperty
             || change.Property == HeightShareProperty || change.Property == MiddleProperty) Push();
@@ -84,12 +89,16 @@ public sealed class WaveVisualizer : Control
     private void Attach()
     {
         if (ElementComposition.GetElementVisual(this)?.Compositor is not { } compositor) return;
-        _visual = compositor.CreateCustomVisual(_painter);
+        // (a new one each time: one left while its bars moved would wait forever for the frame its old visual took with it)
+        _visual = compositor.CreateCustomVisual(new Painter());
         _visual.ClipToBounds = true;
         ElementComposition.SetElementChildVisual(this, _visual);
         _visual.Size = new Vector2((float)Bounds.Width, (float)Bounds.Height);
+        _sent = null;
         Themes.Changed += OnTheme;
+        Themes.AccentChanged += OnTheme;
         Ui.HiddenChanged += UpdateRun;
+        AnyShown += UpdateRun;
         Push();
         UpdateRun();
     }
@@ -97,35 +106,65 @@ public sealed class WaveVisualizer : Control
     private void Detach()
     {
         Themes.Changed -= OnTheme;
+        Themes.AccentChanged -= OnTheme;
         Ui.HiddenChanged -= UpdateRun;
+        AnyShown -= UpdateRun;
         SetLooking(false);
         ElementComposition.SetElementChildVisual(this, null);
         _visual = null;
     }
 
-    private void OnTheme() => Dispatcher.UIThread.Post(Push);
+    private void OnTheme() => Dispatcher.UIThread.Post(Retint);
 
-    // A hidden page (kept built) doesn't look; IsVisible of an ancestor is looked at again in a while, like WaveformBar's.
-    private bool _waitShown;
+    // The app's colour moving from song to song: the bars with it, not at its end.
+    private Color? _accent;
+    private int _accentRun;
+
+    private void Retint()
+    {
+        var to = Themes.Get("Accent");
+        int run = ++_accentRun;
+        // (the theme RGB's steps are too close together for a glide: each would start over before it got anywhere)
+        if (Tint != VisualizerTint.Accent || _accent is not { } from || from == to || !Ui.Animations || !IsEffectivelyVisible || Themes.IsRgb)
+        {
+            _accent = to;
+            Push();
+            return;
+        }
+        Ui.Tween(this, Themes.FadeMs, Ui.CubicInOut, k =>
+        {
+            if (run != _accentRun) return;
+            _accent = Themes.Between(from, to, k);
+            Push();
+        });
+    }
+
+    // From one song to the next: the colour moves with the rest of the app's.
+    private int _colorRun;
+
+    public void FadeColor(Color to)
+    {
+        int run = ++_colorRun;
+        if (Color.A == 0 || !Ui.Animations || !IsEffectivelyVisible)
+        {
+            Color = to;
+            return;
+        }
+        var from = Color;
+        Ui.Tween(this, Themes.FadeMs, Ui.CubicInOut, k =>
+        {
+            if (run == _colorRun) Color = Themes.Between(from, to, k);
+        });
+    }
 
     private void UpdateRun()
     {
         if (_visual == null) return;
-        bool want = (IsPlaying || (IsPreview && _seen && !Ui.Hidden)) && IsVisible;
-        if (want && !IsEffectivelyVisible)
-        {
-            want = false;
-            if (!_waitShown)
-            {
-                _waitShown = true;
-                Ui.Later(() =>
-                {
-                    _waitShown = false;
-                    UpdateRun();
-                });
-            }
-        }
+        bool want = (IsPlaying || (IsPreview && _seen && !Ui.Hidden)) && IsEffectivelyVisible;
         SetLooking(want);
+        // (AnyShown asks at every change in the app: each message would wake the render thread for a frame)
+        if (want == _sent) return;
+        _sent = want;
         _visual.SendHandlerMessage(want);
     }
 
@@ -141,7 +180,7 @@ public sealed class WaveVisualizer : Control
     {
         var color = Tint switch
         {
-            VisualizerTint.Accent => Themes.Get("Accent"),
+            VisualizerTint.Accent => _accent ??= Themes.Get("Accent"),
             VisualizerTint.Text => Themes.Get("Text"),
             _ => Color.A > 0 ? Color : Themes.Get("Accent"),
         };
@@ -185,9 +224,34 @@ public sealed class WaveVisualizer : Control
         {
             int n = SpectrumColumns.CountFor(EffectiveSize.X, _look.Thickness, _look.Style);
             _any = _columns.Update(n, _look.Flow, _running, _look.Preview, Ui.Animations);
-            Invalidate();
+            InvalidateLanes();
             if (_any) RegisterForNextAnimationFrameUpdate();
             else _ticking = false;
+        }
+
+        // Only the strips the bars move in: everything under and over them (the whole screen, on a phone) stays as it was drawn.
+        private void InvalidateLanes()
+        {
+            double w = EffectiveSize.X, h = EffectiveSize.Y;
+            // (a line's thickness, a block or a peak past the tip)
+            const double Past = 12;
+            double reach = SpectrumColumns.ReachOf(_look.Place, h, _look.Share) + Past, middle = double.IsNaN(_look.Middle) ? h / 2 : _look.Middle;
+            switch (_look.Place)
+            {
+                case VisualizerPlace.Top:
+                    Invalidate(new Rect(0, 0, w, reach));
+                    break;
+                case VisualizerPlace.Both:
+                    Invalidate(new Rect(0, 0, w, reach));
+                    Invalidate(new Rect(0, h - reach, w, reach));
+                    break;
+                case VisualizerPlace.Center:
+                    Invalidate(new Rect(0, middle - reach, w, 2 * reach));
+                    break;
+                default:
+                    Invalidate(new Rect(0, h - reach, w, reach));
+                    break;
+            }
         }
 
         public override void OnRender(ImmediateDrawingContext context)
@@ -209,6 +273,9 @@ public sealed class WaveVisualizer : Control
             Interlocked.Increment(ref Drawn);
             var canvas = lease.SkCanvas;
             float slot = w / n;
+            // On whole pixels of the screen, as on Windows: half-covered edges make some bars look wider than others, a falling peak blurred.
+            float pixels = Math.Max(1, canvas.TotalMatrix.ScaleX);
+            float Snap(float v) => MathF.Round(v * pixels) / pixels;
             var place = _look.Place;
             int lanes = SpectrumColumns.LanesOf(place);
             switch (_look.Style)
@@ -234,13 +301,13 @@ public sealed class WaveVisualizer : Control
                 }
                 case VisualizerStyle.Blocks:
                 {
-                    float bar = Math.Max(2, (float)SpectrumColumns.BarOf(slot, _look.Thickness, VisualizerStyle.Blocks)), block = Math.Clamp(bar, 4, 9), step = block + 2;
+                    float bar = Math.Max(2, Snap((float)SpectrumColumns.BarOf(slot, _look.Thickness, VisualizerStyle.Blocks))), block = Math.Clamp(bar, 4, 9), step = block + 2;
                     for (int lane = 0; lane < lanes; lane++)
                     {
                         var (from, way) = SpectrumColumns.Lane(place, lane, h, middle);
                         for (int i = 0; i < n; i++)
                         {
-                            float x = i * slot + (slot - bar) / 2;
+                            float x = Snap(i * slot + (slot - bar) / 2);
                             int count = Math.Max(1, (int)(heights[i] * reach / step));
                             for (int k = 0; k < count; k++)
                             {
@@ -253,7 +320,8 @@ public sealed class WaveVisualizer : Control
                 }
                 default:
                 {
-                    float bar = Math.Max(1.5f, (float)SpectrumColumns.BarOf(slot, _look.Thickness, _look.Style)), r = bar / 2;
+                    // (round tips only so far: a wide bar with half a circle on top, at rest, is a row of balls)
+                    float bar = Math.Max(2 / pixels, Snap((float)SpectrumColumns.BarOf(slot, _look.Thickness, _look.Style))), r = Math.Min(bar / 2, 5);
                     bool peaks = _look.Style == VisualizerStyle.Peaks;
                     var tops = _columns.Peaks;
                     // In the center one rectangle for both sides: two half-transparent ones overlapping would show a band.
@@ -261,9 +329,9 @@ public sealed class WaveVisualizer : Control
                     {
                         for (int i = 0; i < n; i++)
                         {
-                            float x = i * slot + (slot - bar) / 2, length = Math.Max(3, heights[i] * reach), peak = tops[i] * reach;
+                            float x = Snap(i * slot + (slot - bar) / 2), length = Math.Max(3, Snap(heights[i] * reach)), peak = Snap(tops[i] * reach);
                             canvas.DrawRoundRect(new SKRect(x, middle - length, x + bar, middle + length), r, r, _fill);
-                            if (!peaks || peak <= length + 4) continue;
+                            if (!peaks || peak <= length) continue;
                             canvas.DrawRect(new SKRect(x, middle - peak - 4, x + bar, middle - peak - 1), _fill);
                             canvas.DrawRect(new SKRect(x, middle + peak + 1, x + bar, middle + peak + 4), _fill);
                         }
@@ -275,10 +343,10 @@ public sealed class WaveVisualizer : Control
                         float from = (float)from0;
                         for (int i = 0; i < n; i++)
                         {
-                            float x = i * slot + (slot - bar) / 2, length = Math.Max(3, heights[i] * reach), peak = tops[i] * reach;
+                            float x = Snap(i * slot + (slot - bar) / 2), length = Math.Max(3, Snap(heights[i] * reach)), peak = Snap(tops[i] * reach);
                             // (the rounded base goes past the edge, the visual cuts it: only the tips are round)
                             canvas.DrawRoundRect(way < 0 ? new SKRect(x, from - length, x + bar, from + r) : new SKRect(x, from - r, x + bar, from + length), r, r, _fill);
-                            if (!peaks || peak <= length + 4) continue;
+                            if (!peaks || peak <= length) continue;
                             canvas.DrawRect(way < 0 ? new SKRect(x, from - peak - 4, x + bar, from - peak - 1) : new SKRect(x, from + peak + 1, x + bar, from + peak + 4), _fill);
                         }
                     }

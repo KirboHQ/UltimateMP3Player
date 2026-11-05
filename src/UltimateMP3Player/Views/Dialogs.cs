@@ -5,6 +5,8 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.ViewModels;
+using System.Windows.Media.Animation;
+using UltimateMP3Player.Views;
 
 namespace UltimateMP3Player;
 
@@ -411,17 +413,49 @@ public static partial class Dialogs
             Padding = new Thickness(24, 20, 24, 20),
             Margin = new Thickness(18),
             Child = stack,
-            Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 6, Opacity = 0.55, Color = Colors.Black },
-            LayoutTransform = Ui.ZoomTransform,
         };
+        // The shadow on a card of its own, kept as a picture. On the card itself anything moving inside (the overlay's preview, 30 times
+        // a second) would blur the whole dialog again.
+        var shadow = new Border
+        {
+            Background = (Brush)res["SurfaceBrush"],
+            CornerRadius = new CornerRadius(16),
+            Margin = new Thickness(18),
+            IsHitTestVisible = false,
+            Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 6, Opacity = 0.55, Color = Colors.Black },
+            CacheMode = new BitmapCache(),
+        };
+        var both = new Grid { LayoutTransform = Ui.ZoomTransform };
+        both.Children.Add(shadow);
+        both.Children.Add(card);
         // Dragging the card moves the dialog, but not from something clickable (its release would be lost).
         card.MouseLeftButtonDown += (_, e) =>
         {
             if (e.ButtonState != MouseButtonState.Pressed || IsClickable(e.OriginalSource as DependencyObject, card)) return;
             try { win.DragMove(); } catch { }
         };
-        win.Content = card;
+        win.Content = both;
+        win.Loaded += (_, _) =>
+        {
+            ComeForward(both);
+            (win.Owner as MainWindow)?.DimForDialog(true);
+        };
+        win.Closed += (_, _) => (win.Owner as MainWindow)?.DimForDialog(false);
         return win;
+    }
+
+    // Opening: it comes up from just behind where it stays. On the render thread, nothing is left running.
+    private static void ComeForward(FrameworkElement card)
+    {
+        if (!Ui.Animations) return;
+        var time = Ui.Time(150);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var scale = new ScaleTransform();
+        card.RenderTransformOrigin = new Point(0.5, 0.5);
+        card.RenderTransform = scale;
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.96, 1, time) { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.96, 1, time) { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
+        card.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, time) { EasingFunction = ease, FillBehavior = FillBehavior.Stop });
     }
 
     private static bool IsClickable(DependencyObject? d, DependencyObject card)

@@ -7,6 +7,17 @@
 <meta charset="utf-8">
 <title>Ultimate MP3 Player</title>
 <style>
+/* (colours the browser knows are colours can move: from one song to the next, and only then, a slider in the editor wants them at once) */
+@property --accent { syntax: '<color>'; inherits: true; initial-value: #8b7cff; }
+@property --soft { syntax: '<color>'; inherits: true; initial-value: #2e2858; }
+@property --accent-text { syntax: '<color>'; inherits: true; initial-value: #c9c0ff; }
+@property --solid { syntax: '<color>'; inherits: true; initial-value: #2a2547; }
+@property --win { syntax: '<color>'; inherits: true; initial-value: #26252c; }
+@property --win2 { syntax: '<color>'; inherits: true; initial-value: #1e1d23; }
+@property --disc { syntax: '<color>'; inherits: true; initial-value: #232428; }
+@property --glow { syntax: '<color>'; inherits: true; initial-value: #8b7cff8c; }
+@property --plate { syntax: '<color>'; inherits: true; initial-value: #5d48d8; }
+:root.fading { transition: --accent .7s ease, --soft .7s ease, --accent-text .7s ease, --solid .7s ease, --win .7s ease, --win2 .7s ease, --disc .7s ease, --glow .7s ease, --plate .7s ease; }
 :root {
   --accent: #8b7cff; --soft: #2e2858; --accent-text: #c9c0ff; --solid: #2a2547; --win: #26252c; --win2: #1e1d23; --disc: #232428; --glow: #8b7cff8c; --plate: #5d48d8; --p: 0;
   --text: #fff; --text2: rgba(255,255,255,.78); --rk: 1; --glass: 1;
@@ -24,7 +35,6 @@ body.preview { background: #101116 radial-gradient(circle at 1px 1px, #ffffff14 
 /* ------------------------------------------------ the pieces */
 .card { position: relative; overflow: hidden; border-radius: calc(20px * var(--rk)); box-shadow: 0 10px 34px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.13); }
 .solid { background: var(--solid); }
-.mesh { background: var(--solid); }
 /* (a square wider than the card: it covers a long thin one too, turned) */
 .mesh .bg { position: absolute; left: -30%; width: 160%; aspect-ratio: 1; top: 50%; margin-top: -80%; opacity: var(--glass); animation: drift 26s ease-in-out infinite alternate; will-change: transform; }
 .mesh .bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 1.1s ease; }
@@ -54,6 +64,9 @@ canvas.wave { display: block; }
 .macos.no-time .times, .no-time.no-progress .times, .is-live .times { display: none; }
 .no-progress .bar, .no-progress .rule, .no-progress .ascii { display: none; }
 .empty-clock .clock { display: none !important; }
+/* the words in their space, in every look (one too long to fit starts at its start and scrolls, as ever) */
+.align-center .title, .align-center .artist, .align-center .line-title, .align-center .line-artist { text-align: center; }
+.align-right .title, .align-right .artist, .align-right .line-title, .align-right .line-artist { text-align: right; }
 .live { display: none; align-items: center; gap: 9px; font-weight: 800; color: var(--accent-text); letter-spacing: .08em; }
 .live::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
@@ -94,7 +107,7 @@ canvas.wave { display: block; }
 /* the canvas: the picture fills the whole card and moves (the song's video when there is one, otherwise its cover), the rest floats
    over it, always light on dark whatever the look */
 .cover-canvas { --text: #fff; --text2: rgba(255,255,255,.88); --accent-text: #fff; position: relative; overflow: hidden; border-radius: calc(26px * var(--rk)); padding: 18px; box-shadow: 0 16px 44px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.1); }
-.cover-canvas .art { position: absolute !important; inset: 0; width: auto !important; aspect-ratio: auto; align-self: stretch !important; margin: 0 !important; z-index: 0; }
+.cover-canvas .art { position: absolute !important; inset: 0; width: auto !important; aspect-ratio: auto; align-self: stretch !important; margin: 0 !important; z-index: 0; opacity: var(--glass); }
 .cover-canvas .art .disc { border-radius: 0; box-shadow: none; background: linear-gradient(135deg, var(--accent), var(--soft)); }
 .cover-canvas .art .note { display: none; }
 .cover-canvas .art .pics { position: absolute; inset: -16%; animation: float 13s ease-in-out infinite alternate; will-change: transform; }
@@ -103,7 +116,7 @@ canvas.wave { display: block; }
 .has-video .pics { animation: none !important; }
 @keyframes float { from { transform: scale(1) translate3d(-6%, 5%, 0); } to { transform: scale(1.24) translate3d(6%, -5%, 0); } }
 .cover-canvas > :not(.art), .cover-canvas .mesh > :not(.bg):not(.art) { position: relative; z-index: 1; }
-.cover-canvas .card:not(.line) { background: rgba(12,12,18,.34); box-shadow: inset 0 1px 0 rgba(255,255,255,.14); }
+.cover-canvas .card:not(.line) { background: rgb(12 12 18 / calc(.34 * var(--glass))); box-shadow: inset 0 1px 0 rgba(255,255,255,.14); }
 .cover-canvas .mesh .bg { display: none; }
 .cover-canvas .title, .cover-canvas .artist { text-shadow: 0 1px 10px rgba(0,0,0,.55); }
 .cover-canvas .bar, .cover-canvas .rule { background: rgba(255,255,255,.24); }
@@ -114,12 +127,13 @@ canvas.wave { display: block; }
 .minimal.cover-canvas .line { background: none; box-shadow: none; }
 .discord.cover-canvas .panel { background: none; box-shadow: none; border-radius: 0; position: relative; overflow: hidden; }
 .discord.cover-canvas .head, .discord.cover-canvas .names { position: relative; z-index: 1; }
-.cover-canvas .window { background: rgba(14,14,20,.5); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
-.cover-canvas .chrome { background: rgba(14,14,20,.42); }
+.cover-canvas .window { background: rgb(14 14 20 / calc(.5 * var(--glass))); box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
+.cover-canvas .chrome { background: rgb(14 14 20 / calc(.42 * var(--glass))); }
 
 /* ------------------------------------------------ big bars rising from behind the card */
 canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%; height: 100%; z-index: -1; }
-.bars-behind canvas.behind { display: block; }
+/* (they go with the cards: Card opacity) */
+.bars-behind canvas.behind { display: block; opacity: var(--glass); }
 .place-0 { padding-top: 102px; }
 .place-1 { padding-bottom: 102px; }
 .place-2 { padding: 102px 0; }
@@ -182,6 +196,13 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 .minimal .title { font-size: 28px; flex: 0 1 auto; max-width: 66%; }
 .minimal .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text); opacity: .75; flex: none; align-self: center; }
 .minimal .artist { font-size: 26px; flex: 1 1 0; min-width: 40px; }
+/* (title and artist on one line: the two together in the middle, or at the end) */
+.align-center.minimal .names { justify-content: center; }
+.align-right.minimal .names { justify-content: flex-end; }
+.align-center.minimal .artist, .align-right.minimal .artist { flex: 0 1 auto; }
+.no-artist.minimal .title { max-width: 100%; }
+/* (no cover at its side: the same room on both sides, the middle of the card) */
+.align-center.minimal.cover-canvas .line, .align-center.minimal.cover-none .line { padding-left: 30px; }
 .minimal canvas.wave { width: 96px; height: 34px; flex: none; }
 .minimal .bar { width: 190px; flex: none; height: 16px; background: rgba(255,255,255,.2); }
 .minimal .bar i { background: var(--text); opacity: .92; }
@@ -292,7 +313,7 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 
 /* ------------------------------------------------ cassette: the song on the label, the reels turning, the tape going from one to the other */
 .cassette { width: 600px; }
-.cassette .tape { position: relative; border-radius: calc(26px * var(--rk)); background: linear-gradient(160deg, #34343c, #1f1f25); padding: 22px 26px 44px; box-shadow: 0 16px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.4); overflow: hidden; }
+.cassette .tape { position: relative; border-radius: calc(26px * var(--rk)); background: linear-gradient(160deg, rgb(52 52 60 / var(--glass)), rgb(31 31 37 / var(--glass))); padding: 22px 26px 44px; box-shadow: 0 16px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.4); overflow: hidden; }
 .cassette .tape::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: 0; height: 32px; background: #15151a; clip-path: polygon(7% 0, 93% 0, 100% 100%, 0 100%); }
 .cassette .screw { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #8b8b93, #3b3b42 70%); }
 .cassette .screw.a { left: 9px; top: 9px; } .cassette .screw.b { right: 9px; top: 9px; } .cassette .screw.c { left: 9px; bottom: 9px; } .cassette .screw.d { right: 9px; bottom: 9px; }
@@ -440,7 +461,7 @@ function placeOnScreen() {
   if (cfg.Show === "change") return;
   if (st.playing) { show(); return; }
   if (!shown) return;
-  if (!hideTimer) hideTimer = setTimeout(hide, (cfg.HideAfter || 5) * 1000);
+  if (!hideTimer) hideTimer = setTimeout(hide, (cfg.HideAfter ?? 5) * 1000);
 }
 function songStarted() {
   if (preview || cfg.Show !== "change" || !st.title) return;
@@ -493,7 +514,7 @@ function paint() {
     "--accent": `hsl(${p.h1} ${S(p.s1, 55, 92)}% ${g ? (dark ? 86 : 24) : dark ? 60 : 42}%)`,
     "--soft": `hsl(${p.h1} ${S(p.s1, 36, 78)}% ${dark ? 25 : 84}%)`,
     "--accent-text": `hsl(${p.h1} ${S(p.s1, 40, 78)}% ${g ? (dark ? 90 : 22) : dark ? 78 : 30}%)`,
-    "--plate": `hsl(${p.h1} ${S(p.s1, 50, 80)}% ${g ? 16 : dark ? 38 : 36}%)`,
+    "--plate": `hsl(${p.h1} ${S(p.s1, 50, 80)}% ${g ? 16 : dark ? 38 : 36}% / ${glass})`,
     "--solid": `hsl(${p.h2} ${S(p.s2 * .6, 18, 46)}% ${dark ? 22 : 93}% / ${glass})`,
     "--win": `hsl(${p.h1} ${g ? 0 : 9}% ${dark ? 18 : 97}% / ${glass})`,
     "--win2": `hsl(${p.h1} ${g ? 0 : 10}% ${dark ? 14 : 91}% / ${glass})`,
@@ -506,7 +527,15 @@ function paint() {
   };
   for (const k in v) root.style.setProperty(k, v[k]);
   accent = null;
-  bakeMesh();
+  const key = [cfg.MagicColors, cfg.Light, cfg.Tint, cover ? cover.src : ""].join();
+  if (key !== baked) { baked = key; bakeMesh(); }
+}
+let baked = null, fadeEnds = 0, fadeTimer = 0;
+function fadeColors() {
+  root.classList.add("fading");
+  fadeEnds = performance.now() + 760;
+  clearTimeout(fadeTimer);
+  fadeTimer = setTimeout(() => root.classList.remove("fading"), 760);
 }
 // The cover's colours blurred, once: a small picture stretched over the card (a live blur would cost every frame).
 function bakeMesh() {
@@ -542,13 +571,14 @@ function bakeMesh() {
 
 // ------------------------------------------------------------ the cover and the video
 function setCover(url) {
-  if (!url) { cover = null; palette = null; drawPics(null); paint(); return; }
+  if (!url) { cover = null; palette = null; drawPics(null); fadeColors(); paint(); return; }
   const img = new Image();
   img.onload = () => {
     if (st.cover !== url) return;
     cover = img;
     try { palette = readPalette(img); } catch (e) { palette = null; }
     drawPics(url);
+    fadeColors();
     paint();
   };
   img.src = url;
@@ -601,6 +631,7 @@ function build() {
   }
   sized = false;
   drawPics(st.cover || null);
+  baked = null;
   paint();
   fillText(true);
   tick();
@@ -619,6 +650,8 @@ function flags() {
   c.toggle("no-arm", cfg.Arm === false);
   c.toggle("no-artist", cfg.ShowArtist === false);
   c.toggle("no-time", cfg.ShowTime === false);
+  c.toggle("align-center", cfg.TextAlign === "center");
+  c.toggle("align-right", cfg.TextAlign === "right");
   c.toggle("no-progress", cfg.ShowBar === false);
   c.toggle("empty-clock", !cfg.Bars && cfg.ShowTime === false && cfg.ShowBar === false && !st.live);
   // (this runs at every word of the app, the clock's too: the canvases are made again only if what stands where may have changed)
@@ -736,7 +769,8 @@ function frame(now) {
     peaks[i] = Math.max(bands[i], peaks[i] - .009 * dt);
     if (bands[i] > .004 || peaks[i] > .004) any = true;
   }
-  if (!accent) accent = getComputedStyle(root).getPropertyValue("--accent").trim();
+  // (the bars are drawn here, not by the page: they take the colour as it moves)
+  if (!accent || now < fadeEnds) accent = getComputedStyle(root).getPropertyValue("--accent").trim();
   if (!sized) sizeCanvases();
   if (cfg.Bars && widget) widget.querySelectorAll("canvas.wave").forEach(c => { if (c.width > 1) drawMini(c); });
   if (cfg.BarsBehind) drawBehind(stage.querySelector("canvas.behind"));
@@ -802,8 +836,8 @@ function placeBehind(c) {
 // Where they start and how far they go: each lane a line they grow from, up (-1) or down (+1).
 const around = h => [{ from: h / 2, way: -1, reach: h / 2 }, { from: h / 2, way: 1, reach: h / 2 }];
 // One draw per column, never one path with all of them: a rounded rectangle goes straight to the GPU, a long path doesn't.
-function columns(x, w, count, gapShare, lanes, k) {
-  const slot = w / count, bw = Math.max(1, slot * (1 - gapShare)), rad = bw / 2, style = cfg.Style;
+function columns(x, w, count, gapShare, lanes, k, style) {
+  const slot = w / count, bw = Math.max(1, slot * (1 - gapShare)), rad = bw / 2;
   for (const { from, way, reach, fill } of lanes) {
     if (fill) x.fillStyle = fill;
     for (let i = 0; i < count; i++) {
@@ -868,15 +902,15 @@ function waves(x, w, points, lanes) {
   }
 }
 function drawMini(c) {
-  const x = c.getContext("2d"), w = c.width, h = c.height, k = c._k || 1, lanes = around(h);
+  const x = c.getContext("2d"), w = c.width, h = c.height, k = c._k || 1, lanes = around(h), style = cfg.InsideStyle ?? cfg.Style;
   x.clearRect(0, 0, w, h);
   x.globalAlpha = presence;
   x.fillStyle = x.strokeStyle = coverKind() === "canvas" ? "#fff" : accent;
-  if (cfg.Style === LINE) {
+  if (style === LINE) {
     x.lineWidth = 3 * k; x.lineCap = "round"; x.lineJoin = "round";
     curves(x, w, Math.max(8, Math.round(w / k / 9)), lanes);
-  } else if (cfg.Style === WAVEFORM) waves(x, w, Math.max(8, Math.round(w / k / 6)), lanes);
-  else columns(x, w, Math.max(5, Math.round(w / k / 14)), .42, lanes, k);
+  } else if (style === WAVEFORM) waves(x, w, Math.max(8, Math.round(w / k / 6)), lanes);
+  else columns(x, w, Math.max(5, Math.round(w / k / 14)), .42, lanes, k, style);
 }
 // The big bars. Their canvas is as big as the whole overlay: they start behind the card (a little inside it, so nothing shows where
 // they begin) and go out of it above, below, or from its middle.
@@ -884,7 +918,7 @@ function behindLanes(x, h, k) {
   // (a little inside the cards, so nothing shows where they begin)
   const over = bare() ? 0 : 22 * k, top = (hole ? hole[1] : 102) * k, bottom = hole ? (hole[1] + hole[3]) * k : h - 102 * k, solid = (from, to) => {
     const g = x.createLinearGradient(0, from, 0, to);
-    g.addColorStop(0, accent); g.addColorStop(1, accent.replace(")", " / .28)"));
+    g.addColorStop(0, accent); g.addColorStop(1, accent.replace(/,/g, " ").replace(")", " / .28)"));
     return g;
   };
   const above = { from: top + over, way: -1, reach: top + over }, below = { from: bottom - over, way: 1, reach: h - bottom + over };
@@ -902,7 +936,7 @@ function drawBehind(c) {
     x.lineWidth = 3.5 * k; x.lineCap = "round"; x.lineJoin = "round";
     curves(x, w, Math.max(16, Math.round(w / k / 14)), lanes);
   } else if (cfg.Style === WAVEFORM) waves(x, w, Math.max(16, Math.round(w / k / 8)), lanes);
-  else columns(x, w, Math.max(16, Math.round(w / k / 11)), .36, lanes, k);
+  else columns(x, w, Math.max(16, Math.round(w / k / 11)), .36, lanes, k, cfg.Style);
   if (hole && cfg.BarsPlace === 3) x.clearRect(hole[0] * k, 0, hole[2] * k, h);
   else if (hole) x.clearRect(hole[0] * k, hole[1] * k, hole[2] * k, hole[3] * k);
 }
@@ -915,7 +949,7 @@ function connect() {
     cfg = next;
     const replayReveal = old && preview && old.Reveal !== next.Reveal, replayExit = old && preview && old.Exit !== next.Exit;
     if (!old || old.Skin !== next.Skin || old.Cover !== next.Cover || old.BarsBehind !== next.BarsBehind || old.BarsPlace !== next.BarsPlace || old.Font !== next.Font) build();
-    else { flags(); paint(); fillText(false); syncVideo(); refit(); }
+    else { flags(); paint(); fillText(false); syncVideo(); refit(); requestAnimationFrame(marquees); }
     if (old && widget) {
       const art = widget.querySelector(".art");
       if (art && (!next.Pulse || coverKind() === "canvas")) art.style.transform = "";

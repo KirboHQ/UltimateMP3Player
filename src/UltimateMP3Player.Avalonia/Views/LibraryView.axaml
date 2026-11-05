@@ -4,8 +4,6 @@
              xmlns:local="clr-namespace:UltimateMP3Player"
              xmlns:views="clr-namespace:UltimateMP3Player.Views">
     <Grid RowDefinitions="Auto,Auto,*">
-        <!-- (the library's tabs have the glow behind them: only a tag's page has its own) -->
-        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGlow}" IsHitTestVisible="False" IsVisible="{Binding IsTagPage}"/>
 
         <Grid Margin="28,8,28,18" ColumnDefinitions="Auto,*">
             <Panel Width="148" Height="148">

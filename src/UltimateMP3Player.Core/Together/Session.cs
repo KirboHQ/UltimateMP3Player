@@ -323,6 +323,9 @@ public sealed class TogetherSession : IDisposable
 
     // ------------------------------------------------------------------ network plumbing
 
+    // (the tour's rooms stay on this computer: a test program gets no firewall question)
+    public static IPAddress ListenOn { get; set; } = IPAddress.Any;
+
     private void EnsureListener()
     {
         if (_listener != null) return;
@@ -331,14 +334,14 @@ public sealed class TogetherSession : IDisposable
         {
             try
             {
-                l = new TcpListener(IPAddress.Any, port);
+                l = new TcpListener(ListenOn, port);
                 l.Start();
             }
             catch (SocketException) { l = null; }
         }
         if (l == null)
         {
-            l = new TcpListener(IPAddress.Any, 0);
+            l = new TcpListener(ListenOn, 0);
             l.Start();
         }
         _listener = l;

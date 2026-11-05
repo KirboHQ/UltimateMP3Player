@@ -49,12 +49,27 @@ public static partial class Menus
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(TagSubmenu(new[] { t }));
         menu.Items.Add(LyricsSubmenu(t));
-        if (t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
-            menu.Items.Add(Item(L.T("Find the video…"), VideoGlyph, () => _ = main.FindVideo(t)));
-        if (!main.InRoom && !main.IsTheirs(t)) menu.Items.Add(DjSubmenu(t));
+        menu.Items.Add(MoreSubmenu(t));
         menu.Items.Add(new Separator());
-        AddEditItems(menu, t);
+        menu.Items.Add(Item(L.T("Delete…"), DeleteGlyph, () => _ = main.DeleteTrack(t)));
         return menu;
+    }
+
+    // What a song's menu needs less often: there, the menu fits in a look.
+    private static MenuItem MoreSubmenu(TrackViewModel t)
+    {
+        var main = t.Main;
+        var sub = new SubmenuEntry { Header = L.T("More") };
+        Ui.SetGlyph(sub, "");
+        sub.Items.Add(Item(L.T("Edit info…"), "", () => _ = main.EditTrack(t)));
+        sub.Items.Add(Item(L.T("Change cover…"), "", () => _ = main.ChangeTrackCover(t)));
+        if (t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
+            sub.Items.Add(Item(L.T("Find the video…"), VideoGlyph, () => _ = main.FindVideo(t)));
+        if (!main.InRoom && !main.IsTheirs(t)) sub.Items.Add(DjSubmenu(t));
+        if (t.T.HasSavedFile) sub.Items.Add(Item(L.T("Show in folder"), "", () => main.ShowInFolder(t)));
+        if (t.T.SourceUrl is { } url && url.StartsWith("http"))
+            sub.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copied")); } catch { } }));
+        return sub;
     }
 
     // A song's row pulled to the right (RowSwipe): its menu's "Add to queue", where the menu has it (not a suggested song,
@@ -548,23 +563,11 @@ public static partial class Menus
         : Item(L.T("Add to Favorites"), "", () => t.Main.ToggleFavorite(t, menu: true));
 
     // Edit, cover, folder, link, delete: the same everywhere.
-    private static void AddEditItems(ContextMenu menu, TrackViewModel t)
-    {
-        var main = t.Main;
-        menu.Items.Add(Item(L.T("Edit info…"), "", () => _ = main.EditTrack(t)));
-        menu.Items.Add(Item(L.T("Change cover…"), "", () => _ = main.ChangeTrackCover(t)));
-        if (t.T.HasSavedFile) menu.Items.Add(Item(L.T("Show in folder"), "", () => main.ShowInFolder(t)));
-        if (t.T.SourceUrl is { } url && url.StartsWith("http"))
-            menu.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copied")); } catch { } }));
-        menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.T("Delete…"), DeleteGlyph, () => _ = main.DeleteTrack(t)));
-    }
-
     public static ContextMenu ForSelection(IReadOnlyList<TrackViewModel> tracks, ITrackList? owner)
     {
         var main = tracks[0].Main;
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.F("{0} songs selected", tracks.Count), "", () => { }, false));
+        menu.Items.Add(Item(L.Count(tracks.Count, "1 song selected", "{0} songs selected"), "", () => { }, false));
         menu.Items.Add(new Separator());
         if (main.InRoom) AddRoomItems(menu, tracks);
         else
@@ -584,7 +587,7 @@ public static partial class Menus
         menu.Items.Add(TagSubmenu(tracks));
         menu.Items.Add(Item(L.F("Search lyrics online ({0})", tracks.Count), LyricsGlyph, () => main.SearchLyrics(tracks)));
         menu.Items.Add(new Separator());
-        menu.Items.Add(Item(L.F("Delete {0} songs…", tracks.Count), DeleteGlyph, () => _ = main.DeleteTracks(tracks)));
+        menu.Items.Add(Item(L.Count(tracks.Count, "Delete 1 song…", "Delete {0} songs…"), DeleteGlyph, () => _ = main.DeleteTracks(tracks)));
         return menu;
     }
 
@@ -653,7 +656,7 @@ public static partial class Menus
         var places = rows.Select(r => r.Index).ToList();
         var songs = rows.Select(r => r.Track).Distinct().ToList();
         var menu = new ContextMenu();
-        menu.Items.Add(Item(L.F("{0} songs selected", rows.Count), SelectGlyph, () => { }, false));
+        menu.Items.Add(Item(L.Count(rows.Count, "1 song selected", "{0} songs selected"), SelectGlyph, () => { }, false));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(L.T("Move to top"), "", () => player.MoveUpcomingToTop(places)));
         menu.Items.Add(Item(L.T("Move to bottom"), "", () => player.MoveUpcomingToBottom(places)));
@@ -729,7 +732,9 @@ public static partial class Menus
         menu.Items.Add(TagSubmenu(new[] { t }));
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(new Separator());
-        AddEditItems(menu, t);
+        menu.Items.Add(MoreSubmenu(t));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Delete…"), DeleteGlyph, () => _ = t.Main.DeleteTrack(t)));
         return menu;
     }
 

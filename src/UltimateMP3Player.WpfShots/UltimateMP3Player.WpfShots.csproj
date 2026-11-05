@@ -10,7 +10,12 @@
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <DefineConstants>$(DefineConstants);TOUR_WPF</DefineConstants>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\UltimateMP3Player.Headless\Tour.cs" Link="Tour.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\UltimateMP3Player\UltimateMP3Player.csproj" />

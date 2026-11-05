@@ -60,7 +60,8 @@ public sealed class EqCurve : FrameworkElement
         tint.Opacity = 0.14;
         tint.Freeze();
         dc.DrawGeometry(tint, null, fill);
-        var pen = new Pen(Stroke, 2) { LineJoin = PenLineJoin.Round };
+        // (a copy: freezing the pen would freeze the brush with it, which is the theme's own, shared with the whole app)
+        var pen = new Pen(Stroke.CloneCurrentValue(), 2) { LineJoin = PenLineJoin.Round };
         pen.Freeze();
         dc.DrawGeometry(null, pen, line);
     }

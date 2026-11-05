@@ -25,6 +25,13 @@ public sealed class MainViewModel : Observable, IPageOrder
     {
         Host = host;
         Profile = profile;
+        // (the old default gives way to the new one, once: whoever picks it again afterwards keeps it)
+        if (!profile.Data.ThemeMoved)
+        {
+            if (profile.Data.Theme == "ultimate") profile.Data.Theme = ThemeColors.DynamicId;
+            profile.Data.ThemeMoved = true;
+            profile.Save();
+        }
         _ui = Application.Current.Dispatcher;
         CleanProfile();
         SyncTags();
@@ -49,6 +56,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         RebuildPlaylists();
         Home.Refresh();
         _page = Home;
+        SongColors = new SongColors(this);
 
         _searchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
         _searchTimer.Tick += (_, _) => { _searchTimer.Stop(); RunSearch(); };
@@ -120,6 +128,7 @@ public sealed class MainViewModel : Observable, IPageOrder
     public Library Library => Host.Library;
     public RadioViewModel Radio { get; }
     public PlayerViewModel Player { get; }
+    public SongColors SongColors { get; }
     public HomeViewModel Home { get; }
     public LibraryViewModel LibraryPage { get; }
     public LibraryViewModel UnsortedPage { get; }
@@ -544,9 +553,6 @@ public sealed class MainViewModel : Observable, IPageOrder
             if (value == NowPlaying) _queueOpen = false;
             Player.UpNextVisible = value == NowPlaying || _queueOpen;
             OnChanged(nameof(QueueOpen), nameof(QueueShown));
-            foreach (var p in Playlists) p.IsSelected = value is PlaylistPageViewModel pp && pp.Vm == p;
-            foreach (var t in Tags) t.IsSelected = value is LibraryViewModel { Tag: { } tag } && tag == t;
-            if (Artists != null) foreach (var a in Artists.Followed) a.RecheckOpen();
             OnChanged(nameof(Section), nameof(IsNowPlaying));
             if (value == NowPlaying) NowPlaying.Refresh();
             else FullScreen = false;
@@ -611,8 +617,6 @@ public sealed class MainViewModel : Observable, IPageOrder
         LibraryHubViewModel => 2,
         TogetherViewModel => 3,
         DjViewModel => 4,
-        PlaylistPageViewModel pp => Playlists.IndexOf(pp.Vm) is var i and >= 0 ? 10 + i : null,
-        LibraryViewModel { Tag: { } tag } => Tags.IndexOf(tag) is var j and >= 0 ? 10000 + j : null,
         SettingsViewModel or StatsViewModel => 100000,
         _ => null,
     };
@@ -657,6 +661,9 @@ public sealed class MainViewModel : Observable, IPageOrder
         var page = LibraryHub.Current;
         if (page == Artists) OpenArtists();
         else if (page == Stations) OpenStations();
+        // (the playlist or the tag seen last may be gone by now)
+        else if (!Usable(page)) Navigate(PlaylistsPage);
+        else if (page is LibraryViewModel { Tag: { } tag } && !Tags.Contains(tag)) Navigate(LibraryPage);
         else Navigate(page);
     }
 
@@ -973,7 +980,6 @@ public sealed class MainViewModel : Observable, IPageOrder
             // (a playlist object replaced, the other device's after a new connection: a new view model)
             var vm = old.TryGetValue(p.Id, out var o) && o.P == p ? o : new PlaylistViewModel(p, this);
             vm.Refresh();
-            vm.IsSelected = Page is PlaylistPageViewModel pp && pp.Vm.Id == p.Id;
             vm.IsPlayingFrom = Player.ContextId == "playlist:" + p.Id;
             Playlists.Add(vm);
         }
@@ -1733,7 +1739,6 @@ public sealed class MainViewModel : Observable, IPageOrder
         {
             var vm = old.TryGetValue(t.Id, out var o) && o.T == t ? o : new TagViewModel(t, this);
             vm.Refresh();
-            vm.IsSelected = _page is LibraryViewModel { Tag: { } tag } && tag.Id == t.Id;
             Tags.Add(vm);
         }
         // The "Tag" column of the song lists only exists once there are tags.

@@ -23,7 +23,7 @@ public partial class NowPlayingView : UserControl
     private NowPlayingViewModel? _vm;
     private Window? _window;
     private readonly Rotate3DTransform _tilt = new(0, 0, 0, 0, 0, 0, Depth);
-    private readonly Tweener _glow, _lyricsIn, _coverIn, _follow, _paneWidth, _queueShift, _queueFade, _showQueueFade;
+    private readonly Tweener _glow, _lyricsIn, _coverIn, _follow, _queueShift, _queueFade, _showQueueFade;
     private readonly TranslateTransform _queueShiftT = new();
 
     public NowPlayingView()
@@ -37,7 +37,9 @@ public partial class NowPlayingView : UserControl
         _lyricsIn = new Tweener(this, v => LyricsHost.Opacity = v, 1);
         _coverIn = new Tweener(this, v => CoverArea.Opacity = v, 1);
         _follow = new Tweener(this, v => FollowBtn.Opacity = v);
-        _paneWidth = new Tweener(this, v => QueuePane.Width = v, PaneOpen);
+        StageButtons.RenderTransform = _buttonsShiftT;
+        _foldEdge = new Tweener(this, v => Stage.Clip = new RectangleGeometry(new Rect(0, 0, v, Stage.Bounds.Height), 16, 16));
+        _buttonsShift = new Tweener(this, v => _buttonsShiftT.X = v);
         _queueShift = new Tweener(this, v => _queueShiftT.X = v);
         _queueFade = new Tweener(this, v => QueueCard.Opacity = v, 1);
         _showQueueFade = new Tweener(this, v => ShowQueueBtn.Opacity = v);
@@ -165,7 +167,7 @@ public partial class NowPlayingView : UserControl
         bool full = _vm?.FullScreen == true;
         double bar = full && _window is MainWindow w ? w.PlayerBar.Bounds.Height : 0;
         Grid.SetColumnSpan(Stage, full ? 2 : 1);
-        Stage.Margin = full ? default : new Thickness(0, 0, 0, 14);
+        Stage.Margin = full ? default : new Thickness(0, 0, _folding ? -(PaneOpen - PaneClosed) : 0, 14);
         var corner = new CornerRadius(full ? 0 : 16);
         foreach (var c in Stage.Children)
             if (c is Border b) b.CornerRadius = corner;
@@ -208,6 +210,11 @@ public partial class NowPlayingView : UserControl
         bool mirrored = _vm?.VisualizerFlow is VisualizerFlow.MirrorSides or VisualizerFlow.MirrorCenter;
         double off = mirrored ? Math.Round(2 * (stage.X - middle.X)) : 0;
         Visualizer.Margin = new Thickness(-Math.Max(0, off), 0, Math.Min(0, off), 0);
+        // The pictures behind: their middle there, as wide as the farthest edge the stage can have, "Up next" folded or not.
+        double left = stage.X - Stage.Bounds.Width / 2, reach = (_vm?.FullScreen == true ? Bounds.Width : Bounds.Width - PaneClosed) - middle.X;
+        double half = Math.Max(middle.X - left, reach), at = middle.X - left;
+        var back = new Thickness(Math.Round(at - half), 0, Math.Round(Stage.Bounds.Width - at - half), 0);
+        if (StageBack.Margin != back) StageBack.Margin = back;
     }
 
     private Vector Toward(Control area, double width, double height, Point middle)
@@ -290,21 +297,34 @@ public partial class NowPlayingView : UserControl
     // as wide as the sidebar's entries, the same 14 on each side), so that the stage stands in the middle of the window.
     private const double PaneOpen = 280, PaneClosed = 14;
 
-    // The pane narrows while the card slides out to the right; the stage takes the room and a pill brings it back.
+    // Folding: the pane at its widest over a stage reaching under it, so that nothing is laid out while it moves (a width animated
+    // meant the whole page laid out again at every frame). The stage laid out once, when it's wider; its edge and its buttons go by a
+    // clip and a transform.
+    private bool _folding;
+    private readonly Tweener _foldEdge, _buttonsShift;
+    private double _stageWide;
+    private readonly TranslateTransform _buttonsShiftT = new();
+
+    // The card slides out to the right; the stage takes the room and a pill brings it back.
     private void PlaceQueue(bool animate)
     {
-        bool hidden = _vm?.QueueHidden == true;
-        double width = hidden ? PaneClosed : PaneOpen, shift = hidden ? PaneOpen : 0;
+        bool hidden = _vm?.QueueHidden == true, full = _vm?.FullScreen == true;
+        double width = hidden ? PaneClosed : PaneOpen, shift = hidden ? PaneOpen : 0, room = PaneOpen - PaneClosed;
         QueueCard.IsVisible = ShowQueueBtn.IsVisible = true;
         void Settle()
         {
             if ((_vm?.QueueHidden == true) != hidden) return;
+            _folding = false;
+            _foldEdge.Stop();
+            Stage.Clip = null;
+            _buttonsShift.Set(0);
+            QueuePane.Width = width;
+            PlaceFullScreen();
             QueueCard.IsVisible = !hidden;
             ShowQueueBtn.IsVisible = hidden;
         }
-        if (!animate || !Ui.Animations)
+        if (!animate || !Ui.Animations || !this.IsAttachedToVisualTree())
         {
-            _paneWidth.Set(width);
             _queueShift.Set(shift);
             _queueFade.Set(hidden ? 0 : 1);
             _showQueueFade.Set(hidden ? 1 : 0);
@@ -312,7 +332,19 @@ public partial class NowPlayingView : UserControl
             return;
         }
         double time = hidden ? 280 : 320;
-        _paneWidth.To(width, time, Ui.CubicInOut, completed: Settle);
+        // Where the buttons look to be, the stage being wide: over the whole screen the stage never changes, the room left to them does.
+        double buttonsOpen = full ? 0 : -room, buttonsClosed = buttonsOpen + room;
+        if (!_folding)
+        {
+            _stageWide = Stage.Bounds.Width + (hidden ? room : 0);
+            _folding = true;
+            _buttonsShift.Set(hidden ? buttonsOpen : buttonsClosed);
+            QueuePane.Width = PaneOpen;
+            PlaceFullScreen();
+            if (!full) _foldEdge.Set(hidden ? _stageWide - room : _stageWide);
+        }
+        if (!full) _foldEdge.To(hidden ? _stageWide : _stageWide - room, time, Ui.CubicInOut);
+        _buttonsShift.To(hidden ? buttonsClosed : buttonsOpen, time, Ui.CubicInOut, completed: Settle);
         _queueShift.To(shift, time, Ui.CubicInOut);
         _queueFade.To(hidden ? 0 : 1, time);
         if (hidden) _showQueueFade.To(1, 220, delay: 160);
@@ -457,10 +489,10 @@ public partial class NowPlayingView : UserControl
             }
             dc.DrawRectangle(null, new Pen(new SolidColorBrush(Color.FromArgb(0x22, 255, 255, 255)), 1.5), new Rect(0.75, 0.75, size - 1.5, size - 1.5), radius, radius);
         }
-        CoverImage.Source = bmp;
-        LyricsGlow.Source = CoverGlow.Bake(img);
-        Visualizer.Color = CoverGlow.Bright(img);
-        CoverBackdrop.Source = BakeBackdrop(img);
+        Ui.CrossFade(CoverBefore, CoverImage, bmp);
+        LyricsGlow.FadeTo(CoverGlow.Bake(img));
+        Visualizer.FadeColor(CoverGlow.Bright(img));
+        CoverBackdrop.FadeTo(BakeBackdrop(img));
     }
 
     // The cover behind the stage at 22 %, the opacity in the picture (small: it's only a tint).

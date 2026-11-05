@@ -349,8 +349,9 @@ public sealed class PhoneLink : LinkEnd
     // The phones in "Connect to computer": on the networks and on a cable.
     public static async Task<List<PhoneAd>> ScanAsync(CancellationToken ct)
     {
-        var lan = LinkDiscovery.ScanAsync(1200, ct);
-        var usb = ScanUsbAsync(ct);
+        // (on workers: reading the network cards and sending to every address of the subnets stopped the UI for 50-60 ms each time)
+        var lan = Task.Run(() => LinkDiscovery.ScanAsync(1200, ct));
+        var usb = Task.Run(() => ScanUsbAsync(ct));
         var list = await lan;
         foreach (var u in await usb)
         {

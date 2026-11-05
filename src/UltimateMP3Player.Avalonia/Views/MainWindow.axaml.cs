@@ -19,6 +19,24 @@ public partial class MainWindow : Window
 
     public MainWindow() => InitializeComponent();
 
+    private int _dialogs;
+
+    // A dialog opened over the window, or closed: one dim for however many there are.
+    public void DimForDialog(bool opened)
+    {
+        _dialogs += opened ? 1 : -1;
+        if (_dialogs != (opened ? 1 : 0)) return;
+        double from = DialogDim.Opacity, to = opened ? Ui.DialogDim : 0;
+        DialogDim.IsVisible = true;
+        Ui.Tween(this, 160, Ui.CubicOut, k =>
+        {
+            // (a dialog after a dialog: the newer call has the last word)
+            if (opened != _dialogs > 0) return;
+            DialogDim.Opacity = from + (to - from) * k;
+            if (k >= 1) DialogDim.IsVisible = opened;
+        });
+    }
+
     public MainWindow(AppHost host) : this()
     {
         _host = host;

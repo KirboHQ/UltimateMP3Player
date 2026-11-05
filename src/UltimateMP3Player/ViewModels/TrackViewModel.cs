@@ -276,9 +276,6 @@ public sealed class PlaylistViewModel : Observable
     public TrackViewModel? FirstCover => !P.HasCover && !IsFavorites ? CoverTracks.FirstOrDefault() : null;
     public bool ShowPlaceholder => !P.HasCover && !IsFavorites && CoverTracks.Count == 0;
 
-    private bool _isSelected;
-    public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
-
     private bool _isPlayingFrom;
     public bool IsPlayingFrom { get => _isPlayingFrom; set => Set(ref _isPlayingFrom, value); }
 

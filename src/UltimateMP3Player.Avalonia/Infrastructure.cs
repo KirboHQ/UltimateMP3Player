@@ -161,6 +161,31 @@ public static class Ui
     // App-wide switch for the light animations.
     public static bool Animations { get; set; } = true;
 
+    // How dark the window gets behind a dialog.
+    public const double DialogDim = 0.38;
+
+    // From one song's cover to the next: the new picture comes up over the old one, in an Image of the same size right under it.
+    public static void CrossFade(Image before, Image now, IImage? next)
+    {
+        if (now.Source == null || next == null || !Animations || !now.IsEffectivelyVisible)
+        {
+            before.Source = null;
+            now.Opacity = 1;
+            now.Source = next;
+            return;
+        }
+        before.Source = now.Source;
+        now.Source = next;
+        now.Opacity = 0;
+        Tween(now, 320, CubicOut, k =>
+        {
+            // (a newer one took over)
+            if (!ReferenceEquals(now.Source, next)) return;
+            now.Opacity = k;
+            if (k >= 1) before.Source = null;
+        });
+    }
+
     // The interface's size on the computers (Ctrl+wheel, Ctrl + and -, Settings): the window, the menus, the tooltips and the
     // dialogs share this transform.
     public static readonly ScaleTransform ZoomTransform = new(1, 1);

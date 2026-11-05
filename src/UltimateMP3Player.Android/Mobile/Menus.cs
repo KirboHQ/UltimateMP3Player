@@ -87,6 +87,7 @@ public static class Menus
             ("queue", QueueRow q) => ForQueue(q),
             ("current", _) when App.Host.Session?.Player.Current is { } cur => ForTrack(cur, null),
             ("roomitem", RoomItemViewModel r) when App.Host.Session is { InRoom: true } s => ForRoomItem(r, s.Together),
+            ("roomcurrent", _) when App.Host.Session is { InRoom: true, Together.CurrentItem: { } r } s => ForRoomItem(r, s.Together),
             ("member", MemberViewModel m) when App.Host.Session is { InRoom: true } s => ForMembers(s.Together, m),
             _ => null,
         };
@@ -140,10 +141,26 @@ public static class Menus
         menu.Add(FavoriteItem(t));
         menu.Add(new SheetEntry { Text = L.T("Tags"), Glyph = GTag, Sub = () => TagMenu(new[] { t }) });
         menu.Add(new SheetEntry { Text = L.T("Lyrics"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
+        menu.Add(new SheetEntry { Text = L.T("More"), Glyph = "", Sub = () => MoreMenu(t) });
+        menu.Line();
+        menu.Add(new SheetEntry(L.T("Delete…"), GDelete, () => _ = main.DeleteTrack(t)) { Danger = true });
+        return menu;
+    }
+
+    // What a song's menu needs less often: there, the sheet fits on the screen without scrolling.
+    private static SheetMenu MoreMenu(TrackViewModel t)
+    {
+        var main = t.Main;
+        var menu = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
+        menu.Add(new(L.T("Edit info…"), GEdit, () => _ = main.EditTrack(t)));
+        menu.Add(new(L.T("Change cover…"), GPicture, () => _ = main.ChangeTrackCover(t)));
         if (Engines.VideoDownloads && t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
             menu.Add(new(L.T("Find the video…"), GVideo, () => _ = main.FindVideo(t)));
-        menu.Line();
-        AddEditItems(menu, t);
+        if (t.T.SourceUrl is { } url && url.StartsWith("http"))
+        {
+            menu.Add(new(L.T("Copy original link"), GLink, () => { Ui.CopyText(url); main.Toast(L.T("Link copied")); }));
+            menu.Add(new(L.T("Open the original link"), GOpen, () => MainViewModel.OpenUrl(url)));
+        }
         return menu;
     }
 
@@ -189,20 +206,6 @@ public static class Menus
         : new SheetEntry(L.T("Add to Favorites"), GHeart, () => t.Main.ToggleFavorite(t, menu: true));
 
     // Edit, cover, link, delete: the same everywhere.
-    private static void AddEditItems(SheetMenu menu, TrackViewModel t)
-    {
-        var main = t.Main;
-        menu.Add(new(L.T("Edit info…"), GEdit, () => _ = main.EditTrack(t)));
-        menu.Add(new(L.T("Change cover…"), GPicture, () => _ = main.ChangeTrackCover(t)));
-        if (t.T.SourceUrl is { } url && url.StartsWith("http"))
-        {
-            menu.Add(new(L.T("Copy original link"), GLink, () => { Ui.CopyText(url); main.Toast(L.T("Link copied")); }));
-            menu.Add(new(L.T("Open the original link"), GOpen, () => MainViewModel.OpenUrl(url)));
-        }
-        menu.Line();
-        menu.Add(new SheetEntry(L.T("Delete…"), GDelete, () => _ = main.DeleteTrack(t)) { Danger = true });
-    }
-
     public static SheetMenu AddToPlaylistMenu(TrackViewModel t)
     {
         var main = t.Main;
@@ -355,7 +358,9 @@ public static class Menus
         menu.Add(new SheetEntry { Text = L.T("Tags"), Glyph = GTag, Sub = () => TagMenu(new[] { t }) });
         menu.Add(new SheetEntry { Text = L.T("Lyrics"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
         menu.Line();
-        AddEditItems(menu, t);
+        menu.Add(new SheetEntry { Text = L.T("More"), Glyph = "", Sub = () => MoreMenu(t) });
+        menu.Line();
+        menu.Add(new SheetEntry(L.T("Delete…"), GDelete, () => _ = t.Main.DeleteTrack(t)) { Danger = true });
         return menu;
     }
 
@@ -385,7 +390,7 @@ public static class Menus
         var tracks = sel.Tracks;
         if (tracks.Count == 0) return null;
         var main = tracks[0].Main;
-        var menu = new SheetMenu { Title = L.F("{0} songs selected", tracks.Count), Cover = tracks[0] };
+        var menu = new SheetMenu { Title = L.Count(tracks.Count, "1 song selected", "{0} songs selected"), Cover = tracks[0] };
         menu.Add(new(L.T("Play"), GPlay, () => { main.PlaySelection(tracks); sel.Stop(); }));
         menu.Add(new(L.T("Add to queue"), GQueue, () => { main.Enqueue(tracks); sel.Stop(); }));
         menu.Line();
@@ -397,7 +402,7 @@ public static class Menus
         menu.Add(new SheetEntry { Text = L.T("Tags"), Glyph = GTag, Sub = () => TagMenu(tracks) });
         menu.Add(new(L.F("Search lyrics online ({0})", tracks.Count), GLyrics, () => main.SearchLyrics(tracks)));
         menu.Line();
-        menu.Add(new SheetEntry(L.F("Delete {0} songs…", tracks.Count), GDelete, () => _ = DeleteSongs(sel, tracks)) { Danger = true });
+        menu.Add(new SheetEntry(L.Count(tracks.Count, "Delete 1 song…", "Delete {0} songs…"), GDelete, () => _ = DeleteSongs(sel, tracks)) { Danger = true });
         return menu;
     }
 
@@ -427,7 +432,7 @@ public static class Menus
         var main = rows[0].Track.Main;
         var places = rows.Select(r => r.Index).ToList();
         var songs = rows.Select(r => r.Track).Distinct().ToList();
-        var menu = new SheetMenu { Title = L.F("{0} songs selected", rows.Count), Cover = songs[0] };
+        var menu = new SheetMenu { Title = L.Count(rows.Count, "1 song selected", "{0} songs selected"), Cover = songs[0] };
         menu.Add(new(L.T("Move to top"), GUp, () => { player.MoveUpcomingToTop(places); sel.Stop(); }));
         menu.Add(new(L.T("Move to bottom"), GDown, () => { player.MoveUpcomingToBottom(places); sel.Stop(); }));
         menu.Add(new(L.T("Remove from Up next"), GRemove, () => { player.RemoveUpcoming(places); sel.Stop(); }));
@@ -859,7 +864,7 @@ public static class Menus
                      (Core.Together.Perm.Add, L.T("Can add songs")),
                      (Core.Together.Perm.Remove, L.T("Can remove and move songs")),
                      (Core.Together.Perm.Skip, L.T("Can skip songs")),
-                     (Core.Together.Perm.Pause, L.T("Can pause, move forward and back and loop the song")),
+                     (Core.Together.Perm.Pause, L.T("Can pause, seek and loop")),
                      (Core.Together.Perm.Speed, L.T("Can change the speed")),
                  })
         {

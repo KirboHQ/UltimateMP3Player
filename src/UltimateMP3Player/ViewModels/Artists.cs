@@ -132,8 +132,6 @@ public sealed class ArtistCardViewModel : Observable
     public void Recheck() => OnChanged(nameof(IsFollowed), nameof(FollowGlyph), nameof(FollowTip), nameof(HasNew));
 
     // Its page is the one open (the sidebar lights it).
-    public bool IsOpen => _main.Page is ArtistPageViewModel p && Text.Normalize(p.Name) == Text.Normalize(Name);
-    public void RecheckOpen() => OnChanged(nameof(IsOpen));
 }
 
 // A heading of the computers' sidebar and what's folded under it (kept in the settings).

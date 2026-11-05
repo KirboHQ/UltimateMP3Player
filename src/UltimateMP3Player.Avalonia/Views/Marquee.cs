@@ -30,6 +30,24 @@ public static class Marquee
 
     private const double Speed = 40, Edge = 14;
 
+    // Nothing playing (the phones): the texts that go by themselves end the turn they're in, enough to read a new one, and rest:
+    // a paused player draws nothing at all. They go on when the music does.
+    private static bool _resting;
+    private static readonly HashSet<State> Rested = new();
+
+    public static bool Resting
+    {
+        get => _resting;
+        set
+        {
+            if (_resting == value) return;
+            _resting = value;
+            if (value) return;
+            foreach (var st in Rested) Later(st);
+            Rested.Clear();
+        }
+    }
+
     private sealed class State
     {
         public required Control Element;
@@ -229,6 +247,16 @@ public static class Marquee
         if (_frame && _frameOn == w) return;
         // Only what's on screen moves (a hidden page's text doesn't keep the screen redrawing); looked at again in a while.
         var now = DateTime.Now;
+        if (_resting)
+        {
+            foreach (var s in Running.ToList())
+            {
+                if (!GetAuto(s.Element) || (now - s.Started).TotalSeconds < 0.6 + s.Go + 1.3 + s.Back + 0.9) continue;
+                Stop(s);
+                Rested.Add(s);
+            }
+            if (Running.Count == 0) return;
+        }
         double still = double.MaxValue;
         foreach (var s in Running)
             if (s.Element.IsEffectivelyVisible) still = Math.Min(still, StillFor(s, (now - s.Started).TotalSeconds));

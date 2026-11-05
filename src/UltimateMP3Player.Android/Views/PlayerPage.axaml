@@ -54,6 +54,7 @@
                         <!-- the shadow tilts with the cover (left flat behind it, its edges would show around the tilted picture) -->
                         <Panel x:Name="Tilt">
                             <Border x:Name="CoverShadow" CornerRadius="18" BoxShadow="0 14 40 0 #99000000" Margin="6"/>
+                            <Image x:Name="CoverBefore" Stretch="Uniform"/>
                             <Image x:Name="CoverImage" Stretch="Uniform"/>
                             <views:CoverSheen x:Name="Sheen" Opacity="0"/>
                         </Panel>
@@ -119,7 +120,7 @@
 
             <!-- where it is: the waveform -->
             <StackPanel x:Name="SeekBlock" Grid.Row="3" Margin="24,2,24,0">
-                <views:WaveformBar Height="46" Peaks="{Binding Player.Current.Wave}" Progress="{Binding Player.Progress}" IsPlaying="{Binding Player.Animate}"
+                <views:WaveformBar Height="46" Peaks="{Binding Player.Current.Wave}" Shape="{Binding Player.SeekShape}" Mirrored="{Binding Player.SeekMirrored}" Progress="{Binding Player.Progress}" IsPlaying="{Binding Player.Animate}"
                                    Duration="{Binding Player.Duration}" Rate="{Binding Player.Speed}" BarWidth="3"
                                    PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}" SeekCommand="{Binding Player.SeekCommand}"
                                    IsVisible="{Binding !Player.IsLive}"/>

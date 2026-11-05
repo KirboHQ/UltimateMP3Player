@@ -32,7 +32,7 @@ public static class Discovery
             _udp = new UdpClient(AddressFamily.InterNetwork);
             _udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             NoResetErrors(_udp);
-            _udp.Client.Bind(new IPEndPoint(IPAddress.Any, Port));
+            _udp.Client.Bind(new IPEndPoint(TogetherSession.ListenOn, Port));
             _ = Loop();
         }
 

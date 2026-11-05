@@ -47,6 +47,7 @@ public partial class MainView : UserControl
             if (_swipe == Swipe.Active) EndSwipe(false);
             else if (_swipe == Swipe.Row) EndRow(false);
         };
+        FullPlayer.CoveringChanged += covering => Shell.IsVisible = Backdrop.IsVisible = !covering;
         FullPlayer.CloseRequested += () =>
         {
             if (_session?.Page is NowPlayingViewModel) _session.BackCommand.Execute(null);
@@ -288,6 +289,9 @@ public partial class MainView : UserControl
         _ = OfferRightPackage();
         _ = ShowWhatsNew();
         DispatcherTimer.RunOnce(Sheets.Warm, TimeSpan.FromSeconds(2));
+#if PHONE_TOUR
+        if (_session != null) _ = PhoneTour.Run(_session, this);
+#endif
     }
 
     // The first start after an update: what changed since the version last opened.
@@ -357,10 +361,21 @@ public partial class MainView : UserControl
 
     // ------------------------------------------------------------------ the profile's screen
 
+    private void OnPlayer(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PlayerViewModel.IsPlaying) && _session != null) Marquee.Resting = !_session.Player.IsPlaying;
+    }
+
     public void Attach(MainViewModel session)
     {
-        if (_session != null) _session.PropertyChanged -= OnSession;
+        if (_session != null)
+        {
+            _session.PropertyChanged -= OnSession;
+            _session.Player.PropertyChanged -= OnPlayer;
+        }
         _session = session;
+        session.Player.PropertyChanged += OnPlayer;
+        Marquee.Resting = !session.Player.IsPlaying;
         Hub = new LibraryHub(session);
         foreach (var (_, v) in _pages) PageHost.Children.Remove(v);
         _pages.Clear();
@@ -397,7 +412,11 @@ public partial class MainView : UserControl
         _host.View = fresh;
         if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.ISingleViewApplicationLifetime single) single.MainView = fresh;
         fresh.Attach(session);
-        if (_session != null) _session.PropertyChanged -= OnSession;
+        if (_session != null)
+        {
+            _session.PropertyChanged -= OnSession;
+            _session.Player.PropertyChanged -= OnPlayer;
+        }
     }
 
     private void OnSession(object? sender, PropertyChangedEventArgs e)

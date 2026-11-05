@@ -353,6 +353,12 @@ public static class Ui
         fe.OpacityMask = mask;
     }
 
+    // How dark the window gets behind a dialog.
+    public const double DialogDim = 0.38;
+
+    // From one song's cover to the next.
+    public const double CoverFadeMs = 320;
+
     public static Brush BrushFrom(string hex)
     {
         try

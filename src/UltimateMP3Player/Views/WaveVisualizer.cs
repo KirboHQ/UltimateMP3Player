@@ -76,6 +76,7 @@ public sealed class WaveVisualizer : FrameworkElement
             if (!_hooked)
             {
                 Themes.Changed += Forget;
+                Themes.AccentChanged += Forget;
                 Ui.HiddenChanged += UpdateRun;
                 _scroller = Ancestor<ScrollViewer>();
                 if (_scroller != null && IsPreview) _scroller.ScrollChanged += OnScrolled;
@@ -87,6 +88,7 @@ public sealed class WaveVisualizer : FrameworkElement
         {
             UpdateRun();
             Themes.Changed -= Forget;
+            Themes.AccentChanged -= Forget;
             Ui.HiddenChanged -= UpdateRun;
             if (_scroller != null) _scroller.ScrollChanged -= OnScrolled;
             _hooked = false;
@@ -105,6 +107,13 @@ public sealed class WaveVisualizer : FrameworkElement
     {
         base.OnRenderSizeChanged(info);
         Forget();
+    }
+
+    // From one song to the next: the colour moves with the rest of the app's.
+    public void FadeColor(Color to)
+    {
+        if (Color.A == 0 || !Ui.Animations) Color = to;
+        else BeginAnimation(ColorProperty, new System.Windows.Media.Animation.ColorAnimation(to, Ui.Time(Themes.FadeMs)));
     }
 
     private void Forget()
@@ -199,6 +208,8 @@ public sealed class WaveVisualizer : FrameworkElement
                 }
         }
         geometry.Freeze();
+        // (the app's colour moving from song to song: the bars with it, not at its end)
+        if (Tint == VisualizerTint.Accent && Base() != _madeWith) Forget();
         if (_brush == null) MakeBrushes(w, h);
         using (var dc = _visual.RenderOpen())
         {
@@ -400,13 +411,16 @@ public sealed class WaveVisualizer : FrameworkElement
 
     private Color Base() => Tint switch
     {
-        VisualizerTint.Accent => Themes.Get("Accent"),
+        VisualizerTint.Accent => (Application.Current.Resources["AccentBrush"] as SolidColorBrush)?.Color ?? Themes.Get("Accent"),
         VisualizerTint.Text => Themes.Get("Text"),
         _ => Color.A > 0 ? Color : Themes.Get("Accent"),
     };
 
+    private Color _madeWith;
+
     private void MakeBrushes(double w, double h)
     {
+        _madeWith = Base();
         byte A(double a) => (byte)Math.Clamp(a * Strength * 255, 0, 255);
         Brush brush, line;
         if (Tint == VisualizerTint.Rainbow)

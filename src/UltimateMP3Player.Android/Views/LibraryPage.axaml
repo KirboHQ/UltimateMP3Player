@@ -131,7 +131,14 @@
                         <TextBlock Grid.Column="1" Text="{local:T 'Searching…'}" Classes="hint" Margin="10,0,0,0" IsVisible="{Binding Loading}"/>
                     </Grid>
                     <TextBlock Text="{Binding Error}" Classes="hint" Margin="20,4,20,8" IsVisible="{Binding HasError}"/>
-                    <ItemsControl ItemsSource="{Binding Found}" ItemTemplate="{StaticResource StationRowTemplate}"/>
+                    <!-- (only the rows on screen get built, their logos fetched: all 60 at once stopped the page for 240 ms) -->
+                    <ItemsControl ItemsSource="{Binding Found}" ItemTemplate="{StaticResource StationRowTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
                     <TextBlock Text="{local:T 'Radios from radio-browser.info, the open directory of internet radios.'}" Classes="hint" FontSize="12" Margin="20,14,20,0"/>
                 </StackPanel>
             </ScrollViewer>

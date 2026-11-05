@@ -56,7 +56,9 @@ public partial class ProfilePickerWindow : Window
             w.Owner = owner;
             w.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         }
+        (owner as MainWindow)?.DimForDialog(true);
         w.ShowDialog();
+        (owner as MainWindow)?.DimForDialog(false);
         return w._picked;
     }
 

@@ -102,6 +102,24 @@ public partial class MainWindow : Window
     // The size the layout needs, at zoom 1.
     private static readonly Size MinSize = new(980, 640);
 
+    private int _dialogs;
+
+    // A dialog opened over the window, or closed: one dim for however many there are.
+    public void DimForDialog(bool opened)
+    {
+        _dialogs += opened ? 1 : -1;
+        if (_dialogs != (opened ? 1 : 0)) return;
+        double to = opened ? Ui.DialogDim : 0;
+        DialogDim.Visibility = Visibility.Visible;
+        var fade = new System.Windows.Media.Animation.DoubleAnimation(to, Ui.Time(160)) { FillBehavior = System.Windows.Media.Animation.FillBehavior.Stop };
+        fade.Completed += (_, _) =>
+        {
+            if (_dialogs == 0) DialogDim.Visibility = Visibility.Collapsed;
+        };
+        DialogDim.BeginAnimation(OpacityProperty, fade);
+        DialogDim.Opacity = to;
+    }
+
     // The window's minimum and its caption are in the window's pixels, the rest is inside the zoom.
     private void FitZoom()
     {

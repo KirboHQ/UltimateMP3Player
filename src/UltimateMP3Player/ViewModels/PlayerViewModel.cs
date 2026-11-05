@@ -60,6 +60,11 @@ public sealed class PlayerViewModel : Observable
     private const double TargetLufs = -14;
 
     private readonly MainViewModel _main;
+
+    public VisualizerStyle SeekShape => _main.Host.Settings.SeekStyle;
+    public bool SeekMirrored => _main.Host.Settings.SeekMirrored;
+    public void OnSeekShape() => OnChanged(nameof(SeekShape), nameof(SeekMirrored));
+
     private readonly AudioEngine _audio;
     private readonly PlayQueue _queue = new();
     private readonly DispatcherTimer _timer;

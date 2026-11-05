@@ -27,7 +27,13 @@ public static class Program
         bool online = args.Contains("online");
         // ("perf": the real window on the screen, on top for half a minute, frames counted while a silent song plays)
         bool perf = args.Contains("perf");
-        var root = Path.GetFullPath(args.FirstOrDefault(a => a != "online" && a != "perf") ?? Path.Combine(Path.GetTempPath(), "ump-wpf"));
+        // ("editor": the overlay's editor on the screen while a silent song plays, as measured for 4.5.2)
+        bool editorPerf = args.Contains("editor");
+        // ("queue": the song's page on the screen, "Up next" folding away and back while a silent song plays)
+        bool queuePerf = args.Contains("queue");
+        // ("tour": the real window, the real mouse, every page and menu: Tour.cs in the other test program)
+        bool tour = args.Contains("tour");
+        var root = Path.GetFullPath(args.FirstOrDefault(a => a != "online" && a != "perf" && a != "editor" && a != "queue" && a != "tour") ?? Path.Combine(Path.GetTempPath(), "ump-wpf"));
         if (Directory.Exists(root)) Directory.Delete(root, true);
         _shots = Directory.CreateDirectory(Path.Combine(root, "shots")).FullName;
         Environment.SetEnvironmentVariable("UMP_DATA", Path.Combine(root, "data"));
@@ -71,6 +77,24 @@ public static class Program
         typeof(AppHost).GetProperty(nameof(AppHost.Window))!.SetValue(host, win);
         win.Show();
         main.Player.SetVisible(true);
+        if (tour)
+        {
+            Tour.Run(main, win, root);
+            try { host.Exit(true); } catch { }
+            return 0;
+        }
+        if (queuePerf)
+        {
+            QueuePerf(main, win, root);
+            try { host.Exit(true); } catch { }
+            return 0;
+        }
+        if (editorPerf)
+        {
+            EditorPerf(main, win, root);
+            try { host.Exit(true); } catch { }
+            return 0;
+        }
         if (perf)
         {
             Perf(host, main, win, root);
@@ -103,10 +127,80 @@ public static class Program
         main.GoSettings();
         Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         Check(busy.ElapsedMilliseconds < 150, $"settings: opened again in {busy.ElapsedMilliseconds} ms");
+        // (a window's loading or something drawn with a frozen pen would freeze it: the app would stay in one colour, with no error to see)
+        Check(!((Brush)Application.Current.Resources["AccentBrush"]).IsFrozen, "theme from the song: the accent's brush can still move");
+        Themes.FadeTo(ThemeColors.FromSong("200;0.7;230;0.7"));
+        Themes.FadeTo(ThemeColors.FromSong(null));
+        Pump(400);
+        // ---- The sidebar's playlists and artists: ways into the library, not pages of their own
+        main.OpenPlaylist(main.Playlists[0]);
+        Pump(350);
+        Check(main.Shown == main.LibraryHub && main.IsLibraryNav && main.LibraryHub.IsPlaylists, "sidebar: a playlist opens inside the library");
+        Shot(win, "playlist-in-library");
+        main.OpenArtist("Lumen Harbor", null);
+        Pump(350);
+        Check(main.Shown == main.LibraryHub && main.IsLibraryNav && main.LibraryHub.IsArtists, "sidebar: an artist opens inside the library");
+        Shot(win, "artist-in-library");
+        // ---- The theme RGB goes round on the brushes in place, only while the window can be seen
+        // (this window is off the screens: it would count as covered)
+        Color AccentNow() => ((SolidColorBrush)Application.Current.Resources["AccentBrush"]).Color;
+        main.Settings.SelectThemeCommand.Execute(ThemeColors.RgbId);
+        main.GoSettings();
+        Ui.Hidden = false;
+        Pump(400);
+        Shot(win, "theme-rgb");
+        Ui.Hidden = false;
+        var rgbFrom = AccentNow();
+        Pump(900);
+        Check(AccentNow() != rgbFrom, "theme RGB: the accent goes round");
+        main.Settings.RgbSpeed = 10;
+        Check(ThemeColors.RgbSpeed == 10 && main.Settings.RgbSpeedText == "10x", "theme RGB: the slider reaches 10x");
+        Ui.Hidden = false;
+        rgbFrom = AccentNow();
+        Pump(150);
+        Check(AccentNow() != rgbFrom, "theme RGB: at 10x the accent moves within 150 ms");
+        Shot(win, "theme-rgb-10x");
+        main.Settings.RgbSpeed = 1;
+        Ui.Hidden = false;
+        Ui.Hidden = true;
+        rgbFrom = AccentNow();
+        Pump(600);
+        Check(AccentNow() == rgbFrom, "theme RGB: stands still while the window can't be seen");
+        Ui.Hidden = false;
+        main.Settings.SelectThemeCommand.Execute(ThemeColors.CustomId);
+        var customFrom = AccentNow();
+        main.Settings.CustomColorText = "#12AB9F";
+        Pump(150);
+        Check(AccentNow() != customFrom && main.Settings.CustomHue > 170 && main.Settings.CustomHue < 180, "custom colour: typed, the accent takes it at once");
+        customFrom = AccentNow();
+        main.Settings.CustomHue = 30;
+        Pump(150);
+        Check(AccentNow() != customFrom && main.Settings.CustomColorText != "#12AB9F", "custom colour: the slider moves it, the box follows");
+        Shot(win, "theme-custom");
+        main.Settings.SelectThemeCommand.Execute(ThemeColors.DynamicId);
+        Pump(900);
+        rgbFrom = AccentNow();
+        Pump(500);
+        Check(AccentNow() == rgbFrom, "theme RGB: over when another theme is chosen");
+        // ---- The song's bar, every shape (the one in Settings: a made-up song)
+        foreach (var shape in Enum.GetValues<VisualizerStyle>())
+        {
+            main.Settings.SeekStyleChoice = main.Settings.VisualizerStyles.First(c => Equals(c.Value, shape));
+            Shot(win, "seek-" + shape.ToString().ToLowerInvariant());
+            Check(main.Player.SeekShape == shape, $"song's bar: {shape}");
+            main.Settings.SeekMirrored = false;
+            Shot(win, "seek-flat-" + shape.ToString().ToLowerInvariant());
+            Check(!main.Player.SeekMirrored, $"song's bar: {shape}, not mirrored");
+            main.Settings.SeekMirrored = true;
+        }
+        main.Settings.SeekStyleChoice = main.Settings.VisualizerStyles.First(c => Equals(c.Value, VisualizerStyle.Bars));
+        main.GoSettings();
         Pump(400);
         Check(main.Settings.OutputDevices.Count > UltimateMP3Player.Audio.AudioPlatform.OutputDevices().Count, "settings: the audio outputs listed meanwhile");
         var output = Descendants(win).OfType<ComboBox>().FirstOrDefault(c => System.Windows.Automation.AutomationProperties.GetName(c) == L.T("Audio output"));
         Check(output?.SelectedIndex >= 0 && output.SelectionBoxItem is Choice, $"settings opened again: the audio output still shown ({output?.SelectionBoxItem})");
+        var startup = Descendants(win).OfType<ComboBox>().FirstOrDefault(c => System.Windows.Automation.AutomationProperties.GetName(c) == L.T("At startup"));
+        Check(startup?.SelectedIndex >= 0 && startup.SelectionBoxItem is Choice, $"settings opened again: the profile at startup still shown ({startup?.SelectionBoxItem})");
         // ---- the library's parts are tabs of one page; back and forward; the keyboard's pages
         main.OpenArtists();
         Pump(600);
@@ -186,6 +280,9 @@ public static class Program
             var songStage = Descendants(win).OfType<FrameworkElement>().First(e => e.Name == "Stage");
             double barsFrom = songBars.TransformToAncestor(songStage).Transform(new Point()).X;
             Check(barsFrom <= 0 && barsFrom + songBars.ActualWidth >= songStage.ActualWidth, $"song's page, {when}: the bars reach both sides of the stage ({barsFrom:0}, {barsFrom + songBars.ActualWidth:0} of {songStage.ActualWidth:0})");
+            var songBack = Descendants(win).OfType<FrameworkElement>().First(e => e.Name == "StageBack");
+            double MiddleOf(FrameworkElement e) => e.TransformToAncestor(songStage).Transform(new Point(e.ActualWidth / 2, 0)).X;
+            Check(Math.Abs(MiddleOf(songBack) - MiddleOf(songHit)) <= 1.5, $"song's page, {when}: the backdrop in the middle of the song ({MiddleOf(songBack):0} and {MiddleOf(songHit):0})");
             var playerGrid = (FrameworkElement)win.FindName("PlayerGrid");
             var songAt = Middle(songHit);
             Check(Math.Abs(songAt.X - Middle(playerGrid).X) < 1 && Math.Abs(songAt.Y - Middle(Descendants(win).OfType<FrameworkElement>().First(e => e.Name == "Stage")).Y) < 1, $"song's page, {when}: the cover above play, halfway up the stage ({songAt.X:0},{songAt.Y:0} of {windowRoot.ActualWidth:0}x{windowRoot.ActualHeight:0})");
@@ -374,6 +471,13 @@ public static class Program
         }
         // Only what makes sense for the look and the cover.
         RadioButton Tile(string text) => Descendants(editor).OfType<RadioButton>().First(r => Shown(body: r, text));
+        // (one page at a time: what's on the others isn't drawn yet)
+        void Page(string key)
+        {
+            Descendants(editor).OfType<RadioButton>().First(r => r.GroupName == "overlay-tabs" && (string)r.Content == L.T(key)).IsChecked = true;
+            Pump(50);
+            Check(Descendants(editor).OfType<ScrollViewer>().Any(v => v.VerticalOffset == 0), $"overlay: the page {key} opens at its top");
+        }
         Tile(L.T("Vinyl")).IsChecked = true;
         Pump(50);
         Check(Shown(editor, L.T("The needle on the record")) && Shown(editor, L.T("Light around the cover")), "overlay: the needle with the vinyl");
@@ -386,6 +490,7 @@ public static class Program
         Tile(L.T("Cassette")).IsChecked = true;
         Pump(50);
         Check(!Descendants(editor).OfType<RadioButton>().Any(r => r.IsVisible && Shown(body: r, L.T("Canvas"))) && !Shown(editor, L.T("Light around the cover")), "overlay: the cassette has its cover on its label: no canvas, no light");
+        Page("Bars");
         Tile(L.T("Small bars")).IsChecked = true;
         Pump(50);
         Check(overlay.Source is { Bars: true, ShowBar: false } && Shown(editor, L.T("Shape of the bars")), "overlay: small bars alone, in place of the line");
@@ -399,10 +504,20 @@ public static class Program
         Check(Shown(editor, L.T("Above and below")), "overlay: their places when they're on");
         Tile(L.T("Through the middle")).IsChecked = true;
         Check(overlay.Source.BarsPlace == VisualizerPlace.Center, "overlay: the big bars through the middle");
+        // Each kind of bars with its own shape.
+        RadioButton Shape(string group, VisualizerStyle style) => Descendants(editor).OfType<RadioButton>().Where(r => r.GroupName == "overlay-" + group).ElementAt((int)style);
+        Shape("shape", VisualizerStyle.Line).IsChecked = true;
+        Check(overlay.Source is { Style: VisualizerStyle.Line, InsideStyle: VisualizerStyle.Bars }, "overlay: the big bars change shape, the small ones don't");
+        Shape("shape-inside", VisualizerStyle.Dots).IsChecked = true;
+        Check(overlay.Source is { Style: VisualizerStyle.Line, InsideStyle: VisualizerStyle.Dots }, "overlay: the small bars change shape, the big ones don't");
+        Shape("shape", VisualizerStyle.Bars).IsChecked = true;
+        Shape("shape-inside", VisualizerStyle.Bars).IsChecked = true;
         Descendants(editor).OfType<CheckBox>().First(c => Shown(body: c, L.T("Big bars behind the card"))).IsChecked = false;
+        Page("Appearance");
         Tile(L.T("Compact")).IsChecked = true;
         // Each font in its own face, and only the ones in view made. (The list stays see-through: this window is off the screens, a list isn't.)
-        var fontCombo = Descendants(editor).OfType<ComboBox>().Last();
+        Page("Text");
+        var fontCombo = Descendants(editor).OfType<ComboBox>().First(c => c.IsVisible);
         var fontPopup = (System.Windows.Controls.Primitives.Popup)fontCombo.Template.FindName("PART_Popup", fontCombo);
         var fontList = (FrameworkElement)fontPopup.Child;
         fontList.Opacity = 0;
@@ -425,27 +540,47 @@ public static class Program
         fontCombo.IsDropDownOpen = false;
         fontList.Opacity = 1;
         // Size, place and when: they reach the source, and only the line that counts stays.
-        Descendants(editor).OfType<Slider>().First().Value = 0.6;
+        Tile(L.T("Center|place")).IsChecked = true;
+        Check(overlay.Source.TextAlign == "center", "overlay: the text in the center");
+        Tile(L.T("Left|place")).IsChecked = true;
+        Page("On screen");
+        Descendants(editor).OfType<Slider>().First(v => v.IsVisible).Value = 0.6;
+        // (the buttons of the ways in and out move a little card, and end with it in its place)
+        var moveTile = Descendants(editor).OfType<RadioButton>().First(r => r.GroupName == "overlay-reveal" && Shown(body: r, L.T("Slide: left")));
+        moveTile.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0) { RoutedEvent = System.Windows.Input.Mouse.MouseEnterEvent });
+        Pump(100);
+        var movingCard = Descendants(moveTile).OfType<Border>().First(b => b.RenderTransform is TransformGroup);
+        double movingX = ((TranslateTransform)((TransformGroup)movingCard.RenderTransform).Children[2]).X;
+        Pump(900);
+        Check(movingX < -0.5 && ((TranslateTransform)((TransformGroup)movingCard.RenderTransform).Children[2]).X == 0 && movingCard.Opacity == 1, $"overlay: a way in shown on its button ({movingX:0.0})");
         Descendants(editor).OfType<RadioButton>().Where(r => r.GroupName == "overlay-place").ElementAt(6).IsChecked = true;
         Descendants(editor).OfType<RadioButton>().First(r => r.GroupName == "overlay-when" && Shown(body: r, L.T("At every new song"))).IsChecked = true;
-        Pump(100);
+        // (a moment later: not at each step of a slider)
+        Pump(900);
         Check(overlay.Source is { Size: 0.6, AnchorX: 0, AnchorY: 1, Show: "change" } && File.ReadAllText(AppPaths.SettingsFile).Contains("\"change\""), "overlay: size, place and when are saved");
         Check(Shown(editor, L.T("It stays for")) && !Shown(editor, L.T("With the music paused, hide it")), "overlay: only the line of the choice shows");
+        Descendants(editor).OfType<RadioButton>().First(r => r.GroupName == "overlay-when" && Shown(body: r, L.T("With the music"))).IsChecked = true;
+        Pump(50);
+        Descendants(editor).OfType<Slider>().First(v => System.Windows.Automation.AutomationProperties.GetName(v) == L.T("With the music paused, hide it")).Value = 1.5;
+        Check(overlay.Source.HideAfter == 1.5, "overlay: hidden after less than 3 seconds");
         overlay.Source.Show = "playing";
         overlay.Source.Size = 1;
+        Page("Appearance");
         var minimalTile = Descendants(editor).OfType<RadioButton>().First(r => Shown(body: r, L.T("Minimal")));
         minimalTile.IsChecked = true;
-        Pump(100);
-        Check(overlay.Source.Skin == "minimal" && overlay.Summary.StartsWith(L.T("Minimal")) && File.ReadAllText(AppPaths.SettingsFile).Contains("\"minimal\""), "overlay: a look picked is saved at once");
-        var editorScroll = Descendants(editor).OfType<ScrollViewer>().First(s => s.ScrollableHeight > 100);
-        foreach (var (at, part) in new[] { (420, 2), (840, 3), (1260, 4), (1680, 5) })
+        Pump(900);
+        Check(overlay.Source.Skin == "minimal" && overlay.Summary.StartsWith(L.T("Minimal")) && File.ReadAllText(AppPaths.SettingsFile).Contains("\"minimal\""), "overlay: a look picked is saved");
+        foreach (var (key, part) in new[] { ("Appearance", 1), ("Text", 2), ("Bars", 3), ("On screen", 4) })
         {
-            editorScroll.ScrollToVerticalOffset(at);
+            Page(key);
             Shot(editor, "overlay-editor-" + part, 200);
         }
         editor.Close();
         for (int i = 0; i < 20 && OverlayPreview.Running > 0; i++) Pump(150);
         Check(OverlayPreview.Running == 0, "overlay: its browser goes with the editor");
+        Check(File.Exists(overlay.PictureFile) && overlay.Picture != null, "overlay: the settings' list shows it as it was left");
+        Descendants(win).OfType<TextBlock>().FirstOrDefault(t => t.Text == overlay.Name)?.BringIntoView(new Rect(0, -60, 10, 160));
+        Shot(win, "overlay-row", 400);
         main.IsHome = true;
 
         if (online)
@@ -473,6 +608,105 @@ public static class Program
         Check(!File.Exists(AppPaths.LogFile) || new FileInfo(AppPaths.LogFile).Length == 0, "nothing in errors.log");
         Console.WriteLine(Failed.Count == 0 ? "wpf: ok" : $"wpf: {Failed.Count} FAILED");
         return Failed.Count == 0 ? 0 : 1;
+    }
+
+    private static void QueuePerf(MainViewModel main, MainWindow win, string root)
+    {
+        var wav = Path.Combine(root, "music", "perf.wav");
+        WriteMusic(wav, 300);
+        var track = new Track { Id = "wpf-perf", Title = "A song with a title", Artist = "An artist", Duration = 300, SourceUrl = "https://example.com/perf", Path = wav, HasCover = true };
+        WriteCover(AppPaths.TrackCover(track.Id));
+        main.Library.Add(track);
+        Pump();
+        main.Player.Volume = 0;
+        win.Left = SystemParameters.WorkArea.Left + 20;
+        win.Top = SystemParameters.WorkArea.Top + 20;
+        win.Topmost = true;
+        main.Player.PlayFrom(main.LibraryPage, main.AllVms().First(t => t.Id == track.Id));
+        main.GoNowPlayingCommand.Execute(null);
+        Pump(1500);
+        Measure("song page, still", 3000);
+        var flip = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(450) };
+        flip.Tick += (_, _) => main.NowPlaying.QueueHidden = !main.NowPlaying.QueueHidden;
+        flip.Start();
+        Measure("Up next folding and back", 7000);
+        flip.Stop();
+        Pump(500);
+    }
+
+    // Editing an overlay while a song plays: what the app, its garbage collector and the browser of the preview cost, and what's left
+    // for the frames of the windows; then the slider dragged, a step every 50 ms.
+    private static void EditorPerf(MainViewModel main, MainWindow win, string root)
+    {
+        var wav = Path.Combine(root, "music", "perf.wav");
+        WriteMusic(wav, 300);
+        var track = new Track { Id = "wpf-perf", Title = "A song with a title", Artist = "An artist", Duration = 300, SourceUrl = "https://example.com/perf", Path = wav, HasCover = true };
+        WriteCover(AppPaths.TrackCover(track.Id));
+        main.Library.Add(track);
+        Pump();
+        main.Player.Volume = 0;
+        win.Left = SystemParameters.WorkArea.Left + 20;
+        win.Top = SystemParameters.WorkArea.Top + 20;
+        win.Topmost = true;
+        main.Player.PlayFrom(main.LibraryPage, main.AllVms().First(t => t.Id == track.Id));
+        // (not Settings: its preview of the bars, at the top of the page, would be measured with it; scrolled to the overlays it rests)
+        main.IsHome = true;
+        Pump(1500);
+        Console.WriteLine($"  tier {RenderCapability.Tier >> 16}, playing {main.Player.IsPlaying}");
+        Measure("no editor", 4000);
+        var since = DateTime.Now;
+        var overlay = OverlaySourcesViewModel.Shared.Add();
+        var built = System.Diagnostics.Stopwatch.StartNew();
+        var editor = Dialogs.Frame(L.T("Stream overlay"), Dialogs.OverlayEditor(overlay), Dialogs.OverlayEditorWidth(), Dialogs.Button(L.T("Done"), "PrimaryButton", isCancel: true));
+        editor.Owner = win;
+        editor.WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        editor.ShowActivated = false;
+        editor.ShowInTaskbar = false;
+        editor.Topmost = true;
+        editor.Show();
+        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Console.WriteLine($"  editor opened in {built.ElapsedMilliseconds} ms");
+        for (int i = 0; i < 60 && OverlayPreview.Frames < 8; i++) Pump(250);
+        Pump(1000);
+        void Costs(string what, int ms, Action? meanwhile = null)
+        {
+            static double Browser(DateTime from) => new[] { "msedge", "chrome", "brave" }.SelectMany(System.Diagnostics.Process.GetProcessesByName).Sum(p =>
+            {
+                try { return p.StartTime >= from ? p.TotalProcessorTime.TotalSeconds : 0; }
+                catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception) { return 0; }
+            });
+            int g0 = GC.CollectionCount(0), g1 = GC.CollectionCount(1), g2 = GC.CollectionCount(2);
+            long made = GC.GetTotalAllocatedBytes(), pictures = OverlayPreview.Frames;
+            double browser = Browser(since);
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            var late = new List<double>();
+            var beat = new DispatcherTimer(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(50) };
+            double last = 0;
+            beat.Tick += (_, _) =>
+            {
+                double now = clock.Elapsed.TotalMilliseconds;
+                if (last > 0) late.Add(now - last - 50);
+                last = now;
+                meanwhile?.Invoke();
+            };
+            beat.Start();
+            // (without counting WPF's ticks: asking for them makes it draw at every frame of the screen, which is what's being measured)
+            Measure(what, ms, false);
+            beat.Stop();
+            double seconds = clock.Elapsed.TotalSeconds;
+            late.Sort();
+            Console.WriteLine($"    UI late p95 {late[(int)(late.Count * 0.95)]:0} ms, worst {late[^1]:0} ms; GC gen0 {GC.CollectionCount(0) - g0}, gen1 {GC.CollectionCount(1) - g1}, gen2 {GC.CollectionCount(2) - g2}; allocated {(GC.GetTotalAllocatedBytes() - made) / seconds / 1048576:0.0} MB/s; pictures {(OverlayPreview.Frames - pictures) / seconds:0.0}/s; browser {(Browser(since) - browser) / seconds * 100:0}% of a core");
+        }
+        Costs("editor open", 7000);
+        double step = 0.5;
+        Costs("slider dragged", 5000, () =>
+        {
+            step = step >= 1 ? 0.5 : step + 0.05;
+            overlay.Source.Solid = step;
+            overlay.Changed();
+        });
+        editor.Close();
+        Pump(500);
     }
 
     // Frames the window really shows, with the bars and without: WPF holds back its Rendering ticks while the render thread is behind.

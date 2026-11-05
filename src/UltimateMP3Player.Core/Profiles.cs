@@ -181,8 +181,15 @@ public sealed class ProfileData
     // Before 3.6.2 the only filter was "on the device" (read once into StorageFilter, then no longer written).
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool LibraryOnDevice { get; set; }
-    // Theme id ("ultimate", "pink"...) or "profile".
-    public string Theme { get; set; } = "ultimate";
+    // Theme id ("dynamic", "ultimate", "pink"...) or "profile".
+    public string Theme { get; set; } = ThemeColors.DynamicId;
+    // How fast the theme RGB goes round, 1-10.
+    public double RgbSpeed { get; set; } = 1;
+    public string CustomColor { get; set; } = "#7C5CFF";
+    // The colours of the last song (ThemeColors.Palette), so the app opens in them.
+    public string? SongColors { get; set; }
+    // Whoever had the old default, "ultimate", went to the new one, once.
+    public bool ThemeMoved { get; set; }
     // Light or dark look: ThemeColors.System (follows the device), Light or Dark.
     public string Appearance { get; set; } = ThemeColors.System;
     public List<Tag> Tags { get; set; } = new();

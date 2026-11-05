@@ -202,12 +202,13 @@
                     <ScaleTransform/>
                 </Setter.Value>
             </Setter>
-            <!-- (only while shown: see the Spinner style) -->
+            <!-- (only while shown: see the Spinner style; three rings each time the page is shown, then still: going on for ever,
+                 the window was drawn at every frame of the screen for as long as this page stayed open) -->
             <Style.Triggers>
                 <Trigger Property="IsVisible" Value="True">
                     <Trigger.EnterActions>
                         <BeginStoryboard x:Name="PulseGoes">
-                            <Storyboard RepeatBehavior="Forever">
+                            <Storyboard RepeatBehavior="3x">
                                 <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)" From="0.6" To="1.5" Duration="0:0:2.2"/>
                                 <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)" From="0.6" To="1.5" Duration="0:0:2.2"/>
                                 <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.7" To="0" Duration="0:0:2.2"/>

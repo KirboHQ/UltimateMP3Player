@@ -209,7 +209,7 @@
                 <!-- the song playing and the queue -->
                 <ScrollViewer x:Name="QueuePane">
                     <StackPanel Margin="0,8,0,20">
-                        <Border Classes="row" Padding="16,8" IsVisible="{Binding HasCurrent}"
+                        <Border Classes="row" Padding="16,8" IsVisible="{Binding HasCurrent}" views:Touch.Menu="roomcurrent"
                                 views:Touch.Tap="{Binding CurrentItem.SaveCommand}" views:Touch.TapParameter="{Binding $self}">
                             <Grid ColumnDefinitions="56,*">
                                 <ContentControl Width="56" Height="56" Content="{Binding CurrentItem.Track}" ContentTemplate="{StaticResource TrackCoverSmall}"/>

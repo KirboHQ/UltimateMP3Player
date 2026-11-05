@@ -269,6 +269,9 @@ public sealed class AppSettings
     public VisualizerFlow VisualizerFlow { get; set; } = VisualizerFlow.MirrorSides;
     public VisualizerPlace VisualizerPlace { get; set; } = VisualizerPlace.Bottom;
     public VisualizerStyle VisualizerStyle { get; set; } = VisualizerStyle.Bars;
+    // The song's bar, where you move along the song: the same shapes, standing still (Core SeekShapes).
+    public VisualizerStyle SeekStyle { get; set; } = VisualizerStyle.Bars;
+    public bool SeekMirrored { get; set; } = true;
     public VisualizerTint VisualizerTint { get; set; } = VisualizerTint.Cover;
     // 0 thin, 1 normal, 2 wide.
     public int VisualizerThickness { get; set; } = 1;

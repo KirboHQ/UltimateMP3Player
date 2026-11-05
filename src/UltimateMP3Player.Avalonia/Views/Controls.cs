@@ -35,8 +35,9 @@ public static class Spinners
     // 40 steps a second (a spinner doesn't need the 120 of a phone's screen).
     private const double StepMs = 25;
 
-    // While it's loaded: step(seconds since the start) at each of its frames, while it's shown.
-    private static void Animate(Control e, Action<double> step)
+    // While it's loaded: step(seconds since the start) at each of its frames, while it's shown; with stopAfter, still from then
+    // on, until it's shown again.
+    private static void Animate(Control e, Action<double> step, double stopAfter = double.PositiveInfinity)
     {
         var started = System.Diagnostics.Stopwatch.StartNew();
         var pacer = new FramePacer(StepMs);
@@ -44,6 +45,12 @@ public static class Spinners
         {
             if (!e.IsLoaded) return;
             if (!e.IsEffectivelyVisible || TopLevel.GetTopLevel(e) is not { } top)
+            {
+                started.Restart();
+                Ui.Later(Next);
+                return;
+            }
+            if (started.Elapsed.TotalSeconds >= stopAfter)
             {
                 Ui.Later(Next);
                 return;
@@ -57,7 +64,8 @@ public static class Spinners
         Next();
     }
 
-    // The ring going out behind "searching" (the Windows app's Pulse style): 0.6 → 1.5 and fading, every 2.2 s.
+    // The ring going out behind "searching" (the Windows app's Pulse style): 0.6 → 1.5 and fading, every 2.2 s, three times
+    // each time the page is shown.
     private static void Pulse(Control e)
     {
         var scale = new ScaleTransform(0.6, 0.6);
@@ -66,8 +74,8 @@ public static class Spinners
         {
             double t = s % 2.2 / 2.2;
             scale.ScaleX = scale.ScaleY = 0.6 + 0.9 * t;
-            e.Opacity = 0.7 * (1 - t);
-        });
+            e.Opacity = s >= 6.5 ? 0 : 0.7 * (1 - t);
+        }, 6.6);
     }
 
     private static void Spin(Control e)
@@ -546,9 +554,47 @@ public sealed class CoverImage : Control
         set => SetValue(IsCircleProperty, value);
     }
 
+    // From one song to the next: the new picture comes up over the old one, then only one is drawn again.
+    private IImage? _before;
+    private double _coming = 1;
+    private int _fade;
+
+    public void FadeTo(IImage? next)
+    {
+        int run = ++_fade;
+        if (Source == null || next == null || !Ui.Animations || !IsEffectivelyVisible)
+        {
+            _before = null;
+            _coming = 1;
+            Source = next;
+            return;
+        }
+        _before = Source;
+        _coming = 0;
+        Source = next;
+        Ui.Tween(this, Themes.FadeMs, Ui.CubicInOut, k =>
+        {
+            if (run != _fade) return;
+            _coming = k;
+            if (k >= 1) _before = null;
+            InvalidateVisual();
+        });
+    }
+
     public override void Render(DrawingContext context)
     {
+        if (_before is { } old) Draw(context, old);
         if (Source is not { } img) return;
+        if (_before == null)
+        {
+            Draw(context, img);
+            return;
+        }
+        using (context.PushOpacity(_coming)) Draw(context, img);
+    }
+
+    private void Draw(DrawingContext context, IImage img)
+    {
         var box = new Rect(Bounds.Size);
         // Skia reads a bitmap's source rect in pixels (Avalonia hands it DIPs, the same only at 96 DPI): a snapshot made at
         // the screen's scaling showed just its top-left corner, blown up.

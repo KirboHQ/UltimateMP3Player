@@ -10,6 +10,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.ViewModels;
+using UltimateMP3Player.Views;
 
 namespace UltimateMP3Player;
 
@@ -59,6 +60,21 @@ public class DialogWindow : Window
         return windows.LastOrDefault(w => w.IsActive && w.IsVisible) ?? (App.Host?.Window is { IsVisible: true } m ? m : windows.LastOrDefault(w => w.IsVisible));
     }
 
+    // Opening: it comes up from just behind where it stays.
+    private void ComeForward()
+    {
+        if (!Ui.Animations || Content is not Control card) return;
+        var scale = new ScaleTransform();
+        card.RenderTransform = scale;
+        card.Opacity = 0;
+        Ui.Tween(this, 150, Ui.CubicOut, k =>
+        {
+            card.Opacity = k;
+            scale.ScaleX = scale.ScaleY = 0.96 + 0.04 * k;
+            if (k >= 1) card.RenderTransform = null;
+        });
+    }
+
     public bool? ShowDialog()
     {
         _owner = ActiveOwner();
@@ -72,6 +88,7 @@ public class DialogWindow : Window
             if (_owner != null)
             {
                 _owner.IsEnabled = true;
+                (_owner as MainWindow)?.DimForDialog(false);
                 _owner.Activate();
             }
             if (_frame != null) _frame.Continue = false;
@@ -80,8 +97,10 @@ public class DialogWindow : Window
         {
             _owner.IsEnabled = false;
             Show(_owner);
+            (_owner as MainWindow)?.DimForDialog(true);
         }
         else Show();
+        ComeForward();
         // In front with the keyboard: otherwise the first click only brings it forward.
         Activate();
         _frame = new DispatcherFrame();

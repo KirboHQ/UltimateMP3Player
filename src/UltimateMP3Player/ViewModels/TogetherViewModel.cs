@@ -272,7 +272,7 @@ public sealed class TogetherViewModel : Observable
         MaxChoices = new[] { 2, 3, 4, 5, 6, 8, 10, 12, 16 }.Select(n => new Choice(L.F("{0} people", n), n)).ToList();
         _maxChoice = MaxChoices.FirstOrDefault(c => (int)c.Value! == s.TogetherMax) ?? MaxChoices[5];
         _defaultPerms = (Perm)s.TogetherRoomPerms & Perm.All;
-        _scanTimer.Tick += (_, _) => _ = Scan();
+        _scanTimer.Tick += (_, _) => _ = Scan(quiet: true);
         _follow.Tick += (_, _) => Follow();
 
         CreateCommand = new RelayCommand(() => _ = Create(), () => !Busy);
@@ -357,15 +357,20 @@ public sealed class TogetherViewModel : Observable
     public ObservableCollection<RoomAdViewModel> Rooms { get; } = new();
     public bool HasRooms => Rooms.Count > 0;
     public bool Scanning { get => _scanning; private set => Set(ref _scanning, value); }
+    private bool _scanBusy;
 
-    private async Task Scan()
+    // Quiet (the timer's, every 2.5 s): no spinner, or the window is drawn at every frame of the screen a third of the time
+    // for as long as the page stays open.
+    private async Task Scan(bool quiet = false)
     {
-        if (Scanning || InRoom) return;
-        Scanning = true;
+        if (_scanBusy || InRoom) return;
+        _scanBusy = true;
+        Scanning = !quiet;
         List<RoomAd> found;
         // (on a worker: reading the network cards and sending to every address of the subnets took the page's first frames)
         try { found = await Task.Run(() => Discovery.ScanAsync(900)); }
         catch { found = new List<RoomAd>(); }
+        _scanBusy = false;
         Scanning = false;
         if (InRoom) return;
         var fresh = found.Where(a => a.Proto == TogetherSession.Proto).Select(a => new RoomAdViewModel(a)).ToList();
@@ -720,11 +725,24 @@ public sealed class TogetherViewModel : Observable
         {
             if (_s == null) return "";
             if (!IsHost) return _joinedAddress != null ? L.F("Connected to {0}", _joinedAddress) : "";
-            var ips = Discovery.LocalAddresses();
-            if (ips.Count == 0) return "";
+            if (_localIps.Count == 0) return "";
             string port = _s.ListenPort == TogetherSession.FirstPort ? "" : ":" + _s.ListenPort;
-            return L.T("Address to join:") + " " + string.Join("  ·  ", ips.Take(3).Select(ip => ip + port));
+            return L.T("Address to join:") + " " + string.Join("  ·  ", _localIps.Take(3).Select(ip => ip + port));
         }
+    }
+
+    private List<string> _localIps = new();
+    private long _localIpsAt;
+
+    // Listing the network cards takes 11-34 ms and the address is read at every change in the room: on a worker, every 30 s at most.
+    private async Task ReadAddresses()
+    {
+        if (Environment.TickCount64 - _localIpsAt < 30000) return;
+        _localIpsAt = Environment.TickCount64;
+        var ips = await Task.Run(() => Discovery.LocalAddresses());
+        if (ips.SequenceEqual(_localIps)) return;
+        _localIps = ips;
+        OnChanged(nameof(AddressText));
     }
 
     public ObservableCollection<MemberViewModel> Members { get; } = new();
@@ -748,6 +766,7 @@ public sealed class TogetherViewModel : Observable
             vm.Update(m);
         }
         foreach (var item in _items.Values) item.Refresh();
+        if (IsHost) _ = ReadAddresses();
         OnChanged(nameof(RoomName), nameof(MemberCount), nameof(Reconnecting), nameof(HostName), nameof(RoomSubtitle), nameof(AddressText), nameof(IsHost),
             nameof(CanAdd), nameof(CanRemove), nameof(CanSkip), nameof(CanPause), nameof(CanSpeed), nameof(MyRoleText), nameof(AddHint));
         OnMemberSelection();
@@ -1771,7 +1790,7 @@ public sealed class TogetherViewModel : Observable
 
     private void CopyAddress()
     {
-        var text = IsHost ? string.Join(", ", Discovery.LocalAddresses().Take(3).Select(ip => _s!.ListenPort == TogetherSession.FirstPort ? ip : $"{ip}:{_s.ListenPort}")) : _joinedAddress;
+        var text = IsHost ? string.Join(", ", _localIps.Take(3).Select(ip => _s!.ListenPort == TogetherSession.FirstPort ? ip : $"{ip}:{_s.ListenPort}")) : _joinedAddress;
         if (string.IsNullOrEmpty(text)) return;
         Ui.CopyText(text);
         _main.Toast(L.T("Address copied"));

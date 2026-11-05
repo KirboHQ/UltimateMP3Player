@@ -254,15 +254,17 @@ public sealed class LibraryHubViewModel : Observable, IPageOrder
         }
     }
 
-    public bool Has(object? page) => page == _main.LibraryPage || page == _main.UnsortedPage || page is PlaylistsPageViewModel or ArtistsViewModel or StationsViewModel;
+    // (a playlist, an artist or a tag open here too, under the tab they belong to: the sidebar's are only ways to them)
+    public bool Has(object? page) => page == _main.LibraryPage || page == _main.UnsortedPage
+        || page is PlaylistsPageViewModel or PlaylistPageViewModel or ArtistsViewModel or ArtistPageViewModel or StationsViewModel or LibraryViewModel { IsTagPage: true };
 
-    public int? OrderOf(object page) => page == _main.LibraryPage ? 0 : page == _main.UnsortedPage ? 1
-        : page is PlaylistsPageViewModel ? 2 : page is ArtistsViewModel ? 3 : page is StationsViewModel ? 4 : null;
+    public int? OrderOf(object page) => page == _main.LibraryPage || page is LibraryViewModel { IsTagPage: true } ? 0 : page == _main.UnsortedPage ? 1
+        : page is PlaylistsPageViewModel or PlaylistPageViewModel ? 2 : page is ArtistsViewModel or ArtistPageViewModel ? 3 : page is StationsViewModel ? 4 : null;
 
-    public bool IsAll => _current == _main.LibraryPage;
+    public bool IsAll => _current == _main.LibraryPage || _current is LibraryViewModel { IsTagPage: true };
     public bool IsUnsorted => _current == _main.UnsortedPage;
-    public bool IsPlaylists => _current is PlaylistsPageViewModel;
-    public bool IsArtists => _current is ArtistsViewModel;
+    public bool IsPlaylists => _current is PlaylistsPageViewModel or PlaylistPageViewModel;
+    public bool IsArtists => _current is ArtistsViewModel or ArtistPageViewModel;
     public bool IsRadio => _current is StationsViewModel;
 
     public ICommand AllCommand { get; }

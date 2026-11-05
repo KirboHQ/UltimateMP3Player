@@ -26,9 +26,6 @@ public sealed class TagViewModel : Observable
     public string? DeviceGlyph => _main.DeviceGlyph(Id);
     public bool HasDevice => DeviceGlyph != null;
 
-    private bool _isSelected;
-    public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
-
     public void Refresh() => OnChanged(nameof(Name), nameof(Color), nameof(Brush), nameof(SearchName), nameof(Count), nameof(CountText),
         nameof(DeviceGlyph), nameof(HasDevice));
     public void RefreshCount() => OnChanged(nameof(Count), nameof(CountText));

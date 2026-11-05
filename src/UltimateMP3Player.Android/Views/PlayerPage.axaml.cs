@@ -31,6 +31,7 @@ public partial class PlayerPage : UserControl
         };
         Tilt.RenderTransform = _tilt;
         Root.RenderTransform = _slide;
+        _slide.Changed += (_, _) => CheckCovering();
         CoverBox.RenderTransform = _swipe;
         _lyricsIn = new Tweener(this, v => LyricsHost.Opacity = v, 1);
         _coverIn = new Tweener(this, v => CoverArea.Opacity = v, 1);
@@ -71,6 +72,18 @@ public partial class PlayerPage : UserControl
 
     public bool IsOpen => _open;
     public event Action? CloseRequested;
+
+    // All the way up nothing behind it shows, but it would be drawn all the same, at every frame of the bars: MainView hides it.
+    public event Action<bool>? CoveringChanged;
+    private bool _covering;
+
+    private void CheckCovering()
+    {
+        bool covering = _open && _slide.Y == 0;
+        if (covering == _covering) return;
+        _covering = covering;
+        CoveringChanged?.Invoke(covering);
+    }
 
     // The status bar, the system's buttons or gesture line, a notch, the buttons on a side in landscape.
     public void SetInsets(Thickness insets) => Body.Margin = insets;
@@ -114,6 +127,7 @@ public partial class PlayerPage : UserControl
         if (!animate || !Ui.Animations)
         {
             _slide.Y = 0;
+            CheckCovering();
             return;
         }
         _slide.Y = h;
@@ -124,6 +138,7 @@ public partial class PlayerPage : UserControl
     {
         if (!_open) return;
         _open = false;
+        CheckCovering();
         CloseVideo();
         double from = _slide.Y, h = Math.Max(Bounds.Height, 800);
         if (!animate || !Ui.Animations)
@@ -210,9 +225,9 @@ public partial class PlayerPage : UserControl
     {
         if (!_open) return;
         var img = _coverTrack?.Cover300 as Bitmap;
-        CoverImage.Source = CoverArt.Bake(img);
-        Glow.Source = CoverGlow.Bake(img, true);
-        Visualizer.Color = CoverGlow.Bright(img);
+        Ui.CrossFade(CoverBefore, CoverImage, CoverArt.Bake(img));
+        Glow.FadeTo(CoverGlow.Bake(img, true));
+        Visualizer.FadeColor(CoverGlow.Bright(img));
     }
 
     // The cover as big as the stage allows, square.

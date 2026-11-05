@@ -10,6 +10,8 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using BrushKind = Avalonia.Media.IBrush;
 using ElementKind = Avalonia.Controls.Control;
+using TimerKind = Avalonia.Threading.DispatcherTimer;
+using ShapePath = Avalonia.Controls.Shapes.Path;
 #else
 using System.Windows;
 using System.Windows.Automation;
@@ -20,6 +22,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using BrushKind = System.Windows.Media.Brush;
 using ElementKind = System.Windows.FrameworkElement;
+using TimerKind = System.Windows.Threading.DispatcherTimer;
+using ShapePath = System.Windows.Shapes.Path;
 #endif
 using System.Collections.ObjectModel;
 using System.IO;
@@ -66,6 +70,8 @@ public sealed class OverlaySourcesViewModel : Observable
     {
         if (!Dialogs.Confirm(L.T("Delete this overlay?"), L.F("The link to “{0}” in OBS will stop working.", row.Name), L.T("Delete"), true)) return;
         S.OverlaySources.Remove(row.Source);
+        try { File.Delete(row.PictureFile); }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         Sources.Remove(row);
         Apply();
     }
@@ -113,10 +119,48 @@ public sealed class OverlaySourceRow : Observable
 
     public string Name => Source.Name;
 
+    // In the settings' list: what its editor last showed (a picture kept from there, nothing runs for it), or the picture of its look.
+    public string PictureFile => System.IO.Path.Combine(AppPaths.DataDir, "overlays", Source.Id + ".jpg");
+
+    public object Picture
+    {
+        get
+        {
+            try
+            {
+                if (File.Exists(PictureFile))
+                {
+#if AVALONIA
+                    using var file = File.OpenRead(PictureFile);
+                    return Bitmap.DecodeToWidth(file, 200);
+#else
+                    var saved = new BitmapImage();
+                    saved.BeginInit();
+                    saved.CacheOption = BitmapCacheOption.OnLoad;
+                    // (the same file with a new picture in it)
+                    saved.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+                    saved.DecodePixelWidth = 200;
+                    saved.UriSource = new Uri(PictureFile);
+                    saved.EndInit();
+                    saved.Freeze();
+                    return saved;
+#endif
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException) { }
+            return Dialogs.OverlayPicture(Source.Skin);
+        }
+    }
+
+    // (it stands where the source puts it: the part of the picture that shows it)
+    public AlignmentY PictureY => Source.AnchorY < 0.25 ? AlignmentY.Top : Source.AnchorY > 0.75 ? AlignmentY.Bottom : AlignmentY.Center;
+
+    public void PictureChanged() => OnChanged(nameof(Picture), nameof(PictureY));
+
     // What a look has room for, so that the editor only shows what would change something: a light and a needle need a big cover
-    // standing free; a look without cards has no opacity, and without any frame no corners; the polaroid is always white.
+    // standing free; a look without cards has no opacity (the big bars and the canvas do), and without any frame no corners; the polaroid is always white.
     public bool HasCoverLight => Source.Skin is "compact" or "boxy" or "gallery" or "macos" or "shell" or "neon";
-    public bool HasOpacity => Source.Skin is not ("neon" or "polaroid");
+    public bool HasOpacity => Source.BarsBehind || (Source.Skin != "polaroid" && (Source.Skin != "neon" || Source.Cover == "canvas"));
     public bool HasCorners => Source.Skin != "neon";
     public bool HasTheme => Source.Skin != "polaroid";
     public bool HasCanvas => Source.Skin is not ("pill" or "cassette" or "polaroid" or "broadcast");
@@ -133,10 +177,23 @@ public sealed class OverlaySourceRow : Observable
         }
     }
 
-    // Saved at once, and every page of this source (OBS's too) changes with it.
+    private static TimerKind? _saving;
+
+    // Every page of this source (OBS's too) changes with it at once. Saved a moment later, once, not at each step of a slider or
+    // letter typed: replacing the file and its .bak holds up the window, more with an antivirus looking at them.
     public void Changed()
     {
-        App.Host.Settings.Save();
+        if (_saving == null)
+        {
+            _saving = new TimerKind { Interval = TimeSpan.FromMilliseconds(600) };
+            _saving.Tick += (_, _) =>
+            {
+                _saving.Stop();
+                App.Host.Settings.Save();
+            };
+        }
+        _saving.Stop();
+        _saving.Start();
         OverlayServer.Shared.Changed(Source);
         OnChanged(nameof(Name), nameof(Summary));
     }
@@ -160,6 +217,9 @@ public static partial class Dialogs
     };
     private static readonly string[] OverlayTints = { "#7C5CFF", "#FF4F8B", "#FF6B3D", "#F5B83D", "#1DB954", "#19C5C5", "#3D9BFF", "#E8E8F0" };
     private static readonly (string Id, string Name)[] OverlayWhen = { ("playing", "With the music"), ("change", "At every new song"), ("always", "Always") };
+    private static readonly (string Id, string Name)[] OverlayTextPlaces = { ("left", "Left|place"), ("center", "Center|place"), ("right", "Right|place") };
+    private static readonly (string Id, string Name)[] OverlayShapes = { ("0", "Bars"), ("1", "Bars with falling peaks"), ("2", "Blocks"), ("3", "Dots"), ("4", "One line"), ("5", "Filled wave") };
+    private static readonly (string Id, string Name)[] OverlayFlows = { ("0", "Left to right"), ("1", "Right to left"), ("2", "Mirrored, bass in the center"), ("3", "Mirrored, bass at the sides") };
     private static readonly (string Id, string Name)[] OverlayCorners = { ("0", "Square|corners"), ("1", "Normal|corners"), ("2", "Round|corners") };
     private static readonly (string Id, string Name)[] OverlayInside = { ("bars", "Small bars"), ("line", "Progress line"), ("both", "Both|f"), ("none", "Neither|f") };
     private static readonly (string Id, string Name)[] OverlayBehind = { ("0", "Above the card"), ("1", "Below the card"), ("2", "Above and below"), ("3", "Through the middle") };
@@ -172,13 +232,17 @@ public static partial class Dialogs
     {
         var win = Frame(L.T("Stream overlay"), OverlayEditor(row), OverlayEditorWidth(), Button(L.T("Done"), "PrimaryButton", isCancel: true));
         win.ShowDialog();
+        // (what was still waiting to be saved)
+        App.Host.Settings.Save();
     }
 
-    // Everything takes effect as it's touched: with the preview open in the browser you watch it change.
+    // Everything takes effect as it's touched: with the preview open in the browser you watch it change. Four pages, like the library's
+    // tabs, in place of one long list: what it looks like, its words, its bars, where and when it's on the screen.
     public static ElementKind OverlayEditor(OverlaySourceRow row)
     {
         var s = row.Source;
-        var body = new StackPanel { Margin = new Thickness(0, 0, 12, 0) };
+        // (from here on the small bars and the big ones each have their own shape)
+        s.InsideStyle ??= s.Style;
         // (each look, cover or choice can change what makes sense further down)
         Action? fit = null;
 
@@ -193,93 +257,100 @@ public static partial class Dialogs
         top.Children.Add(copy);
         top.Children.Add(preview);
         top.Children.Add(OverlayBox(s.Name, v => { s.Name = v; row.Changed(); }));
-        body.Children.Add(top);
 
-        body.Children.Add(OverlayHeading("Appearance"));
-        body.Children.Add(OverlayTiles(4, "skin", OverlaySourceRow.Looks, s.Skin, true, v => { s.Skin = v; row.Changed(); fit?.Invoke(); }));
-
-        body.Children.Add(OverlayHeading("Cover"));
+        // ---- what it looks like
+        var look = OverlayPage();
+        look.Children.Add(OverlayTiles(4, "skin", OverlaySourceRow.Looks, s.Skin, OverlayThumb, v => { s.Skin = v; row.Changed(); fit?.Invoke(); }));
+        look.Children.Add(OverlayHeading("Cover"));
+        var covers = OverlayTiles(4, "cover", OverlaySourceRow.Covers, s.Cover, OverlayThumb, v => { s.Cover = v; row.Changed(); fit?.Invoke(); });
+        look.Children.Add(covers);
+        var coverHint = OverlayHint("Square: the cover beside the card. Canvas: the picture fills the whole card and moves (the song's video, muted and in time with it, when it has one). Vinyl: the cover on a spinning record.");
+        coverHint.Margin = new Thickness(2, 8, 0, 12);
+        look.Children.Add(coverHint);
         var glow = OverlaySwitch("Light around the cover", null, s.Glow, v => { s.Glow = v; row.Changed(); });
         var pulse = OverlaySwitch("The cover beats with the bass", null, s.Pulse, v => { s.Pulse = v; row.Changed(); });
         var arm = OverlaySwitch("The needle on the record", null, s.Arm, v => { s.Arm = v; row.Changed(); });
-        var covers = OverlayTiles(4, "cover", OverlaySourceRow.Covers, s.Cover, true, v => { s.Cover = v; row.Changed(); fit?.Invoke(); });
-        body.Children.Add(covers);
-        var coverHint = OverlayHint("Square: the cover beside the card. Canvas: the picture fills the whole card and moves (the song's video, muted and in time with it, when it has one). Vinyl: the cover on a spinning record.");
-        coverHint.Margin = new Thickness(2, 8, 0, 12);
-        body.Children.Add(coverHint);
-        body.Children.Add(glow);
-        body.Children.Add(pulse);
-        body.Children.Add(arm);
-
-        body.Children.Add(OverlayHeading("What it shows"));
-        body.Children.Add(OverlaySwitch("Artist", null, s.ShowArtist, v => { s.ShowArtist = v; row.Changed(); }));
-        body.Children.Add(OverlaySwitch("Time", null, s.ShowTime, v => { s.ShowTime = v; row.Changed(); }));
-
-        body.Children.Add(OverlayHeading("Size and position"));
-        body.Children.Add(OverlaySlider("Size", 0.3, 1, s.Size, v => { s.Size = v; row.Changed(); }));
-        body.Children.Add(OverlayLine("Position", OverlayPlace(row)));
-        var corners = OverlayTiles(3, "corners", OverlayCorners, s.Corners.ToString("0"), false, v => { s.Corners = int.Parse(v); row.Changed(); });
-        corners.Width = 278;
-        var cornersLine = OverlayLine("Corners", corners);
-        body.Children.Add(cornersLine);
+        look.Children.Add(glow);
+        look.Children.Add(pulse);
+        look.Children.Add(arm);
+        look.Children.Add(OverlayHeading("Colors"));
+        look.Children.Add(OverlaySwitch("Colors from the cover", "Otherwise, and for songs without a cover, the tint below.", s.MagicColors, v => { s.MagicColors = v; row.Changed(); }));
+        var theme = OverlayTiles(2, "theme", new[] { ("dark", "Dark"), ("light", "Light") }, s.Light ? "light" : "dark", OverlayThemeIcon, v => { s.Light = v == "light"; row.Changed(); });
+        look.Children.Add(theme);
+        look.Children.Add(OverlayTint(row));
+        var corners = OverlayTiles(3, "corners", OverlayCorners, s.Corners.ToString("0"), id => OverlayIcon(OverlayRect(12, 6, 40, 24, id == "0" ? 0 : id == "1" ? 5 : 12), null), v => { s.Corners = int.Parse(v); row.Changed(); });
+        var cornersHeading = OverlayHeading("Corners");
+        look.Children.Add(cornersHeading);
+        look.Children.Add(corners);
         var opacityLine = OverlaySlider("Card opacity", 0.15, 1, s.Solid, v => { s.Solid = v; row.Changed(); });
-        body.Children.Add(opacityLine);
-        body.Children.Add(OverlayHint("Size and position work inside the browser source: make the source as big as your stream and place the overlay from here."));
+        look.Children.Add(opacityLine);
 
-        body.Children.Add(OverlayHeading("Colors"));
-        body.Children.Add(OverlaySwitch("Colors from the cover", "Otherwise, and for songs without a cover, the tint below.", s.MagicColors, v => { s.MagicColors = v; row.Changed(); }));
-        var theme = OverlayTiles(2, "theme", new[] { ("dark", "Dark"), ("light", "Light") }, s.Light ? "light" : "dark", false, v => { s.Light = v == "light"; row.Changed(); });
-        body.Children.Add(theme);
-        body.Children.Add(OverlayTint(row));
+        // ---- its words
+        var words = OverlayPage();
+        words.Children.Add(OverlaySwitch("Artist", null, s.ShowArtist, v => { s.ShowArtist = v; row.Changed(); }));
+        words.Children.Add(OverlaySwitch("Time", null, s.ShowTime, v => { s.ShowTime = v; row.Changed(); }));
+        words.Children.Add(OverlayHeading("Title and artist"));
+        words.Children.Add(OverlayTiles(3, "text", OverlayTextPlaces, s.TextAlign, id => OverlayIcon(OverlayRect(8, 6, 48, 24, 5), id switch
+        {
+            "center" => OverlayRect(20, 12, 24, 4, 2) + OverlayRect(24, 19, 16, 3, 1),
+            "right" => OverlayRect(27, 12, 24, 4, 2) + OverlayRect(35, 19, 16, 3, 1),
+            _ => OverlayRect(13, 12, 24, 4, 2) + OverlayRect(13, 19, 16, 3, 1),
+        }), v => { s.TextAlign = v; row.Changed(); }));
+        words.Children.Add(OverlayHeading("Font"));
+        words.Children.Add(OverlayFontCombo(row));
+        words.Children.Add(OverlayHint("Any font on this computer. The Shell look keeps a terminal's font."));
+        words.Children.Add(OverlayHeading("When nothing is playing"));
+        words.Children.Add(OverlayBox(s.NothingTitle, v => { s.NothingTitle = v; row.Changed(); }));
+        var nothingArtist = OverlayBox(s.NothingArtist, v => { s.NothingArtist = v; row.Changed(); });
+        nothingArtist.Margin = new Thickness(0, 8, 0, 0);
+        words.Children.Add(nothingArtist);
+        words.Children.Add(OverlayHint("Shown only with “Always”. Both empty: it stays hidden."));
 
-        body.Children.Add(OverlayHeading("Inside the card"));
+        // ---- its bars: each kind has its shape
+        var bars = OverlayPage();
+        bars.Children.Add(OverlayHeading("Inside the card"));
         string inside = s.Bars ? (s.ShowBar ? "both" : "bars") : s.ShowBar ? "line" : "none";
-        body.Children.Add(OverlayTiles(4, "inside", OverlayInside, inside, false, v => { s.Bars = v is "bars" or "both"; s.ShowBar = v is "line" or "both"; row.Changed(); fit?.Invoke(); }));
+        bars.Children.Add(OverlayTiles(4, "inside", OverlayInside, inside, OverlayInsideIcon, v => { s.Bars = v is "bars" or "both"; s.ShowBar = v is "line" or "both"; row.Changed(); fit?.Invoke(); }));
+        var insideShapeHeading = OverlayHeading("Shape of the bars");
+        var insideShape = OverlayTiles(3, "shape-inside", OverlayShapes, ((int)s.InsideStyle.Value).ToString(), OverlayShapeIcon, v => { s.InsideStyle = (VisualizerStyle)int.Parse(v); row.Changed(); });
+        bars.Children.Add(insideShapeHeading);
+        bars.Children.Add(insideShape);
+        bars.Children.Add(OverlayHeading("Behind the card"));
+        bars.Children.Add(OverlaySwitch("Big bars behind the card", null, s.BarsBehind, v => { s.BarsBehind = v; row.Changed(); fit?.Invoke(); }));
+        var behindPlace = OverlayTiles(4, "behind", OverlayBehind, ((int)s.BarsPlace).ToString(), OverlayBehindIcon, v => { s.BarsPlace = (VisualizerPlace)int.Parse(v); row.Changed(); });
+        bars.Children.Add(behindPlace);
+        var shapeHeading = OverlayHeading("Shape of the bars");
+        var shape = OverlayTiles(3, "shape", OverlayShapes, ((int)s.Style).ToString(), OverlayShapeIcon, v => { s.Style = (VisualizerStyle)int.Parse(v); row.Changed(); });
+        bars.Children.Add(shapeHeading);
+        bars.Children.Add(shape);
+        var flowHeading = OverlayHeading("Direction of the bars");
+        var flow = OverlayTiles(2, "flow", OverlayFlows, ((int)s.Flow).ToString(), OverlayFlowIcon, v => { s.Flow = (VisualizerFlow)int.Parse(v); row.Changed(); });
+        bars.Children.Add(flowHeading);
+        bars.Children.Add(flow);
 
-        body.Children.Add(OverlayHeading("Behind the card"));
-        var behindPlace = OverlayTiles(4, "behind", OverlayBehind, ((int)s.BarsPlace).ToString(), false, v => { s.BarsPlace = (VisualizerPlace)int.Parse(v); row.Changed(); });
-        behindPlace.Margin = new Thickness(-4, 0, -4, 12);
-        body.Children.Add(OverlaySwitch("Big bars behind the card", null, s.BarsBehind, v => { s.BarsBehind = v; row.Changed(); fit?.Invoke(); }));
-        body.Children.Add(behindPlace);
-        var shape = OverlayLine("Shape of the bars", OverlayCombo(new[] { L.T("Bars"), L.T("Bars with falling peaks"), L.T("Blocks"), L.T("Dots"), L.T("One line"), L.T("Filled wave") }, (int)s.Style, i => { s.Style = (VisualizerStyle)i; row.Changed(); }));
-        var flow = OverlayLine("Direction of the bars", OverlayCombo(new[] { L.T("Left to right"), L.T("Right to left"), L.T("Mirrored, bass in the center"), L.T("Mirrored, bass at the sides") },
-            (int)s.Flow, i => { s.Flow = (VisualizerFlow)i; row.Changed(); }));
-        body.Children.Add(shape);
-        body.Children.Add(flow);
-
-        body.Children.Add(OverlayHeading("When it shows"));
-        var waits = new[] { 3, 5, 10, 30 };
-        var hideLine = OverlayLine("With the music paused, hide it", OverlayCombo(waits.Select(w => L.F("After {0} seconds", w)).ToArray(),
-            Math.Max(0, Array.IndexOf(waits, s.HideAfter)), i => { s.HideAfter = waits[i]; row.Changed(); }));
-        var stays = new[] { 5, 8, 15, 30 };
-        var stayLine = OverlayLine("It stays for", OverlayCombo(stays.Select(w => L.F("{0} seconds", w)).ToArray(),
-            Math.Max(0, Array.IndexOf(stays, s.ShowFor)), i => { s.ShowFor = stays[i]; row.Changed(); }));
-        hideLine.Margin = stayLine.Margin = new Thickness(0, 10, 0, 0);
+        // ---- where and when it's on the screen
+        var screen = OverlayPage();
+        screen.Children.Add(OverlaySlider("Size", 0.3, 1, s.Size, v => { s.Size = v; row.Changed(); }));
+        screen.Children.Add(OverlayLine("Position", OverlayPlace(row)));
+        screen.Children.Add(OverlayHint("Size and position work inside the browser source: make the source as big as your stream and place the overlay from here."));
+        screen.Children.Add(OverlayHeading("When it shows"));
+        static string Seconds(double v) => $"{v:0.#} s";
+        var hideLine = OverlaySlider("With the music paused, hide it", 0, 30, s.HideAfter, v => { s.HideAfter = v; row.Changed(); }, 0.5, Seconds);
+        var stayLine = OverlaySlider("It stays for", 1, 30, s.ShowFor, v => { s.ShowFor = v; row.Changed(); }, 0.5, Seconds);
+        hideLine.Margin = stayLine.Margin = new Thickness(0, 12, 0, 0);
         void WhenChanged()
         {
             OverlayVisible(hideLine, s.Show == "playing");
             OverlayVisible(stayLine, s.Show == "change");
         }
         WhenChanged();
-        body.Children.Add(OverlayTiles(3, "when", OverlayWhen, s.Show, false, v => { s.Show = v; row.Changed(); WhenChanged(); }));
-        body.Children.Add(hideLine);
-        body.Children.Add(stayLine);
-
-        body.Children.Add(OverlayHeading("When it appears"));
-        body.Children.Add(OverlayTiles(4, "reveal", OverlayMoves, s.Reveal, false, v => { s.Reveal = v; row.Changed(); }));
-        body.Children.Add(OverlayHeading("When it goes away"));
-        body.Children.Add(OverlayTiles(4, "exit", OverlayMoves, s.Exit, false, v => { s.Exit = v; row.Changed(); }));
-
-        body.Children.Add(OverlayHeading("Font"));
-        body.Children.Add(OverlayFontCombo(row));
-        body.Children.Add(OverlayHint("Any font on this computer. The Shell look keeps a terminal's font."));
-
-        body.Children.Add(OverlayHeading("When nothing is playing"));
-        body.Children.Add(OverlayBox(s.NothingTitle, v => { s.NothingTitle = v; row.Changed(); }));
-        var artist = OverlayBox(s.NothingArtist, v => { s.NothingArtist = v; row.Changed(); });
-        artist.Margin = new Thickness(0, 8, 0, 0);
-        body.Children.Add(artist);
-        body.Children.Add(OverlayHint("Shown only with “Always”. Both empty: it stays hidden."));
+        screen.Children.Add(OverlayTiles(3, "when", OverlayWhen, s.Show, null, v => { s.Show = v; row.Changed(); WhenChanged(); }));
+        screen.Children.Add(hideLine);
+        screen.Children.Add(stayLine);
+        screen.Children.Add(OverlayHeading("When it appears"));
+        screen.Children.Add(OverlayMoveTiles("reveal", s.Reveal, true, v => { s.Reveal = v; row.Changed(); }));
+        screen.Children.Add(OverlayHeading("When it goes away"));
+        screen.Children.Add(OverlayMoveTiles("exit", s.Exit, false, v => { s.Exit = v; row.Changed(); }));
 
         fit = () =>
         {
@@ -290,26 +361,67 @@ public static partial class Dialogs
             OverlayVisible(glow, free && row.HasCoverLight);
             OverlayVisible(pulse, free);
             OverlayVisible(arm, cover == "vinyl" && row.HasCoverLight);
-            OverlayVisible(cornersLine, row.HasCorners);
+            OverlayVisible(cornersHeading, row.HasCorners);
+            OverlayVisible(corners, row.HasCorners);
             OverlayVisible(opacityLine, row.HasOpacity);
             OverlayVisible(theme, row.HasTheme);
+            OverlayVisible(insideShapeHeading, s.Bars);
+            OverlayVisible(insideShape, s.Bars);
             OverlayVisible(behindPlace, s.BarsBehind);
-            OverlayVisible(shape, s.Bars || s.BarsBehind);
+            OverlayVisible(shapeHeading, s.BarsBehind);
+            OverlayVisible(shape, s.BarsBehind);
+            OverlayVisible(flowHeading, s.Bars || s.BarsBehind);
             OverlayVisible(flow, s.Bars || s.BarsBehind);
         };
         fit();
 
+        // The tabs over the pages, the same as the library's.
+        var pages = new Grid { Margin = new Thickness(0, 0, 12, 0) };
+        var scroller = new ScrollViewer { Content = pages, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var tabs = new StackPanel { Orientation = Orientation.Horizontal };
+        foreach (var (key, page) in new[] { ("Appearance", look), ("Text", words), ("Bars", bars), ("On screen", screen) })
+        {
+            bool first = tabs.Children.Count == 0;
+            var tab = OverlayLook(new RadioButton { GroupName = "overlay-tabs", Content = L.T(key), IsChecked = first, Margin = new Thickness(first ? 0 : 4, 0, 0, 0) }, "TabSegment");
+            OverlayVisible(page, first);
+            OverlayOnTick(tab, on =>
+            {
+                OverlayVisible(page, on);
+                if (!on) return;
+#if AVALONIA
+                scroller.Offset = default;
+#else
+                scroller.ScrollToVerticalOffset(0);
+#endif
+            });
+            tabs.Children.Add(tab);
+            pages.Children.Add(page);
+        }
+        var tabsPanel = new Grid();
+        tabsPanel.Children.Add(new Views.SlidingPill { Target = tabs, Fill = OverlayBrush("AccentSoftBrush") });
+        tabsPanel.Children.Add(tabs);
+        var tabsBox = new Border { HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new CornerRadius(20), Padding = new Thickness(4), Margin = new Thickness(0, 14, 0, 14), Background = OverlayBrush("BgBrush"), Child = tabsPanel };
+        var options = new Grid();
+        options.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        options.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        options.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(tabsBox, 1);
+        Grid.SetRow(scroller, 2);
+        top.Margin = new Thickness(0, 0, 12, 0);
+        options.Children.Add(top);
+        options.Children.Add(tabsBox);
+        options.Children.Add(scroller);
+
         // The preview on the left, as big as there's room for; the options on the right.
-        double width = OverlayEditorWidth(), height = OverlayEditorHeight(), options = Math.Min(620, width * 0.55), gap = 16;
+        double width = OverlayEditorWidth(), height = OverlayEditorHeight(), optionsWidth = Math.Min(620, width * 0.55), gap = 16;
         var all = new Grid { Height = height };
         all.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        all.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(options) });
-        var live = OverlayLive(row, width - options - gap, height);
+        all.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(optionsWidth) });
+        var live = OverlayLive(row, width - optionsWidth - gap, height);
         live.Margin = new Thickness(0, 0, gap, 0);
         all.Children.Add(live);
-        var scroller = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        Grid.SetColumn(scroller, 1);
-        all.Children.Add(scroller);
+        Grid.SetColumn(options, 1);
+        all.Children.Add(options);
         return all;
     }
 
@@ -331,14 +443,24 @@ public static partial class Dialogs
         };
         AutomationProperties.SetName(box, L.T("Preview"));
         OverlayPreview? live = null;
+#if !AVALONIA
+        WriteableBitmap? shown = null;
+        var pixels = Array.Empty<byte>();
+        int drawing = 0;
+#endif
         void Start()
         {
             if (live != null || row.PreviewLink is not { } link) return;
             // (a page as big as the box: the look fits it by itself, and comes out as big as it'll go)
-            live = new OverlayPreview(link, (int)width, (int)height, bytes =>
+#if AVALONIA
+            double scale = TopLevel.GetTopLevel(box)?.RenderScaling ?? 1;
+#else
+            double scale = VisualTreeHelper.GetDpi(box).DpiScaleX;
+#endif
+            live = new OverlayPreview(link, (int)width, (int)height, scale * Ui.Zoom, (bytes, size) =>
             {
 #if AVALONIA
-                var frame = new Bitmap(new MemoryStream(bytes));
+                var frame = new Bitmap(new MemoryStream(bytes, 0, size));
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
                     var old = picture.Source as IDisposable;
@@ -347,22 +469,52 @@ public static partial class Dialogs
                     old?.Dispose();
                 });
 #else
-                var frame = new BitmapImage();
-                frame.BeginInit();
-                frame.CacheOption = BitmapCacheOption.OnLoad;
-                frame.StreamSource = new MemoryStream(bytes);
-                frame.EndInit();
-                frame.Freeze();
+                // One bitmap filled again and one array to carry the pixels over. A BitmapImage per picture tells the collector of its
+                // megabytes each time, 15 to 20 full collections a second while the music plays: the lag of editing an overlay.
+                // (still drawing the last one: this one is skipped, the next is newer anyway)
+                if (Interlocked.CompareExchange(ref drawing, 1, 0) != 0) return;
+                int w, h, stride;
+                try
+                {
+                    using var jpeg = new MemoryStream(bytes, 0, size, false);
+                    using var decoded = new System.Drawing.Bitmap(jpeg);
+                    (w, h) = (decoded.Width, decoded.Height);
+                    var locked = decoded.LockBits(new System.Drawing.Rectangle(0, 0, w, h), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+                    stride = locked.Stride;
+                    if (pixels.Length < stride * h) pixels = new byte[stride * h];
+                    System.Runtime.InteropServices.Marshal.Copy(locked.Scan0, pixels, 0, stride * h);
+                    decoded.UnlockBits(locked);
+                }
+                catch (ArgumentException)
+                {
+                    drawing = 0;
+                    return;
+                }
                 picture.Dispatcher.BeginInvoke(() =>
                 {
-                    picture.Stretch = Stretch.Uniform;
-                    picture.Source = frame;
+                    if (shown == null || shown.PixelWidth != w || shown.PixelHeight != h)
+                    {
+                        shown = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgr32, null);
+                        picture.Stretch = Stretch.Uniform;
+                        picture.Source = shown;
+                        // (the look's little picture is scaled once; these are new at each frame)
+                        RenderOptions.SetBitmapScalingMode(picture, BitmapScalingMode.Linear);
+                    }
+                    shown.WritePixels(new Int32Rect(0, 0, w, h), pixels, stride, 0);
+                    drawing = 0;
                 });
 #endif
             });
         }
         void Stop()
         {
+            // (the settings' list shows this source as it was left; without a browser, its look)
+            try
+            {
+                if (live != null && !live.SaveLast(row.PictureFile)) File.Delete(row.PictureFile);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            row.PictureChanged();
             live?.Dispose();
             live = null;
         }
@@ -459,6 +611,8 @@ public static partial class Dialogs
 #endif
     }
 
+    private static StackPanel OverlayPage() => new();
+
     private static TextBlock OverlayHeading(string key) => new()
     {
         Text = L.T(key), FontSize = 13, FontWeight = FontWeights_SemiBold, Foreground = OverlayBrush("SubTextBrush"), Margin = new Thickness(2, 20, 0, 8),
@@ -504,17 +658,17 @@ public static partial class Dialogs
         return combo;
     }
 
-    // In steps of 5%, its value beside it: saved at each step, not at each pixel.
-    private static DockPanel OverlaySlider(string key, double min, double max, double value, Action<double> changed)
+    // In steps (of 5%, unless it says), its value beside it: a change at each step, not at each pixel.
+    private static DockPanel OverlaySlider(string key, double min, double max, double value, Action<double> changed, double every = 0.05, Func<double, string>? format = null)
     {
-        static string Percent(double v) => $"{Math.Round(v * 100)}%";
+        Func<double, string> Percent = format ?? (v => $"{Math.Round(v * 100)}%");
         value = Math.Clamp(value, min, max);
-        var slider = new Slider { Minimum = min, Maximum = max, SmallChange = 0.05, LargeChange = 0.05, Value = value, VerticalAlignment = VerticalAlignment.Center };
+        var slider = new Slider { Minimum = min, Maximum = max, SmallChange = every, LargeChange = every, Value = value, VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetName(slider, L.T(key));
         var shown = new TextBlock { Text = Percent(value), MinWidth = 44, TextAlignment = TextAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
         slider.ValueChanged += (_, _) =>
         {
-            double step = Math.Round(slider.Value * 20) / 20;
+            double step = Math.Round(Math.Round(slider.Value / every) * every, 3);
             if (step == value) return;
             value = step;
             shown.Text = Percent(step);
@@ -553,16 +707,17 @@ public static partial class Dialogs
         return line;
     }
 
-    private static UniformGrid OverlayTiles(int columns, string group, (string Id, string Name)[] choices, string chosen, bool pictures, Action<string> picked)
+    // Each button shows what it does (picture: a little drawing of it above its words).
+    private static UniformGrid OverlayTiles(int columns, string group, (string Id, string Name)[] choices, string chosen, Func<string, ElementKind>? picture, Action<string> picked)
     {
         var grid = new UniformGrid { Columns = columns, Margin = new Thickness(-4, 0, -4, 0) };
         foreach (var (id, name) in choices)
         {
-            ElementKind content = new TextBlock { Text = L.T(name), HorizontalAlignment = HorizontalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-            if (pictures)
+            ElementKind content = new TextBlock { Text = L.T(name), HorizontalAlignment = HorizontalAlignment.Center, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap };
+            if (picture != null)
             {
                 var both = new StackPanel();
-                both.Children.Add(OverlayThumb(id));
+                both.Children.Add(picture(id));
                 content.Margin = new Thickness(0, 6, 0, 0);
                 both.Children.Add(content);
                 content = both;
@@ -572,6 +727,210 @@ public static partial class Dialogs
             grid.Children.Add(tile);
         }
         return grid;
+    }
+
+    // ------------------------------------------------------------------ the little drawings on the buttons (64 x 36)
+
+    private static string OverlayRect(int x, int y, int w, int h, int r = 0)
+    {
+        if (r == 0) return $"M{x},{y} h{w} v{h} h{-w} z ";
+        return $"M{x + r},{y} h{w - 2 * r} a{r},{r} 0 0 1 {r},{r} v{h - 2 * r} a{r},{r} 0 0 1 {-r},{r} h{-(w - 2 * r)} a{r},{r} 0 0 1 {-r},{-r} v{-(h - 2 * r)} a{r},{r} 0 0 1 {r},{-r} z ";
+    }
+
+    // card: the card, in a quiet colour; marks: what the choice is about, in the accent's.
+    private static ElementKind OverlayIcon(string? card, string? marks, bool line = false, BrushKind? cardBrush = null, BrushKind? marksBrush = null)
+    {
+        var both = new Grid { Width = 64, Height = 36, HorizontalAlignment = HorizontalAlignment.Center, IsHitTestVisible = false };
+        if (card != null) both.Children.Add(new ShapePath { Data = Geometry.Parse(card), Fill = cardBrush ?? OverlayBrush("BorderStrongBrush") });
+        if (marks != null)
+        {
+            var path = new ShapePath { Data = Geometry.Parse(marks) };
+            if (line)
+            {
+                path.Stroke = marksBrush ?? OverlayBrush("AccentTextBrush");
+                path.StrokeThickness = 2;
+            }
+            else path.Fill = marksBrush ?? OverlayBrush("AccentTextBrush");
+            both.Children.Add(path);
+        }
+        return both;
+    }
+
+    private static ElementKind OverlayThemeIcon(string id)
+    {
+        static SolidColorBrush Solid(byte r, byte g, byte b) => new(Color.FromRgb(r, g, b));
+        bool light = id == "light";
+        return OverlayIcon(OverlayRect(8, 6, 48, 24, 5), OverlayRect(13, 12, 24, 4, 2) + OverlayRect(13, 19, 16, 3, 1), false,
+            light ? Solid(0xF4, 0xF4, 0xF8) : Solid(0x24, 0x25, 0x2C), light ? Solid(0x3A, 0x3A, 0x44) : Solid(0xFF, 0xFF, 0xFF));
+    }
+
+    // Columns rising (way -1) or hanging (way 1) from a line.
+    private static string OverlayColumns(int x, int count, int step, int width, int from, int way, IEnumerable<int> heights)
+    {
+        var path = "";
+        int i = 0;
+        foreach (int h in heights.Take(count))
+        {
+            path += OverlayRect(x + i * step, way < 0 ? from - h : from, width, h);
+            i++;
+        }
+        return path;
+    }
+
+    private static readonly int[] OverlaySample = { 5, 11, 7, 14, 9, 4, 8, 13, 6, 10, 5, 12 };
+
+    private static ElementKind OverlayInsideIcon(string id)
+    {
+        var marks = OverlayRect(13, 11, 20, 4, 2) + OverlayRect(13, 18, 14, 3, 1);
+        if (id is "bars" or "both") marks += OverlayColumns(37, 5, 3, 2, 21, -1, new[] { 5, 9, 6, 10, 4 });
+        if (id is "line" or "both") marks += OverlayRect(13, 25, 38, 2, 1);
+        return OverlayIcon(OverlayRect(8, 5, 48, 26, 5), marks);
+    }
+
+    private static ElementKind OverlayBehindIcon(string id)
+    {
+        string card = OverlayRect(12, id == "0" ? 18 : id == "1" ? 4 : 12, 40, 14, 3), marks = id switch
+        {
+            "0" => OverlayColumns(14, 12, 3, 2, 18, -1, OverlaySample),
+            "1" => OverlayColumns(14, 12, 3, 2, 18, 1, OverlaySample),
+            "2" => OverlayColumns(14, 12, 3, 2, 12, -1, OverlaySample.Select(h => h * 3 / 4)) + OverlayColumns(14, 12, 3, 2, 26, 1, OverlaySample.Select(h => h * 3 / 4)),
+            // (through the middle: only at its sides)
+            _ => OverlayColumns(2, 3, 3, 2, 18, -1, new[] { 8, 13, 10 }) + OverlayColumns(2, 3, 3, 2, 18, 1, new[] { 8, 13, 10 }) + OverlayColumns(55, 3, 3, 2, 18, -1, new[] { 10, 13, 8 }) + OverlayColumns(55, 3, 3, 2, 18, 1, new[] { 10, 13, 8 }),
+        };
+        return OverlayIcon(card, marks);
+    }
+
+    private static ElementKind OverlayShapeIcon(string id)
+    {
+        var tall = OverlaySample;
+        int X(int i) => 4 + i * 5;
+        string marks = "";
+        switch ((VisualizerStyle)int.Parse(id))
+        {
+            case VisualizerStyle.Peaks:
+                for (int i = 0; i < tall.Length; i++) marks += OverlayRect(X(i), 34 - tall[i] * 2, 3, tall[i] * 2) + OverlayRect(X(i), 34 - tall[i] * 2 - 5, 3, 2);
+                return OverlayIcon(null, marks);
+            case VisualizerStyle.Blocks:
+                for (int i = 0; i < tall.Length; i++)
+                    for (int k = 0; k < tall[i] / 2; k++) marks += OverlayRect(X(i), 31 - k * 5, 3, 3);
+                return OverlayIcon(null, marks);
+            case VisualizerStyle.Dots:
+                for (int i = 0; i < tall.Length; i++) marks += $"M{X(i)},{33 - tall[i] * 2} a2,2 0 1 0 4,0 a2,2 0 1 0 -4,0 z ";
+                return OverlayIcon(null, marks);
+            case VisualizerStyle.Line:
+                marks = $"M{X(0)},{33 - tall[0] * 2}";
+                for (int i = 1; i < tall.Length; i++) marks += $" L{X(i)},{33 - tall[i] * 2}";
+                return OverlayIcon(null, marks, true);
+            case VisualizerStyle.Wave:
+                marks = $"M{X(0)},35 L{X(0)},{33 - tall[0] * 2}";
+                for (int i = 1; i < tall.Length; i++) marks += $" L{X(i)},{33 - tall[i] * 2}";
+                return OverlayIcon(null, marks + $" L{X(tall.Length - 1)},35 z");
+            default:
+                for (int i = 0; i < tall.Length; i++) marks += OverlayRect(X(i), 35 - tall[i] * 2, 3, tall[i] * 2);
+                return OverlayIcon(null, marks);
+        }
+    }
+
+    // Where the bass goes: the tallest columns there.
+    private static ElementKind OverlayFlowIcon(string id)
+    {
+        const int Count = 13;
+        var marks = "";
+        for (int i = 0; i < Count; i++)
+        {
+            int h = (int)Math.Round(5 + 26 * (1 - Spectrum.PlaceOf((i + 0.5) / Count, (VisualizerFlow)int.Parse(id))));
+            marks += OverlayRect(6 + i * 4, 34 - h, 3, h);
+        }
+        return OverlayIcon(null, marks);
+    }
+
+    // The ways in and out, each button moving a little card the way the real one moves (Overlay.html ANIM): when the mouse comes over
+    // it and when it's picked; at rest nothing runs. By the frames of the screen.
+    private static UniformGrid OverlayMoveTiles(string group, string chosen, bool entering, Action<string> picked)
+    {
+        var plays = new List<Action>();
+        var grid = OverlayTiles(4, group, OverlayMoves, chosen, id =>
+        {
+            // (going away "grow" grows and "shrink" shrinks: the motion seen, as on the page)
+            string kind = entering ? id : id switch { "grow" => "shrink", "shrink" => "grow", _ => id };
+            var card = new Border { Width = 28, Height = 16, CornerRadius = new CornerRadius(4), Background = OverlayBrush("AccentTextBrush"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            var scale = new ScaleTransform();
+            var turn = new RotateTransform();
+            var move = new TranslateTransform();
+            var all = new TransformGroup();
+            all.Children.Add(scale);
+            all.Children.Add(turn);
+            all.Children.Add(move);
+            card.RenderTransform = all;
+            double originX = kind == "swing-left" ? 0 : kind == "swing-right" ? 1 : 0.5;
+#if AVALONIA
+            card.RenderTransformOrigin = new RelativePoint(originX, 0.5, RelativeUnit.Relative);
+#else
+            card.RenderTransformOrigin = new Point(originX, 0.5);
+#endif
+            // in: 1 in its place, 0 where it comes from
+            void Place(double inPlace)
+            {
+                double away = 1 - inPlace;
+                card.Opacity = inPlace;
+                move.X = kind == "slide-left" ? -26 * away : kind == "slide-right" ? 26 * away : 0;
+                move.Y = kind switch { "slide-up" => -16 * away, "slide-down" => 16 * away, "tilt-left" or "tilt-right" => 8 * away, "original" => 7 * away, _ => 0 };
+                double size = kind switch { "grow" => 0.4 + 0.6 * inPlace, "shrink" => 1.5 - 0.5 * inPlace, "original" => 0.95 + 0.05 * inPlace, _ => 1 };
+                scale.ScaleX = kind is "swing-left" or "swing-right" ? Math.Max(0.02, inPlace) : size;
+                scale.ScaleY = size;
+                turn.Angle = kind == "tilt-left" ? -14 * away : kind == "tilt-right" ? 14 * away : 0;
+            }
+            int running = 0;
+            plays.Add(() =>
+            {
+                // (the mouse comes over it, then it's picked: only the last one moves it)
+                int mine = ++running;
+                OverlayRun(card, entering ? 560 : 420, t =>
+                {
+                    if (mine != running) return;
+                    // (out: gone by the end, then back in its place, the button at rest)
+                    double eased = 1 - Math.Pow(1 - t, 3);
+                    Place(t >= 1 ? 1 : entering ? eased : 1 - eased);
+                });
+            });
+            return new Grid { Width = 64, Height = 36, HorizontalAlignment = HorizontalAlignment.Center, IsHitTestVisible = false, Children = { card } };
+        }, picked);
+        for (int i = 0; i < grid.Children.Count; i++)
+        {
+            var tile = (RadioButton)grid.Children[i];
+            var play = plays[i];
+#if AVALONIA
+            tile.PointerEntered += (_, _) => play();
+#else
+            tile.MouseEnter += (_, _) => play();
+#endif
+            OverlayOnTick(tile, on => { if (on) play(); });
+        }
+        return grid;
+    }
+
+    // step(0..1) at every frame of the screen for ms (at the speed of the app's animations; without animations: at once).
+    private static void OverlayRun(ElementKind on, double ms, Action<double> step)
+    {
+        if (!Ui.Animations)
+        {
+            step(1);
+            return;
+        }
+#if AVALONIA
+        Ui.Tween(on, ms, t => t, step);
+#else
+        double total = Ui.Time(ms).TotalMilliseconds;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        EventHandler? frame = null;
+        frame = (_, _) =>
+        {
+            double t = Math.Min(1, clock.Elapsed.TotalMilliseconds / total);
+            step(t);
+            if (t >= 1) CompositionTarget.Rendering -= frame;
+        };
+        CompositionTarget.Rendering += frame;
+#endif
     }
 
     // A real picture of each look and cover (Assets/overlay, made from the real pages; a song and a cover of ours).
@@ -587,9 +946,9 @@ public static partial class Dialogs
     }
 
 #if AVALONIA
-    private static Bitmap OverlayPicture(string id) => new(AssetLoader.Open(new Uri($"avares://UltimateMP3Player/Assets/overlay/{id}.png")));
+    public static Bitmap OverlayPicture(string id) => new(AssetLoader.Open(new Uri($"avares://UltimateMP3Player/Assets/overlay/{id}.png")));
 #else
-    private static BitmapImage OverlayPicture(string id) => new(new Uri($"pack://application:,,,/UltimateMP3Player;component/Assets/overlay/{id}.png"));
+    public static BitmapImage OverlayPicture(string id) => new(new Uri($"pack://application:,,,/UltimateMP3Player;component/Assets/overlay/{id}.png"));
 #endif
 
     // The tint: a few to pick, or any colour by its code.

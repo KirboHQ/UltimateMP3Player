@@ -890,16 +890,20 @@
                         <Popup x:Name="PART_Popup" Placement="Bottom" VerticalOffset="4" AllowsTransparency="True"
                                Focusable="False" PopupAnimation="Fade"
                                IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                            <Border Margin="0,0,8,8" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                                    MaxHeight="{TemplateBinding MaxDropDownHeight}" Background="{DynamicResource PopupBrush}"
-                                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="14" Padding="5">
-                                <Border.Effect>
-                                    <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.45" Color="{DynamicResource PopupShadowColor}"/>
-                                </Border.Effect>
-                                <ScrollViewer SnapsToDevicePixels="True" HorizontalScrollBarVisibility="Disabled" CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}">
-                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
-                                </ScrollViewer>
-                            </Border>
+                            <Grid Margin="0,0,8,8" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                  MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                <!-- the shadow on its own, kept as a picture: on the panel around the entries, each highlight drew the whole blur again -->
+                                <Border Background="{DynamicResource PopupBrush}" CornerRadius="14" CacheMode="BitmapCache" IsHitTestVisible="False">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="16" ShadowDepth="4" Opacity="0.45" Color="{DynamicResource PopupShadowColor}"/>
+                                    </Border.Effect>
+                                </Border>
+                                <Border Background="Transparent" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="14" Padding="5">
+                                    <ScrollViewer SnapsToDevicePixels="True" HorizontalScrollBarVisibility="Disabled" CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}">
+                                        <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -1324,13 +1328,17 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ContextMenu">
-                    <Border Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                            CornerRadius="10" Padding="5" Margin="0,0,10,10" MinWidth="220">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="18" ShadowDepth="5" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
-                        </Border.Effect>
-                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
-                    </Border>
+                    <Grid Margin="0,0,10,10" MinWidth="220">
+                        <!-- the shadow on its own, kept as a picture: on the panel around the entries, each highlight drew the whole blur again -->
+                        <Border Background="{DynamicResource PopupBrush}" CornerRadius="10" CacheMode="BitmapCache" IsHitTestVisible="False">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="18" ShadowDepth="5" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
+                            </Border.Effect>
+                        </Border>
+                        <Border Background="Transparent" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="5">
+                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                        </Border>
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -1345,6 +1353,8 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- A separator inside a menu looks for this key, not for its type: without it, Windows' own light grey line. -->
+    <Style x:Key="{x:Static MenuItem.SeparatorStyleKey}" TargetType="Separator" BasedOn="{StaticResource {x:Type Separator}}"/>
 
     <Style TargetType="MenuItem">
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
@@ -1371,15 +1381,18 @@
                         <!-- right against its entry: no gap to cross on the way in -->
                         <Popup x:Name="PART_Popup" Placement="Right" HorizontalOffset="0" VerticalOffset="-6" AllowsTransparency="True"
                                IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}" Focusable="False" PopupAnimation="Fade">
-                            <Border Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                    CornerRadius="10" Padding="5" Margin="0,0,10,10" MinWidth="200" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}">
-                                <Border.Effect>
-                                    <DropShadowEffect BlurRadius="18" ShadowDepth="5" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
-                                </Border.Effect>
-                                <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto">
-                                    <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
-                                </ScrollViewer>
-                            </Border>
+                            <Grid Margin="0,0,10,10" MinWidth="200" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}">
+                                <Border Background="{DynamicResource PopupBrush}" CornerRadius="10" CacheMode="BitmapCache" IsHitTestVisible="False">
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="18" ShadowDepth="5" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
+                                    </Border.Effect>
+                                </Border>
+                                <Border Background="Transparent" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="5">
+                                    <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto">
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>

@@ -3,10 +3,11 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace UltimateMP3Player.Views;
 
-// Seek bar; bars baked into bitmaps so dragging stays smooth.
+// Seek bar, in the shape chosen (Core SeekShapes); baked into bitmaps so dragging stays smooth.
 public sealed class WaveformBar : FrameworkElement
 {
     public static readonly DependencyProperty PeaksProperty = DependencyProperty.Register(nameof(Peaks), typeof(byte[]), typeof(WaveformBar),
@@ -25,13 +26,21 @@ public sealed class WaveformBar : FrameworkElement
         new PropertyMetadata(1.0));
 
     public static readonly DependencyProperty PlayedBrushProperty = DependencyProperty.Register(nameof(PlayedBrush), typeof(Brush), typeof(WaveformBar),
-        new PropertyMetadata(Brushes.MediumPurple, (d, _) => ((WaveformBar)d).Rebuild()));
+        // (a callback also hears the colours of the same brush moving, each frame of a fade: those reach the bars by themselves through
+        // the mask in Rebuild, baking again for them took 20 ms a time)
+        new PropertyMetadata(Brushes.MediumPurple, (d, e) => { if (e.OldValue != e.NewValue) ((WaveformBar)d).Rebuild(); }));
 
     public static readonly DependencyProperty RestBrushProperty = DependencyProperty.Register(nameof(RestBrush), typeof(Brush), typeof(WaveformBar),
         new PropertyMetadata(Brushes.DimGray, (d, _) => ((WaveformBar)d).Rebuild()));
 
     public static readonly DependencyProperty BarWidthProperty = DependencyProperty.Register(nameof(BarWidth), typeof(double), typeof(WaveformBar),
         new PropertyMetadata(2.5, (d, _) => ((WaveformBar)d).Rebuild()));
+
+    public static readonly DependencyProperty ShapeProperty = DependencyProperty.Register(nameof(Shape), typeof(Core.VisualizerStyle), typeof(WaveformBar),
+        new PropertyMetadata(Core.VisualizerStyle.Bars, (d, _) => ((WaveformBar)d).Rebuild()));
+
+    public static readonly DependencyProperty MirroredProperty = DependencyProperty.Register(nameof(Mirrored), typeof(bool), typeof(WaveformBar),
+        new PropertyMetadata(true, (d, _) => ((WaveformBar)d).Rebuild()));
 
     public static readonly DependencyProperty SeekCommandProperty = DependencyProperty.Register(nameof(SeekCommand), typeof(ICommand), typeof(WaveformBar));
 
@@ -45,6 +54,8 @@ public sealed class WaveformBar : FrameworkElement
     public Brush PlayedBrush { get => (Brush)GetValue(PlayedBrushProperty); set => SetValue(PlayedBrushProperty, value); }
     public Brush RestBrush { get => (Brush)GetValue(RestBrushProperty); set => SetValue(RestBrushProperty, value); }
     public double BarWidth { get => (double)GetValue(BarWidthProperty); set => SetValue(BarWidthProperty, value); }
+    public Core.VisualizerStyle Shape { get => (Core.VisualizerStyle)GetValue(ShapeProperty); set => SetValue(ShapeProperty, value); }
+    public bool Mirrored { get => (bool)GetValue(MirroredProperty); set => SetValue(MirroredProperty, value); }
     public ICommand? SeekCommand { get => (ICommand?)GetValue(SeekCommandProperty); set => SetValue(SeekCommandProperty, value); }
 
     // The stretch under the mouse: the text's colour, see-through (white when dark, black when light).
@@ -78,6 +89,18 @@ public sealed class WaveformBar : FrameworkElement
     private long _baseAt, _frameAt;
     private bool _ticking;
 
+    // As often as the played part grows by about half a pixel of the screen (a few times a second for a song of minutes). Asking for
+    // every frame, on a bar that's always on screen, had the whole window drawn and the desktop composed at the screen's rate for
+    // as long as the music played, on any page: a laptop's battery for a movement nobody could see.
+    private DispatcherTimer? _clock;
+
+    private void Pace()
+    {
+        double pixelsPerSecond = ActualWidth * VisualTreeHelper.GetDpi(this).DpiScaleX * Ui.Zoom * (Rate > 0 ? Rate : 1) / Math.Max(1, Duration);
+        var every = TimeSpan.FromMilliseconds(Math.Clamp(500 / Math.Max(0.01, pixelsPerSecond), 16, 250));
+        if (_clock!.Interval != every) _clock.Interval = every;
+    }
+
     private void OnProgress()
     {
         _base = Progress;
@@ -94,11 +117,15 @@ public sealed class WaveformBar : FrameworkElement
         if (want)
         {
             _baseAt = _frameAt = Stopwatch.GetTimestamp();
-            CompositionTarget.Rendering += OnFrame;
+            _clock ??= new DispatcherTimer(DispatcherPriority.Render, Dispatcher);
+            _clock.Tick -= OnFrame;
+            _clock.Tick += OnFrame;
+            Pace();
+            _clock.Start();
         }
         else
         {
-            CompositionTarget.Rendering -= OnFrame;
+            _clock?.Stop();
             _shown = Progress;
             UpdateClips();
         }
@@ -113,6 +140,7 @@ public sealed class WaveformBar : FrameworkElement
         double next = _shown + dt * rate / Duration;
         _shown = Math.Clamp(next + (target - next) * (1 - Math.Exp(-dt / 0.15)), 0, 1);
         UpdateClips();
+        Pace();
     }
 
     private static Brush Freeze(Brush b)
@@ -158,36 +186,41 @@ public sealed class WaveformBar : FrameworkElement
         }
         using (var dc = _rest.RenderOpen()) dc.DrawImage(Bake(RestBrush), rect);
         using (var dc = _hover.RenderOpen()) dc.DrawImage(Bake(HoverBrush), rect);
-        using (var dc = _played.RenderOpen()) dc.DrawImage(Bake(PlayedBrush), rect);
+        using (var dc = _played.RenderOpen())
+        {
+            if (PlayedBrush.IsFrozen) dc.DrawImage(Bake(PlayedBrush), rect);
+            else
+            {
+                // (a brush whose colours move, from song to song: the bars as a mask, so they move too)
+                dc.PushOpacityMask(new ImageBrush(Bake(Brushes.White)));
+                dc.DrawRectangle(PlayedBrush, null, rect);
+                dc.Pop();
+            }
+        }
         UpdateClips();
     }
 
     private Geometry Build(Size size)
     {
-        var g = new StreamGeometry();
-        double bw = BarWidth, gap = Math.Max(1, bw * 0.6), step = bw + gap;
-        int bars = Math.Max(1, (int)((size.Width + gap) / step));
-        double mid = size.Height / 2;
-        var peaks = Peaks;
+        // (nonzero: the thin columns of the line and the wave overlap a little)
+        var g = new StreamGeometry { FillRule = FillRule.Nonzero };
+        bool dots = Shape == Core.VisualizerStyle.Dots;
         using (var ctx = g.Open())
         {
-            for (int i = 0; i < bars; i++)
+            foreach (var m in Core.SeekShapes.Build(Shape, Peaks, size.Width, size.Height, BarWidth, Mirrored))
             {
-                double v;
-                if (peaks is { Length: > 0 })
+                if (dots)
                 {
-                    int a = i * peaks.Length / bars, b = Math.Max(a + 1, (i + 1) * peaks.Length / bars);
-                    int max = 0;
-                    for (int k = a; k < b && k < peaks.Length; k++) max = Math.Max(max, peaks[k]);
-                    v = max / 255.0;
+                    var r = new Size(m.W / 2, m.H / 2);
+                    ctx.BeginFigure(new Point(m.X, m.Y + r.Height), true, true);
+                    ctx.ArcTo(new Point(m.X + m.W, m.Y + r.Height), r, 0, false, SweepDirection.Clockwise, false, false);
+                    ctx.ArcTo(new Point(m.X, m.Y + r.Height), r, 0, false, SweepDirection.Clockwise, false, false);
+                    continue;
                 }
-                else v = 0.08;
-                double h = Math.Max(2, v * size.Height);
-                double x = i * step, y = mid - h / 2;
-                ctx.BeginFigure(new Point(x, y), true, true);
-                ctx.LineTo(new Point(x + bw, y), false, false);
-                ctx.LineTo(new Point(x + bw, y + h), false, false);
-                ctx.LineTo(new Point(x, y + h), false, false);
+                ctx.BeginFigure(new Point(m.X, m.Y), true, true);
+                ctx.LineTo(new Point(m.X + m.W, m.Y), false, false);
+                ctx.LineTo(new Point(m.X + m.W, m.Y + m.H), false, false);
+                ctx.LineTo(new Point(m.X, m.Y + m.H), false, false);
             }
         }
         g.Freeze();

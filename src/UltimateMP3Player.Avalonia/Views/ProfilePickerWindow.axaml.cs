@@ -50,7 +50,9 @@ public partial class ProfilePickerWindow : DialogWindow
     public static ProfileInfo? Pick(AppHost host, Window? owner, bool startup)
     {
         var w = new ProfilePickerWindow(host, startup ? null : host.Session?.Profile.Info.Id);
+        (owner as MainWindow)?.DimForDialog(true);
         w.ShowDialog();
+        (owner as MainWindow)?.DimForDialog(false);
         return w._picked;
     }
 

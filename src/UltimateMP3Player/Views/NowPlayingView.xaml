@@ -33,18 +33,31 @@
         <!-- ======================================================== stage -->
         <Grid x:Name="Stage" Margin="0,0,0,14" ClipToBounds="True" SizeChanged="Stage_SizeChanged">
             <Border CornerRadius="16" Background="{DynamicResource SurfaceBrush}"/>
-            <!-- backdrop: the cover, or the video itself blurred -->
-            <Border CornerRadius="16" Opacity="0.22" Visibility="{Binding IsVideo, Converter={StaticResource InvBoolVis}}">
-                <Border.Background>
-                    <ImageBrush ImageSource="{Binding Player.Current.Cover160}" Stretch="UniformToFill"/>
-                </Border.Background>
-            </Border>
-            <!-- behind the lyrics: the cover's colours, blurred (baked in NowPlayingView.BakeCover) -->
-            <Border x:Name="LyricsGlow" CornerRadius="16" Opacity="0" Visibility="{Binding LyricsOverCover, Converter={StaticResource BoolVis}}">
-                <Border.Background>
-                    <ImageBrush x:Name="LyricsBackdrop" Stretch="UniformToFill"/>
-                </Border.Background>
-            </Border>
+            <!-- the pictures behind stand in the middle of the song, as wide as they ever get: they don't change when "Up next" folds
+                 away (NowPlayingView.CenterSong); the stage's corners cut them (ClipStage) -->
+            <Grid x:Name="BackClip">
+                <Grid x:Name="StageBack">
+                    <!-- backdrop: the cover, or the video itself blurred -->
+                    <Grid Opacity="0.22" Visibility="{Binding IsVideo, Converter={StaticResource InvBoolVis}}">
+                        <Border x:Name="BackdropBefore" Opacity="0">
+                            <Border.Background>
+                                <ImageBrush x:Name="BackdropBeforeBrush" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                        <Border x:Name="BackdropNow">
+                            <Border.Background>
+                                <ImageBrush x:Name="BackdropNowBrush" Stretch="UniformToFill"/>
+                            </Border.Background>
+                        </Border>
+                    </Grid>
+                    <!-- behind the lyrics: the cover's colours, blurred (baked in NowPlayingView.BakeCover) -->
+                    <Border x:Name="LyricsGlow" Opacity="0" Visibility="{Binding LyricsOverCover, Converter={StaticResource BoolVis}}">
+                        <Border.Background>
+                            <ImageBrush x:Name="LyricsBackdrop" Stretch="UniformToFill"/>
+                        </Border.Background>
+                    </Border>
+                </Grid>
+            </Grid>
             <Grid x:Name="StageVideo" Opacity="0.6" Visibility="{Binding IsVideo, Converter={StaticResource BoolVis}}">
                 <Rectangle Margin="-80">
                     <Rectangle.Fill>
@@ -124,7 +137,12 @@
                                             </GeometryModel3D.Geometry>
                                             <GeometryModel3D.Material>
                                                 <MaterialGroup>
-                                                    <!-- the cover as a baked image (NowPlayingView.BakeCover) -->
+                                                    <!-- the cover as a baked image (NowPlayingView.BakeCover); under it the song before, while the new one comes up -->
+                                                    <DiffuseMaterial>
+                                                        <DiffuseMaterial.Brush>
+                                                            <ImageBrush x:Name="CoverBefore"/>
+                                                        </DiffuseMaterial.Brush>
+                                                    </DiffuseMaterial>
                                                     <DiffuseMaterial>
                                                         <DiffuseMaterial.Brush>
                                                             <ImageBrush x:Name="CoverImage"/>

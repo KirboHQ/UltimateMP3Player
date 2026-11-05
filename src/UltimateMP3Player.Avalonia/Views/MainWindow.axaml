@@ -90,9 +90,6 @@
         <Style Selector="Border.side:pointerover">
             <Setter Property="Background" Value="{DynamicResource RowHoverBrush}"/>
         </Style>
-        <Style Selector="Border.side.selected">
-            <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
-        </Style>
         <Style Selector="Border.side.from TextBlock.name">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         </Style>
@@ -208,7 +205,7 @@
                                 <ItemsControl ItemsSource="{Binding Playlists}" Focusable="False" IsVisible="{Binding PlaylistsSection.Open}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Classes="side" Classes.selected="{Binding IsSelected}" Classes.from="{Binding IsPlayingFrom}" CornerRadius="12" Padding="6" Cursor="Hand"
+                                            <Border Classes="side" Classes.from="{Binding IsPlayingFrom}" CornerRadius="12" Padding="6" Cursor="Hand"
                                                     BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0"
                                                     views:Drops.Target="playlist" views:Rows.Menu="playlist" local:Marquee.Host="True"
                                                     views:Click.Command="{Binding $parent[Window].DataContext.OpenPlaylistCommand}">
@@ -249,7 +246,7 @@
                                     <ItemsControl ItemsSource="{Binding Artists.Followed}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Classes="side" Classes.selected="{Binding IsOpen}" CornerRadius="12" Padding="6" Cursor="Hand"
+                                                <Border Classes="side" CornerRadius="12" Padding="6" Cursor="Hand"
                                                         views:Rows.Menu="artist" local:Marquee.Host="True" views:Click.Command="{Binding OpenCommand}">
                                                     <Grid ColumnDefinitions="42,*,Auto">
                                                         <Panel Width="42" Height="42">
@@ -331,7 +328,7 @@
                                     <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Classes="side" Classes.selected="{Binding IsSelected}" CornerRadius="17" Padding="12,7" Cursor="Hand"
+                                                <Border Classes="side" CornerRadius="17" Padding="12,7" Cursor="Hand"
                                                         BorderBrush="{DynamicResource AccentBrush}" BorderThickness="0"
                                                         views:Drops.Target="tag" views:Rows.Menu="tag" ToolTip.Tip="{Binding CountText}" local:Marquee.Host="True"
                                                         views:Click.Command="{Binding $parent[Window].DataContext.OpenTagCommand}">
@@ -548,7 +545,7 @@
                         <Grid Margin="0,6,0,0" MinHeight="30" ColumnDefinitions="44,*,44">
                             <TextBlock Text="{Binding PositionText}" FontSize="11.5" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"
                                        IsVisible="{Binding !IsLive}"/>
-                            <views:WaveformBar Grid.Column="1" Height="30" Peaks="{Binding Current.Wave}" Progress="{Binding Progress}"
+                            <views:WaveformBar Grid.Column="1" Height="30" Peaks="{Binding Current.Wave}" Progress="{Binding Progress}" Shape="{Binding SeekShape}" Mirrored="{Binding SeekMirrored}"
                                                IsPlaying="{Binding Animate}" Duration="{Binding Duration}" Rate="{Binding Speed}"
                                                PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}"
                                                SeekCommand="{Binding SeekCommand}" ToolTip.Tip="{Binding SeekTip}" IsVisible="{Binding !IsLive}"/>
@@ -741,6 +738,9 @@
             </Border>
         </Grid>
         </LayoutTransformControl>
+
+        <!-- Behind a dialog the window steps back (DimForDialog) -->
+        <Border x:Name="DialogDim" Background="Black" Opacity="0" IsVisible="False" IsHitTestVisible="False"/>
 
         <!-- Linux: the window has no frame of its own, these edges resize it (WindowFrame) -->
         <Panel x:Name="ResizeEdges" IsVisible="False"/>

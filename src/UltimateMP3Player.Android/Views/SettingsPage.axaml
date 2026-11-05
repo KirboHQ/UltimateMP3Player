@@ -95,8 +95,38 @@
                         </StackPanel>
                     </Button>
                     <Border Classes="line"/>
-                    <TextBlock Text="{local:T Color}" Classes="setting" Margin="0,12,0,10"/>
-                    <ItemsControl ItemsSource="{Binding Themes}" Margin="0,0,0,10">
+                    <TextBlock Text="{local:T Theme}" Classes="setting" Margin="0,12,0,8"/>
+                    <TextBlock Text="{local:T Dynamic}" Classes="setting-hint" Margin="0,0,0,8"/>
+                    <ItemsControl ItemsSource="{Binding MovingThemes}" Margin="0,0,0,12">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:ThemeOption">
+                                <Panel Height="44" Background="Transparent"
+                                       views:Touch.Tap="{Binding $parent[views:SettingsPage].DataContext.SelectThemeCommand}" views:Touch.TapParameter="{Binding Id}">
+                                    <Border CornerRadius="22" Background="{DynamicResource Surface2Brush}"/>
+                                    <Border CornerRadius="22" Background="{DynamicResource AccentSoftBrush}" IsVisible="{Binding IsSelected}"/>
+                                    <StackPanel Orientation="Horizontal" Margin="6,0,16,0">
+                                        <Ellipse Width="32" Height="32" Fill="{Binding Swatch}"/>
+                                        <TextBlock Text="{Binding Label}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Panel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Margin="0,0,0,10" IsVisible="{Binding IsRgbTheme}">
+                        <TextBlock Text="{local:T Speed}" Classes="setting-hint"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="1" Maximum="10" Value="{Binding RgbSpeed}" SmallChange="0.5" LargeChange="0.5"
+                                    IsSnapToTickEnabled="True" TickFrequency="0.5" Height="40" AutomationProperties.Name="{local:T 'RGB speed'}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding RgbSpeedText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
+                        </Grid>
+                    </StackPanel>
+                    <TextBlock Text="{local:T Colors}" Classes="setting-hint" Margin="0,0,0,8"/>
+                    <ItemsControl ItemsSource="{Binding ColorThemes}" Margin="0,0,0,10">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <views:SwatchGrid/>
@@ -112,6 +142,26 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <StackPanel Margin="0,0,0,10" IsVisible="{Binding IsCustomTheme}">
+                        <TextBlock Text="{local:T Hue}" Classes="setting-hint"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="359" Value="{Binding CustomHue}" Height="40" AutomationProperties.Name="{local:T Hue}"/>
+                            <TextBox Grid.Column="1" Width="120" Margin="12,0,0,0" MaxLength="7" Text="{Binding CustomColorText}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Custom colour'}"/>
+                        </Grid>
+                    </StackPanel>
+                    <TextBlock Text="{Binding ThemeHint}" Classes="setting-hint" Margin="0,0,0,10" IsVisible="{Binding HasThemeHint}"/>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="SeekStyleChoice" Click="Choose_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Shape of the song bar'}" Classes="setting"/>
+                            <TextBlock Text="{Binding SeekStyleChoice.Label}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding SeekMirrored}">
+                        <TextBlock Text="{local:T Mirrored}" Classes="setting"/>
+                    </CheckBox>
+                    <views:WaveformBar Height="40" Margin="0,2,0,12" Peaks="{Binding SeekSample}" Progress="0.4" Shape="{Binding SeekStyle}" Mirrored="{Binding SeekMirrored}" BarWidth="3" IsHitTestVisible="False"
+                                       PlayedBrush="{DynamicResource ProgressGradient}" RestBrush="{DynamicResource WaveBrush}"/>
                     <Border Classes="line"/>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding Animations}">
                         <StackPanel>

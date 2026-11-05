@@ -254,6 +254,15 @@ switch (args[0])
                 sources.Add(new OverlaySource { Id = $"t-{look}-notime", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = true, ShowTime = false });
                 sources.Add(new OverlaySource { Id = $"t-{look}-bare", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = false, ShowTime = false });
                 sources.Add(new OverlaySource { Id = $"t-{look}-light", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = true, Light = true });
+                // The words in the middle or at the end, with a cover beside them and alone; half see-through, over the page's dots.
+                foreach (var align in new[] { "center", "right" })
+                {
+                    sources.Add(new OverlaySource { Id = $"a-{look}-{align}", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = false, TextAlign = align });
+                    sources.Add(new OverlaySource { Id = $"a-{look}-{align}-canvas", Name = look, Skin = look, Cover = "canvas", Bars = false, ShowBar = false, ShowTime = false, TextAlign = align });
+                }
+                sources.Add(new OverlaySource { Id = $"o-{look}", Name = look, Skin = look, Cover = "square", Solid = 0.3, BarsBehind = true, BarsPlace = VisualizerPlace.Top });
+                sources.Add(new OverlaySource { Id = $"s-{look}", Name = look, Skin = look, Cover = "square", BarsBehind = true, BarsPlace = VisualizerPlace.Top, Style = VisualizerStyle.Line, InsideStyle = VisualizerStyle.Bars });
+                sources.Add(new OverlaySource { Id = $"o-{look}-canvas", Name = look, Skin = look, Cover = "canvas", Solid = 0.3 });
             }
             int port = server.Apply(sources, 0);
             async Task<int> Status(string path, string? host = null)
@@ -292,6 +301,71 @@ switch (args[0])
             server.Stop();
             if (args.Length <= 2) File.Delete(cover);
             return ok ? 0 : 1;
+        }
+
+    case "rgbspeed":
+        {
+            // The theme RGB: ten times as fast at 10x, and another speed goes on from the same colour.
+            double Moved(double speed, int ms)
+            {
+                ThemeColors.RgbSpeed = speed;
+                ThemeColors.Rgb();
+                double from = ThemeColors.RgbHue;
+                Thread.Sleep(ms);
+                ThemeColors.Rgb();
+                return (ThemeColors.RgbHue - from + 360) % 360;
+            }
+            double slow = Moved(1, 1000), fast = Moved(10, 1000);
+            ThemeColors.Rgb();
+            double before = ThemeColors.RgbHue;
+            ThemeColors.RgbSpeed = 1;
+            ThemeColors.Rgb();
+            double jump = Math.Abs(ThemeColors.RgbHue - before);
+            bool fine = Math.Abs(slow - 8) < 1 && Math.Abs(fast - 80) < 8 && jump < 2 && ThemeColors.RgbStepMs == 250;
+            // A colour of your own: only a whole colour counts, and its hue comes back.
+            fine &= ThemeColors.ColorFrom("12ab9f") == "#12AB9F" && ThemeColors.ColorFrom("#12AB9") == null && ThemeColors.ColorFrom("#12AB9G") == null
+                && Math.Abs(ThemeColors.HueOf(ThemeColors.FromHue(200)) - 200) < 2 && ThemeColors.Custom("#12AB9F").A == "#12AB9F";
+            // What's written on the buttons: one colour all the way round, readable on every colour.
+            foreach (var light in new[] { false, true })
+            {
+                var inks = new HashSet<uint>();
+                double worst = 99;
+                for (int h = 0; h < 360; h++)
+                {
+                    var c = ThemeColors.Build(ThemeColors.RgbAt(h), light);
+                    inks.Add(c["OnAccent"]);
+                    worst = Math.Min(worst, Math.Min(ThemeColors.Contrast(c["OnAccent"], c["Accent"]), ThemeColors.Contrast(c["OnAccent"], c["Accent2"])));
+                }
+                Console.WriteLine($"{(light ? "light" : "dark")} look: {inks.Count} ink, worst contrast {worst:0.0}");
+                fine &= inks.Count == 1 && worst >= 4;
+            }
+            ThemeColors.RgbSpeed = 10;
+            fine &= Math.Abs(ThemeColors.RgbStepMs - 1000.0 / 30) < 0.01;
+            Console.WriteLine($"1x {slow:0.0} degrees a second, 10x {fast:0.0}, on changing speed {jump:0.00}: " + (fine ? "rgbspeed: ok" : "rgbspeed: WRONG"));
+            return fine ? 0 : 1;
+        }
+
+    case "seekshapes":
+        {
+            // The song's bar: every shape, mirrored or not, with a song or without, stays inside its box; "Bars" is the bar it always was, a bar
+            // every 4 points; mirrored is the same above and below the middle.
+            var loud = Enumerable.Range(0, 300).Select(i => (byte)(i * 37 % 256)).ToArray();
+            bool fine = true;
+            foreach (var shape in Enum.GetValues<VisualizerStyle>())
+                foreach (var peaks in new[] { loud, null, Array.Empty<byte>() })
+                    foreach (var (w, h) in new[] { (900.0, 30.0), (340.0, 46.0), (4000.0, 30.0), (5.0, 8.0) })
+                        foreach (var mirrored in new[] { true, false })
+                        {
+                            var marks = SeekShapes.Build(shape, peaks, w, h, 2.5, mirrored);
+                            bool even = !mirrored || Math.Abs(marks.Sum(m => m.Y + m.H / 2 - h / 2)) < marks.Length * 0.001 + 0.01;
+                            if (even && marks.Length > 0 && marks.Length < 20000 && marks.All(m => m.W > 0 && m.H > 0 && m.X >= 0 && m.X + m.W <= w + 0.5 && m.Y >= -0.01 && m.Y + m.H <= h + 0.01)) continue;
+                            fine = false;
+                            Console.WriteLine($"WRONG: {shape}, mirrored {mirrored}, {peaks?.Length} peaks, {w}x{h}: {marks.Length} marks");
+                        }
+            int bars = SeekShapes.Build(VisualizerStyle.Bars, loud, 900, 30, 2.5).Length;
+            if (bars != 225) { fine = false; Console.WriteLine($"WRONG: {bars} bars in 900 points"); }
+            Console.WriteLine(fine ? "seekshapes: ok" : "seekshapes: WRONG");
+            return fine ? 0 : 1;
         }
 
     case "spectrum":

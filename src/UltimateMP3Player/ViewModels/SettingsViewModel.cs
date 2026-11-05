@@ -288,21 +288,81 @@ public sealed class SettingsViewModel : Observable
 
     // ------------------------------------------------------------------ appearance
 
-    public List<ThemeOption> Themes
+    private string CurrentTheme => ThemeColors.Resolve(_main.Profile.Data.Theme, _main.Profile.Info.Color, _main.Profile.Data.SongColors).Id;
+
+    // The ones that change by themselves, by name; then the colours.
+    public List<ThemeOption> MovingThemes => new()
     {
-        get
+        new(ThemeColors.DynamicId, L.T("From the song"), UltimateMP3Player.Themes.SongSwatch(), CurrentTheme == ThemeColors.DynamicId),
+        new(ThemeColors.RgbId, L.T("RGB"), UltimateMP3Player.Themes.RgbSwatch(), CurrentTheme == ThemeColors.RgbId),
+    };
+
+    // (the last one: your own; the whole round until it's chosen, any colour can be)
+    public List<ThemeOption> ColorThemes => ThemeColors.All.Select(t => new ThemeOption(t.Id, L.T(t.Name), UltimateMP3Player.Themes.Swatch(t), CurrentTheme == t.Id))
+        .Append(new ThemeOption(ThemeColors.CustomId, L.T("Custom"), IsCustomTheme ? UltimateMP3Player.Themes.Swatch(ThemeColors.Custom(_main.Profile.Data.CustomColor)) : UltimateMP3Player.Themes.RgbSwatch(), IsCustomTheme)).ToList();
+
+    public bool IsCustomTheme => _main.Profile.Data.Theme == ThemeColors.CustomId;
+
+    public double CustomHue
+    {
+        get => ThemeColors.HueOf(_main.Profile.Data.CustomColor);
+        set => SetCustomColor(ThemeColors.FromHue(value));
+    }
+
+    public string CustomColorText
+    {
+        get => _main.Profile.Data.CustomColor;
+        set
         {
-            var current = ThemeColors.Resolve(_main.Profile.Data.Theme, _main.Profile.Info.Color).Id;
-            return ThemeColors.All.Select(t => new ThemeOption(t.Id, L.T(t.Name), UltimateMP3Player.Themes.Swatch(t), current == t.Id)).ToList();
+            if (ThemeColors.ColorFrom(value) is not { } color) return;
+            SetCustomColor(color);
+            OnChanged(nameof(CustomHue));
         }
     }
+
+    private void SetCustomColor(string color)
+    {
+        if (color == _main.Profile.Data.CustomColor) return;
+        _main.Profile.Data.CustomColor = ThemeColors.CustomColor = color;
+        _main.Profile.Save();
+        UltimateMP3Player.Themes.PaintAccent(ThemeColors.Custom(color));
+        OnChanged(nameof(CustomColorText), nameof(ColorThemes));
+    }
+
+    public string ThemeHint => _main.Profile.Data.Theme switch
+    {
+        ThemeColors.DynamicId => L.T("The colours of the app follow the cover of the song playing."),
+        ThemeColors.RgbId => L.T("The colours of the app go round, while the app is on screen."),
+        _ => "",
+    };
+
+    public bool HasThemeHint => ThemeHint.Length > 0;
+
+    public bool IsRgbTheme => _main.Profile.Data.Theme == ThemeColors.RgbId;
+
+    public double RgbSpeed
+    {
+        get => _main.Profile.Data.RgbSpeed;
+        set
+        {
+            double v = Math.Round(Math.Clamp(value, ThemeColors.RgbMinSpeed, ThemeColors.RgbMaxSpeed) * 2) / 2;
+            if (v == _main.Profile.Data.RgbSpeed) return;
+            _main.Profile.Data.RgbSpeed = ThemeColors.RgbSpeed = v;
+            _main.Profile.Save();
+            UltimateMP3Player.Themes.RunRgb();
+            OnChanged(nameof(RgbSpeed), nameof(RgbSpeedText));
+        }
+    }
+
+    public string RgbSpeedText => $"{_main.Profile.Data.RgbSpeed:0.#}x";
 
     private void SelectTheme(string id)
     {
         _main.Profile.Data.Theme = id;
         _main.Profile.Save();
         _main.Host.ApplyTheme();
-        OnChanged(nameof(Themes));
+        _main.SongColors.Restart();
+        OnChanged(nameof(MovingThemes), nameof(ColorThemes), nameof(ThemeHint), nameof(HasThemeHint), nameof(IsRgbTheme), nameof(IsCustomTheme), nameof(CustomHue), nameof(CustomColorText));
     }
 
     public List<Choice> Appearances { get; } = new()
@@ -441,6 +501,38 @@ public sealed class SettingsViewModel : Observable
             SaveBars();
         }
     }
+
+    // The song's bar: the same shapes, standing still.
+    public Choice SeekStyleChoice
+    {
+        get => VisualizerStyles.FirstOrDefault(c => Equals(c.Value, S.SeekStyle)) ?? VisualizerStyles[0];
+        set
+        {
+            if (value?.Value is not VisualizerStyle style || style == S.SeekStyle) return;
+            S.SeekStyle = style;
+            Save();
+            OnChanged(nameof(SeekStyleChoice), nameof(SeekStyle));
+            _main.Player.OnSeekShape();
+        }
+    }
+
+    public VisualizerStyle SeekStyle => S.SeekStyle;
+
+    public bool SeekMirrored
+    {
+        get => S.SeekMirrored;
+        set
+        {
+            if (value == S.SeekMirrored) return;
+            S.SeekMirrored = value;
+            Save();
+            OnChanged(nameof(SeekMirrored));
+            _main.Player.OnSeekShape();
+        }
+    }
+
+    // (the bar in Settings: a made-up song)
+    public byte[] SeekSample { get; } = Enumerable.Range(0, 160).Select(i => (byte)(90 + 110 * Math.Abs(Math.Sin(i * 0.31) * Math.Cos(i * 0.083)) + i % 7 * 6)).ToArray();
 
     public List<Choice> VisualizerTints { get; } = new()
     {
@@ -945,12 +1037,16 @@ public sealed class SettingsViewModel : Observable
         var list = new List<Choice> { new(L.T("Ask which profile to use"), null) };
         list.AddRange(_main.Host.Profiles.Profiles.Select(p => new Choice(L.F("Always “{0}”", p.Name), p.Id)));
         StartupChoices = list;
-        OnChanged(nameof(StartupChoices), nameof(StartupProfile));
+        // (as for the outputs: a WPF ComboBox swapping lists shows nothing unless nothing is chosen meanwhile)
+        _listing = true;
+        OnChanged(nameof(StartupChoices));
+        _listing = false;
+        OnChanged(nameof(StartupProfile));
     }
 
     public Choice StartupProfile
     {
-        get => StartupChoices.FirstOrDefault(c => Equals(c.Value, S.StartupProfile)) ?? StartupChoices[0];
+        get => _listing ? null! : StartupChoices.FirstOrDefault(c => Equals(c.Value, S.StartupProfile)) ?? StartupChoices[0];
         set
         {
             if (value == null) return;

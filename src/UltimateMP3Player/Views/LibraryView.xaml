@@ -9,9 +9,6 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <!-- (the library's tabs have the colour behind them: only a tag's page has its own) -->
-        <Border Grid.RowSpan="2" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"
-                Visibility="{Binding IsTagPage, Converter={StaticResource BoolVis}}"/>
 
         <Grid Margin="28,8,28,18">
             <Grid.ColumnDefinitions>

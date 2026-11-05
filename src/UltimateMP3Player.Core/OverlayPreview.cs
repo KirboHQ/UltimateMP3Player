@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
@@ -21,11 +22,30 @@ public sealed class OverlayPreview : IDisposable
     private string? _profile;
     private IntPtr _job;
     private int _closed;
+    private readonly object _lastLock = new();
+    private byte[]? _last;
+    private int _lastSize;
 
-    // A quarter more pixels than the page's: the picture stays sharp, and each frame costs far less than at 1.5 (43 → 30 % of a core).
-    private const double Sharp = 1.25;
+    // As many pixels as the screen shows, at most a quarter more than the page's: the picture stays sharp, and each frame costs far
+    // less than at 1.5 (43 → 30 % of a core).
+    private const double MostSharp = 1.25;
 
-    public OverlayPreview(string url, int width, int height, Action<byte[]> frame) => _ = Task.Run(() => Run(url, width, height, frame));
+    // frame: the JPEG in the first bytes of an array kept for all of them, to be read before it returns.
+    public OverlayPreview(string url, int width, int height, double screenScale, Action<byte[], int> frame)
+        => _ = Task.Run(() => Run(url, width, height, Math.Clamp(screenScale, 1, MostSharp), frame));
+
+    // The last picture received, as a file: what the settings' list shows of this source. False if none came.
+    public bool SaveLast(string path)
+    {
+        lock (_lastLock)
+        {
+            if (_last == null) return false;
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            using var file = File.Create(path);
+            file.Write(_last, 0, _lastSize);
+            return true;
+        }
+    }
 
     public static string? FindBrowser()
     {
@@ -44,7 +64,7 @@ public sealed class OverlayPreview : IDisposable
         return places.FirstOrDefault(File.Exists);
     }
 
-    private async Task Run(string url, int width, int height, Action<byte[]> frame)
+    private async Task Run(string url, int width, int height, double sharp, Action<byte[], int> frame)
     {
         try
         {
@@ -59,7 +79,9 @@ public sealed class OverlayPreview : IDisposable
             var start = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
             foreach (var arg in new[]
                      {
-                         "--headless=new", $"--window-size={width},{height}", $"--force-device-scale-factor={Sharp}", "--remote-debugging-port=0", "--user-data-dir=" + _profile, "--no-first-run",
+                         // (--disable-gpu: drawn on the processor costs less here than its stand-in for a GPU, 71 → 57 % of a core, and leaves the real one to OBS and the games)
+                         "--headless=new", "--disable-gpu", $"--window-size={width},{height}", "--force-device-scale-factor=" + sharp.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                         "--remote-debugging-port=0", "--user-data-dir=" + _profile, "--no-first-run",
                          "--no-default-browser-check", "--disable-extensions", "--disable-sync", "--disable-background-networking", "--disable-component-update",
                          "--mute-audio", "--hide-scrollbars", url,
                      })
@@ -70,6 +92,9 @@ public sealed class OverlayPreview : IDisposable
             _browser.ErrorDataReceived += (_, _) => { };
             _browser.BeginOutputReadLine();
             _browser.BeginErrorReadLine();
+            // (a preview gives way: the music and the windows never wait for it)
+            try { _browser.PriorityClass = ProcessPriorityClass.BelowNormal; }
+            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
             EndWithThisApp(_browser);
             Interlocked.Increment(ref Running);
             // (it writes down the port it was given)
@@ -96,10 +121,12 @@ public sealed class OverlayPreview : IDisposable
             int id = 0;
             Task Send(string method, string args) => ws.SendAsync(Encoding.UTF8.GetBytes($"{{\"id\":{++id},\"method\":\"{method}\",\"params\":{args}}}"), WebSocketMessageType.Text, true, ct);
             await Send("Page.enable", "{}");
-            await Send("Page.startScreencast", $"{{\"format\":\"jpeg\",\"quality\":82,\"maxWidth\":{(int)(width * Sharp)},\"maxHeight\":{(int)(height * Sharp)},\"everyNthFrame\":1}}");
+            await Send("Page.startScreencast", $"{{\"format\":\"jpeg\",\"quality\":82,\"maxWidth\":{(int)(width * sharp)},\"maxHeight\":{(int)(height * sharp)},\"everyNthFrame\":1}}");
             var buffer = new byte[256 * 1024];
             using var message = new MemoryStream();
             var clock = Stopwatch.StartNew();
+            // (one array for all the pictures, nothing made per picture: they're big enough to wake the slowest of the garbage collections)
+            var picture = new byte[512 * 1024];
             while (ws.State == WebSocketState.Open)
             {
                 message.SetLength(0);
@@ -110,16 +137,21 @@ public sealed class OverlayPreview : IDisposable
                     message.Write(buffer, 0, got.Count);
                 } while (!got.EndOfMessage);
                 if (got.MessageType == WebSocketMessageType.Close) return;
-                using var said = JsonDocument.Parse(message.GetBuffer().AsMemory(0, (int)message.Length));
-                if (!said.RootElement.TryGetProperty("method", out var method) || method.GetString() != "Page.screencastFrame") continue;
-                var details = said.RootElement.GetProperty("params");
-                frame(Convert.FromBase64String(details.GetProperty("data").GetString()!));
+                (int Size, int Session) said;
+                lock (_lastLock)
+                {
+                    if (ReadFrame(message.GetBuffer().AsSpan(0, (int)message.Length), ref picture) is not { Size: > 0 } read) continue;
+                    said = read;
+                    _last = picture;
+                    _lastSize = read.Size;
+                }
+                frame(picture, said.Size);
                 Interlocked.Increment(ref Frames);
                 // About 30 a second are plenty for a preview; the browser waits for the answer before making the next one.
                 int wait = MinFrameMs - (int)clock.ElapsedMilliseconds;
                 if (wait > 0) await Task.Delay(wait, ct);
                 clock.Restart();
-                await Send("Page.screencastFrameAck", $"{{\"sessionId\":{details.GetProperty("sessionId").GetInt32()}}}");
+                await Send("Page.screencastFrameAck", $"{{\"sessionId\":{said.Session}}}");
             }
         }
         catch (OperationCanceledException) { }
@@ -132,6 +164,39 @@ public sealed class OverlayPreview : IDisposable
         {
             Dispose();
         }
+    }
+
+    // {"method":"Page.screencastFrame","params":{"data":"<the picture in base64>","metadata":{...},"sessionId":1}}: the picture decoded
+    // straight from the message into the array. Null for any other message.
+    private static (int Size, int Session)? ReadFrame(ReadOnlySpan<byte> json, ref byte[] picture)
+    {
+        var reader = new Utf8JsonReader(json);
+        int size = 0, session = 0;
+        bool found = false;
+        while (reader.Read())
+        {
+            if (reader.TokenType != JsonTokenType.PropertyName) continue;
+            if (reader.CurrentDepth == 1 && reader.ValueTextEquals("method"))
+            {
+                reader.Read();
+                if (!reader.ValueTextEquals("Page.screencastFrame")) return null;
+                found = true;
+            }
+            else if (reader.CurrentDepth == 2 && reader.ValueTextEquals("data"))
+            {
+                reader.Read();
+                var text = reader.ValueSpan;
+                int most = Base64.GetMaxDecodedFromUtf8Length(text.Length);
+                if (picture.Length < most) picture = new byte[most * 5 / 4];
+                if (Base64.DecodeFromUtf8(text, picture, out _, out size) != System.Buffers.OperationStatus.Done) return null;
+            }
+            else if (reader.CurrentDepth == 2 && reader.ValueTextEquals("sessionId"))
+            {
+                reader.Read();
+                session = reader.GetInt32();
+            }
+        }
+        return found ? (size, session) : null;
     }
 
     public void Dispose()
