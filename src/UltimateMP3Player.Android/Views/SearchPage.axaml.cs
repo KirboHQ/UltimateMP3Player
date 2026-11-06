@@ -83,8 +83,30 @@ public partial class SearchPage : UserControl, IPage
     private void OnVm(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(SearchViewModel.Items) or nameof(SearchViewModel.OnlineEnabled)) Update();
+        if (e.PropertyName != nameof(SearchViewModel.Filter)) return;
         // (another chip: its results from the top)
-        if (e.PropertyName == nameof(SearchViewModel.Filter) && List.ItemCount > 0) List.ScrollIntoView(0);
+        if (List.ItemCount > 0) List.ScrollIntoView(0);
+        SlideList();
+    }
+
+    private int _chip;
+
+    // Another chip: its list comes in from its side (one list here: the computers' strip of pages would be a second one for nothing).
+    private void SlideList()
+    {
+        int chip = _vm!.Filters.FindIndex(f => f.Key == _vm.Filter);
+        int side = Math.Sign(chip - _chip);
+        _chip = chip;
+        if (side == 0 || !Ui.Animations || !List.IsEffectivelyVisible) return;
+        var shift = new Avalonia.Media.TranslateTransform(side * 60, 0);
+        List.RenderTransform = shift;
+        List.Opacity = 0;
+        Ui.Tween(List, AnimatedContent.Ms, Ui.CubicOut, t =>
+        {
+            shift.X = side * 60 * (1 - t);
+            List.Opacity = t;
+            if (t >= 1) List.RenderTransform = null;
+        });
     }
 
     private static bool IsLink(string s)

@@ -202,7 +202,7 @@
                                         </StackPanel>
                                     </Button>
                                 </DockPanel>
-                                <ItemsControl ItemsSource="{Binding Playlists}" Focusable="False" IsVisible="{Binding PlaylistsSection.Open}">
+                                <ItemsControl ItemsSource="{Binding Playlists}" Focusable="False" views:Fold.Open="{Binding PlaylistsSection.Open}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border Classes="side" Classes.from="{Binding IsPlayingFrom}" CornerRadius="12" Padding="6" Cursor="Hand"
@@ -240,7 +240,7 @@
                                         </StackPanel>
                                     </Button>
                                 </DockPanel>
-                                <StackPanel IsVisible="{Binding ArtistsSection.Open}">
+                                <StackPanel views:Fold.Open="{Binding ArtistsSection.Open}">
                                     <TextBlock Text="{local:T 'The artists you follow show up here.'}" Classes="hint" FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap"
                                                IsVisible="{Binding !Artists.HasFollowed}"/>
                                     <ItemsControl ItemsSource="{Binding Artists.Followed}" Focusable="False">
@@ -279,7 +279,7 @@
                                         </StackPanel>
                                     </Button>
                                 </DockPanel>
-                                <StackPanel IsVisible="{Binding RadiosSection.Open}">
+                                <StackPanel views:Fold.Open="{Binding RadiosSection.Open}">
                                     <TextBlock Text="{local:T 'The radios you save show up here.'}" Classes="hint" FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap"
                                                IsVisible="{Binding !Stations.HasSaved}"/>
                                     <ItemsControl ItemsSource="{Binding Stations.Saved}" Focusable="False">
@@ -322,7 +322,7 @@
                                         </StackPanel>
                                     </Button>
                                 </DockPanel>
-                                <StackPanel IsVisible="{Binding TagsSection.Open}">
+                                <StackPanel views:Fold.Open="{Binding TagsSection.Open}">
                                     <TextBlock Text="{local:T 'Colored labels to group songs and playlists your way.'}" Classes="hint"
                                                FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" IsVisible="{Binding !HasTags}"/>
                                     <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">

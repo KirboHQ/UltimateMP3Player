@@ -19,7 +19,7 @@ public sealed class TrayIcon : IDisposable
     private readonly Action _show, _playPause, _next, _previous, _exit;
     private ContextMenu? _menu;
     private string? _nowPlaying;
-    private bool _hintShown, _playing;
+    private bool _playing;
 
     public TrayIcon(Action show, Action playPause, Action next, Action previous, Action exit)
     {
@@ -78,13 +78,8 @@ public sealed class TrayIcon : IDisposable
         _icon.Text = text.Length > 120 ? text[..120] : text;
     }
 
-    // Tells once where the app went after closing the window.
-    public void ShowBackgroundHint()
-    {
-        if (_hintShown) return;
-        _hintShown = true;
-        _icon.ShowBalloonTip(4000, "Ultimate MP3 Player", L.T("Music keeps playing in the background. Click the icon to reopen the player."), ToolTipIcon.None);
-    }
+    // Tells where the app went after closing the window (AppHost: once ever).
+    public void ShowBackgroundHint(string text) => _icon.ShowBalloonTip(4000, "Ultimate MP3 Player", text, ToolTipIcon.None);
 
     // A toast of the system (a followed artist's new release); a click on it runs clicked.
     private Action? _clicked;

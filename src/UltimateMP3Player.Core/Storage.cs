@@ -248,7 +248,12 @@ public sealed class AppSettings
     public int MaxParallel { get; set; } = 3;
     // Songs in the cloud and suggested ones start from their site while they download (off: once downloaded, less data).
     public bool PlayWhileDownloading { get; set; } = true;
+    // Closing the app: false = it quits; true = it stays in the background (next to the clock, on Android in its notification),
+    // the song going on or, with PauseOnClose, paused.
     public bool CloseToTray { get; set; } = true;
+    public bool PauseOnClose { get; set; }
+    // The note about staying in the background is shown once, the first time the app is closed.
+    public bool BackgroundHintSeen { get; set; }
     // Profile opened at startup, null = ask.
     public string? StartupProfile { get; set; }
     public bool AutoUpdateEngines { get; set; } = true;

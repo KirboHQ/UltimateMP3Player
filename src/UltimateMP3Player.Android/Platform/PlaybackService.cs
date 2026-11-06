@@ -70,11 +70,22 @@ public sealed class PlaybackService : Service
         return StartCommandResult.NotSticky;
     }
 
-    // Swiped away from the recent apps: the music goes on if it's playing (as in the other players), otherwise it's over.
+    // Swiped away from the recent apps (Settings: "When you close the app"): the music goes on if it's playing, as in the other players, or
+    // pauses with the notification there to bring it back; not playing, or to close completely, it's over.
     public override void OnTaskRemoved(Intent? rootIntent)
     {
         base.OnTaskRemoved(rootIntent);
-        if (App.Host?.Media.IsPlaying != true) StopEverything();
+        if (App.Host is not { } host || !host.Media.IsPlaying)
+        {
+            StopEverything();
+            return;
+        }
+        if (!host.Settings.CloseToTray)
+        {
+            host.Media.RaiseStop();
+            StopEverything();
+        }
+        else if (host.Settings.PauseOnClose) host.Session?.SetPlaying(false);
     }
 
     public override void OnDestroy()

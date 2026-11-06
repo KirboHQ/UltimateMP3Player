@@ -59,7 +59,7 @@
                             <TextBlock Grid.Column="1" Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Foreground="{DynamicResource SubTextBrush}"/>
                         </Grid>
                     </Button>
-                    <StackPanel IsVisible="{Binding MakeNew}">
+                    <StackPanel views:Fold.Open="{Binding MakeNew}">
                         <TextBlock Text="{local:T 'New playlist name'}" Classes="field-label" Margin="4,14,0,8"/>
                         <TextBox Theme="{StaticResource TouchBox}" Text="{Binding NewName}" Watermark="{local:T 'Playlist name'}"/>
                     </StackPanel>
@@ -107,7 +107,7 @@
                             <TextBlock Text="{Binding Audio.Label}" Classes="value"/>
                         </StackPanel>
                     </Button>
-                    <Button Theme="{StaticResource SettingRow}" Tag="video" Click="Quality_Click" IsVisible="{Binding ShowVideoQuality}">
+                    <Button Theme="{StaticResource SettingRow}" Tag="video" Click="Quality_Click" views:Fold.Open="{Binding ShowVideoQuality}">
                         <StackPanel>
                             <TextBlock Text="{local:T 'Maximum video quality'}" Classes="setting"/>
                             <TextBlock Text="{Binding Video.Label}" Classes="value"/>

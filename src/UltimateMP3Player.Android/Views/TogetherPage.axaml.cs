@@ -14,12 +14,15 @@ namespace UltimateMP3Player.Views;
 public partial class TogetherPage : UserControl, IPage
 {
     private TogetherViewModel? _vm;
-    private int _tab;
+    private int _tab, _tabShown;
     private bool _syncing, _attached;
+    private readonly Control[] _panes;
 
     public TogetherPage()
     {
         InitializeComponent();
+        _panes = new Control[] { QueuePane, PeoplePane, ChatPane };
+        foreach (var pane in _panes) Pane.SetShown(pane, pane.IsVisible);
         MemberTap = new RelayCommand(p =>
         {
             if (p is MemberViewModel { IsMe: false } m && _vm is { IsHost: true } vm && Menus.ForMembers(vm, m) is { } menu) Menus.Open(menu);
@@ -115,9 +118,8 @@ public partial class TogetherPage : UserControl, IPage
         TabPeople.IsChecked = _tab == 1;
         TabChat.IsChecked = _tab == 2;
         _syncing = false;
-        QueuePane.IsVisible = _tab == 0;
-        PeoplePane.IsVisible = _tab == 1;
-        ChatPane.IsVisible = _tab == 2;
+        Pane.Between(_panes, _tabShown, _tab);
+        _tabShown = _tab;
         if (_tab == 2) Dispatcher.UIThread.Post(ChatScroll.ScrollToEnd, DispatcherPriority.Background);
         else _top?.FocusManager?.ClearFocus();
     }

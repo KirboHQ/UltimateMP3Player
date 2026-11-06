@@ -52,8 +52,8 @@ public partial class SettingsPage : UserControl, IPage
         Search();
 #if IOS_APP
         // The iPhone: iOS chooses the output (Control Center), the updates of the app come through SideStore (yt-dlp's
-        // still from here), the music is in the Files app.
-        foreach (var c in new Control[] { OutputRow, OutputLine, AutoUpdateSwitch })
+        // still from here), the music is in the Files app, and an app swiped away is simply ended by iOS.
+        foreach (var c in new Control[] { OutputRow, OutputLine, AutoUpdateSwitch, CloseRow, CloseLine })
             c.IsVisible = false;
         MusicDirHint.Text = L.T("In the Files app: On My iPhone › Ultimate MP3 Player › Music. If you uninstall the app, the music is deleted.");
 #endif
@@ -92,12 +92,51 @@ public partial class SettingsPage : UserControl, IPage
 
     public bool InSubPage => _group != null;
 
+    // What Cards holds, in its order; what of it is on the group's page: a group's cards go there while it's open, so that the list stays
+    // as it is beside them as they slide. They come home at the next group or search.
+    private List<Control>? _order;
+    private readonly List<Control> _away = new();
+
+    private void CardsHome()
+    {
+        foreach (var c in _away)
+        {
+            GroupCards.Children.Remove(c);
+            Cards.Children.Insert(Math.Min(_order!.IndexOf(c), Cards.Children.Count), c);
+        }
+        _away.Clear();
+    }
+
     public void OpenGroup(string? key)
     {
         _group = key;
-        if (key != null) GroupTitle.Text = GroupList.GetLogicalDescendants().OfType<Button>().First(b => b.Tag as string == key).GetLogicalDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("setting")).Text;
+        Pane.SetShown(Scroller, key == null);
+        Pane.SetShown(GroupPage, key != null);
+        if (key == null) return;
+        GroupTitle.Text = GroupList.GetLogicalDescendants().OfType<Button>().First(b => b.Tag as string == key).GetLogicalDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("setting")).Text;
+        // (its change does the search, none: what's away comes home below)
+        SearchBox.Text = "";
+        _order ??= Cards.Children.ToList();
+        CardsHome();
         Search();
-        Scroller.Offset = default;
+        // (more than one card in the group: each with its title; alone, its name is the page's)
+        bool titled = _order.OfType<Border>().Count(c => GetGroup(c) == key) > 1;
+        for (int i = 0; i < _order.Count; i++)
+        {
+            if (_order[i] is not Border { Classes: var cls } card || !cls.Contains("card") || GetGroup(card) != key) continue;
+            if (titled && i > 0 && _order[i - 1] is TextBlock { Classes: var tc } title && tc.Contains("card-title"))
+            {
+                Show(title, true);
+                Cards.Children.Remove(title);
+                GroupCards.Children.Add(title);
+                _away.Add(title);
+            }
+            Show(card, true);
+            Cards.Children.Remove(card);
+            GroupCards.Children.Add(card);
+            _away.Add(card);
+        }
+        GroupPage.Offset = default;
     }
 
     private void Group_Click(object? sender, RoutedEventArgs e)
@@ -118,24 +157,23 @@ public partial class SettingsPage : UserControl, IPage
         var words = Text.Normalize(SearchBox.Text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         foreach (var el in _hidden.Keys.ToList()) Show(el, true);
         bool searching = words.Length > 0;
-        if (searching) _group = null;
-        GroupBar.IsVisible = _group != null;
-        PageTitle.IsVisible = SearchBox.IsVisible = _group == null;
-        GroupList.IsVisible = _group == null && !searching;
+        if (searching)
+        {
+            if (_group != null) OpenGroup(null);
+            CardsHome();
+        }
+        GroupList.IsVisible = !searching;
         int shown = 0;
         var children = Cards.Children.ToList();
-        // (more than one card in the group: each with its title; alone, its name is the page's)
-        bool titled = children.OfType<Border>().Count(c => GetGroup(c) == _group) > 1;
         for (int i = 0; i < children.Count; i++)
         {
             if (children[i] is not Border { Classes: var cls } card || !cls.Contains("card")) continue;
             var title = i > 0 && children[i - 1] is TextBlock { Classes: var tc } t && tc.Contains("card-title") ? t : null;
             if (!searching)
             {
-                // The list of the groups: only the profile above it. A group: its cards.
-                bool on = _group == null ? GetGroup(card).Length == 0 : GetGroup(card) == _group;
-                if (!on) Show(card, false);
-                if (title != null && !(on && titled)) Show(title, false);
+                // The list of the groups: only the profile above it.
+                if (GetGroup(card).Length > 0) Show(card, false);
+                if (title != null) Show(title, false);
                 shown++;
                 continue;
             }
@@ -180,8 +218,8 @@ public partial class SettingsPage : UserControl, IPage
             foreach (var l in lines.Where(l => !keep.Contains(l))) Show(l, false);
         }
         NoResults.IsVisible = shown == 0;
-        Footer.IsVisible = !searching && _group == null;
-        Scroller.Offset = default;
+        Footer.IsVisible = !searching;
+        if (searching) Scroller.Offset = default;
     }
 
     private static bool Matches(string text, string[] words)
@@ -260,7 +298,7 @@ public partial class SettingsPage : UserControl, IPage
     // (through the view model: a room is left first)
     private void Computer_Click(object? sender, RoutedEventArgs e) => Vm?.ComputerLink.Open();
 
-    // A row with an arrow: its choices in a sheet (the computer's drop-down).
+    // A list that changes, in a row with an arrow: its choices in a sheet (the computer's drop-down); the few and fixed ones are tiles.
     private void Choose_Click(object? sender, RoutedEventArgs e)
     {
         if (Vm is not { } vm || sender is not Control { Tag: string what }) return;
@@ -269,26 +307,7 @@ public partial class SettingsPage : UserControl, IPage
         (string Title, List<Choice> Items, Choice? Current, Action<Choice> Set)? c = what switch
         {
             "OutputDevice" => (L.T("Audio output"), vm.OutputDevices, vm.OutputDevice, x => vm.OutputDevice = x),
-            "Appearance" => (L.T("Light or dark"), vm.Appearances, vm.Appearance, x => vm.Appearance = x),
-            "Language" => (L.T("Language"), vm.Languages, vm.Language, x => vm.Language = x),
-            "VisualizerFlowChoice" => (L.T("Direction of the bars"), vm.VisualizerFlows, vm.VisualizerFlowChoice, x => vm.VisualizerFlowChoice = x),
-            "VisualizerPlaceChoice" => (L.T("Position of the bars"), vm.VisualizerPlaces, vm.VisualizerPlaceChoice, x => vm.VisualizerPlaceChoice = x),
-            "SeekStyleChoice" => (L.T("Shape of the song bar"), vm.VisualizerStyles, vm.SeekStyleChoice, x => vm.SeekStyleChoice = x),
-            "VisualizerStyleChoice" => (L.T("Shape of the bars"), vm.VisualizerStyles, vm.VisualizerStyleChoice, x => vm.VisualizerStyleChoice = x),
-            "VisualizerTintChoice" => (L.T("Color of the bars"), vm.VisualizerTints, vm.VisualizerTintChoice, x => vm.VisualizerTintChoice = x),
-            "VisualizerThicknessChoice" => (vm.VisualizerThicknessLabel, vm.VisualizerThicknesses, vm.VisualizerThicknessChoice, x => vm.VisualizerThicknessChoice = x),
             "StartupProfile" => (L.T("At startup"), vm.StartupChoices, vm.StartupProfile, x => vm.StartupProfile = x),
-            "RadioSource" => (L.T("Where similar songs come from"), vm.RadioSourceChoices, vm.RadioSource, x => vm.RadioSource = x),
-            "RadioAhead" => (L.T("Similar songs prepared ahead"), vm.TogetherAheadChoices, vm.RadioAhead, x => vm.RadioAhead = x),
-            "TogetherAhead" => (L.T("Songs got ready ahead when you listen"), vm.TogetherAheadChoices, vm.TogetherAhead, x => vm.TogetherAhead = x),
-            "TogetherHostAhead" => (L.T("Songs got ready ahead when you're the host"), vm.TogetherAheadChoices, vm.TogetherHostAhead, x => vm.TogetherHostAhead = x),
-            "SearchMode" => (L.T("How to search"), vm.SearchModes, vm.SearchMode, x => vm.SearchMode = x),
-            "AudioFormat" => (L.T("Audio format"), vm.AudioFormats, vm.AudioFormat, x => vm.AudioFormat = x),
-            "VideoQuality" => (L.T("Maximum video quality"), vm.VideoQualities, vm.VideoQuality, x => vm.VideoQuality = x),
-            "Parallel" => (L.T("Downloads at once"), vm.ParallelChoices, vm.Parallel, x => vm.Parallel = x),
-            "CacheSize" => (L.T("Temporary storage (unsaved songs)"), vm.CacheChoices, vm.CacheSize, x => vm.CacheSize = x),
-            "BackupEvery" => (L.T("Automatic backup"), vm.Backups.EveryChoices, vm.Backups.Every, x => vm.Backups.Every = x),
-            "BackupKeep" => (L.T("Backups kept"), vm.Backups.KeepChoices, vm.Backups.Keep, x => vm.Backups.Keep = x),
             _ => null,
         };
         if (c is not { } choice) return;
@@ -461,5 +480,5 @@ public partial class SettingsPage : UserControl, IPage
         return !leave;
     }
 
-    public void ScrollToTop() => Scroller.Offset = default;
+    public void ScrollToTop() => (_group != null ? GroupPage : Scroller).Offset = default;
 }

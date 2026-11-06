@@ -25,6 +25,7 @@ using ElementKind = System.Windows.FrameworkElement;
 using TimerKind = System.Windows.Threading.DispatcherTimer;
 using ShapePath = System.Windows.Shapes.Path;
 #endif
+using Pic = UltimateMP3Player.Views.TilePictures;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -288,7 +289,7 @@ public static partial class Dialogs
         rgbSpeed.Margin = new Thickness(0, 12, 0, 0);
         var themeHeading = OverlayHeading("Background");
         var theme = OverlayTiles(2, "theme", new[] { ("dark", "Dark"), ("light", "Light") }, s.Light ? "light" : "dark", OverlayThemeIcon, v => { s.Light = v == "light"; row.Changed(); });
-        var corners = OverlayTiles(3, "corners", OverlayCorners, row.CornersTile.ToString(), id => OverlayIcon(OverlayRect(12, 6, 40, 24, id == "0" ? 0 : id == "1" ? 5 : 12), null), v => { s.Corners = row.CornersOf(int.Parse(v)); row.Changed(); });
+        var corners = OverlayTiles(3, "corners", OverlayCorners, row.CornersTile.ToString(), id => Pic.Icon(Pic.Rect(12, 6, 40, 24, id == "0" ? 0 : id == "1" ? 5 : 12), null), v => { s.Corners = row.CornersOf(int.Parse(v)); row.Changed(); });
         var opacityLine = OverlaySlider("Card opacity", 0.15, 1, s.Solid, v => { s.Solid = v; row.Changed(); });
         opacityLine.Margin = new Thickness(0, 12, 0, 0);
         var cardSection = OverlaySection("Card|overlay", null, corners, opacityLine);
@@ -305,11 +306,11 @@ public static partial class Dialogs
             OverlaySection("What it shows", null,
                 OverlaySwitch("Artist", null, s.ShowArtist, v => { s.ShowArtist = v; row.Changed(); }),
                 OverlaySwitch("Time", null, s.ShowTime, v => { s.ShowTime = v; row.Changed(); })),
-            OverlaySection("Title and artist", null, OverlayTiles(3, "text", OverlayTextPlaces, s.TextAlign, id => OverlayIcon(OverlayRect(8, 6, 48, 24, 5), id switch
+            OverlaySection("Title and artist", null, OverlayTiles(3, "text", OverlayTextPlaces, s.TextAlign, id => Pic.Icon(Pic.Rect(8, 6, 48, 24, 5), id switch
             {
-                "center" => OverlayRect(20, 12, 24, 4, 2) + OverlayRect(24, 19, 16, 3, 1),
-                "right" => OverlayRect(27, 12, 24, 4, 2) + OverlayRect(35, 19, 16, 3, 1),
-                _ => OverlayRect(13, 12, 24, 4, 2) + OverlayRect(13, 19, 16, 3, 1),
+                "center" => Pic.Rect(20, 12, 24, 4, 2) + Pic.Rect(24, 19, 16, 3, 1),
+                "right" => Pic.Rect(27, 12, 24, 4, 2) + Pic.Rect(35, 19, 16, 3, 1),
+                _ => Pic.Rect(13, 12, 24, 4, 2) + Pic.Rect(13, 19, 16, 3, 1),
             }), v => { s.TextAlign = v; row.Changed(); })),
             OverlaySection("Font", null, OverlayFontCombo(row), font),
             OverlaySection("When nothing is playing", "Shown only with “Always”. Both empty: it stays hidden.",
@@ -378,27 +379,31 @@ public static partial class Dialogs
         };
         fit();
 
-        // The tabs over the pages, the same as the library's.
-        var pages = new Grid { Margin = new Thickness(0, 0, 12, 0) };
-        var scroller = new ScrollViewer { Content = pages, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        // The tabs over the pages, the same as the library's, and sliding the same way.
+        var pages = new Views.AnimatedContent { Horizontal = true };
+        var places = new List<object>();
+        pages.PlaceOf = page => places.IndexOf(page);
         var tabs = new StackPanel { Orientation = Orientation.Horizontal };
         foreach (var (key, page) in new[] { ("Appearance", look), ("Text", words), ("Bars", bars), ("On screen", screen) })
         {
             bool first = tabs.Children.Count == 0;
             var tab = OverlayLook(new RadioButton { GroupName = "overlay-tabs", Content = L.T(key), IsChecked = first, Margin = new Thickness(first ? 0 : 4, 0, 0, 0) }, "TabSegment");
-            OverlayVisible(page, first);
+            var pageBox = new Grid { Margin = new Thickness(0, 0, 12, 0) };
+            pageBox.Children.Add(page);
+            var scroller = new ScrollViewer { Content = pageBox, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            places.Add(scroller);
+            if (first) pages.Content = scroller;
             OverlayOnTick(tab, on =>
             {
-                OverlayVisible(page, on);
                 if (!on) return;
 #if AVALONIA
                 scroller.Offset = default;
 #else
                 scroller.ScrollToVerticalOffset(0);
 #endif
+                pages.Content = scroller;
             });
             tabs.Children.Add(tab);
-            pages.Children.Add(page);
         }
         var tabsPanel = new Grid();
         tabsPanel.Children.Add(new Views.SlidingPill { Target = tabs, Fill = OverlayBrush("AccentSoftBrush") });
@@ -409,11 +414,11 @@ public static partial class Dialogs
         options.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         options.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         Grid.SetRow(tabsBox, 1);
-        Grid.SetRow(scroller, 2);
+        Grid.SetRow(pages, 2);
         top.Margin = new Thickness(0, 0, 12, 0);
         options.Children.Add(top);
         options.Children.Add(tabsBox);
-        options.Children.Add(scroller);
+        options.Children.Add(pages);
 
         // The preview on the left, as big as there's room for; the options on the right.
         double width = OverlayEditorWidth(), height = OverlayEditorHeight(), optionsWidth = Math.Min(620, width * 0.55), gap = 16;
@@ -593,14 +598,8 @@ public static partial class Dialogs
         return combo;
     }
 
-    private static void OverlayVisible(ElementKind element, bool on)
-    {
-#if AVALONIA
-        element.IsVisible = on;
-#else
-        element.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
-#endif
-    }
+    // (what a choice brings out or takes away unfolds; a line just built takes its place at once)
+    private static void OverlayVisible(ElementKind element, bool on) => Views.Fold.SetOpen(element, on);
 
     private static BrushKind OverlayBrush(string key)
     {
@@ -779,117 +778,31 @@ public static partial class Dialogs
 
     // ------------------------------------------------------------------ the little drawings on the buttons (64 x 36)
 
-    private static string OverlayRect(int x, int y, int w, int h, int r = 0)
-    {
-        if (r == 0) return $"M{x},{y} h{w} v{h} h{-w} z ";
-        return $"M{x + r},{y} h{w - 2 * r} a{r},{r} 0 0 1 {r},{r} v{h - 2 * r} a{r},{r} 0 0 1 {-r},{r} h{-(w - 2 * r)} a{r},{r} 0 0 1 {-r},{-r} v{-(h - 2 * r)} a{r},{r} 0 0 1 {r},{-r} z ";
-    }
+    private static ElementKind OverlayThemeIcon(string id) => Pic.LightOrDark(id == "light");
 
-    // card: the card, in a quiet colour; marks: what the choice is about, in the accent's.
-    private static ElementKind OverlayIcon(string? card, string? marks, bool line = false, BrushKind? cardBrush = null, BrushKind? marksBrush = null)
-    {
-        var both = new Grid { Width = 64, Height = 36, HorizontalAlignment = HorizontalAlignment.Center, IsHitTestVisible = false };
-        if (card != null) both.Children.Add(new ShapePath { Data = Geometry.Parse(card), Fill = cardBrush ?? OverlayBrush("BorderStrongBrush") });
-        if (marks != null)
-        {
-            var path = new ShapePath { Data = Geometry.Parse(marks) };
-            if (line)
-            {
-                path.Stroke = marksBrush ?? OverlayBrush("AccentTextBrush");
-                path.StrokeThickness = 2;
-            }
-            else path.Fill = marksBrush ?? OverlayBrush("AccentTextBrush");
-            both.Children.Add(path);
-        }
-        return both;
-    }
+    private static ElementKind OverlayShapeIcon(string id) => Pic.BarShape((VisualizerStyle)int.Parse(id));
 
-    private static ElementKind OverlayThemeIcon(string id)
-    {
-        static SolidColorBrush Solid(byte r, byte g, byte b) => new(Color.FromRgb(r, g, b));
-        bool light = id == "light";
-        return OverlayIcon(OverlayRect(8, 6, 48, 24, 5), OverlayRect(13, 12, 24, 4, 2) + OverlayRect(13, 19, 16, 3, 1), false,
-            light ? Solid(0xF4, 0xF4, 0xF8) : Solid(0x24, 0x25, 0x2C), light ? Solid(0x3A, 0x3A, 0x44) : Solid(0xFF, 0xFF, 0xFF));
-    }
-
-    // Columns rising (way -1) or hanging (way 1) from a line.
-    private static string OverlayColumns(int x, int count, int step, int width, int from, int way, IEnumerable<int> heights)
-    {
-        var path = "";
-        int i = 0;
-        foreach (int h in heights.Take(count))
-        {
-            path += OverlayRect(x + i * step, way < 0 ? from - h : from, width, h);
-            i++;
-        }
-        return path;
-    }
-
-    private static readonly int[] OverlaySample = { 5, 11, 7, 14, 9, 4, 8, 13, 6, 10, 5, 12 };
+    private static ElementKind OverlayFlowIcon(string id) => Pic.Flow((VisualizerFlow)int.Parse(id));
 
     private static ElementKind OverlayInsideIcon(string id)
     {
-        var marks = OverlayRect(13, 11, 20, 4, 2) + OverlayRect(13, 18, 14, 3, 1);
-        if (id is "bars" or "both") marks += OverlayColumns(37, 5, 3, 2, 21, -1, new[] { 5, 9, 6, 10, 4 });
-        if (id is "line" or "both") marks += OverlayRect(13, 25, 38, 2, 1);
-        return OverlayIcon(OverlayRect(8, 5, 48, 26, 5), marks);
+        var marks = Pic.Rect(13, 11, 20, 4, 2) + Pic.Rect(13, 18, 14, 3, 1);
+        if (id is "bars" or "both") marks += Pic.Columns(37, 5, 3, 2, 21, -1, new[] { 5, 9, 6, 10, 4 });
+        if (id is "line" or "both") marks += Pic.Rect(13, 25, 38, 2, 1);
+        return Pic.Icon(Pic.Rect(8, 5, 48, 26, 5), marks);
     }
 
     private static ElementKind OverlayBehindIcon(string id)
     {
-        string card = OverlayRect(12, id == "0" ? 18 : id == "1" ? 4 : 12, 40, 14, 3), marks = id switch
+        string card = Pic.Rect(12, id == "0" ? 18 : id == "1" ? 4 : 12, 40, 14, 3), marks = id switch
         {
-            "0" => OverlayColumns(14, 12, 3, 2, 18, -1, OverlaySample),
-            "1" => OverlayColumns(14, 12, 3, 2, 18, 1, OverlaySample),
-            "2" => OverlayColumns(14, 12, 3, 2, 12, -1, OverlaySample.Select(h => h * 3 / 4)) + OverlayColumns(14, 12, 3, 2, 26, 1, OverlaySample.Select(h => h * 3 / 4)),
+            "0" => Pic.Columns(14, 12, 3, 2, 18, -1, Pic.Sample),
+            "1" => Pic.Columns(14, 12, 3, 2, 18, 1, Pic.Sample),
+            "2" => Pic.Columns(14, 12, 3, 2, 12, -1, Pic.Sample.Select(h => h * 3 / 4)) + Pic.Columns(14, 12, 3, 2, 26, 1, Pic.Sample.Select(h => h * 3 / 4)),
             // (through the middle: only at its sides)
-            _ => OverlayColumns(2, 3, 3, 2, 18, -1, new[] { 8, 13, 10 }) + OverlayColumns(2, 3, 3, 2, 18, 1, new[] { 8, 13, 10 }) + OverlayColumns(55, 3, 3, 2, 18, -1, new[] { 10, 13, 8 }) + OverlayColumns(55, 3, 3, 2, 18, 1, new[] { 10, 13, 8 }),
+            _ => Pic.Columns(2, 3, 3, 2, 18, -1, new[] { 8, 13, 10 }) + Pic.Columns(2, 3, 3, 2, 18, 1, new[] { 8, 13, 10 }) + Pic.Columns(55, 3, 3, 2, 18, -1, new[] { 10, 13, 8 }) + Pic.Columns(55, 3, 3, 2, 18, 1, new[] { 10, 13, 8 }),
         };
-        return OverlayIcon(card, marks);
-    }
-
-    private static ElementKind OverlayShapeIcon(string id)
-    {
-        var tall = OverlaySample;
-        int X(int i) => 4 + i * 5;
-        string marks = "";
-        switch ((VisualizerStyle)int.Parse(id))
-        {
-            case VisualizerStyle.Peaks:
-                for (int i = 0; i < tall.Length; i++) marks += OverlayRect(X(i), 34 - tall[i] * 2, 3, tall[i] * 2) + OverlayRect(X(i), 34 - tall[i] * 2 - 5, 3, 2);
-                return OverlayIcon(null, marks);
-            case VisualizerStyle.Blocks:
-                for (int i = 0; i < tall.Length; i++)
-                    for (int k = 0; k < tall[i] / 2; k++) marks += OverlayRect(X(i), 31 - k * 5, 3, 3);
-                return OverlayIcon(null, marks);
-            case VisualizerStyle.Dots:
-                for (int i = 0; i < tall.Length; i++) marks += $"M{X(i)},{33 - tall[i] * 2} a2,2 0 1 0 4,0 a2,2 0 1 0 -4,0 z ";
-                return OverlayIcon(null, marks);
-            case VisualizerStyle.Line:
-                marks = $"M{X(0)},{33 - tall[0] * 2}";
-                for (int i = 1; i < tall.Length; i++) marks += $" L{X(i)},{33 - tall[i] * 2}";
-                return OverlayIcon(null, marks, true);
-            case VisualizerStyle.Wave:
-                marks = $"M{X(0)},35 L{X(0)},{33 - tall[0] * 2}";
-                for (int i = 1; i < tall.Length; i++) marks += $" L{X(i)},{33 - tall[i] * 2}";
-                return OverlayIcon(null, marks + $" L{X(tall.Length - 1)},35 z");
-            default:
-                for (int i = 0; i < tall.Length; i++) marks += OverlayRect(X(i), 35 - tall[i] * 2, 3, tall[i] * 2);
-                return OverlayIcon(null, marks);
-        }
-    }
-
-    // Where the bass goes: the tallest columns there.
-    private static ElementKind OverlayFlowIcon(string id)
-    {
-        const int Count = 13;
-        var marks = "";
-        for (int i = 0; i < Count; i++)
-        {
-            int h = (int)Math.Round(5 + 26 * (1 - Spectrum.PlaceOf((i + 0.5) / Count, (VisualizerFlow)int.Parse(id))));
-            marks += OverlayRect(6 + i * 4, 34 - h, 3, h);
-        }
-        return OverlayIcon(null, marks);
+        return Pic.Icon(card, marks);
     }
 
     // The ways in and out, each button moving a little card the way the real one moves (Overlay.html ANIM): when the mouse comes over
@@ -999,34 +912,14 @@ public static partial class Dialogs
     public static BitmapImage OverlayPicture(string id) => new(new Uri($"pack://application:,,,/UltimateMP3Player;component/Assets/overlay/{id}.png"));
 #endif
 
-    private static Color OverlayColor(string hex)
-    {
-        int n = Convert.ToInt32(hex.TrimStart('#'), 16);
-        return Color.FromRgb((byte)(n >> 16), (byte)(n >> 8), (byte)n);
-    }
-
-    private static LinearGradientBrush OverlayRainbow()
-    {
-        var rainbow = new LinearGradientBrush
-        {
-#if AVALONIA
-            StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
-#else
-            StartPoint = new Point(0, 0.5), EndPoint = new Point(1, 0.5),
-#endif
-        };
-        for (int h = 0; h <= 360; h += 30) rainbow.GradientStops.Add(new GradientStop(OverlayColor(ThemeColors.FromHue(h % 360)), h / 360.0));
-        return rainbow;
-    }
-
     private static ElementKind OverlayColorIcon(string id)
     {
-        string card = OverlayRect(8, 6, 48, 24, 5);
+        string card = Pic.Rect(8, 6, 48, 24, 5);
         return id switch
         {
-            "rgb" => OverlayIcon(card, null, false, OverlayRainbow()),
-            "one" => OverlayIcon(card, null, false, OverlayBrush("AccentTextBrush")),
-            _ => OverlayIcon(card, OverlayRect(13, 10, 16, 16, 3) + OverlayRect(33, 13, 18, 3, 1) + OverlayRect(33, 19, 12, 3, 1)),
+            "rgb" => Pic.Icon(card, null, false, Pic.Rainbow()),
+            "one" => Pic.Icon(card, null, false, OverlayBrush("AccentTextBrush")),
+            _ => Pic.Icon(card, Pic.Rect(13, 10, 16, 16, 3) + Pic.Rect(33, 13, 18, 3, 1) + Pic.Rect(33, 19, 12, 3, 1)),
         };
     }
 
@@ -1045,7 +938,7 @@ public static partial class Dialogs
         bar.ColumnDefinitions.Add(before);
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         bar.ColumnDefinitions.Add(after);
-        var rainbow = new Border { Height = 14, CornerRadius = new CornerRadius(7), Background = OverlayRainbow(), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
+        var rainbow = new Border { Height = 14, CornerRadius = new CornerRadius(7), Background = Pic.Rainbow(), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
         var hue = new Slider { Minimum = 0, Maximum = 359, SmallChange = 2, LargeChange = 10, Value = start, Height = 26, Opacity = 0, Focusable = true };
         AutomationProperties.SetName(hue, L.T("Hue"));
         Grid.SetColumnSpan(rainbow, 3);
@@ -1059,7 +952,7 @@ public static partial class Dialogs
         {
             before.Width = new GridLength(h, GridUnitType.Star);
             after.Width = new GridLength(359 - h, GridUnitType.Star);
-            ring.Background = new SolidColorBrush(OverlayColor(ThemeColors.FromHue(h)));
+            ring.Background = new SolidColorBrush(Pic.ColorOf(ThemeColors.FromHue(h)));
         }
         Place(start);
 
@@ -1101,7 +994,7 @@ public static partial class Dialogs
         };
         foreach (var tint in OverlayTints)
         {
-            var dot = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(13), Background = new SolidColorBrush(OverlayColor(tint)) };
+            var dot = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(13), Background = new SolidColorBrush(Pic.ColorOf(tint)) };
             var pick = OverlayLook(new RadioButton { GroupName = "overlay-tint", Content = dot, Padding = new Thickness(5), IsChecked = string.Equals(tint, s.Tint, StringComparison.OrdinalIgnoreCase) }, "ChoiceTile");
             OverlayOnTick(pick, on => { if (on && !showing) Choose(tint, pick); });
             picks.Add((pick, tint));

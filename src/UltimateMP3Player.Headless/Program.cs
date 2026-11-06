@@ -100,26 +100,22 @@ foreach (var (name, section, go) in new (string, string, Action)[]
 
 // ---- settings: the cards' order, the keyboard on a switch and in the search
 var view = win.GetVisualDescendants().OfType<SettingsView>().First();
-var cards = view.FindControl<Panel>("Cards")!;
-var titles = cards.Children.Select(Title).ToList();
+var cards = view.AllCards;
+var titles = cards.Select(Title).ToList();
 Console.WriteLine("        cards: " + string.Join(" · ", titles.Where(t => t != null)));
-// (4.4: several small cards are parts of one: Download with the temporary storage, Search and suggestions, Library, Backup with
-// export and import, About with updates, help and support)
-int download = titles.IndexOf(L.T("Download"));
-Check(download >= 0 && TextOf(cards.Children[download]).Contains(L.T("Temporary storage (unsaved songs)")) && titles.IndexOf(L.T("Search and suggestions")) == download + 1,
-    "settings: Temporary storage inside Download, then Search and suggestions");
-Check(titles.IndexOf(L.T("Listening statistics")) == titles.IndexOf(L.T("Backup, export and import")) + 1
-    && titles.IndexOf(L.T("Backup, export and import")) == titles.IndexOf(L.T("Library")) + 1, "settings: Library, Backup, then statistics");
-Check(titles.LastOrDefault(t => t != null) == L.T("About") && TextOf(cards.Children[^1]).Contains(L.T("Support the project")), "settings: About last, with Support the project");
+// (5.1.1: each part of a group is a card of its own, side by side if there's room)
+var partsInOrder = new[] { "Download", "Temporary storage (unsaved songs)", "Online search", "Suggested songs", "Song lyrics", "Music already on your computer", "Tags", "Bulk edit", "Artists you follow", "Export and import", "Backup", "Listening statistics" }.Select(k => L.T(k)).ToList();
+Check(partsInOrder.Select(t => titles.IndexOf(t)).Zip(partsInOrder.Select(t => titles.IndexOf(t)).Skip(1)).All(p => p.First >= 0 && p.Second > p.First), "settings: Download, its storage, then search, library, backup, statistics, each its own card");
+Check(titles.LastOrDefault(t => t != null) == L.T("Support the project"), "settings: Support the project last");
 
 // (5.1: the groups on the left, one open on the right; the search looks in all of them)
-Check(cards.Children.All(c => SettingsView.GetGroup(c).Length > 0), "settings: every card is in a group");
+Check(cards.All(c => SettingsView.GetGroup(c).Length > 0), "settings: every card is in a group");
 var groupEntries = view.FindControl<Panel>("Groups")!.Children.OfType<RadioButton>().ToList();
 foreach (var groupEntry in groupEntries)
 {
     groupEntry.IsChecked = true;
     Dispatcher.UIThread.RunJobs();
-    var inGroup = cards.Children.Where(c => c.IsVisible).ToList();
+    var inGroup = view.CardsShown.ToList();
     Check(inGroup.Count > 0 && inGroup.All(c => SettingsView.GetGroup(c) == groupEntry.Tag as string), $"settings group {groupEntry.Tag}: {string.Join(", ", inGroup.Select(Title))}");
     Shot(win, "settings-" + groupEntry.Tag);
 }
@@ -134,15 +130,36 @@ Check(host.Settings.SaveAudio && SavedAudio() == true, "settings: Space turns it
 Press(Key.Space);
 Check(!host.Settings.SaveAudio && SavedAudio() != true, "settings: Space again turns it off");
 
+// (5.1.1: what closing the app does, one choice over two settings)
+var closing = (SettingsViewModel)view.DataContext!;
+closing.CloseChoice = closing.CloseChoices[1];
+Check(host.Settings.CloseToTray && host.Settings.PauseOnClose && closing.CloseChoice == closing.CloseChoices[1], "settings: close = pause, stays in the background");
+closing.CloseChoice = closing.CloseChoices[2];
+Check(!host.Settings.CloseToTray && !host.Settings.PauseOnClose && !closing.StaysWhenClosed && closing.CloseChoice == closing.CloseChoices[2], "settings: close = quit");
+closing.CloseChoice = closing.CloseChoices[0];
+Check(host.Settings.CloseToTray && !host.Settings.PauseOnClose && closing.StaysWhenClosed, "settings: close = keep playing");
+
+// (the few and fixed choices are tiles: one lit in each row, a click reaches the setting and back; as many in a row as fit, else two even rows)
+var allTiles = view.AllCards.SelectMany(c => c.GetLogicalDescendants()).OfType<ChoiceTiles>().ToList();
+Check(allTiles.Count > 15 && allTiles.All(t => t.Children.OfType<RadioButton>().Count(r => r.IsChecked == true) == 1), $"settings: {allTiles.Count} rows of tiles, one chosen in each");
+var closeTiles = allTiles.First(t => t.Selected == closing.CloseChoice).Children.OfType<RadioButton>().ToList();
+closeTiles[1].IsChecked = true;
+Dispatcher.UIThread.RunJobs();
+Check(host.Settings.PauseOnClose && closing.CloseChoice == closing.CloseChoices[1] && closeTiles[0].IsChecked == false, "tiles: a click reaches the setting, the old one goes off");
+closing.CloseChoice = closing.CloseChoices[0];
+Dispatcher.UIThread.RunJobs();
+Check(!host.Settings.PauseOnClose && closeTiles[0].IsChecked == true && closeTiles[1].IsChecked == false, "tiles: the setting changed elsewhere shows on them");
+Check((ChoiceTiles.ColumnsFor(800, 96, 6), ChoiceTiles.ColumnsFor(350, 96, 6), ChoiceTiles.ColumnsFor(350, 96, 4), ChoiceTiles.ColumnsFor(350, 96, 5), ChoiceTiles.ColumnsFor(350, 38, 9), ChoiceTiles.ColumnsFor(300, 38, 9), ChoiceTiles.ColumnsFor(90, 96, 3)) == (6, 3, 2, 3, 9, 5, 1), "tiles: all in a row if they fit, otherwise two even rows");
+
 var search = view.FindControl<TextBox>("SearchBox")!;
 search.Focus();
 win.KeyTextInput("statistiche");
 Shot(win, "settings-search");
-var shown = cards.Children.Where(c => c.IsVisible).Select(Title).ToList();
+var shown = view.CardsShown.Select(Title).ToList();
 Check(shown.Contains(L.T("Listening statistics")) && shown.Count < titles.Count, $"settings search “statistiche”: {shown.Count} cards ({string.Join(", ", shown)})");
 Check(groupEntries.All(g => g.IsChecked != true), "settings search: no group lit, it looks in all of them");
 Press(Key.Escape);
-Check(search.Text == "" && cards.Children.All(c => c.IsVisible == (SettingsView.GetGroup(c) == "download")) && groupEntries.Single(g => g.IsChecked == true).Tag as string == "download", "settings search: Esc empties it, back to the group open");
+Check(search.Text == "" && view.CardsShown.All(c => SettingsView.GetGroup(c) == "download") && groupEntries.Single(g => g.IsChecked == true).Tag as string == "download", "settings search: Esc empties it, back to the group open");
 search.Text = "statistiche";
 var clearX = search.GetVisualDescendants().OfType<Button>().Single();
 Dispatcher.UIThread.RunJobs();
@@ -153,10 +170,8 @@ Check(search.Text == "" && !clearX.IsVisible, "settings search: the X empties th
 search.Focus();
 win.KeyTextInput("donazione");
 Shot(win, "settings-support");
-shown = cards.Children.Where(c => c.IsVisible).Select(Title).ToList();
-var parts = cards.Children[^1] is Border { Child: Panel about } ? about.Children.Where(c => c.IsVisible).Select(TextOf).ToList() : new();
-Check(shown is [var only] && only == L.T("About") && parts.Count == 2 && parts[1].Contains(L.T("Support the project")),
-    $"settings search “donazione”: only Support the project, in About: {string.Join(", ", shown)}");
+shown = view.CardsShown.Select(Title).ToList();
+Check(shown is [var only] && only == L.T("Support the project"), $"settings search “donazione”: only Support the project: {string.Join(", ", shown)}");
 Press(Key.Escape);
 
 // ---- packs: the export dialog, and the import of a links-only pack (its songs into the cloud unless Settings say otherwise)
@@ -362,7 +377,7 @@ Check(main.LibraryHub.IsArtists, "Alt+left: back");
 // ---- Settings opened again: its audio output box still shows the one chosen (the outputs are read again)
 main.OpenSettingsGroup("playback");
 Shot(win, "settings-again");
-Check(win.GetVisualDescendants().OfType<SettingsView>().First().FindControl<Panel>("Cards")!.Children.Where(c => c.IsVisible).All(c => SettingsView.GetGroup(c) == "playback"), "settings: opened on one group from elsewhere");
+Check(win.GetVisualDescendants().OfType<SettingsView>().First().CardsShown.All(c => SettingsView.GetGroup(c) == "playback"), "settings: opened on one group from elsewhere");
 var output = win.GetVisualDescendants().OfType<ComboBox>().FirstOrDefault(c => Avalonia.Automation.AutomationProperties.GetName(c) == L.T("Audio output"));
 Check(output is { SelectedIndex: >= 0 }, "settings opened again: the audio output still shown");
 // ---- a page left and opened again keeps its view (not built again); Ctrl+↓ goes on from the search's box
@@ -706,7 +721,9 @@ if (OverlayPreview.FindBrowser() != null)
 }
 // Only what makes sense for the look and the cover.
 // (a tile hidden from the start has no template yet: its words aren't on screen, whatever they say of themselves)
-bool InEditor(string text) => editor.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == text && t.IsEffectivelyVisible && t.GetVisualRoot() != null);
+// (what's folding away counts as gone: no frames tick here for it to land)
+bool Seen(Control c) => c.IsEffectivelyVisible && c.GetVisualRoot() != null && c.GetSelfAndVisualAncestors().OfType<Control>().All(Fold.GetOpen);
+bool InEditor(string text) => editor.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == text && Seen(t));
 RadioButton Tile(string text) => editor.GetLogicalDescendants().OfType<RadioButton>().First(r => r.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == text));
 // (one page at a time)
 void EditorPage(string key)
@@ -770,7 +787,7 @@ Dispatcher.UIThread.RunJobs();
 Slider HueBar() => editor.GetLogicalDescendants().OfType<Slider>().First(v => Avalonia.Automation.AutomationProperties.GetName(v) == L.T("Hue"));
 Tile(L.T("RGB")).IsChecked = true;
 Dispatcher.UIThread.RunJobs();
-Check(overlay.Source.Rgb && InEditor(L.T("RGB speed")) && !HueBar().IsEffectivelyVisible, "overlay: RGB, its speed, no color to pick");
+Check(overlay.Source.Rgb && InEditor(L.T("RGB speed")) && !Seen(HueBar()), "overlay: RGB, its speed, no color to pick");
 Tile(L.T("RGB")).BringIntoView();
 Shot(editor, "overlay-rgb");
 Tile(L.T("One color")).IsChecked = true;

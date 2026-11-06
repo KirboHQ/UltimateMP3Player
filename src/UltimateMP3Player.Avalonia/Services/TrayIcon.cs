@@ -93,15 +93,8 @@ public sealed class TrayIcon : IDisposable
         _playPause.Header = L.T(playing ? "Pause" : "Play");
     }
 
-    // Tells once where the app went after closing the window (as a toast of the system where there is one).
-    private bool _hintShown;
-
-    public void ShowBackgroundHint()
-    {
-        if (_hintShown) return;
-        _hintShown = true;
-        Notify("Ultimate MP3 Player", L.T("Music keeps playing in the background. Click the icon to reopen the player."));
-    }
+    // Tells where the app went after closing the window (AppHost: once ever), as a toast of the system where there is one.
+    public void ShowBackgroundHint(string text) => Notify("Ultimate MP3 Player", text);
 
     // A toast of the system (a followed artist's new release).
     public static void Notify(string title, string text)

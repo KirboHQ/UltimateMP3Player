@@ -147,7 +147,10 @@ public sealed class AnimatedContent : Panel
         DataContextChanged += (_, _) => Forget();
     }
 
-    private int? Order(object? page) => page != null && DataContext is ViewModels.IPageOrder o ? o.OrderOf(page) : null;
+    // A page's place when a view makes the pages itself (the settings' groups, the overlay editor's tabs): null = none, it fades in.
+    public Func<object, int?>? PlaceOf { get; set; }
+
+    private int? Order(object? page) => page == null ? null : PlaceOf != null ? PlaceOf(page) : DataContext is ViewModels.IPageOrder o ? o.OrderOf(page) : null;
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -264,10 +267,11 @@ public sealed class AnimatedContent : Panel
         if (i < 0) return new ContentPresenter { Content = page };
         var view = _kept[i].View;
         _kept.RemoveAt(i);
-        return new ContentPresenter { Content = view };
+        return new ContentPresenter { Content = view, Tag = page };
     }
 
-    private static object? PageOf(ContentPresenter view) => view.Content is Control kept ? kept.DataContext : view.Content;
+    // (a view kept says its page in the Tag; a page may be a control itself)
+    private static object? PageOf(ContentPresenter view) => view.Tag ?? view.Content;
 
     private void Discard(ContentPresenter presenter)
     {
@@ -938,22 +942,27 @@ public sealed class MasonryPanel : Panel
     public static readonly StyledProperty<double> ColumnWidthProperty = AvaloniaProperty.Register<MasonryPanel, double>(nameof(ColumnWidth), 560);
     public static readonly StyledProperty<int> MaxColumnsProperty = AvaloniaProperty.Register<MasonryPanel, int>(nameof(MaxColumns), 3);
     public static readonly StyledProperty<double> GapProperty = AvaloniaProperty.Register<MasonryPanel, double>(nameof(Gap), 16);
+    public static readonly StyledProperty<double> MaxColumnWidthProperty = AvaloniaProperty.Register<MasonryPanel, double>(nameof(MaxColumnWidth), double.PositiveInfinity);
 
-    static MasonryPanel() => AffectsMeasure<MasonryPanel>(ColumnWidthProperty, MaxColumnsProperty, GapProperty);
+    static MasonryPanel() => AffectsMeasure<MasonryPanel>(ColumnWidthProperty, MaxColumnsProperty, GapProperty, MaxColumnWidthProperty);
 
     public double ColumnWidth { get => GetValue(ColumnWidthProperty); set => SetValue(ColumnWidthProperty, value); }
     public int MaxColumns { get => GetValue(MaxColumnsProperty); set => SetValue(MaxColumnsProperty, value); }
     public double Gap { get => GetValue(GapProperty); set => SetValue(GapProperty, value); }
+    public double MaxColumnWidth { get => GetValue(MaxColumnWidthProperty); set => SetValue(MaxColumnWidthProperty, value); }
 
     private readonly List<(int Col, double Y)> _slots = new();
 
+    // Never more columns than cards shown: a card alone keeps to the left, as wide as it's allowed.
     private int Columns(double width)
-        => double.IsInfinity(width) ? 1 : Math.Clamp((int)((width + Gap) / (ColumnWidth + Gap)), 1, Math.Max(1, MaxColumns));
+        => double.IsInfinity(width) ? 1 : Math.Clamp((int)((width + Gap) / (ColumnWidth + Gap)), 1, Math.Max(1, Math.Min(MaxColumns, Children.Count(c => c.IsVisible))));
+
+    private double WidthOf(double width, int cols) => Math.Min(MaxColumnWidth, (width - Gap * (cols - 1)) / cols);
 
     protected override Size MeasureOverride(Size available)
     {
         int cols = Columns(available.Width);
-        double colW = double.IsInfinity(available.Width) ? ColumnWidth : (available.Width - Gap * (cols - 1)) / cols;
+        double colW = double.IsInfinity(available.Width) ? ColumnWidth : WidthOf(available.Width, cols);
         var heights = new double[cols];
         _slots.Clear();
         foreach (var child in Children)
@@ -971,12 +980,135 @@ public sealed class MasonryPanel : Panel
     protected override Size ArrangeOverride(Size final)
     {
         int cols = Columns(final.Width);
-        double colW = (final.Width - Gap * (cols - 1)) / cols;
+        double colW = WidthOf(final.Width, cols);
         for (int i = 0; i < Children.Count && i < _slots.Count; i++)
         {
             var (c, y) = _slots[i];
             Children[i].Arrange(new Rect(c * (colW + Gap), y, colW, Children[i].DesiredSize.Height));
         }
         return final;
+    }
+}
+
+// What opens and closes inside a page (a part of the sidebar, the rows under a switch), bound in place of its IsVisible: it unfolds in
+// the time a page takes to slide and what's under it moves with it. It's laid out once at its own height: a bottom margin takes away
+// what's still shut and a clip hides it, so at each frame only its neighbours move.
+public static class Fold
+{
+    public static readonly AttachedProperty<bool> OpenProperty = AvaloniaProperty.RegisterAttached<Control, bool>("Open", typeof(Fold), true);
+
+    public static bool GetOpen(Control o) => o.GetValue(OpenProperty);
+    public static void SetOpen(Control o, bool value) => o.SetValue(OpenProperty, value);
+
+    static Fold() => OpenProperty.Changed.AddClassHandler<Control>((el, e) => Go(el, e.GetNewValue<bool>()));
+
+    private sealed record Run(Thickness Margin, double Height, RectangleGeometry Clip, Tweener At);
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Control, Run> Runs = new();
+
+    private static void Go(Control el, bool open)
+    {
+        // (the first value of its binding, or a page not on the screen: nothing to see)
+        if (!Ui.Animations || el.GetVisualRoot() == null || el.GetVisualParent() is not { IsEffectivelyVisible: true })
+        {
+            Land(el, open);
+            return;
+        }
+        if (!Runs.TryGetValue(el, out var run))
+        {
+            if (el.IsVisible == open) return;
+            el.IsVisible = true;
+            el.UpdateLayout();
+            if (el.Bounds.Height <= 0)
+            {
+                Land(el, open);
+                return;
+            }
+            var clip = new RectangleGeometry();
+            el.Clip = clip;
+            var (margin, height) = (el.Margin, el.Bounds.Height);
+            run = new Run(margin, height, clip, new Tweener(el, at => Place(el, margin, height, clip, at), open ? 0 : 1));
+            Runs.Add(el, run);
+            Place(el, margin, height, clip, open ? 0 : 1);
+        }
+        run.At.To(open ? 1 : 0, AnimatedContent.Ms, Ui.CubicOut, completed: () => { if (GetOpen(el) == open) Land(el, open); });
+    }
+
+    private static void Place(Control el, Thickness margin, double height, RectangleGeometry clip, double at)
+    {
+        double whole = height + margin.Top + margin.Bottom;
+        el.Margin = new Thickness(margin.Left, margin.Top, margin.Right, margin.Bottom - whole * (1 - at));
+        // (a little beyond its sides and top: a shadow or a focus ring isn't cut)
+        clip.Rect = new Rect(-40, -40, el.Bounds.Width + 80, 40 + Math.Max(0, whole * at - margin.Top));
+        el.Opacity = at;
+    }
+
+    private static void Land(Control el, bool open)
+    {
+        if (Runs.TryGetValue(el, out var run))
+        {
+            Runs.Remove(el);
+            run.At.Stop();
+            el.Margin = run.Margin;
+            el.Clip = null;
+            el.ClearValue(Visual.OpacityProperty);
+        }
+        el.IsVisible = open;
+    }
+}
+
+// Panes of one cell with one shown (a room and its lobby, the DJ's two modes, the phones' tabs), bound or set in place of their IsVisible:
+// the new one comes in from its side while the old one goes out on its own, as pages do. Unlike AnimatedContent's pages they stay built, in the tree.
+public static class Pane
+{
+    public static readonly AttachedProperty<bool> ShownProperty = AvaloniaProperty.RegisterAttached<Control, bool>("Shown", typeof(Pane), true);
+
+    // The side it comes from and goes to: -1 left, 1 right.
+    public static readonly AttachedProperty<int> SideProperty = AvaloniaProperty.RegisterAttached<Control, int>("Side", typeof(Pane), 1);
+
+    public static bool GetShown(Control o) => o.GetValue(ShownProperty);
+    public static void SetShown(Control o, bool value) => o.SetValue(ShownProperty, value);
+    public static int GetSide(Control o) => o.GetValue(SideProperty);
+    public static void SetSide(Control o, int value) => o.SetValue(SideProperty, value);
+
+    static Pane() => ShownProperty.Changed.AddClassHandler<Control>((el, e) => Go(el, e.GetNewValue<bool>()));
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Control, Tweener> Runs = new();
+
+    // From one pane of a row of them to another: the side comes from their order.
+    public static void Between(IReadOnlyList<Control> panes, int from, int to)
+    {
+        for (int i = 0; i < panes.Count; i++)
+        {
+            SetSide(panes[i], (i == to ? 1 : -1) * Math.Sign(to - from));
+            SetShown(panes[i], i == to);
+        }
+    }
+
+    private static void Go(Control el, bool shown)
+    {
+        double step = (el.GetVisualParent() as Control)?.Bounds.Width + 56 ?? 0;
+        if (!Ui.Animations || el.GetVisualRoot() == null || step <= 56 || el.GetVisualParent() is not { IsEffectivelyVisible: true })
+        {
+            if (Runs.TryGetValue(el, out var moving)) moving.Stop();
+            el.RenderTransform = null;
+            el.IsVisible = shown;
+            return;
+        }
+        if (el.RenderTransform is not TranslateTransform shift) el.RenderTransform = shift = new TranslateTransform();
+        double aside = GetSide(el) * step;
+        var run = Runs.GetValue(el, _ => new Tweener(el, x => { if (el.RenderTransform is TranslateTransform t) t.X = x; }));
+        if (shown && !el.IsVisible)
+        {
+            el.IsVisible = true;
+            run.Set(aside);
+        }
+        else if (!run.IsRunning) run.Set(shift.X);
+        run.To(shown ? 0 : aside, AnimatedContent.Ms, Ui.CubicOut, completed: () =>
+        {
+            if (GetShown(el) != shown) return;
+            el.RenderTransform = null;
+            if (!shown) el.IsVisible = false;
+        });
     }
 }

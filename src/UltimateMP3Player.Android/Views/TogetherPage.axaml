@@ -51,7 +51,7 @@
 
     <Panel>
         <!-- ============================================================ lobby -->
-        <ScrollViewer x:Name="Lobby" IsVisible="{Binding !InRoom}">
+        <ScrollViewer x:Name="Lobby" views:Pane.Side="-1" views:Pane.Shown="{Binding !InRoom}">
             <StackPanel Margin="16,12,16,28">
                 <TextBlock Text="{local:T 'Listen together'}" Classes="page-title" Margin="2,0,0,6"/>
                 <TextBlock Text="{local:T 'The same music, at the same moment, for everyone in the room, with a chat: phones and computers on the same Wi-Fi.'}"
@@ -170,7 +170,7 @@
         </ScrollViewer>
 
         <!-- ============================================================ in the room -->
-        <DockPanel x:Name="Room" IsVisible="{Binding InRoom}">
+        <DockPanel x:Name="Room" views:Pane.Shown="{Binding InRoom}">
             <StackPanel DockPanel.Dock="Top" Margin="0,8,0,4">
                 <Grid ColumnDefinitions="*,Auto" Margin="18,6,12,0">
                     <StackPanel>
@@ -241,7 +241,7 @@
                         <TextBlock Text="{Binding AddHint}" Classes="hint" TextWrapping="Wrap" Margin="18,0,18,8"/>
 
                         <!-- a few songs at random from your songs, a playlist or a tag (or suggested online) -->
-                        <Border Classes="card" Margin="16,4,16,10" IsVisible="{Binding ShowRandom}">
+                        <Border Classes="card" Margin="16,4,16,10" views:Fold.Open="{Binding ShowRandom}">
                             <StackPanel Margin="0,6,0,6">
                                 <TextBlock Text="{Binding RandomTitle}" FontSize="15" FontWeight="SemiBold" Margin="4,0,0,4"/>
                                 <Button Theme="{StaticResource SettingRow}" Click="RandomSource_Click">

@@ -15,9 +15,16 @@ public partial class LibraryPage : UserControl, IPage
     // Choosing several playlists.
     public Selection ListPicks { get; } = new();
 
+    // The panes in the order of their chips, left to right (the tabs' numbers are older), and each tab's place there.
+    private readonly Control[] _panes;
+    private static readonly int[] PlaceOfTab = { 0, 1, 4, 2, 3 };
+    private int _tabShown = 1;
+
     public LibraryPage()
     {
         InitializeComponent();
+        _panes = new Control[] { Songs, ListsPane, ArtistsPane, RadioPane, TagsPane };
+        foreach (var pane in _panes) Pane.SetShown(pane, pane.IsVisible);
         Selection.SetOwner(PlaylistsList, ListPicks);
         DataContextChanged += (_, _) => Attach();
         TabSongs.IsCheckedChanged += (_, _) => Pick(0, TabSongs);
@@ -85,11 +92,8 @@ public partial class LibraryPage : UserControl, IPage
         TabArtists.IsChecked = tab == 3;
         TabRadio.IsChecked = tab == 4;
         _syncing = false;
-        Songs.IsVisible = tab == 0;
-        ListsPane.IsVisible = tab == 1;
-        TagsPane.IsVisible = tab == 2;
-        ArtistsPane.IsVisible = tab == 3;
-        RadioPane.IsVisible = tab == 4;
+        Pane.Between(_panes, PlaceOfTab[_tabShown], PlaceOfTab[tab]);
+        _tabShown = tab;
         if (tab != 1) ListPicks.Stop();
         if (tab == 0)
         {
@@ -100,7 +104,7 @@ public partial class LibraryPage : UserControl, IPage
 
     public void Shown()
     {
-        if (Songs.IsVisible) Songs.Shown();
+        if (Pane.GetShown(Songs)) Songs.Shown();
     }
 
     // "+": a playlist, a tag, or songs from the phone.
@@ -129,12 +133,12 @@ public partial class LibraryPage : UserControl, IPage
             ListPicks.Stop();
             return true;
         }
-        return Songs.IsVisible && Songs.Back();
+        return Pane.GetShown(Songs) && Songs.Back();
     }
 
     public void ScrollToTop()
     {
-        if (Songs.IsVisible) Songs.ScrollToTop();
+        if (Pane.GetShown(Songs)) Songs.ScrollToTop();
         ListsPane.Offset = default;
         TagsPane.Offset = default;
         ArtistsPane.Offset = default;

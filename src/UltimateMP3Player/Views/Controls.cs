@@ -121,7 +121,10 @@ public sealed class AnimatedContent : Grid
         DataContextChanged += (_, _) => Forget();
     }
 
-    private int? Order(object? page) => page != null && DataContext is ViewModels.IPageOrder o ? o.OrderOf(page) : null;
+    // A page's place when a view makes the pages itself (the settings' groups, the overlay editor's tabs): null = none, it fades in.
+    public Func<object, int?>? PlaceOf { get; set; }
+
+    private int? Order(object? page) => page == null ? null : PlaceOf != null ? PlaceOf(page) : DataContext is ViewModels.IPageOrder o ? o.OrderOf(page) : null;
 
     private void Swap(object? old, object? now)
     {
@@ -758,19 +761,26 @@ public sealed class MasonryPanel : Panel
     public static readonly DependencyProperty GapProperty = DependencyProperty.Register(nameof(Gap), typeof(double),
         typeof(MasonryPanel), new FrameworkPropertyMetadata(16.0, FrameworkPropertyMetadataOptions.AffectsMeasure));
 
+    public static readonly DependencyProperty MaxColumnWidthProperty = DependencyProperty.Register(nameof(MaxColumnWidth), typeof(double),
+        typeof(MasonryPanel), new FrameworkPropertyMetadata(double.PositiveInfinity, FrameworkPropertyMetadataOptions.AffectsMeasure));
+
     public double ColumnWidth { get => (double)GetValue(ColumnWidthProperty); set => SetValue(ColumnWidthProperty, value); }
     public int MaxColumns { get => (int)GetValue(MaxColumnsProperty); set => SetValue(MaxColumnsProperty, value); }
     public double Gap { get => (double)GetValue(GapProperty); set => SetValue(GapProperty, value); }
+    public double MaxColumnWidth { get => (double)GetValue(MaxColumnWidthProperty); set => SetValue(MaxColumnWidthProperty, value); }
 
     private readonly List<(int Col, double Y)> _slots = new();
 
+    // Never more columns than cards shown: a card alone keeps to the left, as wide as it's allowed.
     private int Columns(double width)
-        => double.IsInfinity(width) ? 1 : Math.Clamp((int)((width + Gap) / (ColumnWidth + Gap)), 1, Math.Max(1, MaxColumns));
+        => double.IsInfinity(width) ? 1 : Math.Clamp((int)((width + Gap) / (ColumnWidth + Gap)), 1, Math.Max(1, Math.Min(MaxColumns, InternalChildren.Cast<UIElement>().Count(c => c.Visibility != Visibility.Collapsed))));
+
+    private double WidthOf(double width, int cols) => Math.Min(MaxColumnWidth, (width - Gap * (cols - 1)) / cols);
 
     protected override Size MeasureOverride(Size available)
     {
         int cols = Columns(available.Width);
-        double colW = double.IsInfinity(available.Width) ? ColumnWidth : (available.Width - Gap * (cols - 1)) / cols;
+        double colW = double.IsInfinity(available.Width) ? ColumnWidth : WidthOf(available.Width, cols);
         var heights = new double[cols];
         _slots.Clear();
         foreach (UIElement child in InternalChildren)
@@ -788,12 +798,128 @@ public sealed class MasonryPanel : Panel
     protected override Size ArrangeOverride(Size final)
     {
         int cols = Columns(final.Width);
-        double colW = (final.Width - Gap * (cols - 1)) / cols;
+        double colW = WidthOf(final.Width, cols);
         for (int i = 0; i < InternalChildren.Count && i < _slots.Count; i++)
         {
             var (c, y) = _slots[i];
             InternalChildren[i].Arrange(new Rect(c * (colW + Gap), y, colW, InternalChildren[i].DesiredSize.Height));
         }
         return final;
+    }
+}
+
+// What opens and closes inside a page (a part of the sidebar, the rows under a switch), bound in place of its Visibility: it unfolds in
+// the time a page takes to slide and what's under it moves with it. It's laid out once at its own height: a bottom margin takes away
+// what's still shut and a clip hides it, so at each frame only its neighbours move.
+public static class Fold
+{
+    public static readonly DependencyProperty OpenProperty = DependencyProperty.RegisterAttached("Open", typeof(bool), typeof(Fold),
+        new PropertyMetadata(true, (d, e) => Go((FrameworkElement)d, (bool)e.NewValue)));
+
+    public static bool GetOpen(DependencyObject o) => (bool)o.GetValue(OpenProperty);
+    public static void SetOpen(DependencyObject o, bool value) => o.SetValue(OpenProperty, value);
+
+    private sealed record Run(Thickness Margin, double Height, RectangleGeometry Clip);
+
+    private static readonly DependencyProperty RunProperty = DependencyProperty.RegisterAttached("Run", typeof(Run), typeof(Fold));
+
+    // How open it is, 0 to 1.
+    private static readonly DependencyProperty AtProperty = DependencyProperty.RegisterAttached("At", typeof(double), typeof(Fold),
+        new PropertyMetadata(1.0, (d, e) => Place((FrameworkElement)d, (double)e.NewValue)));
+
+    private static void Go(FrameworkElement el, bool open)
+    {
+        // (the first value of its binding, or a page not on the screen: nothing to see)
+        if (!Ui.Animations || !el.IsLoaded || VisualTreeHelper.GetParent(el) is not UIElement { IsVisible: true })
+        {
+            Land(el, open);
+            return;
+        }
+        if (el.GetValue(RunProperty) == null)
+        {
+            if (el.Visibility == Visibility.Visible == open) return;
+            el.Visibility = Visibility.Visible;
+            el.UpdateLayout();
+            if (el.ActualHeight <= 0)
+            {
+                Land(el, open);
+                return;
+            }
+            var clip = new RectangleGeometry();
+            el.SetValue(RunProperty, new Run(el.Margin, el.ActualHeight, clip));
+            el.Clip = clip;
+            el.SetValue(AtProperty, open ? 0.0 : 1.0);
+            Place(el, open ? 0 : 1);
+        }
+        var fold = new DoubleAnimation(open ? 1 : 0, Ui.Time(AnimatedContent.Ms)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+        fold.Completed += (_, _) => { if (GetOpen(el) == open) Land(el, open); };
+        el.BeginAnimation(AtProperty, fold);
+    }
+
+    private static void Place(FrameworkElement el, double at)
+    {
+        if (el.GetValue(RunProperty) is not Run run) return;
+        double whole = run.Height + run.Margin.Top + run.Margin.Bottom;
+        el.Margin = new Thickness(run.Margin.Left, run.Margin.Top, run.Margin.Right, run.Margin.Bottom - whole * (1 - at));
+        // (a little beyond its sides and top: a shadow or a focus ring isn't cut)
+        run.Clip.Rect = new Rect(-40, -40, el.ActualWidth + 80, 40 + Math.Max(0, whole * at - run.Margin.Top));
+        el.Opacity = at;
+    }
+
+    private static void Land(FrameworkElement el, bool open)
+    {
+        if (el.GetValue(RunProperty) is Run run)
+        {
+            el.ClearValue(RunProperty);
+            el.BeginAnimation(AtProperty, null);
+            el.Margin = run.Margin;
+            el.Clip = null;
+            el.ClearValue(UIElement.OpacityProperty);
+        }
+        el.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
+    }
+}
+
+// Panes of one cell with one shown (a room and its lobby, the DJ's two modes), bound in place of their Visibility: the new one comes in
+// from its side while the old one goes out on its own, as pages do. Unlike AnimatedContent's pages they stay built, in the tree.
+public static class Pane
+{
+    public static readonly DependencyProperty ShownProperty = DependencyProperty.RegisterAttached("Shown", typeof(bool), typeof(Pane),
+        new PropertyMetadata(true, (d, e) => Go((FrameworkElement)d, (bool)e.NewValue)));
+
+    // The side it comes from and goes to: -1 left, 1 right.
+    public static readonly DependencyProperty SideProperty = DependencyProperty.RegisterAttached("Side", typeof(int), typeof(Pane), new PropertyMetadata(1));
+
+    public static bool GetShown(DependencyObject o) => (bool)o.GetValue(ShownProperty);
+    public static void SetShown(DependencyObject o, bool value) => o.SetValue(ShownProperty, value);
+    public static int GetSide(DependencyObject o) => (int)o.GetValue(SideProperty);
+    public static void SetSide(DependencyObject o, int value) => o.SetValue(SideProperty, value);
+
+    private static void Go(FrameworkElement el, bool shown)
+    {
+        double step = (VisualTreeHelper.GetParent(el) as FrameworkElement)?.ActualWidth + 56 ?? 0;
+        if (!Ui.Animations || !el.IsLoaded || step <= 56 || VisualTreeHelper.GetParent(el) is not UIElement { IsVisible: true })
+        {
+            if (el.RenderTransform is TranslateTransform { IsFrozen: false } moving) moving.BeginAnimation(TranslateTransform.XProperty, null);
+            el.RenderTransform = Transform.Identity;
+            el.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+        if (el.RenderTransform is not TranslateTransform { IsFrozen: false } shift) el.RenderTransform = shift = new TranslateTransform();
+        double aside = GetSide(el) * step;
+        if (shown && el.Visibility != Visibility.Visible)
+        {
+            shift.X = aside;
+            el.Visibility = Visibility.Visible;
+        }
+        var move = new DoubleAnimation(shown ? 0 : aside, Ui.Time(AnimatedContent.Ms)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
+        move.Completed += (_, _) =>
+        {
+            if (GetShown(el) != shown) return;
+            shift.BeginAnimation(TranslateTransform.XProperty, null);
+            shift.X = 0;
+            if (!shown) el.Visibility = Visibility.Collapsed;
+        };
+        shift.BeginAnimation(TranslateTransform.XProperty, move);
     }
 }

@@ -202,7 +202,7 @@
                                 </Button>
                             </DockPanel>
                             <ItemsControl ItemsSource="{Binding Playlists}" Focusable="False" AutomationProperties.Name="Playlist"
-                                          Visibility="{Binding PlaylistsSection.Open, Converter={StaticResource BoolVis}}">
+                                          views:Fold.Open="{Binding PlaylistsSection.Open}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
                                         <Border x:Name="Item" CornerRadius="12" Padding="6" Background="Transparent" Cursor="Hand" AllowDrop="True"
@@ -255,7 +255,7 @@
                                     </StackPanel>
                                 </Button>
                             </DockPanel>
-                            <StackPanel Visibility="{Binding ArtistsSection.Open, Converter={StaticResource BoolVis}}">
+                            <StackPanel views:Fold.Open="{Binding ArtistsSection.Open}">
                                 <TextBlock Text="{local:T 'The artists you follow show up here.'}" Style="{StaticResource Hint}" FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap"
                                            Visibility="{Binding Artists.HasFollowed, Converter={StaticResource InvBoolVis}}"/>
                                 <ItemsControl ItemsSource="{Binding Artists.Followed}" Focusable="False">
@@ -309,7 +309,7 @@
                                     </StackPanel>
                                 </Button>
                             </DockPanel>
-                            <StackPanel Visibility="{Binding RadiosSection.Open, Converter={StaticResource BoolVis}}">
+                            <StackPanel views:Fold.Open="{Binding RadiosSection.Open}">
                                 <TextBlock Text="{local:T 'The radios you save show up here.'}" Style="{StaticResource Hint}" FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap"
                                            Visibility="{Binding Stations.HasSaved, Converter={StaticResource InvBoolVis}}"/>
                                 <ItemsControl ItemsSource="{Binding Stations.Saved}" Focusable="False">
@@ -366,7 +366,7 @@
                                     </StackPanel>
                                 </Button>
                             </DockPanel>
-                            <StackPanel Visibility="{Binding TagsSection.Open, Converter={StaticResource BoolVis}}">
+                            <StackPanel views:Fold.Open="{Binding TagsSection.Open}">
                                 <TextBlock Text="{local:T 'Colored labels to group songs and playlists your way.'}" Style="{StaticResource Hint}"
                                            FontSize="12" Margin="8,0,8,4" TextWrapping="Wrap" Visibility="{Binding HasTags, Converter={StaticResource InvBoolVis}}"/>
                                 <ItemsControl ItemsSource="{Binding Tags}" Focusable="False">

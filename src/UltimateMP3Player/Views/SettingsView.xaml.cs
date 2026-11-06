@@ -14,6 +14,7 @@ public partial class SettingsView : UserControl
     public SettingsView()
     {
         InitializeComponent();
+        MakePages();
         Apply();
         // Opened to show one setting (a download that needs the browser's cookies): it starts searched.
         Loaded += (_, _) =>
@@ -39,6 +40,8 @@ public partial class SettingsView : UserControl
         Dialogs.ShowLogins();
         _vm?.LoginsChanged();
     }
+
+    private void Zanno_Click(object sender, RoutedEventArgs e) => MainViewModel.OpenUrl("https://www.twitch.tv/zanno_tw");
 
     private void GroupAsked(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -106,7 +109,35 @@ public partial class SettingsView : UserControl
     public static void SetGroup(DependencyObject o, string value) => o.SetValue(GroupProperty, value);
 
     private string _group = "appearance";
-    private bool _applying;
+    private bool _applying, _searching;
+
+    // Every card, from the XAML's Cards: each lives in its group's page, all of them in the search's while there are words in the box.
+    private readonly List<FrameworkElement> _cards = new();
+    private readonly Dictionary<string, ScrollViewer> _pages = new();
+
+    // The cards of the page shown, what the search left of them.
+    public IReadOnlyList<FrameworkElement> AllCards => _cards;
+    public IEnumerable<FrameworkElement> CardsShown => ((Panel)(_searching ? Cards : _pages[_group].Content)).Children.OfType<FrameworkElement>().Where(c => c.Visibility == Visibility.Visible);
+
+    private void MakePages()
+    {
+        var order = Groups.Children.OfType<RadioButton>().Select(g => (string)g.Tag).ToList();
+        _cards.AddRange(Cards.Children.OfType<FrameworkElement>());
+        Cards.Children.Clear();
+        foreach (var key in order)
+        {
+            var panel = new MasonryPanel { ColumnWidth = Cards.ColumnWidth, MaxColumns = Cards.MaxColumns, MaxColumnWidth = Cards.MaxColumnWidth, Gap = Cards.Gap, Margin = ((FrameworkElement)Scroller.Content).Margin };
+            foreach (var card in _cards.Where(c => GetGroup(c) == key)) panel.Children.Add(card);
+            _pages[key] = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false, Background = System.Windows.Media.Brushes.Transparent, Content = panel, Tag = order.IndexOf(key) };
+        }
+        // (the search's page has no place: it fades in)
+        Pages.PlaceOf = page => (page as FrameworkElement)?.Tag as int?;
+        // A page away from the window stays bound: nothing to bind again each time it comes back, and the search reads its words.
+        DataContextChanged += (_, e) =>
+        {
+            foreach (var page in _pages.Values.Append(Scroller)) page.DataContext = e.NewValue;
+        };
+    }
 
     private void Group_Checked(object sender, RoutedEventArgs e)
     {
@@ -119,8 +150,6 @@ public partial class SettingsView : UserControl
         // (a search written: its change does it)
         if (SearchBox.Text.Length > 0) SearchBox.Text = "";
         else Apply();
-        Scroller.ScrollToTop();
-        if (Ui.Animations) Scroller.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(0.0, 1, Ui.Time(180)));
     }
 
     private void Search_KeyDown(object sender, KeyEventArgs e)
@@ -135,7 +164,7 @@ public partial class SettingsView : UserControl
     // cards tagged "whole" never lose single rows.
     private void Search_TextChanged(object sender, TextChangedEventArgs e) => Apply();
 
-    // Without words: the cards of the group open. With them: every group's, and no group lit.
+    // Without words: the page of the group open. With them: the search's, every group's cards, and no group lit.
     private void Apply()
     {
         var words = Text.Normalize(SearchBox.Text).Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -143,16 +172,30 @@ public partial class SettingsView : UserControl
         _applying = true;
         foreach (var group in Groups.Children.OfType<RadioButton>()) group.IsChecked = words.Length == 0 && (string)group.Tag == _group;
         _applying = false;
-        int shown = 0;
-        foreach (var card in Cards.Children.OfType<FrameworkElement>())
+        bool searching = words.Length > 0;
+        if (searching != _searching)
         {
-            if (words.Length == 0)
+            _searching = searching;
+            foreach (var card in _cards)
             {
-                if (GetGroup(card) == _group) shown++;
-                else Show(card, false);
-                continue;
+                ((Panel)card.Parent).Children.Remove(card);
+                ((Panel)(searching ? Cards : _pages[GetGroup(card)].Content)).Children.Add(card);
             }
-            if (Matches(TextOf(FirstText(card)), words))
+        }
+        var page = searching ? Scroller : _pages[_group];
+        // Searched from further down: what's found starts from the top.
+        page.ScrollToTop();
+        Pages.Content = page;
+        if (!searching)
+        {
+            NoResults.Visibility = Visibility.Collapsed;
+            return;
+        }
+        int shown = 0;
+        foreach (var card in _cards)
+        {
+            // (a group's name finds its cards, as a card's title does)
+            if (Matches(TextOf(FirstText(card)) + " " + Groups.Children.OfType<RadioButton>().First(g => (string)g.Tag == GetGroup(card)).Content, words))
             {
                 shown++;
                 continue;
@@ -171,8 +214,6 @@ public partial class SettingsView : UserControl
                 foreach (var el in u) Show(el, false);
         }
         NoResults.Visibility = shown == 0 ? Visibility.Visible : Visibility.Collapsed;
-        // Searched from further down: what's found starts from the top.
-        Scroller.ScrollToTop();
     }
 
     private static bool Matches(string text, string[] words)
@@ -196,7 +237,7 @@ public partial class SettingsView : UserControl
                 units.Add(new List<FrameworkElement> { c, children[++i] });
                 continue;
             }
-            if (units.Count > 0 && BindingOperations.IsDataBound(c, VisibilityProperty)) units[^1].Add(c);
+            if (units.Count > 0 && (BindingOperations.IsDataBound(c, VisibilityProperty) || BindingOperations.IsDataBound(c, Fold.OpenProperty))) units[^1].Add(c);
             else units.Add(new List<FrameworkElement> { c });
         }
         return units;
@@ -242,6 +283,7 @@ public partial class SettingsView : UserControl
         {
             if (!_hidden.Remove(el)) return;
             if (BindingOperations.GetBindingExpressionBase(el, VisibilityProperty) is { } b) b.UpdateTarget();
+            else if (BindingOperations.IsDataBound(el, Fold.OpenProperty)) el.Visibility = Fold.GetOpen(el) ? Visibility.Visible : Visibility.Collapsed;
             else el.ClearValue(VisibilityProperty);
             return;
         }

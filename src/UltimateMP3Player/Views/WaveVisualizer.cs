@@ -169,6 +169,8 @@ public sealed class WaveVisualizer : FrameworkElement
     {
         if (Ui.Hidden || !IsLoaded) return false;
         if (_scroller == null) return true;
+        // (its card on its way to another page: the settings' search takes them all and gives them back)
+        if (!_scroller.IsAncestorOf(this)) return false;
         var box = TransformToAncestor(_scroller).TransformBounds(new Rect(RenderSize));
         return box.Bottom > 0 && box.Top < _scroller.ViewportHeight;
     }

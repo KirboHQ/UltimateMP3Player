@@ -449,13 +449,21 @@ public static class Program
         Pump(600);
         Check(Shown(win, L.T("Stream overlay")) && Shown(win, overlay.Name), "overlay: its card in the settings, its row");
         // (5.1: the groups on the left, one open on the right; the search looks in all of them)
-        var settingsCards = Descendants(win).OfType<UltimateMP3Player.Views.MasonryPanel>().First(p => p.Name == "Cards");
-        Check(settingsCards.Children.OfType<FrameworkElement>().All(c => UltimateMP3Player.Views.SettingsView.GetGroup(c).Length > 0), "settings: every card is in a group");
+        var settingsPage = Descendants(win).OfType<UltimateMP3Player.Views.SettingsView>().First();
+        Check(settingsPage.AllCards.All(c => UltimateMP3Player.Views.SettingsView.GetGroup(c).Length > 0), "settings: every card is in a group");
+        // (the few and fixed choices are tiles: one lit in each row, a click reaches the setting and back)
+        var allTiles = settingsPage.AllCards.SelectMany(c => Logical(c)).OfType<UltimateMP3Player.Views.ChoiceTiles>().ToList();
+        Check(allTiles.Count > 15 && allTiles.All(t => t.Children.OfType<RadioButton>().Count(r => r.IsChecked == true) == 1), $"settings: {allTiles.Count} rows of tiles, one chosen in each");
+        var closeTiles = allTiles.First(t => t.Selected == main.Settings.CloseChoice).Children.OfType<RadioButton>().ToList();
+        closeTiles[1].IsChecked = true;
+        Check(host.Settings.PauseOnClose && main.Settings.CloseChoice == main.Settings.CloseChoices[1] && closeTiles[0].IsChecked == false, "tiles: a click reaches the setting, the old one goes off");
+        main.Settings.CloseChoice = main.Settings.CloseChoices[0];
+        Check(!host.Settings.PauseOnClose && closeTiles[0].IsChecked == true && closeTiles[1].IsChecked == false, "tiles: the setting changed elsewhere shows on them");
         foreach (var groupEntry in Descendants(win).OfType<RadioButton>().Where(r => r.GroupName == "SettingsGroups").ToList())
         {
             groupEntry.IsChecked = true;
             Shot(win, "settings-" + groupEntry.Tag, 300);
-            var inGroup = settingsCards.Children.OfType<FrameworkElement>().Where(c => c.Visibility == Visibility.Visible).ToList();
+            var inGroup = settingsPage.CardsShown.ToList();
             Check(inGroup.Count > 0 && inGroup.All(c => UltimateMP3Player.Views.SettingsView.GetGroup(c) == groupEntry.Tag as string), $"settings group {groupEntry.Tag}: {inGroup.Count} cards");
         }
         var settingsBox = Descendants(win).OfType<TextBox>().First(t => t.Name == "SearchBox" && t.IsVisible);
@@ -556,7 +564,7 @@ public static class Program
         Slider HueBar() => Descendants(editor).OfType<Slider>().First(v => System.Windows.Automation.AutomationProperties.GetName(v) == L.T("Hue"));
         Tile(L.T("RGB")).IsChecked = true;
         Pump(50);
-        Check(overlay.Source.Rgb && Shown(editor, L.T("RGB speed")) && !HueBar().IsVisible, "overlay: RGB, its speed, no color to pick");
+        Check(overlay.Source.Rgb && Shown(editor, L.T("RGB speed")) && !Seen(HueBar()), "overlay: RGB, its speed, no color to pick");
         Tile(L.T("RGB")).BringIntoView();
         Shot(editor, "overlay-rgb", 100);
         Tile(L.T("One color")).IsChecked = true;
@@ -1145,7 +1153,26 @@ public static class Program
     }
 
     private static bool Shown(Window w, string text) => Shown(body: w, text);
-    private static bool Shown(DependencyObject body, string text) => Descendants(body).OfType<TextBlock>().Any(t => t.Text == text && t.IsVisible);
+    private static bool Shown(DependencyObject body, string text) => Descendants(body).OfType<TextBlock>().Any(t => t.Text == text && Seen(t));
+
+    // (what's folding away counts as gone: it lands a moment later)
+    private static bool Seen(FrameworkElement el)
+    {
+        if (!el.IsVisible) return false;
+        for (DependencyObject? d = el; d != null; d = VisualTreeHelper.GetParent(d))
+            if (!UltimateMP3Player.Views.Fold.GetOpen(d)) return false;
+        return true;
+    }
+
+    // (also what isn't on the screen: a settings page away from the window)
+    private static IEnumerable<DependencyObject> Logical(DependencyObject d)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(d).OfType<DependencyObject>())
+        {
+            yield return child;
+            foreach (var below in Logical(child)) yield return below;
+        }
+    }
 
     private static IEnumerable<DependencyObject> Descendants(DependencyObject d)
     {

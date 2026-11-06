@@ -403,7 +403,7 @@
         </Border>
 
         <!-- ================================================================ tap BPM: each song as it is, tap along -->
-        <Grid Grid.Row="1" Visibility="{Binding TapMode, Converter={StaticResource BoolVis}}" SizeChanged="TapArea_SizeChanged">
+        <Grid Grid.Row="1" views:Pane.Shown="{Binding TapMode}" SizeChanged="TapArea_SizeChanged">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
@@ -444,7 +444,7 @@
         </Grid>
 
         <!-- ================================================================ console -->
-        <Grid Grid.Row="1" Visibility="{Binding ConsoleMode, Converter={StaticResource BoolVis}}">
+        <Grid Grid.Row="1" views:Pane.Side="-1" views:Pane.Shown="{Binding ConsoleMode}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>

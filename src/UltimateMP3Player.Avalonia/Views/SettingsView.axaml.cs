@@ -16,6 +16,7 @@ public partial class SettingsView : UserControl
     public SettingsView()
     {
         InitializeComponent();
+        MakePages();
         // Wheel over a band changes it; when the EQ is off the page scrolls.
         AddHandler(PointerWheelChangedEvent, (_, e) =>
         {
@@ -106,14 +107,44 @@ public partial class SettingsView : UserControl
     public static void SetGroup(Control o, string value) => o.SetValue(GroupProperty, value);
 
     private string _group = "appearance";
-    private bool _applying;
+    private bool _applying, _searching;
     private SettingsViewModel? _vm;
+
+    // Every card, from the XAML's Cards: each lives in its group's page, all of them in the search's while there are words in the box.
+    private readonly List<Control> _cards = new();
+    private readonly Dictionary<string, ScrollViewer> _pages = new();
+
+    // The cards of the page shown, what the search left of them.
+    public IReadOnlyList<Control> AllCards => _cards;
+    public IEnumerable<Control> CardsShown => ((Panel)(_searching ? Cards : _pages[_group].Content!)).Children.Where(c => c.IsVisible);
+
+    private void MakePages()
+    {
+        var order = Groups.Children.OfType<RadioButton>().Select(g => (string)g.Tag!).ToList();
+        _cards.AddRange(Cards.Children);
+        Cards.Children.Clear();
+        foreach (var key in order)
+        {
+            var panel = new MasonryPanel { ColumnWidth = Cards.ColumnWidth, MaxColumns = Cards.MaxColumns, MaxColumnWidth = Cards.MaxColumnWidth, Gap = Cards.Gap, Margin = ((Control)Scroller.Content!).Margin };
+            panel.Children.AddRange(_cards.Where(c => GetGroup(c) == key));
+            _pages[key] = new ScrollViewer { VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto, Focusable = false, Content = panel, Tag = order.IndexOf(key) };
+        }
+        // (the search's page has no place: it fades in)
+        Pages.PlaceOf = page => (page as Control)?.Tag as int?;
+        // A page away from the window stays bound: nothing to bind again each time it comes back, and the search reads its words.
+        DataContextChanged += (_, _) =>
+        {
+            foreach (var page in _pages.Values.Append(Scroller)) page.DataContext = DataContext;
+        };
+    }
 
     private void Logins_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         Dialogs.ShowLogins();
         _vm?.LoginsChanged();
     }
+
+    private void Zanno_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => MainViewModel.OpenUrl("https://www.twitch.tv/zanno_tw");
 
     private void GroupAsked(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
@@ -128,8 +159,6 @@ public partial class SettingsView : UserControl
         // (a search written: its change does it)
         if (!string.IsNullOrEmpty(SearchBox.Text)) SearchBox.Text = "";
         else Apply();
-        Scroller.Offset = default;
-        if (Ui.Animations) Ui.Tween(Scroller, 180, t => t, v => Scroller.Opacity = v);
     }
 
     // What the search hid, each with what gives it back its own visibility.
@@ -138,7 +167,7 @@ public partial class SettingsView : UserControl
     // Only the cards, and inside them the settings, whose words match. A match in a card's title keeps
     // the whole card; its hidden keywords find the card but matching rows still narrow it down;
     // cards tagged "whole" never lose single rows.
-    // Without words: the cards of the group open. With them: every group's, and no group lit.
+    // Without words: the page of the group open. With them: the search's, every group's cards, and no group lit.
     private void Apply()
     {
         var words = Text.Normalize(SearchBox.Text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -146,16 +175,30 @@ public partial class SettingsView : UserControl
         _applying = true;
         foreach (var group in Groups.Children.OfType<RadioButton>()) group.IsChecked = words.Length == 0 && group.Tag as string == _group;
         _applying = false;
-        int shown = 0;
-        foreach (var card in Cards.Children.OfType<Control>())
+        bool searching = words.Length > 0;
+        if (searching != _searching)
         {
-            if (words.Length == 0)
+            _searching = searching;
+            foreach (var card in _cards)
             {
-                if (GetGroup(card) == _group) shown++;
-                else Show(card, false);
-                continue;
+                ((Panel)card.Parent!).Children.Remove(card);
+                ((Panel)(searching ? Cards : _pages[GetGroup(card)].Content!)).Children.Add(card);
             }
-            if (Matches(TextOf(FirstText(card)), words))
+        }
+        var page = searching ? Scroller : _pages[_group];
+        // Searched from further down: what's found starts from the top.
+        page.Offset = default;
+        Pages.Content = page;
+        if (!searching)
+        {
+            NoResults.IsVisible = false;
+            return;
+        }
+        int shown = 0;
+        foreach (var card in _cards)
+        {
+            // (a group's name finds its cards, as a card's title does)
+            if (Matches(TextOf(FirstText(card)) + " " + Groups.Children.OfType<RadioButton>().First(g => g.Tag as string == GetGroup(card)).Content, words))
             {
                 shown++;
                 continue;
@@ -174,8 +217,6 @@ public partial class SettingsView : UserControl
                 foreach (var el in u) Show(el, false);
         }
         NoResults.IsVisible = shown == 0;
-        // Searched from further down: what's found starts from the top.
-        Scroller.Offset = default;
     }
 
     private static bool Matches(string text, string[] words)
@@ -184,7 +225,7 @@ public partial class SettingsView : UserControl
         return words.All(t.Contains);
     }
 
-    private static bool BoundVisibility(Control c) => BindingOperations.GetBindingExpressionBase(c, IsVisibleProperty) != null;
+    private static bool BoundVisibility(Control c) => BindingOperations.GetBindingExpressionBase(c, IsVisibleProperty) != null || BindingOperations.GetBindingExpressionBase(c, Fold.OpenProperty) != null;
 
     // The settings of a card: a field label goes with the control under it, an element shown
     // only in some cases (bound visibility) with the setting above it.

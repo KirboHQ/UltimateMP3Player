@@ -20,9 +20,9 @@
     <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
     <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
     <!-- Keep equal to the other projects; the version code is 3.6.0 → 30600, the same in every processor's package. -->
-    <Version>5.1.0</Version>
-    <ApplicationDisplayVersion>5.1.0</ApplicationDisplayVersion>
-    <ApplicationVersion>50100</ApplicationVersion>
+    <Version>5.1.1</Version>
+    <ApplicationDisplayVersion>5.1.1</ApplicationDisplayVersion>
+    <ApplicationVersion>50101</ApplicationVersion>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -108,6 +108,7 @@
     <Compile Include="..\UltimateMP3Player.Avalonia\Infrastructure.cs" Link="Shared\Avalonia\Infrastructure.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Themes.cs" Link="Shared\Avalonia\Themes.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Audio\Decoders.cs" Link="Shared\Avalonia\Decoders.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\ChoiceTiles.cs" Link="Shared\Views\ChoiceTiles.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\Controls.cs" Link="Shared\Avalonia\Controls.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\Marquee.cs" Link="Shared\Avalonia\Marquee.cs" />
     <Compile Include="..\UltimateMP3Player.Avalonia\Views\Tweener.cs" Link="Shared\Avalonia\Tweener.cs" />

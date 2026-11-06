@@ -1030,11 +1030,27 @@ public sealed class SettingsViewModel : Observable
 
     // ------------------------------------------------------------------ app
 
-    public bool CloseToTray
+    public List<Choice> CloseChoices { get; } = new()
     {
-        get => S.CloseToTray;
-        set { S.CloseToTray = value; Save(); OnChanged(); }
+        new(L.T("Keep playing"), "play"),
+        new(L.T("Pause the song"), "pause"),
+        new(L.T("Close completely"), "quit"),
+    };
+
+    public Choice CloseChoice
+    {
+        get => CloseChoices[!S.CloseToTray ? 2 : S.PauseOnClose ? 1 : 0];
+        set
+        {
+            if (value == null) return;
+            S.CloseToTray = !Equals(value.Value, "quit");
+            S.PauseOnClose = Equals(value.Value, "pause");
+            Save();
+            OnChanged(nameof(CloseChoice), nameof(StaysWhenClosed));
+        }
     }
+
+    public bool StaysWhenClosed => S.CloseToTray;
 
     public List<Choice> StartupChoices { get; private set; } = new();
 

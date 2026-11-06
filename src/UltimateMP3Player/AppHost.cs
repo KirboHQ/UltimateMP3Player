@@ -65,6 +65,7 @@ public sealed class AppHost : Observable
 #endif
         Downloads = new DownloadQueue(this);
         Updates = new Updater();
+        _hadVersion = Settings.LastVersion != null;
         Presence = new DiscordPresence { Enabled = Settings.DiscordPresence };
         Settings.OverlayPort = OverlayServer.Shared.Apply(Settings.OverlaySources, Settings.OverlayPort);
         Lyrics = new LyricsService(this);
@@ -321,6 +322,9 @@ public sealed class AppHost : Observable
         if (notes.Count > 0 && !_exiting) Dialogs.WhatsNew(notes, Settings);
     }
 
+    // A version was already there when the app started (AppSettings.LastVersion, written on the first start).
+    private readonly bool _hadVersion;
+
     // Closing the window: stay in the tray or quit; false cancels.
     public bool OnWindowClosing()
     {
@@ -332,9 +336,17 @@ public sealed class AppHost : Observable
 #endif
         {
             Ui.Hidden = true;
+            if (Settings.PauseOnClose) Session?.SetPlaying(false);
             Session?.Player.SetVisible(false);
             Session?.Player.SaveState();
-            Tray.ShowBackgroundHint();
+            // (whoever has opened an older version has seen it already)
+            if (!Settings.BackgroundHintSeen && !_hadVersion)
+                Tray.ShowBackgroundHint(Settings.PauseOnClose ? L.T("The app stays in the background with the music paused. Click the icon to reopen it.") : L.T("Music keeps playing in the background. Click the icon to reopen the player."));
+            if (!Settings.BackgroundHintSeen)
+            {
+                Settings.BackgroundHintSeen = true;
+                Settings.Save();
+            }
             _hiddenSince = DateTime.Now;
 #if !AVALONIA
             _ui.BeginInvoke(() =>

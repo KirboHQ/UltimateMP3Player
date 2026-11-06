@@ -84,7 +84,7 @@
                                 </DockPanel>
                             </Button>
                         </StackPanel>
-                        <StackPanel Width="280" Margin="0,0,14,0" Visibility="{Binding MakeNew, Converter={StaticResource BoolVis}}">
+                        <StackPanel Width="280" Margin="0,0,14,0" views:Fold.Open="{Binding MakeNew}">
                             <TextBlock Text="{local:T 'New playlist name'}" Style="{StaticResource FieldLabel}"/>
                             <TextBox Style="{StaticResource BoxTextBox}" Text="{Binding NewName, UpdateSourceTrigger=PropertyChanged}" Tag="{local:T 'Playlist name'}"/>
                         </StackPanel>
@@ -139,7 +139,7 @@
                                   ToolTip="{local:T 'Audio quality of these songs: it stays theirs for their next downloads and for hearing them from the cloud'}"
                                   AutomationProperties.Name="{local:T 'Audio quality'}"/>
                         <ComboBox Margin="0,24,24,0" VerticalAlignment="Center" MinWidth="130" ItemsSource="{Binding VideoChoices}" SelectedItem="{Binding Video}"
-                                  Visibility="{Binding ShowVideoQuality, Converter={StaticResource BoolVis}}"
+                                  views:Fold.Open="{Binding ShowVideoQuality}"
                                   ToolTip="{local:T 'Maximum video quality'}" AutomationProperties.Name="{local:T 'Maximum video quality'}"/>
                         <Button Style="{StaticResource PrimaryButton}" Padding="22,10" Margin="0,24,0,0" VerticalAlignment="Center" Command="{Binding DownloadCommand}"
                                 ToolTip="{Binding SaveAudioHint}">
