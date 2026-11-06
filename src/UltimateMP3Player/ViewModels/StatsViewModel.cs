@@ -52,12 +52,12 @@ public sealed class StatsViewModel : Observable, ITrackList
 
     private bool IsNeverSort => (string)_sort.Value! == "never";
 
-    public List<TrackRow> Rows { get; private set; } = new();
+    public PagedRows Rows { get; private set; } = new();
     public bool IsEmpty => _order.Count == 0;
     public string EmptyText => IsNeverSort ? L.T("You've played all your songs at least once.") : L.T("Listen to something: your songs will show up here.");
 
     private string _filter = "";
-    public string Filter { get => _filter; set { if (Set(ref _filter, value)) ApplyFilter(); } }
+    public string Filter { get => _filter; set { if (Set(ref _filter, value)) ShowRows(PagedRows.Piece); } }
     public bool NoMatches => Rows.Count == 0 && _order.Count > 0;
 
     // The list is about to be replaced while the page is open (the numbers changed): the view keeps what's
@@ -75,11 +75,14 @@ public sealed class StatsViewModel : Observable, ITrackList
     public bool HasNever => NeverCount > 0;
     public string NeverText => L.Count(NeverCount, "Select the only one never played", "Select the {0} never played");
 
-    public void ApplyFilter()
+    public void ApplyFilter() => ShowRows(Rows.Count);
+
+    private void ShowRows(int first)
     {
         if (_live) RowsReplacing?.Invoke();
-        Rows = TrackFilter.Apply(_order, _filter, TagFilter, this);
-        NeverCount = IsNeverSort ? Rows.Count : TrackFilter.Apply(_never, _filter, TagFilter, this).Count;
+        var matches = TrackFilter.Matcher(_filter, TagFilter);
+        Rows = new PagedRows(_order, matches, this, first);
+        NeverCount = (IsNeverSort ? _order : _never).Count(matches);
         OnChanged(nameof(Rows), nameof(NoMatches), nameof(NeverCount), nameof(HasNever), nameof(NeverText));
     }
 

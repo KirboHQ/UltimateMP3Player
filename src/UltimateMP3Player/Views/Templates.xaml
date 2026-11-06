@@ -10,7 +10,7 @@
     <!-- Song cover, or a note on a gradient. -->
     <DataTemplate x:Key="TrackCoverSmall" DataType="{x:Type vm:TrackViewModel}">
         <Grid>
-            <Border CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
+            <Border Margin="1" CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
                 <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="15" Foreground="{DynamicResource MutedBrush}"/>
             </Border>
             <Border CornerRadius="5" Visibility="{Binding Cover48, Converter={StaticResource NotNullVis}}">
@@ -23,7 +23,7 @@
 
     <DataTemplate x:Key="TrackCoverMedium" DataType="{x:Type vm:TrackViewModel}">
         <Grid>
-            <Border CornerRadius="10" Background="{DynamicResource PlaceholderGradient}">
+            <Border Margin="1" CornerRadius="10" Background="{DynamicResource PlaceholderGradient}">
                 <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="42" Foreground="{DynamicResource MutedBrush}"/>
             </Border>
             <Border CornerRadius="10" Visibility="{Binding Cover160, Converter={StaticResource NotNullVis}}">
@@ -208,7 +208,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Grid Width="34" Height="34">
-                    <Border CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
+                    <Border Margin="1" CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
                         <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" HorizontalAlignment="Center" FontSize="14" Foreground="{DynamicResource MutedBrush}"/>
                     </Border>
                     <Border CornerRadius="5" Visibility="{Binding Cover, Converter={StaticResource NotNullVis}}">
@@ -769,7 +769,7 @@
             <StackPanel>
                 <views:SquareBox>
                     <Grid>
-                        <Ellipse Fill="{Binding Brush}"/>
+                        <Ellipse Margin="1" Fill="{Binding Brush}"/>
                         <Viewbox Margin="30">
                             <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White"/>
                         </Viewbox>
@@ -846,7 +846,7 @@
             <StackPanel>
                 <views:SquareBox>
                     <Grid>
-                        <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}">
+                        <Border Margin="1" CornerRadius="8" Background="{DynamicResource PlaceholderGradient}">
                             <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" FontSize="34" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                         </Border>
                         <Border CornerRadius="8">
@@ -886,7 +886,7 @@
             <StackPanel>
                 <views:SquareBox>
                     <Grid>
-                        <Border CornerRadius="8" Background="{DynamicResource PlaceholderGradient}">
+                        <Border Margin="1" CornerRadius="8" Background="{DynamicResource PlaceholderGradient}">
                             <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" FontSize="34" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                         </Border>
                         <Border CornerRadius="8">
@@ -944,7 +944,7 @@
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
                     <Grid Width="40" Height="40">
-                        <Border CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
+                        <Border Margin="1" CornerRadius="5" Background="{DynamicResource PlaceholderGradient}">
                             <TextBlock Text="&#xEC4F;" Style="{StaticResource Glyph}" FontSize="15" HorizontalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/>
                         </Border>
                         <Border CornerRadius="5">
@@ -1005,4 +1005,33 @@
     <ItemsPanelTemplate x:Key="CardGridTemplate">
         <views:CardGrid/>
     </ItemsPanelTemplate>
+
+    <ItemsPanelTemplate x:Key="CardRowTemplate">
+        <views:CardRow/>
+    </ItemsPanelTemplate>
+
+    <!-- A title, its arrows on the right, a row of cards, its bar: Views/Controls.cs. It ends 8 px before the page's margin, level with the welcome card. -->
+    <Style TargetType="views:Shelf">
+        <Setter Property="Focusable" Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="views:Shelf">
+                    <StackPanel>
+                        <DockPanel LastChildFill="False" Margin="0,0,8,0">
+                            <TextBlock Text="{TemplateBinding Title}" Style="{StaticResource SectionTitle}"/>
+                            <Button x:Name="PART_More" DockPanel.Dock="Right" Style="{StaticResource LinkButton}" VerticalAlignment="Center" Margin="10,0,0,14"/>
+                            <Button x:Name="PART_Next" DockPanel.Dock="Right" Style="{StaticResource ControlButton}" Content="&#xE76C;" FontSize="13" Width="30" Height="30"
+                                    Margin="2,-4,0,10" Visibility="Collapsed" AutomationProperties.Name="{local:T 'Next|shelf'}"/>
+                            <Button x:Name="PART_Back" DockPanel.Dock="Right" Style="{StaticResource ControlButton}" Content="&#xE76B;" FontSize="13" Width="30" Height="30"
+                                    Margin="0,-4,0,10" Visibility="Collapsed" AutomationProperties.Name="{local:T 'Back|shelf'}"/>
+                        </DockPanel>
+                        <ScrollViewer x:Name="PART_Scroller" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" CanContentScroll="False"
+                                      Focusable="False" Margin="0,0,8,26">
+                            <ContentPresenter Margin="0,0,0,4"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

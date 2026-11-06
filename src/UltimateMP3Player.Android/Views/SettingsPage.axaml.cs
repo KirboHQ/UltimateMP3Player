@@ -49,6 +49,7 @@ public partial class SettingsPage : UserControl, IPage
                 if (Vm is not { } vm || vm.SearchServices is not { } sites || from >= sites.Count) return;
                 vm.MoveService(sites[from].Name, TouchReorder.MoveIndex(from, onto, after));
             });
+        Search();
 #if IOS_APP
         // The iPhone: iOS chooses the output (Control Center), the updates of the app come through SideStore (yt-dlp's
         // still from here), the music is in the Files app.
@@ -82,6 +83,30 @@ public partial class SettingsPage : UserControl, IPage
     public static string GetKeywords(Control o) => o.GetValue(KeywordsProperty);
     public static void SetKeywords(Control o, string value) => o.SetValue(KeywordsProperty, value);
 
+    // The group a card is in, the one open (null: the list of the groups).
+    public static readonly AttachedProperty<string> GroupProperty = AvaloniaProperty.RegisterAttached<SettingsPage, Control, string>("Group", "");
+    public static string GetGroup(Control o) => o.GetValue(GroupProperty);
+    public static void SetGroup(Control o, string value) => o.SetValue(GroupProperty, value);
+
+    private string? _group;
+
+    public bool InSubPage => _group != null;
+
+    public void OpenGroup(string? key)
+    {
+        _group = key;
+        if (key != null) GroupTitle.Text = GroupList.GetLogicalDescendants().OfType<Button>().First(b => b.Tag as string == key).GetLogicalDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("setting")).Text;
+        Search();
+        Scroller.Offset = default;
+    }
+
+    private void Group_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { Tag: string key }) OpenGroup(key);
+    }
+
+    private void GroupBack_Click(object? sender, RoutedEventArgs e) => OpenGroup(null);
+
     // What the search hid, each with what gives it back its own visibility.
     private readonly Dictionary<Control, IDisposable?> _hidden = new();
 
@@ -92,13 +117,29 @@ public partial class SettingsPage : UserControl, IPage
     {
         var words = Text.Normalize(SearchBox.Text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         foreach (var el in _hidden.Keys.ToList()) Show(el, true);
+        bool searching = words.Length > 0;
+        if (searching) _group = null;
+        GroupBar.IsVisible = _group != null;
+        PageTitle.IsVisible = SearchBox.IsVisible = _group == null;
+        GroupList.IsVisible = _group == null && !searching;
         int shown = 0;
         var children = Cards.Children.ToList();
+        // (more than one card in the group: each with its title; alone, its name is the page's)
+        bool titled = children.OfType<Border>().Count(c => GetGroup(c) == _group) > 1;
         for (int i = 0; i < children.Count; i++)
         {
             if (children[i] is not Border { Classes: var cls } card || !cls.Contains("card")) continue;
             var title = i > 0 && children[i - 1] is TextBlock { Classes: var tc } t && tc.Contains("card-title") ? t : null;
-            if (words.Length == 0 || title != null && Matches(TextOf(title), words))
+            if (!searching)
+            {
+                // The list of the groups: only the profile above it. A group: its cards.
+                bool on = _group == null ? GetGroup(card).Length == 0 : GetGroup(card) == _group;
+                if (!on) Show(card, false);
+                if (title != null && !(on && titled)) Show(title, false);
+                shown++;
+                continue;
+            }
+            if (title != null && Matches(TextOf(title), words))
             {
                 shown++;
                 continue;
@@ -139,7 +180,7 @@ public partial class SettingsPage : UserControl, IPage
             foreach (var l in lines.Where(l => !keep.Contains(l))) Show(l, false);
         }
         NoResults.IsVisible = shown == 0;
-        Footer.IsVisible = words.Length == 0;
+        Footer.IsVisible = !searching && _group == null;
         Scroller.Offset = default;
     }
 
@@ -357,7 +398,7 @@ public partial class SettingsPage : UserControl, IPage
         DockPanel.SetDock(top, Dock.Top);
         top.Children.Add(new TextBlock { Text = L.T("Rename an artist"), FontSize = 20, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 0, 0, 8) });
         top.Children.Add(Ui.Text(L.T("Choose the artist, type the right name: it changes on all their songs."), "hint", new Thickness(0, 0, 0, 12)));
-        var filter = new TextBox { Theme = Ui.Theme("FilterBox"), Watermark = L.T("Search for an artist"), [!TextBox.TextProperty] = new Binding(nameof(SettingsViewModel.ArtistFilter), BindingMode.TwoWay) };
+        var filter = new TextBox { Theme = Ui.Theme("TouchSearchBox"), Watermark = L.T("Search for an artist"), [!TextBox.TextProperty] = new Binding(nameof(SettingsViewModel.ArtistFilter), BindingMode.TwoWay) };
         top.Children.Add(filter);
         body.Children.Add(top);
 
@@ -396,6 +437,11 @@ public partial class SettingsPage : UserControl, IPage
 
     public void Shown()
     {
+        if (Vm is { StartGroup: { } group } asked)
+        {
+            asked.StartGroup = null;
+            OpenGroup(group);
+        }
         if (Vm is not { StartSearch: { } words } vm) return;
         vm.StartSearch = null;
         SearchBox.Text = _opened = words;
@@ -403,6 +449,11 @@ public partial class SettingsPage : UserControl, IPage
 
     public bool Back()
     {
+        if (_group != null)
+        {
+            OpenGroup(null);
+            return true;
+        }
         if (string.IsNullOrEmpty(SearchBox.Text)) return false;
         bool leave = SearchBox.Text == _opened;
         _opened = null;

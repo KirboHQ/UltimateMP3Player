@@ -44,6 +44,7 @@ public partial class StatsView : UserControl
         Dispatcher.UIThread.Post(() =>
         {
             List.UnselectAll();
+            RowPaging.LoadAll(List);
             foreach (var row in List.Items.OfType<TrackRow>().Where(r => r.Track.Plays == 0)) List.SelectedItems?.Add(row);
             List.Focus();
         }, DispatcherPriority.Loaded);

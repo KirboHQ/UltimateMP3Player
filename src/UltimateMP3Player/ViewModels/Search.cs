@@ -126,7 +126,7 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
         _onlineTimer.Tick += (_, _) => RunOnlineNow();
         SelectServiceCommand = new RelayCommand(p => { if (p is ServiceTab t) SelectService(t.Service); });
         SelectFilterCommand = new RelayCommand(p => { if (p is SearchFilter f) Filter = f.Key; else if (p is string k) Filter = k; });
-        OnlineSettingsCommand = new RelayCommand(() => _main.GoSettings());
+        OnlineSettingsCommand = new RelayCommand(() => _main.OpenSettingsGroup("search"));
         SpotifySettingsCommand = new RelayCommand(() => _main.SearchSettings("Spotify", fromSearch: true));
         Filters = new List<SearchFilter>
         {

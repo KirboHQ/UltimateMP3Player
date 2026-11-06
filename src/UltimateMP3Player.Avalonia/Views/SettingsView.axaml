@@ -119,16 +119,36 @@
                 <TextBlock Text="{local:T Settings}" FontSize="30" FontWeight="Bold" VerticalAlignment="Center"/>
             </DockPanel>
         </Grid>
-    <ScrollViewer x:Name="Scroller" Grid.Row="1" VerticalScrollBarVisibility="Auto" Focusable="False">
-        <StackPanel Margin="28,0,28,28" MaxWidth="1640">
+    <Grid Grid.Row="1" ColumnDefinitions="256,*">
+        <!-- The groups on the left, one open on the right, like an iPad's settings; the search looks in all of them (SettingsView.Apply). -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False" Margin="14,0,0,0">
+            <Panel Margin="0,0,12,20">
+                <views:SlidingPill Target="{Binding #Groups}" Fill="{DynamicResource Surface2Brush}"/>
+                <StackPanel x:Name="Groups">
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE890;" Content="{local:T Appearance}" Tag="appearance" IsChecked="True"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE768;" Content="{local:T Playback}" Tag="playback"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE896;" Content="{local:T Download}" Tag="download"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE721;" Content="{local:T 'Search and suggestions'}" Tag="search"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE8F1;" Content="{local:T Library}" Tag="library" Margin="0,14,0,1"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE74E;" Content="{local:T 'Backup and export'}" Tag="backup"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE716;" Content="{local:T 'Phone and rooms'}" Tag="connect" Margin="0,14,0,1"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE714;" Content="{local:T 'Stream overlay'}" Tag="overlay"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE71B;" Content="{local:T Integrations}" Tag="integrations"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE77B;" Content="{local:T 'Profiles and startup'}" Tag="profiles" Margin="0,14,0,1"/>
+                    <RadioButton Theme="{StaticResource NavButton}" GroupName="SettingsGroups" local:Ui.Glyph="&#xE946;" Content="{local:T About}" Tag="about"/>
+                </StackPanel>
+            </Panel>
+        </ScrollViewer>
+    <ScrollViewer x:Name="Scroller" Grid.Column="1" VerticalScrollBarVisibility="Auto" Focusable="False">
+        <StackPanel Margin="8,0,28,28" MaxWidth="880">
             <TextBlock x:Name="NoResults" Text="{local:T 'No setting matches the search.'}" Classes="hint" FontSize="14"
                        HorizontalAlignment="Center" Margin="0,30,0,0" IsVisible="False"/>
 
             <!-- SettingsView.Keywords: extra words (in the app language) the search box finds; Tag="whole": the card is shown or hidden as a whole -->
-            <views:MasonryPanel x:Name="Cards" ColumnWidth="500" MaxColumns="3" Gap="16">
+            <views:MasonryPanel x:Name="Cards" ColumnWidth="500" MaxColumns="1" Gap="16">
 
                 <!-- ==================================================== appearance -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'theme colors light dark night mode language english italian animations scrolling mouse wheel cover 3d parallax speed zoom size bigger smaller visualizer bars waves'}">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="appearance" Padding="22" views:SettingsView.Keywords="{local:T 'theme colors light dark night mode language english italian animations scrolling mouse wheel cover 3d parallax speed zoom size bigger smaller visualizer bars waves'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Appearance}" Classes="card-title"/>
                         <TextBlock Text="{local:T 'Theme (for this profile)'}" Classes="field-label"/>
@@ -267,7 +287,7 @@
                 </Border>
 
                 <!-- ==================================================== playback -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'playback volume crossfade fade normalize output device speakers headphones'}">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="playback" Padding="22" views:SettingsView.Keywords="{local:T 'playback volume crossfade fade normalize output device speakers headphones'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Playback}" Classes="card-title"/>
                         <TextBlock Text="{local:T 'Audio output'}" Classes="field-label"/>
@@ -319,7 +339,7 @@
                 </Border>
 
                 <!-- ==================================================== equalizer -->
-                <Border Theme="{StaticResource Card}" Padding="22" DataContext="{Binding Equalizer}" Tag="whole"
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="playback" Padding="22" DataContext="{Binding Equalizer}" Tag="whole"
                         views:SettingsView.Keywords="{local:T 'equalizer eq bass mids treble frequencies preset sound audio'}">
                     <StackPanel>
                         <DockPanel Margin="0,0,0,6">
@@ -414,7 +434,7 @@
                 </Border>
 
                 <!-- ==================================================== downloads and temporary storage -->
-                <Border Theme="{StaticResource Card}" Padding="22">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="download" Padding="22">
                     <StackPanel>
                         <TextBlock Text="{local:T Download}" Classes="card-title"/>
                         <!-- downloads -->
@@ -463,14 +483,19 @@
 
                             <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding UseCookies}">
                                 <StackPanel>
-                                    <TextBlock Text="{local:T 'Use browser cookies'}"/>
+                                    <TextBlock Text="{local:T 'Use my sign-ins for downloads'}"/>
                                     <TextBlock Classes="hint"
                                                Text="{local:T 'For content that requires signing in (Instagram, TikTok, age-restricted, private playlists). Off by default.'}"/>
                                 </StackPanel>
                             </CheckBox>
-                            <StackPanel Width="280" HorizontalAlignment="Left" Margin="0,12,0,0" IsVisible="{Binding UseCookies}">
-                                <TextBlock Text="{local:T 'Browser (installed ones)'}" Classes="field-label"/>
-                                <ComboBox ItemsSource="{Binding BrowserChoices}" SelectedItem="{Binding Browser}"/>
+                            <StackPanel Margin="0,12,0,0" IsVisible="{Binding UseCookies}">
+                                <TextBlock Text="{local:T 'Where the sign-ins come from'}" Classes="field-label"/>
+                                <ComboBox Width="280" HorizontalAlignment="Left" ItemsSource="{Binding BrowserChoices}" SelectedItem="{Binding Browser}"
+                                          AutomationProperties.Name="{local:T 'Where the sign-ins come from'}"/>
+                                <DockPanel Margin="0,12,0,0" IsVisible="{Binding UsesEachSite}">
+                                    <Button Theme="{StaticResource GhostButton}" Content="{local:T 'Sign in to sites'}" Click="Logins_Click"/>
+                                    <TextBlock Text="{Binding LoginsSummary}" Classes="hint" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                </DockPanel>
                             </StackPanel>
                         </StackPanel>
                         <!-- storage -->
@@ -503,7 +528,7 @@
                 </Border>
 
                 <!-- ==================================================== search and suggestions -->
-                <Border Theme="{StaticResource Card}" Padding="22">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="search" Padding="22">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Search and suggestions'}" Classes="card-title"/>
                         <!-- online search -->
@@ -637,7 +662,7 @@
                 </Border>
 
                 <!-- ==================================================== library: music on the computer, tags, bulk edit, followed artists -->
-                <Border Theme="{StaticResource Card}" Padding="22">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="library" Padding="22">
                     <StackPanel>
                         <TextBlock Text="{local:T Library}" Classes="card-title"/>
                         <!-- library -->
@@ -746,7 +771,7 @@
                 </Border>
 
                 <!-- ==================================================== backup, export and import -->
-                <Border Theme="{StaticResource Card}" Padding="22">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="backup" Padding="22">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Backup, export and import'}" Classes="card-title"/>
                         <!-- .ump packs -->
@@ -830,7 +855,7 @@
                 </Border>
 
                 <!-- ==================================================== listening statistics -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole"
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="library" Padding="22" Tag="whole"
                         views:SettingsView.Keywords="{local:T 'statistics plays played most least time chart top clean up delete'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Listening statistics'}" Classes="card-title"/>
@@ -879,7 +904,7 @@
                 </Border>
 
                 <!-- ==================================================== profiles & app -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'profile profiles startup tray icon clock close background'}">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="profiles" Padding="22" views:SettingsView.Keywords="{local:T 'profile profiles startup tray icon clock close background'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Profiles and startup'}" Classes="card-title"/>
                         <TextBlock Text="{local:T 'At startup'}" Classes="field-label"/>
@@ -907,7 +932,7 @@
                 </Border>
 
                 <!-- ==================================================== connect phone -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole"
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="connect" Padding="22" Tag="whole"
                         views:SettingsView.Keywords="{local:T 'connect phone remote control android iphone mobile cable usb wifi send music p2p'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Connect phone'}" Classes="card-title"/>
@@ -929,7 +954,7 @@
                 </Border>
 
                 <!-- ==================================================== listen together -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'listen together room rooms friends network lan radmin vpn firewall p2p host ahead'}">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="connect" Padding="22" views:SettingsView.Keywords="{local:T 'listen together room rooms friends network lan radmin vpn firewall p2p host ahead'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Listen together'}" Classes="card-title"/>
                         <TextBlock Text="{local:T 'Songs got ready ahead'}" Classes="field-label"/>
@@ -990,7 +1015,7 @@
                 </Border>
 
                 <!-- ==================================================== stream overlays (OBS) -->
-                <Border Theme="{StaticResource Card}" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'obs stream streaming streamer overlay browser source twitch youtube now playing vinyl'}">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="overlay" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'obs stream streaming streamer overlay browser source twitch youtube now playing vinyl'}">
                     <StackPanel DataContext="{x:Static local:OverlaySourcesViewModel.Shared}">
                         <TextBlock Text="{local:T 'Stream overlay'}" Classes="card-title"/>
                         <TextBlock Classes="hint" Text="{local:T 'What you are listening to, on your stream: copy the link and add it in OBS as a Browser source. Transparent background, it fits any size, and it only works from this computer.'}"/>
@@ -1023,7 +1048,7 @@
                 </Border>
 
                 <!-- ==================================================== integrations -->
-                <Border Theme="{StaticResource Card}" Padding="22" views:SettingsView.Keywords="{local:T 'discord status activity rich presence lastfm last.fm listenbrainz scrobble scrobbling'}">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="integrations" Padding="22" views:SettingsView.Keywords="{local:T 'discord status activity rich presence lastfm last.fm listenbrainz scrobble scrobbling'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Integrations}" Classes="card-title"/>
                         <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding DiscordPresence}" IsEnabled="{Binding DiscordAvailable}">
@@ -1058,7 +1083,7 @@
                 </Border>
 
                 <!-- ==================================================== about: updates, help, support the project -->
-                <Border Theme="{StaticResource Card}" Padding="22">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="about" Padding="22">
                     <StackPanel>
                         <TextBlock Text="{local:T About}" Classes="card-title"/>
                         <!-- updates -->
@@ -1200,5 +1225,6 @@
             </views:MasonryPanel>
         </StackPanel>
     </ScrollViewer>
+    </Grid>
     </Grid>
 </UserControl>

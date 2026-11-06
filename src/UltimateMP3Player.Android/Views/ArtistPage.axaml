@@ -31,9 +31,10 @@
                 <DataTemplate DataType="views:ListHeader">
                     <StackPanel DataContext="{Binding Page}">
                         <!-- its picture (chosen by hand, or Deezer's), or its initial on a colour of its own -->
-                        <Border Width="176" Height="176" CornerRadius="88" Background="{Binding Brush}" HorizontalAlignment="Center" Margin="0,4,0,14"
+                        <Border Width="176" Height="176" CornerRadius="88" HorizontalAlignment="Center" Margin="0,4,0,14"
                                 BoxShadow="0 6 24 0 #66000000">
                             <Panel>
+                                <Ellipse Margin="1" Fill="{Binding Brush}"/>
                                 <TextBlock Text="{Binding Initial}" FontSize="72" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
                             </Panel>

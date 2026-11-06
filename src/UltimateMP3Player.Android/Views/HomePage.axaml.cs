@@ -48,11 +48,11 @@ public partial class HomePage : UserControl, IPage
 
     public void ScrollToTop() => Scroller.Offset = default;
 
-    // "Show all": the library's songs.
-    private void ShowAll_Click(object? sender, RoutedEventArgs e)
+    // Recently added's "Show all": the library's songs.
+    public System.Windows.Input.ICommand ShowLibrary { get; } = new RelayCommand(() =>
     {
         if (App.Host.View?.Hub is not { } hub) return;
         hub.Tab = 0;
         App.Host.Session?.Navigate(hub);
-    }
+    });
 }

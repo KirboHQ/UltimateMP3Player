@@ -250,7 +250,7 @@
                                                         views:Rows.Menu="artist" local:Marquee.Host="True" views:Click.Command="{Binding OpenCommand}">
                                                     <Grid ColumnDefinitions="42,*,Auto">
                                                         <Panel Width="42" Height="42">
-                                                            <Ellipse Fill="{Binding Brush}"/>
+                                                            <Ellipse Margin="1" Fill="{Binding Brush}"/>
                                                             <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                             <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
                                                         </Panel>
@@ -356,15 +356,15 @@
                                 <Panel>
                                     <!-- both devices' music (Connect phone): the other device's profile behind this one's -->
                                     <Panel Width="26" Height="26" Margin="20,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsVisible="{Binding HasSecondProfile}">
-                                        <Ellipse Fill="{Binding SecondBrush}"/>
+                                        <Ellipse Margin="1" Fill="{Binding SecondBrush}"/>
                                         <TextBlock Text="{Binding SecondInitial}" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <views:CoverImage Margin="2" IsCircle="True" Source="{Binding SecondAvatar}"/>
+                                        <views:CoverImage IsCircle="True" Source="{Binding SecondAvatar}"/>
                                     </Panel>
                                     <Panel Width="32" Height="32" HorizontalAlignment="Left">
                                         <Ellipse Margin="-2" Fill="{DynamicResource SidebarBrush}" IsVisible="{Binding HasSecondProfile}"/>
-                                        <Ellipse Fill="{Binding ProfileBrush}"/>
+                                        <Ellipse Margin="1" Fill="{Binding ProfileBrush}"/>
                                         <TextBlock Text="{Binding ProfileInitial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        <views:CoverImage Margin="2.5" IsCircle="True" Source="{Binding ProfileAvatar}"/>
+                                        <views:CoverImage IsCircle="True" Source="{Binding ProfileAvatar}"/>
                                     </Panel>
                                 </Panel>
                                     <TextBlock Grid.Column="1" Margin="9,0,0,0" Text="{Binding ProfileName}" Foreground="{DynamicResource TextBrush}"

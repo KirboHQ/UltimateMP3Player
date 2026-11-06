@@ -89,10 +89,11 @@ public partial class StatsPage : UserControl, IPage
         var offset = sv?.Offset ?? default;
         var items = _vm.Rows.Select(r => new SongItem(r)).ToList();
         List.Picks.SetItems(items, _vm);
-        var all = new List<object> { _header };
-        all.AddRange(items);
+        var all = new System.Collections.ObjectModel.ObservableCollection<object> { _header };
+        foreach (var item in items) all.Add(item);
         if (items.Count == 0) all.Add(new ListNote(L.T("Nothing yet"), _vm.EmptyText));
         List.ItemsSource = all;
+        List.Follow(_vm.Rows, all, _vm);
         if (sv != null) Dispatcher.UIThread.Post(() => sv.Offset = offset, DispatcherPriority.Background);
         if (_selectNever)
         {

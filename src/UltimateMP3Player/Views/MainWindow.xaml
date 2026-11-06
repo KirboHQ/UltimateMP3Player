@@ -272,7 +272,7 @@
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
                                                     <Grid Width="42" Height="42">
-                                                        <Ellipse Fill="{Binding Brush}"/>
+                                                        <Ellipse Margin="1" Fill="{Binding Brush}"/>
                                                         <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                         <Ellipse Visibility="{Binding HasPicture, Converter={StaticResource BoolVis}}">
                                                             <Ellipse.Fill>
@@ -416,9 +416,9 @@
                                 <!-- both devices' music (Connect phone): the other device's profile behind this one's -->
                                 <Grid Width="26" Height="26" Margin="20,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
                                       Visibility="{Binding HasSecondProfile, Converter={StaticResource BoolVis}}">
-                                    <Ellipse Fill="{Binding SecondBrush}"/>
+                                    <Ellipse Margin="1" Fill="{Binding SecondBrush}"/>
                                     <TextBlock Text="{Binding SecondInitial}" Foreground="White" FontWeight="Bold" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <Ellipse Margin="2" Visibility="{Binding SecondAvatar, Converter={StaticResource NotNullVis}}">
+                                    <Ellipse Visibility="{Binding SecondAvatar, Converter={StaticResource NotNullVis}}">
                                         <Ellipse.Fill>
                                             <ImageBrush ImageSource="{Binding SecondAvatar}" Stretch="UniformToFill"/>
                                         </Ellipse.Fill>
@@ -426,9 +426,9 @@
                                 </Grid>
                                 <Grid Width="32" Height="32" HorizontalAlignment="Left">
                                     <Ellipse Margin="-2" Fill="{DynamicResource SidebarBrush}" Visibility="{Binding HasSecondProfile, Converter={StaticResource BoolVis}}"/>
-                                    <Ellipse Fill="{Binding ProfileBrush}"/>
+                                    <Ellipse Margin="1" Fill="{Binding ProfileBrush}"/>
                                     <TextBlock Text="{Binding ProfileInitial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <Ellipse Margin="2.5" Visibility="{Binding ProfileAvatar, Converter={StaticResource NotNullVis}}">
+                                    <Ellipse Visibility="{Binding ProfileAvatar, Converter={StaticResource NotNullVis}}">
                                         <Ellipse.Fill>
                                             <ImageBrush ImageSource="{Binding ProfileAvatar}" Stretch="UniformToFill"/>
                                         </Ellipse.Fill>

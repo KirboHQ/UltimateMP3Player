@@ -109,7 +109,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <ContentPresenter ContentTemplate="{StaticResource TrackHeader}" Margin="0,0,10,0"/>
-            <ListBox x:Name="List" Grid.Row="1" Style="{StaticResource PlainList}" ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource TrackRowTemplate}"/>
+            <ListBox x:Name="List" Grid.Row="1" Style="{StaticResource PlainList}" views:RowPaging.On="True" ItemsSource="{Binding Rows}" ItemTemplate="{StaticResource TrackRowTemplate}"/>
             <views:SelectionBar Grid.Row="1" List="{Binding ElementName=List}" Panel.ZIndex="1"/>
             <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,50,0,0" MaxWidth="480"
                         Visibility="{Binding IsEmpty, Converter={StaticResource BoolVis}}">

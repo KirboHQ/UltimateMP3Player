@@ -565,7 +565,7 @@
             <StackPanel>
                 <views:SquareBox>
                     <Panel>
-                        <Ellipse Fill="{Binding Brush}"/>
+                        <Ellipse Margin="1" Fill="{Binding Brush}"/>
                         <Viewbox Margin="30">
                             <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White"/>
                         </Viewbox>
@@ -791,4 +791,29 @@
     <ItemsPanelTemplate x:Key="CardGridTemplate">
         <views:CardGrid/>
     </ItemsPanelTemplate>
+
+    <ItemsPanelTemplate x:Key="CardRowTemplate">
+        <views:CardRow/>
+    </ItemsPanelTemplate>
+
+    <!-- A title, a row of cards ("Show all" on the right): Views/Controls.cs. It ends 8 px before the page's margin, level with the welcome card. -->
+    <ControlTheme x:Key="{x:Type views:Shelf}" TargetType="views:Shelf">
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel>
+                    <DockPanel LastChildFill="False" Margin="0,0,8,0">
+                        <TextBlock Text="{TemplateBinding Title}" Classes="section-title"/>
+                        <Button Name="PART_More" DockPanel.Dock="Right" Theme="{StaticResource LinkButton}" VerticalAlignment="Center" Margin="10,0,0,14"/>
+                        <Button Name="PART_Next" DockPanel.Dock="Right" Theme="{StaticResource ControlButton}" Content="{local:Icon E76C}" FontSize="13" Width="30" Height="30"
+                                Margin="2,-4,0,10" IsVisible="False" AutomationProperties.Name="{local:T 'Next|shelf'}"/>
+                        <Button Name="PART_Back" DockPanel.Dock="Right" Theme="{StaticResource ControlButton}" Content="{local:Icon E76C}" FontSize="13" Width="30" Height="30" RenderTransform="scale(-1,1)"
+                                Margin="0,-4,0,10" IsVisible="False" AutomationProperties.Name="{local:T 'Back|shelf'}"/>
+                    </DockPanel>
+                    <ScrollViewer Name="PART_Scroller" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Focusable="False" Margin="0,0,8,26">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Margin="0,0,0,4"/>
+                    </ScrollViewer>
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
 </ResourceDictionary>

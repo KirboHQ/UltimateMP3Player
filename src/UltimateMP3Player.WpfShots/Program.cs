@@ -194,11 +194,13 @@ public static class Program
             main.Settings.SeekMirrored = true;
         }
         main.Settings.SeekStyleChoice = main.Settings.VisualizerStyles.First(c => Equals(c.Value, VisualizerStyle.Bars));
-        main.GoSettings();
+        main.OpenSettingsGroup("playback");
         Pump(400);
         Check(main.Settings.OutputDevices.Count > UltimateMP3Player.Audio.AudioPlatform.OutputDevices().Count, "settings: the audio outputs listed meanwhile");
         var output = Descendants(win).OfType<ComboBox>().FirstOrDefault(c => System.Windows.Automation.AutomationProperties.GetName(c) == L.T("Audio output"));
         Check(output?.SelectedIndex >= 0 && output.SelectionBoxItem is Choice, $"settings opened again: the audio output still shown ({output?.SelectionBoxItem})");
+        main.OpenSettingsGroup("profiles");
+        Pump(400);
         var startup = Descendants(win).OfType<ComboBox>().FirstOrDefault(c => System.Windows.Automation.AutomationProperties.GetName(c) == L.T("At startup"));
         Check(startup?.SelectedIndex >= 0 && startup.SelectionBoxItem is Choice, $"settings opened again: the profile at startup still shown ({startup?.SelectionBoxItem})");
         // ---- the library's parts are tabs of one page; back and forward; the keyboard's pages
@@ -443,13 +445,30 @@ public static class Program
             said += events.ReadLine();
             Check(said.Contains("\"Duet\"") && said.Contains("\"dur\":3"), "overlay: a page is told the song playing");
         }
-        main.GoSettings();
+        main.OpenSettingsGroup("overlay");
         Pump(600);
         Check(Shown(win, L.T("Stream overlay")) && Shown(win, overlay.Name), "overlay: its card in the settings, its row");
+        // (5.1: the groups on the left, one open on the right; the search looks in all of them)
+        var settingsCards = Descendants(win).OfType<UltimateMP3Player.Views.MasonryPanel>().First(p => p.Name == "Cards");
+        Check(settingsCards.Children.OfType<FrameworkElement>().All(c => UltimateMP3Player.Views.SettingsView.GetGroup(c).Length > 0), "settings: every card is in a group");
+        foreach (var groupEntry in Descendants(win).OfType<RadioButton>().Where(r => r.GroupName == "SettingsGroups").ToList())
+        {
+            groupEntry.IsChecked = true;
+            Shot(win, "settings-" + groupEntry.Tag, 300);
+            var inGroup = settingsCards.Children.OfType<FrameworkElement>().Where(c => c.Visibility == Visibility.Visible).ToList();
+            Check(inGroup.Count > 0 && inGroup.All(c => UltimateMP3Player.Views.SettingsView.GetGroup(c) == groupEntry.Tag as string), $"settings group {groupEntry.Tag}: {inGroup.Count} cards");
+        }
         var settingsBox = Descendants(win).OfType<TextBox>().First(t => t.Name == "SearchBox" && t.IsVisible);
         settingsBox.Text = L.T("Bars of the music");
         Shot(win, "settings-bars", 500);
-        settingsBox.Text = "";
+        Check(!Descendants(win).OfType<RadioButton>().Any(r => r.GroupName == "SettingsGroups" && r.IsChecked == true), "settings search: no group lit, it looks in all of them");
+        var clearX = (Button)settingsBox.Template.FindName("ClearX", settingsBox);
+        Check(clearX.IsVisible, "settings search: an X with text in the box");
+        clearX.Command.Execute(clearX.CommandParameter);
+        Pump(50);
+        Check(settingsBox.Text == "" && !clearX.IsVisible, "settings search: the X empties the box and goes away");
+        Check(Descendants(win).OfType<RadioButton>().Single(r => r.GroupName == "SettingsGroups" && r.IsChecked == true).Tag as string == "about", "settings search: emptied, back to the group open");
+        OverlayPreview.Forced = Environment.GetEnvironmentVariable("UMP_PREVIEW");
         var editor = Dialogs.Frame(L.T("Stream overlay"), Dialogs.OverlayEditor(overlay), Dialogs.OverlayEditorWidth(), Dialogs.Button(L.T("Done"), "PrimaryButton", isCancel: true));
         editor.WindowStartupLocation = WindowStartupLocation.Manual;
         editor.Left = editor.Top = -32000;
@@ -465,9 +484,12 @@ public static class Program
         {
             for (int i = 0; i < 60 && OverlayPreview.Frames < 8; i++) Pump(250);
             long frames = OverlayPreview.Frames;
+            var appTime = System.Diagnostics.Process.GetCurrentProcess().TotalProcessorTime;
             Pump(1500);
-            Check(frames >= 8 && OverlayPreview.Frames > frames && OverlayPreview.Running == 1, $"overlay: the preview moves inside the editor ({(OverlayPreview.Frames - frames) / 1.5:0} pictures a second)");
+            double appShare = (System.Diagnostics.Process.GetCurrentProcess().TotalProcessorTime - appTime).TotalSeconds / 1.5 * 100;
+            Check(frames >= 8 && OverlayPreview.Frames > frames && OverlayPreview.Running == 1, $"overlay: the preview moves inside the editor ({(OverlayPreview.Frames - frames) / 1.5:0} pictures a second, the app {appShare:0} % of a core)");
             Shot(editor, "overlay-live", 100);
+            Check(!Descendants(editor).OfType<TextBlock>().Any(t => t.Text.Contains("Firefox")), "overlay: with a browser, no note");
         }
         // Only what makes sense for the look and the cover.
         RadioButton Tile(string text) => Descendants(editor).OfType<RadioButton>().First(r => Shown(body: r, text));
@@ -486,17 +508,31 @@ public static class Program
         Check(!Shown(editor, L.T("The needle on the record")) && Shown(editor, L.T("Light around the cover")), "overlay: no needle without it");
         Tile(L.T("Neon")).IsChecked = true;
         Pump(50);
-        Check(!Shown(editor, L.T("Card opacity")) && !Shown(editor, L.T("Corners")), "overlay: a look without cards has no opacity or corners");
+        Check(!Shown(editor, L.T("Card opacity")) && Shown(editor, L.T("Card|overlay")), "overlay: a look without cards has no opacity, its cover has corners");
+        Tile(L.T("Vinyl")).IsChecked = true;
+        Pump(50);
+        Check(!Shown(editor, L.T("Card|overlay")), "overlay: and a record on it has none");
+        Tile(L.T("Pill")).IsChecked = true;
+        Tile(L.T("Square")).IsChecked = true;
+        Pump(50);
+        Check(overlay.Source.Corners == 1 && Shown(editor, L.T("Canvas")), "overlay: a capsule as drawn, and it has a canvas too");
+        RadioButton Corner(int i) => Descendants(editor).OfType<RadioButton>().Where(r => r.GroupName == "overlay-corners").ElementAt(i);
+        Corner(1).IsChecked = true;
+        Check(overlay.Source.Corners == 0.5, "overlay: a capsule's corners in the middle are half of it");
+        Corner(2).IsChecked = true;
+        Tile(L.T("Boxy")).IsChecked = true;
+        Pump(50);
+        Check(overlay.Source.Corners == 1 && Corner(1).IsChecked == true, "overlay: from a capsule to another look, as drawn");
         Tile(L.T("Cassette")).IsChecked = true;
         Pump(50);
-        Check(!Descendants(editor).OfType<RadioButton>().Any(r => r.IsVisible && Shown(body: r, L.T("Canvas"))) && !Shown(editor, L.T("Light around the cover")), "overlay: the cassette has its cover on its label: no canvas, no light");
+        Check(Descendants(editor).OfType<RadioButton>().Any(r => r.IsVisible && Shown(body: r, L.T("Canvas"))) && !Shown(editor, L.T("Light around the cover")), "overlay: the cassette has its cover on its label: a canvas fills it, no light");
         Page("Bars");
         Tile(L.T("Small bars")).IsChecked = true;
         Pump(50);
-        Check(overlay.Source is { Bars: true, ShowBar: false } && Shown(editor, L.T("Shape of the bars")), "overlay: small bars alone, in place of the line");
+        Check(overlay.Source is { Bars: true, ShowBar: false } && Shown(editor, L.T("Shape of the small bars")), "overlay: small bars alone, in place of the line");
         Tile(L.T("Progress line")).IsChecked = true;
         Pump(50);
-        Check(overlay.Source is { Bars: false, ShowBar: true } && !Shown(editor, L.T("Shape of the bars")), "overlay: the line alone, and no shape of bars to choose");
+        Check(overlay.Source is { Bars: false, ShowBar: true } && !Shown(editor, L.T("Shape of the small bars")), "overlay: the line alone, and no shape of bars to choose");
         Tile(L.T("Small bars")).IsChecked = true;
         Check(!Shown(editor, L.T("Above and below")), "overlay: no place for the big bars while they're off");
         Descendants(editor).OfType<CheckBox>().First(c => Shown(body: c, L.T("Big bars behind the card"))).IsChecked = true;
@@ -515,6 +551,22 @@ public static class Program
         Descendants(editor).OfType<CheckBox>().First(c => Shown(body: c, L.T("Big bars behind the card"))).IsChecked = false;
         Page("Appearance");
         Tile(L.T("Compact")).IsChecked = true;
+        Pump(50);
+        // The colors: from the cover, going round, or one by a bar of hues.
+        Slider HueBar() => Descendants(editor).OfType<Slider>().First(v => System.Windows.Automation.AutomationProperties.GetName(v) == L.T("Hue"));
+        Tile(L.T("RGB")).IsChecked = true;
+        Pump(50);
+        Check(overlay.Source.Rgb && Shown(editor, L.T("RGB speed")) && !HueBar().IsVisible, "overlay: RGB, its speed, no color to pick");
+        Tile(L.T("RGB")).BringIntoView();
+        Shot(editor, "overlay-rgb", 100);
+        Tile(L.T("One color")).IsChecked = true;
+        Pump(50);
+        HueBar().Value = 200;
+        Check(overlay.Source is { Rgb: false, MagicColors: false } && overlay.Source.Tint == ThemeColors.FromHue(200) && !Shown(editor, L.T("RGB speed")), "overlay: one color, from the bar of hues");
+        HueBar().BringIntoView(); Shot(editor, "overlay-hue", 100);
+        Tile(L.T("From the cover")).IsChecked = true;
+        Pump(50);
+        Check(overlay.Source.MagicColors && Shown(editor, L.T("For songs without a cover")), "overlay: from the cover, a color for songs without one");
         // Each font in its own face, and only the ones in view made. (The list stays see-through: this window is off the screens, a list isn't.)
         Page("Text");
         var fontCombo = Descendants(editor).OfType<ComboBox>().First(c => c.IsVisible);
@@ -581,6 +633,53 @@ public static class Program
         Check(File.Exists(overlay.PictureFile) && overlay.Picture != null, "overlay: the settings' list shows it as it was left");
         Descendants(win).OfType<TextBlock>().FirstOrDefault(t => t.Text == overlay.Name)?.BringIntoView(new Rect(0, -60, 10, 160));
         Shot(win, "overlay-row", 400);
+        // ---- 5.1: signing in to each site (the sites' pages need a person; the browser's part: mp3cli signin)
+        var eachSite = main.Settings.BrowserChoices.First();
+        Check(Equals(eachSite.Value, AppSettings.EachSite), "sign-ins: each site is the first choice");
+        var browserBefore = main.Settings.Browser;
+        main.Settings.UseCookies = true;
+        main.Settings.Browser = eachSite;
+        Check(main.Settings.UsesEachSite && host.Settings.CookiesBrowserOrNull == null, "sign-ins: each site chosen, nothing to use yet");
+        var youTube = UltimateMP3Player.Platform.SiteLogins.Sites[0];
+        Check(!UltimateMP3Player.Platform.SiteLogins.Keep(new[] { new BrowserCookie(".youtube.com", "/", true, 0, "PREF", "x") }, youTube) && !UltimateMP3Player.Platform.SiteLogins.HasFile, "sign-ins: a window closed before signing in keeps nothing");
+        Check(UltimateMP3Player.Platform.SiteLogins.Keep(new[] { new BrowserCookie(".youtube.com", "/", true, DateTimeOffset.UtcNow.AddDays(30).ToUnixTimeSeconds(), "SAPISID", "abc"), new BrowserCookie(".ads.example", "/", false, 0, "ad", "1") }, youTube)
+            && UltimateMP3Player.Platform.SiteLogins.SignedIn().SetEquals(new[] { "YouTube" }) && !File.ReadAllText(UltimateMP3Player.Platform.SiteLogins.FilePath).Contains("ads.example")
+            && host.Settings.CookiesBrowserOrNull == "file:" + UltimateMP3Player.Platform.SiteLogins.FilePath, "sign-ins: only the site's cookies kept, and the downloads get them");
+        main.Settings.LoginsChanged();
+        main.OpenSettingsGroup("download");
+        Pump(400);
+        var loginsButton = Descendants(win).OfType<Button>().First(b => b.IsVisible && Equals(b.Content, L.T("Sign in to sites")));
+        loginsButton.BringIntoView();
+        Shot(win, "settings-signins", 400);
+        Check(Descendants(win).OfType<TextBlock>().Any(t => t.IsVisible && t.Text == "YouTube"), "sign-ins: Settings says which sites");
+        var logins = Dialogs.LoginsWindow();
+        logins.WindowStartupLocation = WindowStartupLocation.Manual;
+        logins.Left = logins.Top = -32000;
+        logins.ShowActivated = false;
+        logins.ShowInTaskbar = false;
+        logins.Show();
+        Pump(300);
+        Shot(logins, "logins", 100);
+        Check(Descendants(logins).OfType<TextBlock>().Count(t => t.Text == L.T("Signed in")) == 1 && Descendants(logins).OfType<TextBlock>().Count(t => t.Text == L.T("Not signed in")) == UltimateMP3Player.Platform.SiteLogins.Sites.Length - 1, "sign-ins: one site signed in, the others not");
+        UltimateMP3Player.Platform.SiteLogins.SignOut(youTube);
+        Pump(100);
+        Check(!UltimateMP3Player.Platform.SiteLogins.HasFile && Descendants(logins).OfType<TextBlock>().All(t => t.Text != L.T("Signed in")), "sign-ins: signed out, the list follows");
+        logins.Close();
+        main.Settings.Browser = browserBefore;
+        main.Settings.UseCookies = false;
+        // No browser to draw the preview: the editor says so.
+        OverlayPreview.Forced = "";
+        var stillEditor = Dialogs.Frame(L.T("Stream overlay"), Dialogs.OverlayEditor(overlay), Dialogs.OverlayEditorWidth(), Dialogs.Button(L.T("Done"), "PrimaryButton", isCancel: true));
+        stillEditor.WindowStartupLocation = WindowStartupLocation.Manual;
+        stillEditor.Left = stillEditor.Top = -32000;
+        stillEditor.ShowActivated = false;
+        stillEditor.ShowInTaskbar = false;
+        stillEditor.Show();
+        Pump(500);
+        Shot(stillEditor, "overlay-no-browser", 100);
+        Check(Descendants(stillEditor).OfType<TextBlock>().Any(t => t.Text.Contains("Firefox")), "overlay: without a browser, a note says why the preview stands still");
+        stillEditor.Close();
+        OverlayPreview.Forced = null;
         main.IsHome = true;
 
         if (online)
@@ -603,6 +702,41 @@ public static class Program
             Shot(win, "search-online-playlists");
             Console.WriteLine("  songs: " + string.Join(", ", main.Search.Items.GroupBy(i => i.GetType().Name).Select(g => g.Key + " " + g.Count())));
         }
+
+        // ---- 5.1: a long library makes its rows as they're reached; Home keeps to one row of cards
+        for (int i = 0; i < 450; i++) main.Library.Add(new Track { Id = "long-" + i, Title = "Long song " + i, Artist = "Long Artist", Duration = 180, SourceUrl = "https://example.com/long" + i });
+        main.IsHome = true;
+        Shot(win, "home-long", 500);
+        var addedShelf = Descendants(win).OfType<UltimateMP3Player.Views.Shelf>().First(s => s.Title == L.T("Recently added"));
+        Check(addedShelf.ActualHeight is > 100 and < 420, $"home: Recently added is one row ({addedShelf.ActualHeight:0} high)");
+        Descendants(addedShelf).OfType<Button>().First(b => b.Name == "PART_More").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        Shot(win, "library-long", 500);
+        Check(main.Section == "library", "home: its Show all goes to the library");
+        var longList = (ItemsControl)Descendants(win).OfType<UltimateMP3Player.Views.LibraryView>().First().FindName("List");
+        var longRows = (PagedRows)longList.ItemsSource;
+        Check(longRows.Count == PagedRows.Piece && longRows.HasMore, $"library: {longRows.Count} rows made of {main.Library.Snapshot().Count}");
+        Descendants(longList).OfType<ScrollViewer>().First().ScrollToEnd();
+        Shot(win, "library-long-end", 500);
+        Check(longRows.Count > PagedRows.Piece, $"library: scrolled to the end, {longRows.Count} rows");
+        UltimateMP3Player.Views.RowPaging.LoadAll(longList);
+        Check(longRows.Count == main.Library.Snapshot().Count && !longRows.HasMore, $"library: Select all makes them all ({longRows.Count})");
+        // (one row that scrolls sideways: arrows and a bar from the start, its cards made as they near)
+        main.IsHome = true;
+        Shot(win, "home-again-long", 500);
+        addedShelf = Descendants(win).OfType<UltimateMP3Player.Views.Shelf>().First(s => s.Title == L.T("Recently added"));
+        double oneRow = addedShelf.ActualHeight;
+        Button ShelfPart(string part) => Descendants(addedShelf).OfType<Button>().First(b => b.Name == part);
+        var shelfScroller = Descendants(addedShelf).OfType<ScrollViewer>().First(v => v.Name == "PART_Scroller");
+        Check(ShelfPart("PART_Next").IsVisible && ShelfPart("PART_Next").IsEnabled && ShelfPart("PART_Back").IsVisible && !ShelfPart("PART_Back").IsEnabled
+            && shelfScroller.ComputedHorizontalScrollBarVisibility == Visibility.Visible, "home: arrows and a bar from the start, none to go back to");
+        Check(shelfScroller.ExtentWidth > shelfScroller.ViewportWidth && Math.Abs(shelfScroller.ExtentWidth - (addedShelf.Total * (addedShelf.ItemWidth + UltimateMP3Player.Views.Shelf.Gap) - UltimateMP3Player.Views.Shelf.Gap)) < 1, $"home: the row is as long as its {addedShelf.Total} cards");
+        ShelfPart("PART_Next").RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+        addedShelf.BringIntoView();
+        Shot(win, "home-shelf-next", 500);
+        Check(shelfScroller.HorizontalOffset > 100 && ShelfPart("PART_Back").IsEnabled, $"home: its arrow moves the row ({shelfScroller.HorizontalOffset:0})");
+        shelfScroller.ScrollToHorizontalOffset(shelfScroller.ScrollableWidth);
+        Shot(win, "home-shelf-end", 500);
+        Check(((ItemsControl)addedShelf.Content).Items.Count == addedShelf.Total && !ShelfPart("PART_Next").IsEnabled && addedShelf.ActualHeight == oneRow, "home: the bar at its end, all the cards made, one row");
 
         try { host.Exit(true); } catch { }
         Check(!File.Exists(AppPaths.LogFile) || new FileInfo(AppPaths.LogFile).Length == 0, "nothing in errors.log");

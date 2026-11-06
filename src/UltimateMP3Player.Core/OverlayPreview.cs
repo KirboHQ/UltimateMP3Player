@@ -7,16 +7,19 @@ using System.Text.Json;
 
 namespace UltimateMP3Player.Core;
 
-// A stream overlay moving inside its editor. The computers' apps have no web view of their own, so Edge or Chrome of this computer
-// opens the page, without a window and with a throwaway profile, and sends pictures of it (the DevTools screencast), a picture at a
-// time: the next one only after this one is taken. Only while the editor is open, and nothing is installed or added to the app.
+// A stream overlay moving inside its editor. The computers' apps have no web view of their own, so a browser of this computer opens
+// the page, without a window and with a throwaway profile, and sends pictures of it, a picture at a time: Edge, Chrome and Brave by the
+// DevTools screencast, the next one only after this one is taken; Firefox hasn't got that, it's asked for each one (WebDriver BiDi).
+// Only while the editor is open, and nothing is installed or added to the app.
 public sealed class OverlayPreview : IDisposable
 {
     // Pictures received since the start, and browsers running: for the tests.
     public static long Frames;
     public static int Running;
+    // For the tests: this browser instead of the one found ("": none).
+    public static string? Forced;
 
-    private const int MinFrameMs = 33;
+    private const int MinFrameMs = 8, MinFirefoxFrameMs = 16;
     private readonly CancellationTokenSource _stop = new();
     private Process? _browser;
     private string? _profile;
@@ -25,14 +28,17 @@ public sealed class OverlayPreview : IDisposable
     private readonly object _lastLock = new();
     private byte[]? _last;
     private int _lastSize;
+    // (one array for all the pictures, nothing made per picture: they're big enough to wake the slowest of the garbage collections)
+    private byte[] _picture = new byte[512 * 1024];
 
     // As many pixels as the screen shows, at most a quarter more than the page's: the picture stays sharp, and each frame costs far
     // less than at 1.5 (43 → 30 % of a core).
     private const double MostSharp = 1.25;
 
-    // frame: the JPEG in the first bytes of an array kept for all of them, to be read before it returns.
-    public OverlayPreview(string url, int width, int height, double screenScale, Action<byte[], int> frame)
-        => _ = Task.Run(() => Run(url, width, height, Math.Clamp(screenScale, 1, MostSharp), frame));
+    // frame: the JPEG in the first bytes of an array kept for all of them, to be read before it returns. noPicture: it ended without
+    // a single one (no browser, or it failed) and not because it was closed. Both off the UI thread.
+    public OverlayPreview(string url, int width, int height, double screenScale, Action<byte[], int> frame, Action noPicture)
+        => _ = Task.Run(() => Run(url, width, height, Math.Clamp(screenScale, 1, MostSharp), frame, noPicture));
 
     // The last picture received, as a file: what the settings' list shows of this source. False if none came.
     public bool SaveLast(string path)
@@ -47,37 +53,58 @@ public sealed class OverlayPreview : IDisposable
         }
     }
 
-    public static string? FindBrowser()
+    // Firefox last: a picture costs it more than a screencast's.
+    public static string? FindBrowser() => Browsers().FirstOrDefault();
+
+    public static bool IsFirefox(string exe) => Path.GetFileName(exe).StartsWith("firefox", StringComparison.OrdinalIgnoreCase);
+
+    public static IEnumerable<string> Browsers()
     {
+        if (Forced != null) return Forced.Length > 0 ? new[] { Forced } : Array.Empty<string>();
         IEnumerable<string> places;
         if (OperatingSystem.IsWindows())
         {
             var roots = new[] { Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.ProgramFiles, Environment.SpecialFolder.LocalApplicationData }.Select(Environment.GetFolderPath);
-            places = new[] { @"Microsoft\Edge\Application\msedge.exe", @"Google\Chrome\Application\chrome.exe", @"BraveSoftware\Brave-Browser\Application\brave.exe" }
+            places = new[] { @"Microsoft\Edge\Application\msedge.exe", @"Google\Chrome\Application\chrome.exe", @"BraveSoftware\Brave-Browser\Application\brave.exe", @"Mozilla Firefox\firefox.exe" }
                 .SelectMany(browser => roots.Select(root => Path.Combine(root, browser)));
         }
         else if (OperatingSystem.IsMacOS())
-            places = new[] { "Google Chrome", "Microsoft Edge", "Chromium", "Brave Browser" }.Select(n => $"/Applications/{n}.app/Contents/MacOS/{n}");
+            places = new[] { "Google Chrome", "Microsoft Edge", "Chromium", "Brave Browser" }.Select(n => $"/Applications/{n}.app/Contents/MacOS/{n}").Append("/Applications/Firefox.app/Contents/MacOS/firefox");
         else
-            places = new[] { "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "microsoft-edge", "brave-browser" }
+            places = new[] { "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "microsoft-edge", "brave-browser", "firefox", "firefox-esr" }
                 .SelectMany(n => (Environment.GetEnvironmentVariable("PATH") ?? "").Split(':', StringSplitOptions.RemoveEmptyEntries).Select(d => Path.Combine(d, n)));
-        return places.FirstOrDefault(File.Exists);
+        return places.Where(File.Exists);
     }
 
-    private async Task Run(string url, int width, int height, double sharp, Action<byte[], int> frame)
+    // A throwaway profile for this browser.
+    internal static string NewProfile(string exe, string name)
+    {
+        // (Ubuntu's Firefox is a snap: it doesn't see this /tmp, only its own corner of the home folder)
+        var profiles = IsFirefox(exe) && File.Exists("/snap/bin/firefox") ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "snap", "firefox", "common") : Path.GetTempPath();
+        var profile = Path.Combine(profiles, name + "-" + Guid.NewGuid().ToString("N")[..10]);
+        Directory.CreateDirectory(profile);
+        // (an app that crashed or was killed left its browser's profile behind)
+        foreach (var old in Directory.GetDirectories(profiles, name + "-*"))
+            if (Directory.GetLastWriteTimeUtc(old) < DateTime.UtcNow.AddDays(-1))
+                try { Directory.Delete(old, true); } catch { }
+        return profile;
+    }
+
+    private async Task Run(string url, int width, int height, double sharp, Action<byte[], int> frame, Action noPicture)
     {
         try
         {
             if (FindBrowser() is not { } exe) return;
             var ct = _stop.Token;
-            // (an app that crashed or was killed left its browser's profile behind)
-            foreach (var old in Directory.GetDirectories(Path.GetTempPath(), "ump-preview-*"))
-                if (Directory.GetLastWriteTimeUtc(old) < DateTime.UtcNow.AddDays(-1))
-                    try { Directory.Delete(old, true); } catch { }
-            _profile = Path.Combine(Path.GetTempPath(), "ump-preview-" + Guid.NewGuid().ToString("N")[..10]);
-            Directory.CreateDirectory(_profile);
+            bool firefox = IsFirefox(exe);
+            _profile = NewProfile(exe, "ump-preview");
+            // (it would draw the page as often as the screen refreshes: at 199 Hz, a whole core; at 60, with 36 pictures a second, 56 %)
+            if (firefox) File.WriteAllText(Path.Combine(_profile, "user.js"), "user_pref(\"layout.frame_rate\", 60);\n");
             var start = new ProcessStartInfo(exe) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
-            foreach (var arg in new[]
+            // (--wait-for-browser: on Windows its first process would leave at once, the real one running on its own)
+            foreach (var arg in firefox
+                         ? new[] { "--headless", "--no-remote", "--profile", _profile, "--remote-debugging-port=0" }.Concat(OperatingSystem.IsWindows() ? new[] { "--wait-for-browser" } : Array.Empty<string>()).Append("about:blank")
+                         : new[]
                      {
                          // (--disable-gpu: drawn on the processor costs less here than its stand-in for a GPU, 71 → 57 % of a core, and leaves the real one to OBS and the games)
                          "--headless=new", "--disable-gpu", $"--window-size={width},{height}", "--force-device-scale-factor=" + sharp.ToString(System.Globalization.CultureInfo.InvariantCulture),
@@ -89,14 +116,26 @@ public sealed class OverlayPreview : IDisposable
             _browser = Process.Start(start);
             if (_browser == null) return;
             _browser.OutputDataReceived += (_, _) => { };
-            _browser.ErrorDataReceived += (_, _) => { };
+            // (Firefox says where it's listening here: a snap's profile isn't where this app can read it)
+            const string Listening = "WebDriver BiDi listening on ";
+            var listening = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _browser.ErrorDataReceived += (_, e) =>
+            {
+                if (e.Data?.StartsWith(Listening, StringComparison.Ordinal) == true) listening.TrySetResult(e.Data[Listening.Length..]);
+            };
             _browser.BeginOutputReadLine();
             _browser.BeginErrorReadLine();
             // (a preview gives way: the music and the windows never wait for it)
+            // shortcut: Firefox's first process starts the others at normal priority; a job limit if it ever shows.
             try { _browser.PriorityClass = ProcessPriorityClass.BelowNormal; }
             catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
             EndWithThisApp(_browser);
             Interlocked.Increment(ref Running);
+            if (firefox)
+            {
+                await FromFirefox(listening.Task, url, width, height, sharp, frame, ct);
+                return;
+            }
             // (it writes down the port it was given)
             var portFile = Path.Combine(_profile, "DevToolsActivePort");
             string? port = null;
@@ -125,8 +164,6 @@ public sealed class OverlayPreview : IDisposable
             var buffer = new byte[256 * 1024];
             using var message = new MemoryStream();
             var clock = Stopwatch.StartNew();
-            // (one array for all the pictures, nothing made per picture: they're big enough to wake the slowest of the garbage collections)
-            var picture = new byte[512 * 1024];
             while (ws.State == WebSocketState.Open)
             {
                 message.SetLength(0);
@@ -137,42 +174,91 @@ public sealed class OverlayPreview : IDisposable
                     message.Write(buffer, 0, got.Count);
                 } while (!got.EndOfMessage);
                 if (got.MessageType == WebSocketMessageType.Close) return;
-                (int Size, int Session) said;
-                lock (_lastLock)
-                {
-                    if (ReadFrame(message.GetBuffer().AsSpan(0, (int)message.Length), ref picture) is not { Size: > 0 } read) continue;
-                    said = read;
-                    _last = picture;
-                    _lastSize = read.Size;
-                }
-                frame(picture, said.Size);
-                Interlocked.Increment(ref Frames);
-                // About 30 a second are plenty for a preview; the browser waits for the answer before making the next one.
+                if (Show(message, frame) is not { } session) continue;
+                // As many as the page is drawn, 60 a second without a window: it's drawn anyway, so they cost little more than 20 did (54 → 62 %
+                // of a core). Past that, a page drawn with no limit: 280 %. The browser waits for the answer before making the next one.
                 int wait = MinFrameMs - (int)clock.ElapsedMilliseconds;
                 if (wait > 0) await Task.Delay(wait, ct);
                 clock.Restart();
-                await Send("Page.screencastFrameAck", $"{{\"sessionId\":{said.Session}}}");
+                await Send("Page.screencastFrameAck", $"{{\"sessionId\":{session}}}");
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception e) when (e is HttpRequestException or WebSocketException or JsonException or IOException or InvalidOperationException or System.ComponentModel.Win32Exception or FormatException or NotSupportedException)
+        catch (Exception e) when (e is HttpRequestException or WebSocketException or JsonException or IOException or InvalidOperationException or System.ComponentModel.Win32Exception or FormatException or NotSupportedException or KeyNotFoundException or IndexOutOfRangeException)
         {
             // (no preview: the editor goes on, with the picture of the look)
             AppPaths.AppendLog($"[{DateTime.Now:s}] Overlay preview: {e.Message}\n\n");
         }
         finally
         {
+            if (_lastSize == 0 && !_stop.IsCancellationRequested) noPicture();
             Dispose();
         }
     }
 
-    // {"method":"Page.screencastFrame","params":{"data":"<the picture in base64>","metadata":{...},"sessionId":1}}: the picture decoded
-    // straight from the message into the array. Null for any other message.
+    // Asked for one picture at a time: the answer comes when it's made, the next is asked for after it. Told to report nothing, so what
+    // comes after a question is its answer.
+    private async Task FromFirefox(Task<string> listening, string url, int width, int height, double sharp, Action<byte[], int> frame, CancellationToken ct)
+    {
+        if (await Task.WhenAny(listening, _browser!.WaitForExitAsync(ct), Task.Delay(30000, ct)) != listening) return;
+        using var ws = new ClientWebSocket();
+        await ws.ConnectAsync(new Uri(await listening + "/session"), ct);
+        var buffer = new byte[256 * 1024];
+        using var message = new MemoryStream();
+        int id = 0;
+        async Task Ask(string method, string args)
+        {
+            await ws.SendAsync(Encoding.UTF8.GetBytes($"{{\"id\":{++id},\"method\":\"{method}\",\"params\":{args}}}"), WebSocketMessageType.Text, true, ct);
+            message.SetLength(0);
+            WebSocketReceiveResult got;
+            do
+            {
+                got = await ws.ReceiveAsync(buffer, ct);
+                message.Write(buffer, 0, got.Count);
+            } while (!got.EndOfMessage);
+        }
+        await Ask("session.new", "{\"capabilities\":{}}");
+        await Ask("browsingContext.getTree", "{\"maxDepth\":0}");
+        string? tab;
+        using (var tree = JsonDocument.Parse(message.GetBuffer().AsMemory(0, (int)message.Length)))
+            tab = tree.RootElement.GetProperty("result").GetProperty("contexts")[0].GetProperty("context").GetString();
+        await Ask("browsingContext.setViewport", $"{{\"context\":\"{tab}\",\"viewport\":{{\"width\":{width},\"height\":{height}}},\"devicePixelRatio\":{sharp.ToString(System.Globalization.CultureInfo.InvariantCulture)}}}");
+        await Ask("browsingContext.navigate", $"{{\"context\":\"{tab}\",\"url\":{JsonSerializer.Serialize(url)},\"wait\":\"interactive\"}}");
+        string picture = $"{{\"context\":\"{tab}\",\"format\":{{\"type\":\"image/jpeg\",\"quality\":0.82}}}}";
+        var clock = Stopwatch.StartNew();
+        // (no picture for a moment can happen; for ten seconds, it won't come)
+        for (int none = 0; ws.State == WebSocketState.Open && none < 300;)
+        {
+            await Ask("browsingContext.captureScreenshot", picture);
+            none = Show(message, frame) != null ? 0 : none + 1;
+            int wait = MinFirefoxFrameMs - (int)clock.ElapsedMilliseconds;
+            if (wait > 0) await Task.Delay(wait, ct);
+            clock.Restart();
+        }
+    }
+
+    // The picture in this message, if it has one: kept as the last and shown. Its screencast session, if any.
+    private int? Show(MemoryStream message, Action<byte[], int> frame)
+    {
+        (int Size, int Session) said;
+        lock (_lastLock)
+        {
+            if (ReadFrame(message.GetBuffer().AsSpan(0, (int)message.Length), ref _picture) is not { } read) return null;
+            said = read;
+            _last = _picture;
+            _lastSize = read.Size;
+        }
+        frame(_picture, said.Size);
+        Interlocked.Increment(ref Frames);
+        return said.Session;
+    }
+
+    // The picture decoded straight from the message into the array, null for a message without one. Screencast:
+    // {"method":"Page.screencastFrame","params":{"data":"<the picture in base64>","metadata":{...},"sessionId":1}}; Firefox: {"id":9,"result":{"data":"<the same>"},"type":"success"}.
     private static (int Size, int Session)? ReadFrame(ReadOnlySpan<byte> json, ref byte[] picture)
     {
         var reader = new Utf8JsonReader(json);
         int size = 0, session = 0;
-        bool found = false;
         while (reader.Read())
         {
             if (reader.TokenType != JsonTokenType.PropertyName) continue;
@@ -180,7 +266,6 @@ public sealed class OverlayPreview : IDisposable
             {
                 reader.Read();
                 if (!reader.ValueTextEquals("Page.screencastFrame")) return null;
-                found = true;
             }
             else if (reader.CurrentDepth == 2 && reader.ValueTextEquals("data"))
             {
@@ -196,7 +281,7 @@ public sealed class OverlayPreview : IDisposable
                 session = reader.GetInt32();
             }
         }
-        return found ? (size, session) : null;
+        return size > 0 ? (size, session) : null;
     }
 
     public void Dispose()

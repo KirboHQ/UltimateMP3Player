@@ -412,6 +412,257 @@ public sealed class SlidingPill : Control
     }
 }
 
+// A list of songs that comes a piece at a time (PagedRows): the next piece two screens before its end, all of it before Ctrl+A.
+public static class RowPaging
+{
+    public static readonly AttachedProperty<bool> OnProperty = AvaloniaProperty.RegisterAttached<ListBox, bool>("On", typeof(RowPaging));
+
+    public static bool GetOn(ListBox o) => o.GetValue(OnProperty);
+    public static void SetOn(ListBox o, bool value) => o.SetValue(OnProperty, value);
+
+    static RowPaging()
+    {
+        OnProperty.Changed.AddClassHandler<ListBox>((list, e) =>
+        {
+            if (e.NewValue is not true) return;
+            list.AddHandler(ScrollViewer.ScrollChangedEvent, (_, a) => Near(list, a.Source as ScrollViewer));
+            list.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, (_, a) =>
+            {
+                if (a.Key == Avalonia.Input.Key.A && (a.KeyModifiers & (Avalonia.Input.KeyModifiers.Control | Avalonia.Input.KeyModifiers.Meta)) != 0) LoadAll(list);
+            }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        });
+    }
+
+    public static void LoadAll(ItemsControl list) => (list.ItemsSource as ViewModels.PagedRows)?.LoadAll();
+
+    private static void Near(ListBox list, ScrollViewer? sv)
+    {
+        if (sv == null || list.ItemsSource is not ViewModels.PagedRows { HasMore: true, Waiting: false } rows || sv.Offset.Y + sv.Viewport.Height * 3 < sv.Extent.Height) return;
+        rows.Waiting = true;
+        // (not inside the layout that raised this; the list grows, this comes again, until it's far enough from its end)
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            rows.Waiting = false;
+            rows.More();
+        }, Avalonia.Threading.DispatcherPriority.Background);
+    }
+}
+
+// A row of cards under a title (Home): as many as fit, widened to fill the width, the others to the side: the row scrolls by its arrows,
+// its bar, Shift + wheel, a touchpad (phones: the finger). Cards are made as they near, but the row is as long as all of them: the bar doesn't
+// jump. Its content is the ItemsControl or ListBox of the cards, with CardRow as its panel: the shelf gives it its items. MoreCommand adds a
+// button going elsewhere (Recently added: the library, thousands of songs wouldn't fit in a row). Phones: FixedCount cards as wide as they are.
+public sealed class Shelf : ContentControl
+{
+    public static readonly StyledProperty<string?> TitleProperty = AvaloniaProperty.Register<Shelf, string?>(nameof(Title));
+    public static readonly StyledProperty<System.Collections.IEnumerable?> ItemsProperty = AvaloniaProperty.Register<Shelf, System.Collections.IEnumerable?>(nameof(Items));
+    public static readonly StyledProperty<string?> MoreLabelProperty = AvaloniaProperty.Register<Shelf, string?>(nameof(MoreLabel));
+    public static readonly StyledProperty<System.Windows.Input.ICommand?> MoreCommandProperty = AvaloniaProperty.Register<Shelf, System.Windows.Input.ICommand?>(nameof(MoreCommand));
+    public static readonly StyledProperty<int> FixedCountProperty = AvaloniaProperty.Register<Shelf, int>(nameof(FixedCount));
+
+    public string? Title { get => GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
+    public System.Collections.IEnumerable? Items { get => GetValue(ItemsProperty); set => SetValue(ItemsProperty, value); }
+    public string? MoreLabel { get => GetValue(MoreLabelProperty); set => SetValue(MoreLabelProperty, value); }
+    public System.Windows.Input.ICommand? MoreCommand { get => GetValue(MoreCommandProperty); set => SetValue(MoreCommandProperty, value); }
+    public int FixedCount { get => GetValue(FixedCountProperty); set => SetValue(FixedCountProperty, value); }
+
+    private const double MinItemWidth = 176, CardGap = 12;
+
+    // How wide a card is now (NaN: as wide as it is) and the gap between two (CardRow reads them).
+    public double ItemWidth { get; private set; } = double.NaN;
+    public double Gap => FixedCount > 0 ? 0 : CardGap;
+    public CardRow? Row { get; set; }
+    public int Total { get; private set; }
+
+    private readonly System.Collections.ObjectModel.ObservableCollection<object> _shown = new();
+    private readonly UltimateMP3Player.Core.Glide _x = new();
+    private ScrollViewer? _scroller;
+    private Button? _more, _back, _next;
+    private int _columns, _want;
+    private bool _gliding;
+
+    public Shelf()
+    {
+        AddHandler(PointerWheelChangedEvent, (_, e) =>
+        {
+            if (e.KeyModifiers != Avalonia.Input.KeyModifiers.Shift) return;
+            GlideBy(-e.Delta.Y * 100);
+            e.Handled = true;
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == ContentProperty && change.NewValue is ItemsControl list) list.ItemsSource = _shown;
+        else if (change.Property == ItemsProperty)
+        {
+            if (change.OldValue is System.Collections.Specialized.INotifyCollectionChanged was) was.CollectionChanged -= ItemsMoved;
+            if (change.NewValue is System.Collections.Specialized.INotifyCollectionChanged live && this.GetVisualRoot() != null) live.CollectionChanged += ItemsMoved;
+            Sync();
+        }
+        else if (change.Property == MoreLabelProperty) Sync();
+    }
+
+    // Listening only while it's in the window: a page let go of isn't kept alive by the session's lists.
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        if (Items is System.Collections.Specialized.INotifyCollectionChanged live)
+        {
+            live.CollectionChanged -= ItemsMoved;
+            live.CollectionChanged += ItemsMoved;
+        }
+        Sync();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        if (Items is System.Collections.Specialized.INotifyCollectionChanged live) live.CollectionChanged -= ItemsMoved;
+    }
+
+    private void ItemsMoved(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Sync();
+
+    protected override void OnApplyTemplate(Avalonia.Controls.Primitives.TemplateAppliedEventArgs e)
+    {
+        base.OnApplyTemplate(e);
+        _scroller = e.NameScope.Find<ScrollViewer>("PART_Scroller");
+        _more = e.NameScope.Find<Button>("PART_More");
+        _back = e.NameScope.Find<Button>("PART_Back");
+        _next = e.NameScope.Find<Button>("PART_Next");
+        if (_more != null) _more.Click += (_, _) => MoreCommand?.Execute(null);
+        if (_back != null) _back.Click += (_, _) => Page(-1);
+        if (_next != null) _next.Click += (_, _) => Page(1);
+        if (FixedCount > 0) _columns = FixedCount;
+        if (_scroller == null) return;
+        _scroller.SizeChanged += (_, a) => Fit(a.NewSize.Width);
+        _scroller.ScrollChanged += (_, _) => Moved();
+        Sync();
+    }
+
+    private void Fit(double width)
+    {
+        if (FixedCount > 0 || width <= 0) return;
+        int columns = Math.Max(1, (int)((width + CardGap) / (MinItemWidth + CardGap)));
+        double item = Math.Max(0, (width - CardGap * (columns - 1)) / columns);
+        if (columns == _columns && item == ItemWidth) return;
+        _columns = columns;
+        ItemWidth = item;
+        Row?.InvalidateMeasure();
+        Sync();
+    }
+
+    // Keeps the cards that stay where they are: a song just played, a resized window change only what they must.
+    private void Sync()
+    {
+        if (_columns == 0) return;
+        var all = Items?.Cast<object>().ToList() ?? new List<object>();
+        int want = Math.Min(all.Count, Math.Max(_columns, _want));
+        for (int i = 0; i < want; i++)
+        {
+            if (i == _shown.Count) _shown.Add(all[i]);
+            else if (!Equals(_shown[i], all[i])) _shown[i] = all[i];
+        }
+        while (_shown.Count > want) _shown.RemoveAt(_shown.Count - 1);
+        if (Total != all.Count)
+        {
+            Total = all.Count;
+            Row?.InvalidateMeasure();
+        }
+        bool more = all.Count > _columns;
+        if (_more != null)
+        {
+            _more.IsVisible = MoreCommand != null && all.Count > 0;
+            _more.Content = MoreLabel;
+        }
+        if (_back != null) _back.IsVisible = more;
+        if (_next != null) _next.IsVisible = more;
+        if (_scroller == null || FixedCount > 0) return;
+        // (the bar's height comes out of the gap under the row: what's below stays where it is)
+        _scroller.HorizontalScrollBarVisibility = more ? Avalonia.Controls.Primitives.ScrollBarVisibility.Visible : Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden;
+        _scroller.Margin = new Thickness(0, 0, 8, more ? 16 : 26);
+    }
+
+    // The arrows stop at the ends. The next page of cards before it's in sight; the bar dragged to the end: all of them. When idle: the
+    // first page is drawn first, a glide isn't stopped.
+    private void Moved()
+    {
+        if (_scroller == null || _columns == 0 || _shown.Count == 0) return;
+        double x = _scroller.Offset.X, view = _scroller.Viewport.Width;
+        if (_back != null) _back.IsEnabled = x > 0.5;
+        if (_next != null) _next.IsEnabled = x < _scroller.Extent.Width - view - 0.5;
+        double card = double.IsNaN(ItemWidth) ? _scroller.Extent.Width / _shown.Count : ItemWidth + CardGap;
+        int need = (int)Math.Ceiling((x + view * 2) / card / _columns) * _columns;
+        if (need <= _want || _shown.Count >= Total) return;
+        _want = need;
+        Avalonia.Threading.Dispatcher.UIThread.Post(Sync, Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    // (whole cards: the next page's first stands where this one's was)
+    private void Page(int way) => GlideBy(way * _columns * (ItemWidth + CardGap));
+
+    private void GlideBy(double by)
+    {
+        if (_scroller == null) return;
+        double from = _gliding ? _x.Target : _scroller.Offset.X;
+        if (!_gliding) _x.Set(_scroller.Offset.X);
+        _x.To(Math.Clamp(from + by, 0, Math.Max(0, _scroller.Extent.Width - _scroller.Viewport.Width)), AnimatedContent.Ms);
+        if (_gliding) return;
+        _gliding = true;
+        TopLevel.GetTopLevel(this)?.RequestAnimationFrame(Frame);
+    }
+
+    private void Frame(TimeSpan time)
+    {
+        if (_scroller == null || this.GetVisualRoot() == null)
+        {
+            _gliding = false;
+            return;
+        }
+        _scroller.Offset = new Vector(_x.Value, 0);
+        if (_x.Moving) TopLevel.GetTopLevel(this)?.RequestAnimationFrame(Frame);
+        else _gliding = false;
+    }
+}
+
+// The cards of a Shelf side by side, each as wide as the shelf says.
+public sealed class CardRow : Panel
+{
+    private double _height, _item, _gap;
+
+    protected override Size MeasureOverride(Size available)
+    {
+        var shelf = this.FindAncestorOfType<Shelf>();
+        if (shelf != null) shelf.Row = this;
+        _item = shelf?.ItemWidth ?? double.NaN;
+        _gap = shelf?.Gap ?? 0;
+        _height = 0;
+        double width = 0;
+        foreach (var child in Children)
+        {
+            child.Measure(new Size(double.IsNaN(_item) ? double.PositiveInfinity : _item, double.PositiveInfinity));
+            _height = Math.Max(_height, child.DesiredSize.Height);
+            width += (double.IsNaN(_item) ? child.DesiredSize.Width : _item) + _gap;
+        }
+        // (all the cards count, made or not)
+        if (!double.IsNaN(_item) && shelf != null) width = Math.Max(width, shelf.Total * (_item + _gap));
+        return Children.Count == 0 ? new Size() : new Size(width - _gap, _height);
+    }
+
+    protected override Size ArrangeOverride(Size final)
+    {
+        double x = 0;
+        foreach (var child in Children)
+        {
+            double w = double.IsNaN(_item) ? child.DesiredSize.Width : _item;
+            child.Arrange(new Rect(x, 0, w, _height));
+            x += w + _gap;
+        }
+        return final;
+    }
+}
+
 // Cards in equal columns that fill the width: as many as fit at MinItemWidth, then widened (no ragged gap on the right).
 public sealed class CardGrid : Panel
 {

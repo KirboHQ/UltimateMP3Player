@@ -33,6 +33,8 @@ Thumbs.db
 *.binlog
 msbuild*.log
 
-# Claude Code: the project's settings and hooks are shared, the personal ones aren't
-.claude/settings.local.json
+# Claude Code: never published
+.claude/
+CLAUDE.md
+
 __pycache__/

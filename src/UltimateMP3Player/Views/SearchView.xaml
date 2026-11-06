@@ -191,7 +191,7 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <Grid Width="112" Height="112">
-                                            <Ellipse Fill="{Binding Brush}"/>
+                                            <Ellipse Margin="1" Fill="{Binding Brush}"/>
                                             <TextBlock Text="{Binding Initial}" FontSize="44" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             <Ellipse Visibility="{Binding HasPicture, Converter={StaticResource BoolVis}}">
                                                 <Ellipse.Fill>

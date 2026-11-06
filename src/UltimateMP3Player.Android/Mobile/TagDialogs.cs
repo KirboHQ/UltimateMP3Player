@@ -122,7 +122,7 @@ public static class TagDialogs
         title.Children.Add(dot);
         title.Children.Add(new TextBlock { Text = L.F("Songs with “{0}”", tag.Name), FontSize = 19, FontWeight = FontWeight.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
         top.Children.Add(title);
-        var search = new TextBox { Theme = Ui.Theme("FilterBox"), Watermark = L.T("Search in this list") };
+        var search = new TextBox { Theme = Ui.Theme("TouchSearchBox"), Watermark = L.T("Search in this list") };
         top.Children.Add(search);
         var countText = new TextBlock { Foreground = B("SubTextBrush"), FontSize = 13.5, Margin = new Thickness(4, 12, 4, 6) };
         top.Children.Add(countText);

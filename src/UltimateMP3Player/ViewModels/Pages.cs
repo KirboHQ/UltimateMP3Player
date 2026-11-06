@@ -20,15 +20,72 @@ public sealed class TrackListSource : ITrackList
     public Playlist? Playlist => null;
 }
 
-// Filters rows (text and tags) but keeps their numbers; playing still uses the whole list.
+// What the search and the tags of a list let through.
 public static class TrackFilter
 {
-    public static List<TrackRow> Apply(List<TrackViewModel> order, string filter, TagFilter tags, ITrackList owner)
+    public static Func<TrackViewModel, bool> Matcher(string filter, TagFilter tags)
     {
         var query = new TrackQuery(filter);
-        return order.Select((t, i) => new TrackRow(i + 1, t, owner))
-            .Where(r => query.Matches(r.Track) && tags.Matches(r.Track))
-            .ToList();
+        return t => query.Matches(t) && tags.Matches(t);
+    }
+}
+
+// The rows of a long list of songs, made a piece at a time: the next piece when the list gets near its end (RowPaging, on each
+// UI), all of them before selecting them all. A search stops looking as soon as it has a screenful. Rows keep their number in
+// the whole list; playing still uses the whole list.
+public sealed class PagedRows : System.Collections.ObjectModel.ObservableCollection<TrackRow>
+{
+    public const int Piece = 200;
+
+    private readonly IReadOnlyList<TrackViewModel> _order;
+    private readonly Func<TrackViewModel, bool> _matches;
+    private readonly ITrackList? _owner;
+    private int _next;
+
+    public PagedRows() : this(Array.Empty<TrackViewModel>(), _ => true, null) { }
+
+    // first: how many to make now (a list made again, sorted or with a new song, stays as long as it was).
+    public PagedRows(IReadOnlyList<TrackViewModel> order, Func<TrackViewModel, bool> matches, ITrackList? owner, int first = Piece)
+    {
+        _order = order;
+        _matches = matches;
+        _owner = owner;
+        More(Math.Max(first, Piece));
+    }
+
+    public bool HasMore => _next < _order.Count;
+
+    // A piece asked for and not made yet (the list asks at each step of a scroll).
+    public bool Waiting { get; set; }
+
+    public bool More(int count = Piece)
+    {
+        int added = 0;
+        while (added < count && _next < _order.Count)
+        {
+            var t = _order[_next++];
+            if (!_matches(t)) continue;
+            Add(new TrackRow(_next, t, _owner!));
+            added++;
+        }
+        return added > 0;
+    }
+
+    // Everything at once, as one change: a list told of thousands of new rows one by one takes its time.
+    public void LoadAll()
+    {
+        bool any = false;
+        while (_next < _order.Count)
+        {
+            var t = _order[_next++];
+            if (!_matches(t)) continue;
+            Items.Add(new TrackRow(_next, t, _owner!));
+            any = true;
+        }
+        if (!any) return;
+        OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs(nameof(Count)));
+        OnPropertyChanged(new System.ComponentModel.PropertyChangedEventArgs("Item[]"));
+        OnCollectionChanged(new System.Collections.Specialized.NotifyCollectionChangedEventArgs(System.Collections.Specialized.NotifyCollectionChangedAction.Reset));
     }
 }
 
@@ -153,7 +210,7 @@ public sealed class HomeViewModel : Observable
     }
 
     public List<TrackViewModel> Recent { get; private set; } = new();
-    public List<TrackRow> RecentlyAdded { get; private set; } = new();
+    public List<TrackViewModel> RecentlyAdded { get; private set; } = new();
     // The playlists, then the "New playlist" card, in the same grid.
     public List<object> PlaylistCards => [.. _main.Playlists, NewPlaylistCard.Instance];
     public bool HasRecent => Recent.Count > 0;
@@ -173,9 +230,11 @@ public sealed class HomeViewModel : Observable
     public ICommand ImportLastFmCommand { get; }
     public bool IsEmpty { get; private set; }
     public TrackListSource RecentList { get; private set; } = new("recent", "", new List<TrackViewModel>());
+    private TrackListSource _addedList = new("added", "", new List<TrackViewModel>());
 
-    // Songs in "Recently played".
-    public const int RecentCount = 12;
+    // Songs in "Recently played" and in "Recently added", once "Show all" brought them all in.
+    public const int RecentCount = 40;
+    private const int AddedCount = 12;
 
     // A song of the library (or of the connected device), or one heard without saving it (suggested, from a link, in a room:
     // RadioViewModel keeps them).
@@ -192,9 +251,8 @@ public sealed class HomeViewModel : Observable
         RecentList = new TrackListSource("recent", L.T("Recently played"), Recent);
         var songs = _main.Songs();
         IsEmpty = songs.Count == 0;
-        var added = songs.OrderByDescending(t => t.Added).Take(8).Select(_main.Vm).ToList();
-        var addedList = new TrackListSource("added", L.T("Recently added"), added);
-        RecentlyAdded = added.Select((t, i) => new TrackRow(i + 1, t, addedList)).ToList();
+        RecentlyAdded = songs.OrderByDescending(t => t.Added).Take(AddedCount).Select(_main.Vm).ToList();
+        _addedList = new TrackListSource("added", L.T("Recently added"), RecentlyAdded);
         var now = DateTime.Now;
         int year = now.Month == 12 ? now.Year : now.Month == 1 && now.Day <= 15 ? now.Year - 1 : 0;
         RecapYear = year > 0 && _main.Profile.Log.Years().Contains(year) ? year : 0;
@@ -210,7 +268,8 @@ public sealed class HomeViewModel : Observable
             nameof(IsEmpty), nameof(RecentList), nameof(ForYou), nameof(HasForYou), nameof(RecapYear), nameof(HasRecap), nameof(RecapTitle));
     }
 
-    public void PlayRecent(TrackViewModel t) => _main.Player.PlayFrom(RecentList, t);
+    // A card of either row: what follows is its row (a song in both: the songs heard).
+    public void PlayRecent(TrackViewModel t) => _main.Player.PlayFrom(Recent.Contains(t) || !RecentlyAdded.Contains(t) ? RecentList : _addedList, t);
 }
 
 public sealed class NewPlaylistCard
@@ -389,17 +448,19 @@ public sealed class LibraryViewModel : Observable, ITrackList
         }
     }
 
-    public List<TrackRow> Rows { get; private set; } = new();
+    public PagedRows Rows { get; private set; } = new();
     public string CountText { get; private set; } = "";
     public bool IsEmpty => _order.Count == 0;
 
     private string _filter = "";
-    public string Filter { get => _filter; set { if (Set(ref _filter, value)) ApplyFilter(); } }
+    public string Filter { get => _filter; set { if (Set(ref _filter, value)) ShowRows(PagedRows.Piece); } }
     public bool NoMatches => Rows.Count == 0 && _order.Count > 0;
 
-    public void ApplyFilter()
+    public void ApplyFilter() => ShowRows(Rows.Count);
+
+    private void ShowRows(int first)
     {
-        Rows = TrackFilter.Apply(_order, _filter, TagFilter, this);
+        Rows = new PagedRows(_order, TrackFilter.Matcher(_filter, TagFilter), this, first);
         OnChanged(nameof(Rows), nameof(NoMatches));
     }
 
@@ -547,16 +608,18 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
     public IReadOnlyList<TrackViewModel> PlayOrder => _order;
     public Playlist? Playlist => Vm.P;
 
-    public List<TrackRow> Rows { get; private set; } = new();
+    public PagedRows Rows { get; private set; } = new();
     public bool IsEmpty => _order.Count == 0;
 
     private string _filter = "";
-    public string Filter { get => _filter; set { if (Set(ref _filter, value)) ApplyFilter(); } }
+    public string Filter { get => _filter; set { if (Set(ref _filter, value)) ShowRows(PagedRows.Piece); } }
     public bool NoMatches => Rows.Count == 0 && _order.Count > 0;
 
-    public void ApplyFilter()
+    public void ApplyFilter() => ShowRows(Rows.Count);
+
+    private void ShowRows(int first)
     {
-        Rows = TrackFilter.Apply(_order, _filter, TagFilter, this);
+        Rows = new PagedRows(_order, TrackFilter.Matcher(_filter, TagFilter), this, first);
         OnChanged(nameof(Rows), nameof(NoMatches));
     }
 

@@ -33,7 +33,12 @@
 
     <ScrollViewer x:Name="Scroller">
         <StackPanel Margin="16,12,16,28">
-            <TextBlock Text="{local:T Settings}" Classes="page-title" Margin="2,0,0,14"/>
+            <!-- a group open, like an iPhone's settings: back to the list, and its name -->
+            <Grid x:Name="GroupBar" ColumnDefinitions="Auto,*" Margin="-10,-6,0,12" IsVisible="False">
+                <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E72B}" Click="GroupBack_Click" AutomationProperties.Name="{local:T Back}"/>
+                <TextBlock x:Name="GroupTitle" Grid.Column="1" Classes="page-title" Margin="4,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+            </Grid>
+            <TextBlock x:Name="PageTitle" Text="{local:T Settings}" Classes="page-title" Margin="2,0,0,14"/>
             <TextBox x:Name="SearchBox" Theme="{StaticResource TouchSearchBox}" Watermark="{local:T 'Search settings'}" Margin="0,0,0,16"/>
 
             <StackPanel x:Name="Cards">
@@ -46,17 +51,17 @@
                                 <!-- both devices' music (Connect to computer): the computer's profile behind this one's -->
                                 <Panel Width="36" Height="36" Margin="32,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
                                        IsVisible="{Binding $parent[views:MainView].DataContext.HasSecondProfile}">
-                                    <Ellipse Fill="{Binding $parent[views:MainView].DataContext.SecondBrush}"/>
+                                    <Ellipse Margin="1" Fill="{Binding $parent[views:MainView].DataContext.SecondBrush}"/>
                                     <TextBlock Text="{Binding $parent[views:MainView].DataContext.SecondInitial}" Foreground="White" FontWeight="Bold" FontSize="15"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <views:CoverImage Margin="2" CornerRadius="16" Source="{Binding $parent[views:MainView].DataContext.SecondAvatar}"/>
+                                    <views:CoverImage IsCircle="True" Source="{Binding $parent[views:MainView].DataContext.SecondAvatar}"/>
                                 </Panel>
                                 <Panel Width="46" Height="46" HorizontalAlignment="Left">
                                     <Ellipse Margin="-2" Fill="{DynamicResource SurfaceBrush}" IsVisible="{Binding $parent[views:MainView].DataContext.HasSecondProfile}"/>
-                                    <Ellipse Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
+                                    <Ellipse Margin="1" Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
                                     <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileInitial}" Foreground="White" FontWeight="Bold" FontSize="18"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <views:CoverImage Margin="2" CornerRadius="21" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
+                                    <views:CoverImage IsCircle="True" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
                                 </Panel>
                             </Panel>
                             <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
@@ -79,7 +84,7 @@
 
             <!-- ============================================================ appearance -->
             <TextBlock Text="{local:T APPEARANCE}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'appearance theme colours colors light dark night mode language english italian animations motion cover 3d speed visualizer bars waves'}">
+            <Border Classes="card" views:SettingsPage.Group="appearance" views:SettingsPage.Keywords="{local:T 'appearance theme colours colors light dark night mode language english italian animations motion cover 3d speed visualizer bars waves'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Tag="Appearance" Click="Choose_Click">
                         <StackPanel>
@@ -239,7 +244,7 @@
 
             <!-- ============================================================ playback -->
             <TextBlock Text="{local:T PLAYBACK}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'playback audio sound equalizer eq bass treble volume normalize crossfade fade radio suggested'}">
+            <Border Classes="card" views:SettingsPage.Group="playback" views:SettingsPage.Keywords="{local:T 'playback audio sound equalizer eq bass treble volume normalize crossfade fade radio suggested'}">
                 <StackPanel>
                     <Button x:Name="OutputRow" Theme="{StaticResource SettingRow}" Tag="OutputDevice" Click="Choose_Click"
                             views:SettingsPage.Keywords="{local:T 'output device headphones speaker bluetooth usb'}">
@@ -322,7 +327,7 @@
 
             <!-- ============================================================ downloads -->
             <TextBlock Text="{local:T DOWNLOADS}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'downloads download format mp3 m4a opus flac quality video folder music storage'}">
+            <Border Classes="card" views:SettingsPage.Group="download" views:SettingsPage.Keywords="{local:T 'downloads download format mp3 m4a opus flac quality video folder music storage'}">
                 <StackPanel>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding SaveAudio}">
                         <StackPanel>
@@ -390,7 +395,7 @@
 
             <!-- ============================================================ search and suggestions: online search, suggested songs, lyrics -->
             <TextBlock Text="{local:T 'SEARCH AND SUGGESTIONS'}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'search online internet sites youtube music soundcloud deezer order'}">
+            <Border Classes="card" views:SettingsPage.Group="search" views:SettingsPage.Keywords="{local:T 'search online internet sites youtube music soundcloud deezer order'}">
                 <StackPanel>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding OnlineSearch}">
                         <StackPanel>
@@ -459,7 +464,7 @@
 
             <!-- ============================================================ library -->
             <TextBlock Text="{local:T LIBRARY}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'library songs import export pack ump file folder copy backup friend artist name'}">
+            <Border Classes="card" views:SettingsPage.Group="library" views:SettingsPage.Keywords="{local:T 'library songs import export pack ump file folder copy backup friend artist name'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportFilesCommand}">
                         <StackPanel>
@@ -523,7 +528,7 @@
 
             <!-- ============================================================ backup -->
             <TextBlock Text="{local:T BACKUP}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'backup backups restore automatic copy safety data library playlists statistics zip reinstall'}">
+            <Border Classes="card" views:SettingsPage.Group="backup" views:SettingsPage.Keywords="{local:T 'backup backups restore automatic copy safety data library playlists statistics zip reinstall'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Tag="BackupEvery" Click="Choose_Click">
                         <StackPanel>
@@ -570,7 +575,7 @@
 
             <!-- ============================================================ computer -->
             <TextBlock Text="{local:T COMPUTER}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'connect computer pc remote control cable usb wifi send music'}">
+            <Border Classes="card" views:SettingsPage.Group="connect" views:SettingsPage.Keywords="{local:T 'connect computer pc remote control cable usb wifi send music'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Click="Computer_Click">
                         <StackPanel>
@@ -584,7 +589,7 @@
 
             <!-- ============================================================ listen together (no firewall here) -->
             <TextBlock Text="{local:T 'LISTEN TOGETHER'}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'listen together room rooms friends network lan radmin vpn firewall p2p host ahead'}">
+            <Border Classes="card" views:SettingsPage.Group="connect" views:SettingsPage.Keywords="{local:T 'listen together room rooms friends network lan radmin vpn firewall p2p host ahead'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Tag="TogetherAhead" Click="Choose_Click">
                         <StackPanel>
@@ -626,7 +631,7 @@
 
             <!-- ============================================================ integrations: the plays to Last.fm and ListenBrainz -->
             <TextBlock Text="{local:T INTEGRATIONS}" Classes="card-title"/>
-            <Border Classes="card" DataContext="{Binding Scrobbling}" views:SettingsPage.Keywords="{local:T 'lastfm last.fm listenbrainz scrobble scrobbling integrations'}">
+            <Border Classes="card" views:SettingsPage.Group="integrations" DataContext="{Binding Scrobbling}" views:SettingsPage.Keywords="{local:T 'lastfm last.fm listenbrainz scrobble scrobbling integrations'}">
                 <StackPanel>
                     <Button Theme="{StaticResource SettingRow}" Command="{Binding LastFmCommand}">
                         <StackPanel>
@@ -649,7 +654,7 @@
 
             <!-- ============================================================ about: updates, help, support the project -->
             <TextBlock Text="{local:T ABOUT}" Classes="card-title"/>
-            <Border Classes="card" views:SettingsPage.Keywords="{local:T 'updates version new github engines yt-dlp ffmpeg'}">
+            <Border Classes="card" views:SettingsPage.Group="about" views:SettingsPage.Keywords="{local:T 'updates version new github engines yt-dlp ffmpeg'}">
                 <StackPanel>
                     <CheckBox x:Name="AutoUpdateSwitch" Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoUpdateApp}">
                         <StackPanel>
@@ -725,6 +730,91 @@
                 </StackPanel>
             </Border>
             </StackPanel>
+            <!-- the groups (the profile above them, as on an iPhone); the search box looks in all of them -->
+            <Border x:Name="GroupList" Classes="card">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Tag="appearance" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon E890}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T Appearance}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="playback" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon E768}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T Playback}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="download" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon E896}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T Download}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="search" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon E721}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T 'Search and suggestions'}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="library" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon E8F1}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T Library}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="backup" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon E74E}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T 'Backup and export'}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="connect" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon E716}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T 'Computer and rooms'}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="integrations" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon E71B}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T Integrations}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="about" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon E946}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T About}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+            </Border>
             <StackPanel x:Name="NoResults" IsVisible="False" Margin="12,36,12,24" HorizontalAlignment="Center">
                 <TextBlock Text="{local:T 'No settings found'}" FontSize="17" FontWeight="SemiBold" HorizontalAlignment="Center" TextAlignment="Center"/>
                 <TextBlock Text="{local:T 'Try other words.'}" Classes="hint" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,8,0,0"/>

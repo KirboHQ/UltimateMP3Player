@@ -779,11 +779,12 @@
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
                     <Border x:Name="Bd" Background="{DynamicResource Surface2Brush}" BorderBrush="Transparent"
-                            BorderThickness="1" CornerRadius="19" Padding="12,0" Height="38">
+                            BorderThickness="1" CornerRadius="19" Padding="12,0,4,0" Height="38">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock x:Name="Ico" Text="&#xE721;" FontFamily="{StaticResource IconFont}" FontSize="13"
                                        VerticalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
@@ -792,11 +793,15 @@
                                        Visibility="Collapsed" TextTrimming="CharacterEllipsis"/>
                             <ScrollViewer x:Name="PART_ContentHost" Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" Focusable="False"
                                           HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                            <Button x:Name="ClearX" Grid.Column="2" Style="{StaticResource IconButton}" Width="30" Height="30" FontSize="11" Content="&#xE711;" Focusable="False"
+                                    Command="{x:Static local:Ui.ClearBox}" CommandParameter="{Binding RelativeSource={RelativeSource TemplatedParent}}"
+                                    ToolTip="{local:T Clear}" AutomationProperties.Name="{local:T Clear}"/>
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="Text" Value="">
                             <Setter TargetName="Placeholder" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="ClearX" Property="Visibility" Value="Collapsed"/>
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
@@ -1241,6 +1246,7 @@
                 <Setter Property="Width" Value="Auto"/>
                 <Setter Property="MinWidth" Value="0"/>
                 <Setter Property="Height" Value="10"/>
+                <Setter Property="MinHeight" Value="0"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ScrollBar">

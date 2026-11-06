@@ -501,7 +501,7 @@ public partial class MainWindow : Window
     private void PlaybackSettings_Click(object sender, RoutedEventArgs e)
     {
         PlaybackPopup.IsOpen = false;
-        Vm?.GoSettings();
+        Vm?.OpenSettingsGroup("playback");
     }
 
     private void AddCurrentToPlaylist_Click(object sender, RoutedEventArgs e)

@@ -16,7 +16,7 @@
                         <Grid.Effect>
                             <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.5" Color="Black"/>
                         </Grid.Effect>
-                        <Ellipse Fill="{Binding Brush}"/>
+                        <Ellipse Margin="1" Fill="{Binding Brush}"/>
                         <TextBlock Text="{Binding Initial}" FontSize="72" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <Ellipse Visibility="{Binding HasPicture, Converter={StaticResource BoolVis}}">
                             <Ellipse.Fill>

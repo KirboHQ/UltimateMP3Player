@@ -74,6 +74,7 @@ public static class PhoneTour
         M.Player.PlayPauseCommand.Execute(null);
         M.Settings.SelectThemeCommand.Execute(ThemeColors.RgbId);
         await Page("settings themes", M.GoSettings);
+        V.GetVisualDescendants().OfType<SettingsPage>().First().OpenGroup("appearance");
         M.Settings.RgbSpeed = 4;
         await Scene("settings rgb speed", null, 500);
         M.Settings.RgbSpeed = 1;
@@ -161,12 +162,15 @@ public static class PhoneTour
         await Fling("stats");
         await Page("recap", () => M.OpenRecap(DateTime.Now.Year, 0));
         await Page("settings", M.GoSettings);
-        for (int i = 0; i < 9; i++)
+        var settingsPage = V.GetVisualDescendants().OfType<SettingsPage>().First();
+        foreach (var group in new[] { "appearance", "playback", "download", "search", "library", "backup", "connect", "integrations", "about" })
         {
+            await Scene("settings, " + group, () => settingsPage.OpenGroup(group), 300);
             Say("SWIPE 720 1700 720 300 260");
             await Task.Delay(700);
-            await Scene("settings, screen " + (i + 2), null, 120);
+            await Scene("settings, " + group + ", further", null, 120);
         }
+        settingsPage.OpenGroup(null);
 
         // The song's page and its sheets.
         await Page("song page", () => M.GoNowPlayingCommand.Execute(null));

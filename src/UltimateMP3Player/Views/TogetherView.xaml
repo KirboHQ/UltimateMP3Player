@@ -8,9 +8,9 @@
         <!-- a person: their colour and initial, or their picture -->
         <DataTemplate x:Key="MemberAvatar" DataType="{x:Type vm:MemberViewModel}">
             <Grid>
-                <Ellipse Fill="{Binding Brush}"/>
+                <Ellipse Margin="1" Fill="{Binding Brush}"/>
                 <TextBlock Text="{Binding Initial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Ellipse Margin="2" Visibility="{Binding Avatar, Converter={StaticResource NotNullVis}}">
+                <Ellipse Visibility="{Binding Avatar, Converter={StaticResource NotNullVis}}">
                     <Ellipse.Fill>
                         <ImageBrush ImageSource="{Binding Avatar}" Stretch="UniformToFill"/>
                     </Ellipse.Fill>

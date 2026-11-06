@@ -23,7 +23,7 @@
         <!-- an artist's picture in a circle, or its initial -->
         <DataTemplate x:Key="RowPicture">
             <Grid>
-                <Ellipse Fill="{Binding Brush}"/>
+                <Ellipse Margin="1" Fill="{Binding Brush}"/>
                 <Viewbox Margin="12">
                     <TextBlock Text="{Binding Initial}" FontWeight="Bold" Foreground="White"/>
                 </Viewbox>

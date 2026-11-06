@@ -243,7 +243,7 @@ public sealed class AppSettings
     // Highest video resolution, null = best.
     public int? VideoMaxRes { get; set; } = 1080;
     public bool UseCookies { get; set; }
-    // yt-dlp browser spec: "firefox" or "firefox:C:\profile".
+    // yt-dlp browser spec: "firefox" or "firefox:C:\profile"; on the computers also EachSite.
     public string CookiesBrowser { get; set; } = "firefox";
     public int MaxParallel { get; set; } = 3;
     // Songs in the cloud and suggested ones start from their site while they download (off: once downloaded, less data).
@@ -356,10 +356,15 @@ public sealed class AppSettings
     // start by the Android app, null on the computers.
     public static string? CookieFile { get; set; }
 
+    // On the computers the same file, signed in to from a window of a browser, is one of the choices: CookiesBrowser == EachSite.
+    public const string EachSite = "sites";
+    public static string? SitesFile { get; set; }
+
     // What the engines get: "file:<cookies.txt>" or a browser spec.
     [JsonIgnore] public string? CookiesBrowserOrNull =>
         !UseCookies ? null
         : CookieFile != null ? (File.Exists(CookieFile) ? "file:" + CookieFile : null)
+        : CookiesBrowser == EachSite ? (File.Exists(SitesFile) ? "file:" + SitesFile : null)
         : CookiesBrowser;
 
     // True when settings.json did not exist yet.

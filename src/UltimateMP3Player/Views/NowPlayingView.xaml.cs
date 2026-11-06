@@ -274,7 +274,7 @@ public partial class NowPlayingView : UserControl
         bool hidden = _vm?.QueueHidden == true, full = _vm?.FullScreen == true;
         double width = hidden ? PaneClosed : PaneOpen, shift = hidden ? PaneOpen : 0, room = PaneOpen - PaneClosed;
         QueueCard.Visibility = ShowQueueBtn.Visibility = Visibility.Visible;
-        StageButtons.RenderTransform = _buttonsShift;
+        StageButtonsBox.RenderTransform = _buttonsShift;
         void Land()
         {
             _folding = false;

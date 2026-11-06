@@ -317,7 +317,7 @@
                                     <Border Classes="row" Padding="16,8" views:Touch.Tap="{Binding $parent[views:TogetherPage].MemberTap}" views:Touch.Menu="member" Classes.away="{Binding Away}">
                                         <Grid ColumnDefinitions="44,*">
                                             <Panel Width="44" Height="44" VerticalAlignment="Top">
-                                                <Ellipse Fill="{Binding Brush}"/>
+                                                <Ellipse Margin="1" Fill="{Binding Brush}"/>
                                                 <TextBlock Text="{Binding Initial}" FontSize="17" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                 <views:CoverImage CornerRadius="22" Source="{Binding Avatar}"/>
                                             </Panel>

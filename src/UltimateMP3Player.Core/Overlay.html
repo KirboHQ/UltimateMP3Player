@@ -74,8 +74,9 @@ canvas.wave { display: block; }
 .is-live .time, .is-live .bar, .is-live .rule { display: none; }
 
 /* ------------------------------------------------ the cover */
-.art { position: relative; flex: none; aspect-ratio: 1; will-change: transform; }
-.art .disc { position: absolute; inset: 0; overflow: hidden; border-radius: calc(22px * var(--rk)); background: var(--solid); box-shadow: 0 14px 34px rgba(0,0,0,.42), inset 0 0 0 1px rgba(255,255,255,.08); }
+/* (a square cover stays a square however round the corners: only a record is a circle. --art-r: how round it's drawn on each look) */
+.art { position: relative; flex: none; aspect-ratio: 1; will-change: transform; --art-r: 22px; }
+.art .disc { position: absolute; inset: 0; overflow: hidden; border-radius: min(calc(var(--art-r) * var(--rk)), 34%); background: var(--solid); box-shadow: 0 14px 34px rgba(0,0,0,.42), inset 0 0 0 1px rgba(255,255,255,.08); }
 .art .pics img, .art video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .7s ease; }
 .art video { opacity: 0; }
 .art .note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--accent-text); opacity: .75; }
@@ -83,7 +84,7 @@ canvas.wave { display: block; }
 .art .glow, .art .grooves, .art .sheen, .art .spindle, .art .arm { display: none; }
 .cover-none .art { display: none; }
 /* (the shape of the cover: a square lights up square. A shadow on its own layer: painted once, only moved after that) */
-.cover-square .art .glow { display: block; position: absolute; inset: 5%; border-radius: calc(22px * var(--rk)); background: var(--glow); box-shadow: 0 0 44px 24px var(--glow); transition: transform .12s linear; will-change: transform; }
+.cover-square .art .glow { display: block; position: absolute; inset: 5%; border-radius: min(calc(var(--art-r) * var(--rk)), 34%); background: var(--glow); box-shadow: 0 0 44px 24px var(--glow); transition: transform .12s linear; will-change: transform; }
 .no-glow .art .glow { display: none !important; }
 .no-arm .art .arm { display: none !important; }
 
@@ -188,9 +189,8 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 /* ------------------------------------------------ minimal: one line */
 .minimal { width: 880px; }
 .minimal .line { display: flex; align-items: center; gap: 22px; padding: 14px 30px 14px 22px; height: 76px; border-radius: calc(24px * var(--rk)); }
-.minimal .art { width: 50px; }
-.minimal .art .disc { border-radius: calc(13px * var(--rk)); box-shadow: 0 3px 10px rgba(0,0,0,.3); }
-.cover-vinyl.minimal .art .disc { border-radius: 50%; }
+.minimal .art { width: 50px; --art-r: 13px; }
+.minimal .art .disc { box-shadow: 0 3px 10px rgba(0,0,0,.3); }
 .minimal .art .arm, .minimal .art .glow { display: none !important; }
 .minimal .names { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 16px; }
 .minimal .title { font-size: 28px; flex: 0 1 auto; max-width: 66%; }
@@ -257,9 +257,7 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 .discord .head { font-size: 14px; font-weight: 800; letter-spacing: .05em; color: var(--text2); margin-bottom: 13px; text-transform: uppercase; display: flex; align-items: center; gap: 9px; }
 .discord canvas.wave { margin-left: auto; width: 74px; height: 18px; }
 .discord .row { display: flex; gap: 16px; align-items: center; }
-.discord .art { width: 104px; }
-.discord .art .disc { border-radius: calc(12px * var(--rk)); }
-.cover-vinyl.discord .art .disc { border-radius: 50%; }
+.discord .art { width: 104px; --art-r: 12px; }
 .discord .art .arm, .discord .art .glow { display: none !important; }
 .discord .names { flex: 1; min-width: 0; }
 .discord .title { font-size: 21px; font-weight: 700; text-shadow: none; }
@@ -273,11 +271,13 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 /* ------------------------------------------------ pill: a capsule, the progress going round the cover */
 .pill { width: 660px; }
 .pill .line { display: flex; align-items: center; gap: 20px; height: 112px; padding: 12px 36px 12px 12px; border-radius: calc(56px * var(--rk)); }
-.pill .ring { position: relative; flex: none; width: 88px; height: 88px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 1turn), var(--soft) 0); }
+/* (the ring has the cover's shape: round for a record, a rounded square for a square) */
+.pill .ring { position: relative; flex: none; width: 88px; height: 88px; border-radius: min(calc(22px * var(--rk)), 34%); background: conic-gradient(var(--accent) calc(var(--p) * 1turn), var(--soft) 0); }
+.cover-vinyl.pill .ring { border-radius: 50%; }
 .no-progress .ring, .is-live .ring { background: var(--soft); }
 .cover-none .ring { display: none; }
-.pill .art { position: absolute !important; inset: 6px; width: auto; }
-.pill .art .disc { border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.pill .art { position: absolute !important; inset: 6px; width: auto; --art-r: 16px; }
+.pill .art .disc { box-shadow: 0 2px 8px rgba(0,0,0,.35); }
 .pill .art .arm, .pill .art .glow, .pill .art .spindle, .pill .art .sheen { display: none !important; }
 .pill .names { flex: 1; min-width: 0; }
 .pill .title { font-size: 30px; line-height: 1.18; }
@@ -287,13 +287,17 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 .pill .live { font-size: 18px; flex: none; }
 .cover-none.pill .line { padding-left: 40px; }
 .pill .bar { display: none; }
-.cover-none.pill:not(.no-progress):not(.is-live) .bar { display: block; height: 5px; margin-top: 7px; }
+.cover-none.pill:not(.no-progress):not(.is-live) .bar, .cover-canvas.pill:not(.no-progress):not(.is-live) .bar { display: block; height: 5px; margin-top: 7px; }
+/* (the picture fills the capsule; no ring left to go round, so the progress under the song) */
+.pill.cover-canvas { padding: 0; overflow: visible; box-shadow: none; border-radius: 0; }
+.pill.cover-canvas .line { padding-left: 36px; }
+.pill.cover-canvas .ring { display: contents; }
+.pill.cover-canvas .art { inset: 0; }
 
 /* ------------------------------------------------ neon: no card, the letters lit up (their glow painted once, with the text) */
 .neon { width: 760px; display: flex; align-items: center; gap: 24px; }
-.neon .art { width: 124px; }
-.neon .art .disc { border-radius: calc(18px * var(--rk)); box-shadow: 0 0 0 2px var(--accent), 0 0 26px var(--accent); }
-.cover-vinyl.neon .art .disc { border-radius: 50%; }
+.neon .art { width: 124px; --art-r: 18px; }
+.neon .art .disc { box-shadow: 0 0 0 2px var(--accent), 0 0 26px var(--accent); }
 .neon .names { flex: 1; min-width: 0; }
 /* (room for the light at the sides, for a long name that scrolls) */
 .neon .marquee { padding-inline: 24px; margin-inline: -24px; }
@@ -316,17 +320,18 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 .cassette .tape { position: relative; border-radius: calc(26px * var(--rk)); background: linear-gradient(160deg, rgb(52 52 60 / var(--glass)), rgb(31 31 37 / var(--glass))); padding: 22px 26px 44px; box-shadow: 0 16px 40px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.4); overflow: hidden; }
 .cassette .tape::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: 0; height: 32px; background: #15151a; clip-path: polygon(7% 0, 93% 0, 100% 100%, 0 100%); }
 .cassette .screw { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #8b8b93, #3b3b42 70%); }
-.cassette .screw.a { left: 9px; top: 9px; } .cassette .screw.b { right: 9px; top: 9px; } .cassette .screw.c { left: 9px; bottom: 9px; } .cassette .screw.d { right: 9px; bottom: 9px; }
+/* (further in with very round corners, or the corners cut them) */
+.cassette .tape { --screw: calc(9px + max(0px, (var(--rk) - 1) * 10px)); }
+.cassette .screw.a { left: var(--screw); top: var(--screw); } .cassette .screw.b { right: var(--screw); top: var(--screw); } .cassette .screw.c { left: var(--screw); bottom: var(--screw); } .cassette .screw.d { right: var(--screw); bottom: var(--screw); }
 .cassette .sticker { position: relative; overflow: hidden; border-radius: calc(14px * var(--rk)); padding: 16px 18px 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); }
 .cassette .head { display: flex; align-items: center; gap: 16px; }
-.cassette .art { width: 74px; }
-.cassette .art .disc { border-radius: calc(10px * var(--rk)); box-shadow: 0 3px 10px rgba(0,0,0,.35); }
-.cover-vinyl.cassette .art .disc { border-radius: 50%; }
+.cassette .art { width: 74px; --art-r: 10px; }
+.cassette .art .disc { box-shadow: 0 3px 10px rgba(0,0,0,.35); }
 .cassette .art .arm, .cassette .art .glow { display: none !important; }
 .cassette .names { flex: 1; min-width: 0; }
 .cassette .title { font-size: 30px; line-height: 1.16; }
 .cassette .artist { font-size: 20px; margin-top: 2px; }
-.cassette .window { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 16px; padding: 10px 14px; border-radius: 40px; background: rgba(8,8,12,.62); box-shadow: inset 0 2px 8px rgba(0,0,0,.6); }
+.cassette .window { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 16px; padding: 10px 14px; border-radius: min(calc(40px * var(--rk)), 45px); background: rgba(8,8,12,.62); box-shadow: inset 0 2px 8px rgba(0,0,0,.6); }
 .cassette .reel { position: relative; flex: none; width: 70px; height: 70px; }
 /* (the tape wound on each reel: one empties as the other fills) */
 .cassette .reel::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: #2b2523; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); transform: scale(calc(.5 + .5 * (1 - var(--p)))); }
@@ -341,13 +346,16 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 .cassette .time { font-size: 19px; }
 .cassette .bar { flex: 1; height: 9px; }
 .cassette .live { font-size: 18px; margin-top: 12px; }
+/* (the plastic stays: the picture fills the label) */
+.cassette.cover-canvas { padding: 0; overflow: visible; box-shadow: none; border-radius: 0; }
+.cassette.cover-canvas .sticker > .head { position: static; }
+.cassette.cover-canvas .names { position: relative; z-index: 1; }
 
 /* ------------------------------------------------ polaroid: the cover as a photo, the song written under it */
 .polaroid { width: 360px; transform: rotate(-2.4deg); }
-.polaroid .frame { background: #f7f5ef; border-radius: calc(5px * var(--rk)); padding: 18px 18px 16px; box-shadow: 0 18px 40px rgba(0,0,0,.45); --text: #1e1d1a; --text2: #5d5a53; --accent-text: #3a3833; }
-.polaroid .art { width: 100%; }
-.polaroid .art .disc { border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); background: #d9d6cc; }
-.cover-vinyl.polaroid .art .disc { border-radius: 50%; }
+.polaroid .frame { background: #f7f5ef; border-radius: calc(7px * var(--rk)); padding: 18px 18px 16px; box-shadow: 0 18px 40px rgba(0,0,0,.45); --text: #1e1d1a; --text2: #5d5a53; --accent-text: #3a3833; }
+.polaroid .art { width: 100%; --art-r: 3px; }
+.polaroid .art .disc { box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); background: #d9d6cc; }
 .polaroid .art .arm, .polaroid .art .glow { display: none !important; }
 .polaroid .title { font-family: var(--hand); font-size: 28px; font-weight: 700; color: var(--text); text-shadow: none; margin-top: 12px; line-height: 1.3; }
 .polaroid .artist { font-family: var(--hand); font-size: 19px; color: var(--text2); line-height: 1.3; }
@@ -356,12 +364,18 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 .polaroid .time { font-family: var(--hand); font-size: 15px; font-weight: 700; color: var(--text2); }
 .polaroid .bar { flex: 1; height: 5px; background: rgba(0,0,0,.12); }
 .polaroid .live { font-size: 15px; margin-top: 6px; }
+/* (the white frame is what makes it a polaroid: the photo itself moves, the words stay dark on white) */
+.polaroid.cover-canvas { padding: 0; overflow: visible; box-shadow: none; border-radius: 0; }
+.polaroid.cover-canvas .art { position: relative !important; inset: auto; width: 100% !important; aspect-ratio: 1; opacity: 1; }
+.polaroid.cover-canvas .art::after { display: none; }
+.polaroid.cover-canvas .artist { text-shadow: none; }
+.polaroid.cover-canvas .bar i, .polaroid.cover-canvas .rule i { background: var(--accent); }
+.polaroid.cover-canvas .rule { background: rgba(0,0,0,.12); }
 
 /* ------------------------------------------------ broadcast: a lower third, like the name under someone on TV */
 .broadcast { width: 940px; display: flex; align-items: flex-end; gap: 0; }
-.broadcast .art { width: 136px; z-index: 1; margin-right: -10px; }
-.broadcast .art .disc { border-radius: calc(10px * var(--rk)); box-shadow: 0 8px 24px rgba(0,0,0,.45); }
-.cover-vinyl.broadcast .art .disc { border-radius: 50%; }
+.broadcast .art { width: 136px; z-index: 1; margin-right: -10px; --art-r: 10px; }
+.broadcast .art .disc { box-shadow: 0 8px 24px rgba(0,0,0,.45); }
 .broadcast .art .arm, .broadcast .art .glow { display: none !important; }
 .broadcast .plates { flex: 1; min-width: 0; }
 .broadcast .plate1 { display: flex; align-items: center; gap: 20px; padding: 12px 40px 12px 34px; background: var(--plate); color: #fff; clip-path: polygon(0 0, 100% 0, calc(100% - 26px) 100%, 0 100%); }
@@ -374,6 +388,10 @@ canvas.behind { display: none; position: absolute; left: 3%; top: 0; width: 94%;
 .broadcast .live { font-size: 18px; flex: none; }
 .no-artist.broadcast .cur { margin-left: auto; }
 .no-artist.no-time.broadcast:not(.is-live) .plate2 { display: none; }
+/* (the picture fills the plate with the title, cut as it is; a taller one, there's more of it to see) */
+.broadcast.cover-canvas { padding: 0; overflow: visible; box-shadow: none; border-radius: 0; }
+.broadcast.cover-canvas .plate1 { position: relative; padding-block: 24px; }
+.broadcast.cover-canvas .plate1 > :not(.art) { position: relative; z-index: 1; }
 </style>
 </head>
 <body>
@@ -404,7 +422,7 @@ const SKINS = {
   neon: () => `${ART}<div class="names">${NAMES}${WAVE}<div class="times">${CUR}${BAR}${DUR}</div>${LIVE}</div>`,
   cassette: () => `<div class="tape">${SCREWS}<div class="sticker mesh"><div class="bg"></div><div class="head">${ART}<div class="names">${NAMES}</div></div><div class="window">${REEL("l")}${WAVE}${REEL("r")}</div><div class="times">${CUR}${BAR}${DUR}</div>${LIVE}</div></div>`,
   polaroid: () => `<div class="frame">${ART}${NAMES}${WAVE}<div class="times">${CUR}${BAR}${DUR}</div>${LIVE}</div>`,
-  broadcast: () => `${ART}<div class="plates"><div class="plate1"><div class="title marquee"><span></span></div>${WAVE}</div>${BAR}<div class="plate2"><div class="artist marquee"><span></span></div>${CUR}${DUR}${LIVE}</div></div>`,
+  broadcast: () => `${coverKind() === "canvas" ? "" : ART}<div class="plates"><div class="plate1">${coverKind() === "canvas" ? ART : ""}<div class="title marquee"><span></span></div>${WAVE}</div>${BAR}<div class="plate2"><div class="artist marquee"><span></span></div>${CUR}${DUR}${LIVE}</div></div>`,
 };
 
 let cfg = null, st = { playing: false, pos: 0, dur: 0, rate: 1, live: false }, stAt = performance.now();
@@ -436,6 +454,7 @@ function show() {
   if (shown) return;
   shown = true;
   stage.style.visibility = "visible";
+  if (cfg.Rgb) paint();
   move(cfg.Reveal, true);
   startFrames();
 }
@@ -507,8 +526,14 @@ function tintPalette() {
   const [h, s] = hsl(n >> 16, n >> 8 & 255, n & 255);
   return { h1: h, s1: s, h2: (h + 34) % 360, s2: s };
 }
+// The RGB theme is the app's (ThemeColors: a round in 45 s at 1x, the second colour 60 degrees on), by the clock: every source in step.
+function colors() {
+  if (!cfg.Rgb) return cfg.MagicColors && palette ? palette : tintPalette();
+  const h = Date.now() / 125 * (cfg.RgbSpeed || 1) % 360;
+  return { h1: h, s1: .9, h2: (h + 60) % 360, s2: .9 };
+}
 function paint() {
-  const p = cfg.MagicColors && palette ? palette : tintPalette(), dark = !cfg.Light, g = !!p.grey, S = (v, a, b) => g ? 0 : clamp(v * 100, a, b);
+  const p = colors(), dark = !cfg.Light, g = !!p.grey, S = (v, a, b) => g ? 0 : clamp(v * 100, a, b);
   const glass = clamp(cfg.Solid ?? 1, .15, 1);
   const v = {
     "--accent": `hsl(${p.h1} ${S(p.s1, 55, 92)}% ${g ? (dark ? 86 : 24) : dark ? 60 : 42}%)`,
@@ -527,10 +552,13 @@ function paint() {
   };
   for (const k in v) root.style.setProperty(k, v[k]);
   accent = null;
-  const key = [cfg.MagicColors, cfg.Light, cfg.Tint, cover ? cover.src : ""].join();
+  // (RGB: the blurred background is a picture, baked again now and then and crossfaded; the rest at every step, only while it's on screen)
+  const key = [cfg.MagicColors, cfg.Light, cfg.Tint, cover ? cover.src : "", cfg.Rgb ? Math.floor(Date.now() / 1500) : ""].join();
   if (key !== baked) { baked = key; bakeMesh(); }
+  clearTimeout(rgbTimer);
+  if (cfg.Rgb && shown) rgbTimer = setTimeout(paint, Math.max(250 / (cfg.RgbSpeed || 1), 1000 / 30));
 }
-let baked = null, fadeEnds = 0, fadeTimer = 0;
+let baked = null, fadeEnds = 0, fadeTimer = 0, rgbTimer = 0;
 function fadeColors() {
   root.classList.add("fading");
   fadeEnds = performance.now() + 760;
@@ -541,11 +569,11 @@ function fadeColors() {
 function bakeMesh() {
   const hosts = widget ? widget.querySelectorAll(".mesh .bg") : [];
   if (!hosts.length) return;
-  const p = cfg.MagicColors && palette ? palette : tintPalette(), dark = !cfg.Light;
+  const p = colors(), dark = !cfg.Light;
   hosts.forEach(host => {
     const c = document.createElement("canvas"); c.width = c.height = 72;
     const x = c.getContext("2d");
-    if (cover && cfg.MagicColors) {
+    if (cover && cfg.MagicColors && !cfg.Rgb) {
       x.filter = "blur(7px) saturate(1.55)";
       x.drawImage(cover, -12, -12, 96, 96);
       x.filter = "none";
@@ -556,7 +584,7 @@ function bakeMesh() {
       x.fillStyle = g; x.fillRect(0, 0, 72, 72);
     }
     // (the letters stay readable on a white cover too, and on a black one in the light look)
-    const light = palette ? palette.light : .4;
+    const light = palette && !cfg.Rgb ? palette.light : .4;
     x.fillStyle = dark ? `rgba(0,0,0,${clamp(.32 + (light - .45) * .9, .32, .8)})` : `rgba(255,255,255,${clamp(.62 + (.55 - light) * .5, .62, .85)})`;
     x.fillRect(0, 0, 72, 72);
     const old = [...host.children];
@@ -615,8 +643,7 @@ function syncVideo() {
 }
 
 // ------------------------------------------------------------ building a look
-// (a look whose cover is part of its drawing has no picture filling the card: the editor doesn't offer it, a source moved there shows it square)
-const coverKind = () => cfg.Cover === "canvas" && ["pill", "cassette", "polaroid", "broadcast"].includes(cfg.Skin) ? "square" : cfg.Cover;
+const coverKind = () => cfg.Cover;
 function build() {
   stage.innerHTML = `<canvas class="behind"></canvas><div id="w">${(SKINS[cfg.Skin] || SKINS.compact)()}</div>`;
   widget = document.getElementById("w");
@@ -905,7 +932,8 @@ function drawMini(c) {
   const x = c.getContext("2d"), w = c.width, h = c.height, k = c._k || 1, lanes = around(h), style = cfg.InsideStyle ?? cfg.Style;
   x.clearRect(0, 0, w, h);
   x.globalAlpha = presence;
-  x.fillStyle = x.strokeStyle = coverKind() === "canvas" ? "#fff" : accent;
+  // (white over a moving picture; the polaroid's words and bars are on its white frame)
+  x.fillStyle = x.strokeStyle = coverKind() === "canvas" && cfg.Skin !== "polaroid" ? "#fff" : accent;
   if (style === LINE) {
     x.lineWidth = 3 * k; x.lineCap = "round"; x.lineJoin = "round";
     curves(x, w, Math.max(8, Math.round(w / k / 9)), lanes);

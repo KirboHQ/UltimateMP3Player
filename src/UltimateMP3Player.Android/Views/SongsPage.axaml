@@ -140,7 +140,7 @@
                 <Button x:Name="BackButton" Theme="{StaticResource TouchIcon}" Content="{local:Icon E72B}" Click="Back_Click"/>
                 <TextBlock x:Name="BarTitle" Grid.Column="1" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0" Opacity="0"
                            TextTrimming="CharacterEllipsis"/>
-                <TextBox x:Name="FilterBox" Grid.Column="1" Theme="{StaticResource FilterBox}" Margin="6,0" IsVisible="False"
+                <TextBox x:Name="FilterBox" Grid.Column="1" Theme="{StaticResource TouchSearchBox}" Margin="6,0" IsVisible="False"
                          Watermark="{local:T 'Search in this list'}"/>
                 <Button x:Name="SearchButton" Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E721}" Click="Search_Click"/>
                 <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Click="Select_Click"/>

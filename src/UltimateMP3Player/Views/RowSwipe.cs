@@ -284,7 +284,14 @@ public sealed class RowSwipe
             return true;
         }
         var screen = new Point(unchecked((short)((long)at & 0xFFFF)), unchecked((short)(((long)at >> 16) & 0xFFFF)));
-        if (_mouse != null || w.InputHitTest(w.PointFromScreen(screen)) is not DependencyObject hit || RowAt(hit) is not { } row) return false;
+        if (_mouse != null || w.InputHitTest(w.PointFromScreen(screen)) is not DependencyObject hit) return false;
+        // (over a row of cards: it scrolls)
+        if (Ui.FindAncestor<Shelf>(hit) is { } shelf)
+        {
+            shelf.SideWheel(delta);
+            return true;
+        }
+        if (RowAt(hit) is not { } row) return false;
         if (row != _wheelRow) _wheelSteps = 0;
         _wheelRow = row;
         _wheelSteps += steps;

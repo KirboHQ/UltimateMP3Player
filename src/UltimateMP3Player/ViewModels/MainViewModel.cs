@@ -790,6 +790,12 @@ public sealed class MainViewModel : Observable, IPageOrder
         Navigate(Settings);
     }
 
+    public void OpenSettingsGroup(string group)
+    {
+        GoSettings();
+        Settings.StartGroup = group;
+    }
+
     // The settings showing only what these words find (a download that needs a login: "cookie", the browser's cookies).
     // fromSearch: from the search's results (the Spotify tab), Back goes back to them, like a song found online.
     public void SearchSettings(string words, bool fromSearch = false)

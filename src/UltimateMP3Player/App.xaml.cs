@@ -127,7 +127,7 @@ public partial class App : Application
         catch { }
     }
 
-    private static void Log(Exception ex) => AppPaths.AppendLog($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
+    public static void Log(Exception ex) => AppPaths.AppendLog($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\n\n");
 
     private static void OnUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)
     {

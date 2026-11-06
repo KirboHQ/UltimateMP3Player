@@ -109,7 +109,7 @@
                                         <Border Width="124" Margin="0,0,14,0" Background="Transparent" views:Touch.Tap="{Binding OpenCommand}" views:Touch.Menu="artist">
                                             <StackPanel>
                                                 <Panel Width="124" Height="124">
-                                                    <Ellipse Fill="{Binding Brush}"/>
+                                                    <Ellipse Margin="1" Fill="{Binding Brush}"/>
                                                     <TextBlock Text="{Binding Initial}" FontSize="44" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                     <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
                                                 </Panel>
@@ -146,7 +146,7 @@
                                 views:Touch.Tap="{Binding OpenCommand}" views:Touch.Menu="artist">
                             <Grid ColumnDefinitions="88,*,Auto">
                                 <Panel Width="88" Height="88">
-                                    <Ellipse Fill="{Binding Brush}"/>
+                                    <Ellipse Margin="1" Fill="{Binding Brush}"/>
                                     <TextBlock Text="{Binding Initial}" FontSize="34" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
                                 </Panel>

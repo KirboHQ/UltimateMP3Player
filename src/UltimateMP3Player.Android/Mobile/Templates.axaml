@@ -244,21 +244,45 @@
         </Border>
     </DataTemplate>
 
-    <!-- The home's playlists: two per row, the cover and the name side by side (Spotify's). -->
-    <DataTemplate x:Key="PlaylistTileTemplate" DataType="vm:PlaylistViewModel">
-        <Border Classes="tile" CornerRadius="10" Height="60" ClipToBounds="True" views:Touch.Menu="playlist" views:Selection.Tick="True"
+    <!-- A row of cards under a title, sideways only: at its ends a swipe stops there, it doesn't go on moving the page up or down (Shelf, in Controls.cs). -->
+    <ItemsPanelTemplate x:Key="CardRowTemplate">
+        <views:CardRow/>
+    </ItemsPanelTemplate>
+
+    <ControlTheme x:Key="{x:Type views:Shelf}" TargetType="views:Shelf">
+        <Setter Property="FixedCount" Value="12"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto" Margin="18,0,12,10" MinHeight="36">
+                        <TextBlock Text="{TemplateBinding Title}" Classes="section-title" Margin="0" VerticalAlignment="Center"/>
+                        <Button Name="PART_More" Grid.Column="1" Theme="{StaticResource LinkButton}" VerticalAlignment="Center" Padding="8"/>
+                    </Grid>
+                    <ScrollViewer Name="PART_Scroller" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,26" IsScrollChainingEnabled="False">
+                        <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Margin="18,0,4,0"/>
+                    </ScrollViewer>
+                </StackPanel>
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <!-- A playlist on the home's shelf: its cover and its name under it, like a song's card. -->
+    <DataTemplate x:Key="PlaylistCardTemplate" DataType="vm:PlaylistViewModel">
+        <Border Width="148" Margin="0,0,14,0" Background="Transparent" views:Touch.Menu="playlist" views:Selection.Tick="True"
                 views:Touch.Tap="{Binding $parent[views:MainView].DataContext.OpenPlaylistCommand}">
-            <Grid ColumnDefinitions="60,*">
-                <ContentControl Width="60" Height="60" Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
-                <Border Classes="tick" Margin="0" HorizontalAlignment="Center">
-                    <TextBlock Classes="glyph" Text="{local:Icon E73E}" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
-                </Border>
-                <DockPanel Grid.Column="1" Margin="12,0,10,0">
+            <StackPanel>
+                <Panel Width="148" Height="148">
+                    <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PlaylistCover}"/>
+                    <Border Classes="tick" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,8,8,0">
+                        <TextBlock Classes="glyph" Text="{local:Icon E73E}" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                    </Border>
+                </Panel>
+                <DockPanel Margin="2,9,2,0">
                     <TextBlock DockPanel.Dock="Right" Text="{Binding DeviceGlyph, Converter={StaticResource Icon}}" Classes="glyph" FontSize="12"
                                Foreground="{DynamicResource SubTextBrush}" Margin="6,0,0,0" VerticalAlignment="Center" IsVisible="{Binding HasDevice}"/>
-                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
                 </DockPanel>
-            </Grid>
+            </StackPanel>
         </Border>
     </DataTemplate>
 
@@ -325,7 +349,7 @@
         <Border Classes="row" Padding="16,7,4,7" views:Touch.Tap="{Binding OpenCommand}" views:Touch.Menu="artist">
             <Grid ColumnDefinitions="56,*,Auto">
                 <Panel Width="56" Height="56">
-                    <Ellipse Fill="{Binding Brush}"/>
+                    <Ellipse Margin="1" Fill="{Binding Brush}"/>
                     <TextBlock Text="{Binding Initial}" FontSize="22" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
                     <Ellipse Width="13" Height="13" Fill="{DynamicResource AccentGradient}" Stroke="{DynamicResource BgBrush}" StrokeThickness="2"

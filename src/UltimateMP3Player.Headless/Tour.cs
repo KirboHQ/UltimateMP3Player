@@ -333,7 +333,12 @@ public static class Tour
         await Page("recap again", () => M.OpenRecap(DateTime.Now.Year, 0));
         await Dropdowns("recap");
         await Page("settings again", M.GoSettings);
-        await Dropdowns("settings");
+        foreach (var group in new[] { "appearance", "playback", "download", "search", "library", "backup", "connect", "overlay", "integrations", "profiles", "about" })
+        {
+            M.OpenSettingsGroup(group);
+            await Task.Delay(300);
+            await Dropdowns("settings " + group);
+        }
 
         await Lyrics();
         await SearchOnline();

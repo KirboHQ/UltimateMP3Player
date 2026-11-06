@@ -78,70 +78,46 @@
                     </Grid>
                 </Border>
 
-                <!-- card grids end 8 px before the right margin, level with the welcome card: same space left and right -->
-                <StackPanel Visibility="{Binding HasRecent, Converter={StaticResource BoolVis}}">
-                    <TextBlock Text="{local:T 'Recently played'}" Style="{StaticResource SectionTitle}"/>
-                    <ListBox x:Name="RecentList" Style="{StaticResource BareList}" ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCard}"
-                             ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"/>
-                </StackPanel>
+                <!-- one row each, scrolling sideways: its arrows, its bar (Shelf, in Controls.cs) -->
+                <views:Shelf Title="{local:T 'Recently played'}" Items="{Binding Recent}"
+                             Visibility="{Binding HasRecent, Converter={StaticResource BoolVis}}">
+                    <ListBox x:Name="RecentList" Style="{StaticResource BareList}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
 
                 <!-- for you: mixes made from what you listen to -->
-                <StackPanel Visibility="{Binding HasForYou, Converter={StaticResource BoolVis}}">
-                    <TextBlock Text="{local:T 'For you'}" Style="{StaticResource SectionTitle}"/>
-                    <ItemsControl ItemsSource="{Binding ForYou}" ItemTemplate="{StaticResource MixCard}" ItemsPanel="{StaticResource CardGridTemplate}" Margin="0,0,8,30"/>
-                </StackPanel>
+                <views:Shelf Title="{local:T 'For you'}" Items="{Binding ForYou}"
+                             Visibility="{Binding HasForYou, Converter={StaticResource BoolVis}}">
+                    <ItemsControl ItemTemplate="{StaticResource MixCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
 
-                <!-- the followed artists' new releases: one row, the rest on the Artists page -->
-                <StackPanel Visibility="{Binding Artists.HasReleases, Converter={StaticResource BoolVis}}">
-                    <DockPanel LastChildFill="False" Margin="0,0,8,0">
-                        <TextBlock Text="{local:T 'New releases'}" Style="{StaticResource SectionTitle}"/>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="{local:T 'Show all|f'}" VerticalAlignment="Center"
-                                Command="{Binding DataContext.GoArtistsCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                    </DockPanel>
-                    <ItemsControl ItemsSource="{Binding Artists.Releases}" ItemTemplate="{StaticResource ReleaseCard}" Margin="0,0,8,30">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <views:CardGrid MaxRows="1"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
-                </StackPanel>
+                <!-- the followed artists' new releases -->
+                <views:Shelf Title="{local:T 'New releases'}" Items="{Binding Artists.Releases}"
+                             Visibility="{Binding Artists.HasReleases, Converter={StaticResource BoolVis}}">
+                    <ItemsControl ItemTemplate="{StaticResource ReleaseCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
 
-                <!-- the saved radios: one row, the rest on the Radio page -->
-                <StackPanel Visibility="{Binding Stations.HasSaved, Converter={StaticResource BoolVis}}">
-                    <DockPanel LastChildFill="False" Margin="0,0,8,0">
-                        <TextBlock Text="{local:T 'Your radios'}" Style="{StaticResource SectionTitle}"/>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="{local:T 'Show all|f'}" VerticalAlignment="Center"
-                                Command="{Binding DataContext.GoStationsCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                    </DockPanel>
-                    <ItemsControl ItemsSource="{Binding Stations.Saved}" ItemTemplate="{StaticResource StationCard}" Margin="0,0,8,30">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <views:CardGrid MaxRows="1"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
-                </StackPanel>
+                <!-- the saved radios -->
+                <views:Shelf Title="{local:T 'Your radios'}" Items="{Binding Stations.Saved}"
+                             Visibility="{Binding Stations.HasSaved, Converter={StaticResource BoolVis}}">
+                    <ItemsControl ItemTemplate="{StaticResource StationCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
 
-                <TextBlock Text="{local:T 'Your playlists'}" Style="{StaticResource SectionTitle}"/>
-                <ListBox x:Name="PlaylistList" Style="{StaticResource BareList}" ItemsSource="{Binding PlaylistCards}" ItemsPanel="{StaticResource CardGridTemplate}"
-                         Margin="0,0,8,30">
-                    <ListBox.Resources>
-                        <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
-                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
-                        </DataTemplate>
-                    </ListBox.Resources>
-                </ListBox>
+                <views:Shelf Title="{local:T 'Your playlists'}" Items="{Binding PlaylistCards}">
+                    <ListBox x:Name="PlaylistList" Style="{StaticResource BareList}" ItemsPanel="{StaticResource CardRowTemplate}">
+                        <ListBox.Resources>
+                            <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
+                                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource PlaylistCard}"/>
+                            </DataTemplate>
+                        </ListBox.Resources>
+                    </ListBox>
+                </views:Shelf>
 
-                <StackPanel Visibility="{Binding HasRecentlyAdded, Converter={StaticResource BoolVis}}">
-                    <DockPanel LastChildFill="False" Margin="0,0,8,0">
-                        <TextBlock Text="{local:T 'Recently added'}" Style="{StaticResource SectionTitle}"/>
-                        <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="{local:T 'Show all'}" VerticalAlignment="Center"
-                                Command="{Binding DataContext.GoLibraryCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                    </DockPanel>
-                    <ListBox x:Name="AddedList" Style="{StaticResource BareList}" ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource TrackRowTemplate}"
-                             Margin="0,0,8,0"/>
-                </StackPanel>
+                <!-- ("Show all": the library, they may be thousands) -->
+                <views:Shelf Title="{local:T 'Recently added'}" MoreLabel="{local:T 'Show all'}" Items="{Binding RecentlyAdded}"
+                             MoreCommand="{Binding DataContext.GoLibraryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                             Visibility="{Binding HasRecentlyAdded, Converter={StaticResource BoolVis}}">
+                    <ListBox x:Name="AddedList" Style="{StaticResource BareList}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
             </StackPanel>
         </ScrollViewer>
         <!-- what's selected in one of the lists (Ctrl or Shift + click): songs or playlists -->

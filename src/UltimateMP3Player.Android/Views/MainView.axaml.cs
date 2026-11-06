@@ -780,6 +780,12 @@ public partial class MainView : UserControl
     private bool StartSwipe(bool left, Visual? source)
     {
         if (MovesSideways(source, left) || _shownPage is not { } page) return false;
+        // (a part of the page open, the settings' groups: to the right goes back to its list)
+        if (_shown is IPage { InSubPage: true } sub)
+        {
+            if (!left) sub.Back();
+            return false;
+        }
         object to;
         if (IsRoot(page))
         {
@@ -950,6 +956,7 @@ public interface IPage
     bool Back();
     void ScrollToTop();
     void Shown() { }
+    bool InSubPage => false;
 }
 
 // The "Library" tab: songs, playlists, artists, tags.

@@ -269,6 +269,9 @@ public static class Ui
     // App-wide switch for the light animations.
     public static bool Animations { get; set; } = true;
 
+    // The X of a search box (FilterBox in Theme.xaml).
+    public static readonly System.Windows.Input.ICommand ClearBox = new RelayCommand(o => (o as System.Windows.Controls.TextBox)?.Clear());
+
     // The app isn't seen (the window minimized, in the tray, or covered by another: MainWindow.UpdateShown): what moves by itself rests.
     private static bool _hidden;
     public static event Action? HiddenChanged;

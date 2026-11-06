@@ -166,11 +166,11 @@ public partial class SongsPage : UserControl, IPage
 
     private ITrackList? Owner => DataContext as ITrackList;
 
-    private List<TrackRow> Rows => DataContext switch
+    private PagedRows Rows => DataContext switch
     {
         PlaylistPageViewModel p => p.Rows,
         LibraryViewModel l => l.Rows,
-        _ => new List<TrackRow>(),
+        _ => new PagedRows(),
     };
 
     // The header, then the songs (or why there are none).
@@ -204,11 +204,13 @@ public partial class SongsPage : UserControl, IPage
         if (_shown != null && List.ItemsSource == _shown && Same(_shown, all))
         {
             List.Picks.SetItems(_shown.OfType<SongItem>().ToList(), Owner);
+            List.Follow(rows, _shown, Owner);
             return false;
         }
         List.Picks.SetItems(items, Owner);
         _shown = new ObservableCollection<object>(all);
         List.ItemsSource = _shown;
+        List.Follow(rows, _shown, Owner);
         return true;
     }
 

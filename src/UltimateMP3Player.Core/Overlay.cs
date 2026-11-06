@@ -18,6 +18,9 @@ public sealed class OverlaySource
     public bool MagicColors { get; set; } = true;
     public bool Light { get; set; }
     public string Tint { get; set; } = "#7C5CFF";
+    // The colours going round, like the app's RGB theme (over MagicColors and Tint, kept for when it's off); 1-10x.
+    public bool Rgb { get; set; }
+    public double RgbSpeed { get; set; } = 1;
     // Their animations: original, fade, slide-left/right/up/down, grow, shrink, swing-left/right, tilt-left/right.
     public string Reveal { get; set; } = "original";
     public string Exit { get; set; } = "original";
@@ -34,7 +37,7 @@ public sealed class OverlaySource
     public double AnchorX { get; set; } = 0.5;
     public double AnchorY { get; set; } = 0.5;
     public double Size { get; set; } = 1;
-    // Its corners (0 square, 1 as drawn, 2 very round) and how solid its cards are (1 solid, lower: the stream shows through).
+    // Its corners (0 square, 1 as drawn, 2 very round; a pill as drawn is a capsule: 0, 0.5, 1) and how solid its cards are (1 solid, lower: the stream shows through).
     public double Corners { get; set; } = 1;
     public double Solid { get; set; } = 1;
     // The light around the cover, the cover beating with the bass, the needle on the vinyl.

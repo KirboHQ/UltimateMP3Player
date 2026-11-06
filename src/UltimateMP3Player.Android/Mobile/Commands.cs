@@ -53,6 +53,40 @@ public sealed class SongList : ListBox
     public SongList()
     {
         Views.Selection.SetOwner(this, Picks);
+        AddHandler(Avalonia.Controls.ScrollViewer.ScrollChangedEvent, (_, e) => Near(e.Source as Avalonia.Controls.ScrollViewer));
+        Picks.BeforeAll = () => Bring(int.MaxValue);
+    }
+
+    // The songs of a long list come a piece at a time: the next piece two screens before its end, all of them before "select all".
+    private ViewModels.PagedRows? _rows;
+    private IList<object>? _shown;
+    private ViewModels.ITrackList? _owner;
+
+    // rows: what shown (the list's items) shows so far.
+    public void Follow(ViewModels.PagedRows rows, IList<object> shown, ViewModels.ITrackList? owner)
+    {
+        (_rows, _shown, _owner) = (rows, shown, owner);
+    }
+
+    private void Near(Avalonia.Controls.ScrollViewer? sv)
+    {
+        if (sv == null || _rows is not { HasMore: true, Waiting: false } rows || sv.Offset.Y + sv.Viewport.Height * 3 < sv.Extent.Height) return;
+        rows.Waiting = true;
+        // (not inside the layout that raised this)
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            rows.Waiting = false;
+            if (rows == _rows) Bring(ViewModels.PagedRows.Piece);
+        }, Avalonia.Threading.DispatcherPriority.Background);
+    }
+
+    private void Bring(int count)
+    {
+        if (_rows is not { } rows || _shown is not { } shown) return;
+        int from = rows.Count;
+        if (!rows.More(count)) return;
+        for (int i = from; i < rows.Count; i++) shown.Add(new Views.SongItem(rows[i]));
+        Picks.SetItems(shown.OfType<Views.SongItem>().ToList(), _owner);
     }
 
     // The songs being chosen (not the ListBox's own selection, which the rows don't use: a tap plays or ticks).

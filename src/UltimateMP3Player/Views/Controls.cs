@@ -380,6 +380,250 @@ public sealed class SlidingPill : FrameworkElement
     }
 }
 
+// A list of songs that comes a piece at a time (PagedRows): the next piece two screens before its end, all of it before Ctrl+A.
+public static class RowPaging
+{
+    public static readonly DependencyProperty OnProperty = DependencyProperty.RegisterAttached("On", typeof(bool), typeof(RowPaging), new PropertyMetadata(false, OnChanged));
+
+    public static bool GetOn(DependencyObject o) => (bool)o.GetValue(OnProperty);
+    public static void SetOn(DependencyObject o, bool value) => o.SetValue(OnProperty, value);
+
+    private static void OnChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is not ListBox list || e.NewValue is not true) return;
+        list.AddHandler(ScrollViewer.ScrollChangedEvent, new ScrollChangedEventHandler((_, a) => Near(list, a)));
+        list.PreviewKeyDown += (_, a) =>
+        {
+            if (a.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control) LoadAll(list);
+        };
+    }
+
+    public static void LoadAll(ItemsControl list) => (list.ItemsSource as ViewModels.PagedRows)?.LoadAll();
+
+    private static void Near(ListBox list, ScrollChangedEventArgs a)
+    {
+        if (list.ItemsSource is not ViewModels.PagedRows { HasMore: true, Waiting: false } rows || a.VerticalOffset + a.ViewportHeight * 3 < a.ExtentHeight) return;
+        rows.Waiting = true;
+        // (not inside the layout that raised this; the list grows, this comes again, until it's far enough from its end)
+        list.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+        {
+            rows.Waiting = false;
+            rows.More();
+        });
+    }
+}
+
+// A row of cards under a title (Home): as many as fit, widened to fill the width, the others to the side: the row scrolls by its arrows,
+// its bar, Shift + wheel, the sideways wheel. Cards are made as they near, but the row is as long as all of them: the bar doesn't jump. Its
+// content is the ItemsControl or ListBox of the cards, with CardRowTemplate as its panel: the shelf gives it its items. MoreCommand adds a
+// button going elsewhere (Recently added: the library, thousands of songs wouldn't fit in a row).
+public sealed class Shelf : ContentControl
+{
+    public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(nameof(Title), typeof(string), typeof(Shelf));
+    public static readonly DependencyProperty ItemsProperty = DependencyProperty.Register(nameof(Items), typeof(System.Collections.IEnumerable), typeof(Shelf),
+        new PropertyMetadata(null, (d, e) => ((Shelf)d).ItemsChanged(e.OldValue, e.NewValue)));
+    public static readonly DependencyProperty MoreLabelProperty = DependencyProperty.Register(nameof(MoreLabel), typeof(string), typeof(Shelf),
+        new PropertyMetadata(null, (d, _) => ((Shelf)d).Sync()));
+    public static readonly DependencyProperty MoreCommandProperty = DependencyProperty.Register(nameof(MoreCommand), typeof(ICommand), typeof(Shelf));
+
+    public string? Title { get => (string?)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
+    public System.Collections.IEnumerable? Items { get => (System.Collections.IEnumerable?)GetValue(ItemsProperty); set => SetValue(ItemsProperty, value); }
+    public string? MoreLabel { get => (string?)GetValue(MoreLabelProperty); set => SetValue(MoreLabelProperty, value); }
+    public ICommand? MoreCommand { get => (ICommand?)GetValue(MoreCommandProperty); set => SetValue(MoreCommandProperty, value); }
+
+    private const double MinItemWidth = 176;
+    public const double Gap = 12;
+
+    // How wide a card is now (CardRow reads it).
+    public double ItemWidth { get; private set; } = MinItemWidth;
+    public CardRow? Row { get; set; }
+    public int Total { get; private set; }
+
+    private readonly System.Collections.ObjectModel.ObservableCollection<object> _shown = new();
+    private readonly Core.Glide _x = new();
+    private ScrollViewer? _scroller;
+    private Button? _more, _back, _next;
+    private int _columns, _want;
+    private bool _gliding;
+
+    public Shelf()
+    {
+        Loaded += (_, _) =>
+        {
+            if (Items is System.Collections.Specialized.INotifyCollectionChanged live) live.CollectionChanged += ItemsMoved;
+            Sync();
+        };
+        Unloaded += (_, _) =>
+        {
+            if (Items is System.Collections.Specialized.INotifyCollectionChanged live) live.CollectionChanged -= ItemsMoved;
+            if (!_gliding) return;
+            _gliding = false;
+            CompositionTarget.Rendering -= Glide;
+        };
+        PreviewMouseWheel += OnWheel;
+    }
+
+    private void ItemsMoved(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) => Sync();
+
+    private void ItemsChanged(object? old, object? now)
+    {
+        if (!IsLoaded)
+        {
+            Sync();
+            return;
+        }
+        if (old is System.Collections.Specialized.INotifyCollectionChanged was) was.CollectionChanged -= ItemsMoved;
+        if (now is System.Collections.Specialized.INotifyCollectionChanged live) live.CollectionChanged += ItemsMoved;
+        Sync();
+    }
+
+    protected override void OnContentChanged(object oldContent, object newContent)
+    {
+        base.OnContentChanged(oldContent, newContent);
+        if (newContent is ItemsControl list) list.ItemsSource = _shown;
+    }
+
+    public override void OnApplyTemplate()
+    {
+        base.OnApplyTemplate();
+        _scroller = GetTemplateChild("PART_Scroller") as ScrollViewer;
+        _more = GetTemplateChild("PART_More") as Button;
+        _back = GetTemplateChild("PART_Back") as Button;
+        _next = GetTemplateChild("PART_Next") as Button;
+        if (_more != null) _more.Click += (_, _) => MoreCommand?.Execute(null);
+        if (_back != null) _back.Click += (_, _) => Page(-1);
+        if (_next != null) _next.Click += (_, _) => Page(1);
+        if (_scroller == null) return;
+        _scroller.SizeChanged += (_, e) => { if (e.WidthChanged) Fit(e.NewSize.Width); };
+        _scroller.ScrollChanged += (_, _) => Moved();
+    }
+
+    private void Fit(double width)
+    {
+        int columns = Math.Max(1, (int)((width + Gap) / (MinItemWidth + Gap)));
+        double item = Math.Max(0, (width - Gap * (columns - 1)) / columns);
+        if (columns == _columns && item == ItemWidth) return;
+        _columns = columns;
+        ItemWidth = item;
+        Row?.InvalidateMeasure();
+        Sync();
+    }
+
+    // Keeps the cards that stay where they are: a song just played, a resized window change only what they must.
+    private void Sync()
+    {
+        if (_columns == 0) return;
+        var all = Items?.Cast<object>().ToList() ?? new List<object>();
+        int want = Math.Min(all.Count, Math.Max(_columns, _want));
+        for (int i = 0; i < want; i++)
+        {
+            if (i == _shown.Count) _shown.Add(all[i]);
+            else if (!Equals(_shown[i], all[i])) _shown[i] = all[i];
+        }
+        while (_shown.Count > want) _shown.RemoveAt(_shown.Count - 1);
+        if (Total != all.Count)
+        {
+            Total = all.Count;
+            Row?.InvalidateMeasure();
+        }
+        bool more = all.Count > _columns;
+        if (_more != null)
+        {
+            _more.Visibility = MoreCommand != null && all.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            _more.Content = MoreLabel;
+        }
+        if (_back != null) _back.Visibility = more ? Visibility.Visible : Visibility.Collapsed;
+        if (_next != null) _next.Visibility = more ? Visibility.Visible : Visibility.Collapsed;
+        if (_scroller == null) return;
+        // (the bar's height comes out of the gap under the row: what's below stays where it is)
+        _scroller.HorizontalScrollBarVisibility = more ? ScrollBarVisibility.Visible : ScrollBarVisibility.Hidden;
+        _scroller.Margin = new Thickness(0, 0, 8, more ? 16 : 26);
+    }
+
+    // The arrows stop at the ends. The next page of cards before it's in sight; the bar dragged to the end: all of them. When idle: the
+    // first page is drawn first, a glide isn't stopped.
+    private void Moved()
+    {
+        if (_scroller == null || _columns == 0) return;
+        if (_back != null) _back.IsEnabled = _scroller.HorizontalOffset > 0.5;
+        if (_next != null) _next.IsEnabled = _scroller.HorizontalOffset < _scroller.ScrollableWidth - 0.5;
+        int need = (int)Math.Ceiling((_scroller.HorizontalOffset + _scroller.ViewportWidth * 2) / (ItemWidth + Gap) / _columns) * _columns;
+        if (need <= _want || _shown.Count >= Total) return;
+        _want = need;
+        Dispatcher.BeginInvoke(Sync, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    // (whole cards: the next page's first stands where this one's was)
+    private void Page(int way) => GlideBy(way * _columns * (ItemWidth + Gap));
+
+    public void SideWheel(int delta) => GlideBy(delta / 120.0 * 100);
+
+    private void GlideBy(double by)
+    {
+        if (_scroller == null) return;
+        double from = _gliding ? _x.Target : _scroller.HorizontalOffset;
+        if (!_gliding) _x.Set(_scroller.HorizontalOffset);
+        _x.To(Math.Clamp(from + by, 0, _scroller.ScrollableWidth), AnimatedContent.Ms);
+        if (_gliding) return;
+        _gliding = true;
+        CompositionTarget.Rendering += Glide;
+    }
+
+    private void Glide(object? sender, EventArgs e)
+    {
+        _scroller?.ScrollToHorizontalOffset(_x.Value);
+        if (_x.Moving) return;
+        _gliding = false;
+        CompositionTarget.Rendering -= Glide;
+    }
+
+    private void OnWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Handled) return;
+        e.Handled = true;
+        if (Keyboard.Modifiers == ModifierKeys.Shift)
+        {
+            GlideBy(-e.Delta / 120.0 * 100);
+            return;
+        }
+        // (its scroller would take the wheel and do nothing with it: up and down belong to the page)
+        RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta) { RoutedEvent = MouseWheelEvent, Source = this });
+    }
+}
+
+// The cards of a Shelf side by side, each as wide as the shelf says.
+public sealed class CardRow : Panel
+{
+    private double _height, _item;
+
+    protected override Size MeasureOverride(Size available)
+    {
+        var shelf = Ui.FindAncestor<Shelf>(this);
+        if (shelf != null) shelf.Row = this;
+        _item = shelf?.ItemWidth ?? 176;
+        _height = 0;
+        foreach (UIElement child in InternalChildren)
+        {
+            child.Measure(new Size(_item, double.PositiveInfinity));
+            _height = Math.Max(_height, child.DesiredSize.Height);
+        }
+        // (all the cards count, made or not)
+        int n = Math.Max(InternalChildren.Count, shelf?.Total ?? 0);
+        return InternalChildren.Count == 0 ? new Size() : new Size(n * _item + (n - 1) * Shelf.Gap, _height);
+    }
+
+    protected override Size ArrangeOverride(Size final)
+    {
+        double x = 0;
+        foreach (UIElement child in InternalChildren)
+        {
+            child.Arrange(new Rect(x, 0, _item, _height));
+            x += _item + Shelf.Gap;
+        }
+        return final;
+    }
+}
+
 // Cards in equal columns that fill the width: as many as fit at MinItemWidth, then widened (no ragged gap on the right).
 public sealed class CardGrid : Panel
 {

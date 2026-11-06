@@ -214,6 +214,9 @@ public static class ErrorText
                 "please wait a few minutes") ||
             all.Contains("http error 429") || all.Contains("has been rate-limited"))
             return new EngineException(L.T("The site is rate-limiting downloads (too many requests in a short time)."), stderr) { RateLimited = true };
+        // (before the rest: these say "cookies" too, and it isn't the site asking)
+        if (Has("dpapi", "cookie database", "cookies database"))
+            return new EngineException(L.T("This browser doesn't let the app read its sign-ins. In Settings › Download choose “Sign in to each site”."), stderr) { NeedsLogin = true };
         if (Has("confirm you're not a bot", "confirm you’re not a bot", "not a bot"))
             return new EngineException(L.T("YouTube is asking you to confirm you're not a bot."), stderr) { NeedsLogin = true };
         if (Has("confirm your age", "age-restricted", "age restricted", "inappropriate for some users"))

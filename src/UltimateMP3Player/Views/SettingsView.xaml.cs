@@ -14,13 +14,37 @@ public partial class SettingsView : UserControl
     public SettingsView()
     {
         InitializeComponent();
+        Apply();
         // Opened to show one setting (a download that needs the browser's cookies): it starts searched.
         Loaded += (_, _) =>
         {
-            if (DataContext is not SettingsViewModel { StartSearch: { } words } vm) return;
+            if (DataContext is not SettingsViewModel vm) return;
+            _vm = vm;
+            vm.PropertyChanged += GroupAsked;
+            GroupAsked(vm, new(nameof(SettingsViewModel.StartGroup)));
+            if (vm.StartSearch is not { } words) return;
             vm.StartSearch = null;
             SearchBox.Text = words;
         };
+        Unloaded += (_, _) =>
+        {
+            if (_vm != null) _vm.PropertyChanged -= GroupAsked;
+        };
+    }
+
+    private SettingsViewModel? _vm;
+
+    private void Logins_Click(object sender, RoutedEventArgs e)
+    {
+        Dialogs.ShowLogins();
+        _vm?.LoginsChanged();
+    }
+
+    private void GroupAsked(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SettingsViewModel.StartGroup) || _vm?.StartGroup is not { } group) return;
+        _vm.StartGroup = null;
+        ShowGroup(group);
     }
 
     // Wheel over a band changes it; when the EQ is off the page scrolls.
@@ -74,6 +98,31 @@ public partial class SettingsView : UserControl
 
     private readonly HashSet<FrameworkElement> _hidden = new();
 
+    // The group a card is in (the entries on the left), the one open.
+    public static readonly DependencyProperty GroupProperty = DependencyProperty.RegisterAttached(
+        "Group", typeof(string), typeof(SettingsView), new PropertyMetadata(""));
+
+    public static string GetGroup(DependencyObject o) => (string)o.GetValue(GroupProperty);
+    public static void SetGroup(DependencyObject o, string value) => o.SetValue(GroupProperty, value);
+
+    private string _group = "appearance";
+    private bool _applying;
+
+    private void Group_Checked(object sender, RoutedEventArgs e)
+    {
+        if (!_applying && Cards != null && sender is FrameworkElement { Tag: string key }) ShowGroup(key);
+    }
+
+    public void ShowGroup(string key)
+    {
+        _group = key;
+        // (a search written: its change does it)
+        if (SearchBox.Text.Length > 0) SearchBox.Text = "";
+        else Apply();
+        Scroller.ScrollToTop();
+        if (Ui.Animations) Scroller.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(0.0, 1, Ui.Time(180)));
+    }
+
     private void Search_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape || SearchBox.Text.Length == 0) return;
@@ -84,14 +133,26 @@ public partial class SettingsView : UserControl
     // Only the cards, and inside them the settings, whose words match. A match in a card's title keeps
     // the whole card; its hidden keywords find the card but matching rows still narrow it down;
     // cards tagged "whole" never lose single rows.
-    private void Search_TextChanged(object sender, TextChangedEventArgs e)
+    private void Search_TextChanged(object sender, TextChangedEventArgs e) => Apply();
+
+    // Without words: the cards of the group open. With them: every group's, and no group lit.
+    private void Apply()
     {
         var words = Text.Normalize(SearchBox.Text).Split(' ', StringSplitOptions.RemoveEmptyEntries);
         foreach (var el in _hidden.ToList()) Show(el, true);
+        _applying = true;
+        foreach (var group in Groups.Children.OfType<RadioButton>()) group.IsChecked = words.Length == 0 && (string)group.Tag == _group;
+        _applying = false;
         int shown = 0;
         foreach (var card in Cards.Children.OfType<FrameworkElement>())
         {
-            if (words.Length == 0 || Matches(TextOf(FirstText(card)), words))
+            if (words.Length == 0)
+            {
+                if (GetGroup(card) == _group) shown++;
+                else Show(card, false);
+                continue;
+            }
+            if (Matches(TextOf(FirstText(card)), words))
             {
                 shown++;
                 continue;

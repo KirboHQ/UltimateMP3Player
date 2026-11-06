@@ -37,7 +37,7 @@ public partial class NowPlayingView : UserControl
         _lyricsIn = new Tweener(this, v => LyricsHost.Opacity = v, 1);
         _coverIn = new Tweener(this, v => CoverArea.Opacity = v, 1);
         _follow = new Tweener(this, v => FollowBtn.Opacity = v);
-        StageButtons.RenderTransform = _buttonsShiftT;
+        StageButtonsBox.RenderTransform = _buttonsShiftT;
         _foldEdge = new Tweener(this, v => Stage.Clip = new RectangleGeometry(new Rect(0, 0, v, Stage.Bounds.Height), 16, 16));
         _buttonsShift = new Tweener(this, v => _buttonsShiftT.X = v);
         _queueShift = new Tweener(this, v => _queueShiftT.X = v);

@@ -332,7 +332,8 @@
                             <TextBlock Text="{Binding Player.WaitText}" FontSize="12.5" Foreground="{DynamicResource SubTextBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                     </StackPanel>
-                    <Grid Grid.Column="1" VerticalAlignment="Bottom">
+                    <!-- (folding "Up next" moves this, the buttons with their shadow: NowPlayingView.PlaceQueue) -->
+                    <Grid x:Name="StageButtonsBox" Grid.Column="1" VerticalAlignment="Bottom">
                     <views:TextShadow Target="{Binding ElementName=StageButtons}" Heavy="True" Visibility="{Binding ShowVisualizer, Converter={StaticResource BoolVis}}"/>
                     <StackPanel x:Name="StageButtons" Orientation="Horizontal">
                         <Button Style="{StaticResource ControlButton}" Foreground="{DynamicResource TextBrush}" Content="&#xE712;" Click="More_Click" ToolTip="{local:T 'More options'}"

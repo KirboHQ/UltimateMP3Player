@@ -100,7 +100,7 @@ public partial class MainWindow : Window
         PlaybackSettingsButton.Click += (_, _) =>
         {
             PlaybackPopup.IsOpen = false;
-            Vm?.GoSettings();
+            Vm?.OpenSettingsGroup("playback");
         };
         AddToPlaylistButton.Click += (_, _) =>
         {

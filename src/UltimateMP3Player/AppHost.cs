@@ -41,6 +41,7 @@ public sealed class AppHost : Observable
         _ui = Application.Current.Dispatcher;
 #endif
         Settings = AppSettings.Load();
+        Platform.SiteLogins.Prepare(AppPaths.DataDir);
         ApplyLanguage();
         ApplyTheme();
         Library = Library.Load();

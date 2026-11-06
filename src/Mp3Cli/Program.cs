@@ -221,6 +221,7 @@ switch (args[0])
                 sources.Add(new OverlaySource { Id = "canvas-" + skin, Name = skin, Skin = skin, Cover = "canvas" });
                 sources.Add(new OverlaySource { Id = "square-" + skin, Name = skin, Skin = skin, Cover = "square" });
                 sources.Add(new OverlaySource { Id = "nobars-" + skin, Name = skin, Skin = skin, Bars = false });
+                sources.Add(new OverlaySource { Id = "rgb-" + skin, Name = skin, Skin = skin, Rgb = true, RgbSpeed = 10 });
             }
             sources.Add(new OverlaySource { Id = "none", Name = "none", Skin = "compact", Cover = "none" });
             sources.Add(new OverlaySource { Id = "photo", Name = "photo", Skin = "polaroid", Cover = "square" });
@@ -250,6 +251,10 @@ switch (args[0])
                     foreach (var inside in new[] { "bars", "line", "both", "none" })
                         foreach (var behind in new[] { -1, 0, 1, 2, 3 })
                             sources.Add(new OverlaySource { Id = $"m-{look}-{kind}-{inside}-{(behind < 0 ? "x" : behind.ToString())}", Name = look, Skin = look, Cover = kind, Bars = inside is "bars" or "both", ShowBar = inside is "line" or "both", BarsBehind = behind >= 0, BarsPlace = behind < 0 ? VisualizerPlace.Bottom : (VisualizerPlace)behind });
+                // Every cover with the three corners of the editor (OverlaySourceRow.CornersOf): c-<look>-<cover>-<0|1|2>.
+                foreach (var kind in new[] { "square", "canvas", "vinyl", "none" })
+                    for (int corner = 0; corner < 3; corner++)
+                        sources.Add(new OverlaySource { Id = $"c-{look}-{kind}-{corner}", Name = look, Skin = look, Cover = kind, Corners = look == "pill" ? corner / 2.0 : corner });
                 sources.Add(new OverlaySource { Id = $"t-{look}-noartist", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = true, ShowArtist = false });
                 sources.Add(new OverlaySource { Id = $"t-{look}-notime", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = true, ShowTime = false });
                 sources.Add(new OverlaySource { Id = $"t-{look}-bare", Name = look, Skin = look, Cover = "square", Bars = false, ShowBar = false, ShowTime = false });
@@ -282,6 +287,13 @@ switch (args[0])
                       && await Status("/video/c1") == 404 && await Status("/") == 404;
             Console.WriteLine("overlay: " + (ok ? "ok" : "SBAGLIATO") + $" (http://127.0.0.1:{port}/s/compact?preview)");
             int seconds = args.Length > 1 && int.TryParse(args[1], out var n) ? n : 0;
+            // UMP_PREVIEW=<browser>: the editor's preview of /s/compact through it, for those seconds; its last picture in the temp folder.
+            OverlayPreview? preview = null;
+            if (Environment.GetEnvironmentVariable("UMP_PREVIEW") is { } browser)
+            {
+                OverlayPreview.Forced = browser;
+                preview = new OverlayPreview($"http://127.0.0.1:{port}/s/compact?preview", 700, 700, 1.25, (_, _) => { }, () => Console.WriteLine("preview: no picture"));
+            }
             long said = 0;
             for (var t = Stopwatch.StartNew(); t.Elapsed.TotalSeconds < seconds;)
             {
@@ -298,9 +310,60 @@ switch (args[0])
                 Spectrum.Shared.Feed(block, 0, block.Length);
                 await Task.Delay(50);
             }
+            if (preview != null)
+            {
+                var lastPicture = Path.Combine(Path.GetTempPath(), "ump-preview.jpg");
+                bool moved = OverlayPreview.Frames >= seconds && preview.SaveLast(lastPicture);
+                long pictures = OverlayPreview.Frames;
+                preview.Dispose();
+                for (int i = 0; i < 100 && OverlayPreview.Running > 0; i++) await Task.Delay(100);
+                ok &= moved && OverlayPreview.Running == 0;
+                Console.WriteLine($"preview: {(moved ? "ok" : "SBAGLIATO")}, {pictures / (double)Math.Max(1, seconds):0.0} pictures a second, browser {(OverlayPreview.Running == 0 ? "gone" : "STILL THERE")}, {lastPicture}");
+            }
             server.Stop();
             if (args.Length <= 2) File.Delete(cover);
             return ok ? 0 : 1;
+        }
+
+    case "signin":
+        {
+            // mp3cli signin <browser> [finish] [window]: a sign-in with that browser on a small site of this computer, nothing on the screens. The cookie it
+            // sets comes back once the window is closed (by the page, or as the Done button does: "finish"), and its profile goes. "window": a real window,
+            // as a person gets (with "finish", best on a desktop of its own).
+            bool finish = args.Contains("finish"), realWindow = args.Contains("window");
+            var site = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+            site.Start();
+            string page = finish ? "signed in" : "<script>setTimeout(() => window.close(), 1500)</script>";
+            var seen = new TaskCompletionSource();
+            _ = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    using var client = await site.AcceptTcpClientAsync();
+                    using var stream = client.GetStream();
+                    await stream.ReadAsync(new byte[4096]);
+                    await stream.WriteAsync(System.Text.Encoding.UTF8.GetBytes($"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nSet-Cookie: kept=yes; Max-Age=86400; Path=/\r\nConnection: close\r\nContent-Length: {page.Length}\r\n\r\n{page}"));
+                    seen.TrySetResult();
+                }
+            });
+            var signIn = new BrowserSignIn(args[1], $"http://127.0.0.1:{((System.Net.IPEndPoint)site.LocalEndpoint).Port}/", unseen: !realWindow);
+            await Task.WhenAny(seen.Task, Task.Delay(30000));
+            if (finish)
+            {
+                await Task.Delay(2500);
+                signIn.Finish();
+            }
+            await Task.WhenAny(signIn.Closed, Task.Delay(25000));
+            bool closed = signIn.Closed.IsCompleted;
+            using var limit = new CancellationTokenSource(40000);
+            var got = await signIn.CookiesAsync(limit.Token);
+            bool found = got.Any(c => c.Name == "kept" && c.Value == "yes" && c.Path == "/" && c.Expires > DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            await signIn.EndAsync();
+            site.Stop();
+            int left = Directory.GetDirectories(Path.GetTempPath(), "ump-signin-*").Count(d => Directory.GetLastWriteTimeUtc(d) > DateTime.UtcNow.AddMinutes(-2));
+            bool fine = seen.Task.IsCompleted && closed && found && left == 0;
+            Console.WriteLine($"signin: {(fine ? "ok" : "SBAGLIATO")} (page seen {seen.Task.IsCompleted}, closed {closed}, {got.Count} cookies, ours {found}, {left} profiles left)");
+            return fine ? 0 : 1;
         }
 
     case "rgbspeed":

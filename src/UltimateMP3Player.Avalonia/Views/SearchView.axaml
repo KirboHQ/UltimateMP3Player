@@ -171,7 +171,7 @@
                                         views:Rows.Menu="artist" DataContext="{Binding Artist}">
                                     <Grid ColumnDefinitions="Auto,*,Auto">
                                         <Panel Width="112" Height="112">
-                                            <Ellipse Fill="{Binding Brush}"/>
+                                            <Ellipse Margin="1" Fill="{Binding Brush}"/>
                                             <TextBlock Text="{Binding Initial}" FontSize="44" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             <views:CoverImage IsCircle="True" Source="{Binding Picture}"/>
                                         </Panel>

@@ -957,14 +957,21 @@ public sealed class SettingsViewModel : Observable
             if (value == null) return;
             S.CookiesBrowser = (string)value.Value!;
             Save();
+            OnChanged(nameof(Browser));
+            OnChanged(nameof(UsesEachSite));
         }
     }
 
-    // Only the browsers installed on this PC (yt-dlp can read their cookies).
+    public bool UsesEachSite => S.CookiesBrowser == AppSettings.EachSite;
+    public string LoginsSummary => Platform.SiteLogins.Summary();
+    public void LoginsChanged() => OnChanged(nameof(LoginsSummary));
+
+    // Each site, signed in to from a window, then only the browsers installed on this PC (yt-dlp can read their cookies).
     private void BuildBrowsers()
     {
         var list = BrowserDetector.Find().Select(b => new Choice(b.Name, b.Spec, L.T(b.Hint))).ToList();
         if (list.Count == 0) list.Add(new Choice("Firefox", "firefox", L.T("recommended")));
+        list.Insert(0, new Choice(L.T("Sign in to each site"), AppSettings.EachSite, L.T("works with any browser")));
         if (list.All(c => !Equals(c.Value, S.CookiesBrowser)))
         {
             var fallback = list.FirstOrDefault(c => ((string)c.Value!).StartsWith("firefox")) ?? list[0];
@@ -1142,6 +1149,18 @@ public sealed class SettingsViewModel : Observable
 
     // What the page searches as it opens (MainViewModel.SearchSettings), taken by the view.
     public string? StartSearch { get; set; }
+
+    // The group to open (MainViewModel.OpenSettingsGroup), taken by the view on the screen or by the next one to open.
+    private string? _startGroup;
+    public string? StartGroup
+    {
+        get => _startGroup;
+        set
+        {
+            _startGroup = value;
+            if (value != null) OnChanged(nameof(StartGroup));
+        }
+    }
 
     public void Refresh()
     {
@@ -1401,9 +1420,9 @@ public static class BrowserDetector
             Gecko("Zen Browser", false, Path.Combine(roaming, @"zen\Profiles"));
             Gecko("Waterfox", false, Path.Combine(roaming, @"Waterfox\Profiles"));
             Gecko("Floorp", false, Path.Combine(roaming, @"Floorp\Profiles"));
-            Chromium("Chrome", "chrome", Path.Combine(local, @"Google\Chrome\User Data"), "può non funzionare");
-            Chromium("Edge", "edge", Path.Combine(local, @"Microsoft\Edge\User Data"), "può non funzionare");
-            Chromium("Brave", "brave", Path.Combine(local, @"BraveSoftware\Brave-Browser\User Data"), "può non funzionare");
+            Chromium("Chrome", "chrome", Path.Combine(local, @"Google\Chrome\User Data"), "may not work");
+            Chromium("Edge", "edge", Path.Combine(local, @"Microsoft\Edge\User Data"), "may not work");
+            Chromium("Brave", "brave", Path.Combine(local, @"BraveSoftware\Brave-Browser\User Data"), "may not work");
             Chromium("Opera", "opera", Path.Combine(roaming, @"Opera Software\Opera Stable"), "");
             Chromium("Vivaldi", "vivaldi", Path.Combine(local, @"Vivaldi\User Data"), "");
             Chromium("Chromium", "chromium", Path.Combine(local, @"Chromium\User Data"), "");

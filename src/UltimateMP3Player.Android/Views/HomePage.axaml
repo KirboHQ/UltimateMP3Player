@@ -20,17 +20,17 @@
                             <!-- both devices' music (Connect to computer): the computer's profile behind this one's -->
                             <Panel Width="30" Height="30" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"
                                    IsVisible="{Binding $parent[views:MainView].DataContext.HasSecondProfile}">
-                                <Ellipse Fill="{Binding $parent[views:MainView].DataContext.SecondBrush}"/>
+                                <Ellipse Margin="1" Fill="{Binding $parent[views:MainView].DataContext.SecondBrush}"/>
                                 <TextBlock Text="{Binding $parent[views:MainView].DataContext.SecondInitial}" Foreground="White" FontWeight="Bold" FontSize="13"
                                            FontFamily="{StaticResource UiFont}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <views:CoverImage Margin="2" CornerRadius="13" Source="{Binding $parent[views:MainView].DataContext.SecondAvatar}"/>
+                                <views:CoverImage IsCircle="True" Source="{Binding $parent[views:MainView].DataContext.SecondAvatar}"/>
                             </Panel>
                             <Panel Width="38" Height="38" HorizontalAlignment="Left">
                                 <Ellipse Margin="-2" Fill="{DynamicResource BgBrush}" IsVisible="{Binding $parent[views:MainView].DataContext.HasSecondProfile}"/>
-                                <Ellipse Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
+                                <Ellipse Margin="1" Fill="{Binding $parent[views:MainView].DataContext.ProfileBrush}"/>
                                 <TextBlock Text="{Binding $parent[views:MainView].DataContext.ProfileInitial}" Foreground="White" FontWeight="Bold" FontSize="16"
                                            FontFamily="{StaticResource UiFont}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                <views:CoverImage Margin="2" CornerRadius="17" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
+                                <views:CoverImage IsCircle="True" Source="{Binding $parent[views:MainView].DataContext.ProfileAvatar}"/>
                             </Panel>
                         </Panel>
                     </Button>
@@ -83,79 +83,29 @@
                     </StackPanel>
                 </Border>
 
-                <!-- the playlists, two by two -->
-                <ItemsControl ItemsSource="{Binding $parent[views:MainView].DataContext.Playlists}" ItemTemplate="{StaticResource PlaylistTileTemplate}"
-                              Margin="16,0,16,26" IsVisible="{Binding !IsEmpty}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <views:CardGrid MinItemWidth="150" WideItemWidth="215" Gap="10" MaxRows="4"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                </ItemsControl>
+                <!-- one row each, sideways (Shelf, in Controls.cs) -->
+                <views:Shelf Title="{local:T 'Your playlists'}" Items="{Binding $parent[views:MainView].DataContext.Playlists}" IsVisible="{Binding !IsEmpty}">
+                    <ItemsControl ItemTemplate="{StaticResource PlaylistCardTemplate}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
 
-                <StackPanel IsVisible="{Binding HasRecent}">
-                    <TextBlock Text="{local:T 'Recently played'}" Classes="section-title" Margin="18,0,18,12"/>
-                    <!-- sideways only: at its ends a swipe stops there, it doesn't go on moving the page up or down -->
-                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,26" IsScrollChainingEnabled="False">
-                        <ItemsControl ItemsSource="{Binding Recent}" ItemTemplate="{StaticResource TrackCardTemplate}" Margin="18,0,4,0">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </StackPanel>
+                <views:Shelf Title="{local:T 'Recently played'}" Items="{Binding Recent}" IsVisible="{Binding HasRecent}">
+                    <ItemsControl ItemTemplate="{StaticResource TrackCardTemplate}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
 
                 <!-- for you: mixes made from what you listen to -->
-                <StackPanel IsVisible="{Binding HasForYou}">
-                    <TextBlock Text="{local:T 'For you'}" Classes="section-title" Margin="18,0,18,12"/>
-                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,26" IsScrollChainingEnabled="False">
-                        <ItemsControl ItemsSource="{Binding ForYou}" ItemTemplate="{StaticResource MixCardTemplate}" Margin="18,0,4,0">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </StackPanel>
+                <views:Shelf Title="{local:T 'For you'}" Items="{Binding ForYou}" IsVisible="{Binding HasForYou}">
+                    <ItemsControl ItemTemplate="{StaticResource MixCardTemplate}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
 
                 <!-- the followed artists' new releases -->
-                <StackPanel IsVisible="{Binding Artists.HasReleases}">
-                    <Grid ColumnDefinitions="*,Auto" Margin="18,0,12,10">
-                        <TextBlock Text="{local:T 'New releases'}" Classes="section-title" Margin="0"/>
-                        <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="{local:T 'Show all|f'}" VerticalAlignment="Center" Padding="8"
-                                Command="{Binding $parent[views:MainView].DataContext.GoArtistsCommand}"/>
-                    </Grid>
-                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,26" IsScrollChainingEnabled="False">
-                        <ItemsControl ItemsSource="{Binding Artists.Releases}" ItemTemplate="{StaticResource ReleaseCardTemplate}" Margin="18,0,4,0">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </StackPanel>
+                <views:Shelf Title="{local:T 'New releases'}" Items="{Binding Artists.Releases}" IsVisible="{Binding Artists.HasReleases}">
+                    <ItemsControl ItemTemplate="{StaticResource ReleaseCardTemplate}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
 
                 <!-- the saved radios -->
-                <StackPanel IsVisible="{Binding Stations.HasSaved}">
-                    <Grid ColumnDefinitions="*,Auto" Margin="18,0,12,10">
-                        <TextBlock Text="{local:T 'Your radios'}" Classes="section-title" Margin="0"/>
-                        <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="{local:T 'Show all|f'}" VerticalAlignment="Center" Padding="8"
-                                Command="{Binding $parent[views:MainView].DataContext.GoStationsCommand}"/>
-                    </Grid>
-                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,26" IsScrollChainingEnabled="False">
-                        <ItemsControl ItemsSource="{Binding Stations.Saved}" ItemTemplate="{StaticResource StationCardTemplate}" Margin="18,0,4,0">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </StackPanel>
+                <views:Shelf Title="{local:T 'Your radios'}" Items="{Binding Stations.Saved}" IsVisible="{Binding Stations.HasSaved}">
+                    <ItemsControl ItemTemplate="{StaticResource StationCardTemplate}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
 
                 <!-- statistics -->
                 <Border Classes="tile" CornerRadius="16" Margin="16,0,16,26" Padding="16,14" IsVisible="{Binding !IsEmpty}"
@@ -172,14 +122,11 @@
                     </Grid>
                 </Border>
 
-                <StackPanel IsVisible="{Binding HasRecentlyAdded}">
-                    <Grid ColumnDefinitions="*,Auto" Margin="18,0,12,4">
-                        <TextBlock Text="{local:T 'Recently added'}" Classes="section-title" Margin="0"/>
-                        <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="{local:T 'Show all'}" VerticalAlignment="Center" Padding="8"
-                                Click="ShowAll_Click"/>
-                    </Grid>
-                    <ItemsControl ItemsSource="{Binding RecentlyAdded}" ItemTemplate="{StaticResource TrackRowTemplate}"/>
-                </StackPanel>
+                <!-- ("Show all": the library, they may be thousands) -->
+                <views:Shelf Title="{local:T 'Recently added'}" MoreLabel="{local:T 'Show all'}" Items="{Binding RecentlyAdded}" IsVisible="{Binding HasRecentlyAdded}"
+                             MoreCommand="{Binding $parent[views:HomePage].ShowLibrary}">
+                    <ItemsControl ItemTemplate="{StaticResource TrackCardTemplate}" ItemsPanel="{StaticResource CardRowTemplate}"/>
+                </views:Shelf>
             </StackPanel>
         </ScrollViewer>
         <!-- choosing several (Select in a menu): how many on top, what to do at the bottom -->

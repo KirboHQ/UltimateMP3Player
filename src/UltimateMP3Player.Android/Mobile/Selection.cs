@@ -259,8 +259,12 @@ public sealed class Selection : Observable
         Update();
     }
 
+    // (a list that comes a piece at a time brings the rest first: SongList.Follow)
+    public Action? BeforeAll { get; set; }
+
     private void ToggleAll()
     {
+        BeforeAll?.Invoke();
         bool on = !AllChecked;
         foreach (var i in Items.Where(SameKind)) Mark(i, on);
         Update();

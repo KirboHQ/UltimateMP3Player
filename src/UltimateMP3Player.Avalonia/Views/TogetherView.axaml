@@ -8,9 +8,9 @@
         <!-- a person: their colour and initial, or their picture -->
         <DataTemplate x:Key="MemberAvatar">
             <Panel>
-                <Ellipse Fill="{Binding Brush}"/>
+                <Ellipse Margin="1" Fill="{Binding Brush}"/>
                 <TextBlock Text="{Binding Initial}" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <views:CoverImage Margin="2" IsCircle="True" Source="{Binding Avatar}"/>
+                <views:CoverImage IsCircle="True" Source="{Binding Avatar}"/>
             </Panel>
         </DataTemplate>
 

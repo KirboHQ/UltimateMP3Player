@@ -740,8 +740,8 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Border Name="Bd" Background="{DynamicResource Surface2Brush}" BorderBrush="Transparent"
-                        BorderThickness="1" CornerRadius="19" Padding="12,0" Height="38">
-                    <Grid ColumnDefinitions="Auto,*">
+                        BorderThickness="1" CornerRadius="19" Padding="12,0,4,0" Height="38">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
                         <TextBlock Name="Ico" Text="{local:Icon E721}" FontFamily="{StaticResource IconFont}" FontSize="14"
                                    VerticalAlignment="Center" Foreground="{DynamicResource SubTextBrush}"/>
                         <TextBlock Name="Placeholder" Grid.Column="1" Text="{TemplateBinding Watermark}" Foreground="{DynamicResource MutedBrush}"
@@ -754,6 +754,9 @@
                                            SelectionBrush="{TemplateBinding SelectionBrush}" SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
                                            CaretBrush="{TemplateBinding CaretBrush}" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                         </ScrollViewer>
+                        <Button Grid.Column="2" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="11" Content="{local:Icon E711}" Focusable="False"
+                                Command="{CompiledBinding $parent[TextBox].Clear}" ToolTip.Tip="{local:T Clear}" AutomationProperties.Name="{local:T Clear}"
+                                IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     </Grid>
                 </Border>
             </ControlTemplate>

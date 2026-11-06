@@ -27,7 +27,13 @@ public partial class SettingsView : UserControl
         {
             if (Band(e.Source) is { } band) band.Gain = 0;
         }, RoutingStrategies.Bubble, true);
-        SearchBox.TextChanged += (_, _) => Search();
+        SearchBox.TextChanged += (_, _) => Apply();
+        foreach (var group in Groups.Children.OfType<RadioButton>())
+            group.IsCheckedChanged += (_, _) =>
+            {
+                if (!_applying && group.IsChecked == true && group.Tag is string key) ShowGroup(key);
+            };
+        Apply();
         SearchBox.AddHandler(KeyDownEvent, (_, e) =>
         {
             if (e.Key != Key.Escape || string.IsNullOrEmpty(SearchBox.Text)) return;
@@ -37,9 +43,17 @@ public partial class SettingsView : UserControl
         // Opened to show one setting (a download that needs the browser's cookies): it starts searched.
         Loaded += (_, _) =>
         {
-            if (DataContext is not SettingsViewModel { StartSearch: { } words } vm) return;
+            if (DataContext is not SettingsViewModel vm) return;
+            _vm = vm;
+            vm.PropertyChanged += GroupAsked;
+            GroupAsked(vm, new(nameof(SettingsViewModel.StartGroup)));
+            if (vm.StartSearch is not { } words) return;
             vm.StartSearch = null;
             SearchBox.Text = words;
+        };
+        Unloaded += (_, _) =>
+        {
+            if (_vm != null) _vm.PropertyChanged -= GroupAsked;
         };
         // The online search's sites are dragged into their order like the songs of a playlist.
         ServiceList.AddHandler(PointerPressedEvent, (_, e) =>
@@ -86,20 +100,62 @@ public partial class SettingsView : UserControl
     public static string GetKeywords(Control o) => o.GetValue(KeywordsProperty);
     public static void SetKeywords(Control o, string value) => o.SetValue(KeywordsProperty, value);
 
+    // The group a card is in (the entries on the left), the one open.
+    public static readonly AttachedProperty<string> GroupProperty = AvaloniaProperty.RegisterAttached<SettingsView, Control, string>("Group", "");
+    public static string GetGroup(Control o) => o.GetValue(GroupProperty);
+    public static void SetGroup(Control o, string value) => o.SetValue(GroupProperty, value);
+
+    private string _group = "appearance";
+    private bool _applying;
+    private SettingsViewModel? _vm;
+
+    private void Logins_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Dialogs.ShowLogins();
+        _vm?.LoginsChanged();
+    }
+
+    private void GroupAsked(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SettingsViewModel.StartGroup) || _vm?.StartGroup is not { } group) return;
+        _vm.StartGroup = null;
+        ShowGroup(group);
+    }
+
+    public void ShowGroup(string key)
+    {
+        _group = key;
+        // (a search written: its change does it)
+        if (!string.IsNullOrEmpty(SearchBox.Text)) SearchBox.Text = "";
+        else Apply();
+        Scroller.Offset = default;
+        if (Ui.Animations) Ui.Tween(Scroller, 180, t => t, v => Scroller.Opacity = v);
+    }
+
     // What the search hid, each with what gives it back its own visibility.
     private readonly Dictionary<Control, IDisposable?> _hidden = new();
 
     // Only the cards, and inside them the settings, whose words match. A match in a card's title keeps
     // the whole card; its hidden keywords find the card but matching rows still narrow it down;
     // cards tagged "whole" never lose single rows.
-    private void Search()
+    // Without words: the cards of the group open. With them: every group's, and no group lit.
+    private void Apply()
     {
         var words = Text.Normalize(SearchBox.Text ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
         foreach (var el in _hidden.Keys.ToList()) Show(el, true);
+        _applying = true;
+        foreach (var group in Groups.Children.OfType<RadioButton>()) group.IsChecked = words.Length == 0 && group.Tag as string == _group;
+        _applying = false;
         int shown = 0;
         foreach (var card in Cards.Children.OfType<Control>())
         {
-            if (words.Length == 0 || Matches(TextOf(FirstText(card)), words))
+            if (words.Length == 0)
+            {
+                if (GetGroup(card) == _group) shown++;
+                else Show(card, false);
+                continue;
+            }
+            if (Matches(TextOf(FirstText(card)), words))
             {
                 shown++;
                 continue;

@@ -27,6 +27,7 @@ public partial class LibraryView : UserControl
         };
         SelectAllButton.Click += (_, _) =>
         {
+            RowPaging.LoadAll(List);
             List.SelectAll();
             List.Focus();
         };
