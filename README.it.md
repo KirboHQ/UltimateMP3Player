@@ -15,7 +15,7 @@
   <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-linux-x64.tar.gz"><img alt="Scarica per Linux" src="https://img.shields.io/badge/Linux-7C5CFF?style=for-the-badge&logo=linux&logoColor=white" height="38"></a>
   <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-macos-arm64.zip"><img alt="Scarica per macOS" src="https://img.shields.io/badge/macOS-7C5CFF?style=for-the-badge&logo=apple&logoColor=white" height="38"></a>
   <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-android-arm64-v8a.apk"><img alt="Scarica per Android" src="https://img.shields.io/badge/Android-7C5CFF?style=for-the-badge&logo=android&logoColor=white" height="38"></a>
-  <a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-ios.ipa"><img alt="Scarica per iPhone" src="https://img.shields.io/badge/iPhone-7C5CFF?style=for-the-badge&logo=apple&logoColor=white" height="38"></a>
+  <a href="https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool"><img alt="Installa su iPhone" src="https://img.shields.io/badge/iPhone-7C5CFF?style=for-the-badge&logo=apple&logoColor=white" height="38"></a>
 </p>
 
 <p align="center">
@@ -93,8 +93,8 @@ Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è 
   </tr>
   <tr>
     <td><b>iPhone e iPad</b><br><sub>iOS 15 o successivo</sub></td>
-    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-ios.ipa"><img alt="Scarica per iPhone" src="https://img.shields.io/badge/Scarica-IPA-7C5CFF?style=for-the-badge&labelColor=5B3FD9&logo=apple&logoColor=white"></a></td>
-    <td><sub>si installa con SideStore o xtool, vedi sotto</sub></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool"><img alt="Installa da un computer" src="https://img.shields.io/badge/Installa-da_un_computer-7C5CFF?style=for-the-badge&labelColor=5B3FD9&logo=apple&logoColor=white"></a></td>
+    <td><a href="https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/UltimateMP3Player-ios.ipa"><img alt="L'IPA, per SideStore o xtool" src="https://img.shields.io/badge/IPA-SideStore_o_xtool-6E7781?style=for-the-badge&labelColor=57606A&logo=apple&logoColor=white"></a></td>
   </tr>
 </table>
 
@@ -148,23 +148,30 @@ chiede prima di installarle.
 <summary><b>iPhone e iPad</b></summary>
 <br>
 
+**Il modo facile: il [programma di installazione](https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool)**, per
+Windows, macOS e Linux. Collega il cavo e accedi con il tuo Apple ID gratuito: al resto pensa lui, e ti mostra cosa toccare
+sul telefono. Con un Apple ID gratuito un'app resta firmata 7 giorni: collega il cavo e premi Rinnova lì, oppure aggiorna.
+
+**Oppure con SideStore**, che rinnova dal telefono:
+
 1. Installa [SideStore](https://sidestore.io) seguendo la sua guida (usa il tuo Apple ID gratuito, senza Mac e senza
    jailbreak), poi attiva la **Modalità sviluppatore** in Impostazioni › Privacy e sicurezza.
 2. In SideStore apri **Sources**, premi **+** e aggiungi
    `https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/sidestore-source.json`, poi installa
    **Ultimate MP3 Player** da lì. Gli aggiornamenti compaiono in **My Apps**.
 
-Con un Apple ID gratuito un'app resta firmata 7 giorni e SideStore la rinnova (aprilo ogni tanto). I download vogliono
-l'app aperta. Per mandare un link da un'altra app, crea un Comando rapido che apre `ump://add?url=` seguito dall'URL
-condiviso.
+SideStore rinnova l'app da solo (aprilo ogni tanto).
 
-**Oppure con [xtool](https://github.com/xtool-org/xtool)**, da un computer (Linux, macOS, Windows con WSL) con l'iPhone
+**Oppure con [xtool](https://github.com/xtool-org/xtool)** a mano, da un computer (Linux, macOS, Windows con WSL) con l'iPhone
 collegato via cavo: preparalo con la sua [guida](https://xtool.sh/documentation/xtool/installation-linux/) (per
 installare un IPA non servono Swift e Xcode, salta quei passi; su Windows l'app Dispositivi Apple più
 `networkingMode=mirrored` in `.wslconfig` ed `export USBMUXD_SOCKET_ADDRESS=127.0.0.1:27015` sostituiscono USBIPD), poi
 esegui `xtool auth` e `xtool install UltimateMP3Player-ios.ipa`. Attiva la Modalità sviluppatore e autorizza il tuo Apple
 ID in Impostazioni › Generali › VPN e gestione dispositivi. Nessuno la rinnova per te: rilancia `xtool install` entro 7
 giorni e a ogni nuova versione.
+
+In ogni caso: i download vogliono l'app aperta. Per mandare un link da un'altra app, crea un Comando rapido che apre
+`ump://add?url=` seguito dall'URL condiviso.
 </details>
 
 ## ❤️ Sostieni il progetto

@@ -3,8 +3,8 @@ using UltimateMP3Player.Core;
 
 namespace UltimateMP3Player.Services;
 
-// An iPhone app can't install itself: SideStore installs the new versions (it reads the source attached to every GitHub
-// release). Here the check only says whether there's a newer one, so the settings can point to SideStore.
+// An iPhone app can't install itself: the new versions come from the installer on a computer, or from SideStore (it reads the
+// source attached to every GitHub release). Here the check only says whether there's a newer one, so the settings can point there.
 public sealed class Updater : Observable
 {
     public const string AssetName = "UltimateMP3Player-ios.ipa";
@@ -32,7 +32,7 @@ public sealed class Updater : Observable
             if (manual) Status = L.T("Checking for updates…");
             var latest = await LatestAsync();
             if (latest != null && Norm(latest) > Norm(AppInfo.Version))
-                Status = L.F("Version {0} is out: update it from SideStore (My Apps › Update).", latest.ToString(3));
+                Status = L.F("Version {0} is out: update it with the installer on your computer, or from SideStore (My Apps › Update).", latest.ToString(3));
             else Status = manual ? L.F("You already have the latest version ({0}).", AppInfo.VersionText) : null;
         }
         catch (Exception ex)

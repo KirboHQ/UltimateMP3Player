@@ -957,6 +957,22 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ==================================================== the app on an iPhone -->
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="connect" Padding="22" Tag="whole"
+                        views:SettingsView.Keywords="{local:T 'install iphone ipad ios apple id sideload sidestore xtool'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Put the app on an iPhone'}" Classes="card-title"/>
+                        <TextBlock Text="{local:T 'A small separate program does it from this computer: the cable, your Apple ID and a few taps. It also renews the app every 7 days.'}"
+                                   Classes="hint" Margin="0,-8,0,14"/>
+                        <Button HorizontalAlignment="Left" Theme="{StaticResource PrimaryButton}" Command="{Binding InstallOnIPhoneCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{local:Icon E8EA}" Classes="glyph"/>
+                                <TextBlock Text="{local:T 'Get the installer…'}" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+
                 <!-- ==================================================== listen together -->
                 <Border Theme="{StaticResource Card}" views:SettingsView.Group="connect" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'listen together room rooms friends host ahead'}">
                     <StackPanel>

@@ -276,6 +276,8 @@ public sealed class SettingsViewModel : Observable
     public PhoneLinkViewModel PhoneLink => _main.PhoneLink;
     public ComputerLinkViewModel ComputerLink => _main.ComputerLink;
     public ICommand ConnectPhoneCommand => new RelayCommand(() => PhoneLinkViewModel.ShowWindow?.Invoke(_main));
+    // A program of its own, with its own releases: a release of it here would become this app's latest one.
+    public ICommand InstallOnIPhoneCommand => new RelayCommand(() => MainViewModel.OpenUrl("https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool"));
     public ICommand ImportPackCommand { get; }
     public ICommand SelectThemeCommand { get; }
     public ICommand RenameArtistCommand { get; }

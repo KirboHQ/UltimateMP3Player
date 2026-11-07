@@ -51,7 +51,7 @@ public partial class SettingsPage : UserControl, IPage
             });
         Search();
 #if IOS_APP
-        // The iPhone: iOS chooses the output (Control Center), the updates of the app come through SideStore (yt-dlp's
+        // The iPhone: iOS chooses the output (Control Center), the updates of the app come from outside it (yt-dlp's
         // still from here), the music is in the Files app, and an app swiped away is simply ended by iOS.
         foreach (var c in new Control[] { OutputRow, OutputLine, AutoUpdateSwitch, CloseRow, CloseLine })
             c.IsVisible = false;

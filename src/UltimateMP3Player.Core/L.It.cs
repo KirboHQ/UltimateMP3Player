@@ -1725,7 +1725,7 @@ public static partial class L
         ["This version of the app can't make MP3s: choose “Original” as the audio quality."] =
             "Questa versione dell'app non sa creare MP3: scegli «Originale» come qualità dell'audio.",
         ["This format can't be played on iPhone ({0})."] = "Questo formato non si può ascoltare su iPhone ({0}).",
-        ["Version {0} is out: update it from SideStore (My Apps › Update)."] = "È uscita la versione {0}: aggiornala da SideStore (Le mie app › Aggiorna).",
+        ["Version {0} is out: update it with the installer on your computer, or from SideStore (My Apps › Update)."] = "È uscita la versione {0}: aggiornala con il programma sul computer, o da SideStore (Le mie app › Aggiorna).",
         ["In the Files app: On My iPhone › Ultimate MP3 Player › Music. If you uninstall the app, the music is deleted."] =
             "Nell'app File: Sul mio iPhone › Ultimate MP3 Player › Music. Se disinstalli l'app, la musica viene cancellata.",
         ["Light or dark"] = "Chiaro o scuro",
@@ -2540,5 +2540,9 @@ public static partial class L
         ["listen together room rooms friends host ahead"] = "ascolta insieme stanza stanze amici host anticipo",
         ["p2p share send exchange passed host"] = "p2p condividi invia scambia passati host",
         ["network lan radmin vpn firewall"] = "rete lan radmin vpn firewall",
+        ["install iphone ipad ios apple id sideload sidestore xtool"] = "installa iphone ipad ios apple id sideload sidestore xtool",
+        ["Put the app on an iPhone"] = "Metti l'app su un iPhone",
+        ["A small separate program does it from this computer: the cable, your Apple ID and a few taps. It also renews the app every 7 days."] = "Un piccolo programma a parte lo fa da questo computer: il cavo, il tuo Apple ID e pochi tocchi. Rinnova anche l'app ogni 7 giorni.",
+        ["Get the installer…"] = "Scarica il programma…",
     };
 }
