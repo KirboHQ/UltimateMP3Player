@@ -140,6 +140,9 @@ Security** and click **Open Anyway**. If macOS says the app "is damaged", run on
 
 Open the APK on the phone and allow installing apps from your browser when asked. If Play Protect says the app is
 unknown, tap **More details → Install anyway**. New versions download on Wi-Fi and Android asks before installing them.
+
+**In the car:** Android Auto hides apps that don't come from Google Play until you allow them, once. In the phone's
+Android Auto settings tap **Version** 10 times and confirm, then ⋮ → **Developer settings** → **Unknown sources**.
 </details>
 
 <details>

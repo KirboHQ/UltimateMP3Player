@@ -22,6 +22,9 @@
               android:exported="false" android:grantUriPermissions="true">
       <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
     </provider>
+    <!-- Android Auto: the app's library on the car's screen (Platform\CarService.cs) -->
+    <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
+    <meta-data android:name="androidx.car.app.TintableAttributionIcon" android:resource="@drawable/ic_notification" />
   </application>
 
   <queries>
@@ -30,5 +33,7 @@
       <action android:name="android.intent.action.VIEW" />
       <data android:scheme="https" />
     </intent>
+    <!-- whether the phone is showing on a car: Android Auto says it here (PlaybackService) -->
+    <provider android:authorities="androidx.car.app.connection" />
   </queries>
 </manifest>

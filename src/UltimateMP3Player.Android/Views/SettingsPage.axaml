@@ -595,6 +595,19 @@
                 </StackPanel>
             </Border>
 
+            <!-- ============================================================ the car (not on the iPhone: SettingsPage) -->
+            <TextBlock x:Name="CarTitle" Text="{local:T 'IN THE CAR'}" Classes="card-title"/>
+            <Border x:Name="CarCard" Classes="card" views:SettingsPage.Group="integrations" views:SettingsPage.Keywords="{local:T 'car android auto driving head unit unknown sources developer'}">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Click="Car_Click">
+                        <StackPanel>
+                            <TextBlock Text="Android Auto" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Your library on the car’s screen. Android Auto hides apps that don’t come from Google Play until you allow them: tap to see how.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+
             <!-- ============================================================ integrations: the plays to Last.fm and ListenBrainz -->
             <TextBlock Text="{local:T INTEGRATIONS}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Group="integrations" DataContext="{Binding Scrobbling}" views:SettingsPage.Keywords="{local:T 'lastfm last.fm listenbrainz scrobble scrobbling integrations'}">

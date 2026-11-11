@@ -277,6 +277,17 @@ public sealed class ComputerLinkViewModel : Observable
     private TrackViewModel? Vm(LinkTrack? lt)
     {
         if (lt == null) return null;
+        // A radio this phone knows: its own (the heart, the mark in its list), with the song on air there.
+        if (Station.Is(lt.Id) && _main.Stations.TrackOf(lt.Id) is { } station)
+        {
+            var radio = _main.Vm(station);
+            if (lt.Artist != null && station.Artist != lt.Artist)
+            {
+                station.Artist = lt.Artist;
+                radio.Refresh();
+            }
+            return radio;
+        }
         if (lt.Yours != null && (_main.Library.Get(lt.Yours) ?? _main.Radio.Track(lt.Yours)) is { } mine) return _main.Vm(mine);
         if (_shared?.Here(lt.Id) is { } here && _main.Get(here) is { } shown) return _main.Vm(shown);
         if (_shared?.FindLocal(lt) is { } same) return _main.Vm(same);
@@ -330,7 +341,8 @@ public sealed class ComputerLinkViewModel : Observable
     {
         var p = _main.Player;
         if (!_follow.IsEnabled || _link.ClockSamples == 0 || _state.At == 0) return;
-        if (_state.Current is not { } cur || Vm(cur) is not { } vm)
+        // (a radio has no file to ask for: it's heard on the computer)
+        if (_state.Current is not { } cur || Station.Is(cur.Id) || Vm(cur) is not { } vm)
         {
             if (p.RoomLoadedId != null) p.RoomStop();
             return;
@@ -455,6 +467,8 @@ public sealed class ComputerLinkViewModel : Observable
     // A list from a song (index -1: all of it, shuffled if flag; otherwise flag: the rest follows anyway).
     public void PlayList(IEnumerable<Track> tracks, int index, string? name, bool flag)
         => _link.Send(new Msg { T = "play", Tracks = tracks.Select(Describe).ToList(), Index = index, Text = name, Flag = flag });
+
+    public void PlayStations(List<Station> stations, int index, string name) => _link.Send(new Msg { T = "stations", Stations = stations, Index = index, Text = name });
 
     public void PlaySingle(Track t) => _link.Send(new Msg { T = "single", Tracks = new() { Describe(t) } });
 

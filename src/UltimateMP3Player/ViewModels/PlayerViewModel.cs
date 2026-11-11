@@ -122,7 +122,7 @@ public sealed class PlayerViewModel : Observable
         Restore(adopt);
         _queue.Changed += () =>
         {
-            if (UpNextVisible) RefreshUpNext();
+            if (UpNextVisible || UpNextWanted) RefreshUpNext();
             SaveState();
             _main.Radio.Refresh();
             ApplyBend();
@@ -208,7 +208,16 @@ public sealed class PlayerViewModel : Observable
         _audio.StreamRefused -= OnStreamRefused;
     }
 
-    private void OnFailed(string msg) => _main.Toast(msg);
+    private void OnFailed(string msg) => Say(msg);
+
+    // Music that couldn't start or go on, and why. Android Auto shows it on the car's screen: a toast is on a phone in a pocket.
+    public event Action<string>? Problem;
+
+    internal void Say(string text)
+    {
+        _main.Toast(text);
+        Problem?.Invoke(text);
+    }
 
     public ICommand PlayPauseCommand { get; }
     public ICommand NextCommand { get; }
@@ -376,11 +385,13 @@ public sealed class PlayerViewModel : Observable
             if (old != null) old.IsCurrent = false;
             if (value != null) value.IsCurrent = true;
             OnChanged(nameof(HasTrack), nameof(ShowNowPlaying), nameof(CanGenerate), nameof(ContextName), nameof(IsTemporary), nameof(CanAddToLibrary), nameof(ShowNothingPlaying), nameof(IsLive), nameof(DurationText));
+            if (_linkSilent) ApplyVolume();
         }
     }
 
     // An internet radio playing (StationsViewModel): no end, no seeking.
-    public bool IsLive => Current != null && Station.Is(Current.Id);
+    // (driving a computer: the stand-in of the radio playing there, "pc-st-…")
+    public bool IsLive => Current != null && (Station.Is(Current.Id) || _remote != null && Current.Id.StartsWith("pc-" + Station.Prefix, StringComparison.Ordinal));
 
     public bool HasTrack => Current != null;
     // The song playing isn't saved on the device: a suggested one, one of a link heard without saving it, or a song of the
@@ -517,7 +528,8 @@ public sealed class PlayerViewModel : Observable
     public string VolumeGlyph => Muted || Volume <= 0 ? "" : Volume < 0.34 ? "" : Volume < 0.67 ? "" : "";
 
     // (driving a computer: its volume, for the music heard here too; LinkSilent: the music is heard on the phone only)
-    private void ApplyVolume() => _audio.Volume = Muted || _silenced || _linkSilent ? 0 : (float)Math.Pow(Volume, 2);
+    // A radio has no file to send to the phone: it's heard here whatever the choice, or it would be heard nowhere.
+    private void ApplyVolume() => _audio.Volume = Muted || _silenced || _linkSilent && !IsLive ? 0 : (float)Math.Pow(Volume, 2);
 
     // Phones in a room: headphones pulled out, a call, another app's music silence only this phone (the room goes on for
     // the others) until the play button, in the app or on the lock screen. Not kept like the mute (phones have no mute button).
@@ -867,14 +879,21 @@ public sealed class PlayerViewModel : Observable
         if (_queue.Current is { } id && TrackOf(id) is { } t) _ = Load(t, true);
     }
 
-    // Internet radios (StationsViewModel): the list one was chosen in is the queue, next and previous go through it. Only on
-    // this device: not in a room, not while the phone drives the computer. False when it didn't start.
+    // Internet radios (StationsViewModel): the list one was chosen in is the queue, next and previous go through it. Not in
+    // a room; driving a computer, the computer plays them (they have no file to hear here). False when it didn't start.
     public bool PlayStations(IList<string> ids, int start, string name)
     {
-        if (_room != null || _remote != null)
+        if (_room != null)
         {
-            _main.Toast(L.T("Radios play only on this device: not in a room, nor while the phone drives the computer"));
+            Say(L.T("Radios don't play in a room"));
             return false;
+        }
+        if (_remote != null)
+        {
+            if (_main.Stations.StationOf(ids[start]) is not { } chosen) return false;
+            var stations = ids.Select(_main.Stations.StationOf).OfType<Station>().ToList();
+            _remote.PlayStations(stations, stations.IndexOf(chosen), name);
+            return true;
         }
         _queue.Play(ids, start, "stations", name, fill: false);
         if (_queue.Current is { } id && TrackOf(id) is { } t) _ = Load(t, true);
@@ -976,7 +995,13 @@ public sealed class PlayerViewModel : Observable
             _remote.Do("generate");
             return;
         }
-        // Suggested songs: the ones already found come back (an emptied queue), and more of them, from the last one.
+        // Suggested songs: a new queue, picked at random again, like the song playing.
+        if (_queue.Radio && _queue.ContextId?.StartsWith("radio:", StringComparison.Ordinal) == true)
+        {
+            PlayRadio(Current);
+            return;
+        }
+        // The artist's songs: the ones already found come back (an emptied queue), and more of them.
         if (_queue.Radio)
         {
             _queue.Generate();
@@ -1122,7 +1147,7 @@ public sealed class PlayerViewModel : Observable
             if (version != _loadVersion) return;
             _audio.Pause();
             IsPlaying = false;
-            _main.Toast(ex is FileNotFoundException
+            Say(ex is FileNotFoundException
                 ? L.F("The file for “{0}” no longer exists: it was moved or deleted.", t.Title)
                 : L.F("Couldn't play “{0}”: {1}", t.Title, ex.Message));
         }
@@ -1137,7 +1162,7 @@ public sealed class PlayerViewModel : Observable
         _main.Profile.Data.LastTrack = vm.Id;
         _main.Profile.Save();
         _main.OnCurrentChanged();
-        if (UpNextVisible) RefreshUpNext();
+        if (UpNextVisible || UpNextWanted) RefreshUpNext();
     }
 
     // ------------------------------------------------------------------ suggested songs
@@ -1216,9 +1241,22 @@ public sealed class PlayerViewModel : Observable
         _waiting = null;
         OnWaitChanged();
         var title = Current?.Title;
-        _main.Toast(_main.Radio.IsGone(id) ? L.F("“{0}” is no longer available online and I couldn't find it elsewhere: skipping to the next one.", title)
-            : _main.Radio.IsOffline(id)
-                ? L.F("“{0}” isn't saved on your device and I can't download it: check your connection. Skipping to the next one.", title)
+        if (_main.Radio.IsOffline(id))
+        {
+            // No connection: the other songs in the cloud would fail one after the other, and each would leave the queue. On to the
+            // first one saved on the device; with none, the music stops and says why, the queue as it was.
+            int saved = _queue.Upcoming(150).Select(e => e.Id).ToList().FindIndex(next => TrackOf(next) is { } song && (song.AudioPath ?? _main.Radio.PathFor(next)) != null);
+            if (saved >= 0)
+            {
+                Say(L.F("“{0}” isn't saved on your device and I can't download it: check your connection. Skipping to the next one.", title));
+                _ = JumpTo(saved);
+                return;
+            }
+            IsPlaying = false;
+            Say(L.F("“{0}” isn't saved on your device and I can't download it: check your connection.", title));
+            return;
+        }
+        Say(_main.Radio.IsGone(id) ? L.F("“{0}” is no longer available online and I couldn't find it elsewhere: skipping to the next one.", title)
             : L.F("“{0}” can't be downloaded: on to the next one.", title));
         _queue.Forget(id);
         _ = Next(false);
@@ -1513,7 +1551,7 @@ public sealed class PlayerViewModel : Observable
                 return;
             }
             Seek(0);
-            if (!auto && Current != null) _main.Toast(L.T("No more songs in the queue."));
+            if (!auto && Current != null) Say(L.T("No more songs in the queue."));
             return;
         }
         await Load(t, true);
@@ -1558,7 +1596,7 @@ public sealed class PlayerViewModel : Observable
             _audio.Close();
             _opened = false;
             IsPlaying = false;
-            _main.Toast(L.F("“{0}” isn't broadcasting right now: try again later, or choose another station.", Current!.Title));
+            Say(L.F("“{0}” isn't broadcasting right now: try again later, or choose another station.", Current!.Title));
             _main.Host.OnTrackChanged();
             return;
         }
@@ -1835,7 +1873,7 @@ public sealed class PlayerViewModel : Observable
             if (vm == null) Duration = 0;
             _main.OnCurrentChanged();
             _main.Host.OnTrackChanged();
-            if (UpNextVisible) RefreshUpNext();
+            if (UpNextVisible || UpNextWanted) RefreshUpNext();
         }
         if (!_opened || _roomLoaded != _room?.Session?.Current?.Id)
             if (duration > 0) Duration = duration;
@@ -1934,7 +1972,8 @@ public sealed class PlayerViewModel : Observable
     // Over the player: where the music plays.
     public string? RemoteText => _remote == null ? null
         : _remote.IsReconnecting ? L.F("Reconnecting to {0}…", _remote.ComputerName)
-        : _main.Shared?.Audio switch
+        // (a radio is heard on the computer whatever the choice)
+        : (IsLive ? LinkAudio.Computer : _main.Shared?.Audio) switch
         {
             LinkAudio.Phone => L.F("Playing on this phone · {0}", _remote.ComputerName),
             LinkAudio.Both => L.F("Playing here and on {0}", _remote.ComputerName),
@@ -2034,6 +2073,7 @@ public sealed class PlayerViewModel : Observable
         if (Current != current)
         {
             Current = current;
+            OnRemoteLink();
             _main.OnCurrentChanged();
             _main.Host.OnTrackChanged();
         }
@@ -2107,6 +2147,9 @@ public sealed class PlayerViewModel : Observable
         get => _upNextVisible;
         set { if (Set(ref _upNextVisible, value) && value) RefreshUpNext(); }
     }
+
+    // The car's screen shows it too, whatever the app's own screen is doing.
+    public bool UpNextWanted { get; set; }
 
     public void RefreshUpNext()
     {

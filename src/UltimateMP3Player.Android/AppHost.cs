@@ -57,7 +57,13 @@ public sealed class AppHost : Observable
         Updates = new Updater();
         Presence = new DiscordPresence();
         Lyrics = new LyricsService(this);
+#if ANDROID_APP
+        // (the car's service holds it before all of this starts)
+        Media = MediaControls.Shared;
+        CarLibrary.Attach(this);
+#else
         Media = new MediaControls();
+#endif
         Media.PlayPressed += () => Session?.SetPlaying(true);
         Media.PausePressed += () => Session?.SetPlaying(false);
         Media.PlayPausePressed += () => Session?.TogglePlay();
@@ -177,10 +183,25 @@ public sealed class AppHost : Observable
             Session.Profile.Flush();
         }
         Session = new MainViewModel(this, Profile.Get(info));
+        Settings.LastProfile = info.Id;
+        Settings.Save();
         ApplyTheme();
         View?.Attach(Session);
         OnTrackChanged();
         OnPlaybackChanged();
+    }
+
+    // Music asked for with nobody at the screen (the car), so nothing can be asked: the profile the app would open
+    // by itself, or the last one used. Null when the terms are still to be accepted: only the screen can do that.
+    public MainViewModel? OpenWithoutAsking()
+    {
+        if (Session != null) return Session;
+        if (!TermsAccepted) return null;
+        var list = Profiles.Profiles;
+        OpenProfile(StartupProfile() ?? list.FirstOrDefault(p => p.Id == Settings.LastProfile) ?? list[0]);
+        if (!_visible) Session!.Player.SetVisible(false);
+        _ = EnsureEnginesAsync();
+        return Session;
     }
 
     // "Who's listening?": the profiles' page (Netflix-like), also to add and edit them.
@@ -293,6 +314,9 @@ public sealed class AppHost : Observable
     public void OnTrackChanged()
     {
         var c = Session?.Player.Current;
+#if ANDROID_APP
+        Media.SetId(c?.Id);
+#endif
         Media.SetTrack(c?.Title, c?.T.DisplayArtist, c?.Album, c is { T.HasCover: true } ? AppPaths.TrackCover(c.Id) : null, c?.T.Duration ?? 0);
         Media.SetFavorite(c?.IsFavorite == true);
         Media.SetTemporary(Session?.Player.IsTemporary == true, c?.InLibrary == true);

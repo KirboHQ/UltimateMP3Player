@@ -44,18 +44,32 @@ public partial class App : Application
                     Lifecycle.Hook(this);
 #endif
                 }
-                // The screen (again, if the app was closed while the music played on).
-                var view = Host.View ?? new MainView(Host);
-                Host.View = view;
-                single.MainView = view;
+#if ANDROID_APP
+                if (!PhoneBoot.WithoutScreen)
+#endif
+                    ShowScreen(single);
             }
-            catch (Exception ex)
-            {
-                Log(ex);
-                single.MainView = new TextBlock { Text = L.T("Ultimate MP3 Player couldn't start:") + "\n\n" + ex.Message, Margin = new Thickness(24, 80) };
-            }
+            catch (Exception ex) { ShowFailure(single, ex); }
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // The screen (again, if the app was closed while the music played on).
+    public static void ShowScreen(ISingleViewApplicationLifetime single)
+    {
+        try
+        {
+            var view = Host.View ?? new MainView(Host);
+            Host.View = view;
+            single.MainView = view;
+        }
+        catch (Exception ex) { ShowFailure(single, ex); }
+    }
+
+    private static void ShowFailure(ISingleViewApplicationLifetime single, Exception ex)
+    {
+        Log(ex);
+        single.MainView = new TextBlock { Text = L.T("Ultimate MP3 Player couldn't start:") + "\n\n" + ex.Message, Margin = new Thickness(24, 80) };
     }
 
     // A link, a pack, a tap on a notification: now, or once the profile is open.

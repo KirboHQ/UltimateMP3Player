@@ -237,7 +237,9 @@ public static class ErrorText
             return new EngineException(L.T("This content isn't available (removed or doesn't exist)."), stderr) { Gone = true };
         if (Has("403", "forbidden"))
             return new EngineException(L.T("The site denied access (error 403)."), stderr) { Forbidden = true };
-        if (Has("getaddrinfo", "failed to resolve", "name or service not known", "timed out", "connection refused", "network is unreachable", "no connection"))
+        // (Android's resolver says it its own way, with the phone in airplane mode)
+        if (Has("getaddrinfo", "failed to resolve", "name or service not known", "no address associated with hostname", "temporary failure in name resolution",
+                "timed out", "connection refused", "network is unreachable", "network is down", "no connection"))
             return new EngineException(L.T("Couldn't reach the site: check your internet connection."), stderr) { Offline = true };
         if (Has("is not a valid url", "invalid url"))
             return new EngineException(L.T("The link isn't valid."), stderr);

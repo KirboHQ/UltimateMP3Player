@@ -69,6 +69,15 @@ public static class Http
         return (final, resp.Content.Headers.ContentType?.MediaType, resp.Content.Headers.ContentLength);
     }
 
+    // What a link answers (only its first byte asked for).
+    public static async Task<HttpStatusCode> StatusAsync(string url, IDictionary<string, string>? headers, CancellationToken ct)
+    {
+        using var req = Request(HttpMethod.Get, url, null, null, headers);
+        req.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 0);
+        using var resp = await Client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+        return resp.StatusCode;
+    }
+
     public static async Task DownloadFileAsync(string url, string path, IDictionary<string, string>? headers,
         Action<long, long?>? progress, CancellationToken ct, string? referer = null, long chunk = 0)
     {

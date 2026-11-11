@@ -24,6 +24,13 @@ public sealed class PlaybackService : Service
     private static PlaybackService? _current;
     private bool _foreground;
     private NoisyReceiver? _noisy;
+    private CarReceiver? _car;
+
+    // In front while music asked for from outside (the car, the voice) is still on its way (Hold).
+    private static bool _holding;
+    private static int _holdVersion;
+    private const int HoldStep = 30_000;
+    private static readonly Handler Main = new(Looper.MainLooper!);
 
     // Driving a computer (Connect to computer): this phone is silent, so no audio focus and no pauses for its headphones.
     private static bool Remote => App.Host?.Session?.Player.IsRemote == true;
@@ -42,6 +49,12 @@ public sealed class PlaybackService : Service
         var filter = new IntentFilter(AudioManager.ActionAudioBecomingNoisy);
         if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu) RegisterReceiver(_noisy, filter, ReceiverFlags.NotExported);
         else RegisterReceiver(_noisy, filter);
+        // (Android Auto sends this one from its own app)
+        _car = new CarReceiver();
+        var car = new IntentFilter(CarReceiver.Updated);
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu) RegisterReceiver(_car, car, ReceiverFlags.Exported);
+        else RegisterReceiver(_car, car);
+        _car.Read();
     }
 
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
@@ -92,6 +105,7 @@ public sealed class PlaybackService : Service
     {
         if (_current == this) _current = null;
         try { if (_noisy != null) UnregisterReceiver(_noisy); } catch { }
+        try { if (_car != null) UnregisterReceiver(_car); } catch { }
         Focus.Abandon();
         base.OnDestroy();
     }
@@ -111,12 +125,45 @@ public sealed class PlaybackService : Service
         if (Remote) Focus.Abandon();
         // (muted: another app may play meanwhile)
         else if (c.IsPlaying && App.Host?.Session?.Player.Silenced != true) Focus.Request();
+        if (c.IsPlaying) _holding = false;
         if (_current is { } s)
         {
             s.Show(false);
             return;
         }
-        if (!c.IsPlaying && !Connected) return;
+        if (c.IsPlaying || Connected) Start();
+    }
+
+    // Music asked for from outside the app: a song in the cloud can take many seconds to start, and past the first ones Android 12+
+    // no longer lets the service come to the front (ForegroundServiceStartNotAllowedException, and the music is killed with the
+    // screen off). Now, inside the command, it does: in front from here until the music plays, or says why it doesn't (Release).
+    public static void Hold()
+    {
+        if (Connected) return;
+        _holding = true;
+        int version = ++_holdVersion;
+        if (_current is { } s) s.Show(false);
+        else Start();
+        Main.PostDelayed(() => HoldOver(version, 0), HoldStep);
+    }
+
+    // (a song still on its way keeps it, up to a few minutes: a slow connection, a long song being fetched)
+    private static void HoldOver(int version, int steps)
+    {
+        if (version != _holdVersion || !_holding) return;
+        if (steps < 10 && App.Host?.Session?.Player.IsWaiting == true) Main.PostDelayed(() => HoldOver(version, steps + 1), HoldStep);
+        else Release();
+    }
+
+    public static void Release()
+    {
+        if (!_holding) return;
+        _holding = false;
+        _current?.Show(false);
+    }
+
+    private static void Start()
+    {
         var ctx = Application.Context;
         try
         {
@@ -132,16 +179,16 @@ public sealed class PlaybackService : Service
         var c = App.Host?.Media;
         if (c == null || !c.HasTrack && !Connected)
         {
-            if (starting)
+            if (starting || _holding)
             {
                 // Asked to start with nothing to show: in front for a moment, as Android requires, then gone.
                 Front(MakeNotification(c));
             }
-            StopEverything();
+            if (!_holding) StopEverything();
             return;
         }
         var n = MakeNotification(c);
-        if (c.IsPlaying || starting || Connected) Front(n);
+        if (c.IsPlaying || starting || Connected || _holding) Front(n);
         else
         {
             if (_foreground)
@@ -240,13 +287,48 @@ public sealed class PlaybackService : Service
     {
         public override void OnReceive(Context? context, Intent? intent)
         {
-            if (intent?.Action != AudioManager.ActionAudioBecomingNoisy || Remote) return;
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            if (intent?.Action != AudioManager.ActionAudioBecomingNoisy || Remote || App.Host == null) return;
+            Avalonia.Threading.Dispatcher.UIThread.Post(GoQuiet);
+        }
+    }
+
+    private static void GoQuiet()
+    {
+        // In a room the music goes on for the others: this phone goes quiet instead.
+        if (App.Host?.Session?.Player is { InRoom: true } player) player.SilenceInRoom();
+        else App.Host?.Media.RaisePause();
+    }
+
+    // The phone unplugged from the car, or Android Auto closed: the music stops with it, as when headphones come off (the sound was
+    // going through Android Auto, so "becoming noisy" may never come). Android Auto says it through a broadcast and its provider;
+    // the broadcast only says to look. Written without androidx.car.app: these names are what that library itself uses.
+    private sealed class CarReceiver : BroadcastReceiver
+    {
+        public const string Updated = "androidx.car.app.connection.action.CAR_CONNECTION_UPDATED";
+        private const string Authority = "content://androidx.car.app.connection", Column = "CarConnectionState";
+        private int _state;
+
+        public override void OnReceive(Context? context, Intent? intent) => Read();
+
+        public void Read() => Task.Run(() =>
+        {
+            int now = Query();
+            Main.Post(() =>
             {
-                // In a room the music goes on for the others: this phone goes quiet instead.
-                if (App.Host?.Session?.Player is { InRoom: true } player) player.SilenceInRoom();
-                else App.Host?.Media.RaisePause();
+                bool gone = _state != 0 && now == 0;
+                _state = now;
+                if (gone && !Remote && App.Host != null) GoQuiet();
             });
+        });
+
+        private static int Query()
+        {
+            try
+            {
+                using var cursor = Application.Context.ContentResolver!.Query(Android.Net.Uri.Parse(Authority)!, new[] { Column }, null, null, null);
+                return cursor != null && cursor.MoveToNext() ? cursor.GetInt(cursor.GetColumnIndex(Column)) : 0;
+            }
+            catch { return 0; }
         }
     }
 }

@@ -235,6 +235,7 @@ public sealed class DownloadJob
         Report(JobPhase.Downloading, null, L.T("Connecting…"));
         if (target is AudioTarget && !sel.Merge && sel.Audio is { Url: not null, NeedsCookies: false } one)
         {
+            await AnswersAsync(one, ct);
             if (Engines.VideoDownloads && (one.IsM3u8 || one.Protocol is "https" or "http")) Streamable?.Invoke(new SongStream(one.Url, one.HeaderText));
             if (await DownloadFormat(one, temp, OnProgress, ct) is { } file) return file;
         }
@@ -285,6 +286,21 @@ public sealed class DownloadJob
 
     // One yt-dlp is enough: the format chosen is fetched from the link its analysis gave (a file in pieces, HLS through
     // ffmpeg), without starting yt-dlp again. Null when it doesn't work (yt-dlp then, as before).
+    // YouTube refuses its links for about two seconds after giving them (403, measured in November 2026). Asked right away,
+    // the song heard meanwhile and the download below both failed: the song waited for yt-dlp's download, ten seconds later.
+    private static async Task AnswersAsync(YtFormat f, CancellationToken ct)
+    {
+        if (f.IsM3u8 || !Uri.TryCreate(f.Url, UriKind.Absolute, out var uri) || !uri.Host.EndsWith(".googlevideo.com", StringComparison.OrdinalIgnoreCase)) return;
+        long until = Environment.TickCount64 + 5000;
+        try
+        {
+            while (await Http.StatusAsync(f.Url!, f.Headers, ct) == System.Net.HttpStatusCode.Forbidden && Environment.TickCount64 < until)
+                await Task.Delay(400, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { }
+    }
+
     private async Task<string?> DownloadFormat(YtFormat f, string temp, Action<DlProgress> progress, CancellationToken ct)
     {
         var path = Path.Combine(temp, "media." + (string.IsNullOrEmpty(f.Ext) ? "mka" : f.Ext));

@@ -385,6 +385,9 @@ public sealed class PhoneLinkViewModel : Observable
                 var ids = _main.Radio.AddFromPhone(m.Tracks ?? new List<LinkTrack>(), link.OtherName);
                 if (ids.Count > 0) p.PlayPhone(ids, m.Index, m.Text ?? link.OtherName, m.Flag);
                 break;
+            case "stations" when m.Stations != null:
+                _main.Stations.PlayFromPhone(m.Stations, m.Index, m.Text);
+                break;
             case "single":
                 if (First(m, link) is { } single) p.PlaySingle(single);
                 break;

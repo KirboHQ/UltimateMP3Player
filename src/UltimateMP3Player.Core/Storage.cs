@@ -256,6 +256,8 @@ public sealed class AppSettings
     public bool BackgroundHintSeen { get; set; }
     // Profile opened at startup, null = ask.
     public string? StartupProfile { get; set; }
+    // The last one opened on a phone: where music asked for with nobody at the screen goes (the car, the widget).
+    public string? LastProfile { get; set; }
     public bool AutoUpdateEngines { get; set; } = true;
     public DateTime? LastEngineUpdate { get; set; }
     public bool AutoUpdateApp { get; set; } = true;

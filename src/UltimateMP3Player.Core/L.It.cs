@@ -2209,8 +2209,7 @@ public static partial class L
         ["“{0}” saved to your radios"] = "“{0}” salvata nelle tue radio",
         ["Remove from your radios"] = "Togli dalle tue radio",
         ["Save to your radios"] = "Salva nelle tue radio",
-        ["Radios play only on this device: not in a room, nor while the phone drives the computer"] =
-            "Le radio suonano solo su questo dispositivo: non in una stanza, né mentre il telefono comanda il computer",
+        ["Radios don't play in a room"] = "Le radio non suonano in una stanza",
         ["The station doesn't send MP3"] = "La radio non trasmette in MP3",
         ["Your radios"] = "Le tue radio",
         ["Save the radios you like with the heart: they stay here and in Home, ready to play live."] =
@@ -2544,5 +2543,15 @@ public static partial class L
         ["Put the app on an iPhone"] = "Metti l'app su un iPhone",
         ["A small separate program does it from this computer: the cable, your Apple ID and a few taps. It also renews the app every 7 days."] = "Un piccolo programma a parte lo fa da questo computer: il cavo, il tuo Apple ID e pochi tocchi. Rinnova anche l'app ogni 7 giorni.",
         ["Get the installer…"] = "Scarica il programma…",
+        // Android Auto
+        ["IN THE CAR"] = "IN AUTO",
+        ["Open the app"] = "Apri l'app",
+        ["car android auto driving head unit unknown sources developer"] = "auto macchina android auto guida origini sconosciute sviluppatore",
+        ["Your library on the car’s screen. Android Auto hides apps that don’t come from Google Play until you allow them: tap to see how."] = "La tua libreria sullo schermo dell'auto. Android Auto nasconde le app che non vengono da Google Play finché non le consenti: tocca per vedere come.",
+        ["Android Auto hides apps that don’t come from Google Play until you allow them, once:\n\n1. On the phone, open Settings and search for Android Auto.\n2. Scroll down to Version and tap it 10 times, then confirm.\n3. In the menu at the top right (⋮), open Developer settings.\n4. Turn on Unknown sources.\n\nThen connect the car: the app is among the media apps (if not, add it from Customize launcher). You can also ask the Assistant: “Play Road Trip on Ultimate MP3 Player”."] = "Android Auto nasconde le app che non vengono da Google Play finché non le consenti, una volta sola:\n\n1. Sul telefono apri Impostazioni e cerca Android Auto.\n2. Scorri fino a Versione e toccala 10 volte, poi conferma.\n3. Nel menu in alto a destra (⋮) apri Impostazioni sviluppatore.\n4. Attiva Origini sconosciute.\n\nPoi collega l'auto: l'app è tra quelle multimediali (se non c'è, aggiungila da Personalizza Avvio app). Puoi anche chiederlo all'Assistente: «Metti Road Trip su Ultimate MP3 Player».",
+        ["Open Ultimate MP3 Player on your phone to start."] = "Apri Ultimate MP3 Player sul telefono per iniziare.",
+        ["This is no longer in your library."] = "Non è più nella tua libreria.",
+        ["I can't find “{0}” in your library."] = "Non trovo «{0}» nella tua libreria.",
+        ["“{0}” isn't saved on your device and I can't download it: check your connection."] = "«{0}» non è salvato sul dispositivo e non riesco a scaricarlo: controlla la connessione.",
     };
 }

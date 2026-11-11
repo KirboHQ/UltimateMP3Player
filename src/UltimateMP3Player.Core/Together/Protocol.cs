@@ -200,6 +200,8 @@ public sealed class Msg
     // "Connect phone" (Core/Link).
     public LinkState? State { get; set; }
     public List<LinkTrack>? Tracks { get; set; }
+    // Internet radios chosen on the phone, for the computer to play ("stations").
+    public List<Station>? Stations { get; set; }
     public List<LinkRow>? Rows { get; set; }
     public PackManifest? Pack { get; set; }
     public PhoneAd? Ad { get; set; }

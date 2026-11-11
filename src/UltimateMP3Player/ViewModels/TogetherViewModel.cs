@@ -808,9 +808,12 @@ public sealed class TogetherViewModel : Observable
 #endif
         : L.T("Only people with permission can add songs: the host decides.");
 
-    private void Deny(string key)
+    private void Deny(string text)
     {
-        OnNotice(key);
+        // A burst of refusals (e.g. arrow keys held) shows once. The player says it: a button refused in the car needs its screen, not a toast.
+        if ((DateTime.Now - _lastDeny).TotalSeconds < 2) return;
+        _lastDeny = DateTime.Now;
+        _main.Player.Say(text);
     }
 
     public string Denied(Perm p) => L.T(p switch
@@ -1013,6 +1016,10 @@ public sealed class TogetherViewModel : Observable
             _main.Toast(L.T("The room's queue is full."));
             return;
         }
+#if ANDROID_APP
+        // In the car nobody is looking at the phone, so a long list can't ask: its first songs go in.
+        if (list.Count > 12 && UltimateMP3Player.Platform.CarLibrary.Active) list = list.Take(12).ToList();
+#endif
         if (list.Count > 12 && !await Dialogs.ConfirmAsync(L.T("Add to the room?"),
                 L.F("{0} songs from “{1}” will go into the room's queue{2}.", list.Count, listName, shuffle ? " " + L.T("shuffled") : ""),
                 L.T("Add"))) return;

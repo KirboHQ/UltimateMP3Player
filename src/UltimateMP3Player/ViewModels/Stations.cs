@@ -271,7 +271,21 @@ public sealed class StationsViewModel : Observable
         if (_main.Player.PlayStations(ids, start, L.T("Radio"))) RadioBrowser.Clicked(station.S.Id);
     }
 
+    // Radios chosen on the connected phone (Connect phone): known here from now on, played here.
+    public void PlayFromPhone(List<Station> stations, int start, string? name)
+    {
+        var ids = new List<string>();
+        foreach (var s in stations.Where(s => s.Id.Length > 0 && s.Url.StartsWith("http", StringComparison.OrdinalIgnoreCase)))
+        {
+            _known[s.Id] = s;
+            ids.Add(TrackOf(s).Id);
+        }
+        if (ids.Count > 0) _main.Player.PlayStations(ids, Math.Clamp(start, 0, ids.Count - 1), name ?? L.T("Radio"));
+    }
+
     // ------------------------------------------------------------------ as the player knows them
+
+    public Station? StationOf(string trackId) => Find(trackId);
 
     private Station? Find(string trackId)
     {

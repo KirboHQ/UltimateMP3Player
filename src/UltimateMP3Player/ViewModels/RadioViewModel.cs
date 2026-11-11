@@ -95,9 +95,10 @@ public sealed class RadioViewModel : Observable
     // Couldn't be fetched because there's no connection.
     public bool IsOffline(string id) => _fetcher.IsOffline(id);
     public FileStatus? StatusOf(string id) => _fetcher.StatusOf(id);
-    // Still downloading, already heard from its site (Settings › Start songs while they download). Not while connected to
-    // the phone: the other device needs the file anyway.
-    public SongStream? StreamOf(string id) => _main.Host.Settings.PlayWhileDownloading && _main.Shared == null ? _fetcher.StreamOf(id) : null;
+    // Still downloading, already heard from its site (Settings › Start songs while they download). Connected to the phone,
+    // only with the music heard here: a phone playing along needs the whole file, and would start in the middle of the song.
+    public SongStream? StreamOf(string id) => _main.Host.Settings.PlayWhileDownloading && (_main.Shared == null || _main.Shared.Audio == LinkAudio.Computer)
+        ? _fetcher.StreamOf(id) : null;
     public void DropStream(string id) => _fetcher.DropStream(id);
 
     // A song of the library heard from its link: not saved on the device (or its file is gone), with a link to get it.

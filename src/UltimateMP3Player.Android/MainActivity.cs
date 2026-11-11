@@ -86,12 +86,11 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         Current = this;
-        // Avalonia sets AppCompat's night mode to the look it shows (for the system bars), and from then this window reports
-        // that one instead of the device's: "same as the device" stayed on the first look until a restart. The system's own
-        // settings still say what the device shows.
-        Themes.DeviceLook = () => (Android.Content.Res.Resources.System!.Configuration!.UiMode & Android.Content.Res.UiMode.NightMask) == Android.Content.Res.UiMode.NightYes
-            ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light;
+        PhoneBoot.FollowDevice();
         base.OnCreate(savedInstanceState);
+        // The app was started for the car, with no screen (PhoneBoot): the music goes on, the screen is made now.
+        if (App.Host is { View: null } && Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.ISingleViewApplicationLifetime single)
+            App.ShowScreen(single);
         PreferFastestMode();
         Take(Intent);
     }

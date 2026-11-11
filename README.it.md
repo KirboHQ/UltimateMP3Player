@@ -142,6 +142,10 @@ sicurezza** e clicca **Apri comunque**. Se macOS dice che l'app "è danneggiata"
 Apri l'APK dal telefono e, quando te lo chiede, consenti l'installazione di app dal browser. Se Play Protect dice che
 l'app è sconosciuta, premi **Altri dettagli → Installa comunque**. Le nuove versioni si scaricano con il Wi-Fi e Android
 chiede prima di installarle.
+
+**In auto:** Android Auto nasconde le app che non vengono da Google Play finché non le consenti, una volta sola. Nelle
+impostazioni di Android Auto sul telefono tocca **Versione** 10 volte e conferma, poi ⋮ → **Impostazioni sviluppatore** →
+**Origini sconosciute**.
 </details>
 
 <details>

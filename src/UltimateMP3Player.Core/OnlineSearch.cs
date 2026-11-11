@@ -431,20 +431,22 @@ public static partial class OnlineSearchServices
     // ------------------------------------------------------------------ similar songs (the suggested queue)
 
     // Songs like the seed, without the seed itself and without doubles: from its own site first, every site taking
-    // turns, or the site chosen (the others when it has nothing).
+    // turns, or the site chosen (the others when it has nothing). The sites give the same list every time, so the songs
+    // are picked at random among up to 100 (SoundCloud gives 50): the same song, or the generate button, brings another queue.
     public static async Task<List<SearchHit>> SimilarAsync(RadioSeed seed, string source, int limit, CancellationToken ct)
     {
+        int pool = Math.Max(limit, Math.Min(100, limit * 4));
         var hits = new List<SearchHit>();
         if (source == RadioSources.Mix)
         {
-            var each = await Task.WhenAll(RadioSources.Sites.Select(s => SimilarOn(s, seed, limit, ct)));
+            var each = await Task.WhenAll(RadioSources.Sites.Select(s => SimilarOn(s, seed, pool, ct)));
             hits = each.SelectMany(h => h).OrderBy(h => h.Rank).ThenBy(h => Array.IndexOf(RadioSources.Sites, h.Service)).ToList();
         }
         else
             foreach (var s in RadioSources.Order(source, seed))
-                if ((hits = await SimilarOn(s, seed, limit, ct)).Count > 0) break;
+                if ((hits = await SimilarOn(s, seed, pool, ct)).Count > 0) break;
         var seen = new HashSet<string> { SongMeta.Key(seed.Title, seed.Artist) };
-        return hits.Where(h => seen.Add(SongMeta.Key(h.Title, h.Artist))).Take(limit).ToList();
+        return hits.Where(h => seen.Add(SongMeta.Key(h.Title, h.Artist))).OrderBy(_ => Random.Shared.Next()).Take(limit).ToList();
     }
 
     private static async Task<List<SearchHit>> SimilarOn(string service, RadioSeed seed, int limit, CancellationToken ct)
@@ -476,28 +478,37 @@ public static partial class OnlineSearchServices
             playlistId = "RDAMVM" + id,
             isAudioOnly = true,
         });
-        using var doc = JsonDocument.Parse(await PostJsonAsync("https://music.youtube.com/youtubei/v1/next?prettyPrint=false", body, "https://music.youtube.com", ct));
-        var rows = doc.RootElement.Prop("contents")?.Prop("singleColumnMusicWatchNextResultsRenderer")?.Prop("tabbedRenderer")?.Prop("watchNextTabbedResultsRenderer")
-            ?.Arr("tabs").FirstOrDefault().Prop("tabRenderer")?.Prop("content")?.Prop("musicQueueRenderer")?.Prop("content")?.Prop("playlistPanelRenderer")
-            ?.Arr("contents") ?? Enumerable.Empty<JsonElement>();
         var hits = new List<SearchHit>();
-        foreach (var row in rows)
+        var seen = new HashSet<string> { id };
+        string? next = null;
+        // About 50 songs a page; the radio goes on as when its player reaches the end: a few pages, until there are enough.
+        for (int page = 0; page < 3 && hits.Count < limit && (page == 0 || next != null); page++)
         {
-            if (hits.Count >= limit) break;
-            // A song that also has its video: the song.
-            var v = row.Prop("playlistPanelVideoRenderer") ?? row.Prop("playlistPanelVideoWrapperRenderer")?.Prop("primaryRenderer")?.Prop("playlistPanelVideoRenderer");
-            if (v is not { } r || r.Str("videoId") is not { } vid || vid == id || Runs(r.Prop("title")) is not { Length: > 0 } title) continue;
-            // "Artist • Album • 2019", or "Artist • 2 M views • 14 K likes" for a video.
-            var byline = r.Prop("longBylineText")?.Arr("runs").ToList() ?? new List<JsonElement>();
-            var artist = string.Concat(byline.TakeWhile(x => x.Str("text")?.Trim() != "•").Select(x => x.Str("text"))).Trim();
-            var thumb = r.Prop("thumbnail")?.Arr("thumbnails").LastOrDefault().Str("url");
-            hits.Add(new SearchHit
+            var url = "https://music.youtube.com/youtubei/v1/next?prettyPrint=false" + (next == null ? "" : $"&ctoken={Uri.EscapeDataString(next)}&continuation={Uri.EscapeDataString(next)}");
+            using var doc = JsonDocument.Parse(await PostJsonAsync(url, body, "https://music.youtube.com", ct));
+            var panel = page == 0
+                ? doc.RootElement.Prop("contents")?.Prop("singleColumnMusicWatchNextResultsRenderer")?.Prop("tabbedRenderer")?.Prop("watchNextTabbedResultsRenderer")
+                    ?.Arr("tabs").FirstOrDefault().Prop("tabRenderer")?.Prop("content")?.Prop("musicQueueRenderer")?.Prop("content")?.Prop("playlistPanelRenderer")
+                : doc.RootElement.Prop("continuationContents")?.Prop("playlistPanelContinuation");
+            next = panel?.Arr("continuations").FirstOrDefault().Prop("nextRadioContinuationData")?.Str("continuation");
+            foreach (var row in panel?.Arr("contents") ?? Enumerable.Empty<JsonElement>())
             {
-                Service = YouTubeMusic, Title = title, Artist = artist.Length > 0 ? artist : null,
-                Album = byline.FirstOrDefault(x => PageType(x) == "MUSIC_PAGE_TYPE_ALBUM").Str("text"), Duration = ParseClock(Runs(r.Prop("lengthText"))),
-                Thumb = thumb != null && thumb.Contains("googleusercontent") ? Regex.Replace(thumb, @"=w\d+-h\d+", "=w544-h544") : $"https://i.ytimg.com/vi/{vid}/mqdefault.jpg",
-                Url = "https://music.youtube.com/watch?v=" + vid, Rank = hits.Count,
-            });
+                if (hits.Count >= limit) break;
+                // A song that also has its video: the song.
+                var v = row.Prop("playlistPanelVideoRenderer") ?? row.Prop("playlistPanelVideoWrapperRenderer")?.Prop("primaryRenderer")?.Prop("playlistPanelVideoRenderer");
+                if (v is not { } r || r.Str("videoId") is not { } vid || !seen.Add(vid) || Runs(r.Prop("title")) is not { Length: > 0 } title) continue;
+                // "Artist • Album • 2019", or "Artist • 2 M views • 14 K likes" for a video.
+                var byline = r.Prop("longBylineText")?.Arr("runs").ToList() ?? new List<JsonElement>();
+                var artist = string.Concat(byline.TakeWhile(x => x.Str("text")?.Trim() != "•").Select(x => x.Str("text"))).Trim();
+                var thumb = r.Prop("thumbnail")?.Arr("thumbnails").LastOrDefault().Str("url");
+                hits.Add(new SearchHit
+                {
+                    Service = YouTubeMusic, Title = title, Artist = artist.Length > 0 ? artist : null,
+                    Album = byline.FirstOrDefault(x => PageType(x) == "MUSIC_PAGE_TYPE_ALBUM").Str("text"), Duration = ParseClock(Runs(r.Prop("lengthText"))),
+                    Thumb = thumb != null && thumb.Contains("googleusercontent") ? Regex.Replace(thumb, @"=w\d+-h\d+", "=w544-h544") : $"https://i.ytimg.com/vi/{vid}/mqdefault.jpg",
+                    Url = "https://music.youtube.com/watch?v=" + vid, Rank = hits.Count,
+                });
+            }
         }
         return hits;
     }
@@ -512,7 +523,7 @@ public static partial class OnlineSearchServices
             id = found.RootElement.Arr("collection").FirstOrDefault().Str("id");
         }
         if (id == null) return new List<SearchHit>();
-        using var doc = JsonDocument.Parse(await SoundCloudGetAsync(c => $"https://api-v2.soundcloud.com/tracks/{id}/related?client_id={c}&limit={Math.Min(50, limit * 2)}", ct));
+        using var doc = JsonDocument.Parse(await SoundCloudGetAsync(c => $"https://api-v2.soundcloud.com/tracks/{id}/related?client_id={c}&limit={Math.Min(100, limit * 2)}", ct));
         return SoundCloudHits(doc.RootElement, limit);
     }
 
@@ -928,7 +939,7 @@ public static partial class OnlineSearchServices
             artist = s.RootElement.Arr("data").FirstOrDefault().Prop("artist")?.Str("id");
         }
         if (artist == null) return new List<SearchHit>();
-        using var doc = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/artist/{artist}/radio?limit={Math.Min(50, limit)}", ct));
+        using var doc = JsonDocument.Parse(await GetAsync($"https://api.deezer.com/artist/{artist}/radio?limit={Math.Min(100, limit)}", ct));
         return DeezerHits(doc.RootElement, limit);
     }
 }

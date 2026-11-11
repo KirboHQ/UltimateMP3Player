@@ -55,6 +55,8 @@ public partial class SettingsPage : UserControl, IPage
         // still from here), the music is in the Files app, and an app swiped away is simply ended by iOS.
         foreach (var c in new Control[] { OutputRow, OutputLine, AutoUpdateSwitch, CloseRow, CloseLine })
             c.IsVisible = false;
+        Cards.Children.Remove(CarTitle);
+        Cards.Children.Remove(CarCard);
         MusicDirHint.Text = L.T("In the Files app: On My iPhone › Ultimate MP3 Player › Music. If you uninstall the app, the music is deleted.");
 #endif
     }
@@ -294,6 +296,9 @@ public partial class SettingsPage : UserControl, IPage
     private void ShowLogins() => LoginsValue.Text = SiteLogins.Summary();
 
     private void Logins_Click(object? sender, RoutedEventArgs e) => LoginsSheet.Show();
+
+    private void Car_Click(object? sender, RoutedEventArgs e) => Dialogs.Alert("Android Auto",
+        L.T("Android Auto hides apps that don’t come from Google Play until you allow them, once:\n\n1. On the phone, open Settings and search for Android Auto.\n2. Scroll down to Version and tap it 10 times, then confirm.\n3. In the menu at the top right (⋮), open Developer settings.\n4. Turn on Unknown sources.\n\nThen connect the car: the app is among the media apps (if not, add it from Customize launcher). You can also ask the Assistant: “Play Road Trip on Ultimate MP3 Player”."));
 
     // (through the view model: a room is left first)
     private void Computer_Click(object? sender, RoutedEventArgs e) => Vm?.ComputerLink.Open();

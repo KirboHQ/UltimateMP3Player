@@ -719,6 +719,26 @@ switch (args[0])
             Console.WriteLine($"distanza minima tra due ripetizioni: {minGap}");
             return 0;
         }
+
+    case "suggested":
+        {
+            // The suggested queue online (it reaches out): two asks for the same song give 25 songs each, without the song
+            // itself or doubles, and not the same queue.
+            var seed = new RadioSeed("Heroes Tonight", "Janji", Array.Empty<string>());
+            var a = await OnlineSearchServices.SimilarAsync(seed, RadioSources.Auto, 25, CancellationToken.None);
+            var b = await OnlineSearchServices.SimilarAsync(seed, RadioSources.Auto, 25, CancellationToken.None);
+            string Key(SearchHit h) => SongMeta.Key(h.Title, h.Artist);
+            bool clean(List<SearchHit> l) => l.Count == 25 && l.Select(Key).Distinct().Count() == 25 && !l.Any(h => Key(h) == SongMeta.Key(seed.Title, seed.Artist));
+            bool differ = !a.Select(Key).SequenceEqual(b.Select(Key));
+            Console.WriteLine($"{a.Count} and {b.Count} songs, {a.Select(Key).Intersect(b.Select(Key)).Count()} in both");
+            foreach (var h in a.Take(5)) Console.WriteLine($"  {h.Artist} - {h.Title} ({h.Service})");
+            // How many each site gives to pick from (asked for 100).
+            foreach (var site in RadioSources.Sites)
+                Console.WriteLine($"  {site}: {(await OnlineSearchServices.SimilarAsync(seed, site, 100, CancellationToken.None)).Count} to pick from");
+            bool ok = clean(a) && clean(b) && differ;
+            Console.WriteLine(ok ? "ok" : "WRONG");
+            return ok ? 0 : 1;
+        }
 }
 
 if (args[0] != "download" || args.Length < 2) return 1;
