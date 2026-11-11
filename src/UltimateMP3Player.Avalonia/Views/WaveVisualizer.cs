@@ -60,6 +60,20 @@ public sealed class WaveVisualizer : Control
     private static event Action? AnyShown;
     static WaveVisualizer() => IsVisibleProperty.Changed.AddClassHandler<Visual>((_, _) => AnyShown?.Invoke());
 
+    // A sheet over the page (phones): the song's bars rest under it. Drawn there at every frame, nobody saw most of them and the
+    // sheet was composed again over them each time (the phone's tour, a menu open on the song's page: 430-550 ms of CPU a second, 110 at rest).
+    private static bool _covered;
+    public static bool Covered
+    {
+        get => _covered;
+        set
+        {
+            if (_covered == value) return;
+            _covered = value;
+            AnyShown?.Invoke();
+        }
+    }
+
     public WaveVisualizer()
     {
         IsHitTestVisible = false;
@@ -160,7 +174,7 @@ public sealed class WaveVisualizer : Control
     private void UpdateRun()
     {
         if (_visual == null) return;
-        bool want = (IsPlaying || (IsPreview && _seen && !Ui.Hidden)) && IsEffectivelyVisible;
+        bool want = (IsPlaying && !_covered || (IsPreview && _seen && !Ui.Hidden)) && IsEffectivelyVisible;
         SetLooking(want);
         // (AnyShown asks at every change in the app: each message would wake the render thread for a frame)
         if (want == _sent) return;

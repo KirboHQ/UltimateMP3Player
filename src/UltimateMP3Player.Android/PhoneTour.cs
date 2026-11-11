@@ -41,6 +41,7 @@ public static class PhoneTour
             Say("scene | fps moving | p95 ms | worst ms | at rest: ms CPU/s");
             if (MainActivity.Current?.Intent?.GetStringExtra("tour") == "themes") await ThemesTour();
             else if (MainActivity.Current?.Intent?.GetStringExtra("tour") == "flings") await Flings();
+            else if (MainActivity.Current?.Intent?.GetStringExtra("tour") == "search") await SearchTwice();
             else await Script();
             Say($"opened: {_sheets} sheets; not opened as a person would: {NotOpened.Count}");
             foreach (var n in NotOpened) Say("NOT OPENED: " + n);
@@ -266,13 +267,27 @@ public static class PhoneTour
     }
 
     // The search with the sites' songs under yours, as anyone sees it: Deezer and the others really asked.
-    private static async Task SearchOnline()
+    // The sites' results flung for the first time and again with other words (am start --es tour search): what only the first time
+    // costs; then a menu over the song's page, where the bars rest.
+    private static async Task SearchTwice()
+    {
+        await Page("search", () => M.IsSearch = true);
+        await SearchOnline();
+        await SearchOnline("daft punk");
+        await Page("song page", () => M.GoNowPlayingCommand.Execute(null));
+        await Sheet("up next", () => QueueSheet.Show(M.Player));
+        await Sheet("the song's menu", () => Menus.Open(Menus.ForTrack(M.Player.Current!, null)));
+        await Scene("song page, the menu closed", null, 1500);
+    }
+
+    private static async Task SearchOnline(string words = "queen")
     {
         M.Host.Settings.OnlineSearch = true;
         M.Search.OnSettingsChanged();
         M.IsSearch = true;
         await Task.Delay(400);
-        SearchBox().Text = "queen";
+        M.Search.Filter = M.Search.Filters.First().Key;
+        SearchBox().Text = words;
         await Task.Delay(5000);
         await Scene("search online, results", null, 400);
         await Press("a song found online, for real", d => d is OnlineHitViewModel { IsSong: true }, () => null);

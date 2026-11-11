@@ -80,6 +80,7 @@ public sealed class SheetHost : Panel
     public Task Show(Control content, bool dismissable = true, Action? onDismiss = null, double maxHeightShare = 0.88)
     {
         IsVisible = true;
+        WaveVisualizer.Covered = true;
         var scrim = new Border { Background = Ui.Find<IBrush>("ScrimBrush"), Opacity = 0 };
         var handle = new Border
         {
@@ -252,6 +253,8 @@ public sealed class SheetHost : Panel
     {
         if (layer.Closing) return;
         layer.Closing = true;
+        // (the last one on its way down: the bars come back up while it goes)
+        if (_layers.All(l => l.Closing)) WaveVisualizer.Covered = false;
         void Gone()
         {
             Children.Remove(layer.Scrim);
