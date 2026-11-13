@@ -29,8 +29,12 @@ public partial class MainView : UserControl
     {
         _host = host;
         InitializeComponent();
+        // The glass look's picture behind everything (Core Glass).
+        Themes.BackdropChanged += () => Themes.PutBackdrop(GlassBack, GlassBefore, GlassNow, GlassGrain);
+        Themes.PutBackdrop(GlassBack, GlassBefore, GlassNow, GlassGrain);
         ComputerLinkViewModel.ShowPage = LinkSheet.Show;
-        foreach (var (tab, name) in new[] { (TabHome, "home"), (TabSearch, "search"), (TabLibrary, "library"), (TabTogether, "together"), (TabSettings, "settings") })
+        var tabs = new[] { (TabHome, "home"), (TabSearch, "search"), (TabLibrary, "library"), (TabTogether, "together"), (TabSettings, "settings") };
+        foreach (var (tab, name) in tabs)
         {
             var t = name;
             tab.IsCheckedChanged += (_, _) => { if (tab.IsChecked == true && !_syncingTabs) GoTab(t); };
@@ -38,6 +42,10 @@ public partial class MainView : UserControl
             tab.AddHandler(PointerReleasedEvent, (_, _) => { if (tab.IsChecked == true && TabOf(_session?.Page) == t) Dispatcher.UIThread.Post(() => GoTab(t)); },
                 RoutingStrategies.Bubble, true);
         }
+        // Settings › Layout: the bottom bar's tabs in the order chosen, the hidden ones out.
+        string? TabKey(Control c) => tabs.FirstOrDefault(t => t.Item1 == c).Item2;
+        Layout.Changed += () => Rearrange.Apply(Tabs, Layout.Tabs, keyOf: TabKey);
+        Rearrange.Apply(Tabs, Layout.Tabs, keyOf: TabKey);
         Mini.OpenRequested += () => _session?.Navigate(_session.NowPlaying);
         PageHost.AddHandler(PointerPressedEvent, SwipePressed, RoutingStrategies.Tunnel, true);
         PageHost.AddHandler(PointerMovedEvent, SwipeMoved, RoutingStrategies.Tunnel, true);
@@ -517,8 +525,9 @@ public partial class MainView : UserControl
         });
     }
 
-    private static readonly string[] TabNames = { "home", "search", "library", "together", "settings" };
-    private static int TabOrder(string tab) => Array.IndexOf(TabNames, tab);
+    // (as Settings › Layout has the bottom bar: a swipe skips the hidden ones)
+    private static List<string> TabNames => Layout.Arrange(Layout.Tabs);
+    private static int TabOrder(string tab) => TabNames.IndexOf(tab);
 
     private bool Forward(object? from, object to)
     {
@@ -789,9 +798,10 @@ public partial class MainView : UserControl
         object to;
         if (IsRoot(page))
         {
-            int i = TabOrder(TabOf(page)) + (left ? 1 : -1);
-            if (i < 0 || i >= TabNames.Length) return false;
-            _swipeTab = TabNames[i];
+            var tabs = TabNames;
+            int i = tabs.IndexOf(TabOf(page)) + (left ? 1 : -1);
+            if (i < 0 || i >= tabs.Count) return false;
+            _swipeTab = tabs[i];
             to = RootOf(_swipeTab);
         }
         else

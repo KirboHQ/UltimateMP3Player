@@ -16,7 +16,7 @@
                 <!-- rename, change the picture -->
                 <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Click="More_Click"/>
             </Grid>
-            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="{DynamicResource BgBrush}">
+            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="Transparent">
                 <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" Command="{Binding #List.Picks.CancelCommand}"/>
                 <TextBlock Grid.Column="1" Text="{Binding #List.Picks.CountText}" FontSize="16.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"/>
                 <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Command="{Binding #List.Picks.AllCommand}"/>

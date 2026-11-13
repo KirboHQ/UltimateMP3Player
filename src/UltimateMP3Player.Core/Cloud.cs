@@ -45,7 +45,11 @@ public static class CloudSongs
 
     // The site's picture made square like the covers of the library: the first of these that can be had. A few at a time
     // (a whole playlist added to the cloud asks for hundreds).
-    public static async Task<string?> MakeCoverAsync(string trackId, IReadOnlyList<string> pictures, CancellationToken ct = default)
+    public static Task<string?> MakeCoverAsync(string trackId, IReadOnlyList<string> pictures, CancellationToken ct = default)
+        => MakePictureAsync(AppPaths.TrackCover(trackId), pictures, ct);
+
+    // The first of these pictures that downloads, as a cover at path (a playlist's: its link's picture). The one used.
+    public static async Task<string?> MakePictureAsync(string path, IReadOnlyList<string> pictures, CancellationToken ct = default)
     {
         if (pictures.Count == 0) return null;
         await CoverGate.WaitAsync(ct);
@@ -53,8 +57,7 @@ public static class CloudSongs
         {
             return await Task.Run(async () =>
             {
-                var path = AppPaths.TrackCover(trackId);
-                var tmp = Path.Combine(AppPaths.TempDir, trackId + "-" + Ids.New() + ".thumb");
+                var tmp = Path.Combine(AppPaths.TempDir, Ids.New() + ".thumb");
                 foreach (var url in pictures.Take(4))
                 {
                     try

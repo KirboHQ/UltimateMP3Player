@@ -479,11 +479,16 @@ public partial class SongsPage : UserControl, IPage
         for (int i = 0; i < 3; i++) bars.Children.Add(new Border { Height = 2, CornerRadius = new CornerRadius(1), Background = Ui.Res("AccentTextBrush") });
         Grid.SetColumn(bars, 2);
         grid.Children.Add(bars);
+        // (Surface2 on the page's solid colour: with the glass look it's see-through, the rows under the copy showed through it)
         var card = new Border
         {
-            Width = Math.Max(0, width - 16), Padding = new Thickness(8, 7, 4, 7), CornerRadius = new CornerRadius(14), Child = grid,
-            Background = Ui.Res("Surface2Brush"), BorderBrush = Ui.Res("AccentBrush"), BorderThickness = new Thickness(1),
+            Width = Math.Max(0, width - 16), CornerRadius = new CornerRadius(14), Background = Ui.Res("PageSolidBrush"),
             BoxShadow = BoxShadows.Parse("0 6 16 0 #80000000"),
+            Child = new Border
+            {
+                Padding = new Thickness(8, 7, 4, 7), CornerRadius = new CornerRadius(14), Child = grid,
+                Background = Ui.Res("Surface2Brush"), BorderBrush = Ui.Res("AccentBrush"), BorderThickness = new Thickness(1),
+            },
         };
         Canvas.SetLeft(card, 8);
         return card;

@@ -147,6 +147,79 @@
                         </Grid>
                     </StackPanel>
                     <TextBlock Text="{Binding ThemeHint}" Classes="setting-hint" Margin="0,0,0,10" views:Fold.Open="{Binding HasThemeHint}"/>
+                    <!-- the glass look and its choices (Core Glass), as on the computer -->
+                    <Border Classes="line"/>
+                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding GlassOn}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T Glass}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'The window lies on the cover of the song playing, blurred, under panes of glass.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </CheckBox>
+                    <StackPanel Margin="0,0,0,10" views:Fold.Open="{Binding GlassOn}">
+                        <TextBlock Text="{local:T Background}" Classes="setting-hint" Margin="0,0,0,8"/>
+                        <views:ChoiceTiles Picture="glasspicture" Items="{Binding GlassPictures}" Selected="{Binding GlassPicture}"/>
+                        <TextBlock Text="{local:T Panes}" Classes="setting-hint" Margin="0,12,0,8"/>
+                        <views:ChoiceTiles Picture="glasstint" Items="{Binding GlassTints}" Selected="{Binding GlassTintChoice}"/>
+                        <TextBlock Text="{local:T Blur}" Classes="setting-hint" Margin="0,12,0,0"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" Value="{Binding GlassBlur}" SmallChange="0.05" LargeChange="0.1" Height="40" AutomationProperties.Name="{local:T Blur}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding GlassBlurText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
+                        </Grid>
+                        <TextBlock Text="{local:T Brightness}" Classes="setting-hint"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" Value="{Binding GlassBrightness}" SmallChange="0.05" LargeChange="0.1" Height="40" AutomationProperties.Name="{local:T Brightness}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding GlassBrightnessText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
+                        </Grid>
+                        <TextBlock Text="{local:T Color}" Classes="setting-hint"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" Value="{Binding GlassVivid}" SmallChange="0.05" LargeChange="0.1" Height="40" AutomationProperties.Name="{local:T Color}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding GlassVividText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
+                        </Grid>
+                        <TextBlock Text="{local:T 'Opacity of the panes'}" Classes="setting-hint"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" Value="{Binding GlassPanes}" SmallChange="0.05" LargeChange="0.1" Height="40" AutomationProperties.Name="{local:T 'Opacity of the panes'}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding GlassPanesText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
+                        </Grid>
+                        <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding GlassGrain}">
+                            <TextBlock Text="{local:T Grain}" Classes="setting"/>
+                        </CheckBox>
+                        <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Content="{local:T Reset}" Command="{Binding GlassResetCommand}"/>
+                    </StackPanel>
+                    <!-- the layout: the bottom bar's tabs and Home's rows, shown or not, in their order (Core Layout) -->
+                    <Border Classes="line"/>
+                    <StackPanel Margin="0,12,0,8" views:SettingsPage.Keywords="{local:T 'layout menu side bar width order position hide floating attached home rows sections customize'}">
+                        <StackPanel.DataTemplates>
+                            <!-- (the handle drags it to another place: TouchReorder, like the search's sites) -->
+                            <DataTemplate DataType="vm:LayoutRow">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding Shown}" IsEnabled="{Binding CanHide}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Icon, Converter={StaticResource Icon}}" Classes="glyph" FontSize="20" Width="28" Margin="0,0,12,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Label}" Classes="setting" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </CheckBox>
+                                    <Border Grid.Column="1" Classes="handle" Width="44" Height="46" Background="Transparent">
+                                        <StackPanel Width="18" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="4">
+                                            <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
+                                            <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
+                                            <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </StackPanel.DataTemplates>
+                        <TextBlock Text="{local:T Layout}" Classes="setting"/>
+                        <TextBlock Text="{local:T 'Tabs of the bottom bar'}" Classes="setting-hint" Margin="0,8,0,0"/>
+                        <Panel x:Name="TabRowsArea">
+                            <ItemsControl x:Name="TabRowsList" ItemsSource="{Binding MenuRows}"/>
+                            <Canvas x:Name="TabRowsLayer" IsHitTestVisible="False"/>
+                        </Panel>
+                        <TextBlock Text="{local:T 'Rows of Home'}" Classes="setting-hint" Margin="0,8,0,0"/>
+                        <Panel x:Name="HomeRowsArea">
+                            <ItemsControl x:Name="HomeRowsList" ItemsSource="{Binding HomeRows}"/>
+                            <Canvas x:Name="HomeRowsLayer" IsHitTestVisible="False"/>
+                        </Panel>
+                    </StackPanel>
                     <Border Classes="line"/>
                     <StackPanel Margin="0,12,0,4">
                         <TextBlock Text="{local:T 'Shape of the song bar'}" Classes="setting" Margin="0,0,0,8"/>
@@ -466,6 +539,22 @@
                         <StackPanel>
                             <TextBlock Text="{local:T 'Rename an artist'}" Classes="setting"/>
                             <TextBlock Text="{local:T 'The same name on all their songs at once'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding FindMissingCommand}"
+                            views:SettingsPage.Keywords="{local:T 'duplicates doubles same song twice copies join covers pictures images missing length album'}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Find missing covers'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Songs without a cover or a length (an import from Spotify brings none): looked up by title and artist'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding RemoveDuplicatesCommand}"
+                            views:SettingsPage.Keywords="{local:T 'duplicates doubles same song twice copies join'}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Remove duplicates'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'The same song twice in the library: one copy stays, with the playlists, plays and tags of both'}" Classes="setting-hint"/>
                         </StackPanel>
                     </Button>
                     <Border Classes="line"/>

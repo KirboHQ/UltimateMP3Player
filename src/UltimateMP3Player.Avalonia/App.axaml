@@ -17,6 +17,12 @@
         <FluentTheme/>
         <StyleInclude Source="avares://UltimateMP3Player/Views/TemplateStyles.axaml"/>
 
+        <!-- The cards of the pages (Templates): the glass look's edge catching the light (nothing in the plain look, Themes). -->
+        <Style Selector="Border.card">
+            <Setter Property="BorderBrush" Value="{DynamicResource RimBrush}"/>
+            <Setter Property="BorderThickness" Value="{DynamicResource RimThickness}"/>
+        </Style>
+
         <!-- The text styles of the Windows app's Theme.xaml (there: Style="{StaticResource Glyph}", here: Classes="glyph"). -->
         <Style Selector="TextBlock.glyph">
             <Setter Property="FontFamily" Value="{StaticResource IconFont}"/>

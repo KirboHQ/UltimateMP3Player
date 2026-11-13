@@ -50,7 +50,8 @@ public sealed class ProfilesPage : UserControl
         };
         stack.Children.Add(_remember);
         Content = new ScrollViewer { Content = stack };
-        Background = Ui.Res("BgBrush");
+        // (over the pages: solid, in the glass look too)
+        Background = Ui.Res("PageSolidBrush");
         Refresh();
     }
 

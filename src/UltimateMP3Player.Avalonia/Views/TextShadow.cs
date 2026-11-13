@@ -101,7 +101,7 @@ public sealed class TextShadow : Control
         using var source = new SKBitmap(new SKImageInfo(w, h, type, SKAlphaType.Premul));
         letters.CopyPixels(new PixelRect(0, 0, w, h), source.GetPixels(), source.ByteCount, source.RowBytes);
         using var surface = SKSurface.Create(new SKImageInfo(w + 2 * spill, h + 2 * spill, SKColorType.Bgra8888, SKAlphaType.Premul));
-        var ink = Themes.IsLight ? Themes.Get("Bg") : Colors.Black;
+        var ink = Themes.IsLight ? Themes.Get("PageSolid") : Colors.Black;
         using var tint = SKColorFilter.CreateBlendMode(new SKColor(ink.R, ink.G, ink.B), SKBlendMode.SrcIn);
         // Close and dense, then wide and soft: letters are thin, one blur alone fades them away.
         foreach (float sigma in heavy ? new[] { 2f, 2f, 2f, 2f, 4.7f, 4.7f } : new[] { 1.3f, 1.3f, 4f })

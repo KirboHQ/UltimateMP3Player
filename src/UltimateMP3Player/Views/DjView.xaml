@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="UltimateMP3Player.Views.DjView"
+<UserControl x:Class="UltimateMP3Player.Views.DjView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:UltimateMP3Player"
@@ -385,7 +385,8 @@
         </DataTemplate>
     </UserControl.Resources>
 
-    <Grid Margin="20,2,20,16">
+    <!-- (14 from the side bar's entries and the window's edges, as the song page's stage and Up next) -->
+    <Grid Margin="0,2,14,14">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>

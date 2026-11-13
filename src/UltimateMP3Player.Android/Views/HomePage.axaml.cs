@@ -17,7 +17,16 @@ public partial class HomePage : UserControl, IPage
         InitializeComponent();
         Selection.SetOwner(this, Picks);
         DataContextChanged += (_, _) => Attach();
+        // Settings › Layout: the rows in the order chosen, the hidden ones out.
+        Loaded += (_, _) =>
+        {
+            Core.Layout.Changed += ArrangeRows;
+            ArrangeRows();
+        };
+        Unloaded += (_, _) => Core.Layout.Changed -= ArrangeRows;
     }
+
+    private void ArrangeRows() => Rearrange.Apply(HomeRows, Core.Layout.PhoneHome);
 
     private void Attach()
     {

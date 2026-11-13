@@ -86,6 +86,22 @@ switch (args[0])
             lib.FindSimilar("x", "y", 1);
             lib.Add(a);
             bool found = lib.FindSimilar("Heroes Tonight", "Janji feat. Johnning", 210) == a && lib.FindSimilar("Heroes Tonight", "Janji", 215) == null;
+            // By name (Spotify's export has no lengths, a video runs longer): any length, other versions not.
+            bool byName = lib.FindByName("Heroes Tonight", "Janji", null) == a && lib.FindByName("Heroes Tonight", "Janji", 260) == a &&
+                          lib.FindByName("Heroes Tonight (Live)", "Janji", null) == null && lib.FindByName("Heroes Tonight", "Other", null) == null &&
+                          lib.FindItem(new MediaItem { Title = "Heroes Tonight", Artist = "Janji", Source = SourceKind.Search }) == a &&
+                          lib.FindItem(new MediaItem { Title = "Heroes Tonight", Artist = "Janji", Source = SourceKind.YtDlp, Url = "https://example.com/b" }) == null;
+            found &= byName;
+            // "Remove duplicates": the copy added later goes, the first stays; a live version isn't one.
+            var b = new Track { Title = "Heroes Tonight", Artist = "Janji", Duration = 240, SourceUrl = "https://example.com/b" };
+            var live = new Track { Title = "Heroes Tonight (Live)", Artist = "Janji", Duration = 300, SourceUrl = "https://example.com/c" };
+            lib.Add(b);
+            lib.Add(live);
+            var dups = lib.Duplicates();
+            bool dup = dups.Count == 1 && dups[0].Keep == a && dups[0].Copy == b;
+            lib.Remove(b);
+            lib.Remove(live);
+            found &= dup;
             a.Title = "Another Name";
             lib.Changed(a);
             bool renamed = lib.FindSimilar("Heroes Tonight", "Janji", 208) == null && lib.FindSimilar("Another Name", "Janji", 208) == a;
@@ -94,7 +110,21 @@ switch (args[0])
             lib.Remove(a);
             bool removed = lib.FindSimilar("Another Name", "Janji Music", 208) == null;
             bool ok = found && renamed && artist && removed;
-            Console.WriteLine($"similar: {(ok ? "ok" : "SBAGLIATO")} (found={found} renamed={renamed} artist={artist} removed={removed})");
+            Console.WriteLine($"similar: {(ok ? "ok" : "SBAGLIATO")} (found={found} byName={byName} duplicates={dup} renamed={renamed} artist={artist} removed={removed})");
+            return ok ? 0 : 1;
+        }
+
+    case "missing":
+        {
+            // (online) Settings › Library › "Find missing covers": a song by title and artist with no length (Spotify's export), a
+            // video's "Artist - Title (Official Video)" with no artist, and nonsense, on Deezer.
+            var known = await ListImport.FindOnDeezerAsync("Blinding Lights", "The Weeknd", null, CancellationToken.None);
+            var video = await ListImport.FindOnDeezerAsync("The Weeknd - Blinding Lights (Official Video)", null, null, CancellationToken.None);
+            var none = await ListImport.FindOnDeezerAsync("Qwzx Plorbt Vimmle", "Nobody Atall", null, CancellationToken.None);
+            Console.WriteLine($"  known: {known?.Title} by {known?.Artist}, {known?.Duration} s, {known?.Thumb}");
+            Console.WriteLine($"  video: {video?.Title} by {video?.Artist}");
+            bool ok = known is { Duration: > 0, Thumb: not null } && video != null && none == null;
+            Console.WriteLine($"missing: {(ok ? "ok" : "SBAGLIATO")}");
             return ok ? 0 : 1;
         }
 

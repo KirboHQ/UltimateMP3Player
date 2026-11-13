@@ -1205,7 +1205,7 @@ public sealed class TogetherViewModel : Observable
                     {
                         var key = SongMeta.Key(h.Title, h.Artist);
                         if (list.Count >= want || inRoom.Contains(key) || _suggestedUsed.Contains(key)) continue;
-                        var have = lib.FindByKeys(h.Keys()) ?? lib.FindSimilar(h.Title, h.Artist, h.Duration);
+                        var have = lib.FindByKeys(h.Keys()) ?? lib.FindByName(h.Title, h.Artist, h.Duration);
                         list.Add((h, have != null && (have.HasSavedFile || have.HasLink) ? have : null));
                         inRoom.Add(key);
                     }
@@ -1273,7 +1273,7 @@ public sealed class TogetherViewModel : Observable
         var lib = _main.Library;
         var picks = items.Select(it =>
         {
-            var have = lib.FindByKeys(SourceKeys.ForItem(it)) ?? (it.Source == SourceKind.Search ? lib.FindSimilar(it.Title, it.Artist, it.Duration) : null);
+            var have = lib.FindItem(it);
             return (Item: it, Have: have != null && (have.HasSavedFile || have.HasLink) ? have : null);
         }).ToList();
         var tracks = picks.Select(p => p.Have != null ? RoomTrackFor(_main.Vm(p.Have)) : LinkTrack(p.Item)).ToList();

@@ -144,7 +144,7 @@ public sealed class RadioViewModel : Observable
     private Track? Known(RadioSong song, bool similar)
     {
         var lib = _main.Library;
-        var have = lib.FindByKeys(song.Keys) ?? (similar ? lib.FindSimilar(song.Title, song.Artist, song.Duration) : null);
+        var have = lib.FindByKeys(song.Keys) ?? (similar ? lib.FindByName(song.Title, song.Artist, song.Duration) : null);
         return have != null && (have.HasSavedFile || have.HasLink) ? have : null;
     }
 

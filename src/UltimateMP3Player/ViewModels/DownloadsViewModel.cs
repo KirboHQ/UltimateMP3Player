@@ -1117,8 +1117,7 @@ public sealed class LinkViewModel : Observable
         var lib = main.Library;
         Items = playable.Select((it, i) =>
         {
-            var known = lib.FindByKeys(SourceKeys.ForItem(it)) ??
-                        (it.Source == SourceKind.Search ? lib.FindSimilar(it.Title, it.Artist, it.Duration) : null);
+            var known = lib.FindItem(it);
             return new LinkItemViewModel(it, i + 1, known != null, this);
         }).ToList();
         HasVideo = Engines.VideoDownloads && playable.Any(i => i.Kind == MediaKind.Video);
@@ -1324,6 +1323,8 @@ public sealed class LinkViewModel : Observable
             // (a list of songs has no link of its own)
             var p = _main.Profile.CreatePlaylist(NewName.Trim(), R.SourceUrl.Length > 0 ? R.SourceUrl : null);
             ids.Add(created = p.Id);
+            // (a list's picture is only its first song's: it keeps the mosaic of its covers)
+            if (R.SourceUrl.Length > 0) _ = _main.FetchPlaylistCover(p, R.Thumbnails);
         }
         ids.AddRange(PlaylistChoices.Select(c => (string)c.Value!).Where(_targets.Contains));
         var batch = new DownloadBatch(_main.Profile, ids, Items.Count, ChosenTags.Select(t => t.Id).ToList())
@@ -1351,7 +1352,7 @@ public sealed class LinkViewModel : Observable
     {
         var lib = main.Library;
         added = false;
-        var t = lib.FindByKeys(SourceKeys.ForItem(item)) ?? (item.Source == SourceKind.Search ? lib.FindSimilar(item.Title, item.Artist, item.Duration) : null);
+        var t = lib.FindItem(item);
         if (t != null) return t;
         if (string.IsNullOrEmpty(item.PageUrl ?? item.Url)) return null;
         t = CloudSongs.FromItem(item);
@@ -1651,7 +1652,12 @@ public sealed class DownloadsPageViewModel : Observable
                 _main.Host.Downloads.Add(new DownloadBatch(profile, new[] { id }, r.Items.Count) { Title = name }, r.Items.Select((item, i) => (item, i)), false);
             // (in the cloud: all at once into the playlist, in their order, with one refresh)
             else if (profile.GetPlaylist(id) is { } playlist)
-                profile.AddTracks(playlist, r.Items.Select(item => LinkViewModel.ToCloud(_main, item, out _)?.Id).OfType<string>().ToList());
+            {
+                var songs = r.Items.Select(item => LinkViewModel.ToCloud(_main, item, out _)).OfType<Track>().ToList();
+                profile.AddTracks(playlist, songs.Select(t => t.Id).ToList());
+                // (Spotify's export has no pictures nor lengths: looked up on Deezer, in the background)
+                _main.FindMissing(songs);
+            }
             group.Ready(L.T("Loading complete") + " · " + L.Count(r.Items.Count, "1 song", "{0} songs"));
         }
         catch (OperationCanceledException) { Queue.RemoveGroup(group); }

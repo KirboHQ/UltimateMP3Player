@@ -40,6 +40,12 @@ public partial class NowPlayingView : UserControl
         LyricsPane.FollowingChanged += ShowFollowButton;
         // ("Up next" folding away over the whole screen: the song takes its room)
         QueuePane.SizeChanged += (_, _) => { if (_vm?.FullScreen == true) PlaceFullScreen(); };
+        Loaded += (_, _) =>
+        {
+            Layout.Changed += FitQueue;
+            FitQueue();
+        };
+        Unloaded += (_, _) => Layout.Changed -= FitQueue;
     }
 
     // ------------------------------------------------------------------ video frame
@@ -120,7 +126,8 @@ public partial class NowPlayingView : UserControl
     private void PlaceFullScreen()
     {
         bool full = _vm?.FullScreen == true;
-        double bar = full && _window is MainWindow w ? w.PlayerBar.ActualHeight : 0;
+        // (with the room under it: the glass look's bar floats 14 from the edge)
+        double bar = full && _window is MainWindow w ? w.PlayerBar.ActualHeight + Math.Max(0, w.PlayerBar.Margin.Bottom) : 0;
         Grid.SetColumnSpan(Stage, full ? 2 : 1);
         Stage.Margin = full ? new Thickness(0) : new Thickness(0, 0, _folding ? -(PaneOpen - PaneClosed) : 0, 14);
         foreach (var b in Stage.Children.OfType<Border>()) b.CornerRadius = new CornerRadius(full ? 0 : 16);
@@ -258,7 +265,11 @@ public partial class NowPlayingView : UserControl
 
     // Pane width with the card, and without (the gap at the page edge stays). Open: as wide as the sidebar, its mirror (the card
     // as wide as the sidebar's entries, the same 14 on each side), so that the stage stands in the middle of the window.
-    private const double PaneOpen = 280, PaneClosed = 14;
+    // (as wide as the side bar, Settings › Layout: the stage in the middle of the window)
+    private static double PaneOpen => Layout.SideWidth;
+    private const double PaneClosed = 14;
+
+    private void FitQueue() => PlaceQueue(false);
 
     // Folding: the pane at its widest over a stage reaching under it, so that nothing is laid out while it moves (a width animated
     // meant the whole page laid out again at every frame: half a core, a frame in three lost). The stage laid out once, when it's wider;
@@ -273,6 +284,8 @@ public partial class NowPlayingView : UserControl
     {
         bool hidden = _vm?.QueueHidden == true, full = _vm?.FullScreen == true;
         double width = hidden ? PaneClosed : PaneOpen, shift = hidden ? PaneOpen : 0, room = PaneOpen - PaneClosed;
+        // (the card as wide as the side bar's entries, whatever width Settings › Layout gives the side bar)
+        QueueCard.Width = PaneOpen - 2 * PaneClosed;
         QueueCard.Visibility = ShowQueueBtn.Visibility = Visibility.Visible;
         StageButtonsBox.RenderTransform = _buttonsShift;
         void Land()

@@ -7,7 +7,7 @@
     <Grid>
         <Border Height="260" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.55" IsHitTestVisible="False"/>
         <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False">
-            <StackPanel Margin="28,12,20,28">
+            <StackPanel x:Name="HomeRows" Margin="28,12,20,28">
                 <TextBlock Text="{Binding Greeting}" FontSize="30" FontWeight="Bold" Margin="0,4,0,22"/>
 
                 <!-- December to mid January: the year's recap -->
@@ -79,30 +79,30 @@
                 </Border>
 
                 <!-- one row each, scrolling sideways: its arrows, its bar (Shelf, in Controls.cs) -->
-                <views:Shelf Title="{local:T 'Recently played'}" Items="{Binding Recent}"
+                <views:Shelf Tag="recent" Title="{local:T 'Recently played'}" Items="{Binding Recent}"
                              Visibility="{Binding HasRecent, Converter={StaticResource BoolVis}}">
                     <ListBox x:Name="RecentList" Style="{StaticResource BareList}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>
                 </views:Shelf>
 
                 <!-- for you: mixes made from what you listen to -->
-                <views:Shelf Title="{local:T 'For you'}" Items="{Binding ForYou}"
+                <views:Shelf Tag="foryou" Title="{local:T 'For you'}" Items="{Binding ForYou}"
                              Visibility="{Binding HasForYou, Converter={StaticResource BoolVis}}">
                     <ItemsControl ItemTemplate="{StaticResource MixCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>
                 </views:Shelf>
 
                 <!-- the followed artists' new releases -->
-                <views:Shelf Title="{local:T 'New releases'}" Items="{Binding Artists.Releases}"
+                <views:Shelf Tag="releases" Title="{local:T 'New releases'}" Items="{Binding Artists.Releases}"
                              Visibility="{Binding Artists.HasReleases, Converter={StaticResource BoolVis}}">
                     <ItemsControl ItemTemplate="{StaticResource ReleaseCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>
                 </views:Shelf>
 
                 <!-- the saved radios -->
-                <views:Shelf Title="{local:T 'Your radios'}" Items="{Binding Stations.Saved}"
+                <views:Shelf Tag="radios" Title="{local:T 'Your radios'}" Items="{Binding Stations.Saved}"
                              Visibility="{Binding Stations.HasSaved, Converter={StaticResource BoolVis}}">
                     <ItemsControl ItemTemplate="{StaticResource StationCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>
                 </views:Shelf>
 
-                <views:Shelf Title="{local:T 'Your playlists'}" Items="{Binding PlaylistCards}">
+                <views:Shelf Tag="playlists" Title="{local:T 'Your playlists'}" Items="{Binding PlaylistCards}">
                     <ListBox x:Name="PlaylistList" Style="{StaticResource BareList}" ItemsPanel="{StaticResource CardRowTemplate}">
                         <ListBox.Resources>
                             <DataTemplate DataType="{x:Type vm:PlaylistViewModel}">
@@ -113,7 +113,7 @@
                 </views:Shelf>
 
                 <!-- ("Show all": the library, they may be thousands) -->
-                <views:Shelf Title="{local:T 'Recently added'}" MoreLabel="{local:T 'Show all'}" Items="{Binding RecentlyAdded}"
+                <views:Shelf Tag="added" Title="{local:T 'Recently added'}" MoreLabel="{local:T 'Show all'}" Items="{Binding RecentlyAdded}"
                              MoreCommand="{Binding DataContext.GoLibraryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                              Visibility="{Binding HasRecentlyAdded, Converter={StaticResource BoolVis}}">
                     <ListBox x:Name="AddedList" Style="{StaticResource BareList}" ItemTemplate="{StaticResource TrackCard}" ItemsPanel="{StaticResource CardRowTemplate}"/>

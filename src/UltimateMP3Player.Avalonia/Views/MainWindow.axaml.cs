@@ -79,6 +79,19 @@ public partial class MainWindow : Window
         // Two fingers sideways on the touchpad over a song's row: the row is pulled (into the queue).
         AddHandler(PointerWheelChangedEvent, Rows.OnWheel, RoutingStrategies.Tunnel);
         Opened += (_, _) => _host.OnTrackChanged();
+        Themes.BackdropChanged += ShowGlass;
+        Themes.Changed += ApplyGlass;
+        Layout.Changed += ApplyLayout;
+        Closed += (_, _) =>
+        {
+            Themes.BackdropChanged -= ShowGlass;
+            Themes.Changed -= ApplyGlass;
+            Layout.Changed -= ApplyLayout;
+        };
+        ShowGlass();
+        ApplyGlass();
+        Rearrange.Group(SectionsPanel, Layout.Sections);
+        ApplyLayout();
 
         AddHandler(PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel);
         VolumeSlider.AddHandler(PointerWheelChangedEvent, Volume_Wheel, RoutingStrategies.Tunnel);
@@ -318,13 +331,14 @@ public partial class MainWindow : Window
     private void ApplyFullScreen(bool on)
     {
         TitleBar.IsVisible = Sidebar.IsVisible = !on;
-        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : 280);
+        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : Layout.SideWidth);
         Grid.SetRow(Body, on ? 0 : 1);
         Grid.SetRowSpan(Body, on ? 3 : 1);
-        PlayerBar.Background = Ui.Find<IBrush>(on ? "PlayerBarVeil" : "SidebarBrush");
-        double bar = on ? PlayerBar.Bounds.Height : 0;
+        // (the glass look's bar is a pane floating on the page already)
+        PlayerBar.Background = Ui.Find<IBrush>(on && !Glass.On ? "PlayerBarVeil" : "SidebarBrush");
+        double bar = on ? PlayerBar.Bounds.Height + Math.Max(0, PlayerBar.Margin.Bottom) : 0;
         ToastBox.Margin = new Thickness(0, 0, 0, 18 + bar);
-        DownloadPanel.Margin = new Thickness(0, 0, 20, 16 + bar);
+        DownloadPanel.Margin = new Thickness(0, 0, 14, 14 + bar);
         if (on && WindowState != WindowState.FullScreen)
         {
             _windowedState = WindowState == WindowState.Minimized ? WindowState.Normal : WindowState;
@@ -342,9 +356,32 @@ public partial class MainWindow : Window
 
     // The page gets the bar's room at once (under its own slide: AnimatedContent), and the bar goes down out of the window over
     // it; coming back it rises over the page and only then takes its room again. The page is laid out once, not on every frame.
+    // ------------------------------------------------------------------ the glass look (Core Glass, Themes)
+
+    // The player bar's own margin: floating 14 from the edges (Core Layout).
+    private static Thickness BarRest => Layout.Floating ? new Thickness(14, 0, 14, 14) : default;
+
+    // Settings › Layout: the side bar's width, its pages and its sections in the order chosen, the hidden ones out.
+    private void ApplyLayout()
+    {
+        if (!GetValue(FullScreenProperty)) Body.ColumnDefinitions[0].Width = new GridLength(Layout.SideWidth);
+        Rearrange.Apply(NavPanel, Layout.Menu);
+        Rearrange.Apply(SectionsPanel, Layout.Sections, 6);
+    }
+
+    private void ApplyGlass()
+    {
+        // (not while it slides away for the DJ: it lands on it)
+        if (PlayerBar.Margin.Bottom >= 0) PlayerBar.Margin = BarRest;
+        PlayerBar.Background = Ui.Find<IBrush>(GetValue(FullScreenProperty) && !Glass.On ? "PlayerBarVeil" : "SidebarBrush");
+    }
+
+    private void ShowGlass() => Themes.PutBackdrop(GlassBack, GlassBefore, GlassNow, GlassGrain);
+
     private void SlideBar(bool show)
     {
-        if (PlayerBar.IsVisible && PlayerBar.Margin.Bottom == 0) _barHeight = PlayerBar.Bounds.Height;
+        if (PlayerBar.IsVisible && PlayerBar.Margin.Bottom >= 0) _barHeight = PlayerBar.Bounds.Height;
+        var rest = BarRest;
         double h = _barHeight;
         // (how far down it is now: 0 in its place, h out of the window; halfway when it's turned back)
         double down = !PlayerBar.IsVisible ? h : PlayerBar.Margin.Bottom < 0 ? h + _barShift.Y : 0;
@@ -355,7 +392,7 @@ public partial class MainWindow : Window
         void Done()
         {
             _barShift.Y = 0;
-            PlayerBar.Margin = default;
+            PlayerBar.Margin = rest;
             PlayerBar.IsVisible = show;
         }
         if (!Ui.Animations || h <= 0 || !IsVisible)
@@ -364,7 +401,7 @@ public partial class MainWindow : Window
             return;
         }
         // (laid out below the window, drawn back up where it is)
-        PlayerBar.Margin = new Thickness(0, 0, 0, -h);
+        PlayerBar.Margin = new Thickness(rest.Left, rest.Top, rest.Right, -h - rest.Bottom);
         double from = down - h, to = show ? -h : 0;
         Ui.Tween(PlayerBar, AnimatedContent.Ms * Math.Abs(to - from) / h, Ui.CubicOut, t =>
         {

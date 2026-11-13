@@ -83,7 +83,7 @@ public sealed class TextShadow : FrameworkElement
         if (Target is not { ActualWidth: > 0, ActualHeight: > 0 } target) return;
         _made = Key(target);
         double w = target.ActualWidth, h = target.ActualHeight;
-        var ink = new SolidColorBrush(Themes.IsLight ? Themes.Get("Bg") : Colors.Black);
+        var ink = new SolidColorBrush(Themes.IsLight ? Themes.Get("PageSolid") : Colors.Black);
         var bmp = new RenderTargetBitmap((int)Math.Ceiling(w) + 2 * Spill, (int)Math.Ceiling(h) + 2 * Spill, 96, 96, PixelFormats.Pbgra32);
         var moving = new List<TextBlock>();
         Moving(target, moving);

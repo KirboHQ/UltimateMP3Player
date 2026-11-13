@@ -24,8 +24,7 @@ public static class TrackDownloader
         Track? target = null;
         if (req.AttachTo != null)
             target = lib.Get(req.AttachTo) ?? throw new EngineException(L.T("The song is no longer in your library."));
-        var known = target ?? lib.FindByKeys(keys);
-        if (known == null && item.Source == SourceKind.Search) known = lib.FindSimilar(item.Title, item.Artist, item.Duration);
+        var known = target ?? lib.FindItem(item, keys);
         // Already on the device (a song in the cloud gets its audio saved instead).
         if (known != null && !req.Replace && (req.VideoOnly ? known.HasVideo : known.HasSavedFile && (!req.WantVideo || known.HasVideo)))
         {

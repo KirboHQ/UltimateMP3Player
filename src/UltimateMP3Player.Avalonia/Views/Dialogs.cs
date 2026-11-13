@@ -492,7 +492,7 @@ public static partial class Dialogs
 
         var card = new Border
         {
-            Background = Res("SurfaceBrush"),
+            Background = Res("SheetBrush"),
             BorderBrush = Res("BorderStrongBrush"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(16),

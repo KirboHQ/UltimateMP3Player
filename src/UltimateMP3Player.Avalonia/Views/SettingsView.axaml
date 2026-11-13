@@ -193,6 +193,100 @@
                     </StackPanel>
                 </Border>
 
+                <!-- the glass look: on or off in its title, like the bars of the music; its choices under it (Core Glass) -->
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="appearance" Padding="22" views:SettingsView.Keywords="{local:T 'glass blur transparent translucent background cover frosted smoked acrylic grain panes'}">
+                    <StackPanel>
+                        <DockPanel>
+                            <CheckBox DockPanel.Dock="Right" Theme="{StaticResource Switch}" IsChecked="{Binding GlassOn}" VerticalAlignment="Center"
+                                      AutomationProperties.Name="{local:T Glass}"/>
+                            <StackPanel>
+                                <TextBlock Text="{local:T Glass}" FontSize="17" FontWeight="Bold"/>
+                                <TextBlock Text="{local:T 'The window lies on the cover of the song playing, blurred, under panes of glass.'}" Classes="hint" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <StackPanel Margin="0,14,0,0" views:Fold.Open="{Binding GlassOn}">
+                            <TextBlock Text="{local:T Background}" Classes="field-label"/>
+                            <views:ChoiceTiles Picture="glasspicture" Items="{Binding GlassPictures}" Selected="{Binding GlassPicture}"/>
+                            <TextBlock Text="{local:T Panes}" Classes="field-label" Margin="2,14,0,6"/>
+                            <views:ChoiceTiles Picture="glasstint" Items="{Binding GlassTints}" Selected="{Binding GlassTintChoice}"/>
+                            <Grid Margin="0,14,0,0" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto">
+                                <TextBlock Text="{local:T Blur}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding GlassBlur}" VerticalAlignment="Center" AutomationProperties.Name="{local:T Blur}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding GlassBlurText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                                <TextBlock Grid.Row="1" Text="{local:T Brightness}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,12,14,0"/>
+                                <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding GlassBrightness}" VerticalAlignment="Center" Margin="0,12,0,0" AutomationProperties.Name="{local:T Brightness}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding GlassBrightnessText}" Margin="14,12,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                                <TextBlock Grid.Row="2" Text="{local:T Color}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,12,14,0"/>
+                                <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding GlassVivid}" VerticalAlignment="Center" Margin="0,12,0,0" AutomationProperties.Name="{local:T Color}"/>
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding GlassVividText}" Margin="14,12,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                                <TextBlock Grid.Row="3" Text="{local:T Opacity}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,12,14,0"/>
+                                <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding GlassPanes}" VerticalAlignment="Center" Margin="0,12,0,0" AutomationProperties.Name="{local:T 'Opacity of the panes'}"/>
+                                <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding GlassPanesText}" Margin="14,12,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                            </Grid>
+                            <DockPanel Margin="0,12,0,0">
+                                <Button DockPanel.Dock="Right" Theme="{StaticResource SubtleButton}" Padding="12,5" Content="{local:T Reset}" Command="{Binding GlassResetCommand}" VerticalAlignment="Center"/>
+                                <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding GlassGrain}" VerticalAlignment="Center">
+                                    <TextBlock Text="{local:T Grain}"/>
+                                </CheckBox>
+                            </DockPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- the layout: the bars floating or attached, the side bar's width, its pages and sections, Home's rows (Core Layout) -->
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="appearance" Padding="22" views:SettingsView.Keywords="{local:T 'layout menu side bar width order position hide floating attached home rows sections customize'}">
+                    <StackPanel>
+                        <StackPanel.DataTemplates>
+                            <!-- a page or a row: shown or not, dragged by its handle like the search's sites (SettingsView: LayoutRow_Moved) -->
+                            <DataTemplate DataType="vm:LayoutRow">
+                                <Border Name="Row" CornerRadius="8" Background="Transparent" Padding="0,2">
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Right" Background="Transparent" Cursor="SizeAll" VerticalAlignment="Center" Padding="12,10,8,10"
+                                                ToolTip.Tip="{local:T 'Drag to change the order'}">
+                                            <StackPanel Width="14" Spacing="3">
+                                                <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
+                                                <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
+                                                <Border Height="2" CornerRadius="1" Background="{DynamicResource MutedBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding Shown}" IsEnabled="{Binding CanHide}" VerticalAlignment="Center">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Icon, Converter={StaticResource Icon}}" Classes="glyph" FontSize="15" Width="22" Margin="0,0,8,0" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </CheckBox>
+                                    </DockPanel>
+                                </Border>
+                            </DataTemplate>
+                        </StackPanel.DataTemplates>
+                        <StackPanel.Styles>
+                            <Style Selector="ListBox.layout">
+                                <Setter Property="Template">
+                                    <ControlTemplate>
+                                        <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>
+                                    </ControlTemplate>
+                                </Setter>
+                            </Style>
+                        </StackPanel.Styles>
+                        <TextBlock Text="{local:T Layout}" Classes="card-title"/>
+                        <TextBlock Text="{local:T 'Side bar and player bar'}" Classes="field-label"/>
+                        <views:ChoiceTiles Picture="bars" Items="{Binding BarChoices}" Selected="{Binding BarChoice}"/>
+                        <TextBlock Text="{Binding BarHint}" Classes="hint" FontSize="12" Margin="2,8,0,0"/>
+                        <Grid Margin="0,14,0,0" ColumnDefinitions="Auto,*,Auto">
+                            <TextBlock Text="{local:T 'Side bar width'}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <Slider Grid.Column="1" Minimum="220" Maximum="360" SmallChange="10" LargeChange="20" IsSnapToTickEnabled="True" TickFrequency="10" Value="{Binding SideWidth}"
+                                    VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Side bar width'}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding SideWidthText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                        </Grid>
+                        <TextBlock Text="{local:T 'Pages of the side bar'}" Classes="field-label" Margin="2,16,0,4"/>
+                        <ListBox x:Name="MenuRowList" ItemsSource="{Binding MenuRows}" Theme="{StaticResource PlainList}" Classes="layout" Focusable="False" DragDrop.AllowDrop="True"/>
+                        <TextBlock Text="{local:T 'Sections of the side bar'}" Classes="field-label" Margin="2,14,0,4"/>
+                        <ListBox x:Name="SectionRowList" ItemsSource="{Binding SectionRows}" Theme="{StaticResource PlainList}" Classes="layout" Focusable="False" DragDrop.AllowDrop="True"/>
+                        <TextBlock Text="{local:T 'Rows of Home'}" Classes="field-label" Margin="2,14,0,4"/>
+                        <ListBox x:Name="HomeRowList" ItemsSource="{Binding HomeRows}" Theme="{StaticResource PlainList}" Classes="layout" Focusable="False" DragDrop.AllowDrop="True"/>
+                    </StackPanel>
+                </Border>
+
                 <!-- the song's bar: how it will look, its shapes -->
                 <Border Theme="{StaticResource Card}" views:SettingsView.Group="appearance" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'song bar seek progress shape blocks dots line wave mirrored'}">
                     <StackPanel>
@@ -770,6 +864,22 @@
                             <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Content="{local:T Rename}" Margin="8,0,0,0"
                                     Command="{Binding RenameArtistCommand}"/>
                         </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- tidying up: the covers and lengths missing (an import's), the same song twice (another site, an import) joined into one -->
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="library" Padding="22"
+                        views:SettingsView.Keywords="{local:T 'duplicates doubles same song twice copies join covers pictures images missing length album'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Tidy up the library'}" Classes="card-title"/>
+                        <TextBlock Text="{local:T 'Songs without a cover or a length (an import from Spotify brings none): looked up by title and artist'}" Classes="hint"
+                                   TextWrapping="Wrap" Margin="0,4,0,10"/>
+                        <Button Theme="{StaticResource GhostButton}" HorizontalAlignment="Left" Padding="16,9" Content="{local:T 'Find missing covers'}"
+                                Command="{Binding FindMissingCommand}"/>
+                        <TextBlock Text="{local:T 'The same song twice in the library: one copy stays, with the playlists, plays and tags of both'}" Classes="hint"
+                                   TextWrapping="Wrap" Margin="0,18,0,10"/>
+                        <Button Theme="{StaticResource GhostButton}" HorizontalAlignment="Left" Padding="16,9" Content="{local:T 'Remove duplicates'}"
+                                Command="{Binding RemoveDuplicatesCommand}"/>
                     </StackPanel>
                 </Border>
 

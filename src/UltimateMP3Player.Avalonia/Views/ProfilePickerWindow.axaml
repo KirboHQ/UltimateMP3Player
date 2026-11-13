@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:UltimateMP3Player"
         xmlns:views="clr-namespace:UltimateMP3Player.Views"
         Title="Ultimate MP3 Player" Width="820" Height="600" MinWidth="620" MinHeight="480"
-        Background="{DynamicResource TitleBarBrush}" Foreground="{DynamicResource TextBrush}"
+        Background="{DynamicResource TitleBarSolidBrush}" Foreground="{DynamicResource TextBrush}"
         FontFamily="{StaticResource UiFont}" FontSize="14" UseLayoutRounding="True">
     <local:DialogWindow.Styles>
         <Style Selector="Button.tile Ellipse.ring">
@@ -58,7 +58,7 @@
 
     <Panel x:Name="Root">
         <Grid RowDefinitions="32,*">
-            <Grid x:Name="TitleBar" Background="{DynamicResource TitleBarBrush}">
+            <Grid x:Name="TitleBar" Background="{DynamicResource TitleBarSolidBrush}">
                 <StackPanel x:Name="TitleText" Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
                     <Image Source="/Assets/app-256.png" Width="16" Height="16" RenderOptions.BitmapInterpolationMode="HighQuality"/>
                     <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" Margin="9,0,0,1"
@@ -68,7 +68,7 @@
                         ToolTip.Tip="{local:T Close}"/>
             </Grid>
 
-            <Panel Grid.Row="1" Background="{DynamicResource BgBrush}">
+            <Panel Grid.Row="1" Background="{DynamicResource PageSolidBrush}">
                 <Border Height="300" VerticalAlignment="Top" Background="{DynamicResource HeaderGlowStrong}"/>
 
                 <!-- ======================================================== picker -->

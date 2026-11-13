@@ -184,6 +184,8 @@ public static class DragVisuals
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen())
         {
+            // (on the page's solid colour first: with the glass look Surface3 is see-through, the rows under the copy showed through it)
+            dc.DrawRoundedRectangle((Brush)Application.Current.Resources["PageSolidBrush"], null, new Rect(0, 0, e.ActualWidth, e.ActualHeight), 8, 8);
             dc.DrawRoundedRectangle((Brush)Application.Current.Resources["Surface3Brush"], null, new Rect(0, 0, e.ActualWidth, e.ActualHeight), 8, 8);
             var box = new Rect(0, 0, e.ActualWidth, e.ActualHeight);
             // The brush keeps the row's offset in its parent (e.g. below the "Up next from" title): start the view there.

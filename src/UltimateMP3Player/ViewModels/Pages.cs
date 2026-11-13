@@ -677,9 +677,7 @@ public class OnlineHitViewModel : Observable
     {
         // (an album isn't a song of the same name)
         if (Hit.Collection != null) return false;
-        var lib = _main.Library;
-        return lib.FindByKeys(SourceKeys.ForItem(new MediaItem { Url = Hit.Url, PageUrl = Hit.Url })) != null ||
-               lib.FindSimilar(Hit.Title, Hit.Artist, Hit.Duration) != null;
+        return _main.Library.FindItem(OnlineSearchServices.ToItem(Hit), byName: true) != null;
     }
 
     public MainViewModel Main => _main;

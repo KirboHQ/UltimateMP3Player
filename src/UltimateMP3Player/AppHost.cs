@@ -171,8 +171,11 @@ public sealed class AppHost : Observable
     {
         ThemeColors.RgbSpeed = Math.Clamp(Session?.Profile.Data.RgbSpeed ?? 1, ThemeColors.RgbMinSpeed, ThemeColors.RgbMaxSpeed);
         ThemeColors.CustomColor = ThemeColors.ColorFrom(Session?.Profile.Data.CustomColor) ?? ThemeColors.CustomColor;
+        Glass.Look = Session?.Profile.Data.Glass ?? new GlassLook();
+        Layout.Look = Session?.Profile.Data.Layout ?? new LayoutLook();
         // (before a profile is open, the profile picker: the device's look)
         Themes.Apply(Session?.Profile.Data.Theme, Session?.Profile.Info.Color ?? ThemeColors.All[0].A, Session?.Profile.Data.Appearance, Session?.Profile.Data.SongColors);
+        Layout.Notify();
     }
 
     // ------------------------------------------------------------------ profiles

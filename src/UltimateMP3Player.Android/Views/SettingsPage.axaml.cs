@@ -49,6 +49,17 @@ public partial class SettingsPage : UserControl, IPage
                 if (Vm is not { } vm || vm.SearchServices is not { } sites || from >= sites.Count) return;
                 vm.MoveService(sites[from].Name, TouchReorder.MoveIndex(from, onto, after));
             });
+        // Settings › Layout: the bottom bar's tabs and Home's rows by their handle too, each within its own list.
+        foreach (var (area, layer, list, rowsOf) in new (Panel, Canvas, ItemsControl, Func<SettingsViewModel, List<LayoutRow>>)[]
+                 { (TabRowsArea, TabRowsLayer, TabRowsList, vm => vm.MenuRows), (HomeRowsArea, HomeRowsLayer, HomeRowsList, vm => vm.HomeRows) })
+            _ = new TouchReorder(area, layer,
+                () => Enumerable.Range(0, list.ItemCount).Select(list.ContainerFromIndex).OfType<Control>().ToList(),
+                () => area.FindAncestorOfType<ScrollViewer>(),
+                (from, onto, after) =>
+                {
+                    if (Vm is not { } vm || rowsOf(vm) is not { } rows || from >= rows.Count) return;
+                    rows[from].MoveTo(TouchReorder.MoveIndex(from, onto, after));
+                });
         Search();
 #if IOS_APP
         // The iPhone: iOS chooses the output (Control Center), the updates of the app come from outside it (yt-dlp's

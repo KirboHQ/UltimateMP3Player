@@ -33,7 +33,11 @@ public static class Program
         bool queuePerf = args.Contains("queue");
         // ("tour": the real window, the real mouse, every page and menu: Tour.cs in the other test program)
         bool tour = args.Contains("tour");
-        var root = Path.GetFullPath(args.FirstOrDefault(a => a != "online" && a != "perf" && a != "editor" && a != "queue" && a != "tour") ?? Path.Combine(Path.GetTempPath(), "ump-wpf"));
+        // ("glass": a library with covers, a song playing, the pages in the glass look, light and dark, and the plain one beside them)
+        bool glass = args.Contains("glass");
+        // ("plain": without the glass look, on by default since 5.3: "perf plain" against "perf")
+        bool plain = args.Contains("plain");
+        var root = Path.GetFullPath(args.FirstOrDefault(a => a is not ("online" or "perf" or "editor" or "queue" or "tour" or "glass" or "plain" or "quick")) ?? Path.Combine(Path.GetTempPath(), "ump-wpf"));
         if (Directory.Exists(root)) Directory.Delete(root, true);
         _shots = Directory.CreateDirectory(Path.Combine(root, "shots")).FullName;
         Environment.SetEnvironmentVariable("UMP_DATA", Path.Combine(root, "data"));
@@ -77,11 +81,23 @@ public static class Program
         typeof(AppHost).GetProperty(nameof(AppHost.Window))!.SetValue(host, win);
         win.Show();
         main.Player.SetVisible(true);
+        if (plain)
+        {
+            main.Profile.Data.Glass.On = false;
+            host.ApplyTheme();
+            Pump(300);
+        }
         if (tour)
         {
             Tour.Run(main, win, root);
             try { host.Exit(true); } catch { }
             return 0;
+        }
+        if (glass)
+        {
+            GlassShots(main, win, root);
+            try { host.Exit(true); } catch { }
+            return Failed.Count == 0 ? 0 : 1;
         }
         if (queuePerf)
         {
@@ -217,6 +233,19 @@ public static class Program
         main.GoMenu(2);
         main.StepTab(1);
         Check(main.IsLibraryNav && main.LibraryHub.IsRadio, "Ctrl+3 then Ctrl+right: the library's next tab");
+        // Settings › Layout: Library dragged above Search, DJ hidden; Ctrl+number follows the side bar's order.
+        main.Settings.MenuRows[2].MoveTo(1);
+        main.Settings.MenuRows.First(r => r.Label == "DJ").Shown = false;
+        main.IsHome = true;
+        main.GoMenu(1);
+        bool second = main.IsLibraryNav;
+        main.GoMenu(2);
+        bool third = main.IsSearch;
+        main.IsHome = true;
+        main.GoMenu(4);
+        Check(second && third && main.IsHome, "layout: Ctrl+2 Library and Ctrl+3 Search as the side bar has them, Ctrl+5 nothing with DJ hidden");
+        main.Profile.Data.Layout = new LayoutLook();
+        main.Host.ApplyTheme();
         main.IsDownloads = true;
         Check(main.Shown == main.Search && main.IsSearch, "downloads: shown inside Search");
 
@@ -284,7 +313,9 @@ public static class Program
             Check(barsFrom <= 0 && barsFrom + songBars.ActualWidth >= songStage.ActualWidth, $"song's page, {when}: the bars reach both sides of the stage ({barsFrom:0}, {barsFrom + songBars.ActualWidth:0} of {songStage.ActualWidth:0})");
             var songBack = Descendants(win).OfType<FrameworkElement>().First(e => e.Name == "StageBack");
             double MiddleOf(FrameworkElement e) => e.TransformToAncestor(songStage).Transform(new Point(e.ActualWidth / 2, 0)).X;
-            Check(Math.Abs(MiddleOf(songBack) - MiddleOf(songHit)) <= 1.5, $"song's page, {when}: the backdrop in the middle of the song ({MiddleOf(songBack):0} and {MiddleOf(songHit):0})");
+            // (the glass look has one picture behind the whole window, none of the stage's own)
+            Check(Glass.On ? !songBack.IsVisible : Math.Abs(MiddleOf(songBack) - MiddleOf(songHit)) <= 1.5,
+                  $"song's page, {when}: the backdrop in the middle of the song ({MiddleOf(songBack):0} and {MiddleOf(songHit):0}; glass {Glass.On})");
             var playerGrid = (FrameworkElement)win.FindName("PlayerGrid");
             var songAt = Middle(songHit);
             Check(Math.Abs(songAt.X - Middle(playerGrid).X) < 1 && Math.Abs(songAt.Y - Middle(Descendants(win).OfType<FrameworkElement>().First(e => e.Name == "Stage")).Y) < 1, $"song's page, {when}: the cover above play, halfway up the stage ({songAt.X:0},{songAt.Y:0} of {windowRoot.ActualWidth:0}x{windowRoot.ActualHeight:0})");
@@ -298,8 +329,8 @@ public static class Program
         Shot(win, "fullscreen");
         var titleBar = (FrameworkElement)win.FindName("TitleBar");
         var playerBar = (Border)win.FindName("PlayerBar");
-        Check(main.NowPlaying.FullScreen && titleBar.Visibility == Visibility.Collapsed && playerBar.Background is LinearGradientBrush && win.Left > -30000,
-              "full screen: the window over its screen, no title bar, the player bar see-through");
+        Check(main.NowPlaying.FullScreen && titleBar.Visibility == Visibility.Collapsed && (Glass.On || playerBar.Background is LinearGradientBrush) && win.Left > -30000,
+              "full screen: the window over its screen, no title bar, the player bar see-through (glass: a pane of its own)");
         main.IsHome = true;
         Pump(300);
         Check(!main.FullScreen && titleBar.Visibility == Visibility.Visible && win.Left == -32000 && win.Width == 1400, "full screen: another page ends it, the window back");
@@ -319,7 +350,7 @@ public static class Program
         main.IsHome = true;
         Shot(win, "bar-rising", 90);
         Shot(win, "bar-back", 600);
-        Check(bar.Visibility == Visibility.Visible && bar.Margin.Bottom == 0 && bar.IsHitTestVisible, "dj left: the player bar back in its place");
+        Check(bar.Visibility == Visibility.Visible && bar.Margin.Bottom == (Layout.Floating ? 14 : 0) && bar.IsHitTestVisible, "dj left: the player bar back in its place");
 
         // ---- 4.5: the speed of the animations; the interface's size; the sidebar's sections; the bars of the music; the stream overlays
         main.Settings.AnimationSpeed = 2;
@@ -348,10 +379,25 @@ public static class Program
         var stageView = Descendants(win).OfType<FrameworkElement>().First(e => e.Name == "Stage");
         Check(Math.Abs(queuePane.ActualWidth - stageView.TransformToAncestor(windowRoot).Transform(new Point()).X) < 1, $"song's page: as much room on each side of the stage ({leftBar.ActualWidth:0} and {queuePane.ActualWidth:0})");
         var queueCard = Descendants(win).OfType<FrameworkElement>().First(e => e.Name == "QueueCard");
-        var barEntries = (FrameworkElement)((Border)leftBar).Child;
+        // (floating, the side bar's card is the pane, where its entries are when it's attached)
+        var barEntries = Layout.Floating ? leftBar : (FrameworkElement)((Border)leftBar).Child;
         double FromLeft(FrameworkElement e) => e.TransformToAncestor(windowRoot).Transform(new Point()).X;
         double[] sideGaps = { FromLeft(barEntries), FromLeft(stageView) - FromLeft(barEntries) - barEntries.ActualWidth, FromLeft(queueCard) - FromLeft(stageView) - stageView.ActualWidth, windowRoot.ActualWidth - FromLeft(queueCard) - queueCard.ActualWidth };
         Check(sideGaps.All(g => Math.Abs(g - 14) < 1) && Math.Abs(barEntries.ActualWidth - queueCard.ActualWidth) < 1, $"song's page: the same gaps, the sidebar's entries as wide as up next ({string.Join(", ", sideGaps.Select(g => g.ToString("0")))}; {barEntries.ActualWidth:0} and {queueCard.ActualWidth:0})");
+        // Settings › Layout: the side bar as wide as chosen, its pages in another order, one hidden; then back.
+        main.Settings.SideWidth = 320;
+        main.Settings.MenuRows.First(r => r.Label == "DJ").Shown = false;
+        main.Settings.MenuRows[2].MoveTo(1);
+        Pump(400);
+        var navPanel = (Panel)win.FindName("NavPanel");
+        var navOrder = string.Join(",", navPanel.Children.OfType<FrameworkElement>().Select(c => c.Tag as string));
+        double sideColumn = ((Grid)win.FindName("Body")).ColumnDefinitions[0].ActualWidth;
+        Check(Math.Abs(sideColumn - 320) < 1 && navOrder == "home,library,search,together", $"layout: the side bar as wide as chosen, its pages in the order chosen, DJ hidden ({sideColumn:0}; {navOrder})");
+        Check(Math.Abs(queueCard.ActualWidth - 292) < 1, $"layout: up next as wide as the side bar's entries at the width chosen ({queueCard.ActualWidth:0})");
+        main.Profile.Data.Layout = new LayoutLook();
+        main.Host.ApplyTheme();
+        Pump(400);
+        Check(navPanel.Children.Count == 5 && Math.Abs(((Grid)win.FindName("Body")).ColumnDefinitions[0].ActualWidth - 280) < 1, "layout: back as it was");
         main.NowPlaying.ToggleQueueCommand.Execute(null);
         Pump(Ui.Animations ? 700 : 100);
         SongInTheMiddle("with up next folded away");
@@ -750,6 +796,141 @@ public static class Program
         Check(!File.Exists(AppPaths.LogFile) || new FileInfo(AppPaths.LogFile).Length == 0, "nothing in errors.log");
         Console.WriteLine(Failed.Count == 0 ? "wpf: ok" : $"wpf: {Failed.Count} FAILED");
         return Failed.Count == 0 ? 0 : 1;
+    }
+
+    // The glass look, to be looked at: songs with covers of their own, one playing, the pages light and dark; a song with other colours;
+    // the plain look on the same pages.
+    private static void GlassShots(MainViewModel main, MainWindow win, string root)
+    {
+        var wav = Path.Combine(root, "music", "glass.wav");
+        WriteSilence(wav, 20);
+        (string Title, string Artist, uint A, uint B, uint Glow)[] songs =
+        {
+            ("Neon Tides", "Lumen Harbor", 0xFF2A0E61, 0xFFFF3D7F, 0xFFFFB347),
+            ("Glass Avenue", "Northern Static", 0xFF04324A, 0xFF19C3B9, 0xFFB8FFF2),
+            ("Velvet Motel", "Paper Lights", 0xFF3B0A0A, 0xFFE0362F, 0xFFFFD27A),
+            ("Golden Parade", "Hollow Garden", 0xFF4A2A00, 0xFFF5B400, 0xFFFFF4C2),
+            ("Silver Rain", "Distant Runner", 0xFF101828, 0xFF5B6B8A, 0xFFDDE6F5),
+            ("Wild Horizon", "Electric Letters", 0xFF0B3D1E, 0xFF35D07F, 0xFFE6FF8A),
+            ("Midnight Signal", "Lumen Harbor", 0xFF0A0F3D, 0xFF4B5BFF, 0xFFC67CFF),
+            ("Summer Skyline", "Quiet Machine", 0xFFFF7A1A, 0xFFFF4FA3, 0xFFFFE07A),
+            ("Falling Echoes", "Northern Static", 0xFF1A0B2E, 0xFF8A3FFC, 0xFF3DDCFF),
+            ("Last Ocean", "Paper Lights", 0xFF002B36, 0xFF1E9BFF, 0xFF7CF5FF),
+            ("Static Hearts", "Hollow Garden", 0xFF2B0016, 0xFFC2185B, 0xFFFF8A80),
+            ("Paper Garden", "Distant Runner", 0xFFE8E2D0, 0xFF9CB380, 0xFFFFFFFF),
+        };
+        for (int i = 0; i < songs.Length; i++)
+        {
+            var (title, artist, a, b, glow) = songs[i];
+            var track = new Track { Id = "glass" + i, Title = title, Artist = artist, Album = artist + " Sessions", Duration = 180 + i * 13, SourceUrl = "https://example.com/glass" + i, Path = wav, HasCover = true };
+            WriteArt(AppPaths.TrackCover(track.Id), a, b, glow, i);
+            main.Library.Add(track);
+        }
+        Pump();
+        foreach (var (name, from) in new[] { ("Night drive", 0), ("Focus", 4), ("Sunday", 7) })
+        {
+            var list = main.Profile.CreatePlaylist(name);
+            for (int i = 0; i < 5; i++) main.Profile.AddTrack(list, "glass" + (from + i) % songs.Length);
+        }
+        Pump(400);
+        main.Player.Volume = 0;
+        main.Player.PlayFrom(main.LibraryPage, main.AllVms().First(t => t.Id == "glass0"));
+        Pump(800);
+        void Pages(string look)
+        {
+            main.IsHome = true;
+            Shot(win, look + "-home", 900);
+            main.IsLibrary = true;
+            Shot(win, look + "-library");
+            main.OpenPlaylist(main.Playlists.First(p => p.P.Name == "Night drive"));
+            Shot(win, look + "-playlist");
+            main.LibraryHub.PlaylistsCommand.Execute(null);
+            Shot(win, look + "-playlists");
+            main.OpenArtists();
+            Shot(win, look + "-artists");
+            main.OpenArtist("Lumen Harbor", null);
+            Shot(win, look + "-artist");
+            main.OpenStations();
+            Shot(win, look + "-radio");
+            main.IsTogether = true;
+            Shot(win, look + "-together");
+            main.IsDownloads = true;
+            Shot(win, look + "-downloads");
+            main.OpenStats();
+            Shot(win, look + "-stats");
+            main.GoNowPlayingCommand.Execute(null);
+            Shot(win, look + "-song", 900);
+            main.NowPlaying.QueueHidden = true;
+            Shot(win, look + "-song-no-queue", 900);
+            main.NowPlaying.QueueHidden = false;
+            main.FullScreen = true;
+            Shot(win, look + "-fullscreen", 900);
+            main.FullScreen = false;
+            main.IsHome = true;
+            main.QueueOpen = true;
+            Shot(win, look + "-queue-popup", 700);
+            main.QueueOpen = false;
+            main.GoSettings();
+            main.OpenSettingsGroup("appearance");
+            Shot(win, look + "-settings");
+            main.OpenSettingsGroup("playback");
+            Shot(win, look + "-settings-playback");
+            main.IsSearch = true;
+            Shot(win, look + "-search");
+            main.IsDj = true;
+            Shot(win, look + "-dj", 900);
+        }
+        main.Profile.Data.Glass.On = true;
+        foreach (var look in new[] { ThemeColors.Dark, ThemeColors.Light })
+        {
+            main.Profile.Data.Appearance = look;
+            main.Host.ApplyTheme();
+            Pump(800);
+            Check(Themes.Backdrop != null, $"glass, {look}: the picture behind the window is made");
+            Pages("glass-" + look);
+        }
+        main.Profile.Data.Appearance = ThemeColors.Dark;
+        main.Host.ApplyTheme();
+        main.Player.PlayFrom(main.LibraryPage, main.AllVms().First(t => t.Id == "glass1"));
+        main.IsHome = true;
+        Shot(win, "glass-dark-home-other-song", 1500);
+        main.Player.PlayFrom(main.LibraryPage, main.AllVms().First(t => t.Id == "glass11"));
+        main.IsLibrary = true;
+        Shot(win, "glass-dark-library-pale-song", 1500);
+        main.Profile.Data.Glass.On = false;
+        main.Host.ApplyTheme();
+        Pump(500);
+        Check(Themes.Backdrop == null, "glass left: no picture behind the window");
+        main.Player.PlayFrom(main.LibraryPage, main.AllVms().First(t => t.Id == "glass0"));
+        Pages("plain-dark");
+        Console.WriteLine(Failed.Count == 0 ? "wpf: ok" : $"wpf: {Failed.Count} FAILED");
+    }
+
+    // A made-up album cover: a diagonal between two colours, a glow, a few soft bands across it.
+    private static void WriteArt(string file, uint a, uint b, uint glow, int seed)
+    {
+        const int size = 600;
+        static Color C(uint v, byte alpha = 255) => Color.FromArgb(alpha, (byte)(v >> 16), (byte)(v >> 8), (byte)v);
+        var random = new Random(seed);
+        var v = new DrawingVisual();
+        using (var dc = v.RenderOpen())
+        {
+            dc.DrawRectangle(new LinearGradientBrush(C(a), C(b), random.Next(20, 70)), null, new Rect(0, 0, size, size));
+            for (int i = 0; i < 3; i++)
+            {
+                var band = new RectangleGeometry(new Rect(-size, random.Next(0, size), size * 3, random.Next(30, 120)));
+                band.Transform = new RotateTransform(random.Next(-35, 35), size / 2, size / 2);
+                dc.DrawGeometry(new SolidColorBrush(C(i % 2 == 0 ? glow : a, (byte)random.Next(25, 70))), null, band);
+            }
+            dc.DrawEllipse(new RadialGradientBrush(C(glow, 230), C(glow, 0)), null, new Point(random.Next(150, 450), random.Next(150, 450)), 260, 260);
+        }
+        var rtb = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(v);
+        var jpeg = new JpegBitmapEncoder { QualityLevel = 90 };
+        jpeg.Frames.Add(BitmapFrame.Create(rtb));
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        using var f = File.Create(file);
+        jpeg.Save(f);
     }
 
     private static void QueuePerf(MainViewModel main, MainWindow win, string root)

@@ -24,6 +24,9 @@ public partial class PlayerPage : UserControl
     public PlayerPage()
     {
         InitializeComponent();
+        // (the glass look: the window's picture on the page too, so it covers what it slides over)
+        Themes.BackdropChanged += () => Themes.PutBackdrop(GlassBack, GlassBefore, GlassNow, GlassGrain);
+        Themes.PutBackdrop(GlassBack, GlassBefore, GlassNow, GlassGrain);
         // A tap on the artist's name: its page (which one, for a song of several); not a radio's (that line is the song on air).
         ArtistText.Tapped += (_, _) =>
         {

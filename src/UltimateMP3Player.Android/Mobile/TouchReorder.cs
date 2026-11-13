@@ -31,6 +31,9 @@ public sealed class TouchReorder
     private Border? _line;
     private Control? _ghost;
     private DispatcherTimer? _edge;
+    // The mark where it is and where it's going (top, height); the clock of its glide.
+    private double _top, _height, _toTop, _toHeight;
+    private readonly System.Diagnostics.Stopwatch _clock = new();
 
     // host: has the rows inside and gets the finger first; layer: a Canvas over the rows, not hit-testable; rows: the rows in
     // their order; drop(from, onto, after): the dragged row's index, the row it was dropped on and on which side.
@@ -87,7 +90,12 @@ public sealed class TouchReorder
         e.PreventGestureRecognition();
         e.Handled = true;
         Haptics.LongPress();
-        _edge ??= new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) => EdgeScroll());
+        _edge ??= new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) =>
+        {
+            Glide();
+            EdgeScroll();
+        });
+        _clock.Restart();
         _edge.Start();
         Follow();
     }
@@ -138,36 +146,53 @@ public sealed class TouchReorder
         }
         _after = _fingerY > onTop + onHeight / 2;
         _stays = on == _from || on == _from - 1 && _after || on == _from + 1 && !_after;
-        if (_stays && _dragged.TranslatePoint(default, _layer) is { } own) Mark(own.Y, _dragged.Bounds.Height, true);
-        else Mark((_after ? onTop + onHeight : onTop) - 1.5, 3, false);
+        if (_stays && _dragged.TranslatePoint(default, _layer) is { } own) Mark(own.Y, _dragged.Bounds.Height);
+        else Mark((_after ? onTop + onHeight : onTop) - 1.5, 3);
     }
 
-    // The line (accent, between two rows) or the box (outlined, a light fill, over a row); the first time it's put in place at
-    // once, then it glides.
-    private void Mark(double top, double height, bool box)
+    // The line (accent, between two rows) or the box (outlined, a light fill, over a row): the first time it's put in place at
+    // once, then it glides there, its look following its height (the desktops' DragVisuals): a box turning into a line is
+    // solid only once it's thin, not a block of accent for a moment.
+    private void Mark(double top, double height)
     {
         if (_line == null) return;
-        var accent = Ui.Res("AccentBrush");
-        double w = _layer.Bounds.Width;
-        bool first = !_line.IsVisible;
-        if (first) _line.Transitions = null;
-        Canvas.SetLeft(_line, box ? 8 : 16);
-        Canvas.SetTop(_line, top);
-        _line.Width = Math.Max(0, w - (box ? 16 : 32));
-        _line.Height = height;
-        _line.CornerRadius = new CornerRadius(box ? 12 : 2);
-        _line.BorderThickness = new Thickness(box ? 2 : 0);
-        _line.BorderBrush = accent;
-        _line.Background = box && accent is ISolidColorBrush s ? new SolidColorBrush(s.Color, 0.18) : accent;
+        _toTop = top;
+        _toHeight = height;
+        if (!_line.IsVisible || !Ui.Animations)
+        {
+            _top = top;
+            _height = height;
+        }
         _line.IsVisible = true;
-        if (first)
-            _line.Transitions = new Transitions
-            {
-                new DoubleTransition { Property = Canvas.TopProperty, Duration = TimeSpan.FromMilliseconds(90) },
-                new DoubleTransition { Property = Layoutable.HeightProperty, Duration = TimeSpan.FromMilliseconds(90) },
-                new DoubleTransition { Property = Canvas.LeftProperty, Duration = TimeSpan.FromMilliseconds(90) },
-                new DoubleTransition { Property = Layoutable.WidthProperty, Duration = TimeSpan.FromMilliseconds(90) },
-            };
+        Draw();
+    }
+
+    private void Glide()
+    {
+        double dt = Math.Min(0.1, _clock.Elapsed.TotalSeconds);
+        _clock.Restart();
+        if (_line is not { IsVisible: true } || (_top == _toTop && _height == _toHeight)) return;
+        double k = 1 - Math.Exp(-dt / 0.04);
+        _top += (_toTop - _top) * k;
+        _height += (_toHeight - _height) * k;
+        if (Math.Abs(_toTop - _top) < 0.3 && Math.Abs(_toHeight - _height) < 0.3) (_top, _height) = (_toTop, _toHeight);
+        Draw();
+    }
+
+    // 0 = the line, 1 = the box: everything in between is the morph.
+    private void Draw()
+    {
+        if (_line == null) return;
+        var accent = Ui.Res("AccentBrush") is ISolidColorBrush s ? s.Color : Colors.White;
+        double box = Math.Clamp((_height - 3) / 24, 0, 1), left = 16 - 8 * box;
+        Canvas.SetLeft(_line, left);
+        Canvas.SetTop(_line, _top);
+        _line.Width = Math.Max(0, _layer.Bounds.Width - 2 * left);
+        _line.Height = Math.Max(3, _height);
+        _line.CornerRadius = new CornerRadius(2 + 10 * box);
+        _line.BorderThickness = new Thickness(2 * box);
+        _line.BorderBrush = new SolidColorBrush(accent, box);
+        _line.Background = new SolidColorBrush(accent, 1 - 0.82 * box);
     }
 
     // Near the top or bottom edge of what's visible the list scrolls, faster the closer the finger is.
@@ -211,10 +236,15 @@ public sealed class TouchReorder
         {
             Width = size.Width, Height = size.Height, CornerRadius = new CornerRadius(12), IsHitTestVisible = false, Opacity = 0.92,
             BoxShadow = BoxShadows.Parse("0 6 20 0 #80000000"),
+            // (Surface3 on the page's solid colour: with the glass look it's see-through, the rows under the copy showed through it)
             Child = new Border
             {
-                CornerRadius = new CornerRadius(12), ClipToBounds = true, Background = Ui.Res("Surface3Brush"),
-                Child = new CoverImage { Source = bmp, Width = size.Width, Height = size.Height },
+                CornerRadius = new CornerRadius(12), ClipToBounds = true, Background = Ui.Res("PageSolidBrush"),
+                Child = new Border
+                {
+                    Background = Ui.Res("Surface3Brush"),
+                    Child = new CoverImage { Source = bmp, Width = size.Width, Height = size.Height },
+                },
             },
         };
     }

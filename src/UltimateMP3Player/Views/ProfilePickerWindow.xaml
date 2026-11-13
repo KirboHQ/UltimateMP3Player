@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:UltimateMP3Player"
         xmlns:views="clr-namespace:UltimateMP3Player.Views"
         Title="Ultimate MP3 Player" Width="820" Height="600" MinWidth="620" MinHeight="480"
-        WindowStartupLocation="CenterScreen" Background="{DynamicResource TitleBarBrush}" Foreground="{DynamicResource TextBrush}"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource TitleBarSolidBrush}" Foreground="{DynamicResource TextBrush}"
         FontFamily="{StaticResource UiFont}" FontSize="14" UseLayoutRounding="True" Icon="/app.ico" ResizeMode="CanResize">
     <Grid x:Name="Root">
         <Grid.RowDefinitions>
@@ -12,7 +12,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Background="{DynamicResource TitleBarBrush}">
+        <Grid Background="{DynamicResource TitleBarSolidBrush}">
             <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
                 <Image Source="{StaticResource LogoImage}" Width="16" Height="16"/>
                 <TextBlock Text="Ultimate MP3 Player" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SubTextBrush}" Margin="9,0,0,1"
@@ -22,7 +22,7 @@
                     ToolTip="{local:T Close}" AutomationProperties.Name="{local:T Close}"/>
         </Grid>
 
-        <Grid Grid.Row="1" Background="{DynamicResource BgBrush}">
+        <Grid Grid.Row="1" Background="{DynamicResource PageSolidBrush}">
             <Border Height="300" VerticalAlignment="Top" Background="{DynamicResource HeaderGradient}" Opacity="0.6"/>
 
             <!-- ======================================================== picker -->

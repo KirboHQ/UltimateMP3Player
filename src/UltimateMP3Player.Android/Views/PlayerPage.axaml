@@ -15,9 +15,15 @@
         </Style>
     </UserControl.Styles>
     <Panel x:Name="Root" Background="{DynamicResource BgBrush}">
+        <!-- the glass look: the window's picture (Themes.PutBackdrop), solid under the page as it slides up -->
+        <Panel x:Name="GlassBack" IsVisible="False" IsHitTestVisible="False">
+            <Image x:Name="GlassBefore" Stretch="UniformToFill"/>
+            <Image x:Name="GlassNow" Stretch="UniformToFill"/>
+            <Border x:Name="GlassGrain" Opacity="{DynamicResource GrainOpacity}"/>
+        </Panel>
         <!-- the cover's colours behind the page (drawn straight, its 90 % already in the picture: an ImageBrush or an opacity
-             would cost a surface as big as the screen at every frame) -->
-        <views:CoverImage x:Name="Glow"/>
+             would cost a surface as big as the screen at every frame; not in the glass look: one picture for the whole app) -->
+        <views:CoverImage x:Name="Glow" IsVisible="{DynamicResource SolidOnly}"/>
         <!-- (the page's background, see-through on top: Themes) -->
         <Border IsHitTestVisible="False" Background="{DynamicResource PlayerPageVeil}"/>
         <!-- the bars of the music, behind the buttons (with the cover; Settings > Appearance) -->

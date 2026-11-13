@@ -207,12 +207,75 @@ public static class Themes
         return Color.FromArgb(Ch(a.A, b.A, k), Ch(a.R, b.R, k), Ch(a.G, b.G, k), Ch(a.B, b.B, k));
     }
 
+    // The glass look's picture behind the window (ViewModels/GlassBackdrop; null: no glass), and its grain, tiled over it.
+    public static IImage? Backdrop { get; private set; }
+    public static event Action? BackdropChanged;
+
+    public static void ShowBackdrop(byte[]? px)
+    {
+        Backdrop = px == null ? null : BitmapOf(px, Glass.Size);
+        BackdropChanged?.Invoke();
+    }
+
+    // The picture in a window's (or a page's) layers, its grain over it: from one song to the next the new one comes up over the old one,
+    // as the song page's cover does. (Desktop MainWindow, the phone's MainView and PlayerPage.)
+    public static void PutBackdrop(Panel back, Image before, Image now, Border grain)
+    {
+        var next = Backdrop;
+        back.IsVisible = next != null;
+        if (grain.Background == null) FitGrain(grain);
+        if (ReferenceEquals(next, now.Source)) return;
+        before.Source = now.Source;
+        now.Source = next;
+        now.Opacity = 1;
+        if (next == null || before.Source == null || !Ui.Animations || !back.IsEffectivelyVisible) return;
+        now.Opacity = 0;
+        Ui.Tween(now, FadeMs, Ui.CubicInOut, t => now.Opacity = t);
+    }
+
+    // Avalonia draws a tiled bitmap one of its pixels to one pixel of the screen: a tile of GrainSize points on a scaled screen
+    // (phones, Retina, 150%) was bigger than the picture, squares of grain with gaps between. The tile is GrainSize pixels.
+    private static void FitGrain(Border grain)
+    {
+        TopLevel? top = null;
+        void Fit(object? sender, EventArgs e) => grain.Background = GrainFor(top?.RenderScaling ?? 1);
+        grain.AttachedToVisualTree += (_, _) =>
+        {
+            if (top != null) top.ScalingChanged -= Fit;
+            top = TopLevel.GetTopLevel(grain);
+            if (top != null) top.ScalingChanged += Fit;
+            Fit(null, EventArgs.Empty);
+        };
+        Fit(null, EventArgs.Empty);
+    }
+
+    private static readonly Dictionary<double, IBrush> Grains = new();
+
+    private static IBrush GrainFor(double scale)
+    {
+        if (Grains.TryGetValue(scale, out var brush)) return brush;
+        var side = Glass.GrainSize / scale;
+        return Grains[scale] = new ImageBrush(BitmapOf(Glass.GrainPixels(), Glass.GrainSize))
+        {
+            TileMode = TileMode.Tile, Stretch = Stretch.Fill,
+            DestinationRect = new RelativeRect(0, 0, side, side, RelativeUnit.Absolute),
+        };
+    }
+
+    // (blue, green, red, alpha, as Core makes them: Skia takes them on every system)
+    private static Bitmap BitmapOf(byte[] px, int side)
+    {
+        var pin = System.Runtime.InteropServices.GCHandle.Alloc(px, System.Runtime.InteropServices.GCHandleType.Pinned);
+        try { return new Bitmap(PixelFormat.Bgra8888, AlphaFormat.Unpremul, pin.AddrOfPinnedObject(), new PixelSize(side, side), new Vector(96, 96), side * 4); }
+        finally { pin.Free(); }
+    }
+
     // A cover small, as blue, green, red, alpha.
-    public static (byte[] Bgra, int Width, int Height)? PixelsOf(string file)
+    public static (byte[] Bgra, int Width, int Height)? PixelsOf(string file, int width = 28)
     {
         if (!File.Exists(file)) return null;
         using var stream = File.OpenRead(file);
-        using var small = Bitmap.DecodeToWidth(stream, 28, BitmapInterpolationMode.MediumQuality);
+        using var small = Bitmap.DecodeToWidth(stream, width, BitmapInterpolationMode.MediumQuality);
         int w = small.PixelSize.Width, h = small.PixelSize.Height;
         var px = new byte[w * h * 4];
         var pin = System.Runtime.InteropServices.GCHandle.Alloc(px, System.Runtime.InteropServices.GCHandleType.Pinned);
@@ -271,17 +334,32 @@ public static class Themes
         r["ProgressGradient"] = MovingGradient("ProgressGradient", "Accent", "Accent2", top, new RelativePoint(1, 0, RelativeUnit.Relative));
         r["FavoritesGradient"] = MovingGradient("FavoritesGradient", "Fav1", "Fav2", top, corner);
         r["PlaceholderGradient"] = Gradient(C("Placeholder1"), C("Placeholder2"));
-        r["HeaderGradient"] = MovingGradient("HeaderGradient", "HeaderTop", "Bg", top, bottom);
+        r["HeaderGradient"] = MovingGradient("HeaderGradient", "HeaderTop", "Ground", top, bottom);
         // (see Theme.axaml: the opacity inside the brush, no layer)
-        r["HeaderGlow"] = MovingGradient("HeaderGlow", "HeaderTop", "Bg", top, bottom, 0.55);
-        r["HeaderGlowStrong"] = MovingGradient("HeaderGlowStrong", "HeaderTop", "Bg", top, bottom, 0.6);
-        // The song page over the blurred cover: the page's background, see-through on top, nearly solid at the bottom.
-        r["NowPlayingVeil"] = Stops(top, bottom, (bg, 0x55, 0), (bg, 0xEE, 1));
+        r["HeaderGlow"] = MovingGradient("HeaderGlow", "HeaderTop", "Ground", top, bottom, 0.55);
+        r["HeaderGlowStrong"] = MovingGradient("HeaderGlowStrong", "HeaderTop", "Ground", top, bottom, 0.6);
+        bool glass = Glass.On;
+        // The glass look: light catching the top edge of a pane, fading down its sides; the side bar and the player bar float on the
+        // picture (the side bar's card where its entries are in the plain look: 14 from everything, as wide as "Up next"); its grain; what
+        // has a picture of its own behind it in the plain look (the song page) goes (SolidOnly). (Both looks are made again: Apply.)
+        r["RimBrush"] = !glass ? Brushes.Transparent
+            : Stops(top, bottom, (Colors.White, (byte)(light ? 0xE6 : 0x38), 0), (Colors.White, (byte)(light ? 0x73 : 0x12), 0.4), (Colors.White, (byte)(light ? 0x59 : 0x0A), 1));
+        r["RimThickness"] = new Thickness(glass ? 1 : 0);
+        // (Layout: floating or attached, glass or not)
+        bool floating = Layout.Floating;
+        r["SidebarMargin"] = floating ? new Thickness(14, 0, 14, 14) : new Thickness(0);
+        r["PlayerBarMargin"] = floating ? new Thickness(14, 0, 14, 14) : new Thickness(0);
+        r["PaneRadius"] = new CornerRadius(floating ? 18 : 0);
+        r["GrainOpacity"] = glass && Glass.Look.Grain ? 0.6 : 0.0;
+        r["SolidOnly"] = !glass;
+        // The song page over the blurred cover: the page's background, see-through on top, nearly solid at the bottom. (Not over the
+        // glass look's picture: one for the whole window.)
+        r["NowPlayingVeil"] = glass ? Brushes.Transparent : Stops(top, bottom, (bg, 0x55, 0), (bg, 0xEE, 1));
         // Over the whole screen the player bar lies on the page: its buttons read over the bars of the music, whose colours die out behind them.
         r["PlayerBarVeil"] = Stops(top, bottom, (bg, 0x00, 0), (bg, 0xB8, 0.3), (bg, 0xE6, 1));
-        r["NowPlayingVeilLyrics"] = Stops(top, bottom, (bg, 0x1A, 0), (bg, 0x33, 0.55), (bg, 0xD9, 1));
-        r["PlayerPageVeil"] = Stops(top, bottom, (bg, 0x33, 0), (bg, 0x99, 0.55), (bg, 0xF2, 1));
-        r["LyricsVeilBrush"] = Solid(Color.FromArgb(0x59, bg.R, bg.G, bg.B));
+        r["NowPlayingVeilLyrics"] = glass ? Brushes.Transparent : Stops(top, bottom, (bg, 0x1A, 0), (bg, 0x33, 0.55), (bg, 0xD9, 1));
+        r["PlayerPageVeil"] = glass ? Brushes.Transparent : Stops(top, bottom, (bg, 0x33, 0), (bg, 0x99, 0.55), (bg, 0xF2, 1));
+        r["LyricsVeilBrush"] = glass ? Brushes.Transparent : Solid(Color.FromArgb(0x59, bg.R, bg.G, bg.B));
         r["PopupShadow"] = BoxShadows.Parse(light ? "0 6 24 0 #2E000000" : "0 5 18 0 #80000000");
         return r;
     }

@@ -68,6 +68,21 @@ public partial class SettingsView : UserControl
             e.Handled = true;
         });
         ServiceList.AddHandler(DragDrop.DropEvent, (_, e) => e.Handled = e.Data.Contains(ServiceFormat));
+        // Settings › Layout: the pages and Home's rows the same way, each within its own list.
+        foreach (var list in new[] { MenuRowList, SectionRowList, HomeRowList })
+        {
+            list.AddHandler(PointerPressedEvent, (_, e) =>
+            {
+                if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) _serviceDragStart = e.GetPosition(null);
+            }, RoutingStrategies.Tunnel);
+            list.AddHandler(PointerMovedEvent, LayoutRow_Moved, RoutingStrategies.Tunnel);
+            list.AddHandler(DragDrop.DragOverEvent, (_, e) =>
+            {
+                e.DragEffects = e.Data.Contains(LayoutFormat) ? DragDropEffects.Move : DragDropEffects.None;
+                e.Handled = true;
+            });
+            list.AddHandler(DragDrop.DropEvent, (_, e) => e.Handled = e.Data.Contains(LayoutFormat));
+        }
     }
 
     private const string ServiceFormat = "UltimateMP3Player.SearchService";
@@ -89,6 +104,26 @@ public partial class SettingsView : UserControl
         var outcome = await DragVisuals.RunAsync(row, e, data, DragDropEffects.Move, session);
         if (outcome == DragOutcome.Placed && session.Target is SearchServiceOption target)
             vm.MoveService(site.Name, DragVisuals.MoveIndex(site.Index, target.Index, session.After));
+    }
+
+    private const string LayoutFormat = "UltimateMP3Player.LayoutRow";
+
+    // By its handle (not from its switch): the line says where the page or the row lands.
+    private async void LayoutRow_Moved(object? sender, PointerEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || _serviceDragStart is not Point start || sender is not ListBox list) return;
+        if (Ui.FindAncestor<Avalonia.Controls.Primitives.ToggleButton>(e.Source as Visual) != null) return;
+        var p = e.GetPosition(null);
+        if (Math.Abs(p.X - start.X) < 6 && Math.Abs(p.Y - start.Y) < 6) return;
+        _serviceDragStart = null;
+        if (Ui.FindAncestor<ListBoxItem>(e.Source as Visual) is not { DataContext: LayoutRow row } item) return;
+        var view = item.GetVisualDescendants().OfType<Control>().FirstOrDefault(c => c.Name == "Row") ?? item;
+        var session = new DragSession(list, row);
+        var data = new DataObject();
+        data.Set(LayoutFormat, row.Label);
+        var outcome = await DragVisuals.RunAsync(view, e, data, DragDropEffects.Move, session);
+        if (outcome == DragOutcome.Placed && session.Target is LayoutRow target)
+            row.MoveTo(DragVisuals.MoveIndex(row.Index, target.Index, session.After));
     }
 
     private static EqBandViewModel? Band(object? source)

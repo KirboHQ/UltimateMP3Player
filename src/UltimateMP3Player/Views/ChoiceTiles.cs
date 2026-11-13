@@ -188,6 +188,9 @@ public static class TilePictures
         "look" => Look((string)value!),
         "close" => Close((string)value!),
         "searchmode" => SearchMode((bool)value!),
+        "bars" => Bars((string)value!),
+        "glasspicture" => GlassPicture((string)value!),
+        "glasstint" => GlassTintPicture((string)value!),
         _ => null,
     };
 
@@ -357,6 +360,68 @@ public static class TilePictures
     private static ElementKind SearchMode(bool together) => Icon(null,
         together ? Rect(8, 7, 48, 5, 2) + Rect(8, 16, 48, 5, 2) + Rect(8, 25, 48, 5, 2)
                  : Rect(8, 7, 18, 5, 2) + Rect(23, 16, 18, 5, 2) + Rect(38, 25, 18, 5, 2));
+
+    private static ShapePath Part(string data, string key)
+    {
+        var path = new ShapePath { Data = Geometry.Parse(data) };
+        Fill(path, key);
+        return path;
+    }
+
+    private static ShapePath Part(string data, BrushKind brush) => new() { Data = Geometry.Parse(data), Fill = brush };
+
+    // The side bar and the player bar on the window: floating (a gap all round), attached (against its edges), or by the glass
+    // look (automatic: a small one of each).
+    private static ElementKind Bars(string bars)
+    {
+        if (bars == LayoutBars.Float) return Icon(Rect(10, 3, 44, 30, 4), Rect(13, 6, 10, 19, 2) + Rect(13, 28, 38, 3, 1));
+        if (bars == LayoutBars.Dock)
+            return Icon(Rect(10, 3, 44, 30, 4), "M10,7 a4,4 0 0 1 4,-4 h8 v23 h-12 z M10,27 h44 v2 a4,4 0 0 1 -4,4 h-36 a4,4 0 0 1 -4,-4 z");
+        return Icon(Rect(4, 7, 26, 22, 3) + Rect(34, 7, 26, 22, 3),
+            Rect(6, 9, 6, 13, 1) + Rect(6, 24, 22, 3, 1) + "M34,10 a3,3 0 0 1 3,-3 h4 v17 h-7 z M34,25 h26 v1 a3,3 0 0 1 -3,3 h-20 a3,3 0 0 1 -3,-3 z");
+    }
+
+    private static readonly string GlassWindow = Rect(8, 4, 48, 28, 5);
+    private static readonly SolidColorBrush ClearPane = new(Color.FromArgb(0x59, 0xFF, 0xFF, 0xFF));
+
+    // What the window lies on, under its panes: the song's cover, the theme's two colours, a picture of your own.
+    private static ElementKind GlassPicture(string kind)
+    {
+        var both = Frame();
+        switch (kind)
+        {
+            case "theme":
+                both.Children.Add(Part("M13,4 h19 v28 h-19 a5,5 0 0 1 -5,-5 v-18 a5,5 0 0 1 5,-5 z", "AccentBrush"));
+                both.Children.Add(Part("M32,4 h19 a5,5 0 0 1 5,5 v18 a5,5 0 0 1 -5,5 h-19 z", "Accent2Brush"));
+                break;
+            case "mine":
+                both.Children.Add(Part(GlassWindow, "BorderStrongBrush"));
+                both.Children.Add(Part("M11,29 L21,16 L29,24 L37,17 L53,29 z M42,11 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0 z", "AccentTextBrush"));
+                break;
+            default:
+                both.Children.Add(Part(GlassWindow, CoverColors()));
+                break;
+        }
+        both.Children.Add(Part(Rect(12, 8, 10, 20, 2) + Rect(25, 8, 27, 20, 2), ClearPane));
+        return both;
+    }
+
+    // A pane over the cover: dark glass, white glass, the accent's; its lines of text on it.
+    private static ElementKind GlassTintPicture(string tint)
+    {
+        var both = Frame();
+        both.Children.Add(Part(GlassWindow, CoverColors()));
+        string pane = Rect(14, 9, 36, 18, 4);
+        if (tint == GlassTint.Color)
+        {
+            var colored = Part(pane, "AccentBrush");
+            colored.Opacity = 0.75;
+            both.Children.Add(colored);
+        }
+        else both.Children.Add(Part(pane, new SolidColorBrush(tint == GlassTint.Frost ? Color.FromArgb(0xB8, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0xB8, 0x10, 0x12, 0x17))));
+        both.Children.Add(Part(Rect(19, 14, 20, 3, 1) + Rect(19, 20, 13, 3, 1), tint == GlassTint.Frost ? Solid(0x30, 0x30, 0x3A) : Solid(0xFF, 0xFF, 0xFF)));
+        return both;
+    }
 
     private static LinearGradientBrush Gradient(params (double At, Color Color)[] stops)
     {

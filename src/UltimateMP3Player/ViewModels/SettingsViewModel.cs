@@ -214,6 +214,29 @@ public sealed class SearchServiceOption : Observable
     }
 }
 
+// A page or a row in Settings › Layout: shown or not (Home and Settings always), dragged by its handle to another place.
+public sealed class LayoutRow
+{
+    private readonly SettingsViewModel _settings;
+    private readonly string _place, _key;
+
+    public LayoutRow(SettingsViewModel settings, string place, string key, string label, string icon, int index)
+        => (_settings, _place, _key, Label, Icon, Index) = (settings, place, key, label, icon, index);
+
+    public string Label { get; }
+    // (the page's own icon, as the side bar or the bottom bar has it)
+    public string Icon { get; }
+    // Its place in its list (DragVisuals.MoveIndex / TouchReorder.MoveIndex give the one it's dropped at).
+    public int Index { get; }
+    public void MoveTo(int index) => _settings.MoveRow(_place, _key, index);
+    public bool CanHide => !Layout.Fixed(_place, _key);
+    public bool Shown
+    {
+        get => !Layout.IsHidden(_place, _key);
+        set => _settings.ShowRow(_place, _key, value);
+    }
+}
+
 public sealed class SettingsViewModel : Observable
 {
     private readonly MainViewModel _main;
@@ -242,6 +265,8 @@ public sealed class SettingsViewModel : Observable
         ImportPackCommand = new RelayCommand(() => _ = _main.PickPack());
         SelectThemeCommand = new RelayCommand(p => { if (p is string id) SelectTheme(id); });
         RenameArtistCommand = new RelayCommand(() => _ = RenameArtist(), () => SelectedArtist != null && !string.IsNullOrWhiteSpace(NewArtistName));
+        RemoveDuplicatesCommand = new RelayCommand(() => _ = _main.RemoveDuplicates());
+        FindMissingCommand = new RelayCommand(() => _main.FindMissing());
         bool hasRepo = AppInfo.RepoUrl != null;
         ReportProblemCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Bug] "), BugTemplate())!), () => hasRepo);
         SuggestIdeaCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Idea] "), IdeaTemplate())!), () => hasRepo);
@@ -281,6 +306,8 @@ public sealed class SettingsViewModel : Observable
     public ICommand ImportPackCommand { get; }
     public ICommand SelectThemeCommand { get; }
     public ICommand RenameArtistCommand { get; }
+    public ICommand RemoveDuplicatesCommand { get; }
+    public ICommand FindMissingCommand { get; }
     public ICommand ReportProblemCommand { get; }
     public ICommand SuggestIdeaCommand { get; }
     public ICommand OpenIssuesCommand { get; }
@@ -385,6 +412,248 @@ public sealed class SettingsViewModel : Observable
             OnChanged(nameof(Appearance), nameof(Themes));
         }
     }
+
+    // ---- the glass look (Core Glass): the profile's choices, shown at once. The picture's are made again (GlassBackdrop); the panes'
+    // and the grain are the palette's (Themes.Apply).
+    private GlassLook GlassChoices => _main.Profile.Data.Glass;
+
+    private void GlassChanged(bool palette, params string[] names)
+    {
+        _main.Profile.Save();
+        if (palette) _main.Host.ApplyTheme();
+        else _main.Backdrop.Update();
+        OnChanged(names);
+    }
+
+    public bool GlassOn
+    {
+        get => GlassChoices.On;
+        set
+        {
+            if (value == GlassChoices.On) return;
+            GlassChoices.On = value;
+            GlassChanged(true, nameof(GlassOn));
+        }
+    }
+
+    public List<Choice> GlassPictures { get; } = new() { new(L.T("Cover of the song"), "cover"), new(L.T("Theme colors"), "theme"), new(L.T("Your picture"), "mine") };
+
+    public Choice GlassPicture
+    {
+        get => GlassPictures[GlassChoices.Picture ? 2 : GlassChoices.FromTheme ? 1 : 0];
+        set
+        {
+            if (value?.Value is not string kind) return;
+            // (chosen again: another picture)
+            if (kind == "mine")
+            {
+                _ = PickGlassPicture();
+                return;
+            }
+            if (value == GlassPicture) return;
+            GlassChoices.FromTheme = kind == "theme";
+            GlassChoices.Picture = false;
+            GlassChanged(false, nameof(GlassPicture));
+        }
+    }
+
+    // "Your picture": made small like a cover (Profile.BackdropPicture); none picked, the choice stays the one before.
+    private async Task PickGlassPicture()
+    {
+        var file = await Dialogs.PickImageAsync();
+        if (file != null && await Task.Run(() => AudioAnalysis.MakeCoverFromImageAsync(file, _main.Profile.BackdropPicture)))
+        {
+            GlassChoices.Picture = true;
+            GlassChoices.FromTheme = false;
+        }
+        else if (file != null) _main.Toast(L.T("Invalid or unreadable image."));
+        GlassChanged(false, nameof(GlassPicture));
+    }
+
+    public List<Choice> GlassTints { get; } = new() { new(L.T("Smoked"), GlassTint.Smoke), new(L.T("Frosted"), GlassTint.Frost), new(L.T("Tinted"), GlassTint.Color) };
+
+    public Choice GlassTintChoice
+    {
+        get => GlassTints.FirstOrDefault(c => Equals(c.Value, GlassChoices.Tint)) ?? GlassTints[0];
+        set
+        {
+            if (value?.Value is not string tint || tint == GlassChoices.Tint) return;
+            GlassChoices.Tint = tint;
+            GlassChanged(true, nameof(GlassTintChoice));
+        }
+    }
+
+    public double GlassBlur
+    {
+        get => GlassChoices.Blur;
+        set { GlassChoices.Blur = Math.Clamp(value, 0, 1); GlassChanged(false, nameof(GlassBlur), nameof(GlassBlurText)); }
+    }
+
+    public double GlassBrightness
+    {
+        get => GlassChoices.Brightness;
+        set { GlassChoices.Brightness = Math.Clamp(value, 0, 1); GlassChanged(false, nameof(GlassBrightness), nameof(GlassBrightnessText)); }
+    }
+
+    public double GlassVivid
+    {
+        get => GlassChoices.Vivid;
+        set { GlassChoices.Vivid = Math.Clamp(value, 0, 1); GlassChanged(false, nameof(GlassVivid), nameof(GlassVividText)); }
+    }
+
+    public double GlassPanes
+    {
+        get => GlassChoices.Panes;
+        set { GlassChoices.Panes = Math.Clamp(value, 0, 1); GlassChanged(true, nameof(GlassPanes), nameof(GlassPanesText)); }
+    }
+
+    public string GlassBlurText => $"{Math.Round(GlassChoices.Blur * 100)}%";
+    public string GlassBrightnessText => $"{Math.Round(GlassChoices.Brightness * 100)}%";
+    public string GlassVividText => $"{Math.Round(GlassChoices.Vivid * 100)}%";
+    public string GlassPanesText => $"{Math.Round(GlassChoices.Panes * 100)}%";
+
+    public bool GlassGrain
+    {
+        get => GlassChoices.Grain;
+        set
+        {
+            if (value == GlassChoices.Grain) return;
+            GlassChoices.Grain = value;
+            GlassChanged(true, nameof(GlassGrain));
+        }
+    }
+
+    private ICommand? _glassReset;
+    public ICommand GlassResetCommand => _glassReset ??= new RelayCommand(() =>
+    {
+        var fresh = new GlassLook { On = GlassChoices.On };
+        (GlassChoices.FromTheme, GlassChoices.Picture, GlassChoices.Tint, GlassChoices.Blur, GlassChoices.Brightness, GlassChoices.Vivid, GlassChoices.Panes, GlassChoices.Grain) =
+            (fresh.FromTheme, fresh.Picture, fresh.Tint, fresh.Blur, fresh.Brightness, fresh.Vivid, fresh.Panes, fresh.Grain);
+        GlassChanged(true, nameof(GlassPicture), nameof(GlassTintChoice), nameof(GlassBlur), nameof(GlassBlurText), nameof(GlassBrightness), nameof(GlassBrightnessText),
+            nameof(GlassVivid), nameof(GlassVividText), nameof(GlassPanes), nameof(GlassPanesText), nameof(GlassGrain));
+    });
+
+    // ---- Settings › Layout (Core Layout): the profile's choices, at once. Floating or attached is the palette's (Themes.Apply),
+    // the rest the views' (Layout.Changed: the side bar, Home, the phones' bottom bar arrange themselves).
+    private LayoutLook LayoutChoices => _main.Profile.Data.Layout;
+
+    private void LayoutChanged(bool palette, params string[] names)
+    {
+        _main.Profile.Save();
+        if (palette) _main.Host.ApplyTheme();
+        else Layout.Notify();
+        OnChanged(names);
+    }
+
+    public List<Choice> BarChoices { get; } = new() { new(L.T("Automatic|bars"), LayoutBars.Auto), new(L.T("Floating"), LayoutBars.Float), new(L.T("Attached"), LayoutBars.Dock) };
+
+    public Choice BarChoice
+    {
+        get => BarChoices.FirstOrDefault(c => Equals(c.Value, LayoutChoices.Bars)) ?? BarChoices[0];
+        set
+        {
+            if (value?.Value is not string bars || bars == LayoutChoices.Bars) return;
+            LayoutChoices.Bars = bars;
+            LayoutChanged(true, nameof(BarChoice), nameof(BarHint));
+        }
+    }
+
+    // What the choice does (Automatic: floating only with the glass look, so the two looked the same with it on).
+    public string BarHint => LayoutChoices.Bars switch
+    {
+        LayoutBars.Float => L.T("Always floating, apart from the window's edges"),
+        LayoutBars.Dock => L.T("Always attached to the window's edges"),
+        _ => L.T("Floating with the glass look, attached without it"),
+    };
+
+    public double SideWidth
+    {
+        get => Math.Clamp(LayoutChoices.SideWidth, Layout.MinSide, Layout.MaxSide);
+        set
+        {
+            int width = (int)Math.Round(Math.Clamp(value, Layout.MinSide, Layout.MaxSide) / 10) * 10;
+            if (width == LayoutChoices.SideWidth) return;
+            LayoutChoices.SideWidth = width;
+            LayoutChanged(false, nameof(SideWidth), nameof(SideWidthText));
+        }
+    }
+
+    public string SideWidthText => SideWidth.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    // The pages and rows of each place, each with its switch and its handle. MenuRows: the side bar's pages (phones: the bottom bar's).
+#if ANDROID_APP || IOS_APP
+    private const string MenuPlace = Layout.Tabs, HomePlace = Layout.PhoneHome;
+#else
+    private const string MenuPlace = Layout.Menu, HomePlace = Layout.Home;
+#endif
+    public List<LayoutRow> MenuRows => RowsOf(MenuPlace);
+    public List<LayoutRow> SectionRows => RowsOf(Layout.Sections);
+    public List<LayoutRow> HomeRows => RowsOf(HomePlace);
+
+    private List<LayoutRow> RowsOf(string place)
+    {
+        var keys = Layout.Arrange(place, true);
+        return keys.Select((k, i) => new LayoutRow(this, place, k, LayoutLabel(place, k), LayoutIcon(k), i)).ToList();
+    }
+
+    internal void MoveRow(string place, string key, int to)
+    {
+        var keys = Layout.Arrange(place, true);
+        int i = keys.IndexOf(key);
+        if (i < 0 || to < 0 || to >= keys.Count || to == i) return;
+        keys.RemoveAt(i);
+        keys.Insert(to, key);
+        Layout.SetOrder(place, keys);
+        LayoutChanged(false, place == Layout.Sections ? nameof(SectionRows) : place == HomePlace ? nameof(HomeRows) : nameof(MenuRows));
+    }
+
+    // (the row's own switch shows it already)
+    internal void ShowRow(string place, string key, bool shown)
+    {
+        Layout.SetHidden(place, key, !shown);
+        LayoutChanged(false);
+    }
+
+    // (Segoe codes all mapped for Avalonia, Icons.Map_)
+    private static string LayoutIcon(string key) => key switch
+    {
+        "home" => "\uE80F",
+        "search" => "\uE721",
+        "library" => "\uE8F1",
+        "together" => "\uE716",
+        "dj" => "\uE8D6",
+        "settings" => "\uE713",
+        "playlists" => "\uE8FD",
+        "artists" => "\uE77B",
+        "radios" => "\uE93E",
+        "tags" => "\uE8EC",
+        "recent" => "\uE823",
+        "foryou" => "\uE734",
+        "releases" => "\uE787",
+        "added" => "\uE710",
+        "stats" => "\uE9D2",
+        _ => "",
+    };
+
+    private static string LayoutLabel(string place, string key) => key switch
+    {
+        "home" => L.T("Home"),
+        "search" => L.T("Search"),
+        "library" => L.T("Library"),
+        "together" => L.T(place == Layout.Tabs ? "Together" : "Listen together"),
+        "dj" => "DJ",
+        "settings" => L.T("Settings"),
+        "playlists" => L.T(place == Layout.Sections ? "Playlists" : "Your playlists"),
+        "artists" => L.T("Artists"),
+        "radios" => L.T(place == Layout.Sections ? "Radio" : "Your radios"),
+        "tags" => L.T("Tags"),
+        "recent" => L.T("Recently played"),
+        "foryou" => L.T("For you"),
+        "releases" => L.T("New releases"),
+        "added" => L.T("Recently added"),
+        "stats" => L.T("Your statistics"),
+        _ => key,
+    };
 
     public List<Choice> Languages { get; }
     public Choice Language
@@ -1185,7 +1454,10 @@ public sealed class SettingsViewModel : Observable
         RefreshStartupChoices();
         RefreshOutputDevices();
         OnChanged(nameof(MusicDir), nameof(Themes), nameof(Appearance), nameof(Artists), nameof(Language), nameof(CacheText), nameof(LyricsStats), nameof(StatsSummary),
-            nameof(TopTracks));
+            nameof(TopTracks), nameof(GlassOn), nameof(GlassPicture), nameof(GlassTintChoice), nameof(GlassBlur), nameof(GlassBlurText), nameof(GlassBrightness),
+            nameof(GlassBrightnessText), nameof(GlassVivid), nameof(GlassVividText), nameof(GlassPanes), nameof(GlassPanesText), nameof(GlassGrain),
+            nameof(BarChoice), nameof(BarHint), nameof(SideWidth), nameof(SideWidthText));
+        // (not the layout's rows: only their own card changes them, and made again at every opening they held the page up)
     }
 
     // ------------------------------------------------------------------ listen together

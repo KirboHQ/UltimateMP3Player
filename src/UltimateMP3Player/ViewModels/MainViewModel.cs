@@ -57,6 +57,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         Home.Refresh();
         _page = Home;
         SongColors = new SongColors(this);
+        Backdrop = new GlassBackdrop(this);
 
         _searchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
         _searchTimer.Tick += (_, _) => { _searchTimer.Stop(); RunSearch(); };
@@ -129,6 +130,7 @@ public sealed class MainViewModel : Observable, IPageOrder
     public RadioViewModel Radio { get; }
     public PlayerViewModel Player { get; }
     public SongColors SongColors { get; }
+    public GlassBackdrop Backdrop { get; }
     public HomeViewModel Home { get; }
     public LibraryViewModel LibraryPage { get; }
     public LibraryViewModel UnsortedPage { get; }
@@ -610,14 +612,17 @@ public sealed class MainViewModel : Observable, IPageOrder
 
     // Where a page sits in the sidebar, top to bottom: one further down comes in from below (the page host slides by it);
     // null = not in the sidebar (it fades in).
-    public int? OrderOf(object page) => page switch
+    // (the pages slide as the side bar has them: Settings › Layout)
+    public int? OrderOf(object page) => page is SettingsViewModel or StatsViewModel ? 100000
+        : MenuKey(page) is { } key ? Layout.Arrange(Layout.Menu, true).IndexOf(key) : null;
+
+    private static string? MenuKey(object? page) => page switch
     {
-        HomeViewModel => 0,
-        SearchViewModel or DownloadsPageViewModel => 1,
-        LibraryHubViewModel => 2,
-        TogetherViewModel => 3,
-        DjViewModel => 4,
-        SettingsViewModel or StatsViewModel => 100000,
+        HomeViewModel => "home",
+        SearchViewModel or DownloadsPageViewModel => "search",
+        LibraryHubViewModel => "library",
+        TogetherViewModel => "together",
+        DjViewModel => "dj",
         _ => null,
     };
 
@@ -667,24 +672,33 @@ public sealed class MainViewModel : Observable, IPageOrder
         else Navigate(page);
     }
 
-    // Ctrl+1…5: the sidebar's pages, top to bottom.
+    // Ctrl+1…5: the sidebar's pages top to bottom, as Settings › Layout has them (the hidden ones aren't counted).
     public void GoMenu(int index)
     {
-        switch (index)
+        var shown = Layout.Arrange(Layout.Menu);
+        if (index >= 0 && index < shown.Count) GoMenuPage(shown[index]);
+    }
+
+    private void GoMenuPage(string key)
+    {
+        switch (key)
         {
-            case 0: IsHome = true; break;
-            case 1: OpenSearch(); break;
-            case 2: IsLibraryNav = true; break;
-            case 3: IsTogether = true; break;
-            case 4: IsDj = true; break;
+            case "home": IsHome = true; break;
+            case "search": OpenSearch(); break;
+            case "library": IsLibraryNav = true; break;
+            case "together": IsTogether = true; break;
+            case "dj": IsDj = true; break;
         }
     }
 
-    // Ctrl+↑/↓: the page above or below the open one in the sidebar (from one that isn't there: the first or the last).
+    // Ctrl+↑/↓: the page above or below the open one in the sidebar, as Settings › Layout has it (from one that isn't there: the
+    // first or the last).
     public void StepMenu(int dir)
     {
-        int at = OrderOf(Shown) is int o and < 5 ? o : dir > 0 ? -1 : 5;
-        if (at + dir is var next and >= 0 and < 5) GoMenu(next);
+        var shown = Layout.Arrange(Layout.Menu);
+        int at = MenuKey(Shown) is { } key ? shown.IndexOf(key) : -1;
+        if (at < 0) at = dir > 0 ? -1 : shown.Count;
+        if (at + dir is var next && next >= 0 && next < shown.Count) GoMenuPage(shown[next]);
     }
 
     // Ctrl+←/→: the tab beside the open one (the library's parts, the search's kinds of results).
@@ -1410,6 +1424,120 @@ public sealed class MainViewModel : Observable, IPageOrder
     // ------------------------------------------------------------------ saved on the device or in the cloud
 
     // The cover of a song added to the cloud, from the site's pictures (in the background).
+    // Settings › Library › "Remove duplicates": each song in the library twice joined into the copy kept (Library.Duplicates), in
+    // every profile; its keys stay, so the same song is recognised the next time.
+    public async Task RemoveDuplicates()
+    {
+        var pairs = Library.Duplicates();
+        if (pairs.Count == 0)
+        {
+            Toast(L.T("No duplicates in your library"));
+            return;
+        }
+        if (!await Dialogs.ConfirmAsync(L.T("Remove duplicates"),
+                L.Count(pairs.Count, "1 song is in the library twice.", "{0} songs are in the library twice.") + " " +
+                L.T("One copy stays, with the playlists, plays and tags of both. Songs saved on the device are never deleted."),
+                L.T("Remove duplicates"))) return;
+        var map = new Dictionary<string, string>();
+        foreach (var (keep, copy) in pairs) map[copy.Id] = keep.Id;
+        await Player.RemoveTracks(map.Keys.ToList());
+        foreach (var info in Host.Profiles.Profiles) Core.Profile.Get(info).ReplaceTracks(map);
+        foreach (var (keep, copy) in pairs)
+        {
+            var keys = copy.Keys.ToList();
+            Library.Remove(copy);
+            Library.AddKeys(keep, keys);
+            try { File.Delete(AppPaths.TrackCover(copy.Id)); } catch { }
+            LyricsStore.Delete(copy.Id);
+        }
+        Toast(L.Count(pairs.Count, "1 duplicate removed", "{0} duplicates removed"));
+    }
+
+    // Settings › Library › "Find missing covers", and after an import whose songs came without pictures (Spotify's export): the
+    // songs without a cover or a length, their own picture's link first, else looked up on Deezer by title and artist (cover,
+    // length, album). In the background, one group in the panel (the phone's notification, its Cancel); asked again meanwhile,
+    // the songs join the same run. songs: only these.
+    private readonly List<Track> _missing = new();
+    private DownloadGroupViewModel? _missingGroup;
+
+    public void FindMissing(IEnumerable<Track>? songs = null)
+    {
+        var asked = new HashSet<Track>(_missing);
+        var todo = (songs ?? Library.Snapshot()).Where(t => (!t.HasCover || t.Duration <= 0) && asked.Add(t)).ToList();
+        if (todo.Count == 0)
+        {
+            if (songs == null && _missingGroup == null) Toast(L.T("Every song has its cover"));
+            return;
+        }
+        _missing.AddRange(todo);
+        if (_missingGroup == null) _ = FindMissingRun();
+    }
+
+    private async Task FindMissingRun()
+    {
+        var cts = new CancellationTokenSource();
+        var group = _missingGroup = Queue.AddReading(L.T("Missing covers"), cts.Cancel);
+        var covers = new List<Task>();
+        var lacking = new List<Track>();
+        int done = 0;
+        try
+        {
+            for (; done < _missing.Count; done++)
+            {
+                cts.Token.ThrowIfCancellationRequested();
+                group.Read(done, _missing.Count, false);
+                var t = _missing[done];
+                if (Library.Get(t.Id) != t) continue;
+                if (!t.HasCover) lacking.Add(t);
+                if (!t.HasCover && t.ArtUrl != null)
+                {
+                    await FetchCover(t, new[] { t.ArtUrl });
+                    if (t.HasCover && t.Duration > 0) continue;
+                }
+                SearchHit? hit;
+                try { hit = await ListImport.FindOnDeezerAsync(t.Title, t.Artist, t.Duration > 0 ? t.Duration : null, cts.Token); }
+                catch (Exception) when (!cts.IsCancellationRequested) { continue; }
+                if (hit == null || Library.Get(t.Id) != t) continue;
+                bool changed = false;
+                if (t.Duration <= 0 && hit.Duration is > 0)
+                {
+                    t.Duration = hit.Duration.Value;
+                    changed = true;
+                }
+                if (string.IsNullOrEmpty(t.Album) && !string.IsNullOrEmpty(hit.Album))
+                {
+                    t.Album = hit.Album;
+                    changed = true;
+                }
+                if (t.ArtUrl == null && hit.Thumb != null)
+                {
+                    t.ArtUrl = hit.Thumb;
+                    changed = true;
+                }
+                if (changed) Library.Changed(t);
+                // (Deezer's 250 px picture, its 500 px one first)
+                if (!t.HasCover && hit.Thumb is { } thumb) covers.Add(FetchCover(t, new[] { thumb.Replace("/250x250-", "/500x500-"), thumb }));
+            }
+            await Task.WhenAll(covers);
+            int found = lacking.Count(t => t.HasCover);
+            group.Ready(L.Count(found, "1 cover found", "{0} covers found") + " · " + L.Count(lacking.Count - found, "1 not found", "{0} not found"));
+        }
+        catch (OperationCanceledException) { Queue.RemoveGroup(group); }
+        finally
+        {
+            _missing.Clear();
+            _missingGroup = null;
+        }
+    }
+
+    // A playlist made from a link (Spotify's, YouTube's...): the link's own picture as its cover, in the background.
+    public async Task FetchPlaylistCover(Playlist p, IReadOnlyList<string> pictures)
+    {
+        var profile = ProfileOf(p);
+        if (!p.HasCover && await CloudSongs.MakePictureAsync(profile.PlaylistCover(p), pictures) != null && profile.GetPlaylist(p.Id) == p)
+            profile.SetPlaylistCover(p, true);
+    }
+
     public async Task FetchCover(Track t, IReadOnlyList<string> pictures)
     {
         if (t.HasCover || pictures.Count == 0) return;

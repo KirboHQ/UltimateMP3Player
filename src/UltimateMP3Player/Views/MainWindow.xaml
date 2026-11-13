@@ -94,6 +94,13 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
+        <!-- the glass look's picture behind everything (Themes.Backdrop, MainWindow.ShowGlass): small, stretched, its grain over it -->
+        <Grid x:Name="GlassBack" Grid.RowSpan="3" Visibility="Collapsed" IsHitTestVisible="False">
+            <Image x:Name="GlassBefore" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="Linear"/>
+            <Image x:Name="GlassNow" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="Linear"/>
+            <Border x:Name="GlassGrain" Opacity="{DynamicResource GrainOpacity}"/>
+        </Grid>
+
         <!-- ============================================================ title bar -->
         <Grid x:Name="TitleBar" Background="{DynamicResource TitleBarBrush}">
             <!-- back and forward (the pages' history), like a browser's; the mouse's side buttons and Alt+arrows do the same -->
@@ -131,8 +138,9 @@
             </Grid.ColumnDefinitions>
 
             <!-- ======================================================== sidebar -->
-            <!-- no line against the page: its own tone is enough -->
-            <Border x:Name="Sidebar" Background="{DynamicResource SidebarBrush}">
+            <!-- no line against the page: its own tone is enough (the glass look: a pane floating on the picture, Themes) -->
+            <Border x:Name="Sidebar" Background="{DynamicResource SidebarBrush}" Margin="{DynamicResource SidebarMargin}" CornerRadius="{DynamicResource PaneRadius}"
+                    BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}">
                 <!-- the pages (Ctrl+1…5, Ctrl+↑/↓); playlists, artists, radios and tags take what is left;
                      the profile and the settings -->
                 <Grid Margin="14,12,14,12">
@@ -146,9 +154,9 @@
                         <!-- the open page's pill, gliding with the page -->
                         <views:SlidingPill Target="{Binding ElementName=NavPanel}" Fill="{DynamicResource Surface2Brush}"/>
                         <StackPanel x:Name="NavPanel">
-                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE80F;" Content="{local:T Home}" IsChecked="{Binding IsHome}"
+                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE80F;" Content="{local:T Home}" IsChecked="{Binding IsHome}" Tag="home"
                                          ToolTip="{local:T 'Home (Ctrl+1)'}"/>
-                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE721;" IsChecked="{Binding IsSearch}"
+                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE721;" IsChecked="{Binding IsSearch}" Tag="search"
                                          AutomationProperties.Name="{local:T Search}"
                                          ToolTip="{local:T 'Search your songs and online, or paste a link to download (Ctrl+2)'}">
                                 <DockPanel>
@@ -161,7 +169,7 @@
                                     <TextBlock Text="{local:T Search}"/>
                                 </DockPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8F1;" IsChecked="{Binding IsLibraryNav}"
+                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8F1;" IsChecked="{Binding IsLibraryNav}" Tag="library"
                                          AutomationProperties.Name="{local:T Library}" ToolTip="{local:T 'Your songs, playlists, artists and radios (Ctrl+3)'}">
                                 <DockPanel>
                                     <!-- the followed artists' new releases not seen yet -->
@@ -173,7 +181,7 @@
                                     <TextBlock Text="{local:T Library}"/>
                                 </DockPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE716;" IsChecked="{Binding IsTogether}"
+                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE716;" IsChecked="{Binding IsTogether}" Tag="together"
                                          AutomationProperties.Name="{local:T 'Listen together'}" ToolTip="{local:T 'Listen together (Ctrl+4)'}">
                                 <DockPanel>
                                     <!-- in a room -->
@@ -182,15 +190,15 @@
                                     <TextBlock Text="{local:T 'Listen together'}" TextTrimming="CharacterEllipsis"/>
                                 </DockPanel>
                             </RadioButton>
-                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8D6;" Content="DJ" IsChecked="{Binding IsDj}"
+                            <RadioButton Style="{StaticResource NavButton}" local:Ui.Glyph="&#xE8D6;" Content="DJ" IsChecked="{Binding IsDj}" Tag="dj"
                                          ToolTip="{local:T 'DJ: mix two songs (tempo, pitch, trim and volume) (Ctrl+5)'}"/>
                         </StackPanel>
                     </Grid>
 
                     <!-- what's yours, each kind folded under its heading if you like (SideSection); they scroll together -->
                     <ScrollViewer Grid.Row="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto" Focusable="False">
-                        <StackPanel>
-                            <DockPanel Margin="0,4,0,4">
+                        <StackPanel x:Name="SectionsPanel">
+                            <DockPanel Margin="0,4,0,4" Tag="playlists">
                                 <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
                                         Command="{Binding NewPlaylistCommand}" ToolTip="{local:T 'New playlist'}" AutomationProperties.Name="{local:T 'New playlist'}"/>
                                 <Button Style="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding PlaylistsSection.ToggleCommand}"
@@ -244,7 +252,7 @@
                             </ItemsControl>
 
                             <!-- the artists you follow: a click opens the page; + goes to Library, to find more -->
-                            <DockPanel Margin="0,10,0,4">
+                            <DockPanel Margin="0,4,0,4" Tag="artists">
                                 <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
                                         Command="{Binding GoArtistsCommand}" ToolTip="{local:T 'Find artists to follow'}" AutomationProperties.Name="{local:T 'Find artists to follow'}"/>
                                 <Button Style="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding ArtistsSection.ToggleCommand}"
@@ -298,7 +306,7 @@
                             </StackPanel>
 
                             <!-- the radios you saved: a click plays them; + goes to Library, to find more -->
-                            <DockPanel Margin="0,10,0,4">
+                            <DockPanel Margin="0,4,0,4" Tag="radios">
                                 <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
                                         Command="{Binding GoStationsCommand}" ToolTip="{local:T 'Find radios'}" AutomationProperties.Name="{local:T 'Find radios'}"/>
                                 <Button Style="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding RadiosSection.ToggleCommand}"
@@ -355,7 +363,7 @@
                             </StackPanel>
 
                             <!-- tags: each one opens the page of its songs; songs can be dropped on them -->
-                            <DockPanel Margin="0,10,0,4">
+                            <DockPanel Margin="0,4,0,4" Tag="tags">
                                 <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Width="28" Height="28" FontSize="13" Content="&#xE710;"
                                         Command="{Binding NewTagCommand}" ToolTip="{local:T 'New tag'}" AutomationProperties.Name="{local:T 'New tag'}"/>
                                 <Button Style="{StaticResource SubtleButton}" Padding="8,4" HorizontalAlignment="Left" Command="{Binding TagsSection.ToggleCommand}"
@@ -476,7 +484,7 @@
                 <views:AnimatedContent Grid.Row="2" Content="{Binding Shown}" KeepViews="True"/>
 
                 <!-- up next popped out of the player bar (a click elsewhere or Esc folds it) -->
-                <views:QueuePopup x:Name="QueuePanel" Grid.Row="1" Grid.RowSpan="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,20,16,12"
+                <views:QueuePopup x:Name="QueuePanel" Grid.Row="1" Grid.RowSpan="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,20,14,14"
                                   Visibility="{Binding QueueOpen, Converter={StaticResource BoolVis}}"/>
 
                 <!-- toast -->
@@ -491,7 +499,7 @@
 
                 <!-- downloads going on, seen from any page: each group (a song, or the songs of a link) with how far it is and a
                      button that cancels it; a click opens the downloads (the search's page without words) -->
-                <Grid x:Name="DownloadPanel" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,20,16" Width="320"
+                <Grid x:Name="DownloadPanel" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,14" Width="320"
                       Visibility="{Binding ShowDownloadPanel, Converter={StaticResource BoolVis}}">
                     <!-- (the shadow on its own, kept as a picture: on the panel, each step of a bar drew the whole blur again) -->
                     <Border Background="{DynamicResource PopupBrush}" CornerRadius="14" CacheMode="BitmapCache" IsHitTestVisible="False">
@@ -533,8 +541,8 @@
 
         <!-- ============================================================ player bar -->
         <!-- (away while the DJ is the page, sliding down out of the window: MainWindow.SlideBar) -->
-        <Border x:Name="PlayerBar" Grid.Row="2" Background="{DynamicResource SidebarBrush}"
-                Padding="14,10" DataContext="{Binding Player}">
+        <Border x:Name="PlayerBar" Grid.Row="2" Background="{DynamicResource SidebarBrush}" Margin="{DynamicResource PlayerBarMargin}" CornerRadius="{DynamicResource PaneRadius}"
+                BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}" Padding="14,10" DataContext="{Binding Player}">
             <Grid x:Name="PlayerGrid" SizeChanged="PlayerBar_SizeChanged">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="3*" MinWidth="300" MaxWidth="400"/>

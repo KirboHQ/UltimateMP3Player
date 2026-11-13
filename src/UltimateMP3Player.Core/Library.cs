@@ -151,13 +151,58 @@ public sealed class Library
         return null;
     }
 
+    // The song an item of a link, a list, a search or a radio already is: its site's id, else, for a song known by its name (a
+    // catalogue's, a list's line: heard from YouTube), the same title and artist, ±4 s, else the closest length. (Spotify's
+    // export has no lengths, and a video often runs longer than the song: both made a second copy of songs already there,
+    // joined only once saved. "(Live)", "(Remix)" stay in the titles: other versions don't count.)
+    // byName: a search's or a radio's song (a link's own video, chosen, counts only by its id).
+    public Track? FindItem(MediaItem item, IEnumerable<string>? keys = null, bool byName = false)
+        => FindByKeys(keys ?? SourceKeys.ForItem(item)) ??
+           (byName || item.Source == SourceKind.Search ? FindByName(item.Title, item.Artist, item.Duration) : null);
+
+    public Track? FindByName(string title, string? artist, double? duration)
+    {
+        var wanted = SongMeta.Identity(title, artist);
+        return duration is > 0 && Similar(wanted, duration.Value) is { } close ? close : Similar(wanted, null, duration ?? 0);
+    }
+
+    // Songs in the library twice (the same title and artist, as FindByName), each with the copy to keep: the one saved on the
+    // device, else one with a working link, else the first added. Only copies in the cloud go: a file saved is never deleted.
+    public List<(Track Keep, Track Copy)> Duplicates()
+    {
+        var pairs = new List<(Track, Track)>();
+        lock (_lock)
+        {
+            if (_byTitle == null)
+            {
+                _byTitle = new Dictionary<string, List<Track>>();
+                foreach (var t in _tracks) IndexTitles(t);
+            }
+            var kept = new HashSet<Track>();
+            foreach (var t in _tracks.OrderByDescending(t => t.IsSaved).ThenByDescending(t => t.HasLink && !t.Unavailable))
+            {
+                var id = _titled[t].Id;
+                var same = id.Artists.Count == 0 ? null
+                    : id.Titles.SelectMany(title => _byTitle.GetValueOrDefault(title) ?? new List<Track>())
+                        .FirstOrDefault(c => kept.Contains(c) && SongMeta.SameSong(id, _titled[c].Id));
+                if (same != null && !t.IsSaved) pairs.Add((same, t));
+                else kept.Add(t);
+            }
+        }
+        return pairs;
+    }
+
     // Same song from another source (title, artist, ±4 s).
     public Track? FindSimilar(string title, string? artist, double? duration)
         => duration is > 0 ? FindSimilar(SongMeta.Identity(title, artist), duration.Value) : null;
 
-    public Track? FindSimilar(SongIdentity wanted, double duration)
+    public Track? FindSimilar(SongIdentity wanted, double duration) => duration > 0 ? Similar(wanted, duration) : null;
+
+    // duration null: any length, the closest to closeTo.
+    private Track? Similar(SongIdentity wanted, double? duration, double closeTo = 0)
     {
-        if (duration <= 0 || wanted.Titles.Count == 0 || wanted.Artists.Count == 0) return null;
+        if (wanted.Titles.Count == 0 || wanted.Artists.Count == 0) return null;
+        Track? best = null;
         lock (_lock)
         {
             if (_byTitle == null)
@@ -168,9 +213,15 @@ public sealed class Library
             foreach (var title in wanted.Titles)
                 if (_byTitle.TryGetValue(title, out var same))
                     foreach (var c in same)
-                        if (Math.Abs(c.Duration - duration) <= 4 && SongMeta.SameSong(wanted, _titled[c].Id)) return c;
+                    {
+                        if (duration is double d ? Math.Abs(c.Duration - d) > 4
+                            : best != null && Math.Abs(c.Duration - closeTo) >= Math.Abs(best.Duration - closeTo)) continue;
+                        if (!SongMeta.SameSong(wanted, _titled[c].Id)) continue;
+                        if (duration != null) return c;
+                        best = c;
+                    }
         }
-        return null;
+        return best;
     }
 
     // (under the lock; nothing until FindSimilar first builds the index)

@@ -513,7 +513,7 @@
     <!-- ============================================================ cards -->
 
     <DataTemplate x:Key="TrackCard" DataType="{x:Type vm:TrackViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}"
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}"
                 Cursor="Hand" MouseRightButtonUp="Card_RightClick" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -568,7 +568,7 @@
     </DataTemplate>
 
     <DataTemplate x:Key="PlaylistCard" DataType="{x:Type vm:PlaylistViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}"
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}"
                 Cursor="Hand" MouseRightButtonUp="Playlist_RightClick" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DataContext.OpenPlaylistCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -723,7 +723,7 @@
 
     <!-- A mix of Home › For you: its first song's cover with a band in its colour and its name; a click plays it. -->
     <DataTemplate x:Key="MixCard" DataType="{x:Type vm:MixViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" Cursor="Hand">
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}" Cursor="Hand">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding PlayCommand}"/>
             </Border.InputBindings>
@@ -761,7 +761,7 @@
     <!-- An artist: its picture in a circle (or its initial on a colour of its own) and its name; a click opens its page. The
          round button follows it (a tick once followed); a dot = a release of its not seen yet. -->
     <DataTemplate x:Key="ArtistCard" DataType="{x:Type vm:ArtistCardViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" Cursor="Hand" local:Marquee.Host="True"
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}" Cursor="Hand" local:Marquee.Host="True"
                 MouseRightButtonUp="Artist_RightClick">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding OpenCommand}"/>
@@ -800,7 +800,7 @@
 
     <!-- An internet radio: its picture on its colour (or its initial), name, what it plays; a click plays it live, the heart keeps it. -->
     <DataTemplate x:Key="StationCard" DataType="{x:Type vm:StationViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" Cursor="Hand" local:Marquee.Host="True">
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}" Cursor="Hand" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding PlayCommand}"/>
             </Border.InputBindings>
@@ -839,7 +839,7 @@
     <!-- A new album, EP or single of a followed artist: its cover ("NEW" until seen); a click opens it like its link, its button
          plays it without saving it. -->
     <DataTemplate x:Key="ReleaseCard" DataType="{x:Type vm:ReleaseCardViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" Cursor="Hand" local:Marquee.Host="True">
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}" Cursor="Hand" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding OpenCommand}"/>
             </Border.InputBindings>
@@ -879,7 +879,7 @@
     <!-- An album or a playlist found online (an artist's page, the search): its cover; a click opens it like its link, its button
          plays it without saving it. -->
     <DataTemplate x:Key="AlbumCard" DataType="{x:Type vm:OnlineHitViewModel}">
-        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" Cursor="Hand" local:Marquee.Host="True">
+        <Border x:Name="Card" CornerRadius="12" Padding="12" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}" Cursor="Hand" local:Marquee.Host="True">
             <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding DownloadCommand}"/>
             </Border.InputBindings>

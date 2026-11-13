@@ -637,7 +637,7 @@ public sealed class LibraryIndex
                     catch { }
                 }
         }
-        return _lib.FindSimilar(t.Title, t.Artist, t.Duration);
+        return _lib.FindByName(t.Title, t.Artist, t.Duration);
     }
 }
 

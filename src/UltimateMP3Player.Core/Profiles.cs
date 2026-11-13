@@ -192,6 +192,10 @@ public sealed class ProfileData
     public bool ThemeMoved { get; set; }
     // Light or dark look: ThemeColors.System (follows the device), Light or Dark.
     public string Appearance { get; set; } = ThemeColors.System;
+    // The glass look (Core Glass): the window on the song's cover, blurred, under panes of glass; its choices.
+    public GlassLook Glass { get; set; } = new();
+    // Bars floating or attached, the side bar's width, the menus' pages and Home's rows (Core Layout).
+    public LayoutLook Layout { get; set; } = new();
     public List<Tag> Tags { get; set; } = new();
     // Song id → ids of its tags.
     public Dictionary<string, List<string>> TrackTags { get; set; } = new();
@@ -368,6 +372,8 @@ public sealed class Profile
     }
 
     public string PlaylistCover(Playlist p) => Path.Combine(_coverDir ?? AppPaths.ProfileDir(Info.Id), "pl-" + p.Id + ".jpg");
+    // The picture chosen for behind the window in the glass look (GlassLook.Picture).
+    public string BackdropPicture => Path.Combine(AppPaths.ProfileDir(Info.Id), "backdrop.jpg");
 
     // ------------------------------------------------------------------ the other device's changes (Connect phone)
 
@@ -616,6 +622,31 @@ public sealed class Profile
             if (Data.LastTrack != null && set.Contains(Data.LastTrack)) Data.LastTrack = null;
         }
         Save();
+        foreach (var p in touched) PlaylistChanged?.Invoke(p);
+    }
+
+    // Duplicates joined (Library.Duplicates, copy → the one kept): the playlists, tags, queue and listens are the kept one's.
+    public void ReplaceTracks(IReadOnlyDictionary<string, string> map)
+    {
+        List<Playlist> touched;
+        lock (_lock)
+        {
+            touched = Data.Playlists.Where(p => p.Tracks.Any(map.ContainsKey)).ToList();
+            foreach (var p in touched)
+            {
+                var seen = new HashSet<string>();
+                var joined = p.Tracks.Select(id => map.GetValueOrDefault(id, id)).Where(seen.Add).ToList();
+                p.Tracks.Clear();
+                p.Tracks.AddRange(joined);
+            }
+            foreach (var (from, to) in map)
+                if (Data.TrackTags.Remove(from, out var tags))
+                    Data.TrackTags[to] = Data.TrackTags.TryGetValue(to, out var had) ? had.Union(tags).ToList() : tags;
+            if (Data.LastTrack != null && map.TryGetValue(Data.LastTrack, out var last)) Data.LastTrack = last;
+            Data.Queue?.Forget(map.Keys.ToHashSet());
+        }
+        // (recently played, statistics, the sealed months; saves)
+        foreach (var (from, to) in map) RenameHistory(from, to);
         foreach (var p in touched) PlaylistChanged?.Invoke(p);
     }
 

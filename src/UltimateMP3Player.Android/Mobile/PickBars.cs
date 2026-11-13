@@ -24,7 +24,7 @@ public sealed class PickTop : Grid
         Height = 56;
         VerticalAlignment = VerticalAlignment.Top;
         IsVisible = false;
-        Background = Ui.Res("BgBrush");
+        Background = Ui.Res("PageSolidBrush");
         _cancel = Icon("");
         _count = new TextBlock { FontSize = 16.5, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0) };
         _all = Icon("");

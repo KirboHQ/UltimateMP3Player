@@ -288,7 +288,67 @@ public static class ThemeColors
         c["Fav1"] = Mix(a, black, 0.25);
         c["Fav2"] = Mix(a, white, 0.45);
         Debug.Assert(Contrast(c["AccentText"], c["Surface"]) >= (light ? 4.5 : 3), "accent text unreadable: " + t.Id);
+        // The page's own ground, where its glows fade to (HeaderGradient): Bg, or nothing over the glass look's picture. PageSolid: the
+        // page's colour, solid in both looks, for what must hide what's under it (a bar over a page's bar, a page over the pages, a halo).
+        c["Ground"] = c["PageSolid"] = c["Bg"];
+        // (the same for a window of its own, which has no picture behind it: the profile picker)
+        c["TitleBarSolid"] = c["TitleBar"];
+        if (Glass.On) Frost(c, a, light);
         return c;
+    }
+
+    // The glass look (Glass): every surface on the page is a pane of the same glass (one colour, see-through as chosen, so nothing looks
+    // pieced together); the controls on it a touch of white (or of black, light); what lies over the page (menus, sheets, dialogs) stays
+    // nearly solid, since nothing blurs what's under it. Bg keeps its job of the wells inside a pane (fields, previews): a shade darker.
+    // No glow at the top of the pages (HeaderTop): the picture is the only colour behind. The texts a little brighter (or deeper).
+    private static void Frost(Dictionary<string, uint> c, uint a, bool light)
+    {
+        static uint W(byte alpha) => WithAlpha(0xFFFFFFFF, alpha);
+        static uint K(byte alpha) => WithAlpha(0xFF000000, alpha);
+        c["Ground"] = c["TitleBar"] = WithAlpha(c["Bg"], 0);
+        c["Popup"] = WithAlpha(c["Popup"], 0xF2);
+        c["Sheet"] = WithAlpha(c["Sheet"], 0xF5);
+        c["HeaderTop"] = WithAlpha(a, 0);
+        uint tint = Glass.Look.Tint switch
+        {
+            GlassTint.Frost => 0xFFFFFFFF,
+            GlassTint.Color => light ? Mix(a, 0xFFFFFFFF, 0.8) : Mix(a, 0xFF101217, 0.72),
+            _ => light ? 0xFFDCDFE5 : 0xFF101217,
+        };
+        uint pane = WithAlpha(tint, Glass.PaneAlpha(light));
+        c["Surface"] = c["Sidebar"] = c["MiniPlayer"] = pane;
+        if (light)
+        {
+            c["NavBar"] = WithAlpha(tint, Math.Max(Glass.PaneAlpha(true), (byte)0xB3));
+            c["Bg"] = K(0x0D);
+            c["Surface2"] = K(0x0F);
+            c["Surface3"] = K(0x1A);
+            c["Border"] = K(0x14);
+            c["BorderStrong"] = K(0x26);
+            c["RowHover"] = K(0x0A);
+            c["Wave"] = K(0x26);
+            c["ScrollThumb"] = K(0x2E);
+            c["ScrollThumbHover"] = K(0x4D);
+            c["SubText"] = Parse("#474E5C");
+            c["Muted"] = Parse("#666D7C");
+            c["AccentSoft"] = WithAlpha(a, 0x33);
+        }
+        else
+        {
+            c["NavBar"] = pane;
+            c["Bg"] = K(0x40);
+            c["Surface2"] = W(0x1A);
+            c["Surface3"] = W(0x29);
+            c["Border"] = W(0x17);
+            c["BorderStrong"] = W(0x2B);
+            c["RowHover"] = W(0x10);
+            c["Wave"] = W(0x33);
+            c["ScrollThumb"] = W(0x33);
+            c["ScrollThumbHover"] = W(0x55);
+            c["SubText"] = Parse("#B7BFCD");
+            c["Muted"] = Parse("#8A92A5");
+            c["AccentSoft"] = WithAlpha(a, 0x45);
+        }
     }
 
     public static uint Parse(string hex)

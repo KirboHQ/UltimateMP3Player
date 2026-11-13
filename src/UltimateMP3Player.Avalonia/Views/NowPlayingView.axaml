@@ -90,13 +90,14 @@
 
         <!-- ======================================================== stage -->
         <Panel x:Name="Stage" Margin="0,0,0,14" ClipToBounds="True">
-            <Border CornerRadius="16" Background="{DynamicResource SurfaceBrush}"/>
+            <Border CornerRadius="16" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}"/>
             <!-- backdrop: the cover, or the video itself blurred. All drawn straight (CoverImage), their opacity and blur baked
                  into the pictures (NowPlayingView.BakeCover, VideoView.Backdrop): an ImageBrush, an opacity or a blur effect
                  here cost an offscreen surface as big as the stage at every frame. -->
             <!-- (they stand in the middle of the song, as wide as they ever get: they don't change when "Up next" folds away,
                  NowPlayingView.CenterSong; the stage's corners cut them) -->
-            <Border CornerRadius="16" ClipToBounds="True">
+            <!-- (not in the glass look: one picture behind the whole window) -->
+            <Border CornerRadius="16" ClipToBounds="True" IsVisible="{DynamicResource SolidOnly}">
                 <Panel x:Name="StageBack">
                     <views:CoverImage x:Name="CoverBackdrop" IsVisible="{Binding !IsVideo}"/>
                     <!-- behind the lyrics: the cover's colours, blurred (baked in NowPlayingView.BakeCover) -->

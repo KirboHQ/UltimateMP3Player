@@ -317,22 +317,7 @@ public static class ListImport
         await pages.WaitAsync(ct);
         try
         {
-            TimeSpan wait;
-            lock (PaceLock)
-            {
-                var now = DateTime.UtcNow;
-                if (_nextSearch < now) _nextSearch = now;
-                wait = _nextSearch - now;
-                _nextSearch += TimeSpan.FromMilliseconds(110);
-            }
-            if (wait > TimeSpan.Zero) await Task.Delay(wait, ct);
-            var clean = Regex.Replace(item.Title, @"\s*[\(\[].*?[\)\]]|\s+-\s+.*$", "").Trim();
-            var who = item.Artist?.Split(',', '&', ';')[0].Trim();
-            var hits = await OnlineSearchServices.SearchAsync(OnlineSearchServices.Deezer, $"{who} {(clean.Length > 0 ? clean : item.Title)}".Trim(), 5, ct);
-            var hit = hits.FirstOrDefault(h => Text.Coverage(clean.Length > 0 ? clean : item.Title, h.Title) >= 0.7 &&
-                                               (string.IsNullOrEmpty(who) || Text.Coverage(who, h.Artist + " " + h.Title) >= 0.5) &&
-                                               (item.Duration is not double d || h.Duration is not double hd || Math.Abs(d - hd) <= 10));
-            if (hit != null)
+            if (await FindOnDeezerAsync(item.Title, item.Artist, item.Duration, ct) is { } hit)
             {
                 var match = OnlineSearchServices.ToItem(hit);
                 match.Album ??= item.Album;
@@ -344,5 +329,29 @@ public static class ListImport
         catch { }
         finally { pages.Release(); }
         return new() { item };
+    }
+
+    // A song known by its title and artist on Deezer (its cover, length, album), the searches 110 ms apart whoever asks (a list's
+    // lines, Settings › Library › "Find missing covers"); null: not found. Throws when Deezer doesn't answer.
+    public static async Task<SearchHit?> FindOnDeezerAsync(string title, string? artist, double? duration, CancellationToken ct)
+    {
+        // (a video's: "Artist - Title" with no artist, or a channel's name)
+        artist = SongMeta.CleanChannel(artist);
+        if (artist == null && SongMeta.ArtistTitle.Match(SongMeta.CleanTitle(title)) is { Success: true } m) (artist, title) = (m.Groups[1].Value, m.Groups[2].Value);
+        TimeSpan wait;
+        lock (PaceLock)
+        {
+            var now = DateTime.UtcNow;
+            if (_nextSearch < now) _nextSearch = now;
+            wait = _nextSearch - now;
+            _nextSearch += TimeSpan.FromMilliseconds(110);
+        }
+        if (wait > TimeSpan.Zero) await Task.Delay(wait, ct);
+        var clean = Regex.Replace(title, @"\s*[\(\[].*?[\)\]]|\s+-\s+.*$", "").Trim();
+        var who = artist?.Split(',', '&', ';')[0].Trim();
+        var hits = await OnlineSearchServices.SearchAsync(OnlineSearchServices.Deezer, $"{who} {(clean.Length > 0 ? clean : title)}".Trim(), 5, ct);
+        return hits.FirstOrDefault(h => Text.Coverage(clean.Length > 0 ? clean : title, h.Title) >= 0.7 &&
+                                        (string.IsNullOrEmpty(who) || Text.Coverage(who, h.Artist + " " + h.Title) >= 0.5) &&
+                                        (duration is not > 0 || h.Duration is not double hd || Math.Abs(duration.Value - hd) <= 10));
     }
 }

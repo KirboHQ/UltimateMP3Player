@@ -406,7 +406,7 @@ public static partial class Dialogs
 
         var card = new Border
         {
-            Background = (Brush)res["SurfaceBrush"],
+            Background = (Brush)res["SheetBrush"],
             BorderBrush = (Brush)res["BorderStrongBrush"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(16),
@@ -418,7 +418,7 @@ public static partial class Dialogs
         // a second) would blur the whole dialog again.
         var shadow = new Border
         {
-            Background = (Brush)res["SurfaceBrush"],
+            Background = (Brush)res["SheetBrush"],
             CornerRadius = new CornerRadius(16),
             Margin = new Thickness(18),
             IsHitTestVisible = false,

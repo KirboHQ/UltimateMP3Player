@@ -146,14 +146,14 @@
                 <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Click="Select_Click"/>
             </Grid>
             <!-- choosing songs -->
-            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="{DynamicResource BgBrush}">
+            <Grid x:Name="SelectBar" ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,0,6,0" IsVisible="False" Background="Transparent">
                 <Button Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}" Command="{Binding #List.Picks.CancelCommand}"/>
                 <TextBlock Grid.Column="1" Text="{Binding #List.Picks.CountText}" FontSize="16.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="6,0"/>
                 <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E762}" Command="{Binding #List.Picks.AllCommand}"/>
                 <Button Grid.Column="3" Theme="{StaticResource TouchIcon}" Content="{local:Icon E712}" Command="{Binding #List.Picks.MoreCommand}"/>
             </Grid>
             <!-- arranging a playlist ("Sposta"): drag a song by its handle, then "Fatto" -->
-            <Grid x:Name="ReorderBar" ColumnDefinitions="*,Auto" Margin="18,0,10,0" IsVisible="False" Background="{DynamicResource BgBrush}">
+            <Grid x:Name="ReorderBar" ColumnDefinitions="*,Auto" Margin="18,0,10,0" IsVisible="False" Background="Transparent">
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="{local:T 'Move songs'}" FontSize="16.5" FontWeight="SemiBold"/>
                     <TextBlock Text="{local:T 'Drag ≡ to move a song'}" Classes="hint" FontSize="12.5"/>

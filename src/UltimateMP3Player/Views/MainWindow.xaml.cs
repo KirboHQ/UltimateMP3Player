@@ -65,6 +65,38 @@ public partial class MainWindow : Window
         PreviewDrop += OnPackDrop;
         Drop += OnDrop;
         Loaded += (_, _) => _host.OnTrackChanged();
+        GlassGrain.Background = Themes.Grain;
+        Themes.BackdropChanged += ShowGlass;
+        Layout.Changed += ApplyLayout;
+        Closed += (_, _) =>
+        {
+            Themes.BackdropChanged -= ShowGlass;
+            Layout.Changed -= ApplyLayout;
+        };
+        ShowGlass();
+        Rearrange.Group(SectionsPanel, Layout.Sections);
+        ApplyLayout();
+    }
+
+    // Settings › Layout (Core Layout): the side bar's width, its pages and its sections in the order chosen, the hidden ones out.
+    private void ApplyLayout()
+    {
+        if (Sidebar.Visibility == Visibility.Visible) Body.ColumnDefinitions[0].Width = new GridLength(Layout.SideWidth);
+        Rearrange.Apply(NavPanel, Layout.Menu);
+        Rearrange.Apply(SectionsPanel, Layout.Sections, 6);
+    }
+
+    // The glass look's picture (Themes.Backdrop): from one song to the next the new one comes up over the old one, as the song page's does.
+    private void ShowGlass()
+    {
+        var next = Themes.Backdrop;
+        GlassBack.Visibility = next == null ? Visibility.Collapsed : Visibility.Visible;
+        if (ReferenceEquals(next, GlassNow.Source)) return;
+        GlassBefore.Source = GlassNow.Source;
+        GlassNow.Source = next;
+        GlassNow.BeginAnimation(OpacityProperty, null);
+        if (next == null || GlassBefore.Source == null || !Ui.Animations || !IsVisible) return;
+        GlassNow.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Ui.Time(Themes.FadeMs)) { FillBehavior = FillBehavior.Stop, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } });
     }
 
     private MainViewModel? Vm => DataContext as MainViewModel;
@@ -281,7 +313,9 @@ public partial class MainWindow : Window
     // it; coming back it rises over the page and only then takes its room again. The page is laid out once, not on every frame.
     private void SlideBar(bool show)
     {
-        if (PlayerBar.Visibility == Visibility.Visible && PlayerBar.Margin.Bottom == 0) _barHeight = PlayerBar.ActualHeight;
+        if (PlayerBar.Visibility == Visibility.Visible && PlayerBar.Margin.Bottom >= 0) _barHeight = PlayerBar.ActualHeight;
+        // (its own margin: floating in the glass look, Themes)
+        var rest = TryFindResource("PlayerBarMargin") is Thickness margin ? margin : new Thickness();
         double h = _barHeight;
         // (how far down it is now: 0 in its place, h out of the window; halfway when it's turned back)
         double down = PlayerBar.Visibility != Visibility.Visible ? h : PlayerBar.Margin.Bottom < 0 ? h + _barShift.Y : 0;
@@ -293,7 +327,7 @@ public partial class MainWindow : Window
         {
             _barShift.BeginAnimation(TranslateTransform.YProperty, null);
             _barShift.Y = 0;
-            PlayerBar.Margin = new Thickness(0);
+            PlayerBar.SetResourceReference(MarginProperty, "PlayerBarMargin");
             if (!show) PlayerBar.Visibility = Visibility.Collapsed;
         }
         if (!Ui.Animations || h <= 0 || !IsVisible)
@@ -302,7 +336,7 @@ public partial class MainWindow : Window
             return;
         }
         // (laid out below the window, drawn back up where it is)
-        PlayerBar.Margin = new Thickness(0, 0, 0, -h);
+        PlayerBar.Margin = new Thickness(rest.Left, rest.Top, rest.Right, -h - rest.Bottom);
         double from = down - h, to = show ? -h : 0;
         var slide = new DoubleAnimation(from, to, Ui.Time(AnimatedContent.Ms * Math.Abs(to - from) / h))
         {
@@ -332,13 +366,14 @@ public partial class MainWindow : Window
     private void ApplyFullScreen(bool on)
     {
         TitleBar.Visibility = Sidebar.Visibility = on ? Visibility.Collapsed : Visibility.Visible;
-        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : 280);
+        Body.ColumnDefinitions[0].Width = new GridLength(on ? 0 : Layout.SideWidth);
         Grid.SetRow(Body, on ? 0 : 1);
         Grid.SetRowSpan(Body, on ? 3 : 1);
-        PlayerBar.SetResourceReference(Border.BackgroundProperty, on ? "PlayerBarVeil" : "SidebarBrush");
-        double bar = on ? PlayerBar.ActualHeight : 0;
+        // (the glass look's bar is a pane floating on the page already)
+        PlayerBar.SetResourceReference(Border.BackgroundProperty, on && !Glass.On ? "PlayerBarVeil" : "SidebarBrush");
+        double bar = on ? PlayerBar.ActualHeight + Math.Max(0, PlayerBar.Margin.Bottom) : 0;
         ToastBox.Margin = new Thickness(0, 0, 0, 18 + bar);
-        DownloadPanel.Margin = new Thickness(0, 0, 20, 16 + bar);
+        DownloadPanel.Margin = new Thickness(0, 0, 14, 14 + bar);
         if (WindowChrome.GetWindowChrome(this) is { } chrome)
         {
             chrome.CaptionHeight = on ? 0 : WindowFrame.CaptionHeight * Ui.Zoom;

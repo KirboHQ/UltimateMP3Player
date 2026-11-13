@@ -32,10 +32,11 @@
 
         <!-- ======================================================== stage -->
         <Grid x:Name="Stage" Margin="0,0,0,14" ClipToBounds="True" SizeChanged="Stage_SizeChanged">
-            <Border CornerRadius="16" Background="{DynamicResource SurfaceBrush}"/>
+            <Border CornerRadius="16" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RimBrush}" BorderThickness="{DynamicResource RimThickness}"/>
             <!-- the pictures behind stand in the middle of the song, as wide as they ever get: they don't change when "Up next" folds
                  away (NowPlayingView.CenterSong); the stage's corners cut them (ClipStage) -->
-            <Grid x:Name="BackClip">
+            <!-- (not in the glass look: one picture behind the whole window) -->
+            <Grid x:Name="BackClip" Visibility="{DynamicResource SolidOnly}">
                 <Grid x:Name="StageBack">
                     <!-- backdrop: the cover, or the video itself blurred -->
                     <Grid Opacity="0.22" Visibility="{Binding IsVideo, Converter={StaticResource InvBoolVis}}">

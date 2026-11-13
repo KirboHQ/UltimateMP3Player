@@ -23,7 +23,9 @@ using UltimateMP3Player.Views;
 bool perf = args.Contains("perf");
 // ("tour": the real window, the real mouse, every page and menu: Tour.cs)
 bool tour = args.Contains("tour");
-var folder = args.FirstOrDefault(a => a != "perf" && a != "tour");
+// ("plain": the same without the glass, to compare)
+bool plain = args.Contains("plain");
+var folder = args.FirstOrDefault(a => a is not ("perf" or "tour" or "plain"));
 var root = Path.GetFullPath(folder ?? Path.Combine(Path.GetTempPath(), "ump-headless"));
 if (Directory.Exists(root)) Directory.Delete(root, true);
 var shots = Directory.CreateDirectory(Path.Combine(root, "shots")).FullName;
@@ -66,6 +68,11 @@ var win = host.Window!;
 win.Width = 1400;
 win.Height = 900;
 var main = host.Session!;
+if (plain)
+{
+    main.Profile.Data.Glass.On = false;
+    host.ApplyTheme();
+}
 if (tour)
 {
     Tour.Run(main, win, root);
@@ -408,7 +415,7 @@ Shot(win, "dj");
 Check(!playerBar.IsVisible, "dj: the player bar went away");
 main.IsHome = true;
 Shot(win, "bar-back");
-Check(playerBar.IsVisible && playerBar.Margin.Bottom == 0 && playerBar.IsHitTestVisible, "dj left: the player bar back in its place");
+Check(playerBar.IsVisible && playerBar.Margin.Bottom == (Layout.Floating ? 14 : 0) && playerBar.IsHitTestVisible, "dj left: the player bar back in its place");
 // ---- 4.4.2: the song's page over the whole screen, Esc and another page end it
 var titleBar = win.FindControl<Grid>("TitleBar")!;
 main.GoNowPlayingCommand.Execute(null);
@@ -424,7 +431,9 @@ void SongInTheMiddle(string when)
     Check(barsFrom <= 0 && barsFrom + songBars.Bounds.Width >= barsStage.Bounds.Width, $"song's page, {when}: the bars reach both sides of the stage ({barsFrom:0}, {barsFrom + songBars.Bounds.Width:0} of {barsStage.Bounds.Width:0})");
     var songBack = songPage.GetVisualDescendants().OfType<Control>().First(c => c.Name == "StageBack");
     double MiddleOf(Control c) => c.TranslatePoint(new Point(c.Bounds.Width / 2, 0), barsStage)?.X ?? -1;
-    Check(Math.Abs(MiddleOf(songBack) - MiddleOf(songHit)) <= 1.5, $"song's page, {when}: the backdrop in the middle of the song ({MiddleOf(songBack):0} and {MiddleOf(songHit):0})");
+    // (the glass look has one picture behind the whole window, none of the stage's own)
+    Check(Glass.On ? !songBack.IsEffectivelyVisible : Math.Abs(MiddleOf(songBack) - MiddleOf(songHit)) <= 1.5,
+          $"song's page, {when}: the backdrop in the middle of the song ({MiddleOf(songBack):0} and {MiddleOf(songHit):0}; glass {Glass.On})");
     var songAt = songHit.TranslatePoint(new Point(songHit.Bounds.Width / 2, songHit.Bounds.Height / 2), win) ?? default;
     var playerGrid = win.FindControl<Control>("PlayerGrid")!;
     var playAt = playerGrid.TranslatePoint(new Point(playerGrid.Bounds.Width / 2, 0), win) ?? default;
@@ -444,18 +453,29 @@ Shot(win, "song-page");
 SongInTheMiddle("with up next");
 {
     var songView = win.GetVisualDescendants().OfType<NowPlayingView>().First(v => v.IsEffectivelyVisible);
-    var entries = ((Border)win.GetVisualDescendants().OfType<Control>().First(c => c.Name == "Sidebar")).Child!;
+    // (floating, the side bar's card is the pane, where its entries are when it's attached)
+    var sidebar = (Border)win.GetVisualDescendants().OfType<Control>().First(c => c.Name == "Sidebar");
+    var entries = Layout.Floating ? sidebar : sidebar.Child!;
     var stageCard = songView.GetVisualDescendants().OfType<Control>().First(c => c.Name == "Stage");
     var upNext = songView.GetVisualDescendants().OfType<Control>().First(c => c.Name == "QueueCard");
     double FromLeft(Control c) => c.TranslatePoint(default, win)?.X ?? -1;
-    double[] sideGaps = { FromLeft(entries), FromLeft(stageCard) - FromLeft(entries) - entries.Bounds.Width, FromLeft(upNext) - FromLeft(stageCard) - stageCard.Bounds.Width, win.Bounds.Width - FromLeft(upNext) - upNext.Bounds.Width };
+    double[] Gaps() => new[] { FromLeft(entries), FromLeft(stageCard) - FromLeft(entries) - entries.Bounds.Width, FromLeft(upNext) - FromLeft(stageCard) - stageCard.Bounds.Width, win.Bounds.Width - FromLeft(upNext) - upNext.Bounds.Width };
+    var sideGaps = Gaps();
     Check(sideGaps.All(g => Math.Abs(g - 14) < 1) && Math.Abs(entries.Bounds.Width - upNext.Bounds.Width) < 1, $"song's page: the same gaps, the sidebar's entries as wide as up next ({string.Join(", ", sideGaps.Select(g => g.ToString("0")))}; {entries.Bounds.Width:0} and {upNext.Bounds.Width:0})");
+    // Settings › Layout: a wider side bar, up next as wide, the same gaps
+    main.Settings.SideWidth = 320;
+    Wait(300);
+    var wideGaps = Gaps();
+    Check(wideGaps.All(g => Math.Abs(g - 14) < 1) && Math.Abs(entries.Bounds.Width - upNext.Bounds.Width) < 1 && entries.Bounds.Width > 280,
+          $"layout: a wider side bar, up next as wide, the same gaps ({string.Join(", ", wideGaps.Select(g => g.ToString("0")))}; {entries.Bounds.Width:0} and {upNext.Bounds.Width:0})");
+    main.Settings.SideWidth = 280;
+    Wait(300);
 }
 main.FullScreen = true;
 Shot(win, "fullscreen");
 SongInTheMiddle("over the whole screen");
-Check(main.NowPlaying.FullScreen && win.WindowState == WindowState.FullScreen && !titleBar.IsVisible && playerBar.Background is LinearGradientBrush,
-      "full screen: the window over the screen, no title bar, the player bar see-through");
+Check(main.NowPlaying.FullScreen && win.WindowState == WindowState.FullScreen && !titleBar.IsVisible && (Glass.On || playerBar.Background is LinearGradientBrush),
+      "full screen: the window over the screen, no title bar, the player bar see-through (glass: a pane of its own)");
 Press(Key.Escape);
 Check(!main.FullScreen && win.WindowState != WindowState.FullScreen && titleBar.IsVisible && playerBar.Background is not LinearGradientBrush, "full screen: Esc ends it");
 main.FullScreen = true;
@@ -630,6 +650,36 @@ if (bars != null)
         TextShadow.Picture(buttons, scale, true).Dispose();
         Console.WriteLine($"  shadow pictures x{scale:0}: title {letters} ms, buttons {clock.ElapsedMilliseconds} ms");
     }
+    // ---- The glass look: one picture behind the window, both looks; the side bar floating, 14 from everything, as wide as "Up next"
+    main.Settings.GlassOn = true;
+    foreach (var choice in new[] { main.Settings.Appearances[2], main.Settings.Appearances[1] })
+    {
+        main.Settings.Appearance = choice;
+        Spin(600);
+        win.CaptureRenderedFrame()?.Save(Path.Combine(shots, "glass-" + choice.Value + ".png"));
+        Check(Themes.Backdrop != null, $"glass, {choice.Value}: the picture behind the window is made");
+    }
+    var side = win.GetVisualDescendants().OfType<Border>().First(b => b.Name == "Sidebar");
+    Check(side.Margin.Left == 14 && Math.Abs(side.Bounds.Width - 252) < 0.5, $"glass: the side bar floats 14 from the edge, as wide as Up next ({side.Bounds.Width})");
+    main.Settings.GlassOn = false;
+    Spin(300);
+    Check(Themes.Backdrop == null && side.Margin.Left == 0, "glass left: no picture, the side bar against the edge again");
+    // ---- Settings › Layout: the bars floating without the glass, the side bar's width, its pages in another order, one hidden
+    main.Settings.BarChoice = main.Settings.BarChoices[1];
+    main.Settings.SideWidth = 320;
+    var dj = main.Settings.MenuRows.First(r => r.Label == "DJ");
+    dj.Shown = false;
+    main.Settings.MenuRows[2].MoveTo(1);
+    Spin(400);
+    var nav = win.GetVisualDescendants().OfType<StackPanel>().First(p => p.Name == "NavPanel");
+    var order = string.Join(",", nav.Children.Select(c => c.Tag as string));
+    Check(side.Margin.Left == 14 && Math.Abs(side.Bounds.Width - 292) < 0.5, $"layout: the side bar floats without the glass, as wide as chosen ({side.Bounds.Width})");
+    Check(order == "home,library,search,together", $"layout: the side bar's pages in the order chosen, DJ hidden ({order})");
+    win.CaptureRenderedFrame()?.Save(Path.Combine(shots, "layout.png"));
+    main.Profile.Data.Layout = new LayoutLook();
+    main.Host.ApplyTheme();
+    Spin(400);
+    Check(side.Margin.Left == 0 && nav.Children.Count == 5 && Math.Abs(side.Bounds.Width - 280) < 0.5, "layout: back as it was");
     main.Settings.Appearance = look;
     showSong.Invoke(main.Player, new object?[] { null });
     main.Settings.VisualizerFlowChoice = main.Settings.VisualizerFlows[0];

@@ -65,8 +65,11 @@
     </Style>
 
     <!-- A card of the settings and of the downloads. -->
+    <!-- (the glass look: an edge catching the light, Themes) -->
     <Style Selector="Border.card">
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource RimBrush}"/>
+        <Setter Property="BorderThickness" Value="{DynamicResource RimThickness}"/>
         <Setter Property="CornerRadius" Value="18"/>
         <Setter Property="Padding" Value="18,8"/>
         <Setter Property="Margin" Value="0,0,0,14"/>

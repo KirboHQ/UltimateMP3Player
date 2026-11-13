@@ -9,6 +9,12 @@
              Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}"
              FontFamily="{StaticResource UiFont}" FontSize="14" TopLevel.AutoSafeAreaPadding="False">
     <Panel x:Name="Root">
+        <!-- the glass look's picture behind everything (Themes.Backdrop, Themes.PutBackdrop): small, stretched, its grain over it -->
+        <Panel x:Name="GlassBack" IsVisible="False" IsHitTestVisible="False">
+            <Image x:Name="GlassBefore" Stretch="UniformToFill"/>
+            <Image x:Name="GlassNow" Stretch="UniformToFill"/>
+            <Border x:Name="GlassGrain" Opacity="{DynamicResource GrainOpacity}"/>
+        </Panel>
         <!-- Home's colour, up behind the status bar -->
         <Border x:Name="Backdrop" Height="280" VerticalAlignment="Top" Background="{DynamicResource HeaderGlowStrong}" Opacity="0" IsHitTestVisible="False"/>
 
@@ -94,7 +100,7 @@
         <views:PlayerPage x:Name="FullPlayer" IsVisible="False"/>
 
         <!-- before a profile is open: "who's listening?" -->
-        <ContentControl x:Name="Gate" IsVisible="False" Background="{DynamicResource BgBrush}"/>
+        <ContentControl x:Name="Gate" IsVisible="False" Background="{DynamicResource PageSolidBrush}"/>
 
         <views:SheetHost x:Name="SheetLayer"/>
     </Panel>

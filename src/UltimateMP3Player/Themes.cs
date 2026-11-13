@@ -67,13 +67,27 @@ public static class Themes
         Two("ProgressGradient", "Accent", "Accent2", new Point(1, 0));
         Two("FavoritesGradient", "Fav1", "Fav2", corner);
         r["PlaceholderGradient"] = Gradient(C("Placeholder1"), C("Placeholder2"));
-        Two("HeaderGradient", "HeaderTop", "Bg", bottom);
-        // The song page over the blurred cover: the page's background, see-through on top, nearly solid at the bottom.
-        r["NowPlayingVeil"] = Stops(top, bottom, (bg, 0x55, 0), (bg, 0xEE, 1));
+        Two("HeaderGradient", "HeaderTop", "Ground", bottom);
+        bool glass = Glass.On;
+        // The glass look: light catching the top edge of a pane, fading down its sides; the side bar and the player bar float on the
+        // picture; its grain; what has a picture of its own behind it in the plain look (the song page) goes (SolidOnly).
+        r["RimBrush"] = !glass ? Brushes.Transparent
+            : Stops(top, bottom, (Colors.White, (byte)(IsLight ? 0xE6 : 0x38), 0), (Colors.White, (byte)(IsLight ? 0x73 : 0x12), 0.4), (Colors.White, (byte)(IsLight ? 0x59 : 0x0A), 1));
+        r["RimThickness"] = new Thickness(glass ? 1 : 0);
+        // (the side bar's card where its entries are when attached: 14 from everything; Layout: floating or attached, glass or not)
+        bool floating = Layout.Floating;
+        r["SidebarMargin"] = floating ? new Thickness(14, 0, 14, 14) : new Thickness(0);
+        r["PlayerBarMargin"] = floating ? new Thickness(14, 0, 14, 14) : new Thickness(0);
+        r["PaneRadius"] = new CornerRadius(floating ? 18 : 0);
+        r["GrainOpacity"] = glass && Glass.Look.Grain ? 0.6 : 0.0;
+        r["SolidOnly"] = glass ? Visibility.Collapsed : Visibility.Visible;
+        // The song page over the blurred cover: the page's background, see-through on top, nearly solid at the bottom. (Not over the
+        // glass look's picture: one for the whole window.)
+        r["NowPlayingVeil"] = glass ? Brushes.Transparent : Stops(top, bottom, (bg, 0x55, 0), (bg, 0xEE, 1));
         // Over the whole screen the player bar lies on the page: its buttons read over the bars of the music, whose colours die out behind them.
         r["PlayerBarVeil"] = Stops(top, bottom, (bg, 0x00, 0), (bg, 0xB8, 0.3), (bg, 0xE6, 1));
-        r["NowPlayingVeilLyrics"] = Stops(top, bottom, (bg, 0x1A, 0), (bg, 0x33, 0.55), (bg, 0xD9, 1));
-        r["LyricsVeilBrush"] = Solid(Color.FromArgb(0x59, bg.R, bg.G, bg.B));
+        r["NowPlayingVeilLyrics"] = glass ? Brushes.Transparent : Stops(top, bottom, (bg, 0x1A, 0), (bg, 0x33, 0.55), (bg, 0xD9, 1));
+        r["LyricsVeilBrush"] = glass ? Brushes.Transparent : Solid(Color.FromArgb(0x59, bg.R, bg.G, bg.B));
         r["PopupShadowColor"] = IsLight ? Color.FromArgb(0x59, 0, 0, 0) : Colors.Black;
         foreach (Window w in Application.Current.Windows) Ui.DarkTitleBar(w);
         RunRgb();
@@ -171,15 +185,32 @@ public static class Themes
         AccentChanged?.Invoke();
     }
 
+    // The glass look's picture behind the window (ViewModels/GlassBackdrop; null: no glass), and its grain, tiled over it.
+    public static ImageSource? Backdrop { get; private set; }
+    public static event Action? BackdropChanged;
+
+    public static void ShowBackdrop(byte[]? px)
+    {
+        Backdrop = px == null ? null : Freeze(BitmapSource.Create(Glass.Size, Glass.Size, 96, 96, PixelFormats.Bgra32, null, px, Glass.Size * 4));
+        BackdropChanged?.Invoke();
+    }
+
+    private static ImageBrush? _grain;
+
+    public static ImageBrush Grain => _grain ??= Freeze(new ImageBrush(Freeze(BitmapSource.Create(Glass.GrainSize, Glass.GrainSize, 96, 96, PixelFormats.Bgra32, null, Glass.GrainPixels(), Glass.GrainSize * 4)))
+    {
+        TileMode = TileMode.Tile, Viewport = new Rect(0, 0, Glass.GrainSize, Glass.GrainSize), ViewportUnits = BrushMappingMode.Absolute, Stretch = Stretch.None,
+    });
+
     // A cover small, as blue, green, red, alpha.
-    public static (byte[] Bgra, int Width, int Height)? PixelsOf(string file)
+    public static (byte[] Bgra, int Width, int Height)? PixelsOf(string file, int width = 28)
     {
         if (!File.Exists(file)) return null;
         var img = new BitmapImage();
         img.BeginInit();
         img.CacheOption = BitmapCacheOption.OnLoad;
         img.CreateOptions = BitmapCreateOptions.IgnoreImageCache | BitmapCreateOptions.IgnoreColorProfile;
-        img.DecodePixelWidth = 28;
+        img.DecodePixelWidth = width;
         img.UriSource = new Uri(file);
         img.EndInit();
         img.Freeze();
