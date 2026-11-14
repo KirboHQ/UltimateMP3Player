@@ -81,14 +81,23 @@ public static class ThemeColors
 
     public static string FromHue(double h) => Hsl(h, 0.85, 0.6);
 
-    public static double HueOf(string color)
+    // Hue (0-360), how strong and how bright (0-1): the colour picker's bar and square (Views/ColorPicker), every colour there is.
+    public static (double H, double S, double V) ToHsv(string color)
     {
         uint c = Parse(color);
         double r = ((c >> 16) & 0xFF) / 255.0, g = ((c >> 8) & 0xFF) / 255.0, b = (c & 0xFF) / 255.0;
         double max = Math.Max(r, Math.Max(g, b)), d = max - Math.Min(r, Math.Min(g, b));
-        if (d == 0) return 0;
-        double h = max == r ? (g - b) / d : max == g ? (b - r) / d + 2 : (r - g) / d + 4;
-        return (h * 60 + 360) % 360;
+        double h = d == 0 ? 0 : max == r ? (g - b) / d : max == g ? (b - r) / d + 2 : (r - g) / d + 4;
+        return ((h * 60 + 360) % 360, max == 0 ? 0 : d / max, max);
+    }
+
+    public static string FromHsv(double h, double s, double v)
+    {
+        h = (h % 360 + 360) % 360 / 60;
+        double c = v * s, x = c * (1 - Math.Abs(h % 2 - 1)), m = v - c;
+        var (r, g, b) = (int)h switch { 0 => (c, x, 0.0), 1 => (x, c, 0.0), 2 => (0.0, c, x), 3 => (0.0, x, c), 4 => (x, 0.0, c), _ => (c, 0.0, x) };
+        uint C(double t) => (uint)Math.Round(Math.Clamp(t + m, 0, 1) * 255);
+        return Hex(0xFF000000 | C(r) << 16 | C(g) << 8 | C(b));
     }
 
     // What was typed, if it's a whole colour yet.
@@ -267,8 +276,11 @@ public static class ThemeColors
             c["Glass"] = 0xA6101318;
             c["GlassHover"] = WithAlpha(c["Surface2"], 0xE6);
             c["GlassBorder"] = 0x30FFFFFF;
-            c["AccentText"] = Mix(a, white, 0.35);
-            c["AccentTextHover"] = Mix(a, white, 0.6);
+            // (a dark colour of your own, even black: lighter until it reads)
+            uint text = Mix(a, white, 0.35);
+            for (int i = 0; i < 20 && Contrast(text, c["Surface"]) < 3; i++) text = Mix(text, white, 0.08);
+            c["AccentText"] = text;
+            c["AccentTextHover"] = Mix(text, white, 0.385);
             c["AccentHover"] = Mix(a, white, 0.12);
             c["Accent2Hover"] = Mix(b, white, 0.12);
             // Selected rows: a dark tint of the accent (mostly background), readable with any theme colour.

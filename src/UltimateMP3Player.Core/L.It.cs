@@ -2553,7 +2553,7 @@ public static partial class L
         // The glass look
         ["Glass"] = "Vetro",
         ["The window lies on the cover of the song playing, blurred, under panes of glass."] = "La finestra poggia sulla copertina del brano in riproduzione, sfocata, sotto pannelli di vetro.",
-        ["glass blur transparent translucent background cover frosted smoked acrylic grain panes"] = "vetro sfocatura trasparente traslucido sfondo copertina smerigliato fumé acrilico grana pannelli",
+        ["glass blur transparent translucent background cover frosted smoked acrylic grain panes edges borders rim"] = "vetro sfocatura trasparente traslucido sfondo copertina smerigliato fumé acrilico grana pannelli bordi contorni",
         ["Cover of the song"] = "Copertina del brano",
         ["Theme colors"] = "Colori del tema",
         ["Panes"] = "Pannelli",
@@ -2605,5 +2605,10 @@ public static partial class L
         ["Tabs of the bottom bar"] = "Schede della barra in basso",
         ["Drag to change the order"] = "Trascina per cambiare l'ordine",
         ["Your picture"] = "La tua immagine",
+        // 5.3.1: any colour (Views/ColorPicker), the panes' edges
+        ["Saturation and brightness"] = "Saturazione e luminosità",
+        ["Colour code"] = "Codice colore",
+        ["Edges"] = "Bordi",
+        ["Edges of the panes"] = "Bordi dei pannelli",
     };
 }

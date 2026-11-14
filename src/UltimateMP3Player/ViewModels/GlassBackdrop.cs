@@ -19,13 +19,21 @@ public sealed class GlassBackdrop
         {
             if (e.PropertyName == nameof(PlayerViewModel.Current)) Update();
         };
-        // (glass chosen or left, light or dark: Themes.Apply)
+        // (glass chosen or left, light or dark: Themes.Apply; the accent moved, the theme RGB going round or the custom colour being
+        // chosen: only a picture made of the theme's colours follows it, Update sees to that)
         Themes.Changed += () =>
+        {
+            if (ReferenceEquals(_main.Host.Session, _main)) Update();
+        };
+        Themes.AccentChanged += () =>
         {
             if (ReferenceEquals(_main.Host.Session, _main)) Update();
         };
         Update();
     }
+
+    // (the newest picture asked for wins: one made before it may come back later)
+    private int _run;
 
     public void Update()
     {
@@ -51,8 +59,11 @@ public sealed class GlassBackdrop
         var what = (mine != null ? "mine" : cover ? song!.Id : null, mine != null ? (int)(File.GetLastWriteTimeUtc(mine).Ticks % int.MaxValue) : cover ? song!.T.CoverVersion : 0,
             cover || mine != null, light, cover || mine != null ? 0u : a, look.Blur, look.Brightness, look.Vivid);
         if (what == _made) return;
+        // The theme's colours moving by themselves (RGB) or by hand (Custom): the next picture at once, as the accent steps; a fade at every
+        // step would draw the whole window at every frame. Another song's cover, another choice: the fade.
+        bool fade = cover || mine != null || _made?.Cover != false || _main.Profile.Data.Theme is not (ThemeColors.RgbId or ThemeColors.CustomId);
         _made = what;
-        _ = Make(song, mine != null, mine ?? (cover ? AppPaths.TrackCover(song!.Id) : null), light, a, b);
+        _ = Make(song, mine != null, mine ?? (cover ? AppPaths.TrackCover(song!.Id) : null), light, a, b, fade);
     }
 
     private static uint ColorOf(string key)
@@ -67,8 +78,9 @@ public sealed class GlassBackdrop
         if (e.PropertyName == nameof(TrackViewModel.Cover300)) Update();
     }
 
-    private async Task Make(TrackViewModel? song, bool anySong, string? file, bool light, uint a, uint b)
+    private async Task Make(TrackViewModel? song, bool anySong, string? file, bool light, uint a, uint b, bool fade)
     {
+        int run = ++_run;
         var px = await Task.Run(() =>
         {
             if (file != null)
@@ -81,8 +93,8 @@ public sealed class GlassBackdrop
         });
         // (another song, look or choice meanwhile: its own picture is on its way)
         // (a picture of your own: whatever plays)
-        if (!Glass.On || !anySong && !ReferenceEquals(_main.Player.Current, song) || light != Themes.IsLight || _made?.Blur != Glass.Look.Blur
+        if (run != _run || !Glass.On || !anySong && !ReferenceEquals(_main.Player.Current, song) || light != Themes.IsLight || _made?.Blur != Glass.Look.Blur
             || _made?.Bright != Glass.Look.Brightness || _made?.Vivid != Glass.Look.Vivid) return;
-        Themes.ShowBackdrop(px);
+        Themes.ShowBackdrop(px, fade);
     }
 }

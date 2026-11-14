@@ -211,9 +211,17 @@ public static class Themes
     public static IImage? Backdrop { get; private set; }
     public static event Action? BackdropChanged;
 
-    public static void ShowBackdrop(byte[]? px)
+    // fade: the new picture comes up over the old one; not as the accent steps (RGB, the custom colour being chosen), at once.
+    public static bool BackdropFades { get; private set; } = true;
+
+    // (the colour along its top: Glass.TopColor)
+    public static Color BackdropTop { get; private set; }
+
+    public static void ShowBackdrop(byte[]? px, bool fade = true)
     {
         Backdrop = px == null ? null : BitmapOf(px, Glass.Size);
+        if (px != null) BackdropTop = ToColor(Glass.TopColor(px));
+        BackdropFades = fade;
         BackdropChanged?.Invoke();
     }
 
@@ -228,7 +236,7 @@ public static class Themes
         before.Source = now.Source;
         now.Source = next;
         now.Opacity = 1;
-        if (next == null || before.Source == null || !Ui.Animations || !back.IsEffectivelyVisible) return;
+        if (next == null || before.Source == null || !BackdropFades || !Ui.Animations || !back.IsEffectivelyVisible) return;
         now.Opacity = 0;
         Ui.Tween(now, FadeMs, Ui.CubicInOut, t => now.Opacity = t);
     }
@@ -342,9 +350,10 @@ public static class Themes
         // The glass look: light catching the top edge of a pane, fading down its sides; the side bar and the player bar float on the
         // picture (the side bar's card where its entries are in the plain look: 14 from everything, as wide as "Up next"); its grain; what
         // has a picture of its own behind it in the plain look (the song page) goes (SolidOnly). (Both looks are made again: Apply.)
-        r["RimBrush"] = !glass ? Brushes.Transparent
-            : Stops(top, bottom, (Colors.White, (byte)(light ? 0xE6 : 0x38), 0), (Colors.White, (byte)(light ? 0x73 : 0x12), 0.4), (Colors.White, (byte)(light ? 0x59 : 0x0A), 1));
-        r["RimThickness"] = new Thickness(glass ? 1 : 0);
+        // (as strong as Settings' Edges: Glass.RimAlpha)
+        r["RimBrush"] = !Glass.HasRim ? Brushes.Transparent
+            : Stops(top, bottom, (Colors.White, Glass.RimAlpha(light ? 0xE6 : 0x38), 0), (Colors.White, Glass.RimAlpha(light ? 0x73 : 0x12), 0.4), (Colors.White, Glass.RimAlpha(light ? 0x59 : 0x0A), 1));
+        r["RimThickness"] = new Thickness(Glass.HasRim ? 1 : 0);
         // (Layout: floating or attached, glass or not)
         bool floating = Layout.Floating;
         r["SidebarMargin"] = floating ? new Thickness(14, 0, 14, 14) : new Thickness(0);

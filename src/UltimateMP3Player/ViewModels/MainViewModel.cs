@@ -1450,6 +1450,8 @@ public sealed class MainViewModel : Observable, IPageOrder
             try { File.Delete(AppPaths.TrackCover(copy.Id)); } catch { }
             LyricsStore.Delete(copy.Id);
         }
+        // (the copies' plays and listening time are the kept ones' now: every page that counts them shows the sum)
+        OnStatsChanged();
         Toast(L.Count(pairs.Count, "1 duplicate removed", "{0} duplicates removed"));
     }
 

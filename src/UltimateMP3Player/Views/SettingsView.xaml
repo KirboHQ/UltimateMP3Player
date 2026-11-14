@@ -181,17 +181,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                         </StackPanel>
-                        <Grid Margin="2,-6,0,14" views:Fold.Open="{Binding IsCustomTheme}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{local:T Hue}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
-                            <Slider Grid.Column="1" Minimum="0" Maximum="359" Value="{Binding CustomHue}" VerticalAlignment="Center" AutomationProperties.Name="{local:T Hue}"/>
-                            <TextBox Grid.Column="2" Style="{StaticResource BoxTextBox}" Width="100" Margin="14,0,0,0" MaxLength="7" Text="{Binding CustomColorText, UpdateSourceTrigger=PropertyChanged}"
-                                     AutomationProperties.Name="{local:T 'Custom colour'}"/>
-                        </Grid>
+                        <views:ColorPicker Margin="0,-6,0,14" Hex="{Binding CustomColor}" views:Fold.Open="{Binding IsCustomTheme}"/>
                         <TextBlock Text="{Binding ThemeHint}" Style="{StaticResource Hint}" Margin="0,-8,0,14" views:Fold.Open="{Binding HasThemeHint}"/>
 
                         <TextBlock Text="{local:T 'Light or dark'}" Style="{StaticResource FieldLabel}"/>
@@ -200,7 +190,7 @@
                 </Border>
 
                 <!-- the glass look: on or off in its title, like the bars of the music; its choices under it (Core Glass) -->
-                <Border Style="{StaticResource Card}" views:SettingsView.Group="appearance" Padding="22" views:SettingsView.Keywords="{local:T 'glass blur transparent translucent background cover frosted smoked acrylic grain panes'}">
+                <Border Style="{StaticResource Card}" views:SettingsView.Group="appearance" Padding="22" views:SettingsView.Keywords="{local:T 'glass blur transparent translucent background cover frosted smoked acrylic grain panes edges borders rim'}">
                     <StackPanel>
                         <DockPanel>
                             <CheckBox DockPanel.Dock="Right" Style="{StaticResource Switch}" IsChecked="{Binding GlassOn}" VerticalAlignment="Center"
@@ -210,19 +200,17 @@
                                 <TextBlock Text="{local:T 'The window lies on the cover of the song playing, blurred, under panes of glass.'}" Style="{StaticResource Hint}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </DockPanel>
-                        <StackPanel Margin="0,14,0,0" views:Fold.Open="{Binding GlassOn}">
+                        <!-- the picture behind (made again: GlassBackdrop), then the panes over it (the palette: Themes.Apply); one column of names for both -->
+                        <StackPanel Margin="0,14,0,0" Grid.IsSharedSizeScope="True" views:Fold.Open="{Binding GlassOn}">
                             <TextBlock Text="{local:T Background}" Style="{StaticResource FieldLabel}"/>
                             <views:ChoiceTiles Picture="glasspicture" Items="{Binding GlassPictures}" Selected="{Binding GlassPicture}"/>
-                            <TextBlock Text="{local:T Panes}" Style="{StaticResource FieldLabel}" Margin="2,14,0,6"/>
-                            <views:ChoiceTiles Picture="glasstint" Items="{Binding GlassTints}" Selected="{Binding GlassTintChoice}"/>
                             <Grid Margin="0,14,0,0">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="GlassLabel"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
@@ -236,16 +224,30 @@
                                 <TextBlock Grid.Row="2" Text="{local:T Color}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,12,14,0"/>
                                 <Slider Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding GlassVivid}" VerticalAlignment="Center" Margin="0,12,0,0" AutomationProperties.Name="{local:T Color}"/>
                                 <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding GlassVividText}" Margin="14,12,0,0" VerticalAlignment="Center" MinWidth="36"/>
-                                <TextBlock Grid.Row="3" Text="{local:T Opacity}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,12,14,0"/>
-                                <Slider Grid.Row="3" Grid.Column="1" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding GlassPanes}" VerticalAlignment="Center" Margin="0,12,0,0" AutomationProperties.Name="{local:T 'Opacity of the panes'}"/>
-                                <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding GlassPanesText}" Margin="14,12,0,0" VerticalAlignment="Center" MinWidth="36"/>
                             </Grid>
-                            <DockPanel Margin="0,12,0,0">
-                                <Button DockPanel.Dock="Right" Style="{StaticResource SubtleButton}" Padding="12,5" Content="{local:T Reset}" Command="{Binding GlassResetCommand}" VerticalAlignment="Center"/>
-                                <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding GlassGrain}" VerticalAlignment="Center">
-                                    <TextBlock Text="{local:T Grain}"/>
-                                </CheckBox>
-                            </DockPanel>
+                            <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding GlassGrain}" Margin="0,12,0,0">
+                                <TextBlock Text="{local:T Grain}"/>
+                            </CheckBox>
+                            <TextBlock Text="{local:T Panes}" Style="{StaticResource FieldLabel}" Margin="2,20,0,6"/>
+                            <views:ChoiceTiles Picture="glasstint" Items="{Binding GlassTints}" Selected="{Binding GlassTintChoice}"/>
+                            <Grid Margin="0,14,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" SharedSizeGroup="GlassLabel"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="{local:T Opacity}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                <Slider Grid.Column="1" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding GlassPanes}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Opacity of the panes'}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding GlassPanesText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                                <TextBlock Grid.Row="1" Text="{local:T Edges}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,12,14,0"/>
+                                <Slider Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding GlassRim}" VerticalAlignment="Center" Margin="0,12,0,0" AutomationProperties.Name="{local:T 'Edges of the panes'}"/>
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{Binding GlassRimText}" Margin="14,12,0,0" VerticalAlignment="Center" MinWidth="36"/>
+                            </Grid>
+                            <Button Style="{StaticResource SubtleButton}" Padding="12,5" Margin="0,14,0,0" HorizontalAlignment="Right" Content="{local:T Reset}" Command="{Binding GlassResetCommand}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>

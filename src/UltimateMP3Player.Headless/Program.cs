@@ -590,13 +590,18 @@ if (bars != null)
     Ui.Hidden = false;
     main.Settings.SelectThemeCommand.Execute(ThemeColors.CustomId);
     string customFrom = AccentNow();
-    main.Settings.CustomColorText = "#12AB9F";
+    // (the picker's code box: half a code waits and what's typed stays as typed; a whole one is the accent at once)
+    var customBox = win.GetVisualDescendants().OfType<SettingsView>().First().GetLogicalDescendants().OfType<ColorPicker>().First().GetLogicalDescendants().OfType<TextBox>().First();
+    customBox.Text = "#12AB9";
+    Spin(50);
+    bool halfWaits = customBox.Text == "#12AB9" && main.Settings.CustomColor != "#12AB9";
+    customBox.Text = "#12ab9f";
     Spin(150);
-    Check(AccentNow() != customFrom && main.Settings.CustomHue > 170 && main.Settings.CustomHue < 180, "custom colour: typed, the accent takes it at once");
+    Check(halfWaits && AccentNow() != customFrom && main.Settings.CustomColor == "#12AB9F" && customBox.Text == "#12ab9f", "custom colour: typed in the picker's box, half a code waits, a whole one is the accent at once");
     customFrom = AccentNow();
-    main.Settings.CustomHue = 30;
+    main.Settings.CustomColor = "#FF8800";
     Spin(150);
-    Check(AccentNow() != customFrom && main.Settings.CustomColorText != "#12AB9F", "custom colour: the slider moves it, the box follows");
+    Check(AccentNow() != customFrom && customBox.Text == "#FF8800", "custom colour: chosen elsewhere, the picker's box follows");
     Shot(win, "theme-custom");
     main.Settings.SelectThemeCommand.Execute(ThemeColors.DynamicId);
     Spin(100);
@@ -661,6 +666,18 @@ if (bars != null)
     }
     var side = win.GetVisualDescendants().OfType<Border>().First(b => b.Name == "Sidebar");
     Check(side.Margin.Left == 14 && Math.Abs(side.Bounds.Width - 252) < 0.5, $"glass: the side bar floats 14 from the edge, as wide as Up next ({side.Bounds.Width})");
+    // The picture made of the theme's colours follows the theme RGB as it goes round, each step at once (a fade per step: a frame per frame).
+    main.Settings.GlassPicture = main.Settings.GlassPictures[1];
+    main.Settings.SelectThemeCommand.Execute(ThemeColors.RgbId);
+    main.Settings.RgbSpeed = 10;
+    Spin(300);
+    var rgbBack = Themes.Backdrop;
+    Spin(300);
+    Check(rgbBack != null && !ReferenceEquals(Themes.Backdrop, rgbBack) && !Themes.BackdropFades, "glass, theme's colours: the picture goes round with the theme RGB, no fade per step");
+    main.Settings.RgbSpeed = 1;
+    main.Settings.SelectThemeCommand.Execute(ThemeColors.DynamicId);
+    main.Settings.GlassPicture = main.Settings.GlassPictures[0];
+    Spin(300);
     main.Settings.GlassOn = false;
     Spin(300);
     Check(Themes.Backdrop == null && side.Margin.Left == 0, "glass left: no picture, the side bar against the edge again");
@@ -833,8 +850,8 @@ behindSwitch.IsChecked = false;
 EditorPage("Appearance");
 Tile(L.T("Compact")).IsChecked = true;
 Dispatcher.UIThread.RunJobs();
-// The colors: from the cover, going round, or one by a bar of hues.
-Slider HueBar() => editor.GetLogicalDescendants().OfType<Slider>().First(v => Avalonia.Automation.AutomationProperties.GetName(v) == L.T("Hue"));
+// The colors: from the cover, going round, or any one (ColorPicker: its code typed here).
+ColorPicker HueBar() => editor.GetLogicalDescendants().OfType<ColorPicker>().First();
 Tile(L.T("RGB")).IsChecked = true;
 Dispatcher.UIThread.RunJobs();
 Check(overlay.Source.Rgb && InEditor(L.T("RGB speed")) && !Seen(HueBar()), "overlay: RGB, its speed, no color to pick");
@@ -842,8 +859,8 @@ Tile(L.T("RGB")).BringIntoView();
 Shot(editor, "overlay-rgb");
 Tile(L.T("One color")).IsChecked = true;
 Dispatcher.UIThread.RunJobs();
-HueBar().Value = 200;
-Check(overlay.Source is { Rgb: false, MagicColors: false } && overlay.Source.Tint == ThemeColors.FromHue(200) && !InEditor(L.T("RGB speed")), "overlay: one color, from the bar of hues");
+HueBar().GetLogicalDescendants().OfType<TextBox>().First().Text = "#12AB9F";
+Check(overlay.Source is { Rgb: false, MagicColors: false } && overlay.Source.Tint == "#12AB9F" && !InEditor(L.T("RGB speed")), "overlay: one color, any (the picker)");
 HueBar().BringIntoView(); Shot(editor, "overlay-hue");
 Tile(L.T("From the cover")).IsChecked = true;
 Dispatcher.UIThread.RunJobs();

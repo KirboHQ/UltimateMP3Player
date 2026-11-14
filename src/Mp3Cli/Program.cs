@@ -415,9 +415,22 @@ switch (args[0])
             ThemeColors.Rgb();
             double jump = Math.Abs(ThemeColors.RgbHue - before);
             bool fine = Math.Abs(slow - 8) < 1 && Math.Abs(fast - 80) < 8 && jump < 2 && ThemeColors.RgbStepMs == 250;
-            // A colour of your own: only a whole colour counts, and its hue comes back.
+            // A colour of your own: only a whole colour counts; any colour comes back from the picker's square and bar as it was (greys,
+            // black and white too), and even black or white leaves the accent's text readable on both looks.
+            var hsv = ThemeColors.ToHsv("#12AB9F");
+            // (the plain look's panes: the glass's are see-through, Contrast reads no alpha)
+            bool glassWas = Glass.Look.On;
+            Glass.Look.On = false;
             fine &= ThemeColors.ColorFrom("12ab9f") == "#12AB9F" && ThemeColors.ColorFrom("#12AB9") == null && ThemeColors.ColorFrom("#12AB9G") == null
-                && Math.Abs(ThemeColors.HueOf(ThemeColors.FromHue(200)) - 200) < 2 && ThemeColors.Custom("#12AB9F").A == "#12AB9F";
+                && Math.Abs(ThemeColors.ToHsv(ThemeColors.FromHue(200)).H - 200) < 2 && ThemeColors.Custom("#12AB9F").A == "#12AB9F"
+                && new[] { "#12AB9F", "#000000", "#FFFFFF", "#808080", "#FF0000", "#FF00FF" }.All(x => { var (h, s, v) = ThemeColors.ToHsv(x); return ThemeColors.FromHsv(h, s, v) == x; })
+                && ThemeColors.FromHsv(hsv.H, hsv.S, hsv.V) == "#12AB9F" && ThemeColors.FromHsv(360, 1, 1) == "#FF0000"
+                && new[] { "#000000", "#FFFFFF" }.All(x => new[] { false, true }.All(light =>
+                {
+                    var built = ThemeColors.Build(ThemeColors.Custom(x), light);
+                    return ThemeColors.Contrast(built["AccentText"], built["Surface"]) >= (light ? 4.5 : 3);
+                }));
+            Glass.Look.On = glassWas;
             // What's written on the buttons: one colour all the way round, readable on every colour.
             foreach (var light in new[] { false, true })
             {
@@ -662,6 +675,13 @@ switch (args[0])
             edited[^1] ^= 1;
             File.WriteAllBytes(file, edited);
             ok &= Sealed.Load<SealedStats>(file)?.Stats["x"].Plays == 4 && File.Exists(file + ".unreadable");
+            // "Remove duplicates" (Profile.ReplaceTracks): the copy's plays and listening time join the kept song's, all-time and in the months.
+            var before = profile.Log.Totals("x");
+            profile.AddListening("y", 30, true);
+            profile.ReplaceTracks(new Dictionary<string, string> { ["y"] = "x" });
+            var month = profile.Log.Month(DateTime.Now.Year, DateTime.Now.Month);
+            ok &= profile.StatsOf("y") == null && profile.StatsOf("x") is { Plays: 6, Seconds: 140 } && profile.Log.Totals("x").Plays == before.Plays + 1
+                && month != null && !month.Songs.ContainsKey("y");
             Profile.Delete(info.Id);
             Console.WriteLine("seal: " + (ok ? "ok" : "SBAGLIATO"));
             return ok ? 0 : 1;

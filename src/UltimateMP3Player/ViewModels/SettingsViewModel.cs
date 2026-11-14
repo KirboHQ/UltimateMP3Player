@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using UltimateMP3Player.Audio;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.Core.Together;
@@ -332,31 +333,33 @@ public sealed class SettingsViewModel : Observable
 
     public bool IsCustomTheme => _main.Profile.Data.Theme == ThemeColors.CustomId;
 
-    public double CustomHue
-    {
-        get => ThemeColors.HueOf(_main.Profile.Data.CustomColor);
-        set => SetCustomColor(ThemeColors.FromHue(value));
-    }
-
-    public string CustomColorText
+    // (Views/ColorPicker: any colour, a whole code only)
+    public string CustomColor
     {
         get => _main.Profile.Data.CustomColor;
         set
         {
-            if (ThemeColors.ColorFrom(value) is not { } color) return;
-            SetCustomColor(color);
-            OnChanged(nameof(CustomHue));
+            if (ThemeColors.ColorFrom(value) is not { } color || color == _main.Profile.Data.CustomColor) return;
+            _main.Profile.Data.CustomColor = ThemeColors.CustomColor = color;
+            _main.Profile.Save();
+            UltimateMP3Player.Themes.PaintAccent(ThemeColors.Custom(color));
+            OnChanged(nameof(CustomColor));
+            // (the swatches made again once the colour rests: a drag would build them all at every move)
+            if (_swatchesLater == null)
+            {
+                _swatchesLater = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+                _swatchesLater.Tick += (_, _) =>
+                {
+                    _swatchesLater.Stop();
+                    OnChanged(nameof(ColorThemes));
+                };
+            }
+            _swatchesLater.Stop();
+            _swatchesLater.Start();
         }
     }
 
-    private void SetCustomColor(string color)
-    {
-        if (color == _main.Profile.Data.CustomColor) return;
-        _main.Profile.Data.CustomColor = ThemeColors.CustomColor = color;
-        _main.Profile.Save();
-        UltimateMP3Player.Themes.PaintAccent(ThemeColors.Custom(color));
-        OnChanged(nameof(CustomColorText), nameof(ColorThemes));
-    }
+    private DispatcherTimer? _swatchesLater;
 
     public string ThemeHint => _main.Profile.Data.Theme switch
     {
@@ -391,7 +394,7 @@ public sealed class SettingsViewModel : Observable
         _main.Profile.Save();
         _main.Host.ApplyTheme();
         _main.SongColors.Restart();
-        OnChanged(nameof(MovingThemes), nameof(ColorThemes), nameof(ThemeHint), nameof(HasThemeHint), nameof(IsRgbTheme), nameof(IsCustomTheme), nameof(CustomHue), nameof(CustomColorText));
+        OnChanged(nameof(MovingThemes), nameof(ColorThemes), nameof(ThemeHint), nameof(HasThemeHint), nameof(IsRgbTheme), nameof(IsCustomTheme), nameof(CustomColor));
     }
 
     public List<Choice> Appearances { get; } = new()
@@ -425,6 +428,22 @@ public sealed class SettingsViewModel : Observable
         OnChanged(names);
     }
 
+    // A slider of the palette's (the panes, their edges) dragged: the whole app restyles, so once the dispatcher is free, not at every step.
+    private bool _paletteLater;
+
+    private void GlassSlid(params string[] names)
+    {
+        _main.Profile.Save();
+        OnChanged(names);
+        if (_paletteLater) return;
+        _paletteLater = true;
+        _ = Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            _paletteLater = false;
+            _main.Host.ApplyTheme();
+        }, DispatcherPriority.Background);
+    }
+
     public bool GlassOn
     {
         get => GlassChoices.On;
@@ -444,10 +463,11 @@ public sealed class SettingsViewModel : Observable
         set
         {
             if (value?.Value is not string kind) return;
-            // (chosen again: another picture)
+            // (chosen again: another picture.) The file dialog once the tiles' own update is over: the computers' is modal, opened inside
+            // it, and the tiles never heard that none was picked (the tile stayed on "Your picture"); now they go back to the one before.
             if (kind == "mine")
             {
-                _ = PickGlassPicture();
+                _ = Application.Current.Dispatcher.InvokeAsync(() => _ = PickGlassPicture());
                 return;
             }
             if (value == GlassPicture) return;
@@ -504,13 +524,20 @@ public sealed class SettingsViewModel : Observable
     public double GlassPanes
     {
         get => GlassChoices.Panes;
-        set { GlassChoices.Panes = Math.Clamp(value, 0, 1); GlassChanged(true, nameof(GlassPanes), nameof(GlassPanesText)); }
+        set { GlassChoices.Panes = Math.Clamp(value, 0, 1); GlassSlid(nameof(GlassPanes), nameof(GlassPanesText)); }
+    }
+
+    public double GlassRim
+    {
+        get => GlassChoices.Rim;
+        set { GlassChoices.Rim = Math.Clamp(value, 0, 1); GlassSlid(nameof(GlassRim), nameof(GlassRimText)); }
     }
 
     public string GlassBlurText => $"{Math.Round(GlassChoices.Blur * 100)}%";
     public string GlassBrightnessText => $"{Math.Round(GlassChoices.Brightness * 100)}%";
     public string GlassVividText => $"{Math.Round(GlassChoices.Vivid * 100)}%";
     public string GlassPanesText => $"{Math.Round(GlassChoices.Panes * 100)}%";
+    public string GlassRimText => $"{Math.Round(GlassChoices.Rim * 100)}%";
 
     public bool GlassGrain
     {
@@ -527,10 +554,10 @@ public sealed class SettingsViewModel : Observable
     public ICommand GlassResetCommand => _glassReset ??= new RelayCommand(() =>
     {
         var fresh = new GlassLook { On = GlassChoices.On };
-        (GlassChoices.FromTheme, GlassChoices.Picture, GlassChoices.Tint, GlassChoices.Blur, GlassChoices.Brightness, GlassChoices.Vivid, GlassChoices.Panes, GlassChoices.Grain) =
-            (fresh.FromTheme, fresh.Picture, fresh.Tint, fresh.Blur, fresh.Brightness, fresh.Vivid, fresh.Panes, fresh.Grain);
+        (GlassChoices.FromTheme, GlassChoices.Picture, GlassChoices.Tint, GlassChoices.Blur, GlassChoices.Brightness, GlassChoices.Vivid, GlassChoices.Panes, GlassChoices.Rim, GlassChoices.Grain) =
+            (fresh.FromTheme, fresh.Picture, fresh.Tint, fresh.Blur, fresh.Brightness, fresh.Vivid, fresh.Panes, fresh.Rim, fresh.Grain);
         GlassChanged(true, nameof(GlassPicture), nameof(GlassTintChoice), nameof(GlassBlur), nameof(GlassBlurText), nameof(GlassBrightness), nameof(GlassBrightnessText),
-            nameof(GlassVivid), nameof(GlassVividText), nameof(GlassPanes), nameof(GlassPanesText), nameof(GlassGrain));
+            nameof(GlassVivid), nameof(GlassVividText), nameof(GlassPanes), nameof(GlassPanesText), nameof(GlassRim), nameof(GlassRimText), nameof(GlassGrain));
     });
 
     // ---- Settings › Layout (Core Layout): the profile's choices, at once. Floating or attached is the palette's (Themes.Apply),

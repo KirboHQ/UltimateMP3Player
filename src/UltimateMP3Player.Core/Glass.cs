@@ -15,6 +15,8 @@ public sealed class GlassLook
     public double Brightness { get; set; } = 0.45;
     public double Vivid { get; set; } = 0.5;
     public double Panes { get; set; } = 0.55;
+    // 0-1: the light on the panes' edges (Glass.RimAlpha); half is how 5.3 drew it, none takes the edge away.
+    public double Rim { get; set; } = 0.5;
     public bool Grain { get; set; } = true;
 }
 
@@ -166,6 +168,21 @@ public static class Glass
             }
     }
 
+    // The colour along the top of a picture (blue, green, red, alpha), what the title bar shows: the window's own ground under it, seen only
+    // while the window grows (see-through, Windows showed white there until the next frame).
+    public static uint TopColor(byte[] px)
+    {
+        long b = 0, g = 0, r = 0;
+        int n = Size * (Size / 8);
+        for (int i = 0; i < n * 4; i += 4)
+        {
+            b += px[i];
+            g += px[i + 1];
+            r += px[i + 2];
+        }
+        return 0xFF000000 | (uint)(r / n) << 16 | (uint)(g / n) << 8 | (uint)(b / n);
+    }
+
     // The frost: a fine grain over the picture (tiled), which also hides the steps of a dark gradient. Grey, the alpha does it.
     public const int GrainSize = 96;
 
@@ -181,6 +198,10 @@ public static class Glass
         }
         return px;
     }
+
+    // The panes' edges (Themes' RimBrush): none, or each stop of the light as strong as chosen (half: as given).
+    public static bool HasRim => On && Look.Rim > 0;
+    public static byte RimAlpha(int half) => (byte)Math.Min(255, Math.Round(half * Math.Clamp(Look.Rim, 0, 1) * 2));
 
     // How see-through a pane is (0-255), by the choice; frosted white is much stronger than dark glass, so it takes less.
     public static byte PaneAlpha(bool light)

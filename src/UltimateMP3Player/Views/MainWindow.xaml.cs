@@ -91,11 +91,22 @@ public partial class MainWindow : Window
     {
         var next = Themes.Backdrop;
         GlassBack.Visibility = next == null ? Visibility.Collapsed : Visibility.Visible;
+        // The window's own ground, seen only while it grows: with the glass the colour along the top of its picture, as the title bar shows
+        // it (the title bar's own colour is see-through there, and Windows showed white until the next frame).
+        if (next == null) SetResourceReference(BackgroundProperty, "TitleBarSolidBrush");
+        else
+        {
+            var ground = new SolidColorBrush(Themes.BackdropTop);
+            ground.Freeze();
+            Background = ground;
+        }
+        // (the edge and the title Windows draws take the same colour)
+        Ui.DarkTitleBar(this);
         if (ReferenceEquals(next, GlassNow.Source)) return;
         GlassBefore.Source = GlassNow.Source;
         GlassNow.Source = next;
         GlassNow.BeginAnimation(OpacityProperty, null);
-        if (next == null || GlassBefore.Source == null || !Ui.Animations || !IsVisible) return;
+        if (next == null || GlassBefore.Source == null || !Themes.BackdropFades || !Ui.Animations || !IsVisible) return;
         GlassNow.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, Ui.Time(Themes.FadeMs)) { FillBehavior = FillBehavior.Stop, EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } });
     }
 

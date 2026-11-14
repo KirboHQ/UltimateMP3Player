@@ -139,13 +139,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <StackPanel Margin="0,0,0,10" views:Fold.Open="{Binding IsCustomTheme}">
-                        <TextBlock Text="{local:T Hue}" Classes="setting-hint"/>
-                        <Grid ColumnDefinitions="*,Auto">
-                            <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="359" Value="{Binding CustomHue}" Height="40" AutomationProperties.Name="{local:T Hue}"/>
-                            <TextBox Grid.Column="1" Width="120" Margin="12,0,0,0" MaxLength="7" Text="{Binding CustomColorText}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Custom colour'}"/>
-                        </Grid>
-                    </StackPanel>
+                    <views:ColorPicker Margin="0,0,0,12" Hex="{Binding CustomColor}" views:Fold.Open="{Binding IsCustomTheme}"/>
                     <TextBlock Text="{Binding ThemeHint}" Classes="setting-hint" Margin="0,0,0,10" views:Fold.Open="{Binding HasThemeHint}"/>
                     <!-- the glass look and its choices (Core Glass), as on the computer -->
                     <Border Classes="line"/>
@@ -158,8 +152,6 @@
                     <StackPanel Margin="0,0,0,10" views:Fold.Open="{Binding GlassOn}">
                         <TextBlock Text="{local:T Background}" Classes="setting-hint" Margin="0,0,0,8"/>
                         <views:ChoiceTiles Picture="glasspicture" Items="{Binding GlassPictures}" Selected="{Binding GlassPicture}"/>
-                        <TextBlock Text="{local:T Panes}" Classes="setting-hint" Margin="0,12,0,8"/>
-                        <views:ChoiceTiles Picture="glasstint" Items="{Binding GlassTints}" Selected="{Binding GlassTintChoice}"/>
                         <TextBlock Text="{local:T Blur}" Classes="setting-hint" Margin="0,12,0,0"/>
                         <Grid ColumnDefinitions="*,Auto">
                             <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" Value="{Binding GlassBlur}" SmallChange="0.05" LargeChange="0.1" Height="40" AutomationProperties.Name="{local:T Blur}"/>
@@ -175,14 +167,21 @@
                             <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" Value="{Binding GlassVivid}" SmallChange="0.05" LargeChange="0.1" Height="40" AutomationProperties.Name="{local:T Color}"/>
                             <TextBlock Grid.Column="1" Text="{Binding GlassVividText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
                         </Grid>
-                        <TextBlock Text="{local:T 'Opacity of the panes'}" Classes="setting-hint"/>
+                        <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding GlassGrain}">
+                            <TextBlock Text="{local:T Grain}" Classes="setting"/>
+                        </CheckBox>
+                        <TextBlock Text="{local:T Panes}" Classes="setting-hint" Margin="0,12,0,8"/>
+                        <views:ChoiceTiles Picture="glasstint" Items="{Binding GlassTints}" Selected="{Binding GlassTintChoice}"/>
+                        <TextBlock Text="{local:T 'Opacity of the panes'}" Classes="setting-hint" Margin="0,12,0,0"/>
                         <Grid ColumnDefinitions="*,Auto">
                             <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" Value="{Binding GlassPanes}" SmallChange="0.05" LargeChange="0.1" Height="40" AutomationProperties.Name="{local:T 'Opacity of the panes'}"/>
                             <TextBlock Grid.Column="1" Text="{Binding GlassPanesText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
                         </Grid>
-                        <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding GlassGrain}">
-                            <TextBlock Text="{local:T Grain}" Classes="setting"/>
-                        </CheckBox>
+                        <TextBlock Text="{local:T 'Edges of the panes'}" Classes="setting-hint"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" Value="{Binding GlassRim}" SmallChange="0.05" LargeChange="0.1" Height="40" AutomationProperties.Name="{local:T 'Edges of the panes'}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding GlassRimText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
+                        </Grid>
                         <Button Theme="{StaticResource SmallGhost}" HorizontalAlignment="Left" Content="{local:T Reset}" Command="{Binding GlassResetCommand}"/>
                     </StackPanel>
                     <!-- the layout: the bottom bar's tabs and Home's rows, shown or not, in their order (Core Layout) -->

@@ -376,7 +376,13 @@ public partial class MainWindow : Window
         PlayerBar.Background = Ui.Find<IBrush>(GetValue(FullScreenProperty) && !Glass.On ? "PlayerBarVeil" : "SidebarBrush");
     }
 
-    private void ShowGlass() => Themes.PutBackdrop(GlassBack, GlassBefore, GlassNow, GlassGrain);
+    // The window's own ground, seen only while it grows: with the glass the colour along the top of its picture, as the title bar shows it
+    // (the title bar's own colour is see-through there).
+    private void ShowGlass()
+    {
+        Themes.PutBackdrop(GlassBack, GlassBefore, GlassNow, GlassGrain);
+        Background = Themes.Backdrop == null ? Ui.Find<IBrush>("TitleBarSolidBrush") : new SolidColorBrush(Themes.BackdropTop);
+    }
 
     private void SlideBar(bool show)
     {

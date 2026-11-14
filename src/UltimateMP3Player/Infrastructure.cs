@@ -386,11 +386,13 @@ public static class Ui
             int on = Themes.IsLight ? 0 : 1;
             if (DwmSetWindowAttribute(h, 20, ref on, sizeof(int)) != 0) DwmSetWindowAttribute(h, 19, ref on, sizeof(int));
             static int ColorRef(Color c) => c.R | c.G << 8 | c.B << 16;
-            int caption = ColorRef(Themes.Get("TitleBar"));
+            // The title's colour and the window's edge in it: the window's own ground (with the glass the top of its picture: MainWindow.ShowGlass).
+            // Never the glass look's see-through colours: Windows takes them as solid, and the panes' faint white edge was a white line around the window.
+            int caption = ColorRef(w.Background is SolidColorBrush { Color.A: 255 } ground ? ground.Color : Themes.Get("TitleBarSolid"));
             DwmSetWindowAttribute(h, 35, ref caption, sizeof(int));
             int text = ColorRef(Themes.Get("Text"));
             DwmSetWindowAttribute(h, 36, ref text, sizeof(int));
-            int border = ColorRef(Themes.Get("Border"));
+            int border = caption;
             DwmSetWindowAttribute(h, 34, ref border, sizeof(int));
             int round = 2;
             DwmSetWindowAttribute(h, 33, ref round, sizeof(int));

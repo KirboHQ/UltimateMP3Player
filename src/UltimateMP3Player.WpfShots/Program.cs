@@ -185,13 +185,19 @@ public static class Program
         Ui.Hidden = false;
         main.Settings.SelectThemeCommand.Execute(ThemeColors.CustomId);
         var customFrom = AccentNow();
-        main.Settings.CustomColorText = "#12AB9F";
+        // (the picker's code box: half a code waits and what's typed stays as typed; a whole one is the accent at once; 5.3's box
+        // went back to the colour at every letter, the binding reading it again)
+        var customBox = Descendants(Descendants(win).OfType<ColorPicker>().First()).OfType<TextBox>().First();
+        customBox.Text = "#12AB9";
+        Pump(50);
+        bool halfWaits = customBox.Text == "#12AB9" && main.Settings.CustomColor != "#12AB9";
+        customBox.Text = "#12ab9f";
         Pump(150);
-        Check(AccentNow() != customFrom && main.Settings.CustomHue > 170 && main.Settings.CustomHue < 180, "custom colour: typed, the accent takes it at once");
+        Check(halfWaits && AccentNow() != customFrom && main.Settings.CustomColor == "#12AB9F" && customBox.Text == "#12ab9f", "custom colour: typed in the picker's box, half a code waits, a whole one is the accent at once");
         customFrom = AccentNow();
-        main.Settings.CustomHue = 30;
+        main.Settings.CustomColor = "#FF8800";
         Pump(150);
-        Check(AccentNow() != customFrom && main.Settings.CustomColorText != "#12AB9F", "custom colour: the slider moves it, the box follows");
+        Check(AccentNow() != customFrom && customBox.Text == "#FF8800", "custom colour: chosen elsewhere, the picker's box follows");
         Shot(win, "theme-custom");
         main.Settings.SelectThemeCommand.Execute(ThemeColors.DynamicId);
         Pump(900);
@@ -606,8 +612,8 @@ public static class Program
         Page("Appearance");
         Tile(L.T("Compact")).IsChecked = true;
         Pump(50);
-        // The colors: from the cover, going round, or one by a bar of hues.
-        Slider HueBar() => Descendants(editor).OfType<Slider>().First(v => System.Windows.Automation.AutomationProperties.GetName(v) == L.T("Hue"));
+        // The colors: from the cover, going round, or any one (ColorPicker: its code typed here).
+        ColorPicker HueBar() => Descendants(editor).OfType<ColorPicker>().First();
         Tile(L.T("RGB")).IsChecked = true;
         Pump(50);
         Check(overlay.Source.Rgb && Shown(editor, L.T("RGB speed")) && !Seen(HueBar()), "overlay: RGB, its speed, no color to pick");
@@ -615,8 +621,8 @@ public static class Program
         Shot(editor, "overlay-rgb", 100);
         Tile(L.T("One color")).IsChecked = true;
         Pump(50);
-        HueBar().Value = 200;
-        Check(overlay.Source is { Rgb: false, MagicColors: false } && overlay.Source.Tint == ThemeColors.FromHue(200) && !Shown(editor, L.T("RGB speed")), "overlay: one color, from the bar of hues");
+        Descendants(HueBar()).OfType<TextBox>().First().Text = "#12AB9F";
+        Check(overlay.Source is { Rgb: false, MagicColors: false } && overlay.Source.Tint == "#12AB9F" && !Shown(editor, L.T("RGB speed")), "overlay: one color, any (the picker)");
         HueBar().BringIntoView(); Shot(editor, "overlay-hue", 100);
         Tile(L.T("From the cover")).IsChecked = true;
         Pump(50);

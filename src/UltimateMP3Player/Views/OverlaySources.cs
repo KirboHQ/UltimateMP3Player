@@ -923,48 +923,17 @@ public static partial class Dialogs
         };
     }
 
-    // The color: a bar of all of them to press or drag, a few ready, or any by its code.
+    // The color: any of them (ColorPicker: a square, a bar of hues, its code), or one of a few ready.
     private static ElementKind OverlayTint(OverlaySourceRow row)
     {
         var s = row.Source;
         var all = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
+        var picker = new Views.ColorPicker { Hex = s.Tint };
+        all.Children.Add(picker);
+        var swatches = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(-4, 10, 0, 0) };
+        all.Children.Add(swatches);
 
-        // An invisible slider over the rainbow: the mouse and the keys work as on every other one, a ring shows where it is.
-        double start = ThemeColors.HueOf(s.Tint);
-        var before = new ColumnDefinition { Width = new GridLength(start, GridUnitType.Star) };
-        var after = new ColumnDefinition { Width = new GridLength(359 - start, GridUnitType.Star) };
-        var ring = new Border { Width = 22, Height = 22, CornerRadius = new CornerRadius(11), BorderThickness = new Thickness(3), BorderBrush = Brushes.White, IsHitTestVisible = false };
-        var bar = new Grid { Height = 26, Margin = new Thickness(0, 0, 0, 10) };
-        bar.ColumnDefinitions.Add(before);
-        bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        bar.ColumnDefinitions.Add(after);
-        var rainbow = new Border { Height = 14, CornerRadius = new CornerRadius(7), Background = Pic.Rainbow(), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
-        var hue = new Slider { Minimum = 0, Maximum = 359, SmallChange = 2, LargeChange = 10, Value = start, Height = 26, Opacity = 0, Focusable = true };
-        AutomationProperties.SetName(hue, L.T("Hue"));
-        Grid.SetColumnSpan(rainbow, 3);
-        Grid.SetColumnSpan(hue, 3);
-        Grid.SetColumn(ring, 1);
-        bar.Children.Add(rainbow);
-        bar.Children.Add(ring);
-        bar.Children.Add(hue);
-        all.Children.Add(bar);
-        void Place(double h)
-        {
-            before.Width = new GridLength(h, GridUnitType.Star);
-            after.Width = new GridLength(359 - h, GridUnitType.Star);
-            ring.Background = new SolidColorBrush(Pic.ColorOf(ThemeColors.FromHue(h)));
-        }
-        Place(start);
-
-        var line = new DockPanel();
-        var code = OverlayLook(new TextBox { Text = s.Tint, Width = 104, VerticalAlignment = VerticalAlignment.Center }, "BoxTextBox");
-        DockPanel.SetDock(code, Dock.Right);
-        line.Children.Add(code);
-        var swatches = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(-4, 0, 0, 0) };
-        line.Children.Add(swatches);
-        all.Children.Add(line);
-
-        // (each of the three shows what the others chose, without choosing it again)
+        // (each shows what the other chose, without choosing it again)
         bool showing = false;
         var picks = new List<(RadioButton Pick, string Tint)>();
         void Choose(string tint, object from)
@@ -972,25 +941,13 @@ public static partial class Dialogs
             showing = true;
             s.Tint = tint;
             row.Changed();
-            if (from != code) code.Text = tint;
-            if (from != hue)
-            {
-                hue.Value = ThemeColors.HueOf(tint);
-                Place(hue.Value);
-            }
+            if (from != picker) picker.Hex = tint;
             foreach (var (pick, value) in picks) pick.IsChecked = string.Equals(value, tint, StringComparison.OrdinalIgnoreCase);
             showing = false;
         }
-        hue.ValueChanged += (_, _) =>
+        picker.Picked += tint =>
         {
-            if (showing) return;
-            double h = Math.Round(hue.Value);
-            Place(h);
-            Choose(ThemeColors.FromHue(h), hue);
-        };
-        code.TextChanged += (_, _) =>
-        {
-            if (!showing && ThemeColors.ColorFrom(code.Text) is { } typed) Choose(typed, code);
+            if (!showing) Choose(tint, picker);
         };
         foreach (var tint in OverlayTints)
         {
