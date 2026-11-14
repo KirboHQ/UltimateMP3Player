@@ -402,8 +402,9 @@ public static class MusicMatcher
         status(L.T("Searching YouTube…"));
         var yt = await YtDlp.SearchYouTubeAsync($"{artist} - {item.Title} audio", 5, cookies, ct);
         var pick = yt
+            .Where(r => Fits(item.Title, artist, r.Title, r.Channel))
             .Select((r, i) => (r, s: TitleScore(item.Title, artist, r.Title) + DurationScore(item.Duration, r.Duration) +
-                                     (Text.Coverage(artist, r.Title + " " + r.Channel) > 0.5 ? 0.3 : 0) - i * 0.05))
+                                     (Credited(artist, r.Title, r.Channel) ? 0.3 : 0) - i * 0.05))
             .OrderByDescending(x => x.s)
             .FirstOrDefault();
         // Nothing that looks like the song: not found, rather than another song under this one's title.
@@ -413,6 +414,24 @@ public static class MusicMatcher
     }
 
     private const double MinScore = 0.3;
+
+    // A YouTube video that names the song and its artist (unless written in another alphabet). A length alone let in another song,
+    // and a song gone from its site in someone else's re-upload under their own name.
+    public static bool Fits(string wantedTitle, string artist, string candidate, string? channel) =>
+        (artist.Length == 0 || Credited(artist, candidate, channel) || OtherScript(artist, candidate)) &&
+        (TitleScore(wantedTitle, artist, candidate) >= 0.5 || OtherScript(wantedTitle, candidate));
+
+    private static readonly Regex Featuring = new(@"\b(?:feat|ft|featuring)\b\.?\s*(.+)$", RegexOptions.IgnoreCase);
+
+    // The artist where a song names it: the channel, before " - " in a video's title ("angel - Heaven"), after "feat.". Not anywhere in
+    // the title: "angel" in "Heaven Must Be Missing An Angel" (Tavares) or "THE DRIVER ERA - Heaven Angel" made those angel's.
+    private static bool Credited(string artist, string? title, string? channel)
+    {
+        title ??= "";
+        var before = SongMeta.ArtistTitle.Match(title) is { Success: true } m ? m.Groups[1].Value : "";
+        var guest = Featuring.Match(title) is { Success: true } f ? f.Groups[1].Value : "";
+        return Text.Coverage(artist, $"{channel} {before} {guest}") >= 0.5;
+    }
 
     // YouTube Music's "Songs" results over HTTP (half a second, not a yt-dlp started for each song); yt-dlp's when that fails.
     private static async Task<List<(string Id, string Title)>> SearchMusicAsync(string query, string? cookies, CancellationToken ct)
@@ -443,7 +462,10 @@ public static class MusicMatcher
     public static (double Total, bool Sure) Score(string wantedTitle, string artist, double? duration, string candidate, int rank, YtInfo info)
     {
         double title = ResultScore(wantedTitle, artist, candidate, rank), length = DurationScore(duration, info.Duration), who = ArtistScore(artist, info, lenient: true);
-        if (OtherName(wantedTitle, candidate, rank)) return (length < 0 || who < 0 ? length + who : title + length + who, false);
+        // By another artist, or over 20 s longer or shorter: never the song, whatever its title (a song of the same name, someone else's
+        // re-upload; "Heaven" by angel, 3:29, gone from Spotify, was taken as ANGEL!'s 6:34 "Heaven").
+        if (who < 0 || length < -0.5) return (-1, false);
+        if (OtherName(wantedTitle, candidate, rank)) return (length < 0 ? length + who : title + length + who, false);
         return (title + length + who, title > 0.7 && length >= 0 && who > 0);
     }
 
@@ -468,7 +490,7 @@ public static class MusicMatcher
         foreach (var (r, s) in yt.Select((r, i) => (r, s: TitleScore(item.Title, artist, r.Title) - i * 0.05)).OrderByDescending(x => x.s).Take(3))
         {
             if (s < 0.6 || !Close(r.Duration)) continue;
-            if (artist.Length > 0 && Text.Coverage(artist, r.Title + " " + r.Channel) < 0.5) continue;
+            if (artist.Length > 0 && !Credited(artist, r.Title, r.Channel)) continue;
             try { return await YtDlp.GetInfoAsync("https://www.youtube.com/watch?v=" + r.Id, cookies, ct); }
             catch (EngineException ex) when (!ex.Offline) { }
         }
@@ -489,8 +511,7 @@ public static class MusicMatcher
     private static double ArtistScore(string artist, YtInfo info, bool lenient = false)
     {
         if (artist.Length == 0) return 0;
-        var who = $"{info.Artist} {info.Uploader} {info.Title}";
-        if (Text.Coverage(artist, who) >= 0.5) return 0.4;
+        if (Text.Coverage(artist, info.Artist) >= 0.5 || Credited(artist, info.Title, info.Uploader)) return 0.4;
         return lenient && OtherScript(artist, info.Artist ?? info.Uploader ?? "") ? 0 : -0.3;
     }
 }

@@ -82,7 +82,7 @@ public static class CloudSongs
     // YouTube is heard from there, without searching for it again every time.
     public static string StreamUrl(string url, IEnumerable<string> keys)
     {
-        if (!(Spotify.IsMatch(url) || Deezer.IsMatch(url) || AppleMusic.IsMatch(url))) return url;
+        if (!Catalog(url)) return url;
         var yt = keys.FirstOrDefault(k => k.StartsWith("youtube:", StringComparison.OrdinalIgnoreCase));
         return yt != null ? "https://music.youtube.com/watch?v=" + yt["youtube:".Length..] : url;
     }
@@ -93,7 +93,7 @@ public static class CloudSongs
     {
         var url = t.SourceUrl ?? "";
         var stream = StreamUrl(url, t.Keys);
-        bool catalog = stream == url && (Spotify.IsMatch(url) || Deezer.IsMatch(url) || AppleMusic.IsMatch(url));
+        bool catalog = stream == url && Catalog(url);
         var item = new MediaItem
         {
             Title = t.Title,
@@ -158,6 +158,22 @@ public static class CloudSongs
         catch (EngineException ex) when (!ex.Offline) { return null; }
     }
 
+    private static bool Catalog(string url) => Spotify.IsMatch(url) || Deezer.IsMatch(url) || AppleMusic.IsMatch(url);
+
+    // A catalogue song already known by its title is searched on YouTube Music straight away: its page would tell only that again,
+    // and Spotify refuses its pages for minutes after a long pasted list (every song then failed as "check your connection").
+    private static MediaItem SearchItem(string url, string title, string? artist, double duration) => new()
+    {
+        Title = title,
+        Artist = artist,
+        Duration = duration > 0 ? duration : null,
+        Kind = MediaKind.Audio,
+        Source = SourceKind.Search,
+        Url = url,
+        PageUrl = url,
+        SiteName = Sites.NameFor(url),
+    };
+
     // A song's audio into dir from its link, or, when the link can't give it, from the same song found on YouTube (FindForAsync).
     // Replacement: where it came from instead (null: its own link). stream: what to hear it from while it downloads.
     public static async Task<(string File, YtInfo? Replacement)> DownloadAsync(string url, string title, string? artist, double duration, string audioFormat,
@@ -165,7 +181,9 @@ public static class CloudSongs
     {
         try
         {
-            return (await SongCache.DownloadAsync(url, audioFormat, cookies, dir, progress, ct, stream), null);
+            return (Catalog(url) && !string.IsNullOrWhiteSpace(title)
+                ? await SongCache.DownloadAsync(SearchItem(url, title, artist, duration), audioFormat, cookies, dir, progress, ct, stream)
+                : await SongCache.DownloadAsync(url, audioFormat, cookies, dir, progress, ct, stream), null);
         }
         catch (EngineException ex) when (ex.LinkProblem && !ct.IsCancellationRequested)
         {

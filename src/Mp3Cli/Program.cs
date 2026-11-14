@@ -140,8 +140,21 @@ switch (args[0])
             int Pick(string title, double d) => results.Select((r, i) => (i, r))
                 .OrderByDescending(x => MusicMatcher.ResultScore(title, "YOASOBI", x.r.Item1, x.i)).Take(3)
                 .OrderByDescending(x => MusicMatcher.Score(title, "YOASOBI", d, x.r.Item1, x.i, x.r.Item2).Total).First().i;
+            // A song gone from Spotify ("Heaven" by angel): another "Heaven" of the same length isn't it, nor a re-upload under someone
+            // else's name, nor a video of that length without the title; a video naming both is.
             bool ok = Pick("Racing Into The Night", 262) == 0 && Pick("Into The Night", 260) == 2 &&
-                      MusicMatcher.Score("Racing Into The Night", "YOASOBI", 262, "夜に駆ける", 0, Info("Someone Else", 262)).Total <= 0.3;
+                      MusicMatcher.Score("Racing Into The Night", "YOASOBI", 262, "夜に駆ける", 0, Info("Someone Else", 262)).Total <= 0.3 &&
+                      MusicMatcher.Score("Heaven", "angel", 209, "Heaven", 0, Info("Julia Michaels", 209)).Total <= 0.3 &&
+                      MusicMatcher.Score("Heaven", "angel", 209, "Heaven", 0, Info("ANGEL!", 394)).Total <= 0.3 &&
+                      // (the artist's name in the title, not as its artist)
+                      MusicMatcher.Score("Heaven", "angel", 209, "Heaven Must Be Missing An Angel", 0,
+                          new YtInfo { Artist = "Tavares", Uploader = "Tavares - Topic", Title = "Heaven Must Be Missing An Angel", Duration = 209 }).Total <= 0.3 &&
+                      !MusicMatcher.Fits("Heaven", "angel", "THE DRIVER ERA - Heaven Angel (audio)", "The Driver Era") &&
+                      MusicMatcher.Score("Heaven", "angel", 209, "Heaven (feat. angel)", 0, new YtInfo { Artist = "Someone", Title = "Heaven (feat. angel)", Duration = 209 }).Sure &&
+                      MusicMatcher.Score("Heaven", "angel", 209, "Heaven", 0, Info("angel", 209)).Sure &&
+                      !MusicMatcher.Fits("Heaven", "angel", "Heaven (slowed)", "someone's uploads") &&
+                      !MusicMatcher.Fits("Heaven", "angel", "angel - my new song", "angel") &&
+                      MusicMatcher.Fits("Heaven", "angel", "angel - Heaven (Official Audio)", "Some Label");
             Console.WriteLine("match: " + (ok ? "ok" : "SBAGLIATO"));
             return ok ? 0 : 1;
         }

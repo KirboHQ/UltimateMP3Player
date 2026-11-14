@@ -117,7 +117,6 @@ public static partial class L
         ["Songs that aren't in any playlist"] = "Brani che non sono in nessuna playlist",
         ["Songs that aren't in any playlist (or in Favorites): select them to add them to a playlist or delete them."] = "Brani che non sono in nessuna playlist (né nei Preferiti): selezionali per aggiungerli a una playlist o eliminarli.",
         ["Selected songs"] = "Brani selezionati",
-        ["Songs, albums and whole playlists: choose which playlist to save them to and, if available, the video too. Songs you already have won't be downloaded again. You can also drag a link into the window."] = "Brani, album e playlist intere: scegli in quale playlist salvarli e, se c'è, anche il video. I brani che hai già non vengono riscaricati. Funziona anche trascinando un link nella finestra.",
         ["Song"] = "Brano",
         ["Song added to your library"] = "Brano aggiunto alla libreria",
         ["Song not found on YouTube Music."] = "Brano non trovato su YouTube Music.",
@@ -644,7 +643,7 @@ public static partial class L
         ["tags labels color colors"] = "tag etichette colore colori",
         ["artist artists rename names edit"] = "artista artisti rinomina nomi modifica",
         ["import add files folder computer"] = "importa aggiungi file cartella computer",
-        ["discord status activity rich presence"] = "discord stato attività",
+        ["discord status activity rich presence application id name"] = "discord stato attività applicazione id nome",
         ["updates update version github engines yt-dlp gallery-dl data"] = "aggiornamenti aggiorna versione github motori yt-dlp gallery-dl dati",
         ["help support report problem bug error github issue idea suggestion feature contact terms use conditions copyright"] =
             "aiuto supporto segnala problema bug errore github issue idea suggerimento contatto termini uso condizioni diritto autore copyright",
@@ -2323,7 +2322,6 @@ public static partial class L
         ["Open in the song view"] = "Apri nella vista del brano",
         ["Song view"] = "Vista del brano",
         ["Song view: video and lyrics"] = "Vista del brano: video e testo",
-        ["Paste a link in the box above"] = "Incolla un link nella casella qui sopra",
         ["Pick a song to start"] = "Scegli un brano per iniziare",
         ["Playback: speed, volume, crossfade, equalizer"] = "Riproduzione: velocità, volume, dissolvenza, equalizzatore",
         ["Saved on your device: it plays without the internet."] = "Salvato sul dispositivo: si ascolta anche senza internet.",
@@ -2618,5 +2616,13 @@ public static partial class L
         ["{0} won't be suggested any more"] = "{0} non verrà più consigliato",
         ["Artists never suggested"] = "Artisti mai consigliati",
         ["None yet: from a song's menu (More) or an artist's, “Don't suggest”. Their songs stay out of the suggested ones; searched or played by hand, they play as always."] = "Ancora nessuno: dal menu di una canzone (Altro) o di un artista, «Non consigliare». Le sue canzoni restano fuori dai consigli; cercate o fatte partire a mano, suonano come sempre.",
+        ["Custom Application ID (changes the name shown on Discord)"] = "Application ID personalizzato (cambia il nome mostrato su Discord)",
+        ["Leave it empty for Ultimate MP3 Player. For another name, create a free application on Discord's site for developers and paste its Application ID here."] =
+            "Lascialo vuoto per Ultimate MP3 Player. Per un altro nome, crea un'applicazione gratuita sul sito di Discord per sviluppatori e incolla qui il suo Application ID.",
+        ["Default (Ultimate MP3 Player)"] = "Predefinito (Ultimate MP3 Player)",
+        ["That isn't an Application ID: it's the long number on the application's General Information page."] =
+            "Questo non è un Application ID: è il numero lungo nella pagina General Information dell'applicazione.",
+        ["Type a title or an artist: you find the songs you already have and those on music sites. Or paste the link of a song, an album or a whole playlist (YouTube, Spotify, SoundCloud…): choose which playlist to save them to and, if available, the video too. Songs you already have won't be downloaded again. You can also drag a link into the window."] =
+            "Scrivi un titolo o un artista: trovi i brani che hai già e quelli sui siti di musica. Oppure incolla il link di un brano, di un album o di un'intera playlist (YouTube, Spotify, SoundCloud…): scegli in quale playlist salvarli e, se c'è, anche il video. I brani che hai già non vengono riscaricati. Puoi anche trascinare un link nella finestra.",
     };
 }

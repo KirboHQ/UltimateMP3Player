@@ -1212,7 +1212,7 @@
                 </Border>
 
                 <!-- ==================================================== integrations -->
-                <Border Theme="{StaticResource Card}" views:SettingsView.Group="integrations" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'discord status activity rich presence'}">
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="integrations" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'discord status activity rich presence application id name'}">
                     <StackPanel>
                         <TextBlock Text="Discord" Classes="card-title"/>
                         <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding DiscordPresence}" IsEnabled="{Binding DiscordAvailable}">
@@ -1222,6 +1222,17 @@
                                            Classes="hint"/>
                             </StackPanel>
                         </CheckBox>
+                        <TextBlock Text="{local:T 'Custom Application ID (changes the name shown on Discord)'}" Margin="0,16,0,0"/>
+                        <TextBlock Classes="hint"
+                                   Text="{local:T 'Leave it empty for Ultimate MP3 Player. For another name, create a free application on Discord\'s site for developers and paste its Application ID here.'}"/>
+                        <Button Theme="{StaticResource LinkButton}" Content="discord.com/developers/applications" Command="{Binding DiscordDevelopersCommand}"
+                                HorizontalAlignment="Left" Margin="0,4,0,0"/>
+                        <!-- (on leaving the box: each number typed would open Discord's pipe again) -->
+                        <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding DiscordAppId, UpdateSourceTrigger=LostFocus}" Width="320" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                 Watermark="{local:T 'Default (Ultimate MP3 Player)'}" AutomationProperties.Name="{local:T 'Custom Application ID (changes the name shown on Discord)'}"/>
+                        <TextBlock Classes="hint" Foreground="{DynamicResource ErrorBrush}" Margin="0,6,0,0"
+                                   Text="{local:T 'That isn\'t an Application ID: it\'s the long number on the application\'s General Information page.'}"
+                                   IsVisible="{Binding DiscordAppIdWrong}"/>
                     </StackPanel>
                 </Border>
 

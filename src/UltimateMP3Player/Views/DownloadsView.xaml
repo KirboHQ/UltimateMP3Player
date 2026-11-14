@@ -319,10 +319,10 @@
                                 <TextBlock Text="{local:T 'Import a list'}" Margin="8,0,0,0"/>
                             </StackPanel>
                         </Button>
-                        <TextBlock Text="{local:T 'Paste a link in the box above'}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <TextBlock Text="{local:T 'Search your songs and online'}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     </DockPanel>
                     <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,14" FontSize="13.5" LineHeight="20"
-                               Text="{local:T 'Songs, albums and whole playlists: choose which playlist to save them to and, if available, the video too. Songs you already have won\'t be downloaded again. You can also drag a link into the window.'}"/>
+                               Text="{local:T 'Type a title or an artist: you find the songs you already have and those on music sites. Or paste the link of a song, an album or a whole playlist (YouTube, Spotify, SoundCloud…): choose which playlist to save them to and, if available, the video too. Songs you already have won\'t be downloaded again. You can also drag a link into the window.'}"/>
                     <ItemsControl ItemsSource="{Binding FeaturedSites}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>

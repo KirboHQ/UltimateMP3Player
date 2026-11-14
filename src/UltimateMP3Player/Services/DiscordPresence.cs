@@ -34,7 +34,24 @@ public sealed class DiscordPresence : IDisposable
     // Paused = the bar drawn in the text, stopped where the song is.
     private sealed record Wanted(Track? Track, long Start, long? End, string? Paused, Room? Room);
 
-    public bool Available => AppInfo.DiscordAppId.Length > 0;
+    // The Discord application whose name is shown: the user's own (Settings), else the app's.
+    private volatile string _appId = AppInfo.DiscordAppId;
+    private volatile bool _reconnect;
+
+    public string? CustomAppId
+    {
+        set
+        {
+            var id = value ?? AppInfo.DiscordAppId;
+            if (id == _appId) return;
+            _appId = id;
+            // (a wrong id made Discord close the pipe, and the next try waited 30 s)
+            _retryAfter = default;
+            _reconnect = true;
+        }
+    }
+
+    public bool Available => _appId.Length > 0;
 
     public bool Enabled
     {
@@ -201,6 +218,12 @@ public sealed class DiscordPresence : IDisposable
         await _gate.WaitAsync();
         try
         {
+            // Another application: the pipe opens again with its id.
+            if (_reconnect)
+            {
+                _reconnect = false;
+                Disconnect();
+            }
             var w = _wanted;
             var wanted = w == null ? null : Build(w, await ArtFor(w.Track));
             // A newer song came while the cover was being checked: that one goes next.
@@ -227,7 +250,7 @@ public sealed class DiscordPresence : IDisposable
             try
             {
                 _pipe = pipe;
-                await WriteAsync(0, "{\"v\":1,\"client_id\":\"" + AppInfo.DiscordAppId + "\"}");
+                await WriteAsync(0, "{\"v\":1,\"client_id\":\"" + _appId + "\"}");
                 var (op, _) = await ReadAsync();
                 if (op == 1) return true;
                 Disconnect();

@@ -70,7 +70,7 @@
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                         <TextBlock x:Name="SearchIcon" Text="{local:Icon E721}" Classes="glyph" FontSize="16"/>
                         <TextBox x:Name="SearchBox" Grid.Column="1" Theme="{StaticResource BareTextBox}" FontSize="15" Margin="11,0,2,0"
-                                 Watermark="{local:T Search}" Text="{Binding SearchText}"
+                                 Watermark="{local:T 'Songs, artists, or a link'}" Text="{Binding SearchText}"
                                  ToolTip.Tip="{local:T 'Search your songs and online, or paste a link to download (YouTube, Spotify, SoundCloud, TikTok…)'}"/>
                         <Button Grid.Column="2" Theme="{StaticResource IconButton}" Width="30" Height="30" FontSize="11" Content="{local:Icon E711}"
                                 Command="{Binding ClearSearchCommand}" ToolTip.Tip="{local:T Clear}" IsVisible="{Binding HasSearchText}"/>

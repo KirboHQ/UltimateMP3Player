@@ -73,7 +73,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock x:Name="SearchIcon" Text="&#xE721;" Style="{StaticResource Glyph}" Foreground="{DynamicResource SubTextBrush}" FontSize="16"/>
                         <TextBox x:Name="SearchBox" Grid.Column="1" Style="{StaticResource BareTextBox}" FontSize="15" Margin="11,0,2,0"
-                                 AutomationProperties.Name="{local:T Search}" Tag="{local:T Search}"
+                                 AutomationProperties.Name="{local:T Search}" Tag="{local:T 'Songs, artists, or a link'}"
                                  ToolTip="{local:T 'Search your songs and online, or paste a link to download (YouTube, Spotify, SoundCloud, TikTok…)'}"
                                  Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                  GotKeyboardFocus="Search_Focus" LostKeyboardFocus="Search_Focus" KeyDown="Search_KeyDown"/>

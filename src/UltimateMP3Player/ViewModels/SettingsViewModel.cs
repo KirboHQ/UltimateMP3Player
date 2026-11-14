@@ -1387,6 +1387,23 @@ public sealed class SettingsViewModel : Observable
 
     public bool DiscordAvailable => _main.Host.Presence.Available;
 
+    // Another Discord application, to show another name; what's shown goes again under it.
+    public string DiscordAppId
+    {
+        get => S.DiscordAppId ?? "";
+        set
+        {
+            S.DiscordAppId = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            Save();
+            _main.Host.Presence.CustomAppId = S.DiscordApp;
+            _main.Host.SetDiscordPresence(S.DiscordPresence);
+            OnChanged(nameof(DiscordAppId), nameof(DiscordAppIdWrong), nameof(DiscordAvailable));
+        }
+    }
+
+    public bool DiscordAppIdWrong => S.DiscordAppId != null && S.DiscordApp == null;
+    public ICommand DiscordDevelopersCommand => new RelayCommand(() => MainViewModel.OpenUrl("https://discord.com/developers/applications"));
+
     public bool AutoUpdateApp
     {
         get => S.AutoUpdateApp;

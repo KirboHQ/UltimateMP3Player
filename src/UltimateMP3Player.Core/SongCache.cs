@@ -273,6 +273,13 @@ public sealed class SongCache
     {
         var analysis = await Analyzer.AnalyzeAsync(new AnalyzeRequest(url, cookies), ct);
         var item = analysis.Items.FirstOrDefault() ?? throw new EngineException(L.T("No downloadable content found in this link."));
+        return await DownloadAsync(item, audioFormat, cookies, dir, progress, ct, stream);
+    }
+
+    // The same, for an item already known (a catalogue song searched by its title and artist).
+    public static async Task<string> DownloadAsync(MediaItem item, string audioFormat, string? cookies, string dir, Action<double> progress, CancellationToken ct,
+        Action<SongStream>? stream = null)
+    {
         if (item.Kind == MediaKind.Video) item.Kind = MediaKind.Audio;
         var job = new DownloadJob(item, new DownloadOptions
         {

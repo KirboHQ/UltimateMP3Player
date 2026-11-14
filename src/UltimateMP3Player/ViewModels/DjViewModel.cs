@@ -1012,8 +1012,9 @@ public sealed class DjViewModel : Observable
             var file = cache.Find(song.Keys);
             if (file == null)
             {
-                var got = await Task.Run(() => SongCache.DownloadAsync(song.Url, s.AudioFormat, s.CookiesBrowserOrNull, cache.TempDir,
-                    pct => ui.BeginInvoke(() => deck.FetchProgress(id, pct)), CancellationToken.None));
+                // (like the songs heard: a catalogue song searched without its page, a dead link found elsewhere)
+                var (got, _) = await Task.Run(() => CloudSongs.DownloadAsync(song.Url, song.Title, song.Artist, song.Duration, s.AudioFormat, s.CookiesBrowserOrNull,
+                    cache.TempDir, pct => ui.BeginInvoke(() => deck.FetchProgress(id, pct)), CancellationToken.None));
                 file = cache.Adopt(song.Keys, song.Title, song.Artist, got);
             }
             if (!deck.IsFetching(id)) return;

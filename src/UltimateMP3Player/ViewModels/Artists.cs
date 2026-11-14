@@ -454,7 +454,11 @@ public sealed class ArtistPageViewModel : Observable, ITrackList
     public void Rebuild()
     {
         var stats = _main.Profile.StatsSnapshot();
-        _order = _main.Songs().Where(t => ArtistNames.Has(t.Artist, Name))
+        // Its popular songs you have under another name in the artist line (a site writing it otherwise, someone else's upload) are
+        // yours of it too: the page never says "no songs" above one marked as in your library.
+        foreach (var p in Popular) p.RefreshLibrary();
+        var popular = Popular.Select(p => p.Owned).OfType<Track>().ToHashSet();
+        _order = _main.Songs().Where(t => ArtistNames.Has(t.Artist, Name) || popular.Contains(t))
             .OrderByDescending(t => stats.GetValueOrDefault(t.Id)?.Plays ?? 0).ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
             .Select(_main.Vm).ToList();
         Rows = _order.Select((t, i) => new TrackRow(i + 1, t, this)).ToList();
@@ -576,6 +580,7 @@ public sealed class ArtistPageViewModel : Observable, ITrackList
                         Popular[i].Number = (i + 1).ToString();
                     }
                     OnChanged(nameof(Popular), nameof(HasPopular));
+                    if (Popular.Any(p => p.Owned is { } t && !_order.Any(o => o.T == t))) Rebuild();
                     CommandManager.InvalidateRequerySuggested();
                 }
                 catch (Exception) when (!ct.IsCancellationRequested) { }

@@ -262,7 +262,7 @@ public static class Program
         // ---- Search: an entry of the sidebar's menu, its box at the top of its page; one list under chips
         main.IsSearch = true;
         Shot(win, "search-empty");
-        Check(main.Page == main.Search && Shown(win, L.T("Paste a link in the box above")) && Descendants(win).OfType<TextBox>().Any(t => t.Name == "SearchBox" && t.IsVisible),
+        Check(main.Page == main.Search && Shown(win, L.T("Search your songs and online")) && Descendants(win).OfType<TextBox>().Any(t => t.Name == "SearchBox" && t.IsVisible),
             "search: the menu's Search opens its page, its box at the top, the downloads under it");
         // (a few seconds of silence saved on the device: it can play in the player bar)
         var wav = Path.Combine(root, "music", "duet.wav");

@@ -290,6 +290,10 @@ public sealed class AppSettings
     public int OverlayPort { get; set; }
     public bool CoverTilt { get; set; } = true;
     public bool DiscordPresence { get; set; } = true;
+    // Another Discord application, as typed: Discord shows its name ("Listening to …"). Used only when it's an application id
+    // (DiscordApp); null = the app's own.
+    public string? DiscordAppId { get; set; }
+    [JsonIgnore] public string? DiscordApp => DiscordAppId is { Length: >= 15 and <= 22 } id && id.All(char.IsAsciiDigit) ? id : null;
     // The output the music plays on (an id of AudioPlatform.OutputDevices: the endpoint's on Windows, the name on Linux
     // and macOS, a kind and a name on the phone), null = the system's default; its name, shown while it isn't connected.
     public string? OutputDevice { get; set; }

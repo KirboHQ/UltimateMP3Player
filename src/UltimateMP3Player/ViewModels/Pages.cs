@@ -650,7 +650,7 @@ public class OnlineHitViewModel : Observable
     {
         Hit = hit;
         _main = main;
-        InLibrary = Find();
+        Owned = Find();
         DownloadCommand = new RelayCommand(() => _main.OpenHit(Hit));
         PlayCommand = new RelayCommand(PlayOrOpen);
     }
@@ -673,12 +673,8 @@ public class OnlineHitViewModel : Observable
         else Play();
     }
 
-    private bool Find()
-    {
-        // (an album isn't a song of the same name)
-        if (Hit.Collection != null) return false;
-        return _main.Library.FindItem(OnlineSearchServices.ToItem(Hit), byName: true) != null;
-    }
+    // (an album isn't a song of the same name)
+    private Track? Find() => Hit.Collection != null ? null : _main.Library.FindItem(OnlineSearchServices.ToItem(Hit), byName: true);
 
     public MainViewModel Main => _main;
     public bool IsSong => Hit.Collection == null;
@@ -700,10 +696,9 @@ public class OnlineHitViewModel : Observable
     // A download finished: it may be in the library now.
     public void RefreshLibrary()
     {
-        bool now = Find();
-        if (now == InLibrary) return;
-        InLibrary = now;
-        OnChanged(nameof(InLibrary));
+        bool was = InLibrary;
+        Owned = Find();
+        if (InLibrary != was) OnChanged(nameof(InLibrary));
     }
 
     public SearchHit Hit { get; }
@@ -723,8 +718,9 @@ public class OnlineHitViewModel : Observable
     public string DurationText => Hit.Duration is > 0 and var d ? Text.Duration(d) : "";
     public string Service => Hit.Service;
     public Brush ServiceBrush => Ui.BrushFrom(Sites.ColorFor(Hit.Service));
-    // Already downloaded (same link, or the same song from another site).
-    public bool InLibrary { get; private set; }
+    // Already downloaded (same link, or the same song from another site): the library's song.
+    public Track? Owned { get; private set; }
+    public bool InLibrary => Owned != null;
     public ICommand DownloadCommand { get; }
 
     private ImageSource? _thumb;

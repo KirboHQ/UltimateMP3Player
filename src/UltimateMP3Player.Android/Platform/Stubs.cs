@@ -10,6 +10,7 @@ namespace UltimateMP3Player.Services
     public sealed class DiscordPresence : IDisposable
     {
         public bool Enabled { get; set; }
+        public string? CustomAppId { get; set; }
         public bool Available => false;
         public void Update(Track? t, bool playing, TimeSpan position, TimeSpan duration) { }
         public void Dispose() { }

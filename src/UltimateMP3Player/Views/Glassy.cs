@@ -42,6 +42,10 @@ public static class Glassy
 
     private static void HostSized(object? sender, SizeChangedEventArgs e) => Refresh?.Invoke();
 
+    // The picture (side square at x, y) under all of a window of its own w × h, else its plain colour: the tray's menu, far from the
+    // window or with it minimized, was a piece of the picture with the desktop through the rest.
+    private static bool Covers(double x, double y, double side, double w, double h) => x <= 1 && y <= 1 && x + side >= w - 1 && y + side >= h - 1;
+
 #if AVALONIA
     public static readonly AttachedProperty<string?> BrushProperty = AvaloniaProperty.RegisterAttached<Border, string?>("Brush", typeof(Glassy));
     public static string? GetBrush(Border b) => b.GetValue(BrushProperty);
@@ -100,6 +104,7 @@ public static class Glassy
             var middle = b.PointToScreen(new Point(w / 2, h / 2));
             PixelPoint from = host.PointToScreen(new Point(0, 0)), to = host.PointToScreen(new Point(host.Bounds.Width, host.Bounds.Height));
             (x, y, side) = Glass.Slice(from.X, from.Y, to.X - from.X, to.Y - from.Y, middle.X - w * unit / 2, middle.Y - h * unit / 2);
+            if (!Covers(x, y, side, w * unit, h * unit)) return null;
         }
         if (unit <= 0) return null;
         return new ImageBrush(picture) { Stretch = Stretch.Fill, DestinationRect = new RelativeRect(x / unit, y / unit, side / unit, side / unit, RelativeUnit.Absolute) };
@@ -182,6 +187,7 @@ public static class Glassy
             var middle = b.PointToScreen(new Point(w / 2, h / 2));
             Point from = host.PointToScreen(new Point(0, 0)), to = host.PointToScreen(new Point(host.ActualWidth, host.ActualHeight));
             (x, y, side) = Glass.Slice(from.X, from.Y, to.X - from.X, to.Y - from.Y, middle.X - w * unit / 2, middle.Y - h * unit / 2);
+            if (!Covers(x, y, side, w * unit, h * unit)) return null;
         }
         var brush = new ImageBrush(picture)
         {

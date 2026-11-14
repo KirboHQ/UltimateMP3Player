@@ -66,7 +66,7 @@ public sealed class AppHost : Observable
         Downloads = new DownloadQueue(this);
         Updates = new Updater();
         _hadVersion = Settings.LastVersion != null;
-        Presence = new DiscordPresence { Enabled = Settings.DiscordPresence };
+        Presence = new DiscordPresence { CustomAppId = Settings.DiscordApp, Enabled = Settings.DiscordPresence };
         Settings.OverlayPort = OverlayServer.Shared.Apply(Settings.OverlaySources, Settings.OverlayPort);
         Lyrics = new LyricsService(this);
 #if !AVALONIA
