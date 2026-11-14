@@ -69,8 +69,14 @@ public static partial class Menus
         if (t.T.HasSavedFile) sub.Items.Add(Item(L.T("Show in folder"), "", () => main.ShowInFolder(t)));
         if (t.T.SourceUrl is { } url && url.StartsWith("http"))
             sub.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copied")); } catch { } }));
+        if (!Station.Is(t.Id) && ArtistNames.First(t.T.Artist) is { } artist) sub.Items.Add(Unsuggest(main, artist, true));
         return sub;
     }
+
+    // An artist out of the suggested queue (the AI-made ones flooding the sites' radios), or back in it. named: the song's menu says whose.
+    public static MenuItem Unsuggest(MainViewModel main, string artist, bool named) => main.Profile.IsUnsuggested(artist)
+        ? Item(named ? L.F("Suggest {0} again", Short(artist)) : L.T("Suggest again"), "", () => main.SetUnsuggested(artist, false))
+        : Item(named ? L.F("Don't suggest {0}", Short(artist)) : L.T("Don't suggest"), "", () => main.SetUnsuggested(artist, true));
 
     // A song's row pulled to the right (RowSwipe): its menu's "Add to queue", where the menu has it (not a suggested song,
     // not a song of the room itself, not without the room's permission). The same as the phones' (Mobile/Menus.cs).
@@ -829,6 +835,7 @@ public static partial class Menus
         var menu = new ContextMenu();
         menu.Items.Add(Item(L.T("Open"), "\uE77B", () => a.OpenCommand.Execute(null)));
         menu.Items.Add(Item(a.FollowTip, a.FollowGlyph, () => a.FollowCommand.Execute(null)));
+        menu.Items.Add(Unsuggest(a.Main, a.Name, false));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(L.T("Choose the artist…"), "\uE748", () => a.ChooseCommand.Execute(null)));
         return menu;
@@ -843,6 +850,8 @@ public static partial class Menus
         menu.Items.Add(Item(L.T("Rename…"), "\uE8AC", () => a.RenameCommand.Execute(null)));
         menu.Items.Add(Item(L.T("Change image…"), "\uEB9F", () => a.PictureCommand.Execute(null)));
         if (a.HasMyPicture) menu.Items.Add(Item(L.T("Remove image"), "\uE711", () => a.RemovePictureCommand.Execute(null)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Unsuggest(a.Main, a.Name, false));
         return menu;
     }
 

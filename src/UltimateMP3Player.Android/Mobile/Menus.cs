@@ -161,8 +161,14 @@ public static class Menus
             menu.Add(new(L.T("Copy original link"), GLink, () => { Ui.CopyText(url); main.Toast(L.T("Link copied")); }));
             menu.Add(new(L.T("Open the original link"), GOpen, () => MainViewModel.OpenUrl(url)));
         }
+        if (ArtistNames.First(t.T.Artist) is { } artist) menu.Add(Unsuggest(main, artist, true));
         return menu;
     }
+
+    // An artist out of the suggested queue (the AI-made ones flooding the sites' radios), or back in it. named: the song's menu says whose.
+    private static SheetEntry Unsuggest(MainViewModel main, string artist, bool named) => main.Profile.IsUnsuggested(artist)
+        ? new(named ? L.F("Suggest {0} again", Short(artist)) : L.T("Suggest again"), "", () => main.SetUnsuggested(artist, false))
+        : new(named ? L.F("Don't suggest {0}", Short(artist)) : L.T("Don't suggest"), "", () => main.SetUnsuggested(artist, true));
 
     // A song's row pulled to the right (RowSwipe): its menu's "Add to queue" (after the songs added before it, ahead of the
     // list's, like Spotify's), where the menu has it (not a suggested song, not a song of the room itself, not without the
@@ -768,6 +774,7 @@ public static class Menus
         var menu = new SheetMenu { Title = a.Name, Subtitle = a.Subtitle };
         menu.Add(new(L.T("Open"), "\uE77B", () => a.OpenCommand.Execute(null)));
         menu.Add(new(a.FollowTip, a.FollowGlyph, () => a.FollowCommand.Execute(null)));
+        menu.Add(Unsuggest(a.Main, a.Name, false));
         menu.Add(new(L.T("Choose the artist…"), "\uE748", () => a.ChooseCommand.Execute(null)));
         return menu;
     }
@@ -781,6 +788,7 @@ public static class Menus
         menu.Add(new(L.T("Rename…"), GRename, () => a.RenameCommand.Execute(null)));
         menu.Add(new(L.T("Change image…"), GPicture, () => a.PictureCommand.Execute(null)));
         if (a.HasMyPicture) menu.Add(new(L.T("Remove image"), GRemove, () => a.RemovePictureCommand.Execute(null)));
+        menu.Add(Unsuggest(a.Main, a.Name, false));
         return menu;
     }
 

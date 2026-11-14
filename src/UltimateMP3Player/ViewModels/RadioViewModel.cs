@@ -86,6 +86,9 @@ public sealed class RadioViewModel : Observable
     public bool Busy => _cts != null;
 
     public RadioItemViewModel? Item(string id) => _items.GetValueOrDefault(id);
+
+    // The suggested songs by this artist (one not to be suggested any more: out of the queue).
+    public List<string> ItemsBy(string artist) => _items.Values.Where(i => ArtistNames.Has(i.Song.Artist, artist)).Select(i => i.Id).ToList();
     public bool Has(string id) => _items.ContainsKey(id);
     public Track? Track(string id) => _items.TryGetValue(id, out var i) ? i.T : null;
     public string? PathFor(string id) => _fetcher.PathFor(id);
@@ -302,6 +305,7 @@ public sealed class RadioViewModel : Observable
         bool artist = contextId.StartsWith("artist:", StringComparison.Ordinal);
         // (always the first song's artist: the last song of the list may be a duet)
         var (given, artistSeed) = artist ? _artistGiven.GetValueOrDefault(contextId, (0, seed)) : (0, seed);
+        var profile = _main.Profile;
         List<(string Id, RadioSong? New)> picks = new();
         try
         {
@@ -310,9 +314,10 @@ public sealed class RadioViewModel : Observable
                 var hits = artist
                     ? await OnlineSearchServices.ArtistSongsAsync(artistSeed, Batch, given, cts.Token)
                     : await OnlineSearchServices.SimilarAsync(seed, source, Batch, cts.Token);
-                // A song you already have plays from the library (saved or in the cloud); one suggested before keeps its id.
+                // A song you already have plays from the library (saved or in the cloud); one suggested before keeps its id. Not the
+                // artists never to be suggested (an artist's own radio, asked for by hand, plays them).
                 var list = new List<(string Id, RadioSong? New)>();
-                foreach (var song in hits.Select(RadioSong.From))
+                foreach (var song in hits.Where(h => artist || profile.Suggestible(h.Artist)).Select(RadioSong.From))
                 {
                     if (Known(song, true) is { } have) list.Add((have.Id, null));
                     else if (known.FirstOrDefault(k => k.Keys.Intersect(song.Keys, StringComparer.OrdinalIgnoreCase).Any()) is { } same) list.Add((same.Id, null));

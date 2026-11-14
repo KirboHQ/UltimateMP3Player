@@ -492,7 +492,6 @@ public static partial class Dialogs
 
         var card = new Border
         {
-            Background = Res("SheetBrush"),
             BorderBrush = Res("BorderStrongBrush"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(16),
@@ -501,6 +500,9 @@ public static partial class Dialogs
             Child = stack,
             BoxShadow = BoxShadows.Parse("0 6 24 0 #8C000000"),
         };
+        // (the glass look: a pane of the window's picture, where the dialog lies, wherever it's dragged)
+        Glassy.SetBrush(card, "SheetBrush");
+        win.PositionChanged += (_, _) => Glassy.Place(card, "SheetBrush");
         // Dragging the card moves the dialog, but not from something clickable.
         card.PointerPressed += (_, e) =>
         {

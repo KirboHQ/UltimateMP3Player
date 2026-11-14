@@ -212,6 +212,8 @@ public sealed class ProfileData
     public List<ImportedRange> Imported { get; set; } = new();
     // Library › Artists: the ones followed, their latest releases, when they were last looked for.
     public List<FollowedArtist> Artists { get; set; } = new();
+    // Artists never suggested (Profile.Suggestible), as written when chosen.
+    public List<string> Unsuggested { get; set; } = new();
     public List<Release> Releases { get; set; } = new();
     public DateTime? ReleasesChecked { get; set; }
     // Library › Radio: the internet radios saved, the latest first.
@@ -828,6 +830,49 @@ public sealed class Profile
         Log.Import(fresh.Select(p => (p.At, p.Id, p.Title, p.Artist, p.Url, p.Seconds, p.Play)));
         Save();
         return fresh;
+    }
+
+    // ------------------------------------------------------------------ artists never suggested
+
+    // The suggested queue (RadioViewModel, a room's) leaves out the songs of these artists ("A feat. B" too: ArtistNames.Has), so the
+    // AI-made ones flooding the sites' radios stay away; searched, added or played by hand (their artist's radio too) they play like any other.
+    public event Action? UnsuggestedChanged;
+
+    public List<string> UnsuggestedSnapshot()
+    {
+        lock (_lock) return Data.Unsuggested.ToList();
+    }
+
+    public bool IsUnsuggested(string name)
+    {
+        var key = Text.Normalize(name);
+        lock (_lock) return Data.Unsuggested.Any(n => Text.Normalize(n) == key);
+    }
+
+    // (called off the UI thread, while suggestions are read)
+    public bool Suggestible(string? artist)
+    {
+        List<string> names;
+        lock (_lock)
+        {
+            if (Data.Unsuggested.Count == 0) return true;
+            names = Data.Unsuggested.ToList();
+        }
+        return !names.Any(n => ArtistNames.Has(artist, n));
+    }
+
+    public void SetUnsuggested(string name, bool never)
+    {
+        name = name.Trim();
+        if (name.Length == 0 || IsUnsuggested(name) == never) return;
+        var key = Text.Normalize(name);
+        lock (_lock)
+        {
+            if (never) Data.Unsuggested.Add(name);
+            else Data.Unsuggested.RemoveAll(n => Text.Normalize(n) == key);
+        }
+        Save();
+        UnsuggestedChanged?.Invoke();
     }
 
     // ------------------------------------------------------------------ followed artists (Library › Artists)

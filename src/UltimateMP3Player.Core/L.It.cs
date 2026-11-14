@@ -2610,5 +2610,13 @@ public static partial class L
         ["Colour code"] = "Codice colore",
         ["Edges"] = "Bordi",
         ["Edges of the panes"] = "Bordi dei pannelli",
+        // 5.3.2: artists never suggested
+        ["Don't suggest {0}"] = "Non consigliare {0}",
+        ["Suggest {0} again"] = "Consiglia di nuovo {0}",
+        ["Don't suggest"] = "Non consigliare",
+        ["Suggest again"] = "Consiglia di nuovo",
+        ["{0} won't be suggested any more"] = "{0} non verrà più consigliato",
+        ["Artists never suggested"] = "Artisti mai consigliati",
+        ["None yet: from a song's menu (More) or an artist's, “Don't suggest”. Their songs stay out of the suggested ones; searched or played by hand, they play as always."] = "Ancora nessuno: dal menu di una canzone (Altro) o di un artista, «Non consigliare». Le sue canzoni restano fuori dai consigli; cercate o fatte partire a mano, suonano come sempre.",
     };
 }

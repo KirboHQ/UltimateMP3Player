@@ -15,6 +15,8 @@ namespace UltimateMP3Player;
 public static class Themes
 {
     private static Dictionary<string, uint> _dark = ThemeColors.Build(ThemeColors.All[0], false), _light = ThemeColors.Build(ThemeColors.All[0], true);
+    // (the accent the colours were last built for: PaintGlass builds them again with it)
+    private static AccentTheme _theme = ThemeColors.All[0];
     private static bool _watching, _followsDevice;
 
     // The light or dark look changed (another choice, the device switched): what draws its own colours redraws.
@@ -36,7 +38,7 @@ public static class Themes
     {
         if (Application.Current is not { } app) return;
         _rgbChosen = id == ThemeColors.RgbId;
-        var t = ThemeColors.Resolve(id, profileColor, songColors);
+        var t = _theme = ThemeColors.Resolve(id, profileColor, songColors);
         _dark = ThemeColors.Build(t, false);
         _light = ThemeColors.Build(t, true);
         app.Resources.ThemeDictionaries[ThemeVariant.Dark] = Dictionary(_dark, false);
@@ -80,6 +82,7 @@ public static class Themes
     // Other colours on the accent's brushes, in place. (Only the look showing: the other one is made when it's shown.)
     public static void PaintAccent(AccentTheme theme)
     {
+        _theme = theme;
         var colors = ThemeColors.Build(theme, IsLight);
         if (IsLight) _light = colors;
         else _dark = colors;
@@ -162,6 +165,21 @@ public static class Themes
         return _gradients[name] = brush;
     }
 
+    // (one, in both looks, its stops painted like the accent's)
+    private static IBrush RimGradient(RelativePoint start, RelativePoint end)
+    {
+        if (_gradients.TryGetValue("Rim", out var kept)) return kept;
+        var brush = new LinearGradientBrush { StartPoint = start, EndPoint = end };
+        foreach (var (key, at) in new[] { ("Rim0", 0.0), ("Rim1", 0.4), ("Rim2", 1.0) })
+        {
+            var stop = new GradientStop(default, at);
+            _stops.Add((stop, key));
+            brush.GradientStops.Add(stop);
+        }
+        _movingGradients.Add(brush);
+        return _gradients["Rim"] = brush;
+    }
+
     private static void Paint(Dictionary<string, uint> colors)
     {
         foreach (var (key, brush) in _moving) brush.Color = ToColor(colors[key]);
@@ -179,9 +197,19 @@ public static class Themes
         _ => null,
     };
 
+    // The glass's panes and the light on their edges (ThemeColors.GlassKeys: with the glass they're among the brushes that move in place), as
+    // Settings' Opacity and Edges move them at each step of the slider (a whole Apply restyled every window at each one: the sliders lagged).
+    public static void PaintGlass()
+    {
+        _dark = ThemeColors.Build(_theme, false);
+        _light = ThemeColors.Build(_theme, true);
+        Paint(IsLight ? _light : _dark);
+    }
+
     // To the colours of another song. Off the screen or without animations, straight there.
     public static void FadeTo(AccentTheme theme)
     {
+        _theme = theme;
         _dark = ThemeColors.Build(theme, false);
         _light = ThemeColors.Build(theme, true);
         var colors = IsLight ? _light : _dark;
@@ -219,10 +247,32 @@ public static class Themes
 
     public static void ShowBackdrop(byte[]? px, bool fade = true)
     {
+        _backdropPx = px;
         Backdrop = px == null ? null : BitmapOf(px, Glass.Size);
         if (px != null) BackdropTop = ToColor(Glass.TopColor(px));
         BackdropFades = fade;
         BackdropChanged?.Invoke();
+    }
+
+    // What floats over the window takes this as its ground (Views/Glassy): the picture with a pane's tint over it (Glass.Tinted), made
+    // again only for a new picture or a new tint.
+    private static byte[]? _backdropPx, _glassPx;
+    private static uint _glassTint;
+    private static Bitmap? _popupGlass;
+
+    public static Bitmap? PopupGlass
+    {
+        get
+        {
+            if (_backdropPx is not { } px) return null;
+            uint tint = (IsLight ? _light : _dark).TryGetValue("Surface", out var c) ? c : 0;
+            if (_popupGlass == null || !ReferenceEquals(px, _glassPx) || tint != _glassTint)
+            {
+                _popupGlass = BitmapOf(Glass.Tinted(px, tint), Glass.Size);
+                (_glassPx, _glassTint) = (px, tint);
+            }
+            return _popupGlass;
+        }
     }
 
     // The picture in a window's (or a page's) layers, its grain over it: from one song to the next the new one comes up over the old one,
@@ -328,10 +378,11 @@ public static class Themes
     private static ResourceDictionary Dictionary(Dictionary<string, uint> c, bool light)
     {
         var r = new ResourceDictionary();
+        bool glass = Glass.On;
         foreach (var (name, argb) in c)
         {
             r[name + "Color"] = ToColor(argb);
-            r[name + "Brush"] = ThemeColors.AccentKeys.Contains(name) ? Moving(name) : Solid(ToColor(argb));
+            r[name + "Brush"] = ThemeColors.AccentKeys.Contains(name) || glass && ThemeColors.GlassKeys.Contains(name) ? Moving(name) : Solid(ToColor(argb));
         }
         Color C(string name) => ToColor(c[name]);
         Color bg = C("Bg");
@@ -346,14 +397,11 @@ public static class Themes
         // (see Theme.axaml: the opacity inside the brush, no layer)
         r["HeaderGlow"] = MovingGradient("HeaderGlow", "HeaderTop", "Ground", top, bottom, 0.55);
         r["HeaderGlowStrong"] = MovingGradient("HeaderGlowStrong", "HeaderTop", "Ground", top, bottom, 0.6);
-        bool glass = Glass.On;
-        // The glass look: light catching the top edge of a pane, fading down its sides; the side bar and the player bar float on the
+        // The glass look: light catching the top edge of a pane, fading down its sides (ThemeColors' Rim0-2, in place); the side bar and the player bar float on the
         // picture (the side bar's card where its entries are in the plain look: 14 from everything, as wide as "Up next"); its grain; what
         // has a picture of its own behind it in the plain look (the song page) goes (SolidOnly). (Both looks are made again: Apply.)
-        // (as strong as Settings' Edges: Glass.RimAlpha)
-        r["RimBrush"] = !Glass.HasRim ? Brushes.Transparent
-            : Stops(top, bottom, (Colors.White, Glass.RimAlpha(light ? 0xE6 : 0x38), 0), (Colors.White, Glass.RimAlpha(light ? 0x73 : 0x12), 0.4), (Colors.White, Glass.RimAlpha(light ? 0x59 : 0x0A), 1));
-        r["RimThickness"] = new Thickness(Glass.HasRim ? 1 : 0);
+        r["RimBrush"] = glass ? RimGradient(top, bottom) : Brushes.Transparent;
+        r["RimThickness"] = new Thickness(glass ? 1 : 0);
         // (Layout: floating or attached, glass or not)
         bool floating = Layout.Floating;
         r["SidebarMargin"] = floating ? new Thickness(14, 0, 14, 14) : new Thickness(0);

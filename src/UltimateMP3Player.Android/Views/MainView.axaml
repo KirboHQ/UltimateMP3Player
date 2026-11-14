@@ -55,7 +55,7 @@
                 </Border>
                 <!-- downloads going on, seen from the other tabs: each group (a song, or the songs of a link) with how far it is and
                      a button that cancels it; a tap opens the downloads -->
-                <Border Margin="10,0,10,8" CornerRadius="14" Padding="4" MaxWidth="560" Background="{DynamicResource PopupBrush}"
+                <Border Margin="10,0,10,8" CornerRadius="14" Padding="4" MaxWidth="560" views:Glassy.Brush="PopupBrush"
                         BoxShadow="{DynamicResource PopupShadow}" IsVisible="{Binding ShowDownloadPanel, FallbackValue=False}">
                     <ScrollViewer MaxHeight="150">
                         <ItemsControl ItemsSource="{Binding Queue.Groups}">

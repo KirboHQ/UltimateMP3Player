@@ -502,7 +502,7 @@
                 <Grid x:Name="DownloadPanel" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,14" Width="320"
                       Visibility="{Binding ShowDownloadPanel, Converter={StaticResource BoolVis}}">
                     <!-- (the shadow on its own, kept as a picture: on the panel, each step of a bar drew the whole blur again) -->
-                    <Border Background="{DynamicResource PopupBrush}" CornerRadius="14" CacheMode="BitmapCache" IsHitTestVisible="False">
+                    <Border views:Glassy.Brush="PopupBrush" CornerRadius="14" CacheMode="BitmapCache" IsHitTestVisible="False">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="16" ShadowDepth="3" Opacity="0.45" Color="{DynamicResource PopupShadowColor}"/>
                         </Border.Effect>
@@ -736,7 +736,7 @@
                             <!-- two columns: speed and volume on the left, the equalizer on the right -->
                             <Grid Margin="10" Width="720" LayoutTransform="{Binding Source={x:Static local:Ui.ZoomTransform}}">
                                 <!-- (the shadow on its own, kept as a picture: on the panel, each move of a slider drew the whole blur again) -->
-                                <Border Background="{DynamicResource PopupBrush}" CornerRadius="18" CacheMode="BitmapCache" IsHitTestVisible="False">
+                                <Border views:Glassy.Brush="PopupBrush" CornerRadius="18" CacheMode="BitmapCache" IsHitTestVisible="False">
                                     <Border.Effect>
                                         <DropShadowEffect BlurRadius="20" ShadowDepth="4" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
                                     </Border.Effect>

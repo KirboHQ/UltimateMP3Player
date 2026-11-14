@@ -423,7 +423,7 @@
                     <!-- downloads going on, seen from any page: each group (a song, or the songs of a link) with how far it is and a
                          button that cancels it; a click opens the downloads (the search's page without words) -->
                     <Border x:Name="DownloadPanel" Grid.Row="2" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,14" Width="320" CornerRadius="14" Padding="4"
-                            Background="{DynamicResource PopupBrush}" BoxShadow="{DynamicResource PopupShadow}" IsVisible="{Binding ShowDownloadPanel}">
+                            views:Glassy.Brush="PopupBrush" BoxShadow="{DynamicResource PopupShadow}" IsVisible="{Binding ShowDownloadPanel}">
                         <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding Queue.Groups}">
                                 <ItemsControl.ItemTemplate>
@@ -596,7 +596,7 @@
                             <Popup x:Name="PlaybackPopup" PlacementTarget="{Binding #PlaybackButton}" Placement="TopEdgeAlignedRight" IsLightDismissEnabled="True" InheritsTransform="True"
                                    HorizontalOffset="120" VerticalOffset="-4">
                                 <!-- two columns: speed and volume on the left, the equalizer on the right -->
-                                <Border Margin="10" Width="720" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                                <Border Margin="10" Width="720" views:Glassy.Brush="PopupBrush" BorderBrush="{DynamicResource BorderBrush}"
                                         BorderThickness="1" CornerRadius="18" Padding="22,18,22,18" BoxShadow="{DynamicResource PopupShadow}">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="600">
                                         <Grid ColumnDefinitions="*,41,*">

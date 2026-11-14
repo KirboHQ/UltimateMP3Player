@@ -2,7 +2,7 @@
      only gives the controls this file doesn't restyle). WPF triggers are the nested "^:pointerover" styles here. -->
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:local="clr-namespace:UltimateMP3Player">
+                    xmlns:local="clr-namespace:UltimateMP3Player" xmlns:views="clr-namespace:UltimateMP3Player.Views">
 
     <!-- ============================================================ palette
          Only what shows before Themes.Apply: the colours, dark and light, come from Core ThemeColors (into the
@@ -826,7 +826,7 @@
                     <Popup Name="PART_Popup" Placement="BottomEdgeAlignedLeft" VerticalOffset="4" IsLightDismissEnabled="True"
                            IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}" InheritsTransform="True"
                            MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}">
-                        <Border Margin="0,0,8,8" MaxHeight="{TemplateBinding MaxDropDownHeight}" Background="{DynamicResource PopupBrush}"
+                        <Border Margin="0,0,8,8" MaxHeight="{TemplateBinding MaxDropDownHeight}" views:Glassy.Brush="PopupBrush"
                                 BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="14" Padding="5"
                                 BoxShadow="{DynamicResource PopupShadow}">
                             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -1169,7 +1169,7 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <LayoutTransformControl LayoutTransform="{x:Static local:Ui.ZoomTransform}">
-                    <Border Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                    <Border views:Glassy.Brush="PopupBrush" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                             CornerRadius="10" Padding="5" Margin="0,0,10,10" MinWidth="220" BoxShadow="{DynamicResource PopupShadow}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="640">
                             <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" KeyboardNavigation.TabNavigation="Continue"/>
@@ -1211,7 +1211,7 @@
                     <!-- right against its entry: no gap to cross on the way in -->
                     <Popup Name="PART_Popup" Placement="RightEdgeAlignedTop" HorizontalOffset="0" VerticalOffset="-6" IsLightDismissEnabled="False" InheritsTransform="True"
                            IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}" WindowManagerAddShadowHint="False">
-                        <Border Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                        <Border views:Glassy.Brush="PopupBrush" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                                 CornerRadius="10" Padding="5" Margin="0,0,10,10" MinWidth="200" BoxShadow="{DynamicResource PopupShadow}">
                             <ScrollViewer MaxHeight="420" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                 <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"/>

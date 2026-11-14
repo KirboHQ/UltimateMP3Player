@@ -32,6 +32,8 @@ public partial class MainView : UserControl
         // The glass look's picture behind everything (Core Glass).
         Themes.BackdropChanged += () => Themes.PutBackdrop(GlassBack, GlassBefore, GlassNow, GlassGrain);
         Themes.PutBackdrop(GlassBack, GlassBefore, GlassNow, GlassGrain);
+        // (the sheets and the panel of the downloads take their piece of it: after PutBackdrop, which shows it first)
+        Glassy.Host = GlassBack;
         ComputerLinkViewModel.ShowPage = LinkSheet.Show;
         var tabs = new[] { (TabHome, "home"), (TabSearch, "search"), (TabLibrary, "library"), (TabTogether, "together"), (TabSettings, "settings") };
         foreach (var (tab, name) in tabs)

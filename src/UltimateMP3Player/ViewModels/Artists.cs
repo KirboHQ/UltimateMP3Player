@@ -388,6 +388,7 @@ public sealed class ArtistPageViewModel : Observable, ITrackList
         _ = LoadAsync();
     }
 
+    public MainViewModel Main => _main;
     public string Name { get; private set; }
     public string? DeezerId { get; private set; }
     // Who it is on its site (null while looked for, or not found).

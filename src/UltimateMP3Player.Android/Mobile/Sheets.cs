@@ -94,7 +94,6 @@ public sealed class SheetHost : Panel
         var shift = new TranslateTransform();
         var card = new Border
         {
-            Background = Ui.Find<IBrush>("SheetBrush"),
             CornerRadius = new CornerRadius(24, 24, 0, 0),
             VerticalAlignment = VerticalAlignment.Bottom,
             Child = stack,
@@ -105,6 +104,8 @@ public sealed class SheetHost : Panel
             MaxWidth = 640,
         };
         card.MaxHeight = MaxFor(maxHeightShare);
+        // (the glass look: a pane of the window's picture, where the card stops)
+        Glassy.SetBrush(card, "SheetBrush");
         var layer = new Layer
         {
             Scrim = scrim, Card = card, Shift = shift, Closed = new TaskCompletionSource(), Dismissable = dismissable, OnDismiss = onDismiss, Share = maxHeightShare,

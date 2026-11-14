@@ -372,6 +372,25 @@
                         <TextBlock Text="{local:T 'Similar songs prepared ahead'}" Classes="setting" Margin="0,0,0,8"/>
                         <views:ChoiceTiles Numbers="True" Items="{Binding TogetherAheadChoices}" Selected="{Binding RadioAhead}"/>
                     </StackPanel>
+                    <Border Classes="line"/>
+                    <!-- the artists left out (song or artist menu › Don't suggest), each with its X -->
+                    <StackPanel Margin="0,12">
+                        <TextBlock Text="{local:T 'Artists never suggested'}" Classes="setting" Margin="0,0,0,4"/>
+                        <ItemsControl ItemsSource="{Binding UnsuggestedArtists}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Text="{Binding}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Content="{local:Icon E711}"
+                                                Command="{Binding $parent[views:SettingsPage].DataContext.SuggestAgainCommand}" CommandParameter="{Binding}"
+                                                AutomationProperties.Name="{local:T 'Suggest again'}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{local:T 'None yet: from a song\'s menu (More) or an artist\'s, “Don\'t suggest”. Their songs stay out of the suggested ones; searched or played by hand, they play as always.'}"
+                                   Classes="setting-hint" IsVisible="{Binding !HasUnsuggested}"/>
+                    </StackPanel>
                     <Border x:Name="CloseLine" Classes="line"/>
                     <StackPanel Margin="0,12" x:Name="CloseRow">
                         <TextBlock Text="{local:T 'When you close the app'}" Classes="setting" Margin="0,0,0,8"/>

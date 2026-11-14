@@ -1204,7 +1204,7 @@ public sealed class TogetherViewModel : Observable
                     foreach (var h in hits)
                     {
                         var key = SongMeta.Key(h.Title, h.Artist);
-                        if (list.Count >= want || inRoom.Contains(key) || _suggestedUsed.Contains(key)) continue;
+                        if (list.Count >= want || inRoom.Contains(key) || _suggestedUsed.Contains(key) || !_main.Profile.Suggestible(h.Artist)) continue;
                         var have = lib.FindByKeys(h.Keys()) ?? lib.FindByName(h.Title, h.Artist, h.Duration);
                         list.Add((h, have != null && (have.HasSavedFile || have.HasLink) ? have : null));
                         inRoom.Add(key);

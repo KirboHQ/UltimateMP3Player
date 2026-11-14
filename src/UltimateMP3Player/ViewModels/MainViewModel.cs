@@ -1423,6 +1423,16 @@ public sealed class MainViewModel : Observable, IPageOrder
 
     // ------------------------------------------------------------------ saved on the device or in the cloud
 
+    // "Don't suggest X" (a song's menu, its artist's page, Settings): its songs among the suggestions still to come leave the queue at once
+    // (not the one playing: asked for while it plays, it plays on).
+    public void SetUnsuggested(string artist, bool never)
+    {
+        Profile.SetUnsuggested(artist, never);
+        if (!never) return;
+        _ = Player.RemoveTracks(Radio.ItemsBy(artist).Where(id => id != Player.Current?.Id).ToList());
+        Toast(L.F("{0} won't be suggested any more", artist));
+    }
+
     // The cover of a song added to the cloud, from the site's pictures (in the background).
     // Settings › Library › "Remove duplicates": each song in the library twice joined into the copy kept (Library.Duplicates), in
     // every profile; its keys stay, so the same song is recognised the next time.

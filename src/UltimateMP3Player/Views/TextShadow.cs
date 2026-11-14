@@ -11,7 +11,8 @@ namespace UltimateMP3Player.Views;
 // A soft shadow behind a block of text, so it reads over the bars of the music moving behind it: the block's letters blurred
 // once into a picture, made again only when the text changes. (An effect on the text would be worked out again at every frame
 // of the bars, and a cached one would blur the text itself.) Goes right before its Target, in the same place. A text that's
-// scrolling (Marquee) stays out of it: the picture doesn't move, and its letters would smear beside the ones going by.
+// scrolling (Marquee) stays out of it: the picture doesn't move, and its letters would smear beside the ones going by; so does a
+// spinner (it turns, its shadow would stand still, or jump at each new text: "Loading… 40%").
 public sealed class TextShadow : FrameworkElement
 {
     public static readonly DependencyProperty TargetProperty = DependencyProperty.Register(nameof(Target), typeof(FrameworkElement), typeof(TextShadow));
@@ -64,7 +65,7 @@ public sealed class TextShadow : FrameworkElement
         }
     }
 
-    private static void Moving(DependencyObject parent, List<TextBlock> to)
+    private static void Moving(DependencyObject parent, List<UIElement> to)
     {
         for (int i = 0, n = VisualTreeHelper.GetChildrenCount(parent); i < n; i++)
         {
@@ -73,6 +74,8 @@ public sealed class TextShadow : FrameworkElement
             {
                 if (Marquee.IsMoving(text)) to.Add(text);
             }
+            // (the Spinner style: an ellipse turning)
+            else if (child is System.Windows.Shapes.Ellipse { RenderTransform: RotateTransform } spinner) to.Add(spinner);
             else Moving(child, to);
         }
     }
@@ -85,7 +88,7 @@ public sealed class TextShadow : FrameworkElement
         double w = target.ActualWidth, h = target.ActualHeight;
         var ink = new SolidColorBrush(Themes.IsLight ? Themes.Get("PageSolid") : Colors.Black);
         var bmp = new RenderTargetBitmap((int)Math.Ceiling(w) + 2 * Spill, (int)Math.Ceiling(h) + 2 * Spill, 96, 96, PixelFormats.Pbgra32);
-        var moving = new List<TextBlock>();
+        var moving = new List<UIElement>();
         Moving(target, moving);
         foreach (var text in moving) text.Opacity = 0;
         // Close and dense, then wide and soft: letters are thin, one blur alone fades them away.

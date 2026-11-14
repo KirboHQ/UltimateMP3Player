@@ -16,6 +16,8 @@ public static class Themes
     private static string? _id, _mode, _song;
     private static string _profileColor = ThemeColors.All[0].A;
     private static Dictionary<string, uint> _colors = ThemeColors.Build(ThemeColors.All[0], false);
+    // (the accent the colours were last built for: PaintGlass builds them again with it)
+    private static AccentTheme _theme = ThemeColors.All[0];
     private static bool _watching;
 
     // The light or dark look changed (another choice, Windows switched): what draws its own colours redraws.
@@ -42,16 +44,20 @@ public static class Themes
             };
         }
         IsLight = Light(mode);
-        _colors = ThemeColors.Build(ThemeColors.Resolve(id, profileColor, songColors), IsLight);
-        bool moves = ThemeColors.Moves(id);
+        _theme = ThemeColors.Resolve(id, profileColor, songColors);
+        _colors = ThemeColors.Build(_theme, IsLight);
+        bool moves = ThemeColors.Moves(id), glass = Glass.On;
         _fade++;
         _movingBrushes.Clear();
         _movingStops.Clear();
+        _glassBrushes.Clear();
+        _glassStops.Clear();
         var r = Application.Current.Resources;
         foreach (var (name, argb) in _colors)
         {
             r[name + "Color"] = ToColor(argb);
             if (moves && ThemeColors.AccentKeys.Contains(name)) Keep(r, name + "Brush", Moving(name));
+            else if (glass && ThemeColors.GlassKeys.Contains(name)) Keep(r, name + "Brush", _glassBrushes[name] = new SolidColorBrush(ToColor(argb)));
             else r[name + "Brush"] = Solid(ToColor(argb));
         }
         Color C(string name) => ToColor(_colors[name]);
@@ -68,13 +74,21 @@ public static class Themes
         Two("FavoritesGradient", "Fav1", "Fav2", corner);
         r["PlaceholderGradient"] = Gradient(C("Placeholder1"), C("Placeholder2"));
         Two("HeaderGradient", "HeaderTop", "Ground", bottom);
-        bool glass = Glass.On;
-        // The glass look: light catching the top edge of a pane, fading down its sides; the side bar and the player bar float on the
-        // picture; its grain; what has a picture of its own behind it in the plain look (the song page) goes (SolidOnly).
-        // (as strong as Settings' Edges: Glass.RimAlpha)
-        r["RimBrush"] = !Glass.HasRim ? Brushes.Transparent
-            : Stops(top, bottom, (Colors.White, Glass.RimAlpha(IsLight ? 0xE6 : 0x38), 0), (Colors.White, Glass.RimAlpha(IsLight ? 0x73 : 0x12), 0.4), (Colors.White, Glass.RimAlpha(IsLight ? 0x59 : 0x0A), 1));
-        r["RimThickness"] = new Thickness(Glass.HasRim ? 1 : 0);
+        // The glass look: light catching the top edge of a pane, fading down its sides (ThemeColors' Rim0-2, in place: PaintGlass); the side
+        // bar and the player bar float on the picture; its grain; what has a picture of its own behind it in the plain look (the song page) goes (SolidOnly).
+        if (glass)
+        {
+            var rim = new LinearGradientBrush { StartPoint = top, EndPoint = bottom };
+            foreach (var (key, at) in new[] { ("Rim0", 0.0), ("Rim1", 0.4), ("Rim2", 1.0) })
+            {
+                var stop = new GradientStop(C(key), at);
+                _glassStops.Add((stop, key));
+                rim.GradientStops.Add(stop);
+            }
+            Keep(r, "RimBrush", rim);
+        }
+        else r["RimBrush"] = Brushes.Transparent;
+        r["RimThickness"] = new Thickness(glass ? 1 : 0);
         // (the side bar's card where its entries are when attached: 14 from everything; Layout: floating or attached, glass or not)
         bool floating = Layout.Floating;
         r["SidebarMargin"] = floating ? new Thickness(14, 0, 14, 14) : new Thickness(0);
@@ -119,6 +133,7 @@ public static class Themes
     // Other colours on the accent's brushes, in place: no window looks up its resources again.
     public static void PaintAccent(AccentTheme theme)
     {
+        _theme = theme;
         _colors = ThemeColors.Build(theme, IsLight);
         foreach (var (key, brush) in _movingBrushes) brush.Color = ToColor(_colors[key]);
         foreach (var (stop, key) in _movingStops) stop.Color = ToColor(_colors[key]);
@@ -132,6 +147,18 @@ public static class Themes
     private static int _fade;
 
     private static SolidColorBrush Moving(string key) => _movingBrushes[key] = new SolidColorBrush(ToColor(_colors[key]));
+
+    // The glass's panes and the light on their edges (ThemeColors.GlassKeys), the same way: Settings' Opacity and Edges move them at each
+    // step of the slider (a whole Apply restyled every window at each one: the sliders lagged).
+    private static readonly Dictionary<string, SolidColorBrush> _glassBrushes = new();
+    private static readonly List<(GradientStop Stop, string Key)> _glassStops = new();
+
+    public static void PaintGlass()
+    {
+        _colors = ThemeColors.Build(_theme, IsLight);
+        foreach (var (key, brush) in _glassBrushes) brush.Color = ToColor(_colors[key]);
+        foreach (var (stop, key) in _glassStops) stop.Color = ToColor(_colors[key]);
+    }
 
     // WPF freezes what's in the application's resources (now, and again when a window loads its own), unless it's being animated:
     // so these stay animated, on an animation already over, which asks for no frame.
@@ -153,6 +180,7 @@ public static class Themes
     public static void FadeTo(AccentTheme theme)
     {
         if (_movingBrushes.Count == 0) return;
+        _theme = theme;
         _colors = ThemeColors.Build(theme, IsLight);
         int run = ++_fade;
         bool glide = Ui.Animations && !Ui.Hidden;
@@ -198,10 +226,32 @@ public static class Themes
 
     public static void ShowBackdrop(byte[]? px, bool fade = true)
     {
+        _backdropPx = px;
         Backdrop = px == null ? null : Freeze(BitmapSource.Create(Glass.Size, Glass.Size, 96, 96, PixelFormats.Bgra32, null, px, Glass.Size * 4));
         if (px != null) BackdropTop = ToColor(Glass.TopColor(px));
         BackdropFades = fade;
         BackdropChanged?.Invoke();
+    }
+
+    // What floats over the window takes this as its ground (Views/Glassy): the picture with a pane's tint over it (Glass.Tinted), made
+    // again only for a new picture or a new tint.
+    private static byte[]? _backdropPx, _glassPx;
+    private static uint _glassTint;
+    private static ImageSource? _popupGlass;
+
+    public static ImageSource? PopupGlass
+    {
+        get
+        {
+            if (_backdropPx is not { } px) return null;
+            uint tint = _colors.TryGetValue("Surface", out var c) ? c : 0;
+            if (_popupGlass == null || !ReferenceEquals(px, _glassPx) || tint != _glassTint)
+            {
+                _popupGlass = Freeze(BitmapSource.Create(Glass.Size, Glass.Size, 96, 96, PixelFormats.Bgra32, null, Glass.Tinted(px, tint), Glass.Size * 4));
+                (_glassPx, _glassTint) = (px, tint);
+            }
+            return _popupGlass;
+        }
     }
 
     private static ImageBrush? _grain;

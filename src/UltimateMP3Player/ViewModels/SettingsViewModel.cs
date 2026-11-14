@@ -268,6 +268,8 @@ public sealed class SettingsViewModel : Observable
         RenameArtistCommand = new RelayCommand(() => _ = RenameArtist(), () => SelectedArtist != null && !string.IsNullOrWhiteSpace(NewArtistName));
         RemoveDuplicatesCommand = new RelayCommand(() => _ = _main.RemoveDuplicates());
         FindMissingCommand = new RelayCommand(() => _main.FindMissing());
+        SuggestAgainCommand = new RelayCommand(p => { if (p is string artist) _main.SetUnsuggested(artist, false); });
+        main.Profile.UnsuggestedChanged += () => OnChanged(nameof(UnsuggestedArtists), nameof(HasUnsuggested));
         bool hasRepo = AppInfo.RepoUrl != null;
         ReportProblemCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Bug] "), BugTemplate())!), () => hasRepo);
         SuggestIdeaCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Idea] "), IdeaTemplate())!), () => hasRepo);
@@ -308,6 +310,10 @@ public sealed class SettingsViewModel : Observable
     public ICommand SelectThemeCommand { get; }
     public ICommand RenameArtistCommand { get; }
     public ICommand RemoveDuplicatesCommand { get; }
+    // The artists left out of the suggested queue (song or artist menu › Don't suggest), each with its X.
+    public List<string> UnsuggestedArtists => _main.Profile.UnsuggestedSnapshot().OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList();
+    public bool HasUnsuggested => _main.Profile.UnsuggestedSnapshot().Count > 0;
+    public ICommand SuggestAgainCommand { get; }
     public ICommand FindMissingCommand { get; }
     public ICommand ReportProblemCommand { get; }
     public ICommand SuggestIdeaCommand { get; }
@@ -428,20 +434,13 @@ public sealed class SettingsViewModel : Observable
         OnChanged(names);
     }
 
-    // A slider of the palette's (the panes, their edges) dragged: the whole app restyles, so once the dispatcher is free, not at every step.
-    private bool _paletteLater;
-
+    // A slider of the palette's (the panes, their edges): only the brushes it moves, in place (Themes.PaintGlass). A whole ApplyTheme at each
+    // step restyled every window: those two sliders lagged.
     private void GlassSlid(params string[] names)
     {
         _main.Profile.Save();
+        UltimateMP3Player.Themes.PaintGlass();
         OnChanged(names);
-        if (_paletteLater) return;
-        _paletteLater = true;
-        _ = Application.Current.Dispatcher.InvokeAsync(() =>
-        {
-            _paletteLater = false;
-            _main.Host.ApplyTheme();
-        }, DispatcherPriority.Background);
     }
 
     public bool GlassOn
@@ -451,7 +450,9 @@ public sealed class SettingsViewModel : Observable
         {
             if (value == GlassChoices.On) return;
             GlassChoices.On = value;
-            GlassChanged(true, nameof(GlassOn));
+            // (turned on with its choices never touched: today's, not the ones 5.3 saved in every profile)
+            if (value && GlassChoices.AsFirstMade) ResetGlass();
+            else GlassChanged(true, nameof(GlassOn));
         }
     }
 
@@ -551,14 +552,16 @@ public sealed class SettingsViewModel : Observable
     }
 
     private ICommand? _glassReset;
-    public ICommand GlassResetCommand => _glassReset ??= new RelayCommand(() =>
+    public ICommand GlassResetCommand => _glassReset ??= new RelayCommand(ResetGlass);
+
+    private void ResetGlass()
     {
         var fresh = new GlassLook { On = GlassChoices.On };
         (GlassChoices.FromTheme, GlassChoices.Picture, GlassChoices.Tint, GlassChoices.Blur, GlassChoices.Brightness, GlassChoices.Vivid, GlassChoices.Panes, GlassChoices.Rim, GlassChoices.Grain) =
             (fresh.FromTheme, fresh.Picture, fresh.Tint, fresh.Blur, fresh.Brightness, fresh.Vivid, fresh.Panes, fresh.Rim, fresh.Grain);
-        GlassChanged(true, nameof(GlassPicture), nameof(GlassTintChoice), nameof(GlassBlur), nameof(GlassBlurText), nameof(GlassBrightness), nameof(GlassBrightnessText),
+        GlassChanged(true, nameof(GlassOn), nameof(GlassPicture), nameof(GlassTintChoice), nameof(GlassBlur), nameof(GlassBlurText), nameof(GlassBrightness), nameof(GlassBrightnessText),
             nameof(GlassVivid), nameof(GlassVividText), nameof(GlassPanes), nameof(GlassPanesText), nameof(GlassRim), nameof(GlassRimText), nameof(GlassGrain));
-    });
+    }
 
     // ---- Settings › Layout (Core Layout): the profile's choices, at once. Floating or attached is the palette's (Themes.Apply),
     // the rest the views' (Layout.Changed: the side bar, Home, the phones' bottom bar arrange themselves).

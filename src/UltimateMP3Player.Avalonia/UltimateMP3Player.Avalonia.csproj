@@ -12,7 +12,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>5.3.1</Version>
+    <Version>5.3.2</Version>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -66,6 +66,7 @@
     <Compile Include="..\UltimateMP3Player\Views\Menus.Shared.cs" Link="Shared\Views\Menus.Shared.cs" />
     <Compile Include="..\UltimateMP3Player\Views\ChoiceTiles.cs" Link="Shared\Views\ChoiceTiles.cs" />
     <Compile Include="..\UltimateMP3Player\Views\ColorPicker.cs" Link="Shared\Views\ColorPicker.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\Glassy.cs" Link="Shared\Views\Glassy.cs" />
     <Compile Include="..\UltimateMP3Player\Views\Rearrange.cs" Link="Shared\Views\Rearrange.cs" />
     <Compile Include="..\UltimateMP3Player\Views\OverlaySources.cs" Link="Shared\Views\OverlaySources.cs" />
     <Compile Include="..\UltimateMP3Player\Views\LoginDialogs.cs" Link="Shared\Views\LoginDialogs.cs" />

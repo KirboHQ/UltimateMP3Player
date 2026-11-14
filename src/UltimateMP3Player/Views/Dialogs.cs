@@ -406,7 +406,6 @@ public static partial class Dialogs
 
         var card = new Border
         {
-            Background = (Brush)res["SheetBrush"],
             BorderBrush = (Brush)res["BorderStrongBrush"],
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(16),
@@ -414,6 +413,9 @@ public static partial class Dialogs
             Margin = new Thickness(18),
             Child = stack,
         };
+        // (the glass look: a pane of the window's picture, where the dialog lies, wherever it's dragged)
+        Glassy.SetBrush(card, "SheetBrush");
+        win.LocationChanged += (_, _) => Glassy.Place(card, "SheetBrush");
         // The shadow on a card of its own, kept as a picture. On the card itself anything moving inside (the overlay's preview, 30 times
         // a second) would blur the whole dialog again.
         var shadow = new Border

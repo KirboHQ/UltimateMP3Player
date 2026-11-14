@@ -682,6 +682,13 @@ switch (args[0])
             var month = profile.Log.Month(DateTime.Now.Year, DateTime.Now.Month);
             ok &= profile.StatsOf("y") == null && profile.StatsOf("x") is { Plays: 6, Seconds: 140 } && profile.Log.Totals("x").Plays == before.Plays + 1
                 && month != null && !month.Songs.ContainsKey("y");
+            // Artists never suggested: "A feat. B" left out with B, the name kept once (any case), and back in.
+            profile.SetUnsuggested("Slop Maker", true);
+            profile.SetUnsuggested("slop maker", true);
+            ok &= profile.UnsuggestedSnapshot().Count == 1 && !profile.Suggestible("Someone feat. Slop Maker") && profile.Suggestible("Slop")
+                && profile.Suggestible(null);
+            profile.SetUnsuggested("SLOP MAKER", false);
+            ok &= profile.Suggestible("Someone feat. Slop Maker") && !profile.IsUnsuggested("Slop Maker");
             Profile.Delete(info.Id);
             Console.WriteLine("seal: " + (ok ? "ok" : "SBAGLIATO"));
             return ok ? 0 : 1;

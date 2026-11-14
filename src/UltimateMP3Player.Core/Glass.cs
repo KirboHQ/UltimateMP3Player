@@ -10,14 +10,17 @@ public sealed class GlassLook
     public bool Picture { get; set; }
     // The panes: GlassTint.Smoke (dark glass), Frost (white glass) or Color (the accent's).
     public string Tint { get; set; } = GlassTint.Smoke;
-    // 0-1: how blurred, how bright, how colourful the picture; how solid the panes.
-    public double Blur { get; set; } = 0.5;
-    public double Brightness { get; set; } = 0.45;
-    public double Vivid { get; set; } = 0.5;
-    public double Panes { get; set; } = 0.55;
+    // 0-1: how blurred, how bright, how colourful the picture; how solid the panes. (5.3.2: the look the author settled on.)
+    public double Blur { get; set; } = 0.1;
+    public double Brightness { get; set; } = 0.5;
+    public double Vivid { get; set; } = 0.67;
+    public double Panes { get; set; } = 0.5;
     // 0-1: the light on the panes' edges (Glass.RimAlpha); half is how 5.3 drew it, none takes the edge away.
     public double Rim { get; set; } = 0.5;
-    public bool Grain { get; set; } = true;
+    public bool Grain { get; set; }
+
+    // Still as 5.3 and 5.3.1 made them (saved by every profile, touched or not): the glass turned on takes today's instead.
+    public bool AsFirstMade => !FromTheme && !Picture && Tint == GlassTint.Smoke && Blur == 0.5 && Brightness == 0.45 && Vivid == 0.5 && Panes == 0.55 && Rim == 0.5 && Grain;
 }
 
 public static class GlassTint
@@ -183,6 +186,30 @@ public static class Glass
         return 0xFF000000 | (uint)(r / n) << 16 | (uint)(g / n) << 8 | (uint)(b / n);
     }
 
+    // What floats over the window (menus, drop-downs, dialogs, sheets: Views/Glassy) is a pane of the same glass: the picture with a pane's
+    // tint over it (argb), made once per picture and tint. Blending with one colour and stretching commute: the same as a pane over the picture.
+    public static byte[] Tinted(byte[] px, uint argb)
+    {
+        var tinted = new byte[px.Length];
+        double alpha = (argb >> 24) / 255.0;
+        for (int i = 0; i < px.Length; i += 4)
+        {
+            tinted[i] = (byte)Math.Round(px[i] + ((byte)argb - px[i]) * alpha);
+            tinted[i + 1] = (byte)Math.Round(px[i + 1] + ((byte)(argb >> 8) - px[i + 1]) * alpha);
+            tinted[i + 2] = (byte)Math.Round(px[i + 2] + ((byte)(argb >> 16) - px[i + 2]) * alpha);
+            tinted[i + 3] = 255;
+        }
+        return tinted;
+    }
+
+    // Where the window's picture lies, seen from something floating over it whose top-left corner is at left, top: the window stretches the
+    // picture uniformly to fill (a square on its longer side, centred). All in the same units; the square's corner and side.
+    public static (double X, double Y, double Side) Slice(double windowLeft, double windowTop, double windowWidth, double windowHeight, double left, double top)
+    {
+        double side = Math.Max(windowWidth, windowHeight);
+        return (windowLeft - (side - windowWidth) / 2 - left, windowTop - (side - windowHeight) / 2 - top, side);
+    }
+
     // The frost: a fine grain over the picture (tiled), which also hides the steps of a dark gradient. Grey, the alpha does it.
     public const int GrainSize = 96;
 
@@ -199,8 +226,7 @@ public static class Glass
         return px;
     }
 
-    // The panes' edges (Themes' RimBrush): none, or each stop of the light as strong as chosen (half: as given).
-    public static bool HasRim => On && Look.Rim > 0;
+    // The panes' edges (ThemeColors' Rim0-2): each stop of the light as strong as chosen (half: as given, none: gone).
     public static byte RimAlpha(int half) => (byte)Math.Min(255, Math.Round(half * Math.Clamp(Look.Rim, 0, 1) * 2));
 
     // How see-through a pane is (0-255), by the choice; frosted white is much stronger than dark glass, so it takes less.

@@ -13,7 +13,8 @@ namespace UltimateMP3Player.Views;
 // once into a picture, made again only when the text changes. (An effect on the text would be worked out again at every frame
 // of the bars.) Goes right before its Target, in the same place; drawn with Skia, like CoverGlow. Linked into the phones.
 // Made at the screen's own pixels: a phone has three for each of ours, and a smaller picture stretched comes out in blocks.
-// A text that's scrolling (Marquee) stays out of it: the picture doesn't move, and its letters would smear beside the ones going by.
+// A text that's scrolling (Marquee) stays out of it: the picture doesn't move, and its letters would smear beside the ones going by;
+// so does a spinner (it turns, its shadow would stand still, or jump at each new text: "Loading… 40%").
 public sealed class TextShadow : Control
 {
     public static readonly StyledProperty<Control?> TargetProperty = AvaloniaProperty.Register<TextShadow, Control?>(nameof(Target));
@@ -92,7 +93,7 @@ public sealed class TextShadow : Control
         int spill = (int)Math.Ceiling(Spill * scale);
         var dpi = new Vector(96 * scale, 96 * scale);
         using var letters = new RenderTargetBitmap(new PixelSize(w, h), dpi);
-        var moving = target.GetVisualDescendants().OfType<TextBlock>().Where(t => Marquee.IsMoving(t)).ToList();
+        var moving = target.GetVisualDescendants().OfType<Control>().Where(c => c is TextBlock t ? Marquee.IsMoving(t) : c.Classes.Contains("spinner")).ToList();
         foreach (var text in moving) text.Opacity = 0;
         letters.Render(target);
         foreach (var text in moving) text.ClearValue(OpacityProperty);

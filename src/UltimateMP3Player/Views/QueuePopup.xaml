@@ -18,12 +18,12 @@
     <Grid Width="380">
         <!-- the shadow on a border of its own, drawn once and cached (as under the song view's cover): on the panel itself every
              change inside (a song dragged, a row under the mouse, a title scrolling) drew the whole panel and its blur again -->
-        <Border CornerRadius="18" Background="{DynamicResource PopupBrush}" CacheMode="BitmapCache" IsHitTestVisible="False">
+        <Border CornerRadius="18" views:Glassy.Brush="PopupBrush" CacheMode="BitmapCache" IsHitTestVisible="False">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.5" Color="{DynamicResource PopupShadowColor}"/>
             </Border.Effect>
         </Border>
-        <Border MinHeight="300" MaxHeight="580" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+        <Border MinHeight="300" MaxHeight="580" Background="Transparent" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                 CornerRadius="18" Padding="14">
             <Grid>
                 <Grid.RowDefinitions>

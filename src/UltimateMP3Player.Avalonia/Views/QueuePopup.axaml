@@ -72,7 +72,7 @@
         </Style>
     </UserControl.Styles>
 
-    <Border Width="380" MinHeight="300" MaxHeight="580" Background="{DynamicResource PopupBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+    <Border Width="380" MinHeight="300" MaxHeight="580" views:Glassy.Brush="PopupBrush" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
             CornerRadius="18" Padding="14" BoxShadow="{DynamicResource PopupShadow}">
         <Grid RowDefinitions="Auto,*">
             <Grid Margin="6,2,0,10" ColumnDefinitions="*,Auto">

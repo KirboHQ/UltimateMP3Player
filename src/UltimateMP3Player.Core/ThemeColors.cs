@@ -306,8 +306,16 @@ public static class ThemeColors
         // (the same for a window of its own, which has no picture behind it: the profile picker)
         c["TitleBarSolid"] = c["TitleBar"];
         if (Glass.On) Frost(c, a, light);
+        // The light on the panes' top edge, fading down their sides (Themes' RimBrush): the glass's only, as strong as Settings' Edges.
+        uint Rim(int lightAlpha, int darkAlpha) => Glass.On ? WithAlpha(white, Glass.RimAlpha(light ? lightAlpha : darkAlpha)) : 0x00FFFFFF;
+        c["Rim0"] = Rim(0xE6, 0x38);
+        c["Rim1"] = Rim(0x73, 0x12);
+        c["Rim2"] = Rim(0x59, 0x0A);
         return c;
     }
+
+    // What Settings' Opacity and Edges move (Themes.PaintGlass): with the glass these brushes take their colours in place, as the accent's do.
+    public static readonly string[] GlassKeys = { "Surface", "Sidebar", "MiniPlayer", "NavBar", "Rim0", "Rim1", "Rim2" };
 
     // The glass look (Glass): every surface on the page is a pane of the same glass (one colour, see-through as chosen, so nothing looks
     // pieced together); the controls on it a touch of white (or of black, light); what lies over the page (menus, sheets, dialogs) stays

@@ -74,6 +74,8 @@ public partial class MainWindow : Window
             Layout.Changed -= ApplyLayout;
         };
         ShowGlass();
+        // (what floats over the window takes its piece of the picture: after ShowGlass, which shows it first)
+        Glassy.Host = GlassBack;
         Rearrange.Group(SectionsPanel, Layout.Sections);
         ApplyLayout();
     }
