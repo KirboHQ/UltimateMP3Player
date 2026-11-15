@@ -47,7 +47,7 @@
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/readme/screens/player.webp" alt="Synced lyrics over the cover's colours"></td>
+    <td width="50%"><img src="assets/readme/screens/player.webp" alt="The song page: synced lyrics and up next, on the glass"></td>
     <td width="50%"><img src="assets/readme/screens/search.webp" alt="Search: an artist, their songs and albums from every site"></td>
   </tr>
   <tr>
@@ -58,8 +58,9 @@
 
 <img src="assets/readme/screens/phone.webp" width="100%" alt="On the phone: the home page in light, a playlist, synced lyrics and search">
 
-<sub>Demo profiles and music by <a href="https://ncs.io">NoCopyrightSounds</a>. Light or dark, eight colours, the same app on
-Windows, Linux, macOS, Android and iPhone.</sub>
+<sub>Demo profiles and music by <a href="https://ncs.io">NoCopyrightSounds</a>. Light or dark, panes of glass over the song's
+cover, the song's colours or your own, the side bar and pages in your order; the same app on Windows, Linux, macOS, Android
+and iPhone.</sub>
 
 ## 📥 Install
 

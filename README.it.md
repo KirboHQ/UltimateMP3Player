@@ -48,7 +48,7 @@
 
 <table>
   <tr>
-    <td width="50%"><img src="assets/readme/screens/player.webp" alt="Testi sincronizzati sui colori della copertina"></td>
+    <td width="50%"><img src="assets/readme/screens/player.webp" alt="La pagina del brano: testi sincronizzati e i prossimi brani, sul vetro"></td>
     <td width="50%"><img src="assets/readme/screens/search.webp" alt="Ricerca: un artista, i suoi brani e gli album da ogni sito"></td>
   </tr>
   <tr>
@@ -59,8 +59,9 @@
 
 <img src="assets/readme/screens/phone.webp" width="100%" alt="Sul telefono: la home in chiaro, una playlist, i testi sincronizzati e la ricerca">
 
-<sub>Profili di prova e musica di <a href="https://ncs.io">NoCopyrightSounds</a>. Chiaro o scuro, otto colori, la stessa app su
-Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è anche in italiano).</sub>
+<sub>Profili di prova e musica di <a href="https://ncs.io">NoCopyrightSounds</a>. Chiaro o scuro, pannelli di vetro sulla
+copertina del brano, i colori del brano o quelli che vuoi, barra laterale e pagine nell'ordine che preferisci; la stessa app
+su Windows, Linux, macOS, Android e iPhone (le schermate sono in inglese: l'app è anche in italiano).</sub>
 
 ## 📥 Installazione
 
