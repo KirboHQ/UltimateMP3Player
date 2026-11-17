@@ -155,17 +155,20 @@ impostazioni di Android Auto sul telefono tocca **Versione** 10 volte e conferma
 
 **Il modo facile: il [programma di installazione](https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool)**, per
 Windows, macOS e Linux. Collega il cavo e accedi con il tuo Apple ID gratuito: al resto pensa lui, e ti mostra cosa toccare
-sul telefono. Con un Apple ID gratuito un'app resta firmata 7 giorni: collega il cavo e premi Rinnova lì, oppure aggiorna.
+sul telefono. Con un Apple ID gratuito un'app resta firmata 7 giorni, quindi ti chiede chi la rinnova: il computer
+(collega il cavo e premi Rinnova lì, che porta anche le nuove versioni), oppure l'iPhone da solo con SideStore, che il
+programma mette sul telefono e prepara per te.
 
-**Oppure con SideStore**, che rinnova dal telefono:
+**Oppure con SideStore per conto tuo**, se lo usi già o preferisci prepararlo tu:
 
-1. Installa [SideStore](https://sidestore.io) seguendo la sua guida (usa il tuo Apple ID gratuito, senza Mac e senza
-   jailbreak), poi attiva la **Modalità sviluppatore** in Impostazioni › Privacy e sicurezza.
+1. Installa [SideStore](https://sidestore.io) seguendo la sua guida, dalla versione 0.7 in poi: la 0.6.4 e le precedenti
+   non riescono più ad accedere ad Apple. Usa il tuo Apple ID gratuito, senza Mac e senza jailbreak; il primo accesso può
+   metterci un paio di minuti ad aprirsi. Poi attiva la **Modalità sviluppatore** in Impostazioni › Privacy e sicurezza.
 2. In SideStore apri **Sources**, premi **+** e aggiungi
    `https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/sidestore-source.json`, poi installa
    **Ultimate MP3 Player** da lì. Gli aggiornamenti compaiono in **My Apps**.
 
-SideStore rinnova l'app da solo (aprilo ogni tanto).
+SideStore rinnova l'app da solo: aprilo ogni tanto, con LocalDevVPN collegata.
 
 **Oppure con [xtool](https://github.com/xtool-org/xtool)** a mano, da un computer (Linux, macOS, Windows con WSL) con l'iPhone
 collegato via cavo: preparalo con la sua [guida](https://xtool.sh/documentation/xtool/installation-linux/) (per

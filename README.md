@@ -152,17 +152,20 @@ Android Auto settings tap **Version** 10 times and confirm, then ⋮ → **Devel
 
 **The easy way: the [installer](https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool)**, a small program for
 Windows, macOS and Linux. Plug in the cable and sign in with your free Apple ID: it does the rest, and shows you what to
-tap on the phone. With a free Apple ID an app stays signed for 7 days: plug in the cable and press Renew there, or update.
+tap on the phone. With a free Apple ID an app stays signed for 7 days, so it asks who renews it: the computer (plug in
+the cable and press Renew there, which also brings new versions), or the iPhone itself with SideStore, which the
+installer puts on the phone and sets up for you.
 
-**Or with SideStore**, which renews from the phone:
+**Or with SideStore on your own**, if you already use it or would rather set it up yourself:
 
-1. Install [SideStore](https://sidestore.io) following its guide (it uses your free Apple ID, no Mac or jailbreak),
-   then turn on **Developer Mode** in Settings › Privacy & Security.
+1. Install [SideStore](https://sidestore.io) following its guide, version 0.7 or later: 0.6.4 and older can no longer
+   sign in to Apple. It uses your free Apple ID, no Mac or jailbreak; its first sign-in can take a couple of minutes to
+   open. Then turn on **Developer Mode** in Settings › Privacy & Security.
 2. In SideStore open **Sources**, tap **+** and add
    `https://github.com/KirboHQ/UltimateMP3Player/releases/latest/download/sidestore-source.json`, then install
    **Ultimate MP3 Player** from there. Updates show up in **My Apps**.
 
-SideStore renews the app by itself (open it now and then).
+SideStore renews the app by itself: open it now and then, with LocalDevVPN connected.
 
 **Or with [xtool](https://github.com/xtool-org/xtool)** by hand, from a computer (Linux, macOS, Windows through WSL) with the
 iPhone on the cable: set it up with its [guide](https://xtool.sh/documentation/xtool/installation-linux/) (Swift and
