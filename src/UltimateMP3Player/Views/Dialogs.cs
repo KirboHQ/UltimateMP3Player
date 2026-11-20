@@ -13,6 +13,15 @@ namespace UltimateMP3Player;
 // Small dark dialogs: confirmations and text fields.
 public static partial class Dialogs
 {
+    // A small file to save (a look, the settings), where the person chooses. False: nowhere.
+    public static Task<bool> SaveTextAsync(string fileName, string extension, string text)
+    {
+        var dlg = new Microsoft.Win32.SaveFileDialog { FileName = fileName, DefaultExt = extension, Filter = $"*{extension}|*{extension}" };
+        if (dlg.ShowDialog(Application.Current.MainWindow) != true) return Task.FromResult(false);
+        System.IO.File.WriteAllText(dlg.FileName, text);
+        return Task.FromResult(true);
+    }
+
     public static bool Confirm(string title, string message, string ok, bool danger = false)
         => Show(title, message, Array.Empty<(string, string)>(), ok, danger) != null;
 
@@ -180,7 +189,10 @@ public static partial class Dialogs
 
     // Settings › Backup (BackupsViewModel): on a computer a folder like any other (OneDrive, a USB disk...).
     public const string BookmarkPrefix = "bookmark:";
-    public static string DefaultBackupFolder => System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Ultimate MP3 Player", "Backups");
+    // (a test copy, UMP_DATA, keeps them in its own folder: in the real one its backups would push out the real ones, past "keep")
+    public static string DefaultBackupFolder => Environment.GetEnvironmentVariable("UMP_DATA") is { Length: > 0 } test
+        ? System.IO.Path.Combine(test, "Backups")
+        : System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Ultimate MP3 Player", "Backups");
     public static Task<IBackupFolder?> OpenBackupFolderAsync(string? setting) => Task.FromResult<IBackupFolder?>(new LocalBackupFolder(setting ?? DefaultBackupFolder));
     public static Task<(string Setting, string Name)?> PickBackupFolderAsync()
         => Task.FromResult(PickFolder(L.T("Where to keep the backups"), DefaultBackupFolder) is { } dir ? (dir, dir) : ((string, string)?)null);

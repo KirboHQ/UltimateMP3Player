@@ -64,6 +64,15 @@ public sealed class ChoiceTiles : UniformGrid
     }
 #endif
 
+    // The chosen tile tapped again (another picture of your own): run with its choice.
+#if AVALONIA
+    public static readonly StyledProperty<System.Windows.Input.ICommand?> AgainProperty = AvaloniaProperty.Register<ChoiceTiles, System.Windows.Input.ICommand?>(nameof(Again));
+    public System.Windows.Input.ICommand? Again { get => GetValue(AgainProperty); set => SetValue(AgainProperty, value); }
+#else
+    public static readonly DependencyProperty AgainProperty = DependencyProperty.Register(nameof(Again), typeof(System.Windows.Input.ICommand), typeof(ChoiceTiles));
+    public System.Windows.Input.ICommand? Again { get => (System.Windows.Input.ICommand?)GetValue(AgainProperty); set => SetValue(AgainProperty, value); }
+#endif
+
     // "shape", "flow"... (TilePictures.For), none: only words.
     public string? Picture { get; set; }
     public bool Numbers { get; set; }
@@ -116,6 +125,7 @@ public sealed class ChoiceTiles : UniformGrid
             tile.Style = (Style)Application.Current.Resources["ChoiceTile"];
             tile.Checked += (_, _) => Picked(tile, choice);
 #endif
+            tile.Click += (_, _) => Clicked(choice);
             AutomationProperties.SetName(tile, choice.Label);
 #if AVALONIA
             if (Numbers) ToolTip.SetTip(tile, choice.Label);
@@ -151,12 +161,28 @@ public sealed class ChoiceTiles : UniformGrid
         _marking = true;
         foreach (var (tile, choice) in _tiles) tile.IsChecked = Selected != null && Equals(choice.Value, Selected.Value);
         _marking = false;
+        // (the focus left on a tile that isn't the choice, as after a picker closed: to the one chosen, or its ring looks like one)
+#if AVALONIA
+        if (_tiles.Any(t => t.Tile.IsFocused && t.Tile.IsChecked != true) && _tiles.FirstOrDefault(t => t.Tile.IsChecked == true).Tile is { } chosen) chosen.Focus();
+#else
+        if (_tiles.Any(t => t.Tile.IsKeyboardFocused && t.Tile.IsChecked != true) && _tiles.FirstOrDefault(t => t.Tile.IsChecked == true).Tile is { } chosen) chosen.Focus();
+#endif
     }
 
     private void Picked(RadioButton tile, Choice choice)
     {
         if (_marking || tile.IsChecked != true || (Selected != null && Equals(choice.Value, Selected.Value))) return;
+        _picked = true;
         Selected = choice;
+    }
+
+    // (a click comes after the check it made: only one on the tile already chosen is "again")
+    private bool _picked;
+
+    private void Clicked(Choice choice)
+    {
+        if (_picked) _picked = false;
+        else if (Selected != null && Equals(choice.Value, Selected.Value) && Again?.CanExecute(choice) == true) Again.Execute(choice);
     }
 }
 

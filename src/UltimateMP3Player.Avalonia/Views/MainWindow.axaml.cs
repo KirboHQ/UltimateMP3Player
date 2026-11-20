@@ -17,7 +17,19 @@ public partial class MainWindow : Window
     private bool _silent;
     private readonly HashSet<Key> _down = new();
 
-    public MainWindow() => InitializeComponent();
+    public MainWindow()
+    {
+        InitializeComponent();
+        // The side bar's Settings clicked while they're open: back to their start (a click on a checked entry changes nothing else).
+        SettingsNav.AddHandler(PointerPressedEvent, (_, _) => _settingsOpen = Vm is { Page: SettingsViewModel }, RoutingStrategies.Tunnel, true);
+        SettingsNav.Click += (_, _) =>
+        {
+            if (_settingsOpen) Vm?.SettingsAgain();
+            _settingsOpen = false;
+        };
+    }
+
+    private bool _settingsOpen;
 
     private int _dialogs;
 
@@ -278,7 +290,7 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 break;
             case Key.OemComma when ctrl:
-                vm.GoSettings();
+                vm.SettingsAgain();
                 e.Handled = true;
                 break;
             case Key.V when ctrl && !inText:

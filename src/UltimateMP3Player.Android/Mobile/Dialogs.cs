@@ -14,6 +14,23 @@ namespace UltimateMP3Player;
 // (the computer apps' ShowDialog): the view models await these.
 public static partial class Dialogs
 {
+    // A small file to save (a look, the settings): written apart, then saved by the system's picker (Downloads, Drive...).
+    // (where the picker's file can't be written, as with the picker of a phone that has a second user, the share sheet takes it: so it
+    // waits in the share folder, the next one in its place)
+    public static async Task<bool> SaveTextAsync(string fileName, string extension, string text)
+    {
+        Directory.CreateDirectory(Platform.Files.ShareDir);
+        var path = Path.Combine(Platform.Files.ShareDir, fileName);
+        await File.WriteAllTextAsync(path, text);
+        try { return await SaveAsAsync(path, fileName, "application/json"); }
+        catch (Exception ex)
+        {
+            App.Log(ex);
+            Platform.Files.Share(path, "application/json", fileName);
+            return false;
+        }
+    }
+
     // Bumped when the terms of use change: they're asked again.
     public const int TermsVersion = 1;
 
@@ -589,7 +606,12 @@ public static partial class Dialogs
         if (Storage is not { } storage) return false;
         var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
         {
+#if ANDROID_APP
+            // (Android's picker puts DefaultExtension after the name itself: "x.umppack.umppack")
+            Title = fileName, SuggestedFileName = Path.GetFileNameWithoutExtension(fileName), DefaultExtension = Path.GetExtension(fileName).TrimStart('.'),
+#else
             Title = fileName, SuggestedFileName = fileName, DefaultExtension = Path.GetExtension(fileName).TrimStart('.'),
+#endif
             FileTypeChoices = new[] { new FilePickerFileType(fileName) { Patterns = new[] { "*" + Path.GetExtension(fileName) }, MimeTypes = new[] { mime } } },
         });
         if (file == null) return false;

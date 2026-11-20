@@ -563,6 +563,20 @@ public static partial class Menus
         return menu;
     }
 
+    // Settings › Appearance › Looks: the drop-down chooses, this does the rest with the one chosen.
+    public static ContextMenu ForLooks(LooksViewModel l)
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(L.T("Copy as a new look"), "", () => l.CopyCommand.Execute(null)));
+        menu.Items.Add(Item(L.T("Rename"), "", () => l.RenameCommand.Execute(null)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Export the look"), "", () => l.ExportCommand.Execute(null)));
+        menu.Items.Add(Item(L.T("Import a look"), "", () => l.ImportCommand.Execute(null)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(Item(L.T("Delete"), DeleteGlyph, () => l.DeleteCommand.Execute(null), l.DeleteCommand.CanExecute(null)));
+        return menu;
+    }
+
     // (connected: the device is asked, whichever music is shown)
     private static MenuItem FavoriteItem(TrackViewModel t) => t.Main.IsFavorite(t.Id, menu: true)
         ? Item(L.T("Remove from Favorites"), "", () => t.Main.ToggleFavorite(t, menu: true))

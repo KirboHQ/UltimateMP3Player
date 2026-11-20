@@ -25,6 +25,8 @@ public sealed class MainViewModel : Observable, IPageOrder
     {
         Host = host;
         Profile = profile;
+        // (its bars of the music in use; the first time, it keeps the device's)
+        if (BarsLook.Open(profile.Data, host.Settings)) profile.Save();
         // (the old default gives way to the new one, once: whoever picks it again afterwards keeps it)
         if (!profile.Data.ThemeMoved)
         {
@@ -224,6 +226,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         }
         OnSharedProfile();
         OnSharedTracks();
+        Settings.LinkChanged();
     }
 
     // The other device's songs changed (some new, some gone).
@@ -802,6 +805,13 @@ public sealed class MainViewModel : Observable, IPageOrder
     {
         Settings.Refresh();
         Navigate(Settings);
+    }
+
+    // Settings asked for again while they're open (the side bar's entry, the phone's tab, Ctrl+,): their start, the first group at the top.
+    public void SettingsAgain()
+    {
+        if (Page != Settings) GoSettings();
+        else Settings.StartGroup = "appearance";
     }
 
     public void OpenSettingsGroup(string group)

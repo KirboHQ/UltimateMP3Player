@@ -212,6 +212,10 @@ public abstract class LinkEnd : IDisposable
         End(null);
     }
 
+    // Gone without a goodbye: the other side takes it for a lost connection and tries again (the phone's settings imported: its profile
+    // opens again and waits for the computer once more).
+    public void Drop() => End(null);
+
     public void Dispose()
     {
         if (_ended) return;

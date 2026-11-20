@@ -225,6 +225,9 @@ public sealed class ComputerLinkViewModel : Observable
         if (linked) _main.Toast(L.F("Disconnected from {0}", name));
     }
 
+    // (settings imported: the profile opens again, and the computer, hearing no goodbye, comes back by itself)
+    public void Drop() => _link.Drop();
+
     // The profile closes (another one, the language, the app): the computer hears it at once.
     public void Shutdown()
     {

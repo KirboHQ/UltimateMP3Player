@@ -200,7 +200,7 @@ public sealed class BackupsViewModel : Observable
     }
 
     // The name the backups give for where they come from (the phones': the one in their settings).
-    private static string DeviceName()
+    internal static string DeviceName()
     {
 #if ANDROID_APP
         try

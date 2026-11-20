@@ -596,6 +596,44 @@ switch (args[0])
             return ok ? 0 : 1;
         }
 
+    case "voice":
+        {
+            // What spoken words ask for (VoiceWords), in the languages it knows: the verb and the app's name left out, the words of
+            // their own (music, shuffle, favorites) and the kinds ("the album…", "songs by…") read, an article dropped for a second try.
+            var cases = new (string Said, VoiceMeaning Meaning, VoiceFocus Focus, string Name)[]
+            {
+                ("play Bohemian Rhapsody on UMP", VoiceMeaning.Name, VoiceFocus.Any, "Bohemian Rhapsody"),
+                ("", VoiceMeaning.AnyMusic, VoiceFocus.Any, ""),
+                ("metti un po' di musica su Ultimate MP3 Player", VoiceMeaning.AnyMusic, VoiceFocus.Any, ""),
+                ("riproduci i miei preferiti", VoiceMeaning.Favorites, VoiceFocus.Playlist, "i miei preferiti"),
+                ("spiele Zufallswiedergabe", VoiceMeaning.Shuffle, VoiceFocus.Any, ""),
+                ("lecture aléatoire", VoiceMeaning.Shuffle, VoiceFocus.Any, ""),
+                ("metti musica a caso", VoiceMeaning.Shuffle, VoiceFocus.Any, ""),
+                ("play my music on shuffle", VoiceMeaning.Shuffle, VoiceFocus.Any, ""),
+                ("riproduci l'album Thriller", VoiceMeaning.Name, VoiceFocus.Album, "Thriller"),
+                ("canzoni dei Queen", VoiceMeaning.Name, VoiceFocus.Artist, "Queen"),
+                ("écoute la playlist Été 2024", VoiceMeaning.Name, VoiceFocus.Playlist, "Été 2024"),
+                ("pon canciones de Shakira", VoiceMeaning.Name, VoiceFocus.Artist, "Shakira"),
+                ("Musik von Rammstein", VoiceMeaning.Name, VoiceFocus.Artist, "Rammstein"),
+                ("toque músicas de Anitta no UMP", VoiceMeaning.Name, VoiceFocus.Artist, "Anitta"),
+                ("la radio Deejay", VoiceMeaning.Name, VoiceFocus.Station, "Deejay"),
+                ("the playlist", VoiceMeaning.Name, VoiceFocus.Any, "the playlist"),
+                ("Radio Ga Ga", VoiceMeaning.Name, VoiceFocus.Station, "Ga Ga"),
+            };
+            bool ok = true;
+            foreach (var (said, meaning, focus, name) in cases)
+            {
+                var got = VoiceWords.Read(said);
+                bool right = got.Meaning == meaning && got.Focus == focus && got.Name == name;
+                ok &= right;
+                if (!right) Console.WriteLine($"  “{said}” → {got.Meaning} {got.Focus} “{got.Name}”, expected {meaning} {focus} “{name}”");
+            }
+            var names = VoiceWords.Names("i Queen").ToList();
+            ok &= names.SequenceEqual(new[] { "i Queen", "Queen" }) && VoiceWords.Names("Queen").Count() == 1;
+            Console.WriteLine($"voice: {(ok ? "ok" : "SBAGLIATO")} ({cases.Length} phrases)");
+            return ok ? 0 : 1;
+        }
+
     case "spotifyhistory":
         {
             // mp3cli spotifyhistory [files]: both shapes of Spotify's history (podcasts and too-short plays aside), the list made for

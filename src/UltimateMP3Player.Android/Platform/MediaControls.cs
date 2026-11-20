@@ -14,7 +14,14 @@ namespace UltimateMP3Player.Services;
 // of PlaybackService. The heart is a button there too (a custom action of the session).
 public sealed class MediaControls : IDisposable
 {
-    public const string FavoriteAction = "ump.favorite", SaveAction = "ump.save";
+    public const string FavoriteAction = "ump.favorite", SaveAction = "ump.save", ShuffleAction = "ump.shuffle", RepeatAction = "ump.repeat";
+    // What the Assistant sends for "shuffle" and "repeat" (androidx's controllers, through a framework session's custom actions), and
+    // the bits it looks for among the actions.
+    private const string CompatShuffle = "android.support.v4.media.session.action.SET_SHUFFLE_MODE",
+        CompatShuffleMode = "android.support.v4.media.session.action.ARGUMENT_SHUFFLE_MODE",
+        CompatRepeat = "android.support.v4.media.session.action.SET_REPEAT_MODE",
+        CompatRepeatMode = "android.support.v4.media.session.action.ARGUMENT_REPEAT_MODE";
+    private const long ActionSetRepeatMode = 1L << 18, ActionSetShuffleMode = 1L << 21;
 
     private readonly MediaSession _session;
     private TimeSpan _position, _duration;
@@ -24,7 +31,8 @@ public sealed class MediaControls : IDisposable
     private string? _id, _coverPath;
     // Said on the car's screen until the next command, or until the music starts.
     private string? _error;
-    private bool _errorOpensApp, _waiting, _queued;
+    private bool _errorOpensApp, _waiting, _searching, _queued, _shuffle;
+    private Core.RepeatMode _repeat;
 
     // One for the process: the car's service hands its token out before the app has started, and the app takes this same one.
     private static MediaControls? _shared;
@@ -41,6 +49,8 @@ public sealed class MediaControls : IDisposable
         extras.PutBoolean("android.media.playback.ALWAYS_RESERVE_SPACE_FOR.ACTION_SKIP_TO_NEXT", true);
         extras.PutBoolean("android.media.playback.ALWAYS_RESERVE_SPACE_FOR.ACTION_SKIP_TO_PREVIOUS", true);
         _session.SetExtras(extras);
+        // ("I like this song": the heart)
+        _session.SetRatingType(RatingStyle.Heart);
         Publish();
     }
 
@@ -125,6 +135,14 @@ public sealed class MediaControls : IDisposable
         Publish();
     }
 
+    // A voice request looking online: on its way too (apart from the player's waiting, which the song stopped for it clears).
+    public void SetSearching(bool searching)
+    {
+        if (_searching == searching) return;
+        _searching = searching;
+        Publish();
+    }
+
     // The car's screen is all the driver has: what went wrong is said there, the app's toast is on a phone in a pocket.
     public void SetError(string text, bool openApp = false)
     {
@@ -170,6 +188,17 @@ public sealed class MediaControls : IDisposable
         CarLibrary.Changed();
     }
 
+    // Shuffle and repeat, for their buttons on the car's screen.
+    public void SetModes(bool shuffle, Core.RepeatMode repeat)
+    {
+        if (_shuffle == shuffle && _repeat == repeat) return;
+        (_shuffle, _repeat) = (shuffle, repeat);
+        Publish();
+    }
+
+    // "Ok Google, play … on Ultimate MP3 Player" from the phone (VoiceActivity), like the car's.
+    public void PlayFromSearch(string? query, Bundle? extras) => Command(true, () => CarLibrary.Search(query, extras));
+
     // The volume is the phone's own (its buttons).
     public void SetVolume(double volume) { }
 
@@ -177,10 +206,11 @@ public sealed class MediaControls : IDisposable
     {
         // (the car and the voice need the ones for a song or a search from the very start)
         long actions = PlaybackState.ActionPlay | PlaybackState.ActionPause | PlaybackState.ActionPlayPause | PlaybackState.ActionStop |
-                       PlaybackState.ActionPlayFromMediaId | PlaybackState.ActionPlayFromSearch;
-        if (HasTrack) actions |= PlaybackState.ActionSkipToNext | PlaybackState.ActionSkipToPrevious | PlaybackState.ActionSeekTo | PlaybackState.ActionSkipToQueueItem;
+                       PlaybackState.ActionPlayFromMediaId | PlaybackState.ActionPlayFromSearch | ActionSetShuffleMode | ActionSetRepeatMode;
+        if (HasTrack) actions |= PlaybackState.ActionSkipToNext | PlaybackState.ActionSkipToPrevious | PlaybackState.ActionSeekTo | PlaybackState.ActionSkipToQueueItem
+                                 | PlaybackState.ActionSetRating;
         // (with music playing it's only said, once: a voice request not understood doesn't stop what's on)
-        var code = _error != null && !IsPlaying ? PlaybackStateCode.Error : IsPlaying ? PlaybackStateCode.Playing : _waiting ? PlaybackStateCode.Buffering
+        var code = _error != null && !IsPlaying ? PlaybackStateCode.Error : IsPlaying ? PlaybackStateCode.Playing : _waiting || _searching ? PlaybackStateCode.Buffering
             : HasTrack ? PlaybackStateCode.Paused : PlaybackStateCode.None;
         var state = new PlaybackState.Builder()
             .SetActions(actions)!
@@ -201,6 +231,22 @@ public sealed class MediaControls : IDisposable
         if (HasTrack)
             state.AddCustomAction(new PlaybackState.CustomAction.Builder(FavoriteAction, L.T(IsFavorite ? "Remove from Favorites" : "Add to Favorites"),
                 IsFavorite ? Resource.Drawable.ic_heart : Resource.Drawable.ic_heart_outline).Build());
+        if (HasTrack)
+        {
+            state.AddCustomAction(new PlaybackState.CustomAction.Builder(ShuffleAction, L.T(_shuffle ? "Shuffle: on" : "Shuffle: off"),
+                _shuffle ? Resource.Drawable.ic_car_shuffle_on : Resource.Drawable.ic_car_shuffle).Build());
+            state.AddCustomAction(new PlaybackState.CustomAction.Builder(RepeatAction, L.T(_repeat switch
+                {
+                    Core.RepeatMode.All => "Repeat: all",
+                    Core.RepeatMode.One => "Repeat: this song",
+                    _ => "Repeat: off",
+                }), _repeat switch
+                {
+                    Core.RepeatMode.All => Resource.Drawable.ic_car_repeat_on,
+                    Core.RepeatMode.One => Resource.Drawable.ic_car_repeat_one,
+                    _ => Resource.Drawable.ic_car_repeat,
+                }).Build());
+        }
         // A song not saved on the phone: into the library, or saved on the phone, with a tap.
         if (HasTrack && IsTemporary)
             state.AddCustomAction(new PlaybackState.CustomAction.Builder(SaveAction, SaveLabel, SaveIcon).Build());
@@ -295,13 +341,26 @@ public sealed class MediaControls : IDisposable
 
         public override void OnSeekTo(long pos) => _c.Command(false, () => _c.SeekRequested?.Invoke(TimeSpan.FromMilliseconds(pos)));
         public override void OnPlayFromMediaId(string? mediaId, Bundle? extras) => _c.Command(true, () => CarLibrary.PlayId(mediaId));
-        public override void OnPlayFromSearch(string? query, Bundle? extras) => _c.Command(true, () => CarLibrary.Search(query, extras));
+        public override void OnPlayFromSearch(string? query, Bundle? extras) => _c.PlayFromSearch(query, extras);
         public override void OnSkipToQueueItem(long id) => _c.Command(true, () => CarLibrary.SkipTo(id));
 
         public override void OnCustomAction(string action, Bundle? extras)
         {
             if (action == FavoriteAction) _c.Command(false, _c.RaiseFavorite);
             else if (action == SaveAction) _c.Command(false, _c.RaiseSave);
+            else if (action == ShuffleAction) _c.Command(false, () => CarLibrary.SetShuffle(null));
+            else if (action == RepeatAction) _c.Command(false, () => CarLibrary.SetRepeat(null));
+            // (0 none, 1 all, 2 a group)
+            else if (action == CompatShuffle) _c.Command(false, () => CarLibrary.SetShuffle(extras?.GetInt(CompatShuffleMode) is 1 or 2));
+            // (0 none, 1 one, 2 all, 3 a group)
+            else if (action == CompatRepeat)
+                _c.Command(false, () => CarLibrary.SetRepeat(extras?.GetInt(CompatRepeatMode) switch { 1 => Core.RepeatMode.One, 2 or 3 => Core.RepeatMode.All, _ => Core.RepeatMode.Off }));
+        }
+
+        // "I like this song" (the Assistant): the heart, set as asked.
+        public override void OnSetRating(Rating rating)
+        {
+            if (rating.RatingStyle == RatingStyle.Heart && rating.HasHeart != _c.IsFavorite) _c.Command(false, _c.RaiseFavorite);
         }
 
         // A single headset button: play/pause (the session's default does that too, this also works while paused).

@@ -378,7 +378,7 @@
                                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                                 </Grid>
                             </Button>
-                            <RadioButton Grid.Column="1" Theme="{StaticResource NavIconButton}" GroupName="nav" local:Ui.Glyph="&#xE713;" IsChecked="{Binding IsSettings}"
+                            <RadioButton x:Name="SettingsNav" Grid.Column="1" Theme="{StaticResource NavIconButton}" GroupName="nav" local:Ui.Glyph="&#xE713;" IsChecked="{Binding IsSettings}"
                                          VerticalAlignment="Center" ToolTip.Tip="{local:T 'Settings (Ctrl+,)'}"/>
                         </Grid>
                     </Grid>

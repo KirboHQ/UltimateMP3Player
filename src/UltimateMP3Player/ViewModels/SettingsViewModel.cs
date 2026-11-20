@@ -246,6 +246,10 @@ public sealed class SettingsViewModel : Observable
     {
         _main = main;
         Equalizer = new EqualizerViewModel(main);
+        Looks = new LooksViewModel(main);
+        ExportSettingsCommand = new RelayCommand(() => _ = SettingsTransfer.ExportAsync(_main));
+        ImportSettingsCommand = new RelayCommand(() => _ = SettingsTransfer.ImportAsync(_main));
+        CopySettingsCommand = new RelayCommand(() => SettingsTransfer.AskLinked(_main));
         // (the button next to the song turns it on and off too)
         main.Player.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(PlayerViewModel.Normalize)) OnChanged(nameof(Normalize)); };
         AudioFormats = QualityChoices.Audio();
@@ -321,6 +325,35 @@ public sealed class SettingsViewModel : Observable
     public ICommand OpenRepoCommand { get; }
 
     private void Save() => S.Save();
+
+    // ---- looks with a name (LooksViewModel) and the settings to another device (SettingsTransfer)
+    public LooksViewModel Looks { get; }
+    public ICommand ExportSettingsCommand { get; }
+    public ICommand ImportSettingsCommand { get; }
+    public ICommand CopySettingsCommand { get; }
+    // (the device linked: the computer's settings on the phone, the phone's on the computer)
+    public bool CanCopySettings => _main.Shared is { Ready: true };
+    public string CopySettingsText => _main.Shared is { Ready: true } shared ? L.F("Copy from {0}", shared.OtherName) : "";
+
+    // (MainViewModel.OnSharedChanged: the link ready, or gone)
+    public void LinkChanged() => OnChanged(nameof(CanCopySettings), nameof(CopySettingsText));
+
+    // The bars are the profile's (Core BarsLook): AppSettings has the ones in use, the profile keeps them.
+    private void KeepBars()
+    {
+        Save();
+        _main.Profile.Data.Bars = BarsLook.From(S);
+        _main.Profile.Save();
+    }
+
+    // A whole look put in place (a look chosen, settings imported): every choice of Appearance shown again.
+    public void LookChanged()
+    {
+        Refresh();
+        OnChanged(nameof(CustomColor), nameof(RgbSpeed), nameof(Visualizer), nameof(VisualizerFlowChoice), nameof(SeekStyleChoice), nameof(SeekStyle),
+            nameof(SeekMirrored), nameof(GlassTintChoice), nameof(MenuRows), nameof(SectionRows), nameof(HomeRows));
+        SaveBars();
+    }
 
     // ------------------------------------------------------------------ appearance
 
@@ -460,7 +493,7 @@ public sealed class SettingsViewModel : Observable
 
     public Choice GlassPicture
     {
-        get => GlassPictures[GlassChoices.Picture ? 2 : GlassChoices.FromTheme ? 1 : 0];
+        get => GlassPictures[_pickingPicture || GlassChoices.Picture ? 2 : GlassChoices.FromTheme ? 1 : 0];
         set
         {
             if (value?.Value is not string kind) return;
@@ -478,16 +511,30 @@ public sealed class SettingsViewModel : Observable
         }
     }
 
-    // "Your picture": made small like a cover (Profile.BackdropPicture); none picked, the choice stays the one before.
+    // "Your picture" tapped again while it's the one: another picture.
+    public ICommand GlassPictureAgainCommand => _glassAgain ??= new RelayCommand(() => _ = PickGlassPicture());
+    private ICommand? _glassAgain;
+
+    // "Your picture": made small like a cover (Profile.BackdropPicture); none picked, the choice stays the one before. While the picker is
+    // open the tile is "Your picture" for the view model too: a binding only takes back a value it sees change, and the tile tapped
+    // had already moved on its own (the choice before, said again, looked like no change: the tile stayed lit).
+    private bool _pickingPicture;
+
     private async Task PickGlassPicture()
     {
-        var file = await Dialogs.PickImageAsync();
-        if (file != null && await Task.Run(() => AudioAnalysis.MakeCoverFromImageAsync(file, _main.Profile.BackdropPicture)))
+        _pickingPicture = true;
+        OnChanged(nameof(GlassPicture));
+        try
         {
-            GlassChoices.Picture = true;
-            GlassChoices.FromTheme = false;
+            var file = await Dialogs.PickImageAsync();
+            if (file != null && await Task.Run(() => AudioAnalysis.MakeCoverFromImageAsync(file, _main.Profile.BackdropPicture)))
+            {
+                GlassChoices.Picture = true;
+                GlassChoices.FromTheme = false;
+            }
+            else if (file != null) _main.Toast(L.T("Invalid or unreadable image."));
         }
-        else if (file != null) _main.Toast(L.T("Invalid or unreadable image."));
+        finally { _pickingPicture = false; }
         GlassChanged(false, nameof(GlassPicture));
     }
 
@@ -736,7 +783,7 @@ public sealed class SettingsViewModel : Observable
     public bool Visualizer
     {
         get => S.Visualizer;
-        set { S.Visualizer = value; Save(); OnChanged(); _main.NowPlaying.Refresh(); }
+        set { S.Visualizer = value; KeepBars(); OnChanged(); _main.NowPlaying.Refresh(); }
     }
 
     public List<Choice> VisualizerFlows { get; } = new()
@@ -754,7 +801,7 @@ public sealed class SettingsViewModel : Observable
         {
             if (value?.Value is not VisualizerFlow f) return;
             S.VisualizerFlow = f;
-            Save();
+            KeepBars();
             OnChanged();
             _main.NowPlaying.Refresh();
         }
@@ -811,7 +858,7 @@ public sealed class SettingsViewModel : Observable
         {
             if (value?.Value is not VisualizerStyle style || style == S.SeekStyle) return;
             S.SeekStyle = style;
-            Save();
+            KeepBars();
             OnChanged(nameof(SeekStyleChoice), nameof(SeekStyle));
             _main.Player.OnSeekShape();
         }
@@ -826,7 +873,7 @@ public sealed class SettingsViewModel : Observable
         {
             if (value == S.SeekMirrored) return;
             S.SeekMirrored = value;
-            Save();
+            KeepBars();
             OnChanged(nameof(SeekMirrored));
             _main.Player.OnSeekShape();
         }
@@ -905,7 +952,7 @@ public sealed class SettingsViewModel : Observable
 
     private void SaveBars()
     {
-        Save();
+        KeepBars();
         OnChanged(nameof(VisualizerStyleChoice), nameof(VisualizerPlaceChoice), nameof(VisualizerTintChoice), nameof(VisualizerThicknessChoice), nameof(VisualizerHasThickness),
             nameof(VisualizerThicknessLabel), nameof(VisualizerHeight), nameof(VisualizerHeightText), nameof(VisualizerStrength), nameof(VisualizerStrengthText));
         _main.NowPlaying.Refresh();

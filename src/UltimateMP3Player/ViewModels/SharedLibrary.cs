@@ -277,6 +277,9 @@ public sealed class SharedLibrary
         if (musicChanged || audioChanged) ModesChanged?.Invoke();
     }
 
+    // "Copy from the computer/phone": the other device sends all its settings, then the ticks choose what comes in.
+    public void AskSettings() => _link.Send(new Msg { T = "settingsAsk" });
+
     private void SendModes() => _link.Send(new Msg { T = "modes", Index = (int)Music, Max = (int)Audio });
 
     // ------------------------------------------------------------------ messages
@@ -293,6 +296,13 @@ public sealed class SharedLibrary
                 return true;
             case "libAsk":
                 if (m.Text is { Length: > 0 and < 64 } req) _ = SendCatalog(req);
+                return true;
+            // The settings asked for by the other device (Settings › Backup, export and import: "Copy from…"), and its answer.
+            case "settingsAsk":
+                _link.Send(new Msg { T = "settings", Text = SettingsTransfer.Everything(_main).ToJson() });
+                return true;
+            case "settings":
+                if (m.Text is { } json && SettingsFile.TryRead(json) is { } settings) _ = SettingsTransfer.ImportAsync(_main, settings, OtherName);
                 return true;
             case "lib":
                 if (m.Lib != null) Apply(m.Lib);

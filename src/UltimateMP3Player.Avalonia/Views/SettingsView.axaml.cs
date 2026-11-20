@@ -173,6 +173,11 @@ public partial class SettingsView : UserControl
         };
     }
 
+    private void LooksMenu_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: LooksViewModel looks } button) Menus.Open(Menus.ForLooks(looks), button, true);
+    }
+
     private void Logins_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         Dialogs.ShowLogins();

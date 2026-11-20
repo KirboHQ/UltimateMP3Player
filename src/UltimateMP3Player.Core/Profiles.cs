@@ -196,6 +196,11 @@ public sealed class ProfileData
     public GlassLook Glass { get; set; } = new();
     // Bars floating or attached, the side bar's width, the menus' pages and Home's rows (Core Layout).
     public LayoutLook Layout { get; set; } = new();
+    // The bars of the music and the song's bar (5.4; before, the device's for every profile): put in use when the profile opens.
+    public BarsLook? Bars { get; set; }
+    // Looks with a name (Core LookPreset), and the one the look is now (null: none of them).
+    public List<LookPreset> Looks { get; set; } = new();
+    public string? LookId { get; set; }
     public List<Tag> Tags { get; set; } = new();
     // Song id → ids of its tags.
     public Dictionary<string, List<string>> TrackTags { get; set; } = new();

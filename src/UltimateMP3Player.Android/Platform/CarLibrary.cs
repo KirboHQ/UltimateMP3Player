@@ -19,11 +19,15 @@ namespace UltimateMP3Player.Platform;
 // the profile of a session already open.
 //
 // The ids: "list|<key>" a list of songs, "song|<key>|<song>", "page|<key>|<n>" a piece of a long list, "shuffle|<key>", "mix|<id>",
-// "station|<id>", "artistpage|<n>". The keys: "all", "recent", "pl:<playlist>", "artist:<name, escaped>".
+// "station|<id>", "artistpage|<n>", "albumpage|<n>", "profile|<id>". The keys: "all", "recent", "pl:<playlist>", "artist:<name, escaped>",
+// "album:<name, escaped>:<artist, escaped>", "tag:<id>". No search on the car's screen: the framework's MediaBrowserService has none
+// (only androidx's), the car's microphone goes to the voice (Search).
 public static class CarLibrary
 {
     public const string Root = "root";
-    private const string HomeTab = "home", SongsTab = "songs", PlaylistsTab = "playlists", ArtistsTab = "artists";
+    // (the library's tab keeps the id it had when it was "Songs")
+    private const string HomeTab = "home", LibraryTab = "songs", PlaylistsTab = "playlists", ArtistsTab = "artists",
+        AlbumsFolder = "albums", TagsFolder = "tags", StationsFolder = "stations", ProfilesFolder = "profiles";
     // Android Auto has no pages (the whole list is sent at once): a long list becomes folders of this many, by title.
     private const int PageSize = 200;
     private const int ListStyle = 1, GridStyle = 2;
@@ -103,6 +107,7 @@ public static class CarLibrary
         s.Playlists.CollectionChanged += OnPlaylists;
         s.Player.UpNextWanted = Active;
         if (Active) s.Player.RefreshUpNext();
+        Media.SetModes(s.Player.Shuffle, s.Player.Repeat);
         // (another profile, or the first one after the car found the app not ready: the first opening is for the list being asked for)
         if (replaced || _refused) Changed();
         _refused = false;
@@ -122,6 +127,7 @@ public static class CarLibrary
         if (sender is not PlayerViewModel p) return;
         if (e.PropertyName == nameof(PlayerViewModel.UpNext)) PublishQueue(p);
         else if (e.PropertyName == nameof(PlayerViewModel.IsWaiting)) Media.SetWaiting(p.IsWaiting);
+        else if (e.PropertyName is nameof(PlayerViewModel.Shuffle) or nameof(PlayerViewModel.Repeat)) Media.SetModes(p.Shuffle, p.Repeat);
     }
 
     // What the car has on screen changed: it reads it again, a moment later (a whole playlist may be coming in).
@@ -182,7 +188,7 @@ public static class CarLibrary
         {
             case Root: return Tabs;
             case HomeTab: return HomeItems(s);
-            case SongsTab: return SongsItems(s);
+            case LibraryTab: return LibraryItems(s);
             case PlaylistsTab: return PlaylistItems(s);
             case ArtistsTab:
             {
@@ -194,6 +200,23 @@ public static class CarLibrary
                 var songs = s.Songs();
                 return () => ArtistItems(songs, n);
             }
+            case AlbumsFolder:
+            {
+                var songs = s.Songs();
+                return () => AlbumItems(songs, -1);
+            }
+            case "albumpage" when parts.Length == 2 && int.TryParse(parts[1], out var n):
+            {
+                var songs = s.Songs();
+                return () => AlbumItems(songs, n);
+            }
+            case TagsFolder: return TagItems(s);
+            case StationsFolder:
+            {
+                var stations = StationRows(s);
+                return () => stations.Select(st => StationItem(st)).ToList();
+            }
+            case ProfilesFolder: return ProfileItems(s);
             case "list" when parts.Length == 2: return ListItems(s, parts[1], -1);
             case "page" when parts.Length == 3 && int.TryParse(parts[2], out var n): return ListItems(s, parts[1], n);
         }
@@ -203,7 +226,7 @@ public static class CarLibrary
     private static List<MediaItem> Tabs() => new List<MediaItem>
     {
         Item(HomeTab, L.T("Home"), null, Icon("ic_car_home"), false, Style(PlayableHint, GridStyle)),
-        Item(SongsTab, L.T("Songs"), null, Icon("ic_car_music"), false, Style(BrowsableHint, ListStyle)),
+        Item(LibraryTab, L.T("Library"), null, Icon("ic_car_library"), false, Style(BrowsableHint, ListStyle)),
         Item(PlaylistsTab, L.T("Playlists"), null, Icon("ic_car_playlist"), false),
         Item(ArtistsTab, L.T("Artists"), null, Icon("ic_car_person"), false),
     }.Take(_tabLimit).ToList();
@@ -227,7 +250,7 @@ public static class CarLibrary
         s.Home.Refresh();
         var mixes = s.Home.ForYou.Select(m => (m.Id, m.Title, m.Subtitle, m.Cover.T)).ToList();
         var recent = s.Home.Recent.Take(30).Select(t => t.T).ToList();
-        var stations = s.Stations.Saved.Select(st => (st.S.Id, st.Name, st.Subtitle)).ToList();
+        var stations = StationRows(s);
         return () =>
         {
             var items = new List<MediaItem>();
@@ -237,26 +260,51 @@ public static class CarLibrary
             group = Group(L.T("Recently played"));
             foreach (var t in recent) items.Add(SongItem("recent", t, group));
             group = Group(L.T("Radio"));
-            foreach (var (id, name, subtitle) in stations)
-                items.Add(Item("station|" + id, name, subtitle, FileUri(AppPaths.TrackCover(Station.Prefix + id)) ?? Icon("ic_car_radio"), true, group));
+            foreach (var st in stations) items.Add(StationItem(st, group));
             // (nothing heard yet: not an empty first page)
             if (items.Count == 0) items.Add(Item("shuffle|all", L.T("Shuffle"), null, Icon("ic_car_shuffle"), true));
             return items;
         };
     }
 
-    private static Func<List<MediaItem>> SongsItems(MainViewModel s)
+    private static List<(string Id, string Name, string? Subtitle)> StationRows(MainViewModel s)
+        => s.Stations.Saved.Select(st => (st.S.Id, st.Name, (string?)st.Subtitle)).ToList();
+
+    private static MediaItem StationItem((string Id, string Name, string? Subtitle) st, Bundle? extras = null)
+        => Item("station|" + st.Id, st.Name, st.Subtitle, FileUri(AppPaths.TrackCover(Station.Prefix + st.Id)) ?? Icon("ic_car_radio"), true, extras);
+
+    // Like the app's Library: everything shuffled, the Favorites, all the songs, and the folders the other tabs have no room for.
+    private static Func<List<MediaItem>> LibraryItems(MainViewModel s)
     {
         var favorites = PlaylistRows(s, s.Playlists.Where(p => p.IsFavorites));
         s.LibraryPage.Rebuild();
         int count = s.LibraryPage.PlayOrder.Count;
+        bool tags = s.Tags.Count > 0, stations = s.Stations.Saved.Count > 0, profiles = App.Host.Profiles.Profiles.Count > 1;
         return () =>
         {
             var items = new List<MediaItem> { Item("shuffle|all", L.T("Shuffle"), null, Icon("ic_car_shuffle"), true) };
             items.AddRange(favorites.Select(PlaylistItem));
             items.Add(Item("list|all", L.T("All songs"), L.Count(count, "1 song", "{0} songs"), Icon("ic_car_music"), false));
+            items.Add(Item(AlbumsFolder, L.T("Albums"), null, Icon("ic_car_album"), false));
+            if (tags) items.Add(Item(TagsFolder, L.T("Tags"), null, Icon("ic_car_tag"), false, Style(BrowsableHint, ListStyle)));
+            if (stations) items.Add(Item(StationsFolder, L.T("Radio"), null, Icon("ic_car_radio"), false, Style(PlayableHint, GridStyle)));
+            if (profiles) items.Add(Item(ProfilesFolder, L.T("Profiles"), null, Icon("ic_car_profile"), false));
             return items;
         };
+    }
+
+    private static Func<List<MediaItem>> TagItems(MainViewModel s)
+    {
+        var tags = s.Tags.Select(t => (t.Id, t.Name, t.Count)).ToList();
+        return () => tags.Select(t => Item("list|tag:" + t.Id, t.Name, L.Count(t.Count, "1 song", "{0} songs"), Icon("ic_car_tag"), false)).ToList();
+    }
+
+    // A tap plays the profile's music from where it was; the one open says so.
+    private static Func<List<MediaItem>> ProfileItems(MainViewModel s)
+    {
+        var current = s.Profile.Info.Id;
+        var profiles = App.Host.Profiles.Profiles.Select(p => (p.Id, p.Name)).ToList();
+        return () => profiles.Select(p => Item("profile|" + p.Id, p.Name, p.Id == current ? L.T("Listening now") : null, Icon("ic_car_profile"), true)).ToList();
     }
 
     private static Func<List<MediaItem>> PlaylistItems(MainViewModel s)
@@ -284,11 +332,41 @@ public static class CarLibrary
                 else if (a.Cover == null && t.HasCover) map[key] = (a.Name, t);
             }
         var all = map.Values.OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
-        MediaItem Row((string Name, Track? Cover) a) => Item("list|artist:" + Uri.EscapeDataString(a.Name), a.Name, null, ArtistPicture(a.Name) ?? CoverOf(a.Cover) ?? Icon("ic_car_person"), false);
-        if (page >= 0) return all.Skip(page * PageSize).Take(PageSize).Select(Row).ToList();
-        if (all.Count <= PageSize) return all.Select(Row).ToList();
-        return all.Chunk(PageSize).Select((piece, i) => Item("artistpage|" + i, Range(piece[0].Name, piece[^1].Name), null, Icon("ic_car_person"), false)).ToList();
+        return Paged(all, page, a => a.Name, a => ArtistItem(a.Name, a.Cover), "artistpage", "ic_car_person");
     }
+
+    private static MediaItem ArtistItem(string name, Track? cover)
+        => Item("list|artist:" + Uri.EscapeDataString(name), name, null, ArtistPicture(name) ?? CoverOf(cover) ?? Icon("ic_car_person"), false);
+
+    // Android Auto has no pages: over PageSize, folders of PageSize by name ("A – D"), each opening its piece.
+    private static List<MediaItem> Paged<T>(List<T> all, int page, Func<T, string> name, Func<T, MediaItem> row, string pageKind, string icon)
+    {
+        if (page >= 0) return all.Skip(page * PageSize).Take(PageSize).Select(row).ToList();
+        if (all.Count <= PageSize) return all.Select(row).ToList();
+        return all.Chunk(PageSize).Select((piece, i) => Item(pageKind + "|" + i, Range(name(piece[0]), name(piece[^1])), null, Icon(icon), false)).ToList();
+    }
+
+    // The library's albums: the same name and first artist, two songs at least (a single's album is the song itself).
+    private static List<(string Name, string? Artist, Track? Cover, int Count)> AlbumRows(List<Track> songs)
+    {
+        var map = new Dictionary<string, (string Name, string? Artist, Track? Cover, int Count)>();
+        foreach (var t in songs)
+        {
+            if (string.IsNullOrWhiteSpace(t.Album)) continue;
+            var artist = ArtistNames.Of(t.Artist).FirstOrDefault();
+            var key = Text.Normalize(t.Album) + "\n" + Text.Normalize(artist);
+            if (!map.TryGetValue(key, out var a)) map[key] = (t.Album.Trim(), artist, t.HasCover ? t : null, 1);
+            else map[key] = (a.Name, a.Artist, a.Cover ?? (t.HasCover ? t : null), a.Count + 1);
+        }
+        return map.Values.Where(a => a.Count >= 2).OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+    }
+
+    private static MediaItem AlbumItem((string Name, string? Artist, Track? Cover, int Count) a)
+        => Item("list|album:" + Uri.EscapeDataString(a.Name) + ":" + Uri.EscapeDataString(a.Artist ?? ""), a.Name, a.Artist,
+            CoverOf(a.Cover) ?? Icon("ic_car_album"), false);
+
+    private static List<MediaItem> AlbumItems(List<Track> songs, int page)
+        => Paged(AlbumRows(songs), page, a => a.Name, AlbumItem, "albumpage", "ic_car_album");
 
     private static Android.Net.Uri? ArtistPicture(string name)
     {
@@ -325,14 +403,16 @@ public static class CarLibrary
         if (key == "recent") return s.Home.RecentList;
         if (key.StartsWith("pl:", StringComparison.Ordinal))
             return s.Playlists.FirstOrDefault(p => p.Id == key[3..]) is { } vm ? new PlaylistPageViewModel(vm, s) : null;
-        if (!key.StartsWith("artist:", StringComparison.Ordinal)) return null;
-        var name = Uri.UnescapeDataString(key[7..]);
-        var stats = s.Profile.StatsSnapshot();
-        // (in the order of the artist's page)
-        var songs = s.Songs().Where(t => ArtistNames.Has(t.Artist, name))
-            .OrderByDescending(t => stats.GetValueOrDefault(t.Id)?.Plays ?? 0).ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
-            .Select(s.Vm).ToList();
-        return new TrackListSource("artistpage:" + Text.Normalize(name), name, songs);
+        if (key.StartsWith("artist:", StringComparison.Ordinal)) return VoicePlay.ArtistList(s, Uri.UnescapeDataString(key[7..]));
+        if (key.StartsWith("album:", StringComparison.Ordinal))
+        {
+            var parts = key[6..].Split(':');
+            var artist = parts.Length > 1 && parts[1].Length > 0 ? Uri.UnescapeDataString(parts[1]) : null;
+            return VoicePlay.AlbumList(s, Uri.UnescapeDataString(parts[0]), artist);
+        }
+        if (key.StartsWith("tag:", StringComparison.Ordinal))
+            return s.Tags.FirstOrDefault(t => t.Id == key[4..]) is { } tag ? VoicePlay.TagList(s, tag) : null;
+        return null;
     }
 
     // "A – C", or "Sa – Sh" inside one letter.
@@ -387,11 +467,7 @@ public static class CarLibrary
     // whole library shuffled.
     public static void PlayDefault()
     {
-        if (Open() is not { } s) return;
-        // (in a room or driving a computer, Play is theirs: the library must not land in the room's queue)
-        if (s.Player.InRoom && s.Together.Session?.Current == null) Media.SetError(L.T("The room's queue is empty."));
-        else if (s.Player.Current != null || s.Player.InRoom || s.Player.IsRemote) s.SetPlaying(true);
-        else ShuffleList(s, "all");
+        if (Open() is { } s && VoicePlay.PlayDefault(s) is { } problem) Media.SetError(problem);
     }
 
     private static void ShuffleList(MainViewModel s, string key)
@@ -416,6 +492,10 @@ public static class CarLibrary
             case "station" when parts.Length == 2 && s.Stations.Saved.FirstOrDefault(st => st.S.Id == parts[1]) is { } station:
                 s.Stations.Play(station);
                 return;
+            case "profile" when parts.Length == 2 && App.Host.Profiles.Profiles.FirstOrDefault(p => p.Id == parts[1]) is { } profile:
+                if (profile.Id != s.Profile.Info.Id) App.Host.OpenProfile(profile);
+                PlayDefault();
+                return;
             case "song" when parts.Length == 3 && ListOf(s, parts[1]) is { } list && list.PlayOrder.FirstOrDefault(t => t.Id == parts[2]) is { } song:
                 s.Player.PlayFrom(InOrder(list), song);
                 return;
@@ -438,60 +518,50 @@ public static class CarLibrary
 
     // ------------------------------------------------------------------ the voice
 
-    // What the Assistant understood is in the extras, when it did; otherwise only the words. Only the library: something it doesn't
-    // have is said, never replaced with something else.
+    // "Ok Google, play … on Ultimate MP3 Player", in the car or on the phone (VoiceActivity): what the Assistant understood is in the
+    // extras, when it did (VoicePlay). What isn't found is said on the car's screen, and in a toast for the phone.
     public static void Search(string? query, Bundle? extras)
     {
         SetActive(true);
         if (Open() is not { } s) return;
-        query = query?.Trim();
-        if (string.IsNullOrEmpty(query))
+        var request = new VoiceRequest(query ?? "", FocusOf(extras?.GetString("android.intent.extra.focus")),
+            extras?.GetString(MediaStore.ExtraMediaTitle), extras?.GetString(MediaStore.ExtraMediaArtist), extras?.GetString("android.intent.extra.album"),
+            extras?.GetString("android.intent.extra.playlist"), extras?.GetString("android.intent.extra.genre"));
+        _ = Say(VoicePlay.PlayAsync(s, request, Media.SetSearching));
+    }
+
+    private static VoiceFocus FocusOf(string? focus) => focus switch
+    {
+        "vnd.android.cursor.item/audio" => VoiceFocus.Song,
+        "vnd.android.cursor.item/artist" => VoiceFocus.Artist,
+        "vnd.android.cursor.item/album" => VoiceFocus.Album,
+        "vnd.android.cursor.item/playlist" => VoiceFocus.Playlist,
+        "vnd.android.cursor.item/genre" => VoiceFocus.Genre,
+        _ => VoiceFocus.Any,
+    };
+
+    private static async Task Say(Task<string?> asked)
+    {
+        try
         {
-            PlayDefault();
-            return;
+            if (await asked is not { } problem) return;
+            Media.SetError(problem);
+            Android.Widget.Toast.MakeText(Ctx, problem, Android.Widget.ToastLength.Long)?.Show();
         }
-        var title = extras?.GetString(MediaStore.ExtraMediaTitle);
-        var artist = extras?.GetString(MediaStore.ExtraMediaArtist);
-        var playlist = extras?.GetString("android.intent.extra.playlist");
-        if (!string.IsNullOrEmpty(title) && PlaySongs(s, title + " " + artist, query)) return;
-        if (!string.IsNullOrEmpty(playlist) && PlayPlaylist(s, playlist)) return;
-        if (!string.IsNullOrEmpty(artist) && string.IsNullOrEmpty(title) && PlayArtist(s, artist)) return;
-        if (PlayPlaylist(s, query) || PlayArtist(s, query) || PlaySongs(s, query, query)) return;
-        if (s.Stations.SavedMatching(query).FirstOrDefault() is { } station)
-        {
-            s.Stations.Play(station);
-            return;
-        }
-        Media.SetError(L.F("I can't find “{0}” in your library.", query));
+        catch (Exception ex) { App.Log(ex); }
     }
 
-    private static bool PlayPlaylist(MainViewModel s, string name)
+    // The car's buttons (null: the other way round) and the Assistant's "shuffle", "repeat".
+    public static void SetShuffle(bool? on)
     {
-        var key = Text.Normalize(name);
-        if (s.Playlists.FirstOrDefault(p => Text.Normalize(p.Name) == key) is not { } vm) return false;
-        var page = new PlaylistPageViewModel(vm, s);
-        if (page.PlayOrder.Count == 0) return false;
-        s.Player.PlayAll(page, s.Player.Shuffle);
-        return true;
+        if (Open() is { } s) s.Player.Shuffle = on ?? !s.Player.Shuffle;
     }
 
-    private static bool PlayArtist(MainViewModel s, string name)
+    public static void SetRepeat(RepeatMode? mode)
     {
-        if (ListOf(s, "artist:" + Uri.EscapeDataString(name)) is not { PlayOrder.Count: > 0 } list) return false;
-        s.Player.PlayAll(list, false);
-        return true;
-    }
-
-    private static bool PlaySongs(MainViewModel s, string words, string name)
-    {
-        var q = new TrackQuery(words);
-        if (q.IsEmpty) return false;
-        var key = Text.Normalize(words);
-        // (the one titled exactly that first)
-        var found = s.AllVms().Where(q.Matches).OrderByDescending(t => Text.Normalize(t.Title) == key).ToList();
-        if (found.Count == 0) return false;
-        s.Player.PlayFrom(new TrackListSource("voice:" + key, name, found), found[0]);
-        return true;
+        if (Open() is not { } s) return;
+        if (mode is { } m && !s.Player.InRoom) s.Player.Repeat = m;
+        else s.Player.CycleRepeatCommand.Execute(null);
     }
 
     // ------------------------------------------------------------------ the queue

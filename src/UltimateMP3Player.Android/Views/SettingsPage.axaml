@@ -82,6 +82,14 @@
             <TextBlock Text="{local:T APPEARANCE}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Group="appearance" views:SettingsPage.Keywords="{local:T 'appearance theme colours colors light dark night mode language english italian animations motion cover 3d speed visualizer bars waves'}">
                 <StackPanel>
+                    <!-- looks with a name (LooksViewModel): a sheet chooses and does the rest -->
+                    <Button Theme="{StaticResource SettingRow}" Click="Looks_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T Look}" Classes="setting"/>
+                            <TextBlock Text="{Binding Looks.CurrentName}" Classes="value"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
                     <StackPanel Margin="0,12">
                         <TextBlock Text="{local:T 'Light or dark'}" Classes="setting" Margin="0,0,0,8"/>
                         <views:ChoiceTiles Picture="look" Items="{Binding Appearances}" Selected="{Binding Appearance}"/>
@@ -151,7 +159,7 @@
                     </CheckBox>
                     <StackPanel Margin="0,0,0,10" views:Fold.Open="{Binding GlassOn}">
                         <TextBlock Text="{local:T Background}" Classes="setting-hint" Margin="0,0,0,8"/>
-                        <views:ChoiceTiles Picture="glasspicture" Items="{Binding GlassPictures}" Selected="{Binding GlassPicture}"/>
+                        <views:ChoiceTiles Picture="glasspicture" Items="{Binding GlassPictures}" Selected="{Binding GlassPicture}" Again="{Binding GlassPictureAgainCommand}"/>
                         <TextBlock Text="{local:T Blur}" Classes="setting-hint" Margin="0,12,0,0"/>
                         <Grid ColumnDefinitions="*,Auto">
                             <Slider Theme="{StaticResource KnobSlider}" Minimum="0" Maximum="1" Value="{Binding GlassBlur}" SmallChange="0.05" LargeChange="0.1" Height="40" AutomationProperties.Name="{local:T Blur}"/>
@@ -608,6 +616,26 @@
             </Border>
 
             <!-- ============================================================ backup -->
+            <!-- the settings to another device or profile (SettingsTransfer) -->
+            <TextBlock Text="{local:T 'SETTINGS AND PROFILE'}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Group="backup" views:SettingsPage.Keywords="{local:T 'settings export import profile copy phone computer transfer move device'}">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ExportSettingsCommand}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Export settings…'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Choose what to take (appearance and looks, playback, equalizer, downloads…): everything is the whole profile. The music, playlists and plays are the backups\'.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding ImportSettingsCommand}">
+                        <TextBlock Text="{local:T 'Import settings…'}" Classes="setting"/>
+                    </Button>
+                    <Border Classes="line" IsVisible="{Binding CanCopySettings}"/>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding CopySettingsCommand}" IsVisible="{Binding CanCopySettings}">
+                        <TextBlock Text="{Binding CopySettingsText}" Classes="setting"/>
+                    </Button>
+                </StackPanel>
+            </Border>
             <TextBlock Text="{local:T BACKUP}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Group="backup" views:SettingsPage.Keywords="{local:T 'backup backups restore automatic copy safety data library playlists statistics zip reinstall'}">
                 <StackPanel>
@@ -710,6 +738,24 @@
                         <StackPanel>
                             <TextBlock Text="Android Auto" Classes="setting"/>
                             <TextBlock Text="{local:T 'Your library on the car’s screen. Android Auto hides apps that don’t come from Google Play until you allow them: tap to see how.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Click="Voice_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Voice commands'}" Classes="setting"/>
+                            <TextBlock Text="{local:T '“Ok Google, play … on Ultimate MP3 Player”, in the car and on the phone: what you can say.'}" Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+            <!-- (the iPhone's instead: Siri through a Shortcut) -->
+            <Border x:Name="SiriCard" Classes="card" views:SettingsPage.Group="integrations" views:SettingsPage.Keywords="{local:T 'siri carplay car voice shortcut shortcuts driving'}">
+                <StackPanel>
+                    <Button Theme="{StaticResource SettingRow}" Click="Siri_Click">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Siri and CarPlay'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Play by voice with a Shortcut: “Hey Siri, UMP”, then what to play. Tap to see how.'}" Classes="setting-hint"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>

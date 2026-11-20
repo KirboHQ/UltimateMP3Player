@@ -35,6 +35,11 @@ public partial class SettingsView : UserControl
 
     private SettingsViewModel? _vm;
 
+    private void LooksMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: LooksViewModel looks } button) Menus.Open(Menus.ForLooks(looks), button, true);
+    }
+
     private void Logins_Click(object sender, RoutedEventArgs e)
     {
         Dialogs.ShowLogins();

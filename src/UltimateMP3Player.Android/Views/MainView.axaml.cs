@@ -645,7 +645,9 @@ public partial class MainView : UserControl
         // (the download part with the search box empty is already the search tab's start)
         if (_session.Page == root || tab == "search" && _session.Page is DownloadsPageViewModel && _shown is SearchPage { HasWords: false })
         {
-            (_shown as IPage)?.ScrollToTop();
+            // (Settings: back to their start, out of a group and its search)
+            if (_shown is SettingsPage settings) settings.ToStart();
+            else (_shown as IPage)?.ScrollToTop();
             return;
         }
         if (tab == "settings") _session.GoSettings();

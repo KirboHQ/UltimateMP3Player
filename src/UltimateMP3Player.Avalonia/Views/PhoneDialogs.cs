@@ -11,14 +11,18 @@ using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
 
-// "Connect phone": the phone connected, and the phones nearby in "Connect to computer" (looked for while this is open).
+// "Connect phone", in two states (as the computer's WPF one). No phone yet: three steps and the phones found nearby, each with its
+// Connect, the advice for Wi-Fi and cable folded under "Can't find it?". A phone: only it, whose music both show and where it's heard.
 public static class PhoneDialogs
 {
     private static IBrush B(string key) => Ui.Res(key);
 
     private const string PhoneGlyph = "\uE8EA", ComputerGlyph = "\uE7F4", BothGlyph = "\uE71B";
 
-    public static void Show(MainViewModel main)
+    public static void Show(MainViewModel main) => Build(main).ShowDialog();
+
+    // (apart, for the offscreen tests: the window without waiting for it)
+    public static DialogWindow Build(MainViewModel main)
     {
         var vm = main.PhoneLink;
         var body = new StackPanel();
@@ -76,18 +80,21 @@ public static class PhoneDialogs
                 if (b.IsChecked == true) ModeChosen(b);
             };
 
-        var hint = Ui.Text(L.T("On the phone open Settings › Connect to computer: it shows up here. Each one then shows the other's music, the phone controls the music of this computer and receives music with “To the phone” in the export window."), "hint");
-        hint.TextWrapping = TextWrapping.Wrap;
-        body.Children.Add(hint);
+        // ---- no phone yet: the steps, the phones nearby, the advice folded
+        var finding = new StackPanel();
+        body.Children.Add(finding);
+        finding.Children.Add(Step(1, L.T("Open Ultimate MP3 Player on the phone.")));
+        finding.Children.Add(Step(2, L.T("Go to Settings › Connect to computer.")));
+        finding.Children.Add(Step(3, L.T("The phone shows up below: Connect.")));
         var cable = Ui.Text(OperatingSystem.IsMacOS()
             ? L.T("Same Wi-Fi as this computer, or a cable: no need to confirm on the phone then. Android: turn on USB tethering in the phone's settings. iPhone: just the cable (the iPhone must trust this Mac).")
             : L.T("Same Wi-Fi as this computer, or a cable: no need to confirm on the phone then. Android: turn on USB tethering in the phone's settings. iPhone: it needs usbmuxd on this computer (the usbmuxd package)."),
-            "hint", new Thickness(0, 8, 0, 0));
+            "hint", new Thickness(2, 8, 0, 0));
         cable.TextWrapping = TextWrapping.Wrap;
-        body.Children.Add(cable);
+        cable.IsVisible = false;
 
         // ---- the phones nearby
-        body.Children.Add(Ui.Text(L.T("Phones nearby"), "field-label", new Thickness(2, 18, 0, 8)));
+        finding.Children.Add(Ui.Text(L.T("Phones nearby"), "field-label", new Thickness(2, 14, 0, 8)));
         var list = new StackPanel();
         var looking = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10) };
         var lookingSpinner = new Ellipse { Width = 14, Height = 14, StrokeThickness = 1.5, VerticalAlignment = VerticalAlignment.Center };
@@ -100,11 +107,20 @@ public static class PhoneDialogs
         var both = new StackPanel();
         both.Children.Add(list);
         both.Children.Add(looking);
-        body.Children.Add(new Border
+        finding.Children.Add(new Border
         {
             CornerRadius = new CornerRadius(10), Background = B("BgBrush"), BorderBrush = B("BorderBrush"), BorderThickness = new Thickness(1), Padding = new Thickness(4),
             Child = new ScrollViewer { Content = both, MaxHeight = 260 },
         });
+        var help = Dialogs.Button(L.T("Can't find it?"), "LinkButton");
+        help.HorizontalAlignment = HorizontalAlignment.Left;
+        help.Margin = new Thickness(2, 12, 0, 0);
+        help.Click += (_, _) => cable.IsVisible = !cable.IsVisible;
+        finding.Children.Add(help);
+        finding.Children.Add(cable);
+        var then = Ui.Text(L.T("Each one then shows the other's music, the phone controls the music of this computer and receives music with “To the phone” in the export window."), "hint", new Thickness(2, 12, 0, 0));
+        then.TextWrapping = TextWrapping.Wrap;
+        finding.Children.Add(then);
 
         var close = Dialogs.Button(L.T("Close"), "GhostButton", isCancel: true);
         var win = Dialogs.Frame(L.T("Connect phone"), body, 520, close);
@@ -112,6 +128,7 @@ public static class PhoneDialogs
         void Refresh()
         {
             currentCard.IsVisible = vm.HasPhone;
+            finding.IsVisible = !vm.HasPhone;
             name.Text = vm.PhoneName;
             status.Text = vm.StatusText;
             bool busy = vm.IsConnecting || vm.IsReconnecting;
@@ -143,7 +160,7 @@ public static class PhoneDialogs
         };
         vm.StartScan();
         Refresh();
-        win.ShowDialog();
+        return win;
     }
 
     private static Control Row(PhoneRowViewModel p, PhoneLinkViewModel vm)
@@ -185,6 +202,18 @@ public static class PhoneDialogs
             BorderThickness = new Thickness(1), HorizontalAlignment = HorizontalAlignment.Left, Child = row,
         });
         return (panel, buttons);
+    }
+
+    // A step of the three: its number in a circle, then what to do.
+    private static Control Step(int n, string text)
+    {
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(0, 0, 0, 8) };
+        var number = new Grid { Width = 26, Height = 26, VerticalAlignment = VerticalAlignment.Center };
+        number.Children.Add(new Ellipse { Fill = B("AccentSoftBrush") });
+        number.Children.Add(new TextBlock { Text = n.ToString(), FontWeight = FontWeight.SemiBold, Foreground = B("AccentTextBrush"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
+        grid.Children.Add(number);
+        grid.Children.Add(At(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) }, 1));
+        return grid;
     }
 
     private static TextBlock Glyph(string glyph, double size, IBrush brush)

@@ -798,6 +798,76 @@ public static class Program
         Shot(win, "home-shelf-end", 500);
         Check(((ItemsControl)addedShelf.Content).Items.Count == addedShelf.Total && !ShelfPart("PART_Next").IsEnabled && addedShelf.ActualHeight == oneRow, "home: the bar at its end, all the cards made, one row");
 
+        // ---- 5.4: looks with a name, the bars per profile, the settings to another device, Settings again, the phone's window
+        // (the glass's "Your picture" tile opens Windows' own file window here: its way back is checked on Avalonia, the view model is the same)
+        {
+            var data = main.Profile.Data;
+            var pid = main.Profile.Info.Id;
+            var looks = main.Settings.Looks;
+            Check(looks.Items.Count == 1 && looks.CurrentName == L.T("My look") && data.LookId == data.Looks[0].Id, "looks: the look in use becomes “My look”");
+            Check(data.Bars != null && data.Bars.Style == host.Settings.VisualizerStyle, "bars: the profile keeps its own");
+            var before = (data.Appearance, host.Settings.VisualizerStyle, data.Glass.On);
+            var other = data.Looks[0].Clone(pid, "Test look");
+            other.Appearance = ThemeColors.Dark;
+            other.Bars.Style = VisualizerStyle.Dots;
+            other.Glass.On = !data.Glass.On;
+            data.Looks.Add(other);
+            looks.Refresh();
+            looks.Current = looks.Items.First(c => c.Label == "Test look");
+            Pump(300);
+            Check(data.LookId == other.Id && data.Appearance == ThemeColors.Dark && host.Settings.VisualizerStyle == VisualizerStyle.Dots && data.Glass.On == other.Glass.On
+                  && main.Settings.VisualizerStyleChoice.Value is VisualizerStyle.Dots, "looks: choosing one puts its look, bars and glass in place");
+            main.OpenSettingsGroup("appearance");
+            Shot(win, "settings-looks");
+            var looksBox = Descendants(win).OfType<ComboBox>().FirstOrDefault(c => c.DataContext == looks);
+            Check(looksBox != null && Seen(looksBox) && looksBox.Items.Count == 2 && looksBox.SelectionBoxItem?.ToString() == "Test look",
+                "looks: their drop-down in Appearance, the one chosen shown in it");
+            var looksMenu = Menus.ForLooks(looks).Items.OfType<MenuItem>().ToList();
+            Check(looksMenu.Count == 5 && looksMenu[^1].IsEnabled, "looks: the rest in one menu (⋯), Delete with two looks");
+            main.Settings.VisualizerStyleChoice = main.Settings.VisualizerStyles.First(c => c.Value is VisualizerStyle.Blocks);
+            Check(data.Bars?.Style == VisualizerStyle.Blocks, "bars: a change goes into the profile");
+            looks.Current = looks.Items.First(c => c.Label == L.T("My look"));
+            Pump(300);
+            Check(other.Bars.Style == VisualizerStyle.Blocks && (data.Appearance, host.Settings.VisualizerStyle, data.Glass.On) == before,
+                "looks: back to “My look”, the other one keeps what was changed in it");
+            var lookFile = Path.Combine(root, "test" + LookPreset.Extension);
+            File.WriteAllText(lookFile, other.ToFile(pid));
+            var read = LookPreset.Read(lookFile, pid);
+            Check(read != null && read.Name == "Test look" && read.Id != other.Id && read.Bars.Style == VisualizerStyle.Blocks, "looks: a look's file reads back as a new look");
+
+            var file = SettingsTransfer.Everything(main);
+            var again = SettingsFile.TryRead(file.ToJson());
+            Check(again != null && again.Has.Count() == SettingsFile.All.Length && again.Looks?.Count == data.Looks.Count, $"settings file: all {SettingsFile.All.Length} groups and the looks");
+            var d2 = new ProfileData();
+            var s2 = new AppSettings { MusicDir = "elsewhere" };
+            data.CrossfadeSeconds = 9;
+            file = SettingsTransfer.Everything(main);
+            file.Apply(d2, s2, "import-test", Path.Combine(root, "backdrop-test.jpg"), SettingsFile.All.Select(g => g.Key));
+            Check(d2.CrossfadeSeconds == 9 && s2.MusicDir == "elsewhere" && d2.Looks.Count == data.Looks.Count && d2.Looks.Any(l => l.Id == d2.LookId),
+                "settings file: groups come in, the music folder doesn't, the look comes as a look of its own");
+            Check(SettingsFile.TryRead("{\"Version\":1}") == null, "settings file: another JSON isn't taken for settings");
+
+            main.OpenSettingsGroup("download");
+            Pump(200);
+            main.SettingsAgain();
+            Pump(300);
+            var sv = Descendants(win).OfType<UltimateMP3Player.Views.SettingsView>().First();
+            Check(sv.CardsShown.Any() && sv.CardsShown.All(c => UltimateMP3Player.Views.SettingsView.GetGroup(c) == "appearance"), "settings: asked for again, back to their start (Appearance)");
+
+            var phoneWin = PhoneDialogs.Build(main);
+            phoneWin.WindowStartupLocation = WindowStartupLocation.Manual;
+            phoneWin.Left = -32000;
+            phoneWin.Top = -32000;
+            phoneWin.ShowActivated = false;
+            phoneWin.ShowInTaskbar = false;
+            phoneWin.Show();
+            Shot(phoneWin, "phone-window");
+            Check(Shown(phoneWin, L.T("Go to Settings › Connect to computer.")) && Shown(phoneWin, L.T("Phones nearby")) && !Shown(phoneWin, L.T("Disconnect")),
+                "phone window: no phone, the steps and the phones nearby");
+            phoneWin.Close();
+            Check(main.Settings.PhoneLink.ButtonText == L.T("Connect phone…"), "phone: the button says Connect phone… with none");
+        }
+
         try { host.Exit(true); } catch { }
         Check(!File.Exists(AppPaths.LogFile) || new FileInfo(AppPaths.LogFile).Length == 0, "nothing in errors.log");
         Console.WriteLine(Failed.Count == 0 ? "wpf: ok" : $"wpf: {Failed.Count} FAILED");

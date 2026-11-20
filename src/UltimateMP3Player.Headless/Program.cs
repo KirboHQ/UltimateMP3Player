@@ -269,11 +269,12 @@ Shot(win, "artist");
 var artistPage = main.Page as ArtistPageViewModel;
 // (its menu: Choose the artist…, Open on its site once known, Rename, Change image)
 string[] MenuOf(ArtistPageViewModel a) => Menus.ForArtist(a).Items.OfType<MenuItem>().Select(m => m.Header as string ?? "").ToArray();
-Check(artistPage is { HasSongs: true } && MenuOf(artistPage) is [var choose, .., var rename, var change] && choose == L.T("Choose the artist…")
-    && rename == L.T("Rename…") && change == L.T("Change image…")
+// (5.3.2: "Don't suggest" last)
+Check(artistPage is { HasSongs: true } && MenuOf(artistPage) is [var choose, .., var rename, var change, var unsuggest] && choose == L.T("Choose the artist…")
+    && rename == L.T("Rename…") && change == L.T("Change image…") && unsuggest == L.T("Don't suggest")
     && win.GetVisualDescendants().OfType<Button>().Any(b => b.Name == "PictureButton"), "artist: its page, Change image, the menu (Choose the artist, Rename, Change image)");
 File.WriteAllBytes(ArtistPictures.Mine("Headless Artist"), clearLogo!);
-Check(artistPage!.HasMyPicture && MenuOf(artistPage).Last() == L.T("Remove image"), "artist: a picture chosen by hand, and Remove image");
+Check(artistPage!.HasMyPicture && MenuOf(artistPage)[^2] == L.T("Remove image"), "artist: a picture chosen by hand, and Remove image");
 main.Library.RenameArtist("Headless Artist", "Headless Band", inLines: true);
 Check(duet.Artist == "Headless Band feat. Someone", "artist: renamed where it's one of several: " + duet.Artist);
 // (a name written like a handle, spelled as the library or the song found write it; one with capitals stays; no network here)
@@ -589,6 +590,9 @@ if (bars != null)
     Check(AccentNow() == rgbFrom, "theme RGB: stands still while the window can't be seen");
     Ui.Hidden = false;
     main.Settings.SelectThemeCommand.Execute(ThemeColors.CustomId);
+    // (the picker is on Appearance's page: the one shown)
+    main.OpenSettingsGroup("appearance");
+    Spin(300);
     string customFrom = AccentNow();
     // (the picker's code box: half a code waits and what's typed stays as typed; a whole one is the accent at once)
     var customBox = win.GetVisualDescendants().OfType<SettingsView>().First().GetLogicalDescendants().OfType<ColorPicker>().First().GetLogicalDescendants().OfType<TextBox>().First();
@@ -860,6 +864,7 @@ Shot(editor, "overlay-rgb");
 Tile(L.T("One color")).IsChecked = true;
 Dispatcher.UIThread.RunJobs();
 HueBar().GetLogicalDescendants().OfType<TextBox>().First().Text = "#12AB9F";
+Dispatcher.UIThread.RunJobs();
 Check(overlay.Source is { Rgb: false, MagicColors: false } && overlay.Source.Tint == "#12AB9F" && !InEditor(L.T("RGB speed")), "overlay: one color, any (the picker)");
 HueBar().BringIntoView(); Shot(editor, "overlay-hue");
 Tile(L.T("From the cover")).IsChecked = true;
@@ -1017,6 +1022,92 @@ Check(shelfScroller.Offset.X > 100 && ShelfPart("PART_Back").IsEnabled, $"home: 
 shelfScroller.Offset = new Vector(shelfScroller.Extent.Width - shelfScroller.Viewport.Width, 0);
 Shot(win, "home-shelf-end");
 Check(((ItemsControl)addedShelf.Content!).ItemCount == addedShelf.Total && !ShelfPart("PART_Next").IsEnabled && addedShelf.Bounds.Height == oneRow, "home: the bar at its end, all the cards made, one row");
+
+// ---- 5.4: looks with a name, the bars per profile, the settings to another device, Settings again, the picture tile, the phone's window
+{
+    var data = main.Profile.Data;
+    var pid = main.Profile.Info.Id;
+    var looks = main.Settings.Looks;
+    Check(looks.Items.Count == 1 && looks.CurrentName == L.T("My look") && data.LookId == data.Looks[0].Id, "looks: the look in use becomes “My look”");
+    Check(data.Bars != null && data.Bars.Style == host.Settings.VisualizerStyle, "bars: the profile keeps its own");
+    var before = (data.Appearance, host.Settings.VisualizerStyle, data.Glass.On);
+    // (a second look, made by hand: dark, dots, the glass the other way round)
+    var other = data.Looks[0].Clone(pid, "Test look");
+    other.Appearance = ThemeColors.Dark;
+    other.Bars.Style = VisualizerStyle.Dots;
+    other.Glass.On = !data.Glass.On;
+    data.Looks.Add(other);
+    looks.Refresh();
+    looks.Current = looks.Items.First(c => c.Label == "Test look");
+    Wait(300);
+    Check(data.LookId == other.Id && data.Appearance == ThemeColors.Dark && host.Settings.VisualizerStyle == VisualizerStyle.Dots && data.Glass.On == other.Glass.On
+          && main.Settings.VisualizerStyleChoice.Value is VisualizerStyle.Dots, "looks: choosing one puts its look, bars and glass in place");
+    main.OpenSettingsGroup("appearance");
+    Wait(300);
+    Shot(win, "settings-looks");
+    var looksMenu = Menus.ForLooks(looks).Items.OfType<MenuItem>().ToList();
+    Check(looksMenu.Count == 5 && looksMenu[^1].IsEnabled, "looks: the rest in one menu (⋯), Delete with two looks");
+    // What changes now goes into the one chosen, taken back when another is chosen.
+    main.Settings.VisualizerStyleChoice = main.Settings.VisualizerStyles.First(c => c.Value is VisualizerStyle.Blocks);
+    Check(data.Bars?.Style == VisualizerStyle.Blocks, "bars: a change goes into the profile");
+    looks.Current = looks.Items.First(c => c.Label == L.T("My look"));
+    Wait(300);
+    Check(other.Bars.Style == VisualizerStyle.Blocks && (data.Appearance, host.Settings.VisualizerStyle, data.Glass.On) == before,
+        "looks: back to “My look”, the other one keeps what was changed in it");
+    // A look's file and back.
+    var lookFile = Path.Combine(root, "test" + LookPreset.Extension);
+    File.WriteAllText(lookFile, other.ToFile(pid));
+    var read = LookPreset.Read(lookFile, pid);
+    Check(read != null && read.Name == "Test look" && read.Id != other.Id && read.Bars.Style == VisualizerStyle.Blocks, "looks: a look's file reads back as a new look");
+
+    // The settings into a file and into another profile: every group, nothing of one device's.
+    var file = SettingsTransfer.Everything(main);
+    var again = SettingsFile.TryRead(file.ToJson());
+    Check(again != null && again.Has.Count() == SettingsFile.All.Length && again.Looks?.Count == data.Looks.Count, $"settings file: all {SettingsFile.All.Length} groups and the looks");
+    var d2 = new ProfileData();
+    var s2 = new AppSettings { MusicDir = "elsewhere" };
+    data.CrossfadeSeconds = 9;
+    host.Settings.SearchParallel = !host.Settings.SearchParallel;
+    file = SettingsTransfer.Everything(main);
+    file.Apply(d2, s2, "import-test", Path.Combine(root, "backdrop-test.jpg"), SettingsFile.All.Select(g => g.Key));
+    Check(d2.CrossfadeSeconds == 9 && s2.SearchParallel == host.Settings.SearchParallel && s2.MusicDir == "elsewhere" && d2.Looks.Count == data.Looks.Count
+          && d2.LookId != null && d2.Looks.Any(l => l.Id == d2.LookId) && d2.Bars?.Style == host.Settings.VisualizerStyle,
+        "settings file: groups come in, the music folder doesn't, the look comes as a look of its own");
+    var none = SettingsFile.TryRead("{\"Version\":1}");
+    Check(none == null, "settings file: another JSON isn't taken for settings");
+
+    // Settings again while open: their start.
+    main.OpenSettingsGroup("download");
+    Wait(200);
+    main.SettingsAgain();
+    Wait(300);
+    var sv = win.GetVisualDescendants().OfType<SettingsView>().First();
+    Check(sv.CardsShown.Any() && sv.CardsShown.All(c => SettingsView.GetGroup(c) == "appearance"), "settings: asked for again, back to their start (Appearance)");
+
+    // "Your picture" with no picture picked: the tile goes back to the one before.
+    main.Settings.GlassOn = true;
+    Wait(300);
+    var tiles = sv.GetVisualDescendants().OfType<ChoiceTiles>().First(t => t.Picture == "glasspicture");
+    var tileButtons = tiles.Children.OfType<RadioButton>().ToList();
+    var wasPicture = main.Settings.GlassPicture.Value;
+    tileButtons[2].IsChecked = true;
+    Wait(400);
+    Check(main.Settings.GlassPicture.Value == wasPicture && tileButtons[2].IsChecked != true && tileButtons.Count(b => b.IsChecked == true) == 1,
+        $"glass: “Your picture” with none picked, the tile goes back to the one before (view model {main.Settings.GlassPicture.Value}, was {wasPicture}, tiles {string.Join("", tileButtons.Select(b => b.IsChecked == true ? "x" : "-"))}, selected {tiles.Selected?.Value})");
+    main.Settings.GlassOn = false;
+    Wait(200);
+
+    // The phone's window: no phone, the steps and the phones nearby.
+    var phoneWin = PhoneDialogs.Build(main);
+    phoneWin.Show();
+    Wait(300);
+    Shot(phoneWin, "phone-window");
+    var texts = phoneWin.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
+    Check(texts.Contains(L.T("Go to Settings › Connect to computer.")) && texts.Contains(L.T("Phones nearby")) && !texts.Contains(L.T("Disconnect")),
+        "phone window: no phone, the steps and the phones nearby");
+    phoneWin.Close();
+    Check(main.Settings.PhoneLink.ButtonText == L.T("Connect phone…"), "phone: the button says Connect phone… with none");
+}
 
 host.Exit(true);
 Check(!File.Exists(AppPaths.LogFile) || new FileInfo(AppPaths.LogFile).Length == 0, "nothing in errors.log");

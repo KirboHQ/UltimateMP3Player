@@ -190,6 +190,8 @@ public sealed class AppHost : Observable
         Settings.Save();
         ApplyTheme();
         View?.Attach(Session);
+        // (opened from the car, the phone's screen off)
+        if (!_visible) Session.Player.SetVisible(false);
         OnTrackChanged();
         OnPlaybackChanged();
     }
@@ -202,7 +204,6 @@ public sealed class AppHost : Observable
         if (!TermsAccepted) return null;
         var list = Profiles.Profiles;
         OpenProfile(StartupProfile() ?? list.FirstOrDefault(p => p.Id == Settings.LastProfile) ?? list[0]);
-        if (!_visible) Session!.Player.SetVisible(false);
         _ = EnsureEnginesAsync();
         return Session;
     }
@@ -303,7 +304,16 @@ public sealed class AppHost : Observable
                 if (Session.Page is not DownloadsPageViewModel) Session.Navigate(Session.Downloads);
                 Downloads.CancelGroup(what.Value!, ask: true);
                 break;
+            // "ump://play?q=…": a Shortcut's words, dictated to Siri (VoicePlay); what isn't found is said in a toast.
+            case IncomingKind.Play:
+                _ = PlayAsked(Session, what.Value ?? "");
+                break;
         }
+    }
+
+    private static async Task PlayAsked(MainViewModel s, string words)
+    {
+        if (await VoicePlay.PlayAsync(s, new VoiceRequest(words)) is { } problem) s.Toast(problem);
     }
 
     // ------------------------------------------------------------------ now playing → the notification and the lock screen
@@ -493,6 +503,6 @@ public sealed class AppHost : Observable
     }
 }
 
-public enum IncomingKind { Link, Pack, Files, Player, Downloads, CancelDownload }
+public enum IncomingKind { Link, Pack, Files, Player, Downloads, CancelDownload, Play }
 
 public sealed record Incoming(IncomingKind Kind, string? Value = null, List<string>? Values = null);

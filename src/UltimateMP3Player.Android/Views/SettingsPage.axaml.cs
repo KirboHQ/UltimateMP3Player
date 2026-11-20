@@ -66,9 +66,10 @@ public partial class SettingsPage : UserControl, IPage
         // still from here), the music is in the Files app, and an app swiped away is simply ended by iOS.
         foreach (var c in new Control[] { OutputRow, OutputLine, AutoUpdateSwitch, CloseRow, CloseLine })
             c.IsVisible = false;
-        Cards.Children.Remove(CarTitle);
         Cards.Children.Remove(CarCard);
         MusicDirHint.Text = L.T("In the Files app: On My iPhone › Ultimate MP3 Player › Music. If you uninstall the app, the music is deleted.");
+#else
+        Cards.Children.Remove(SiriCard);
 #endif
     }
 
@@ -178,6 +179,11 @@ public partial class SettingsPage : UserControl, IPage
         GroupList.IsVisible = !searching;
         int shown = 0;
         var children = Cards.Children.ToList();
+        // (the list of the groups has no titles: also one whose card is on its group's page, where the walk below doesn't reach it; the
+        // box's TextChanged comes a moment later, so the first group opened is already there when it searches)
+        if (!searching)
+            foreach (var t in children.OfType<TextBlock>().Where(t => t.Classes.Contains("card-title")))
+                Show(t, false);
         for (int i = 0; i < children.Count; i++)
         {
             if (children[i] is not Border { Classes: var cls } card || !cls.Contains("card")) continue;
@@ -309,7 +315,40 @@ public partial class SettingsPage : UserControl, IPage
     private void Logins_Click(object? sender, RoutedEventArgs e) => LoginsSheet.Show();
 
     private void Car_Click(object? sender, RoutedEventArgs e) => Dialogs.Alert("Android Auto",
-        L.T("Android Auto hides apps that don’t come from Google Play until you allow them, once:\n\n1. On the phone, open Settings and search for Android Auto.\n2. Scroll down to Version and tap it 10 times, then confirm.\n3. In the menu at the top right (⋮), open Developer settings.\n4. Turn on Unknown sources.\n\nThen connect the car: the app is among the media apps (if not, add it from Customize launcher). You can also ask the Assistant: “Play Road Trip on Ultimate MP3 Player”."));
+        L.T("Android Auto hides apps that don’t come from Google Play until you allow them, once:\n\n1. On the phone, open Settings and search for Android Auto.\n2. Scroll down to Version and tap it 10 times, then confirm.\n3. In the menu at the top right (⋮), open Developer settings.\n4. Turn on Unknown sources.\n\nThen connect the car: the app is among the media apps (if not, add it from Customize launcher). To start the music by itself when the car connects, turn on Start music automatically in Android Auto’s settings."));
+
+    private void Voice_Click(object? sender, RoutedEventArgs e) => Dialogs.Alert(L.T("Voice commands"),
+        L.T("“Ok Google, play … on Ultimate MP3 Player”, in the car or on the phone, in your phone’s language. In place of the dots:") + "\n\n"
+        + L.T(VoiceList) + "\n\n" + L.T("Then “pause”, “next”, “shuffle”, “repeat”, “I like this song” work as with any player."));
+
+    // What can be asked (VoicePlay), the same for the Assistant and for the iPhone's Shortcut.
+    private const string VoiceList = "• “Bohemian Rhapsody”: a song\n• “songs by Queen”, “the album Thriller”, “the playlist Road Trip”: an artist, an album, a playlist\n• “my favorites”, “shuffle”, “music”: the Favorites, everything shuffled, the music from where it was\n• “the radio Deejay”, “rock”: one of your stations, one of your tags\n\nWhat isn’t in your library is found on the sites and heard without saving it.";
+
+    // The iPhone: Siri plays songs only in apps from the App Store; a Shortcut can open the app's ump://play link with what was dictated.
+    private void Siri_Click(object? sender, RoutedEventArgs e)
+    {
+        Ui.CopyText("ump://play?q=");
+        Dialogs.Alert(L.T("Siri and CarPlay"), L.T("Siri plays songs only in apps from the App Store, but a Shortcut can ask this one, once you make it:\n\n1. In the Shortcuts app, tap + for a new shortcut.\n2. Add the action Dictate Text.\n3. Add the action Open URLs: paste ump://play?q= (it’s copied already) and put the Dictated Text right after it.\n4. Name the shortcut UMP.\n\nThen say “Hey Siri, UMP” and, when it asks, what to play. The iPhone must be unlocked.")
+            + "\n\n" + L.T(VoiceList) + "\n\n" + L.T("With CarPlay the music plays in the car, and its buttons and Siri’s “pause” and “next” work like any app’s."));
+    }
+
+    // The looks with a name (LooksViewModel): a tap chooses one; then what can be done with the one chosen.
+    private void Looks_Click(object? sender, RoutedEventArgs e)
+    {
+        if (Vm?.Looks is not { } looks) return;
+        var menu = new SheetMenu { Title = L.T("Looks") };
+        foreach (var c in looks.Items)
+        {
+            var it = c;
+            menu.Add(new SheetEntry(c.Label, Equals(c.Value, looks.Current?.Value) ? "\uE73E" : "", () => looks.Current = it));
+        }
+        menu.Add(new SheetEntry(L.T("Copy as a new look"), "\uE8C8", () => looks.CopyCommand.Execute(null)));
+        menu.Add(new SheetEntry(L.T("Rename"), "\uE8AC", () => looks.RenameCommand.Execute(null)));
+        menu.Add(new SheetEntry(L.T("Delete"), "\uE74D", () => looks.DeleteCommand.Execute(null), looks.DeleteCommand.CanExecute(null)));
+        menu.Add(new SheetEntry(L.T("Export the look"), "\uEDE1", () => looks.ExportCommand.Execute(null)));
+        menu.Add(new SheetEntry(L.T("Import a look"), "\uE896", () => looks.ImportCommand.Execute(null)));
+        Menus.Open(menu);
+    }
 
     // (through the view model: a room is left first)
     private void Computer_Click(object? sender, RoutedEventArgs e) => Vm?.ComputerLink.Open();
@@ -497,4 +536,16 @@ public partial class SettingsPage : UserControl, IPage
     }
 
     public void ScrollToTop() => (_group != null ? GroupPage : Scroller).Offset = default;
+
+    // The Settings tab tapped again: their start, no group open, no search, at the top.
+    public void ToStart()
+    {
+        if (_group != null) OpenGroup(null);
+        if (!string.IsNullOrEmpty(SearchBox.Text))
+        {
+            _opened = null;
+            SearchBox.Text = "";
+        }
+        ScrollToTop();
+    }
 }

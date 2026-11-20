@@ -448,6 +448,7 @@
                             </Grid>
                         </Button>
                         <RadioButton Grid.Column="1" Style="{StaticResource NavIconButton}" local:Ui.Glyph="&#xE713;" IsChecked="{Binding IsSettings}"
+                                     PreviewMouseLeftButtonDown="SettingsNav_Down" Click="SettingsNav_Click"
                                      VerticalAlignment="Center" AutomationProperties.Name="{local:T Settings}" ToolTip="{local:T 'Settings (Ctrl+,)'}"/>
                     </Grid>
                 </Grid>

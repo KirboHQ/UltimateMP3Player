@@ -10,7 +10,9 @@ using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
 
-// "Connect phone": the phone connected, and the phones nearby in "Connect to computer" (looked for while this is open).
+// "Connect phone", in two states. No phone yet: three steps and the phones found nearby in "Connect to computer" (looked for while
+// this is open), each with its Connect, the advice for Wi-Fi and cable folded under "Can't find it?". A phone: only it, whose music both
+// show and where it's heard.
 public static class PhoneDialogs
 {
     private static ResourceDictionary Res => Application.Current.Resources;
@@ -18,7 +20,10 @@ public static class PhoneDialogs
 
     private const string PhoneGlyph = "\uE8EA", ComputerGlyph = "\uE7F4", BothGlyph = "\uE71B";
 
-    public static void Show(MainViewModel main)
+    public static void Show(MainViewModel main) => Build(main).ShowDialog();
+
+    // (apart, for the offscreen tests: the window without waiting for it)
+    public static Window Build(MainViewModel main)
     {
         var vm = main.PhoneLink;
         var body = new StackPanel();
@@ -73,19 +78,13 @@ public static class PhoneDialogs
         }
         foreach (var b in music.Buttons.Concat(audio.Buttons)) b.Checked += (_, _) => ModeChosen();
 
-        body.Children.Add(new TextBlock
-        {
-            Style = (Style)Res["Hint"], TextWrapping = TextWrapping.Wrap,
-            Text = L.T("On the phone open Settings › Connect to computer: it shows up here. Each one then shows the other's music, the phone controls the music of this computer and receives music with “To the phone” in the export window."),
-        });
-        body.Children.Add(new TextBlock
-        {
-            Style = (Style)Res["Hint"], TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0),
-            Text = L.T("Same Wi-Fi as this computer, or a cable: no need to confirm on the phone then. Android: turn on USB tethering in the phone's settings. iPhone: it needs Apple Devices (or iTunes) on this computer."),
-        });
-
-        // ---- the phones nearby
-        body.Children.Add(new TextBlock { Text = L.T("Phones nearby"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 18, 0, 8) });
+        // ---- no phone yet: the steps, the phones nearby, the advice folded
+        var finding = new StackPanel();
+        body.Children.Add(finding);
+        finding.Children.Add(Step(1, L.T("Open Ultimate MP3 Player on the phone.")));
+        finding.Children.Add(Step(2, L.T("Go to Settings › Connect to computer.")));
+        finding.Children.Add(Step(3, L.T("The phone shows up below: Connect.")));
+        finding.Children.Add(new TextBlock { Text = L.T("Phones nearby"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 14, 0, 8) });
         var list = new StackPanel();
         var looking = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(10, 10, 10, 10) };
         looking.Children.Add(new Ellipse { Style = (Style)Res["Spinner"], Width = 14, Height = 14, StrokeThickness = 1.5, VerticalAlignment = VerticalAlignment.Center });
@@ -93,10 +92,26 @@ public static class PhoneDialogs
         var both = new StackPanel();
         both.Children.Add(list);
         both.Children.Add(looking);
-        body.Children.Add(new Border
+        finding.Children.Add(new Border
         {
             CornerRadius = new CornerRadius(10), Background = B("BgBrush"), BorderBrush = B("BorderBrush"), BorderThickness = new Thickness(1), Padding = new Thickness(4),
             Child = new ScrollViewer { Content = both, MaxHeight = 260, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Focusable = false },
+        });
+        var advice = new TextBlock
+        {
+            Style = (Style)Res["Hint"], TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 8, 0, 0), Visibility = Visibility.Collapsed,
+            Text = L.T("Same Wi-Fi as this computer, or a cable: no need to confirm on the phone then. Android: turn on USB tethering in the phone's settings. iPhone: it needs Apple Devices (or iTunes) on this computer."),
+        };
+        var help = Dialogs.Button(L.T("Can't find it?"), "LinkButton");
+        help.HorizontalAlignment = HorizontalAlignment.Left;
+        help.Margin = new Thickness(2, 12, 0, 0);
+        help.Click += (_, _) => advice.Visibility = advice.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+        finding.Children.Add(help);
+        finding.Children.Add(advice);
+        finding.Children.Add(new TextBlock
+        {
+            Style = (Style)Res["Hint"], TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 12, 0, 0),
+            Text = L.T("Each one then shows the other's music, the phone controls the music of this computer and receives music with “To the phone” in the export window."),
         });
 
         var close = Dialogs.Button(L.T("Close"), "GhostButton", isCancel: true);
@@ -105,6 +120,7 @@ public static class PhoneDialogs
         void Refresh()
         {
             currentCard.Visibility = vm.HasPhone ? Visibility.Visible : Visibility.Collapsed;
+            finding.Visibility = vm.HasPhone ? Visibility.Collapsed : Visibility.Visible;
             name.Text = vm.PhoneName;
             status.Text = vm.StatusText;
             bool busy = vm.IsConnecting || vm.IsReconnecting;
@@ -137,7 +153,7 @@ public static class PhoneDialogs
         };
         vm.StartScan();
         Refresh();
-        win.ShowDialog();
+        return win;
     }
 
     private static UIElement Row(PhoneRowViewModel p, PhoneLinkViewModel vm)
@@ -156,6 +172,20 @@ public static class PhoneDialogs
         connect.IsEnabled = !vm.IsConnecting;
         connect.VerticalAlignment = VerticalAlignment.Center;
         grid.Children.Add(At(connect, 2));
+        return grid;
+    }
+
+    // A step of the three: its number in a circle, then what to do.
+    private static UIElement Step(int n, string text)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 0, 0, 8) };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition());
+        var number = new Grid { Width = 26, Height = 26, VerticalAlignment = VerticalAlignment.Center };
+        number.Children.Add(new Ellipse { Fill = B("AccentSoftBrush") });
+        number.Children.Add(new TextBlock { Text = n.ToString(), FontWeight = FontWeights.SemiBold, Foreground = B("AccentTextBrush"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center });
+        grid.Children.Add(number);
+        grid.Children.Add(At(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) }, 1));
         return grid;
     }
 

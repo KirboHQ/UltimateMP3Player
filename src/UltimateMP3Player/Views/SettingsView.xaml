@@ -98,6 +98,26 @@
             <views:MasonryPanel x:Name="Cards" ColumnWidth="380" MaxColumns="3" MaxColumnWidth="880" Gap="16">
 
                 <!-- ==================================================== appearance -->
+                <!-- looks with a name (LooksViewModel): the one chosen is the look as it is now -->
+                <Border Style="{StaticResource Card}" views:SettingsView.Group="appearance" Padding="22" DataContext="{Binding Looks}"
+                        views:SettingsView.Keywords="{local:T 'look looks preset presets style save copy rename delete export import file'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T Looks}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Theme, glass, bars and layout together, with a name. Changes go into the look chosen.'}"
+                                   Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,-8,0,14"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox ItemsSource="{Binding Items}" SelectedItem="{Binding Current}" AutomationProperties.Name="{local:T Looks}"/>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Margin="8,0,0,0" Click="LooksMenu_Click" ToolTip="{local:T 'More options'}"
+                                    AutomationProperties.Name="{local:T 'More options'}">
+                                <TextBlock Text="&#xE712;" Style="{StaticResource Glyph}"/>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+                </Border>
                 <Border Style="{StaticResource Card}" views:SettingsView.Group="appearance" Padding="22" views:SettingsView.Keywords="{local:T 'theme colors light dark night mode'}">
                     <StackPanel>
                         <TextBlock Text="{local:T 'Theme (for this profile)'}" Style="{StaticResource CardTitle}"/>
@@ -203,7 +223,7 @@
                         <!-- the picture behind (made again: GlassBackdrop), then the panes over it (the palette: Themes.Apply); one column of names for both -->
                         <StackPanel Margin="0,14,0,0" Grid.IsSharedSizeScope="True" views:Fold.Open="{Binding GlassOn}">
                             <TextBlock Text="{local:T Background}" Style="{StaticResource FieldLabel}"/>
-                            <views:ChoiceTiles Picture="glasspicture" Items="{Binding GlassPictures}" Selected="{Binding GlassPicture}"/>
+                            <views:ChoiceTiles Picture="glasspicture" Items="{Binding GlassPictures}" Selected="{Binding GlassPicture}" Again="{Binding GlassPictureAgainCommand}"/>
                             <Grid Margin="0,14,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" SharedSizeGroup="GlassLabel"/>
@@ -1010,6 +1030,39 @@
                     </StackPanel>
                 </Border>
 
+                <!-- the settings to another device or profile (SettingsTransfer) -->
+                <Border Style="{StaticResource Card}" views:SettingsView.Group="backup" Padding="22" Tag="whole"
+                        views:SettingsView.Keywords="{local:T 'settings export import profile copy phone computer transfer move device'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Settings and profile'}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Text="{local:T 'Choose what to take (appearance and looks, playback, equalizer, downloads…): everything is the whole profile. The music, playlists and plays are the backups\'.'}"
+                                   Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,-8,0,14"/>
+                        <WrapPanel>
+                            <Button Style="{StaticResource GhostButton}" Command="{Binding ExportSettingsCommand}" Margin="0,0,8,8" ToolTip="{local:T 'Export settings…'}"
+                                    AutomationProperties.Name="{local:T 'Export settings…'}">
+                                <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xEDE1;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T 'Export settings…'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource GhostButton}" Command="{Binding ImportSettingsCommand}" Margin="0,0,8,8" ToolTip="{local:T 'Import settings…'}"
+                                    AutomationProperties.Name="{local:T 'Import settings…'}">
+                                <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE896;" Style="{StaticResource Glyph}"/>
+                                        <TextBlock Text="{local:T 'Import settings…'}" Margin="8,0,0,0"/>
+                                    </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource GhostButton}" Command="{Binding CopySettingsCommand}" Margin="0,0,8,8"
+                                    Visibility="{Binding CanCopySettings, Converter={StaticResource BoolVis}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8EA;" Style="{StaticResource Glyph}"/>
+                                    <TextBlock Text="{Binding CopySettingsText}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- backups -->
                 <Border Style="{StaticResource Card}" views:SettingsView.Group="backup" Padding="22" views:SettingsView.Keywords="{local:T 'backup backups restore automatic copy safety data library playlists statistics zip reinstall'}">
                     <StackPanel DataContext="{Binding Backups}">
@@ -1138,7 +1191,7 @@
                                     AutomationProperties.Name="{local:T 'Connect phone…'}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="&#xE8EA;" Style="{StaticResource Glyph}"/>
-                                    <TextBlock Text="{local:T 'Connect phone…'}" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{Binding PhoneLink.ButtonText}" Margin="8,0,0,0"/>
                                 </StackPanel>
                             </Button>
                             <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">

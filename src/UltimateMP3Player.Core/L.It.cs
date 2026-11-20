@@ -2546,7 +2546,7 @@ public static partial class L
         ["Open the app"] = "Apri l'app",
         ["car android auto driving head unit unknown sources developer"] = "auto macchina android auto guida origini sconosciute sviluppatore",
         ["Your library on the car’s screen. Android Auto hides apps that don’t come from Google Play until you allow them: tap to see how."] = "La tua libreria sullo schermo dell'auto. Android Auto nasconde le app che non vengono da Google Play finché non le consenti: tocca per vedere come.",
-        ["Android Auto hides apps that don’t come from Google Play until you allow them, once:\n\n1. On the phone, open Settings and search for Android Auto.\n2. Scroll down to Version and tap it 10 times, then confirm.\n3. In the menu at the top right (⋮), open Developer settings.\n4. Turn on Unknown sources.\n\nThen connect the car: the app is among the media apps (if not, add it from Customize launcher). You can also ask the Assistant: “Play Road Trip on Ultimate MP3 Player”."] = "Android Auto nasconde le app che non vengono da Google Play finché non le consenti, una volta sola:\n\n1. Sul telefono apri Impostazioni e cerca Android Auto.\n2. Scorri fino a Versione e toccala 10 volte, poi conferma.\n3. Nel menu in alto a destra (⋮) apri Impostazioni sviluppatore.\n4. Attiva Origini sconosciute.\n\nPoi collega l'auto: l'app è tra quelle multimediali (se non c'è, aggiungila da Personalizza Avvio app). Puoi anche chiederlo all'Assistente: «Metti Road Trip su Ultimate MP3 Player».",
+        ["Android Auto hides apps that don’t come from Google Play until you allow them, once:\n\n1. On the phone, open Settings and search for Android Auto.\n2. Scroll down to Version and tap it 10 times, then confirm.\n3. In the menu at the top right (⋮), open Developer settings.\n4. Turn on Unknown sources.\n\nThen connect the car: the app is among the media apps (if not, add it from Customize launcher). To start the music by itself when the car connects, turn on Start music automatically in Android Auto’s settings."] = "Android Auto nasconde le app che non vengono da Google Play finché non le consenti, una volta sola:\n\n1. Sul telefono apri Impostazioni e cerca Android Auto.\n2. Scorri fino a Versione e toccala 10 volte, poi conferma.\n3. Nel menu in alto a destra (⋮) apri Impostazioni sviluppatore.\n4. Attiva Origini sconosciute.\n\nPoi collega l'auto: l'app è tra quelle multimediali (se non c'è, aggiungila da Personalizza Avvio app). Per far partire la musica da sola quando colleghi l'auto, attiva Avvia musica automaticamente nelle impostazioni di Android Auto.",
         ["Open Ultimate MP3 Player on your phone to start."] = "Apri Ultimate MP3 Player sul telefono per iniziare.",
         // The glass look
         ["Glass"] = "Vetro",
@@ -2624,5 +2624,76 @@ public static partial class L
             "Questo non è un Application ID: è il numero lungo nella pagina General Information dell'applicazione.",
         ["Type a title or an artist: you find the songs you already have and those on music sites. Or paste the link of a song, an album or a whole playlist (YouTube, Spotify, SoundCloud…): choose which playlist to save them to and, if available, the video too. Songs you already have won't be downloaded again. You can also drag a link into the window."] =
             "Scrivi un titolo o un artista: trovi i brani che hai già e quelli sui siti di musica. Oppure incolla il link di un brano, di un album o di un'intera playlist (YouTube, Spotify, SoundCloud…): scegli in quale playlist salvarli e, se c'è, anche il video. I brani che hai già non vengono riscaricati. Puoi anche trascinare un link nella finestra.",
+        // 5.4: the voice (VoicePlay), the car's library and buttons, Siri through a Shortcut
+        ["I can't find “{0}”."] = "Non trovo «{0}».",
+        ["The room doesn't let you add songs."] = "La stanza non permette di aggiungere brani.",
+        ["Profiles"] = "Profili",
+        ["Listening now"] = "In ascolto ora",
+        ["Shuffle: on"] = "Casuale: attivo",
+        ["Shuffle: off"] = "Casuale: disattivato",
+        ["Repeat: all"] = "Ripeti: tutto",
+        ["Repeat: this song"] = "Ripeti: questo brano",
+        ["Repeat: off"] = "Ripeti: disattivato",
+        ["Voice commands"] = "Comandi vocali",
+        ["“Ok Google, play … on Ultimate MP3 Player”, in the car and on the phone: what you can say."] =
+            "«Ok Google, metti … su Ultimate MP3 Player», in auto e sul telefono: cosa puoi dire.",
+        ["“Ok Google, play … on Ultimate MP3 Player”, in the car or on the phone, in your phone’s language. In place of the dots:"] =
+            "«Ok Google, metti … su Ultimate MP3 Player», in auto o sul telefono, nella lingua del telefono. Al posto dei puntini:",
+        ["• “Bohemian Rhapsody”: a song\n• “songs by Queen”, “the album Thriller”, “the playlist Road Trip”: an artist, an album, a playlist\n• “my favorites”, “shuffle”, “music”: the Favorites, everything shuffled, the music from where it was\n• “the radio Deejay”, “rock”: one of your stations, one of your tags\n\nWhat isn’t in your library is found on the sites and heard without saving it."] =
+            "• «Bohemian Rhapsody»: un brano\n• «canzoni dei Queen», «l'album Thriller», «la playlist Road Trip»: un artista, un album, una playlist\n• «i miei preferiti», «casuale», «musica»: i Preferiti, tutto in ordine casuale, la musica da dove era rimasta\n• «la radio Deejay», «rock»: una delle tue stazioni, uno dei tuoi tag\n\nQuello che non è nella libreria viene cercato sui siti e ascoltato senza salvarlo.",
+        ["Then “pause”, “next”, “shuffle”, “repeat”, “I like this song” work as with any player."] =
+            "Poi «pausa», «avanti», «casuale», «ripeti», «mi piace questo brano» funzionano come con qualsiasi lettore.",
+        ["siri carplay car voice shortcut shortcuts driving"] = "siri carplay auto voce comando rapido comandi rapidi guida",
+        ["Siri and CarPlay"] = "Siri e CarPlay",
+        ["Play by voice with a Shortcut: “Hey Siri, UMP”, then what to play. Tap to see how."] =
+            "Ascolta con la voce grazie a un Comando rapido: «Ehi Siri, UMP», poi cosa ascoltare. Tocca per vedere come.",
+        ["Siri plays songs only in apps from the App Store, but a Shortcut can ask this one, once you make it:\n\n1. In the Shortcuts app, tap + for a new shortcut.\n2. Add the action Dictate Text.\n3. Add the action Open URLs: paste ump://play?q= (it’s copied already) and put the Dictated Text right after it.\n4. Name the shortcut UMP.\n\nThen say “Hey Siri, UMP” and, when it asks, what to play. The iPhone must be unlocked."] =
+            "Siri fa partire brani solo nelle app dell'App Store, ma un Comando rapido può chiederlo a questa, una volta creato:\n\n1. Nell'app Comandi, tocca + per un nuovo comando.\n2. Aggiungi l'azione Detta testo.\n3. Aggiungi l'azione Apri URL: incolla ump://play?q= (è già copiato) e metti subito dopo il Testo dettato.\n4. Chiama il comando UMP.\n\nPoi di' «Ehi Siri, UMP» e, quando te lo chiede, cosa ascoltare. L'iPhone deve essere sbloccato.",
+        ["With CarPlay the music plays in the car, and its buttons and Siri’s “pause” and “next” work like any app’s."] =
+            "Con CarPlay la musica suona in auto, e i suoi tasti e «pausa» e «avanti» di Siri funzionano come per ogni app.",
+        // 5.4: looks with a name (LooksViewModel), the settings to another device (SettingsTransfer), the phone's window in two states
+        ["Looks"] = "Stili",
+        ["Look"] = "Stile",
+        ["Theme, glass, bars and layout together, with a name. Changes go into the look chosen."] = "Tema, vetro, barre e disposizione insieme, con un nome. Le modifiche vanno nello stile scelto.",
+        ["look looks preset presets style save copy rename delete export import file"] = "stile stili aspetto preset salva copia rinomina elimina esporta importa file",
+        ["Copy as a new look"] = "Copia come nuovo stile",
+        ["Export the look"] = "Esporta lo stile",
+        ["Import a look"] = "Importa uno stile",
+        ["My look"] = "Il mio stile",
+        ["Copy of the look"] = "Copia dello stile",
+        ["{0} (copy)"] = "{0} (copia)",
+        ["Look “{0}” made: what you change now goes into it"] = "Stile «{0}» creato: quello che cambi ora va lì",
+        ["Rename the look"] = "Rinomina lo stile",
+        ["Delete this look?"] = "Eliminare questo stile?",
+        ["The look “{0}” will be deleted; “{1}” takes its place."] = "Lo stile «{0}» verrà eliminato; al suo posto va «{1}».",
+        ["Look “{0}” exported"] = "Stile «{0}» esportato",
+        ["Looks and settings"] = "Stili e impostazioni",
+        ["This file has no look of Ultimate MP3 Player."] = "Questo file non contiene uno stile di Ultimate MP3 Player.",
+        ["Look “{0}” imported"] = "Stile «{0}» importato",
+        ["Settings and profile"] = "Impostazioni e profilo",
+        ["SETTINGS AND PROFILE"] = "IMPOSTAZIONI E PROFILO",
+        ["Choose what to take (appearance and looks, playback, equalizer, downloads…): everything is the whole profile. The music, playlists and plays are the backups'."] =
+            "Scegli cosa portare (aspetto e stili, riproduzione, equalizzatore, download…): tutto è l'intero profilo. Musica, playlist e ascolti sono dei backup.",
+        ["settings export import profile copy phone computer transfer move device"] = "impostazioni esporta importa profilo copia telefono computer trasferisci sposta dispositivo",
+        ["Export settings…"] = "Esporta impostazioni…",
+        ["Import settings…"] = "Importa impostazioni…",
+        ["Copy from {0}"] = "Copia da {0}",
+        ["Export settings"] = "Esporta impostazioni",
+        ["What goes into the file (all of it: the whole profile, its look and its looks too; not the music, playlists or plays, which are the backups')."] =
+            "Cosa va nel file (tutto: l'intero profilo, anche il suo aspetto e i suoi stili; non la musica, le playlist o gli ascolti, che sono dei backup).",
+        ["Settings exported"] = "Impostazioni esportate",
+        ["Import settings"] = "Importa impostazioni",
+        ["This file isn't settings of Ultimate MP3 Player."] = "Questo file non contiene impostazioni di Ultimate MP3 Player.",
+        ["From {0}, into the profile {1}: what to take. The look comes in as a look of its own."] =
+            "Da {0}, nel profilo {1}: cosa prendere. L'aspetto arriva come uno stile a sé.",
+        ["Settings imported"] = "Impostazioni importate",
+        ["Connect the phone and the computer first."] = "Prima collega il telefono e il computer.",
+        ["Phone options…"] = "Opzioni del telefono…",
+        ["Open Ultimate MP3 Player on the phone."] = "Apri Ultimate MP3 Player sul telefono.",
+        ["Go to Settings › Connect to computer."] = "Vai in Impostazioni › Collega al computer.",
+        ["The phone shows up below: Connect."] = "Il telefono compare qui sotto: Collega.",
+        ["Can't find it?"] = "Non lo trovi?",
+        ["Each one then shows the other's music, the phone controls the music of this computer and receives music with “To the phone” in the export window."] =
+            "Poi ognuno mostra la musica dell'altro, il telefono comanda la musica di questo computer e riceve musica con «Al telefono» nella finestra di esportazione.",
     };
 }

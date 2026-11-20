@@ -114,6 +114,15 @@ public partial class MainWindow : Window
 
     private MainViewModel? Vm => DataContext as MainViewModel;
 
+    // The side bar's Settings clicked while they're open: back to their start (a click on a checked entry changes nothing else).
+    private bool _settingsOpen;
+    private void SettingsNav_Down(object sender, MouseButtonEventArgs e) => _settingsOpen = Vm is { Page: SettingsViewModel };
+    private void SettingsNav_Click(object sender, RoutedEventArgs e)
+    {
+        if (_settingsOpen) Vm?.SettingsAgain();
+        _settingsOpen = false;
+    }
+
     // Replaced by a new window (language change): no tray logic.
     public void CloseSilently()
     {
@@ -279,7 +288,7 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 break;
             case Key.OemComma when ctrl:
-                vm.GoSettings();
+                vm.SettingsAgain();
                 e.Handled = true;
                 break;
             case Key.V when ctrl && !inText:

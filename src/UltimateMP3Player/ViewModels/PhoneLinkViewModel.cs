@@ -87,6 +87,8 @@ public sealed class PhoneLinkViewModel : Observable
     public bool IsConnecting => Status == LinkStatus.Connecting;
     public bool IsReconnecting => Status == LinkStatus.Reconnecting;
     public bool HasPhone => _link != null;
+    // The button opening the window, saying what it's for now.
+    public string ButtonText => HasPhone ? L.T("Phone options…") : L.T("Connect phone…");
     public string? PhoneName => _link?.OtherName;
     public string StatusText => Status switch
     {
@@ -107,7 +109,7 @@ public sealed class PhoneLinkViewModel : Observable
 
     private void Changed()
     {
-        OnChanged(nameof(Status), nameof(IsLinked), nameof(IsConnecting), nameof(IsReconnecting), nameof(HasPhone), nameof(PhoneName),
+        OnChanged(nameof(Status), nameof(IsLinked), nameof(IsConnecting), nameof(IsReconnecting), nameof(HasPhone), nameof(ButtonText), nameof(PhoneName),
             nameof(StatusText), nameof(BarTip));
         CommandManager.InvalidateRequerySuggested();
         _main.OnPhoneLinkChanged();
@@ -161,6 +163,9 @@ public sealed class PhoneLinkViewModel : Observable
     }
 
     // ------------------------------------------------------------------ connecting
+
+    // The phone connected now (settings imported: the profile opened again takes it up again).
+    public PhoneAd? LinkedPhone => _link is { IsLinked: true } link ? link.Phone : null;
 
     public async Task Connect(PhoneAd ad)
     {

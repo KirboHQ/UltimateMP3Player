@@ -66,9 +66,20 @@ public static class Lifecycle
                     Dispatcher.UIThread.Post(() => App.Deliver(new Incoming(IncomingKind.Pack, pack)));
             }
             else if (uri.Scheme is "http" or "https") Dispatcher.UIThread.Post(() => App.Deliver(new Incoming(IncomingKind.Link, uri.ToString())));
+            else if (uri.Scheme == "ump" && PlayIn(uri) is { } words) Dispatcher.UIThread.Post(() => App.Deliver(new Incoming(IncomingKind.Play, words)));
             else if (uri.Scheme == "ump" && LinkIn(uri.OriginalString) is { } link) Dispatcher.UIThread.Post(() => App.Deliver(new Incoming(IncomingKind.Link, link)));
         }
         catch (Exception ex) { App.Log(ex); }
+    }
+
+    // "ump://play?q=<words>" (or "ump://play/<words>"): what a Shortcut dictated to Siri, played like the Assistant's words on Android
+    // (VoicePlay); none: the music from where it was.
+    private static string? PlayIn(Uri uri)
+    {
+        if (!uri.Host.Equals("play", StringComparison.OrdinalIgnoreCase)) return null;
+        foreach (var part in uri.Query.TrimStart('?').Split('&'))
+            if (part.StartsWith("q=", StringComparison.OrdinalIgnoreCase)) return Uri.UnescapeDataString(part[2..].Replace('+', ' '));
+        return Uri.UnescapeDataString(uri.AbsolutePath.Trim('/'));
     }
 
     // The app's own links (Info.plist): "ump://add?url=<link>" (a Shortcut in the share sheet can open one, iOS has no
