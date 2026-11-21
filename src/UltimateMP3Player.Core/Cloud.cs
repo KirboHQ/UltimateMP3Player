@@ -229,4 +229,14 @@ public static class VideoFinder
             .OrderByDescending(c => c.Score)
             .ToList();
     }
+
+    // For the automatic videos: the one found that surely is this song's: the same length (the video follows the song's audio),
+    // title and artist matching, and a real video, not a picture with the song (the "- Topic" channels, "Official Audio",
+    // lyrics, visualizers). Null: none good enough (then nothing: a wrong video is worse than none).
+    public static VideoCandidate? Sure(IEnumerable<VideoCandidate> found, double duration) => duration <= 0 ? null
+        : found.FirstOrDefault(c => c.Score >= 1.4 && c.Duration is double d && Math.Abs(d - duration) <= 4 && IsMoving(c));
+
+    private static bool IsMoving(VideoCandidate c) =>
+        !(c.Channel?.EndsWith("- Topic", StringComparison.OrdinalIgnoreCase) ?? false) &&
+        !Regex.IsMatch(c.Title, @"\b(official\s+audio|audio\s+only|lyrics?|lyric\s+video|visuali[sz]er|testo|static)\b", RegexOptions.IgnoreCase);
 }

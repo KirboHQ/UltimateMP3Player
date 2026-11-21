@@ -40,7 +40,9 @@ public sealed class RemovePlan
         var main = tracks[0].Main;
         bool one = tracks.Count == 1;
         // (the other device's songs, Connect phone, are that library's)
-        var lib = tracks.Where(t => main.Library.Get(t.Id) == t.T || main.IsTheirs(t)).Select(t => t.T).ToList();
+        var lib = tracks.Where(t => main.Owns(t.T) || main.IsTheirs(t)).Select(t => t.T).ToList();
+        // (the files are shared by the profiles of this device that have the song)
+        bool Shared(Track t) => !main.IsTheirs(t.Id) && main.Host.Profiles.Profiles.Any(i => i.Id != main.Profile.Info.Id && Profile.Get(i).Has(t.Id));
 
         var videos = lib.Where(t => t.HasOwnVideo).ToList();
         int sameFile = lib.Count(t => t.HasVideo && !t.HasOwnVideo);
@@ -69,16 +71,18 @@ public sealed class RemovePlan
         else
         {
             deviceDetail = L.T("It stays in your library, playlists, Favorites and statistics with the cloud icon: you listen from its link and save it again whenever you like.");
+            if (device.Any(Shared)) deviceDetail += " " + L.T("Your other profiles that have it will hear it from its link too.");
             if (!one && noLink + cloud > 0)
                 deviceDetail += " " + L.F("Applies to {0}: the others aren't saved or have no link.", L.Count(device.Count, "1 song", "{0} songs"));
         }
 
         bool anyLocal = lib.Any(t => t.IsLocal);
-        long allBytes = lib.Where(t => !t.IsLocal).Sum(t => SizeOf(t.Path) + (t.HasOwnVideo ? SizeOf(t.VideoPath) : 0));
+        long allBytes = lib.Where(t => !t.IsLocal && !Shared(t)).Sum(t => SizeOf(t.Path) + (t.HasOwnVideo ? SizeOf(t.VideoPath) : 0));
         bool onlyHeard = lib.Count == 0;
         string allDetail = onlyHeard
-            ? L.T("It disappears from recently played and from statistics.")
-            : L.T("It also disappears from playlists, Favorites and statistics of every profile.") +
+            ? L.T("It leaves your recently played. Its plays stay in your statistics.")
+            : L.T("It leaves your library, playlists and Favorites. Its plays stay in your statistics.") +
+              (lib.Any(Shared) ? " " + L.T("Your other profiles that have it keep it.") : "") +
               (anyLocal ? " " + L.T("Files added from the device stay in their folder.") : "");
 
         Options = new List<RemoveOption>

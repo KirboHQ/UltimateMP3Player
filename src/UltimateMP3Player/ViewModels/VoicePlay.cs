@@ -67,6 +67,8 @@ public static class VoicePlay
         var services = OnlineSearchServices.Ordered(settings.SearchServices, settings.SearchServicesOff);
         if (!settings.OnlineSearch || services.Count == 0) return L.F("I can't find “{0}” in your library.", words);
         if (s.InRoom && !s.Together.CanAdd) return L.T("The room doesn't let you add songs.");
+        // Another song chosen meanwhile (by hand, while the sites answer): what was found doesn't start over it.
+        int choice = s.Player.Choice;
         busy?.Invoke(true);
         try
         {
@@ -86,6 +88,7 @@ public static class VoicePlay
                 var songs = hits.Where(h => h.Collection == null).OrderBy(h => h.Rank).ToList();
                 if (artist) songs = songs.Where(h => ArtistNames.Has(h.Artist, words)).ToList();
                 if (songs.Count == 0) continue;
+                if (choice != s.Player.Choice) return null;
                 if (s.InRoom)
                 {
                     s.OpenHit(songs[0]);

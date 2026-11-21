@@ -604,8 +604,21 @@
                     <StackPanel>
                         <TextBlock Text="{local:T Quality}" Classes="card-title"/>
                         <TextBlock Text="{local:T 'Audio format'}" Classes="field-label"/>
-                        <views:ChoiceTiles Margin="-4,0,-4,12" Items="{Binding AudioFormats}" Selected="{Binding AudioFormat}"/>
-                        <TextBlock Text="{local:T 'Maximum video quality'}" Classes="field-label"/>
+                        <views:ChoiceTiles Margin="-4,0,-4,0" Items="{Binding AudioFormats}" Selected="{Binding AudioFormat}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- music videos: found and brought as the songs play, the quality of every video -->
+                <Border Theme="{StaticResource Card}" views:SettingsView.Group="download" Padding="22" views:SettingsView.Keywords="{local:T 'music video clip videoclip youtube quality resolution'}">
+                    <StackPanel>
+                        <TextBlock Text="{local:T 'Music videos'}" Classes="card-title"/>
+                        <CheckBox Theme="{StaticResource SettingSwitch}" IsChecked="{Binding AutoVideos}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Download the video when there is one'}"/>
+                                <TextBlock Text="{local:T 'While a song plays, its video is found on YouTube (only one that surely is that song) and shown on its page. Saved songs keep it beside their audio; the others keep the last 10 in the temporary storage.'}" Classes="hint"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <TextBlock Text="{local:T 'Video quality'}" Classes="field-label"/>
                         <views:ChoiceTiles TileWidth="86" Items="{Binding VideoQualities}" Selected="{Binding VideoQuality}"/>
                     </StackPanel>
                 </Border>

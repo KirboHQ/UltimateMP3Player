@@ -68,6 +68,8 @@ var win = host.Window!;
 win.Width = 1400;
 win.Height = 900;
 var main = host.Session!;
+// (the songs the checks add are this profile's: each way into the app gives its songs to a profile, Library.Add alone doesn't)
+main.Library.TrackAdded += t => main.Profile.Own(new[] { t.Id });
 if (plain)
 {
     main.Profile.Data.Glass.On = false;
@@ -946,6 +948,8 @@ loginsButton.BringIntoView();
 Dispatcher.UIThread.RunJobs();
 Shot(win, "settings-signins");
 Check(win.GetVisualDescendants().OfType<TextBlock>().Any(t => t.IsEffectivelyVisible && t.Text == "YouTube"), "sign-ins: Settings says which sites");
+Check(!host.Settings.AutoVideos && win.GetVisualDescendants().OfType<TextBlock>().Any(t => t.IsEffectivelyVisible && t.Text == L.T("Download the video when there is one"))
+    && win.GetVisualDescendants().OfType<TextBlock>().Any(t => t.IsEffectivelyVisible && t.Text == L.T("Video quality")), "music videos: their card in Download, off at first");
 var logins = Dialogs.LoginsWindow();
 logins.Show();
 Dispatcher.UIThread.RunJobs();

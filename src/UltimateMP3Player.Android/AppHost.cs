@@ -40,7 +40,13 @@ public sealed class AppHost : Observable
         {
             Profiles.Profiles.Add(new ProfileInfo { Name = L.T("Me"), Color = ProfileInfo.Palette[0] });
             Profiles.Save();
+            // (songs already there, from before profiles existed: the first profile's)
+            Profile.Get(Profiles.Profiles[0]).Own(Library.Snapshot().Select(t => t.Id));
         }
+        Profile.TakeLibrary(Profiles, Library);
+#if ANDROID_APP
+        NetworkCost.Metered = () => Services.Updater.Metered;
+#endif
         Ui.Animations = Settings.Animations;
         Spectrum.Shared.AnalyzeMs = 16;
         Glide.Speed = Math.Clamp(Settings.AnimationSpeed, 0.25, 3);
@@ -107,6 +113,8 @@ public sealed class AppHost : Observable
     // Suggested songs that aren't in the library (the folder keeps the name of the computer apps' 3.0).
     private SongCache? _songCache;
     public SongCache SongCache => _songCache ??= new SongCache(AppPaths.CacheDir);
+    private VideoCache? _videoCache;
+    public VideoCache VideoCache => _videoCache ??= new VideoCache(AppPaths.VideoCacheDir);
 
     private MainViewModel? _session;
     public MainViewModel? Session { get => _session; private set => Set(ref _session, value); }
@@ -271,6 +279,7 @@ public sealed class AppHost : Observable
             try { Library.Flush(); } catch { }
             try { ArtistSites.Flush(); } catch { }
             _songCache?.Flush();
+            _videoCache?.Flush();
             Profile.FlushAll();
             Images.Release();
             // Memory given back while nothing plays (playing, it would stop the sound for as long as it takes).
@@ -443,6 +452,7 @@ public sealed class AppHost : Observable
         try { Library.Flush(); } catch { }
         try { ArtistSites.Flush(); } catch { }
         _songCache?.Flush();
+        _videoCache?.Flush();
         Profile.FlushAll();
         Updates.Apply(true, Session?.Profile.Info.Id, background);
     }

@@ -54,6 +54,8 @@ public sealed class Track
     // The file to play: the saved one, otherwise the cache's; null = it has to be fetched from its link first.
     [System.Text.Json.Serialization.JsonIgnore] public string? AudioPath =>
         IsSaved && File.Exists(Path) ? Path : CachePath is { Length: > 0 } c && File.Exists(c) ? c : null;
+    // Its music video from the video cache (VideoCache), while there is one (a song not saved on the device).
+    [System.Text.Json.Serialization.JsonIgnore] public string? CacheVideo { get; set; }
     // Its saved file is really there.
     [System.Text.Json.Serialization.JsonIgnore] public bool HasSavedFile => IsSaved && File.Exists(Path);
     // A web page it can be heard (and saved) from again.

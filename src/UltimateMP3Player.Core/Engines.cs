@@ -62,6 +62,10 @@ public static class Engines
 
     // Without ffmpeg (the iPhone) videos aren't downloaded: nothing could put their video and audio together or play them.
     public static bool VideoDownloads => Host?.Ffmpeg != false;
+    // The music videos shown with the songs (only the picture, MutedVideo): with ffmpeg, or with the device's own decoder (the
+    // iPhone: NativeVideo).
+    public static bool NativeVideo { get; set; }
+    public static bool Videos => VideoDownloads || NativeVideo;
 
     public static IReadOnlyList<string> Missing()
         => new[] { YtDlp, GalleryDlNeeded ? GalleryDl : null, VideoDownloads ? Ffmpeg : null, VideoDownloads ? Ffprobe : null, Host == null ? Deno : null }

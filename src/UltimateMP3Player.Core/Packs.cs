@@ -137,11 +137,12 @@ public static class PackWriter
         foreach (var p in e.Playlists)
             foreach (var id in p.Tracks.ToList()) Add(id);
         var tags = e.Tags.Select(t => t.Id).ToHashSet();
+        // (the profile's own songs: the library is every profile's)
         if (tags.Count > 0)
             foreach (var t in lib.Snapshot())
-                if (profile.TagsOf(t.Id).Any(tags.Contains)) Add(t.Id);
+                if (profile.Has(t.Id) && profile.TagsOf(t.Id).Any(tags.Contains)) Add(t.Id);
         if (e.WholeLibrary)
-            foreach (var t in lib.Snapshot().OrderBy(t => t.Added)) Add(t.Id);
+            foreach (var t in lib.Snapshot().Where(t => profile.Has(t.Id)).OrderBy(t => t.Added)) Add(t.Id);
         return list;
     }
 
@@ -767,6 +768,9 @@ public static class PackImporter
             catch { res.Failed++; }
             done += 64 * 1024;
         }
+
+        // The songs are this profile's (the ones already on the device for another profile too).
+        profile.Own(res.Map.Values.ToList());
 
         // Tags on the songs.
         foreach (var pt in chosen)

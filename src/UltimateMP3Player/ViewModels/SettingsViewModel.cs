@@ -1200,9 +1200,9 @@ public sealed class SettingsViewModel : Observable
     {
         get
         {
-            var all = _main.Library.Snapshot();
+            var all = _main.OwnSongs();
             int synced = all.Count(t => t.Lyrics == LyricsKind.Synced), plain = all.Count(t => t.Lyrics == LyricsKind.Plain);
-            int missing = Lyrics.Missing().Count;
+            int missing = Lyrics.Missing().Count(t => _main.Profile.Has(t.Id));
             return L.F("{0} with lyrics ({1} synced) · {2} to look for", synced + plain, synced, missing);
         }
     }
@@ -1256,6 +1256,33 @@ public sealed class SettingsViewModel : Observable
     {
         get => S.PreferAudioOnly;
         set { S.PreferAudioOnly = value; Save(); OnChanged(); }
+    }
+
+    // Settings › Music videos (VideosViewModel): the songs' videos found and brought as they play; on the phones, only on Wi-Fi.
+    public bool ShowVideoSettings => VideosViewModel.Possible;
+
+    public bool AutoVideos
+    {
+        get => S.AutoVideos;
+        set
+        {
+            S.AutoVideos = value;
+            Save();
+            OnChanged();
+            if (value) _main.Videos.Refresh();
+        }
+    }
+
+    public bool VideosWifiOnly
+    {
+        get => S.VideosWifiOnly;
+        set
+        {
+            S.VideosWifiOnly = value;
+            Save();
+            OnChanged();
+            _main.Videos.Refresh();
+        }
     }
 
     // Where the download card's "save the audio" starts: off, songs only go into the library (in the cloud).
@@ -1339,7 +1366,7 @@ public sealed class SettingsViewModel : Observable
         get
         {
             var words = Text.Normalize(_artistFilter).Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            return _main.Library.Snapshot()
+            return _main.OwnSongs()
                 .Where(t => !string.IsNullOrWhiteSpace(t.Artist))
                 .GroupBy(t => t.Artist!.Trim(), StringComparer.CurrentCultureIgnoreCase)
                 .Where(g => words.All(w => Text.Normalize(g.Key).Contains(w)))
@@ -1575,13 +1602,19 @@ public sealed class SettingsViewModel : Observable
         get
         {
             var (count, bytes) = _main.Host.SongCache.Stats();
-            return count == 0 ? L.T("It's empty now.") : L.F("Now: {0} · {1}.", L.Count(count, "1 song", "{0} songs"), Text.Size(bytes));
+            var (videos, videoBytes) = _main.Host.VideoCache.Stats();
+            if (count + videos == 0) return L.T("It's empty now.");
+            var what = string.Join(", ", new[] { count > 0 ? L.Count(count, "1 song", "{0} songs") : null, videos > 0 ? L.Count(videos, "1 video", "{0} videos") : null }.OfType<string>());
+            return L.F("Now: {0} · {1}.", what, Text.Size(bytes + videoBytes));
         }
     }
 
     public ICommand ClearCacheCommand => new RelayCommand(() =>
     {
         _main.Together.ClearCache();
+        // (the videos too, not the ones of the song playing and the next)
+        var p = _main.Player;
+        _main.Host.VideoCache.Clear(new HashSet<string>(new[] { p.Current?.T.CacheVideo, p.NextTrack?.CacheVideo }.OfType<string>(), StringComparer.OrdinalIgnoreCase));
         OnChanged(nameof(CacheText));
         _main.Toast(L.T("Song storage emptied (the ones in the queue stay)"));
     });
@@ -1715,7 +1748,7 @@ public sealed class SettingsViewModel : Observable
     {
         get
         {
-            var stats = _main.Profile.StatsSnapshot().Where(kv => _main.Library.Get(kv.Key) != null).Select(kv => kv.Value).ToList();
+            var stats = _main.Profile.StatsSnapshot().Where(kv => _main.Get(kv.Key) != null || _main.Radio.Has(kv.Key)).Select(kv => kv.Value).ToList();
             return stats.Count == 0 ? L.T("No plays counted yet.")
                 : L.F("{0} listened · {1} · {2}", StatsViewModel.TimeText(stats.Sum(s => s.Seconds)),
                     L.Count(stats.Sum(s => s.Plays), "1 play", "{0} plays"), L.Count(stats.Count(s => s.Plays > 0), "1 song played", "{0} songs played"));

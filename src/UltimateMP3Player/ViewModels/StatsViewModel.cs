@@ -27,7 +27,11 @@ public sealed class StatsViewModel : Observable, ITrackList
         RecapCommand = new RelayCommand(() => _main.OpenRecap(DateTime.Now.Year, 0));
         ImportSpotifyCommand = new RelayCommand(() => _ = SpotifyImport.RunAsync(_main));
         ImportLastFmCommand = new RelayCommand(() => _ = LastFmImport.RunAsync(_main));
+        ClearCommand = new RelayCommand(() => _ = _main.ClearStats());
     }
+
+    // "Delete my statistics" (this profile's only, after asking).
+    public ICommand ClearCommand { get; }
 
     public string ContextId => "stats";
     public string ContextName => L.T("Listening statistics");
@@ -90,7 +94,7 @@ public sealed class StatsViewModel : Observable, ITrackList
     // suggested ones, the ones of a link): they stay here, in the cloud, even when they're no longer anywhere else.
     private List<Track> Listed(out List<Track> library)
     {
-        library = _main.Library.Snapshot();
+        library = _main.OwnSongs();
         return library.Concat(_main.Radio.HeardItems().Select(i => i.T)).ToList();
     }
 

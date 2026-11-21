@@ -674,7 +674,8 @@ public class OnlineHitViewModel : Observable
     }
 
     // (an album isn't a song of the same name)
-    private Track? Find() => Hit.Collection != null ? null : _main.Library.FindItem(OnlineSearchServices.ToItem(Hit), byName: true);
+    private Track? Find() => Hit.Collection != null ? null
+        : _main.Library.FindItem(OnlineSearchServices.ToItem(Hit), byName: true) is { } t && _main.Owns(t) ? t : null;
 
     public MainViewModel Main => _main;
     public bool IsSong => Hit.Collection == null;
@@ -843,8 +844,8 @@ public sealed class NowPlayingViewModel : Observable
     }
 
     // (driving a computer the video would be this phone's, out of step: the cover instead)
-    public string? VideoPath => ShowVideo && !Player.IsRemote ? Player.Current?.T.VideoPath : null;
-    public bool HasVideo => Player.Current?.HasVideo == true && !Player.IsRemote;
+    public string? VideoPath => ShowVideo && !Player.IsRemote && Player.Current is { } c ? Main.Videos.FileFor(c.T) : null;
+    public bool HasVideo => !Player.IsRemote && Player.Current is { } c && Main.Videos.FileFor(c.T) != null;
     public bool ShowCover => VideoPath == null && !LyricsVisible;
     public bool CoverTilt => Main.Host.Settings.CoverTilt;
     // The bars of the music from below, with the cover (Settings › Appearance).

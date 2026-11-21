@@ -65,8 +65,8 @@ public sealed class Updater : Observable
         try { if (Directory.Exists(UpdateDir)) Directory.Delete(UpdateDir, true); } catch { }
     }
 
-    // Phone data (not Wi-Fi): the automatic check doesn't download 60 MB on its own.
-    private static bool Metered
+    // Phone data (not Wi-Fi): the automatic check doesn't download 60 MB on its own (nor the music videos, NetworkCost.Metered).
+    internal static bool Metered
     {
         get
         {

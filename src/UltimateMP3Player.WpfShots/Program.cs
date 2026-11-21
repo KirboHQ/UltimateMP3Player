@@ -73,6 +73,8 @@ public static class Program
         HideTray(host);
         host.OpenProfile(host.ChooseStartupProfile(null)!);
         var main = host.Session!;
+        // (the songs the checks add are this profile's: each way into the app gives its songs to a profile, Library.Add alone doesn't)
+        main.Library.TrackAdded += t => main.Profile.Own(new[] { t.Id });
         var win = new MainWindow(host)
         {
             DataContext = main, WindowStartupLocation = WindowStartupLocation.Manual, Left = -32000, Top = -32000, Width = 1400, Height = 900,
@@ -712,6 +714,8 @@ public static class Program
         loginsButton.BringIntoView();
         Shot(win, "settings-signins", 400);
         Check(Descendants(win).OfType<TextBlock>().Any(t => t.IsVisible && t.Text == "YouTube"), "sign-ins: Settings says which sites");
+        Check(!host.Settings.AutoVideos && Descendants(win).OfType<TextBlock>().Any(t => t.IsVisible && t.Text == L.T("Download the video when there is one"))
+            && Descendants(win).OfType<TextBlock>().Any(t => t.IsVisible && t.Text == L.T("Video quality")), "music videos: their card in Download, off at first");
         var logins = Dialogs.LoginsWindow();
         logins.WindowStartupLocation = WindowStartupLocation.Manual;
         logins.Left = logins.Top = -32000;

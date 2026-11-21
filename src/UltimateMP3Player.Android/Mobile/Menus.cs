@@ -118,8 +118,13 @@ public static class Menus
         // A song of the room itself (the one playing; a song that isn't in the library).
         if (main.InRoom && main.Together.ItemFor(t) is { } roomItem && (owner == null || main.Together.IsStandIn(t)))
             return ForRoomItem(roomItem, main.Together);
-        // A suggested song that isn't in the library.
-        if (main.Radio.Item(t.Id) is { } suggested) return ForRadioItem(suggested, main, null);
+        // A suggested song that isn't in the library (in the statistics: one heard, a song deleted that was listened to).
+        if (main.Radio.Item(t.Id) is { } suggested)
+        {
+            var heard = ForRadioItem(suggested, main, null);
+            if (owner is StatsViewModel) heard.Add(ForgetStatsEntry(t));
+            return heard;
+        }
         var player = main.Player;
         var menu = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
         if (main.InRoom) AddRoomItems(menu, new[] { t });
@@ -143,19 +148,34 @@ public static class Menus
         menu.Add(new SheetEntry { Text = L.T("Lyrics"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
         menu.Add(new SheetEntry { Text = L.T("More"), Glyph = "", Sub = () => MoreMenu(t) });
         menu.Line();
+        if (owner is StatsViewModel) menu.Add(ForgetStatsEntry(t));
         menu.Add(new SheetEntry(L.T("Delete…"), GDelete, () => _ = main.DeleteTrack(t)) { Danger = true });
         return menu;
     }
 
+    // The statistics page: the song out of this profile's statistics (asks first).
+    private static SheetEntry ForgetStatsEntry(TrackViewModel t) => new(L.T("Remove from my statistics…"), "\uE738", () => _ = t.Main.ForgetStats(new[] { t }));
+
     // What a song's menu needs less often: there, the sheet fits on the screen without scrolling.
+    // A song's music video (any song: beside its audio when saved, in the cache otherwise, VideosViewModel): find it (or another
+    // one), or none for this song (only worth offering when it has one or they come by themselves). The same as the computers'.
+    private static void AddVideoItems(SheetMenu menu, TrackViewModel t)
+    {
+        var videos = t.Main.Videos;
+        if (!videos.CanHave(t.T)) return;
+        bool has = videos.FileFor(t.T) != null;
+        menu.Add(new(has ? L.T("Find another video…") : L.T("Find the video…"), GVideo, () => _ = videos.FindAsync(t)));
+        if (videos.IsOff(t.T)) menu.Add(new(L.T("Show its video again"), "\uE890", () => videos.SetOff(t.T, false)));
+        else if (has || t.Main.Host.Settings.AutoVideos) menu.Add(new(L.T("No video for this song"), "\uE711", () => videos.SetOff(t.T, true)));
+    }
+
     private static SheetMenu MoreMenu(TrackViewModel t)
     {
         var main = t.Main;
         var menu = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
         menu.Add(new(L.T("Edit info…"), GEdit, () => _ = main.EditTrack(t)));
         menu.Add(new(L.T("Change cover…"), GPicture, () => _ = main.ChangeTrackCover(t)));
-        if (Engines.VideoDownloads && t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
-            menu.Add(new(L.T("Find the video…"), GVideo, () => _ = main.FindVideo(t)));
+        AddVideoItems(menu, t);
         if (t.T.SourceUrl is { } url && url.StartsWith("http"))
         {
             menu.Add(new(L.T("Copy original link"), GLink, () => { Ui.CopyText(url); main.Toast(L.T("Link copied")); }));
@@ -197,7 +217,7 @@ public static class Menus
         else if (tracks.Any(t => t.IsSaving))
             menu.Add(new SheetEntry(L.T("Saving to device…"), GSave, null) { Info = true });
         // The quality of the ones with a link: downloaded again in it (the saved ones), kept for when they're heard (the cloud).
-        var linked = tracks.Where(t => t.T.HasLink && main.Library.Get(t.Id) == t.T).ToList();
+        var linked = tracks.Where(t => t.T.HasLink && main.Owns(t.T)).ToList();
         if (linked.Count > 0)
             menu.Add(new(linked.Any(t => t.T.HasSavedFile) ? L.T("Download again / quality…") : L.T("Listening quality…"), "", () =>
             {
@@ -328,6 +348,7 @@ public static class Menus
         menu.Add(AddToPlaylist(t));
         menu.Add(FavoriteItem(t));
         menu.Add(new SheetEntry { Text = L.T("Lyrics"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
+        AddVideoItems(menu, t);
         menu.Add(new(L.T("Play similar songs"), GRadio, () => player.PlayRadio(t)));
         AddGoToArtist(menu, t.Main, t.T.Artist);
         menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));

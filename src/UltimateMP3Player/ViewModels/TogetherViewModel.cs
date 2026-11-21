@@ -940,7 +940,7 @@ public sealed class TogetherViewModel : Observable
             ? L.F("Coming from the host: it's getting it ready · {0:0}%", st.Pct)
             : L.T("Coming from the host as soon as it's ready there");
     }
-    public bool InLibrary(string itemId) => _fetcher?.LibraryTrack(itemId) is { } t && _main.Library.Get(t.Id) != null;
+    public bool InLibrary(string itemId) => _fetcher?.LibraryTrack(itemId) is { } t && _main.Owns(t);
 
     // The song as the rest of the app sees it: the library one if you have it, otherwise a stand-in with the room's data.
     public TrackViewModel TrackFor(RoomTrack item)
@@ -1105,7 +1105,7 @@ public sealed class TogetherViewModel : Observable
 
     private void RefreshRandomSources()
     {
-        var list = new List<Choice> { new(L.T("All songs"), "library", L.Count(_main.Library.Count, "1 song", "{0} songs")) };
+        var list = new List<Choice> { new(L.T("All songs"), "library", L.Count(_main.OwnSongs().Count, "1 song", "{0} songs")) };
         var seed = SuggestedSeed();
         list.Add(new Choice("✦ " + L.T("Suggested online"), Suggested,
             seed != null ? L.F("like “{0}”", seed.Title.Length > 30 ? seed.Title[..30] + "…" : seed.Title) : L.T("like the room's song")));
@@ -1127,9 +1127,9 @@ public sealed class TogetherViewModel : Observable
         if (source.StartsWith("tag:"))
         {
             var tag = source[4..];
-            return lib.Snapshot().Where(t => _main.Profile.TagsOf(t.Id).Contains(tag));
+            return _main.OwnSongs().Where(t => _main.Profile.TagsOf(t.Id).Contains(tag));
         }
-        return lib.Snapshot();
+        return _main.OwnSongs();
     }
 
     private void AddRandom()
@@ -1670,6 +1670,7 @@ public sealed class TogetherViewModel : Observable
             if (!t.HasCover && t.ArtUrl != null) _ = _main.FetchCover(t, new[] { t.ArtUrl });
             added = true;
         }
+        _main.Profile.Own(new[] { t.Id });
         if (playlist != null) _main.Profile.AddTrack(playlist, t.Id);
         _fetcher?.UseLibrary(item.Id, t);
         item.Refresh();
@@ -1692,6 +1693,7 @@ public sealed class TogetherViewModel : Observable
         var known = _fetcher?.LibraryTrack(item.Id) is { } lt && _main.Library.Get(lt.Id) != null ? lt : null;
         if (known is { HasSavedFile: true } have)
         {
+            _main.Profile.Own(new[] { have.Id });
             if (playlist != null) _main.AddToPlaylist(_main.Vm(have), playlist);
             else _main.Toast(L.T("It's already saved on the device"));
             return have;
@@ -1755,6 +1757,7 @@ public sealed class TogetherViewModel : Observable
                 catch { }
             }
             _main.Library.Add(t);
+            _main.Profile.Own(new[] { t.Id });
             if (playlist != null) _main.Profile.AddTrack(playlist, t.Id);
             // It plays on from where it is; the cache copy goes when it's no longer open.
             _fetcher?.UseLibrary(r.Id, t);

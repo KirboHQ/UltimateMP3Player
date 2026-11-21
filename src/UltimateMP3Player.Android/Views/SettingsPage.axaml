@@ -439,11 +439,30 @@
                         </StackPanel>
                     </CheckBox>
                     <Border Classes="line"/>
-                    <StackPanel Margin="0,12">
-                        <TextBlock Text="{local:T 'Maximum video quality'}" Classes="setting" Margin="0,0,0,8"/>
-                        <views:ChoiceTiles TileWidth="86" Items="{Binding VideoQualities}" Selected="{Binding VideoQuality}"/>
+                    <!-- music videos: found and brought as the songs play (only on Wi-Fi unless chosen), the quality of every video -->
+                    <StackPanel IsVisible="{Binding ShowVideoSettings}">
+                        <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding AutoVideos}">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Download the video when there is one'}" Classes="setting"/>
+                                <TextBlock Text="{local:T 'While a song plays, its video is found on YouTube and shown on its page'}" Classes="setting-hint"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <StackPanel views:Fold.Open="{Binding AutoVideos}">
+                            <Border Classes="line"/>
+                            <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding VideosWifiOnly}">
+                                <StackPanel>
+                                    <TextBlock Text="{local:T 'Only on Wi-Fi'}" Classes="setting"/>
+                                    <TextBlock Text="{local:T 'No videos with mobile data'}" Classes="setting-hint"/>
+                                </StackPanel>
+                            </CheckBox>
+                        </StackPanel>
+                        <Border Classes="line"/>
+                        <StackPanel Margin="0,12">
+                            <TextBlock Text="{local:T 'Video quality'}" Classes="setting" Margin="0,0,0,8"/>
+                            <views:ChoiceTiles TileWidth="86" Items="{Binding VideoQualities}" Selected="{Binding VideoQuality}"/>
+                        </StackPanel>
+                        <Border Classes="line"/>
                     </StackPanel>
-                    <Border Classes="line"/>
                     <StackPanel Margin="0,12">
                         <TextBlock Text="{local:T 'Downloads at once'}" Classes="setting" Margin="0,0,0,8"/>
                         <views:ChoiceTiles Numbers="True" Items="{Binding ParallelChoices}" Selected="{Binding Parallel}"/>

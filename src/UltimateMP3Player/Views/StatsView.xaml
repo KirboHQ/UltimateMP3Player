@@ -95,6 +95,11 @@
                     <TextBlock Text="{local:T 'Import from Last.fm'}" Margin="8,0,0,0"/>
                 </StackPanel>
             </Button>
+            <!-- this profile's statistics gone (asks first) -->
+            <Button Style="{StaticResource GhostButton}" Margin="10,0,0,0" Padding="12,9" Command="{Binding ClearCommand}"
+                    ToolTip="{local:T 'Delete my statistics…'}" AutomationProperties.Name="{local:T 'Delete my statistics…'}">
+                <TextBlock Text="&#xE74D;" Style="{StaticResource Glyph}"/>
+            </Button>
             <ComboBox DockPanel.Dock="Right" Width="200" ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" VerticalAlignment="Center"
                       ToolTip="{local:T 'Sort by'}" AutomationProperties.Name="{local:T 'Sort by'}"/>
             <Button DockPanel.Dock="Right" Style="{StaticResource TagFilterButton}" Margin="0,0,10,0" Click="TagFilter_Click"/>

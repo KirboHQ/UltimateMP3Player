@@ -52,7 +52,10 @@ public sealed class AppHost : Observable
             name = name.Length > 0 ? char.ToUpper(name[0]) + name[1..] : L.T("Me");
             Profiles.Profiles.Add(new ProfileInfo { Name = name, Color = ProfileInfo.Palette[0] });
             Profiles.Save();
+            // (songs already there, from before profiles existed: the first profile's)
+            Profile.Get(Profiles.Profiles[0]).Own(Library.Snapshot().Select(t => t.Id));
         }
+        Profile.TakeLibrary(Profiles, Library);
         Ui.Animations = Settings.Animations;
         Glide.Speed = Math.Clamp(Settings.AnimationSpeed, 0.25, 3);
         Ui.Zoom = Math.Clamp(Settings.UiZoom, 0.5, 2);
@@ -114,6 +117,8 @@ public sealed class AppHost : Observable
     // Songs of the rooms and suggested songs that aren't in the library (the folder keeps its 3.0 name).
     private SongCache? _songCache;
     public SongCache SongCache => _songCache ??= new SongCache(AppPaths.CacheDir);
+    private VideoCache? _videoCache;
+    public VideoCache VideoCache => _videoCache ??= new VideoCache(AppPaths.VideoCacheDir);
 
     // ------------------------------------------------------------------ terms of use
 
@@ -389,6 +394,7 @@ public sealed class AppHost : Observable
         try { Library.Flush(); } catch { }
         try { ArtistSites.Flush(); } catch { }
         _songCache?.Flush();
+        _videoCache?.Flush();
         Profile.FlushAll();
         if (Updates.IsReady) Updates.Apply(false, null, false);
         Presence.Dispose();
@@ -478,12 +484,12 @@ public sealed class AppHost : Observable
     }
 
     // (the keys change with the song and its cover: a page asks again, and nothing of the disk is named in a link)
-    private static OverlayState OverlayNow(PlayerViewModel? p)
+    private OverlayState OverlayNow(PlayerViewModel? p)
     {
         if (p?.Current is not { } c) return OverlayState.Nothing;
         var id = Uri.EscapeDataString(c.Id);
         var cover = c.T.HasCover ? AppPaths.TrackCover(c.Id) : null;
-        var video = c.T.VideoPath is { Length: > 0 } path && File.Exists(path) ? path : null;
+        var video = Session?.Videos.FileFor(c.T);
         return new OverlayState(c.Title, c.T.DisplayArtist, cover != null ? $"{id}-{c.T.CoverVersion}" : null, cover, video != null ? id : null, video,
             p.EnginePosition.TotalSeconds, p.Duration, p.Speed, p.IsPlaying, p.IsLive);
     }

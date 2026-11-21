@@ -2695,5 +2695,48 @@ public static partial class L
         ["Can't find it?"] = "Non lo trovi?",
         ["Each one then shows the other's music, the phone controls the music of this computer and receives music with “To the phone” in the export window."] =
             "Poi ognuno mostra la musica dell'altro, il telefono comanda la musica di questo computer e riceve musica con «Al telefono» nella finestra di esportazione.",
+        // 5.5: each profile's own library, its statistics kept or cleared by itself, music videos for every song
+        ["Your other profiles that have it keep it."] = "Gli altri tuoi profili che lo hanno lo tengono.",
+        ["Your other profiles that have it will hear it from its link too."] = "Anche gli altri tuoi profili che lo hanno lo ascolteranno dal suo link.",
+        ["It leaves your library, playlists and Favorites. Its plays stay in your statistics."] =
+            "Esce dalla tua libreria, dalle playlist e dai Preferiti. I suoi ascolti restano nelle tue statistiche.",
+        ["It leaves your recently played. Its plays stay in your statistics."] = "Esce dagli ascoltati di recente. I suoi ascolti restano nelle tue statistiche.",
+        ["“{0}” removed from your library"] = "«{0}» tolto dalla tua libreria",
+        ["{0} songs removed from your library"] = "{0} brani tolti dalla tua libreria",
+        ["“{0}” removed from your recently played"] = "«{0}» tolto dagli ascoltati di recente",
+        ["{0} songs removed from your recently played"] = "{0} brani tolti dagli ascoltati di recente",
+        ["The profile “{0}” will be deleted along with its library, playlists, favorites, history, statistics and equalizer. Its songs that no other profile has are deleted from the device."] =
+            "Il profilo «{0}» verrà eliminato insieme a libreria, playlist, preferiti, cronologia, statistiche ed equalizzatore. I suoi brani che nessun altro profilo ha vengono eliminati dal dispositivo.",
+        ["Remove from my statistics…"] = "Togli dalle mie statistiche…",
+        ["Remove “{0}” from your statistics?"] = "Togliere «{0}» dalle tue statistiche?",
+        ["Remove {0} songs from your statistics?"] = "Togliere {0} brani dalle tue statistiche?",
+        ["Its plays, its listening time and its months in the recaps go, only for this profile. It can't be undone."] =
+            "Spariscono i suoi ascolti, il suo tempo di ascolto e i suoi mesi nei riepiloghi, solo per questo profilo. Non si può annullare.",
+        ["“{0}” removed from your statistics"] = "«{0}» tolto dalle tue statistiche",
+        ["{0} songs removed from your statistics"] = "{0} brani tolti dalle tue statistiche",
+        ["Delete my statistics…"] = "Cancella le mie statistiche…",
+        ["Delete your statistics?"] = "Cancellare le tue statistiche?",
+        ["Every play, the listening time, the recaps and the recently played of “{0}” go: other profiles keep theirs. It can't be undone."] =
+            "Spariscono tutti gli ascolti, il tempo di ascolto, i riepiloghi e gli ascoltati di recente di «{0}»: gli altri profili tengono i loro. Non si può annullare.",
+        ["Your statistics were deleted"] = "Le tue statistiche sono state cancellate",
+        ["Music videos"] = "Videoclip",
+        ["music video clip videoclip youtube quality resolution"] = "musica video clip videoclip youtube qualità risoluzione",
+        ["Download the video when there is one"] = "Scarica il video quando c'è",
+        ["While a song plays, its video is found on YouTube and shown on its page"] = "Mentre un brano suona, il suo video viene cercato su YouTube e mostrato nella sua pagina",
+        ["While a song plays, its video is found on YouTube (only one that surely is that song) and shown on its page. Saved songs keep it beside their audio; the others keep the last 10 in the temporary storage."] =
+            "Mentre un brano suona, il suo video viene cercato su YouTube (solo uno che è di sicuro quel brano) e mostrato nella sua pagina. I brani salvati lo tengono accanto all'audio; degli altri restano gli ultimi 10 nella memoria temporanea.",
+        ["Only on Wi-Fi"] = "Solo con il Wi-Fi",
+        ["No videos with mobile data"] = "Niente video con i dati mobili",
+        ["Video quality"] = "Qualità video",
+        ["1 video"] = "1 video",
+        ["{0} videos"] = "{0} video",
+        ["Find another video…"] = "Trova un altro video…",
+        ["No video for this song"] = "Niente video per questo brano",
+        ["Show its video again"] = "Rimetti il suo video",
+        ["No video for “{0}” from now on"] = "Da ora niente video per «{0}»",
+        ["“{0}” shows its video again"] = "«{0}» mostra di nuovo il suo video",
+        ["Downloading the video of “{0}”…"] = "Download del video di «{0}»…",
+        ["The video of “{0}” is ready"] = "Il video di «{0}» è pronto",
+        ["Couldn't download the video of “{0}”: {1}"] = "Impossibile scaricare il video di «{0}»: {1}",
     };
 }

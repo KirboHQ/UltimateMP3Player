@@ -450,16 +450,18 @@ public sealed class RadioViewModel : Observable
         try { File.Delete(AppPaths.TrackCover(id)); } catch { }
         LyricsStore.Delete(id);
         // Time heard without a play that counted: it doesn't stay in the statistics.
-        if (_main.Profile.StatsOf(id) != null) _main.Profile.ForgetTracks(new[] { id });
+        if (_main.Profile.StatsOf(id) != null) _main.Profile.ForgetStats(new[] { id }, months: false);
+        _main.Profile.ForgetTracks(new[] { id });
     }
 
-    // "Remove completely" on a suggested song: out of the queue, the recently played and the statistics.
+    // "Delete completely" on a song heard (suggested, from a link): out of the queue and the recently played. Its plays stay
+    // in the statistics (it stays kept for them, when one counted); the statistics page takes them out.
     public async Task Forget(IReadOnlyCollection<string> ids)
     {
         await _main.Player.RemoveTracks(ids);
-        _main.Profile.ForgetTracks(ids);
+        _main.Profile.ForgetHistory(ids);
         foreach (var id in ids)
-            if (_items.ContainsKey(id)) Drop(id);
+            if (_items.ContainsKey(id) && !Heard(id)) Drop(id);
         Save();
     }
 
@@ -623,6 +625,7 @@ public sealed class RadioViewModel : Observable
             t.CachePath = _fetcher.PathFor(item.Id) ?? item.T.CachePath;
             lib.Add(t);
         }
+        _main.Profile.Own(new[] { t.Id });
         if (playlist != null) _main.Profile.AddTrack(playlist, t.Id);
         _saved[t.Id] = s;
         _fetcher.Forget(item.Id);
@@ -647,7 +650,9 @@ public sealed class RadioViewModel : Observable
     // A song deleted from the library while it plays (a saved suggestion or any other): it becomes a song heard without
     // saving it, with its file in the cache (the copy it was playing from, still there, or a copy of the library file), so
     // this listen goes on. Afterwards the cache keeps or drops it like any other. playing: the file the player has open.
-    public RadioItemViewModel? Unsave(Track saved, string? playing)
+    // file false: kept without its audio (a song deleted that was listened to: its plays stay, with its name, artist and
+    // cover; heard again from its link).
+    public RadioItemViewModel? Unsave(Track saved, string? playing, bool file = true)
     {
         _saved.Remove(saved.Id, out var song);
         var cache = _main.Host.SongCache;
@@ -660,7 +665,7 @@ public sealed class RadioViewModel : Observable
         try
         {
             if (playing != null && File.Exists(playing) && cache.IsInside(playing)) path = cache.Keep(s.Keys, s.Title, s.Artist, playing);
-            else if (File.Exists(saved.Path))
+            else if (file && File.Exists(saved.Path))
             {
                 var tmp = Path.Combine(cache.TempDir, Ids.New() + Path.GetExtension(saved.Path));
                 File.Copy(saved.Path, tmp);
@@ -668,7 +673,7 @@ public sealed class RadioViewModel : Observable
             }
         }
         catch { }
-        if (path == null) return null;
+        if (path == null && file) return null;
         try
         {
             if (saved.HasCover) File.Copy(AppPaths.TrackCover(saved.Id), AppPaths.TrackCover(s.Id), true);
@@ -684,7 +689,7 @@ public sealed class RadioViewModel : Observable
         t.Peak = saved.Peak;
         t.Bpm = saved.Bpm;
         LyricsStore.Copy(saved.Id, t, saved.Lyrics);
-        _fetcher.Have(s, path);
+        if (path != null) _fetcher.Have(s, path);
         item.Refresh(_fetcher.StatusOf(s.Id));
         return item;
     }

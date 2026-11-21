@@ -116,6 +116,33 @@ public static class FormatSelector
         return new Selection { Video = best, Audio = audio };
     }
 
+    // A music video shown without its sound (the song's own audio plays apart, MutedVideo): a video-only H.264 one at most res
+    // (what every device here decodes; the iPhone, without ffmpeg, only that or HEVC), fetched whole rather than in pieces, at
+    // up to 30 frames a second (smaller, and plenty for the song's page). Null: none.
+    public static YtFormat? ForMutedVideo(YtInfo info, int? res)
+    {
+        var vids = VideoFormats(info).Where(f => !f.HasDrm).ToList();
+        if (vids.Count == 0) return null;
+        var fit = vids.Where(f => res == null || (f.Res ?? 0) <= res).ToList();
+        if (fit.Count == 0) fit = vids.OrderBy(f => f.Res ?? int.MaxValue).Take(1).ToList();
+        if (!VideoDownloads)
+        {
+            fit = fit.Where(f => Codecs.Family(f.VCodec) is "h264" or "hevc").ToList();
+            if (fit.Count == 0) return null;
+        }
+        var order = new[] { "h264", "hevc", "vp9", "av1", "vp8" };
+        return fit
+            .OrderBy(f => Rank(order, f.VCodec))
+            .ThenByDescending(f => f.Res ?? 0)
+            .ThenBy(f => f.IsM3u8 ? 1 : 0)
+            .ThenBy(f => f.Fps > 31 ? 1 : 0)
+            .ThenBy(f => f.HasAudio ? 1 : 0)
+            .ThenByDescending(f => f.Tbr ?? 0)
+            .First();
+    }
+
+    private static bool VideoDownloads => Engines.VideoDownloads;
+
     private static readonly string[] BestAudioOrder = { "flac", "alac", "pcm", "opus", "vorbis", "aac", "mp3" };
 
     // The iPhone decodes only some formats itself (no ffmpeg there): those, when there are any.

@@ -42,8 +42,10 @@ public sealed class MixViewModel : Observable
         _starting = true;
         try
         {
+            // (not over another song chosen while its songs were found online)
+            int choice = _main.Player.Choice;
             var list = await _songs();
-            if (list.Count > 0) _main.Player.PlayMix(list, "mix:" + Id, Title, Online);
+            if (list.Count > 0 && choice == _main.Player.Choice) _main.Player.PlayMix(list, "mix:" + Id, Title, Online);
         }
         finally { _starting = false; }
     }

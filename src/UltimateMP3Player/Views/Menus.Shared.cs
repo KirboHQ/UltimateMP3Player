@@ -27,8 +27,13 @@ public static partial class Menus
         // A song of the room itself (the one playing, from the player bar; a song that isn't in the library).
         if (main.InRoom && main.Together.ItemFor(t) is { } roomItem && (owner == null || main.Together.IsStandIn(t)))
             return ForRoomItem(roomItem, main.Together);
-        // A suggested song that isn't in the library.
-        if (!main.InRoom && main.Radio.Item(t.Id) is { } suggested) return ForRadioItem(suggested, main, null);
+        // A suggested song that isn't in the library (in the statistics: one heard, a song deleted that was listened to).
+        if (!main.InRoom && main.Radio.Item(t.Id) is { } suggested)
+        {
+            var heard = ForRadioItem(suggested, main, null);
+            if (owner is StatsViewModel) heard.Items.Add(ForgetStatsItem(t));
+            return heard;
+        }
         var menu = new ContextMenu();
         if (main.InRoom) AddRoomItems(menu, new[] { t });
         else
@@ -51,8 +56,24 @@ public static partial class Menus
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(MoreSubmenu(t));
         menu.Items.Add(new Separator());
+        if (owner is StatsViewModel) menu.Items.Add(ForgetStatsItem(t));
         menu.Items.Add(Item(L.T("Delete…"), DeleteGlyph, () => _ = main.DeleteTrack(t)));
         return menu;
+    }
+
+    // The statistics page: the song out of this profile's statistics (asks first).
+    private static MenuItem ForgetStatsItem(TrackViewModel t) => Item(L.T("Remove from my statistics…"), "\uE738", () => _ = t.Main.ForgetStats(new[] { t }));
+
+    // A song's music video (any song: beside its audio when saved, in the cache otherwise, VideosViewModel): find it (or another
+    // one), or none for this song (only worth offering when it has one or they come by themselves).
+    private static void AddVideoItems(ItemsControl menu, TrackViewModel t)
+    {
+        var videos = t.Main.Videos;
+        if (!videos.CanHave(t.T)) return;
+        bool has = videos.FileFor(t.T) != null;
+        menu.Items.Add(Item(has ? L.T("Find another video…") : L.T("Find the video…"), VideoGlyph, () => _ = videos.FindAsync(t)));
+        if (videos.IsOff(t.T)) menu.Items.Add(Item(L.T("Show its video again"), "\uE890", () => videos.SetOff(t.T, false)));
+        else if (has || t.Main.Host.Settings.AutoVideos) menu.Items.Add(Item(L.T("No video for this song"), "\uE711", () => videos.SetOff(t.T, true)));
     }
 
     // What a song's menu needs less often: there, the menu fits in a look.
@@ -63,8 +84,7 @@ public static partial class Menus
         Ui.SetGlyph(sub, "");
         sub.Items.Add(Item(L.T("Edit info…"), "", () => _ = main.EditTrack(t)));
         sub.Items.Add(Item(L.T("Change cover…"), "", () => _ = main.ChangeTrackCover(t)));
-        if (t.IsSaved && !t.HasVideo && main.Library.Get(t.Id) == t.T)
-            sub.Items.Add(Item(L.T("Find the video…"), VideoGlyph, () => _ = main.FindVideo(t)));
+        AddVideoItems(sub, t);
         if (!main.InRoom && !main.IsTheirs(t)) sub.Items.Add(DjSubmenu(t));
         if (t.T.HasSavedFile) sub.Items.Add(Item(L.T("Show in folder"), "", () => main.ShowInFolder(t)));
         if (t.T.SourceUrl is { } url && url.StartsWith("http"))
@@ -103,7 +123,7 @@ public static partial class Menus
         else if (tracks.Any(t => t.IsSaving))
             menu.Items.Add(Item(L.T("Saving to device…"), SaveGlyph, () => { }, false));
         // The quality of the ones with a link: downloaded again in it (the saved ones), kept for when they're heard (the cloud).
-        var linked = tracks.Where(t => t.T.HasLink && main.Library.Get(t.Id) == t.T).ToList();
+        var linked = tracks.Where(t => t.T.HasLink && main.Owns(t.T)).ToList();
         if (linked.Count > 0)
             menu.Items.Add(Item(linked.Any(t => t.T.HasSavedFile) ? L.T("Download again / quality…") : L.T("Listening quality…"), "", () => _ = main.ChangeQuality(linked)));
     }
@@ -270,6 +290,7 @@ public static partial class Menus
         menu.Items.Add(AddToPlaylist(t));
         menu.Items.Add(FavoriteItem(t));
         menu.Items.Add(LyricsSubmenu(t));
+        AddVideoItems(menu, t);
         menu.Items.Add(Item(L.T("Play similar songs"), RadioGlyph, () => player.PlayRadio(t)));
         menu.Items.Add(GoToArtist(t.Main, t.T.Artist));
         menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));

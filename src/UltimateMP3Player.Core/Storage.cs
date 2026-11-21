@@ -49,6 +49,8 @@ public static class AppPaths
     public static string ArtistPicture(string id) => Path.Combine(Dir(Path.Combine(CoversDir, "artists")), id + ".jpg");
     // Songs heard without saving them (SongCache).
     public static string CacheDir => Path.Combine(DataDir, "cache");
+    // The music videos of the songs not saved, and the links found (VideoCache).
+    public static string VideoCacheDir => Path.Combine(DataDir, "videos");
     public static string LogFile => Path.Combine(DataDir, "errors.log");
 
     // errors.log (or file) stays small: past 1 MB only its newer half is kept, from the start of an entry.
@@ -240,8 +242,13 @@ public sealed class AppSettings
     // A Quality value: "mp3" (320 kbps), "mp3-256"/"-192"/"-128" or "original".
     public string AudioFormat { get; set; } = "mp3";
     public bool PreferAudioOnly { get; set; } = true;
-    // Highest video resolution, null = best.
-    public int? VideoMaxRes { get; set; } = 1080;
+    // Highest video resolution, null = best (5.5: 720 for new settings; the automatic videos use it too).
+    public int? VideoMaxRes { get; set; } = 720;
+    // The 1080p kept by settings from before 5.5 (then the default) moved to 720p once: the automatic videos come smaller.
+    public bool VideoRes55 { get; set; }
+    // Settings › Music videos: a song's video found and brought as it plays (VideosViewModel); on the phones only on Wi-Fi.
+    public bool AutoVideos { get; set; }
+    public bool VideosWifiOnly { get; set; } = true;
     public bool UseCookies { get; set; }
     // yt-dlp browser spec: "firefox" or "firefox:C:\profile"; on the computers also EachSite.
     public string CookiesBrowser { get; set; } = "firefox";
@@ -386,6 +393,11 @@ public sealed class AppSettings
         bool isNew = !File.Exists(AppPaths.SettingsFile) && !File.Exists(AppPaths.SettingsFile + ".bak");
         var s = JsonStore.Load<AppSettings>(AppPaths.SettingsFile);
         s.IsNew = isNew;
+        if (!s.VideoRes55)
+        {
+            if (!isNew && s.VideoMaxRes == 1080) s.VideoMaxRes = 720;
+            s.VideoRes55 = true;
+        }
         OnlineSearchServices.UseSpotifyKey(s.SpotifyClientId, s.SpotifyClientSecret);
         return s;
     }

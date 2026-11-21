@@ -83,7 +83,7 @@ public sealed class PlayerViewModel : Observable
         _queue.Repeat = d.Repeat;
         _queue.AutoFill = d.AutoQueue;
         // A song alone in its list (e.g. played from a card): the queue comes from the whole library.
-        _queue.Fallback = () => (_main.Library.Snapshot().OrderByDescending(t => t.Added).Select(t => t.Id).ToList(), "library", "All songs");
+        _queue.Fallback = () => (_main.OwnSongs().OrderByDescending(t => t.Added).Select(t => t.Id).ToList(), "library", "All songs");
         _volume = d.Volume;
         _muted = d.Muted;
         ApplyVolume();
@@ -132,6 +132,9 @@ public sealed class PlayerViewModel : Observable
     // A song of the library, or one not in it still in the queue or among the recently played.
     // (connected to a phone: also one of the phone's songs, SharedLibrary)
     private Track? TrackOf(string id) => _main.Library.Get(id) ?? _main.Radio.Track(id) ?? _main.Shared?.Get(id) ?? _main.Stations?.TrackOf(id);
+
+    // The song after this one in the queue (its music video comes ahead: VideosViewModel); none in a room or driving a computer.
+    internal Track? NextTrack => _room != null || _remote != null ? null : _queue.PeekNext() is { } id ? TrackOf(id) : null;
     private bool Exists(string id) => TrackOf(id) != null;
 
     // Among the recently played: a song of the library, and one heard without saving it (suggested, from a link, or a
@@ -716,6 +719,7 @@ public sealed class PlayerViewModel : Observable
     // it goes on and what follows becomes that list.
     public void PlayFrom(ITrackList list, TrackViewModel track, bool alwaysQueue = false)
     {
+        Choice++;
         // In a room nothing plays on its own: the song goes into the room's queue.
         if (_room != null)
         {
@@ -770,6 +774,7 @@ public sealed class PlayerViewModel : Observable
 
     public void PlayAll(ITrackList list, bool shuffle)
     {
+        Choice++;
         if (_room != null)
         {
             _room.AddAll(list.PlayOrder, list.ContextName, shuffle);
@@ -794,6 +799,7 @@ public sealed class PlayerViewModel : Observable
     // A song on its own (from a menu, a file opened): after it the suggested songs, or all your songs (Settings).
     public void PlaySingle(Track t)
     {
+        Choice++;
         if (_room != null)
         {
             _room.Add(new[] { _main.Vm(t) });
@@ -819,6 +825,7 @@ public sealed class PlayerViewModel : Observable
     // The song now (or on, if it's the one playing) and after it songs like it found online, more as they're heard.
     public void PlayRadio(TrackViewModel seed, bool announce = true)
     {
+        Choice++;
         if (_room != null) return;
         if (_remote != null)
         {
@@ -839,6 +846,7 @@ public sealed class PlayerViewModel : Observable
     // first, more as they're heard (like the similar songs, the same cache).
     public void PlayArtist(TrackViewModel seed)
     {
+        Choice++;
         if (_room != null) return;
         if (_remote != null)
         {
@@ -864,6 +872,7 @@ public sealed class PlayerViewModel : Observable
     // so songs like its last ones are found online as it gets near its end (RadioViewModel.Refresh).
     public void PlayMix(IReadOnlyList<TrackViewModel> songs, string contextId, string name, bool online)
     {
+        Choice++;
         if (songs.Count == 0) return;
         if (_room != null)
         {
@@ -883,6 +892,7 @@ public sealed class PlayerViewModel : Observable
     // a room; driving a computer, the computer plays them (they have no file to hear here). False when it didn't start.
     public bool PlayStations(IList<string> ids, int start, string name)
     {
+        Choice++;
         if (_room != null)
         {
             Say(L.T("Radios don't play in a room"));
@@ -914,6 +924,7 @@ public sealed class PlayerViewModel : Observable
     // like it (Settings), a playlist plays as a list of its own (from start: an artist's popular song clicked).
     public void PlayStream(IReadOnlyList<string> ids, string name, int start = 0)
     {
+        Choice++;
         if (_room != null || ids.Count == 0) return;
         start = Math.Clamp(start, 0, ids.Count - 1);
         if (TrackOf(ids[start]) is not { } first) return;
@@ -1165,6 +1176,10 @@ public sealed class PlayerViewModel : Observable
         if (UpNextVisible || UpNextWanted) RefreshUpNext();
     }
 
+    // Grows at every song or list you choose (and at play/pause): something asked for earlier and still on its way (a link
+    // being read, MainViewModel.PlayLinkAsync) doesn't start over what you chose since.
+    public int Choice { get; private set; }
+
     // ------------------------------------------------------------------ suggested songs
 
     // A suggested song still downloading is the song playing, silent: it starts by itself once it's here (unless paused
@@ -1298,12 +1313,13 @@ public sealed class PlayerViewModel : Observable
     }
 
     // The other way round: the song playing, deleted from the library, goes on as a song heard without saving it (from the
-    // cache) instead of jumping to the next one. False: it couldn't (not playing, in a room, no file to go on from).
-    internal async Task<bool> KeepAsSuggestion(Track saved)
+    // cache) instead of jumping to the next one. Its id as a song heard; null: it couldn't (not playing, in a room, no file
+    // to go on from).
+    internal async Task<string?> KeepAsSuggestion(Track saved)
     {
-        if (_room != null || _remote != null || Current?.Id != saved.Id) return false;
+        if (_room != null || _remote != null || Current?.Id != saved.Id) return null;
         var item = _main.Radio.Unsave(saved, _opened ? _audio.SourcePath : null);
-        if (item == null) return false;
+        if (item == null) return null;
         // Still playing the library copy (it's about to be deleted): on from the cache one, at the same point.
         if (_opened && string.Equals(_audio.SourcePath, saved.Path, StringComparison.OrdinalIgnoreCase) && item.T.CachePath is { } cached)
             await _audio.SwapAsync(cached, item.T.Duration > 0 ? item.T.Duration : Duration);
@@ -1315,7 +1331,7 @@ public sealed class PlayerViewModel : Observable
             _main.OnCurrentChanged();
             _main.Host.OnTrackChanged();
         }
-        return true;
+        return item.Id;
     }
 
     // The song playing had its audio removed from the device (it stays in the library, in the cloud): it goes on from the
@@ -1436,6 +1452,7 @@ public sealed class PlayerViewModel : Observable
 
     public void PlayPause()
     {
+        Choice++;
         if (_room != null)
         {
             if (!Unsilence()) _room.TogglePause();
@@ -1448,7 +1465,7 @@ public sealed class PlayerViewModel : Observable
         }
         if (Current == null)
         {
-            if (_main.Library.Count > 0) PlayAll(_main.LibraryPage, Shuffle);
+            if (_main.Songs().Count > 0) PlayAll(_main.LibraryPage, Shuffle);
             return;
         }
         // Still downloading: whether it starts by itself once it's here.
@@ -1528,6 +1545,7 @@ public sealed class PlayerViewModel : Observable
 
     public async Task Next(bool auto)
     {
+        if (!auto) Choice++;
         if (_room != null)
         {
             if (!auto) _room.Skip();
@@ -1561,6 +1579,7 @@ public sealed class PlayerViewModel : Observable
     // phone's swipe on the cover).
     public async Task Previous(bool restart = true)
     {
+        Choice++;
         // In a room there's no going back to an earlier song: back to the start of this one.
         if (_room != null)
         {
@@ -1623,6 +1642,7 @@ public sealed class PlayerViewModel : Observable
 
     public async Task JumpTo(int index)
     {
+        Choice++;
         if (_room != null)
         {
             _room.PlayNowAt(index);

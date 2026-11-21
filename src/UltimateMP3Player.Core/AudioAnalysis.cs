@@ -28,6 +28,10 @@ public interface IMediaTools
         string output, Action<double>? progress, CancellationToken ct);
     // An audio format it can decode (Codecs.Family: "aac", "mp3"...; "" when the site doesn't say): the downloads pick those.
     bool CanDecode(string codecFamily);
+    // A video's size and frame rate, and its pictures from a time on as raw BGRA frames of w×h at fps, one after the other: what
+    // ffprobe and ffmpeg give the song's page elsewhere (VideoView). Null: it can't.
+    (int W, int H, double Fps)? ProbeVideo(string file);
+    Stream? DecodeVideo(string file, double at, int w, int h, double fps);
 }
 
 public static class AudioAnalysis

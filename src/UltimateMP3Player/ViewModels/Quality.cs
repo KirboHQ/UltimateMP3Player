@@ -17,7 +17,7 @@ public static class QualityChoices
     // (null: the best there is)
     public static List<Choice> Video() => new()
     {
-        new("360p", 360), new("480p", 480), new("720p", 720), new("1080p (Full HD)", 1080, L.T("recommended|f")), new("1440p (2K)", 1440),
+        new("360p", 360), new("480p", 480), new("720p", 720, L.T("recommended|f")), new("1080p (Full HD)", 1080), new("1440p (2K)", 1440),
         new("2160p (4K)", 2160), new(L.T("Best available"), null),
     };
 

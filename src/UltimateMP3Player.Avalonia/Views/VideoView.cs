@@ -114,9 +114,10 @@ public sealed class VideoView : Control
         StartTicking();
     }
 
-    // Size and frame rate of the first video stream.
+    // Size and frame rate of the first video stream (the iPhone: its own decoder, AudioAnalysis.Native).
     private static (int W, int H, double Fps)? Probe(string path)
     {
+        if (AudioAnalysis.Native is { } native) return native.ProbeVideo(path);
         try
         {
             using var p = ChildProcess.Start(Engines.Ffprobe, new[]
@@ -295,6 +296,8 @@ public sealed class VideoView : Control
     private sealed class Decoder : IDisposable
     {
         private readonly ChildProcess? _process;
+        // (the iPhone's own decoder instead of ffmpeg: the same frames)
+        private readonly Stream? _native;
         private readonly BlockingCollection<Frame> _frames = new(Ahead);
         private readonly CancellationTokenSource _cts = new();
         private readonly double _start, _fps;
@@ -304,25 +307,30 @@ public sealed class VideoView : Control
         {
             _start = at;
             _fps = fps;
+            Stream? stream = null;
             try
             {
-                // (its few error lines go nowhere)
-                _process = ChildProcess.Start(Engines.Ffmpeg, new[]
+                if (AudioAnalysis.Native is { } native) stream = _native = native.DecodeVideo(path, at, w, h, fps);
+                else
                 {
-                    "-nostdin", "-hide_banner", "-loglevel", "error",
-                    "-ss", at.ToString("0.###", CultureInfo.InvariantCulture), "-i", path,
-                    "-an", "-sn", "-dn",
-                    "-vf", $"fps={fps.ToString("0.###", CultureInfo.InvariantCulture)},scale={w}:{h}:flags=bilinear",
-                    "-pix_fmt", "bgra", "-f", "rawvideo", "pipe:1",
-                }, errors: false);
+                    // (its few error lines go nowhere)
+                    _process = ChildProcess.Start(Engines.Ffmpeg, new[]
+                    {
+                        "-nostdin", "-hide_banner", "-loglevel", "error",
+                        "-ss", at.ToString("0.###", CultureInfo.InvariantCulture), "-i", path,
+                        "-an", "-sn", "-dn",
+                        "-vf", $"fps={fps.ToString("0.###", CultureInfo.InvariantCulture)},scale={w}:{h}:flags=bilinear",
+                        "-pix_fmt", "bgra", "-f", "rawvideo", "pipe:1",
+                    }, errors: false);
+                    stream = _process.StandardOutput;
+                }
             }
-            catch { _process = null; }
-            if (_process == null)
+            catch { stream = null; }
+            if (stream == null)
             {
                 Finished = true;
                 return;
             }
-            var stream = _process.StandardOutput;
             int size = w * h * 4;
             var token = _cts.Token;
             new Thread(() =>
@@ -363,6 +371,8 @@ public sealed class VideoView : Control
             try { _process?.Kill(); }
             catch { }
             _process?.Dispose();
+            try { _native?.Dispose(); }
+            catch { }
         }
     }
 }

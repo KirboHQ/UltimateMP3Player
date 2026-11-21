@@ -41,6 +41,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         Scrobbler = new Scrobbler(profile, host.Settings, Services.AppInfo.Version.ToString(3));
 
         Radio = new RadioViewModel(this);
+        Videos = new VideosViewModel(this);
         Stations = new StationsViewModel(this);
         Player = new PlayerViewModel(this, host.Audio, adopt);
         LibraryPage = new LibraryViewModel(this, unsorted: false);
@@ -103,6 +104,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         _removed = t => _ui.BeginInvoke(() => OnTrackRemoved(t));
         _playlistChanged = p => _ui.BeginInvoke(() => OnPlaylistChanged(p));
         _playlistsChanged = () => _ui.BeginInvoke(RebuildPlaylists);
+        _songsChanged = () => _ui.BeginInvoke(OnSongsChanged);
         // Tags only change from the UI: handled right away, so a new tag can be used at once.
         _tagsChanged = () => { if (_ui.CheckAccess()) OnTagsChanged(); else _ui.BeginInvoke(OnTagsChanged); };
         _trackTagsChanged = ids => { if (_ui.CheckAccess()) OnTrackTagsChanged(ids); else _ui.BeginInvoke(() => OnTrackTagsChanged(ids)); };
@@ -110,6 +112,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         host.Library.TrackChanged += _changed;
         host.Library.TrackRemoved += _removed;
         profile.PlaylistChanged += _playlistChanged;
+        profile.SongsChanged += _songsChanged;
         profile.PlaylistsChanged += _playlistsChanged;
         profile.TagsChanged += _tagsChanged;
         profile.TrackTagsChanged += _trackTagsChanged;
@@ -123,13 +126,15 @@ public sealed class MainViewModel : Observable, IPageOrder
 
     private readonly Action<Track> _added, _changed, _removed;
     private readonly Action<Playlist> _playlistChanged;
-    private readonly Action _playlistsChanged, _tagsChanged;
+    private readonly Action _playlistsChanged, _tagsChanged, _songsChanged;
     private readonly Action<IReadOnlyCollection<string>> _trackTagsChanged;
 
     public AppHost Host { get; }
     public Profile Profile { get; }
     public Library Library => Host.Library;
     public RadioViewModel Radio { get; }
+    // The songs' music videos (Settings › Music videos, "Find the video…").
+    public VideosViewModel Videos { get; }
     public PlayerViewModel Player { get; }
     public SongColors SongColors { get; }
     public GlassBackdrop Backdrop { get; }
@@ -255,14 +260,29 @@ public sealed class MainViewModel : Observable, IPageOrder
     // A song of the library or of the other device.
     public Track? Get(string id) => Library.Get(id) ?? Shared?.Get(id);
 
-    // The songs the library pages show: this device's and/or the other's (a song both have once, as this device's).
+    // The songs the library pages show: this profile's and/or the other device's (a song both have once, as this device's).
     public List<Track> Songs()
     {
-        if (Ready is not { } s) return Library.Snapshot();
-        var list = s.ShowsOwn ? Library.Snapshot() : s.SharedIds.Distinct().Select(Library.Get).OfType<Track>().ToList();
+        if (Ready is not { } s) return Mine(Library.Snapshot());
+        var list = s.ShowsOwn ? Mine(Library.Snapshot()) : new List<Track>();
+        // (the songs both devices have show as this device's, even when this profile doesn't have them in its library)
+        if (!s.ShowsOwn || s.ShowsOther)
+        {
+            var shown = list.ToHashSet();
+            list.AddRange(s.SharedIds.Distinct().Select(Library.Get).OfType<Track>().Where(shown.Add));
+        }
         if (s.ShowsOther) list.AddRange(s.OtherSongs);
         return list;
     }
+
+    // The library is every profile's songs (one file each): a profile sees its own (Profile.Has).
+    private List<Track> Mine(IEnumerable<Track> tracks) => tracks.Where(t => Profile.Has(t.Id)).ToList();
+
+    // This profile's songs on this device (not the other device's).
+    public List<Track> OwnSongs() => Mine(Library.Snapshot());
+
+    // A song of this profile's library.
+    public bool Owns(Track t) => Library.Get(t.Id) == t && Profile.Has(t.Id);
 
     // The profiles whose playlists, tags, favourites and history are shown.
     public IEnumerable<Profile> ShownProfiles()
@@ -500,6 +520,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         Host.Library.TrackChanged -= _changed;
         Host.Library.TrackRemoved -= _removed;
         Profile.PlaylistChanged -= _playlistChanged;
+        Profile.SongsChanged -= _songsChanged;
         Profile.PlaylistsChanged -= _playlistsChanged;
         Profile.TagsChanged -= _tagsChanged;
         Profile.TrackTagsChanged -= _trackTagsChanged;
@@ -514,21 +535,27 @@ public sealed class MainViewModel : Observable, IPageOrder
         if (e.PropertyName == nameof(DownloadQueue.HasGroups)) OnChanged(nameof(ShowDownloadPanel));
     }
 
-    // Songs deleted by another profile leave this one too.
+    // References to songs no longer anywhere (deleted ones became songs heard: Delete). A song in one of this profile's
+    // playlists is in its library.
     private void CleanProfile()
     {
         var gone = new HashSet<string>();
+        var unowned = new HashSet<string>();
         foreach (var p in Profile.PlaylistsSnapshot())
             foreach (var id in p.Tracks)
                 if (Library.Get(id) == null) gone.Add(id);
+                else if (!Profile.Has(id)) unowned.Add(id);
+        if (unowned.Count > 0) Profile.Own(unowned);
+        if (gone.Count > 0) Profile.ForgetTracks(gone);
         // (the songs heard without saving them stay in the history and in the statistics: RadioViewModel keeps the recent
         // ones and the ones heard enough)
         var heard = Profile.Data.Radio.Select(s => s.Id).ToHashSet();
+        var lost = new HashSet<string>();
         foreach (var h in Profile.Data.History.ToList())
-            if (!RadioSong.IsRadio(h.TrackId) && Library.Get(h.TrackId) == null) gone.Add(h.TrackId);
+            if (!RadioSong.IsRadio(h.TrackId) && Library.Get(h.TrackId) == null) lost.Add(h.TrackId);
         foreach (var id in Profile.StatsSnapshot().Keys)
-            if (Library.Get(id) == null && !heard.Contains(id)) gone.Add(id);
-        if (gone.Count > 0) Profile.ForgetTracks(gone);
+            if (Library.Get(id) == null && !heard.Contains(id)) lost.Add(id);
+        if (lost.Count > 0) Profile.ForgetStats(lost);
     }
 
     // ------------------------------------------------------------------ navigation
@@ -1032,6 +1059,7 @@ public sealed class MainViewModel : Observable, IPageOrder
     // Bursts of changes (downloads, bulk deletes) rebuild the lists once.
     private readonly HashSet<string> _dirtyPlaylists = new();
     private readonly HashSet<string> _removedTracks = new();
+    private readonly HashSet<string> _addedTracks = new();
     private bool _libraryDirty, _favoritesDirty;
 
     private void ScheduleRefresh()
@@ -1049,6 +1077,14 @@ public sealed class MainViewModel : Observable, IPageOrder
             _removedTracks.Clear();
             foreach (var id in removed) _vms.Remove(id);
             foreach (var info in Host.Profiles.Profiles) Core.Profile.Get(info).ForgetTracks(removed);
+        }
+        if (_addedTracks.Count > 0)
+        {
+            // A song added that no profile has (each way in gives it to its profile: this is a safety net, so none stays
+            // unseen): this one's.
+            var orphans = _addedTracks.Where(id => Library.Get(id) != null && !Core.Profile.AnyHas(Host.Profiles, id)).ToList();
+            _addedTracks.Clear();
+            if (orphans.Count > 0) Profile.Own(orphans);
         }
         bool library = _libraryDirty;
         var dirty = _dirtyPlaylists.ToHashSet();
@@ -1701,7 +1737,8 @@ public sealed class MainViewModel : Observable, IPageOrder
             }
             bytes += SizeOf(t.Path);
             files.Add(t.Path);
-            if (t.HasOwnVideo)
+            // (its video goes to the cache of the songs' videos, like its audio: a song in the cloud's)
+            if (t.HasOwnVideo && !Videos.ToCache(t))
             {
                 bytes += SizeOf(t.VideoPath);
                 files.Add(t.VideoPath!);
@@ -1749,31 +1786,8 @@ public sealed class MainViewModel : Observable, IPageOrder
         }
     }
 
-    // A video for a song saved without one: from its own link when that's a YouTube video, otherwise chosen among the
-    // videos found on YouTube.
-    public async Task FindVideo(TrackViewModel vm)
-    {
-        var t = vm.T;
-        if (Library.Get(t.Id) != t || t.HasVideo) return;
-        if (!t.IsSaved)
-        {
-            Toast(L.F("Save “{0}” on your device first: the video goes next to the audio.", t.Title));
-            return;
-        }
-        if (VideoFinder.OwnVideo(t) is { } own)
-        {
-            Queue.AddVideo(Profile, t, new MediaItem { Url = own, PageUrl = own, Title = t.Title, Artist = t.Artist, Duration = t.Duration, Source = SourceKind.YtDlp, SiteName = Sites.NameFor(own) });
-            Toast(L.F("Downloading the video of “{0}” from its link…", t.Title));
-            return;
-        }
-        if (await Dialogs.PickVideoAsync(this, vm) is not { } pick) return;
-        Queue.AddVideo(Profile, t, new MediaItem
-        {
-            Url = pick.Url, PageUrl = pick.Url, Title = t.Title, Artist = t.Artist, Duration = pick.Duration, Thumbnails = pick.Thumb != null ? new() { pick.Thumb } : new(),
-            Source = SourceKind.YtDlp, SiteName = Sites.NameFor(pick.Url),
-        });
-        Toast(L.F("Downloading the video for “{0}”…", t.Title));
-    }
+    // "Find the video…" of any song (VideosViewModel: beside its audio when saved, in the cache when in the cloud).
+    public Task FindVideo(TrackViewModel vm) => Videos.FindAsync(vm);
 
     private static long SizeOf(string? path)
     {
@@ -1814,7 +1828,7 @@ public sealed class MainViewModel : Observable, IPageOrder
             Toast(L.F("“{0}” is playing in the room: delete it once it's over.", playing.Title));
             tracks = tracks.Where(t => t != playing).ToList();
         }
-        tracks = tracks.Where(t => Library.Get(t.Id) != null || Radio.Has(t.Id) || IsTheirs(t)).Distinct().ToList();
+        tracks = tracks.Where(t => Owns(t.T) || Radio.Has(t.Id) || IsTheirs(t)).Distinct().ToList();
         if (tracks.Count == 0) return false;
         // Connected: the other device's songs (and the ones both have, where chosen) are deleted there.
         if (await SongTargetsAsync(tracks, L.T("Delete…")) is not { } where) return false;
@@ -1842,35 +1856,77 @@ public sealed class MainViewModel : Observable, IPageOrder
             case RemoveKind.Everything:
                 var heard = tracks.Where(t => Radio.Has(t.Id)).Select(t => t.Id).ToList();
                 if (heard.Count > 0) await Radio.Forget(heard);
-                var lib = tracks.Where(t => Library.Get(t.Id) != null).ToList();
+                var lib = tracks.Where(t => Owns(t.T)).ToList();
                 if (lib.Count > 0) await Delete(lib);
-                else Toast(heard.Count == 1 ? L.F("“{0}” removed from your listening history", tracks[0].Title) : L.F("{0} songs removed from your listening history", heard.Count));
+                else Toast(heard.Count == 1 ? L.F("“{0}” removed from your recently played", tracks[0].Title) : L.F("{0} songs removed from your recently played", heard.Count));
                 break;
         }
     }
 
-    // Removes the song everywhere: files, cover, playlists, history, statistics, queue.
+    // "Delete completely": out of this profile's library, playlists, tags and queue. Its plays stay (statistics, recently
+    // played, recaps), as a song heard with its name, artist and cover. The files go once no profile of this device has it.
     private async Task Delete(List<TrackViewModel> tracks)
     {
+        var ids = tracks.Select(t => t.Id).ToHashSet();
         // The song playing, deleted: this listen goes on (from the cache) instead of jumping to the next song.
-        if (Player.Current is { } playing && tracks.Contains(playing)) await Player.KeepAsSuggestion(playing.T);
-        await Player.RemoveTracks(tracks.Select(t => t.Id).ToHashSet());
-        var files = new List<string>();
+        string? playingId = null, goesOn = null;
+        if (Player.Current is { } playing && tracks.Contains(playing))
+        {
+            playingId = playing.Id;
+            goesOn = await Player.KeepAsSuggestion(playing.T);
+        }
+        await Player.RemoveTracks(ids);
         foreach (var t in tracks)
         {
-            Library.Remove(t.T);
-            files.Add(AppPaths.TrackCover(t.Id));
-            files.Add(LyricsStore.PathFor(t.Id, true));
-            files.Add(LyricsStore.PathFor(t.Id, false));
-            if (!t.T.IsLocal) files.AddRange(new[] { t.T.Path, t.T.VideoPath }.OfType<string>().Where(f => f.Length > 0));
+            // Listened to: among the songs heard from now on, its plays with it.
+            var heard = t.Id == playingId && goesOn != null ? goesOn
+                : Profile.StatsOf(t.Id) != null || Profile.Data.History.Any(h => h.TrackId == t.Id) ? Radio.Unsave(t.T, null, file: false)?.Id : null;
+            if (heard != null) Profile.RenameHistory(t.Id, heard);
         }
-        Toast(tracks.Count == 1 ? L.F("“{0}” deleted", tracks[0].Title) : L.F("{0} songs deleted", tracks.Count));
+        Profile.Disown(ids);
+        Profile.ForgetTracks(ids);
+        var files = new List<string>();
+        foreach (var t in tracks)
+            if (!Core.Profile.AnyHas(Host.Profiles, t.Id))
+            {
+                Library.Remove(t.T);
+                files.AddRange(Core.Profile.FilesOf(t.T));
+                Host.VideoCache.Forget(VideoCache.KeysOf(t.T));
+            }
+        Toast(tracks.Count == 1 ? L.F("“{0}” removed from your library", tracks[0].Title) : L.F("{0} songs removed from your library", tracks.Count));
         await DeleteFiles(files);
     }
 
     private void OnSaving(string id)
     {
         if (_vms.TryGetValue(id, out var vm)) vm.RefreshSaving();
+    }
+
+    // Songs out of this profile's statistics (the statistics page), after asking: their plays, time and months.
+    public async Task ForgetStats(IReadOnlyList<TrackViewModel> tracks)
+    {
+        if (tracks.Count == 0) return;
+        var title = tracks.Count == 1 ? L.F("Remove “{0}” from your statistics?", tracks[0].Title) : L.F("Remove {0} songs from your statistics?", tracks.Count);
+        if (!await Dialogs.ConfirmAsync(title, L.T("Its plays, its listening time and its months in the recaps go, only for this profile. It can't be undone."), L.T("Remove"), true)) return;
+        Profile.ForgetStats(tracks.Select(t => t.Id).ToList());
+        // (a song heard kept only for its plays goes with them)
+        Radio.Refresh();
+        _stats?.Rebuild();
+        Home.Refresh();
+        Toast(tracks.Count == 1 ? L.F("“{0}” removed from your statistics", tracks[0].Title) : L.F("{0} songs removed from your statistics", tracks.Count));
+    }
+
+    // All of this profile's statistics gone, after asking (the statistics page).
+    public async Task ClearStats()
+    {
+        if (!await Dialogs.ConfirmAsync(L.T("Delete your statistics?"),
+                L.F("Every play, the listening time, the recaps and the recently played of “{0}” go: other profiles keep theirs. It can't be undone.", Profile.Info.Name),
+                L.T("Delete"), true)) return;
+        Profile.ClearStats();
+        Radio.Refresh();
+        _stats?.Rebuild();
+        Home.Refresh();
+        Toast(L.T("Your statistics were deleted"));
     }
 
     // Bulk edit: one artist renamed on every song.
@@ -2054,6 +2110,7 @@ public sealed class MainViewModel : Observable, IPageOrder
     private void OnTrackAdded(Track t)
     {
         Vm(t);
+        _addedTracks.Add(t.Id);
         // A song whose plays came with Spotify's history: they're its own now.
         foreach (var k in t.Keys)
             if (k.StartsWith("spotify:", StringComparison.Ordinal) && k.Length > 8) Profile.AdoptImported("sp:" + k[8..], t.Id);
@@ -2079,6 +2136,12 @@ public sealed class MainViewModel : Observable, IPageOrder
             _libraryDirty = true;
             ScheduleRefresh();
         }
+    }
+
+    private void OnSongsChanged()
+    {
+        _libraryDirty = true;
+        ScheduleRefresh();
     }
 
     private void OnTrackRemoved(Track t)
@@ -2157,17 +2220,29 @@ public sealed class MainViewModel : Observable, IPageOrder
 
     // An album, an EP or a playlist heard without saving it (a release's play button, a found album's): its songs read from its
     // link, then played like a link's songs; in a room, into the room's queue.
+    private CancellationTokenSource? _linkOpening;
+
     public async Task PlayLinkAsync(string url, string name)
     {
         if (InRoom && !Together.CanAdd) return;
         Toast(L.F("Opening “{0}”…", name));
+        // Another song or list chosen while the link is read (the one playing chosen again, too): this one doesn't start over it.
+        int choice = Player.Choice;
+        _linkOpening?.Cancel();
+        using var cts = _linkOpening = new CancellationTokenSource();
         AnalysisResult r;
-        try { r = await Task.Run(() => Analyzer.AnalyzeAsync(new AnalyzeRequest(url, Host.Settings.CookiesBrowserOrNull, true), CancellationToken.None)); }
+        try { r = await Task.Run(() => Analyzer.AnalyzeAsync(new AnalyzeRequest(url, Host.Settings.CookiesBrowserOrNull, true), cts.Token)); }
         catch (Exception e)
         {
+            if (cts.IsCancellationRequested || choice != Player.Choice) return;
             Toast(e is EngineException ee ? ee.Message : L.T("Couldn't open the link: check your connection."));
             return;
         }
+        finally
+        {
+            if (_linkOpening == cts) _linkOpening = null;
+        }
+        if (cts.IsCancellationRequested || (!InRoom && choice != Player.Choice)) return;
         var items = r.Items.Where(i => i.Kind is MediaKind.Audio or MediaKind.Video).ToList();
         if (items.Count == 0)
         {
@@ -2222,6 +2297,8 @@ public sealed class MainViewModel : Observable, IPageOrder
         // A song never searched gets its lyrics while it plays (Settings > Lyrics).
         if (Player?.Current is { } c) Host.Lyrics.Auto(c.T, true);
         Stations.RefreshPlaying();
+        // (and its music video, and the next song's)
+        Videos?.OnSong();
     }
 
     // The list being played changed (also with the same song going on).
@@ -2315,6 +2392,7 @@ public sealed class MainViewModel : Observable, IPageOrder
 
     public async Task Import(IEnumerable<string> paths, bool playFirst)
     {
+        int choice = Player.Choice;
         var files = await Task.Run(() => Importer.Expand(paths));
         if (files.Count == 0)
         {
@@ -2330,6 +2408,7 @@ public sealed class MainViewModel : Observable, IPageOrder
             {
                 if (AudioAnalysis.Native == null && Engines.Missing().Contains(Path.GetFileName(Engines.Ffmpeg))) await Host.EnsureEnginesAsync();
                 var t = await Task.Run(() => Importer.ImportAsync(Library, f, CancellationToken.None));
+                Profile.Own(new[] { t.Id });
                 first ??= t;
                 ok++;
             }
@@ -2338,7 +2417,8 @@ public sealed class MainViewModel : Observable, IPageOrder
         Toast(ok == files.Count ? L.Count(ok, "Song added to your library", "{0} songs added to your library")
                                 : L.F("{0} of {1} songs added (the others can't be read)", ok, files.Count));
         // In a room a dropped file doesn't start: it's just in the library now.
-        if (playFirst && first != null && !InRoom) Player.PlaySingle(first);
+        // (nor over another song chosen while they were read)
+        if (playFirst && first != null && !InRoom && choice == Player.Choice) Player.PlaySingle(first);
     }
 
     // ------------------------------------------------------------------ .ump packs

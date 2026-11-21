@@ -6,7 +6,8 @@ namespace UltimateMP3Player.Platform;
 // PythonProcess) and the system does ffmpeg's work (MediaTools). yt-dlp is the same file as on Android (a zip run by
 // Python): the app's own copy (python/app/yt-dlp) goes into the engines' folder at the first start, then it keeps itself
 // up to date (yt-dlp -U, which ump_ios.py does), and an update of the app that brings a newer one takes its place.
-// YouTube's JavaScript runs in the system's JavaScriptCore ("jsc", ump_ios.py). No gallery-dl and no videos.
+// YouTube's JavaScript runs in the system's JavaScriptCore ("jsc", ump_ios.py). No gallery-dl, and no videos to save (only the
+// music videos shown with the songs, the picture alone: MutedVideo, MediaTools.DecodeVideo).
 public static class IosEngines
 {
     public static string BundledYtDlp => Path.Combine(PythonHost.AppDir, "yt-dlp");

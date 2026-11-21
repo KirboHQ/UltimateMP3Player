@@ -210,6 +210,52 @@ public sealed class ListeningLog
         if (_dir != null) _saver.Request();
     }
 
+    // Songs out of the statistics (the statistics page): gone from every month, and their time from the month's hours and
+    // days (each scaled by the share they had: those are kept per month, not per song).
+    public void Forget(ISet<string> ids)
+    {
+        lock (_lock)
+        {
+            foreach (var year in Years())
+            {
+                var y = YearOf(year, false);
+                if (y == null) continue;
+                foreach (var m in y.Months.Values)
+                {
+                    double before = m.Seconds, removed = 0;
+                    bool any = false;
+                    foreach (var id in ids)
+                        if (m.Songs.Remove(id, out var s))
+                        {
+                            removed += s.Seconds;
+                            any = true;
+                        }
+                    if (!any) continue;
+                    double keep = before > 0 ? Math.Max(0, (before - removed) / before) : 0;
+                    for (int i = 0; i < 24; i++) m.Hours[i] *= keep;
+                    for (int i = 0; i < 31; i++) m.Days[i] *= keep;
+                    _dirty.Add(year);
+                }
+            }
+        }
+        if (_dir != null) _saver.Request();
+    }
+
+    // Everything gone: every year's file too (and the copies kept beside them).
+    public void Clear()
+    {
+        lock (_lock)
+        {
+            var years = Years();
+            _years.Clear();
+            _dirty.Clear();
+            if (_dir != null)
+                foreach (var year in years)
+                    foreach (var f in new[] { FileOf(year)!, FileOf(year) + ".bak", PlainFileOf(year)! })
+                        try { if (File.Exists(f)) File.Delete(f); } catch { }
+        }
+    }
+
     public void Flush() => _saver.Flush();
 
     private volatile bool _closed;

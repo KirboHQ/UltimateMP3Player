@@ -13,7 +13,7 @@ namespace UltimateMP3Player.Platform;
 // waveform, the loudness (EBU R128, as ffmpeg's ebur128 filter measures it) and the peak from its decoded sound
 // (AudioToolbox), a picture made into a cover; for the downloads, what's inside the file got, the original audio in a
 // plain M4A with its tags, MP3s through LAME (Mp3).
-public sealed class MediaTools : IMediaTools
+public sealed partial class MediaTools : IMediaTools
 {
     private const int CoverMax = 600;
 

@@ -53,6 +53,11 @@ public static class Startup
         Themes.Changed += () => UIApplication.SharedApplication.SetStatusBarStyle(Themes.IsLight ? UIStatusBarStyle.DarkContent : UIStatusBarStyle.LightContent, false);
 #pragma warning restore CA1422, CS0618
         AudioAnalysis.Native = new MediaTools();
+        // The music videos: iOS decodes them itself (MediaTools.DecodeVideo); out of the backup like the songs heard; only on
+        // Wi-Fi when asked (NetworkWatch).
+        Engines.NativeVideo = true;
+        ExcludeFromBackup(AppPaths.VideoCacheDir);
+        NetworkWatch.Start();
         SiteLogins.Configure(data);
         IosEngines.Configure(data);
         AppDomain.CurrentDomain.UnhandledException += (_, e) => { if (e.ExceptionObject is Exception ex) App.Log(ex); };

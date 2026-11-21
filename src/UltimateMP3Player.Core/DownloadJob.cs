@@ -288,7 +288,7 @@ public sealed class DownloadJob
     // ffmpeg), without starting yt-dlp again. Null when it doesn't work (yt-dlp then, as before).
     // YouTube refuses its links for about two seconds after giving them (403, measured in November 2026). Asked right away,
     // the song heard meanwhile and the download below both failed: the song waited for yt-dlp's download, ten seconds later.
-    private static async Task AnswersAsync(YtFormat f, CancellationToken ct)
+    internal static async Task AnswersAsync(YtFormat f, CancellationToken ct)
     {
         if (f.IsM3u8 || !Uri.TryCreate(f.Url, UriKind.Absolute, out var uri) || !uri.Host.EndsWith(".googlevideo.com", StringComparison.OrdinalIgnoreCase)) return;
         long until = Environment.TickCount64 + 5000;

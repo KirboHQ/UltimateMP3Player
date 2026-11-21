@@ -213,6 +213,11 @@ public sealed class ProfileData
     public DateTime? StatsSince { get; set; }
     // Songs not in the library (suggested, heard from a link or in a room) the saved queue or the recently played refer to.
     public List<RadioSong> Radio { get; set; } = new();
+    // The library's songs that are this profile's (5.5: before, every profile had all of them). Their files are shared: a song
+    // two profiles have is one file, deleted once no profile has it. Null: saved before 5.5 (Profile.TakeLibrary gives it all).
+    public HashSet<string>? Songs { get; set; }
+    // Songs that show no music video here (their menu's "No video for this song"), by name (SongMeta.Key).
+    public HashSet<string> NoVideo { get; set; } = new();
     // The times already imported from other services (Spotify's history): not counted twice.
     public List<ImportedRange> Imported { get; set; } = new();
     // Library › Artists: the ones followed, their latest releases, when they were last looked for.
@@ -330,7 +335,11 @@ public sealed class Profile
         lock (Open)
         {
             if (Open.TryGetValue(info.Id, out var p)) return p;
-            var data = JsonStore.Load<ProfileData>(Path.Combine(AppPaths.ProfileDir(info.Id), "data.json"));
+            var path = Path.Combine(AppPaths.ProfileDir(info.Id), "data.json");
+            bool fresh = !File.Exists(path) && !File.Exists(path + ".bak");
+            var data = JsonStore.Load<ProfileData>(path);
+            // (a new profile starts with a library of its own, empty)
+            if (fresh) data.Songs ??= new();
             LoadStats(info.Id, data);
             // (3.7 and before saved the built-in presets by their Italian name)
             data.Eq.Preset = L.KeyOf(data.Eq.Preset);
@@ -348,7 +357,48 @@ public sealed class Profile
 
     private bool _deleted;
 
-    // Removes the profile's data; songs stay in the library.
+    // Profiles saved before 5.5 shared one library: each of them has all of it from now on (once, at the start).
+    public static void TakeLibrary(ProfileList list, Library library)
+    {
+        HashSet<string>? all = null;
+        foreach (var info in list.Profiles.ToList())
+        {
+            var p = Get(info);
+            lock (p._lock)
+            {
+                if (p.Data.Songs != null) continue;
+                p.Data.Songs = new(all ??= library.Snapshot().Select(t => t.Id).ToHashSet());
+            }
+            p.Save();
+        }
+    }
+
+    // The song is still some profile's (of this device): its files stay.
+    public static bool AnyHas(ProfileList list, string trackId) => list.Profiles.ToList().Any(i => Get(i).Has(trackId));
+
+    // The files of a song the app keeps: its audio and video (not the ones added from the device's own folders, which stay
+    // there), its cover and its lyrics.
+    public static List<string> FilesOf(Track t)
+    {
+        var files = new List<string> { AppPaths.TrackCover(t.Id), LyricsStore.PathFor(t.Id, true), LyricsStore.PathFor(t.Id, false) };
+        if (!t.IsLocal) files.AddRange(new[] { t.Path, t.VideoPath }.OfType<string>().Where(f => f.Length > 0));
+        return files;
+    }
+
+    // A profile deleted: the songs no other profile has go with it (out of the library, their files off the device: one in
+    // use goes at the next start). How many.
+    public static int DropOrphans(ProfileList list, Library library)
+    {
+        var gone = library.Snapshot().Where(t => !AnyHas(list, t.Id)).ToList();
+        foreach (var t in gone)
+        {
+            library.Remove(t);
+            foreach (var f in FilesOf(t)) OldFiles.Delete(f);
+        }
+        return gone.Count;
+    }
+
+    // Removes the profile's data (its songs: DropOrphans).
     public static void Delete(string id)
     {
         lock (Open)
@@ -548,6 +598,8 @@ public sealed class Profile
             if (index is int i && i >= 0 && i < p.Tracks.Count) p.Tracks.Insert(i, trackId);
             else p.Tracks.Add(trackId);
         }
+        // (a song in one of the profile's playlists is in its library)
+        Own(new[] { trackId });
         Save();
         PlaylistChanged?.Invoke(p);
         return true;
@@ -577,6 +629,7 @@ public sealed class Profile
                 if (had.Add(id)) { p.Tracks.Add(id); added++; }
         }
         if (added == 0) return 0;
+        Own(trackIds);
         Save();
         PlaylistChanged?.Invoke(p);
         return added;
@@ -610,7 +663,8 @@ public sealed class Profile
         PlaylistChanged?.Invoke(p);
     }
 
-    // Drops every reference to deleted songs.
+    // Drops the references to songs no longer in this profile's library: playlists, tags, the queue. Their plays stay in the
+    // statistics and among the recently played (ForgetStats takes them out: the statistics page).
     public void ForgetTracks(IEnumerable<string> trackIds)
     {
         var set = trackIds.ToHashSet();
@@ -619,17 +673,102 @@ public sealed class Profile
         {
             touched = Data.Playlists.Where(p => p.Tracks.Any(set.Contains)).ToList();
             foreach (var p in touched) p.Tracks.RemoveAll(set.Contains);
-            Data.History.RemoveAll(h => set.Contains(h.TrackId));
-            foreach (var id in set)
-            {
-                Data.TrackTags.Remove(id);
-                Data.Stats.Remove(id);
-            }
+            foreach (var id in set) Data.TrackTags.Remove(id);
             Data.Queue?.Forget(set);
             if (Data.LastTrack != null && set.Contains(Data.LastTrack)) Data.LastTrack = null;
         }
         Save();
         foreach (var p in touched) PlaylistChanged?.Invoke(p);
+    }
+
+    // Out of the recently played and the queue (a song heard, deleted): its plays stay counted.
+    public void ForgetHistory(IEnumerable<string> trackIds)
+    {
+        var set = trackIds.ToHashSet();
+        lock (_lock)
+        {
+            Data.History.RemoveAll(h => set.Contains(h.TrackId));
+            Data.Queue?.Forget(set);
+            if (Data.LastTrack != null && set.Contains(Data.LastTrack)) Data.LastTrack = null;
+        }
+        Save();
+    }
+
+    // Songs out of this profile's statistics: their counts, the recently played, the months (the recaps; months false: those
+    // keep the time heard, for a song heard without a play that counted).
+    public void ForgetStats(IEnumerable<string> trackIds, bool months = true)
+    {
+        var set = trackIds.ToHashSet();
+        lock (_lock)
+        {
+            Data.History.RemoveAll(h => set.Contains(h.TrackId));
+            foreach (var id in set) Data.Stats.Remove(id);
+        }
+        if (months) Log.Forget(set);
+        Save();
+    }
+
+    // All of this profile's statistics gone (the statistics page): counts, recently played, months, and what was imported
+    // from other services (it can be imported again).
+    public void ClearStats()
+    {
+        lock (_lock)
+        {
+            Data.Stats.Clear();
+            Data.ImportCounts.Clear();
+            Data.Imported.Clear();
+            Data.History.Clear();
+            Data.StatsSince = DateTime.Now;
+        }
+        Log.Clear();
+        Save();
+    }
+
+    // ------------------------------------------------------------------ the profile's songs
+
+    // Songs into or out of this profile's library (downloads, imports, deletes; from other threads too).
+    public event Action? SongsChanged;
+
+    public bool Has(string trackId)
+    {
+        lock (_lock) return Data.Songs?.Contains(trackId) == true;
+    }
+
+    // "No video for this song" (by its name: the same in the library and among the songs heard).
+    public bool IsNoVideo(string key)
+    {
+        lock (_lock) return Data.NoVideo.Contains(key);
+    }
+
+    public void SetNoVideo(string key, bool none)
+    {
+        lock (_lock)
+            if (none ? !Data.NoVideo.Add(key) : !Data.NoVideo.Remove(key)) return;
+        Save();
+    }
+
+    public void Own(IEnumerable<string> trackIds)
+    {
+        bool changed = false;
+        lock (_lock)
+        {
+            Data.Songs ??= new();
+            foreach (var id in trackIds) changed |= Data.Songs.Add(id);
+        }
+        if (!changed) return;
+        Save();
+        SongsChanged?.Invoke();
+    }
+
+    public void Disown(IEnumerable<string> trackIds)
+    {
+        bool changed = false;
+        lock (_lock)
+            if (Data.Songs != null)
+                foreach (var id in trackIds) changed |= Data.Songs.Remove(id);
+        if (!changed) return;
+        Save();
+        SongsChanged?.Invoke();
     }
 
     // Duplicates joined (Library.Duplicates, copy → the one kept): the playlists, tags, queue and listens are the kept one's.
@@ -651,6 +790,9 @@ public sealed class Profile
                     Data.TrackTags[to] = Data.TrackTags.TryGetValue(to, out var had) ? had.Union(tags).ToList() : tags;
             if (Data.LastTrack != null && map.TryGetValue(Data.LastTrack, out var last)) Data.LastTrack = last;
             Data.Queue?.Forget(map.Keys.ToHashSet());
+            if (Data.Songs != null)
+                foreach (var (from, to) in map)
+                    if (Data.Songs.Remove(from)) Data.Songs.Add(to);
         }
         // (recently played, statistics, the sealed months; saves)
         foreach (var (from, to) in map) RenameHistory(from, to);

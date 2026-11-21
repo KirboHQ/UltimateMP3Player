@@ -230,7 +230,7 @@ public partial class ProfilePickerWindow : Window
         if (_editing is not { } p || _editingIsNew || _host.Profiles.Profiles.Count < 2) return;
         bool inUse = p.Id == _currentId;
         if (!Dialogs.Confirm(L.T("Delete this profile?"),
-                L.F("The profile “{0}” will be deleted along with its playlists, favorites, history and equalizer. Downloaded songs stay in the other profiles' libraries.", p.Name) +
+                L.F("The profile “{0}” will be deleted along with its library, playlists, favorites, history, statistics and equalizer. Its songs that no other profile has are deleted from the device.", p.Name) +
                 (inUse ? "\n\n" + L.T("It's the profile in use: afterwards you'll choose which one to continue with.") : ""),
                 L.T("Delete"), true)) return;
         _host.Profiles.Profiles.Remove(p);
@@ -241,6 +241,7 @@ public partial class ProfilePickerWindow : Window
             _host.Settings.Save();
         }
         Profile.Delete(p.Id);
+        Profile.DropOrphans(_host.Profiles, _host.Library);
         if (inUse)
         {
             _currentDeleted = true;

@@ -745,6 +745,78 @@ switch (args[0])
             return ok ? 0 : 1;
         }
 
+    case "ownsongs":
+        {
+            // Each profile's own library (5.5, set UMP_DATA): a profile from before takes the whole library once, a new one starts
+            // empty; a song deleted by one profile stays the other's (its file too) and keeps its plays; deleted by the last one,
+            // it goes with its file (DropOrphans). Statistics cleared for one profile only.
+            var dir = Path.Combine(Path.GetTempPath(), "ump-ownsongs-" + Ids.New());
+            Directory.CreateDirectory(dir);
+            var file = Path.Combine(dir, "song.mp3");
+            File.WriteAllText(file, "x");
+            var song = new Track { Title = "Own Song", Artist = "Tester", Duration = 100, Path = file, SourceUrl = "https://example.com/own" };
+            lib.Add(song);
+            var old = new ProfileInfo { Name = "own-old" };
+            var fresh = new ProfileInfo { Name = "own-new" };
+            Directory.CreateDirectory(AppPaths.ProfileDir(old.Id));
+            File.WriteAllText(Path.Combine(AppPaths.ProfileDir(old.Id), "data.json"), "{}");
+            var list = new ProfileList { Profiles = { old, fresh } };
+            var a = Profile.Get(old);
+            var b = Profile.Get(fresh);
+            Profile.TakeLibrary(list, lib);
+            bool ok = a.Has(song.Id) && !b.Has(song.Id);
+            b.Own(new[] { song.Id });
+            a.AddListening(song.Id, 100, true);
+            b.AddListening(song.Id, 100, true);
+            a.Disown(new[] { song.Id });
+            a.ForgetTracks(new[] { song.Id });
+            ok &= !a.Has(song.Id) && a.StatsOf(song.Id)?.Plays == 1 && Profile.AnyHas(list, song.Id) && Profile.DropOrphans(list, lib) == 0
+                  && File.Exists(file);
+            b.ClearStats();
+            ok &= b.StatsOf(song.Id) == null && a.StatsOf(song.Id)?.Plays == 1 && b.Has(song.Id);
+            b.Disown(new[] { song.Id });
+            ok &= !Profile.AnyHas(list, song.Id) && Profile.DropOrphans(list, lib) == 1 && lib.Get(song.Id) == null && !File.Exists(file);
+            Profile.Delete(old.Id);
+            Profile.Delete(fresh.Id);
+            try { Directory.Delete(dir, true); } catch { }
+            Console.WriteLine("ownsongs: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
+    case "videocache":
+        {
+            // The music videos' cache (5.5): the last VideoCache.Max files stay (never the ones kept: the song playing, the next),
+            // the links found and "none found" stay by the songs' keys; a video leaves for beside its song's audio and comes back.
+            var dir = Path.Combine(Path.GetTempPath(), "ump-videos-" + Ids.New());
+            var cache = new VideoCache(Path.Combine(dir, "cache"));
+            string Temp(int i)
+            {
+                var f = Path.Combine(cache.TempDir, $"v{i}.mp4");
+                File.WriteAllText(f, "v" + i);
+                return f;
+            }
+            var keep = cache.Adopt(new[] { "k0" }, "Song 0", "A", Temp(0));
+            var kept = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { keep };
+            for (int i = 1; i <= VideoCache.Max + 3; i++) cache.Adopt(new[] { "k" + i }, "Song " + i, "A", Temp(i), kept);
+            bool ok = cache.Stats().Count == VideoCache.Max && cache.FileFor(new[] { "k0" }) == keep && cache.FileFor(new[] { "k1" }) == null
+                      && cache.FileFor(new[] { "k" + (VideoCache.Max + 3) }) != null;
+            cache.SetUrl(new[] { "k1" }, "https://example.com/v1", chosen: true);
+            cache.SetNone(new[] { "k99" });
+            ok &= cache.Known(new[] { "k1" }) == ("https://example.com/v1", true, false) && cache.Known(new[] { "k99" }).None;
+            var beside = Path.Combine(dir, "beside.mp4");
+            ok &= cache.MoveOut(new[] { "k0" }, beside) == beside && File.Exists(beside) && cache.FileFor(new[] { "k0" }) == null;
+            var back = cache.Adopt(new[] { "k0" }, "Song 0", "A", beside);
+            ok &= !File.Exists(beside) && cache.FileFor(new[] { "k0" }) == back && cache.Stats().Count == VideoCache.Max;
+            cache.Forget(new[] { "k0" });
+            ok &= cache.FileFor(new[] { "k0" }) == null && !File.Exists(back);
+            cache.Flush();
+            var again = new VideoCache(Path.Combine(dir, "cache"));
+            ok &= again.Known(new[] { "k1" }).Url == "https://example.com/v1" && again.Stats().Count == VideoCache.Max - 1;
+            try { Directory.Delete(dir, true); } catch { }
+            Console.WriteLine("videocache: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
     case "radio":
         {
             // mp3cli radio [name]: radio-browser.info answers (by name, or the most listened to in Italy), the stations' fields read.

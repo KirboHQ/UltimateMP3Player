@@ -83,6 +83,7 @@ public sealed class SharedLibrary
         main.Library.TrackAdded += OnOwnTrack;
         main.Library.TrackChanged += OnOwnTrack;
         main.Library.TrackRemoved += OnOwnTrackGone;
+        main.Profile.SongsChanged += OnOwnSongs;
         main.Profile.PlaylistChanged += OnOwnList;
         main.Profile.PlaylistsChanged += OnOwnLists;
         main.Profile.TagsChanged += OnOwnTags;
@@ -238,6 +239,7 @@ public sealed class SharedLibrary
         _main.Library.TrackAdded -= OnOwnTrack;
         _main.Library.TrackChanged -= OnOwnTrack;
         _main.Library.TrackRemoved -= OnOwnTrackGone;
+        _main.Profile.SongsChanged -= OnOwnSongs;
         _main.Profile.PlaylistChanged -= OnOwnList;
         _main.Profile.PlaylistsChanged -= OnOwnLists;
         _main.Profile.TagsChanged -= OnOwnTags;
@@ -387,11 +389,12 @@ public sealed class SharedLibrary
         var profile = _main.Profile;
         var lib = new LinkLib
         {
-            Full = true, Profile = OwnProfile(), Tracks = _main.Library.Snapshot().Select(Describe).ToList(),
+            Full = true, Profile = OwnProfile(), Tracks = _main.OwnSongs().Select(Describe).ToList(),
             Lists = profile.PlaylistsSnapshot().Select(p => p.Clone()).ToList(), Tags = profile.TagsSnapshot().Select(CloneTag).ToList(),
             TrackTags = profile.TrackTagsSnapshot(), History = profile.HistorySnapshot(HistoryLength),
         };
         _sentLists = lib.Lists.Select(p => p.Id).ToHashSet();
+        _sentSongs = _main.OwnSongs().Select(t => t.Id).ToHashSet();
         var tmp = Path.Combine(AppPaths.TempDir, "link-" + Ids.New() + ".gz");
         try
         {
@@ -426,6 +429,29 @@ public sealed class SharedLibrary
         _ownGone.Remove(t.Id);
         Schedule();
         // (a song kept here may be one of the other device's: shown once from now on)
+        _rebuild.Stop();
+        _rebuild.Start();
+    });
+
+    // The songs sent as this device's: this profile's (the library is every profile's songs).
+    private HashSet<string> _sentSongs = new();
+
+    // Songs into or out of this profile's library: the other device's view follows.
+    private void OnOwnSongs() => _ui.BeginInvoke(() =>
+    {
+        if (_disposed) return;
+        var now = _main.OwnSongs().Select(t => t.Id).ToHashSet();
+        foreach (var id in now.Where(id => !_sentSongs.Contains(id)))
+        {
+            _ownTracks.Add(id);
+            _ownGone.Remove(id);
+        }
+        foreach (var id in _sentSongs.Where(id => !now.Contains(id)))
+        {
+            _ownGone.Add(id);
+            _ownTracks.Remove(id);
+        }
+        Schedule();
         _rebuild.Stop();
         _rebuild.Start();
     });
@@ -517,8 +543,15 @@ public sealed class SharedLibrary
         var lib = new LinkLib();
         var library = _main.Library;
         var profile = _main.Profile;
-        if (_ownTracks.Count > 0) lib.Tracks = _ownTracks.Select(library.Get).OfType<Track>().Select(Describe).ToList();
+        // (a song of another profile of this device isn't this one's: gone for the other device)
+        var shown = _ownTracks.Select(library.Get).OfType<Track>().ToList();
+        var notMine = shown.Where(t => !profile.Has(t.Id)).Select(t => t.Id).ToList();
+        shown.RemoveAll(t => !profile.Has(t.Id));
+        _ownGone.UnionWith(notMine);
+        if (shown.Count > 0) lib.Tracks = shown.Select(Describe).ToList();
         if (_ownGone.Count > 0) lib.Gone = _ownGone.ToList();
+        _sentSongs.UnionWith(shown.Select(t => t.Id));
+        _sentSongs.ExceptWith(_ownGone);
         if (_ownLists.Count > 0)
         {
             var now = profile.PlaylistsSnapshot();
@@ -902,11 +935,13 @@ public sealed class SharedLibrary
                     return null;
                 }
                 _main.Library.Add(t);
+                _main.Profile.Own(new[] { t.Id });
                 await KeepFile(t, file);
                 return t;
             }
             _main.Library.Add(t);
         }
+        _main.Profile.Own(new[] { t.Id });
         if (save && !t.HasSavedFile) await SaveHere(t, lt.Id);
         return t;
     }
@@ -924,6 +959,7 @@ public sealed class SharedLibrary
         }
         if (FindLocal(lt) is { } have)
         {
+            _main.Profile.Own(new[] { have.Id });
             if (save && !have.HasSavedFile) _ = SaveHere(have, their);
             return have;
         }
@@ -940,6 +976,7 @@ public sealed class SharedLibrary
         t.Wave = shown.Wave;
         t.CachePath = shown.CachePath;
         _main.Library.Add(t);
+        _main.Profile.Own(new[] { t.Id });
         if (!t.HasCover && lt.Cover) _ = CoverLater(t, their);
         if (save || !t.HasLink) _ = SaveHere(t, their);
         _rebuild.Stop();

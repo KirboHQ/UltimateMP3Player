@@ -98,6 +98,8 @@ public sealed class DownloadBatch
     {
         if (Canceled) return;
         Slots[index] = trackId;
+        // (into the library of the profile that asked for it, even one already on the device for another profile)
+        Profile.Own(new[] { trackId });
         // A tag deleted meanwhile is skipped.
         foreach (var tag in TagIds)
             if (Profile.GetTag(tag) != null) Profile.SetTag(new[] { trackId }, tag, true);
@@ -341,6 +343,8 @@ public sealed class DownloadJobViewModel : Observable
                 return;
             }
             Batch.Place(Index, res.Track.Id);
+            // Saved: the video brought while it was in the cloud goes beside its audio, like the audio.
+            if (VideosViewModel.Attach(_queue.Host, res.Track)) _queue.Host.Library.Changed(res.Track);
             // A quality chosen on the card stays the song's own, for its next downloads (and for hearing it from the cloud).
             if (!Replace && (AudioQuality != null || VideoRes != null) && _queue.Host.Library.Get(res.Track.Id) is { } got)
             {
@@ -1118,7 +1122,8 @@ public sealed class LinkViewModel : Observable
         Items = playable.Select((it, i) =>
         {
             var known = lib.FindItem(it);
-            return new LinkItemViewModel(it, i + 1, known != null, this);
+            // (another profile's song isn't in yours: the file is shared, the library isn't)
+            return new LinkItemViewModel(it, i + 1, known != null && main.Owns(known), this);
         }).ToList();
         HasVideo = Engines.VideoDownloads && playable.Any(i => i.Kind == MediaKind.Video);
         _withVideo = HasVideo && !main.Host.Settings.PreferAudioOnly;
@@ -1353,10 +1358,15 @@ public sealed class LinkViewModel : Observable
         var lib = main.Library;
         added = false;
         var t = lib.FindItem(item);
-        if (t != null) return t;
+        if (t != null)
+        {
+            main.Profile.Own(new[] { t.Id });
+            return t;
+        }
         if (string.IsNullOrEmpty(item.PageUrl ?? item.Url)) return null;
         t = CloudSongs.FromItem(item);
         lib.Add(t);
+        main.Profile.Own(new[] { t.Id });
         _ = main.FetchCover(t, CloudSongs.Pictures(item));
         _ = main.SpellArtist(t, item.Info?.Artist, SongMeta.CleanChannel(item.Info?.Uploader));
         added = true;
