@@ -1514,6 +1514,20 @@ public sealed class SettingsViewModel : Observable
         }
     }
 
+    // While the bot plays in your channel, the app silent here: the songs heard only on Discord, not twice.
+    public bool DiscordBotMutesApp
+    {
+        get => S.DiscordBotMutesApp;
+        set
+        {
+            if (value == S.DiscordBotMutesApp) return;
+            S.DiscordBotMutesApp = value;
+            Save();
+            _main.Host.ApplyBotSilence();
+            OnChanged();
+        }
+    }
+
     public bool DiscordBotPossible => VoiceBot.Possible;
     // (the rows under the switch: there once there's a bot)
     public bool DiscordBotHasToken => S.DiscordBotToken != null;

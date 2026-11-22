@@ -12,7 +12,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>5.5.1</Version>
+    <Version>5.5.2</Version>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -42,8 +42,9 @@
     <PackageReference Include="NAudio.Core" Version="2.2.1" />
     <PackageReference Include="NLayer.NAudioSupport" Version="2.0.1" />
     <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
-    <!-- the Discord bot (Services\VoiceBot.cs): Discord.Net 3.20 calls libdave 1.2 (downloaded) and these two libraries -->
-    <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2" />
+    <!-- the Discord bot (Services\VoiceBot.cs): Discord.Net calls libdave 1.2 (downloaded) and these two libraries. Its nightly
+         (NuGet.config): 3.20.2 fails the voice encryption with others in the channel. -->
+    <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2-nightly.20261111.899" />
     <PackageReference Include="DSharpPlus.Natives.Opus" Version="1.6.1.34" />
     <PackageReference Include="libsodium" Version="1.0.22" />
     <PackageReference Include="ppy.SDL3-CS" Version="2026.1002.1" />

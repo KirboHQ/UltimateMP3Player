@@ -1339,8 +1339,15 @@
                                     <TextBlock Text="{Binding DiscordBotPictureText}" Classes="hint" FontSize="12"/>
                                 </StackPanel>
                             </DockPanel>
+                            <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding DiscordBotMutesApp}" Margin="0,16,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="{local:T 'Hear the songs only through the bot'}"/>
+                                    <TextBlock Text="{local:T 'While the bot is in your channel the app makes no sound on this computer (the DJ too), so you don\'t hear the songs twice.'}"
+                                               Classes="hint"/>
+                                </StackPanel>
+                            </CheckBox>
                             <TextBlock Classes="hint" FontSize="12" Margin="2,12,0,0" Foreground="{DynamicResource MutedBrush}"
-                                       Text="{local:T 'Its volume is set in Discord, by each listener (right-click the bot): the app\'s slider doesn\'t change it. To hear the songs only from the app, mute the bot there (Discord remembers it); to hear them only on Discord, turn the app down.'}"/>
+                                       Text="{local:T 'Its volume is set in Discord, by each listener (right-click the bot): the app\'s slider doesn\'t change it. To hear the songs only from the app, mute the bot there once: Discord remembers it.'}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>

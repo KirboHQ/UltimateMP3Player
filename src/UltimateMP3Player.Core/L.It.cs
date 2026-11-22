@@ -2764,8 +2764,11 @@ public static partial class L
             "Discord permette a un bot di cambiare nome solo poche volte all'ora: il nuovo gli viene dato quando si ricollega più tardi",
         ["Discord didn't take the bot's name or picture: {0}"] = "Discord non ha accettato il nome o l'immagine del bot: {0}",
         ["Invite to a server"] = "Invita in un server",
-        ["Its volume is set in Discord, by each listener (right-click the bot): the app's slider doesn't change it. To hear the songs only from the app, mute the bot there (Discord remembers it); to hear them only on Discord, turn the app down."] =
-            "Il suo volume si regola su Discord, da ciascun ascoltatore (tasto destro sul bot): il cursore dell'app non lo cambia. Per sentire i brani solo dall'app, silenzia lì il bot (Discord se lo ricorda); per sentirli solo su Discord, abbassa l'app.",
+        ["Its volume is set in Discord, by each listener (right-click the bot): the app's slider doesn't change it. To hear the songs only from the app, mute the bot there once: Discord remembers it."] =
+            "Il suo volume si regola su Discord, da ciascun ascoltatore (tasto destro sul bot): il cursore dell'app non lo cambia. Per sentire i brani solo dall'app, silenzia lì il bot una volta: Discord se lo ricorda.",
+        ["Hear the songs only through the bot"] = "Senti i brani solo dal bot",
+        ["While the bot is in your channel the app makes no sound on this computer (the DJ too), so you don't hear the songs twice."] =
+            "Mentre il bot è nel tuo canale l'app non suona su questo computer (nemmeno il DJ), così non senti i brani due volte.",
         ["Not on this computer: Discord's voice library has no version for it"] = "Non su questo computer: la libreria vocale di Discord non ne ha una versione",
         ["Off"] = "Spento",
         ["The app runs a bot of yours: when you turn it on, it joins the server voice channel you're in and plays what you're listening to. Make it once, it's free.\n\n1. Open discord.com/developers (the button below), sign in and press New Application. Any name: the app calls the bot “UMP - your name” with its logo, and you can change both in Settings.\n2. On the Bot page press Reset Token and copy the token. There, with Public Bot off, only you can add the bot to servers.\n3. Paste it here, then press Invite to a server: any server where you have Manage Server (yours, for one).\n\nThe bot follows only you, its application's owner, and only while it's on: it joins when you enter a voice channel of a server it's in and leaves with you. Everyone sets its volume in Discord (right-click the bot): the app's slider doesn't change it. Bots can't join private or group calls. The token stays on this computer: keep it to yourself. An empty field removes the bot."] =
@@ -2780,5 +2783,7 @@ public static partial class L
         ["Joining {0}…"] = "Entra in {0}…",
         ["Playing in {0}"] = "Suona in {0}",
         ["Couldn't join {0}: the bot must be allowed to connect and speak there"] = "Impossibile entrare in {0}: lì il bot deve avere il permesso di connettersi e parlare",
+        ["Left {0}: Discord's voice connection failed. It tries again when you go to another channel, or turn the bot off and on"] =
+            "Uscito da {0}: la connessione vocale di Discord non è riuscita. Riprova quando vai in un altro canale, o se spegni e riaccendi il bot",
     };
 }

@@ -367,6 +367,7 @@ public sealed class AppHost : Observable
 
     public void SetDiscordPresence(bool on) { }
     public void SetDiscordBot() { }
+    public void ApplyBotSilence() { }
     public void OnRoomChanged() { }
 
     private void UpdateTimeline(bool force)

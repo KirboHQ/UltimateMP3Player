@@ -530,7 +530,20 @@ public sealed class PlayerViewModel : Observable
 
     // (driving a computer: its volume, for the music heard here too; LinkSilent: the music is heard on the phone only)
     // A radio has no file to send to the phone: it's heard here whatever the choice, or it would be heard nowhere.
-    private void ApplyVolume() => _audio.Volume = Muted || _silenced || _linkSilent && !IsLive ? 0 : (float)Math.Pow(Volume, 2);
+    private void ApplyVolume() => _audio.Volume = Muted || _silenced || _botSilent || _linkSilent && !IsLive ? 0 : (float)Math.Pow(Volume, 2);
+
+    // The Discord bot plays in the user's channel and the app is to be heard only there (Settings): silent here, while
+    // the bot still gets the sound (it's taken before the volume).
+    private bool _botSilent;
+    internal bool BotSilent
+    {
+        set
+        {
+            if (_botSilent == value) return;
+            _botSilent = value;
+            ApplyVolume();
+        }
+    }
 
     // Phones in a room: headphones pulled out, a call, another app's music silence only this phone (the room goes on for
     // the others) until the play button, in the app or on the lock screen. Not kept like the mute (phones have no mute button).

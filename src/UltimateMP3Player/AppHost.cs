@@ -71,6 +71,7 @@ public sealed class AppHost : Observable
         _hadVersion = Settings.LastVersion != null;
         Presence = new DiscordPresence { CustomAppId = Settings.DiscordApp, Enabled = Settings.DiscordPresence };
         Bot = new VoiceBot(Audio, Settings, () => System.Windows.Application.Current.Dispatcher.BeginInvoke(() => Settings.Save()));
+        Bot.Changed += () => System.Windows.Application.Current.Dispatcher.BeginInvoke(() => ApplyBotSilence());
         SetDiscordBot();
         Settings.OverlayPort = OverlayServer.Shared.Apply(Settings.OverlaySources, Settings.OverlayPort);
         Lyrics = new LyricsService(this);
@@ -211,6 +212,7 @@ public sealed class AppHost : Observable
 #if AVALONIA
         WatchVolume(Session);
 #endif
+        ApplyBotSilence();
         ApplyTheme();
         if (Window != null) Window.DataContext = Session;
         OnTrackChanged();
@@ -244,6 +246,7 @@ public sealed class AppHost : Observable
 #if AVALONIA
         WatchVolume(Session);
 #endif
+        ApplyBotSilence();
         ReloadResources();
         ApplyTheme();
         if (Window != null)
@@ -512,6 +515,16 @@ public sealed class AppHost : Observable
     {
         if (Settings.DiscordBot && Settings.DiscordBotToken is { } token && VoiceBot.Possible) Bot.Start(token);
         else Bot.Stop();
+        ApplyBotSilence();
+    }
+
+    // While the bot plays in the user's channel, the app heard only there if they chose so (Settings): the player and the
+    // DJ silent here, the bot still getting their sound (taken before their volume).
+    public void ApplyBotSilence()
+    {
+        bool silent = Settings.DiscordBotMutesApp && Bot.InChannel;
+        DjEngine.Silent = silent;
+        if (Session != null) Session.Player.BotSilent = silent;
     }
 
     private string? NowPlayingText()

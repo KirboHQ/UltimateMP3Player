@@ -54,6 +54,9 @@ public sealed class VoiceBot
     // The bot's owner's name on Discord, once connected: its default name is made of it.
     public string? OwnerName { get; private set; }
 
+    // Playing in the owner's channel now (the app may then be silent here: AppHost.ApplyBotSilence). Changed says when.
+    public bool InChannel => _out != null && _run != null;
+
     // (Discord's usernames are at most 32 characters)
     public static string DefaultName(string owner) => ("UMP - " + owner) is var n && n.Length > 32 ? n[..32] : n;
 
@@ -83,7 +86,7 @@ public sealed class VoiceBot
     private static async Task ShowAsync(DiscordSocketClient client, string? song)
     {
         try { await client.SetActivityAsync(song != null ? new Game(song, ActivityType.Listening) : null); }
-        catch (Exception e) { AppPaths.AppendLog("Discord bot: activity: " + e.Message); }
+        catch (Exception e) { Log("activity: " + e.Message); }
     }
 
     // libdave has a build for this computer (none for Windows on ARM).
@@ -183,7 +186,14 @@ public sealed class VoiceBot
             _client = client;
             client.Log += m =>
             {
-                if (m.Severity <= LogSeverity.Error) AppPaths.AppendLog($"Discord bot: {m.Source}: {m.Message} {m.Exception}");
+                // The voice connection failing (its encryption above all) makes it try again and again, and each try changes
+                // the keys of everyone in the call: the whole call lags. At the first sign it leaves (Abort).
+                // (its failures only: "MLS Failure: …", the welcome refused; "Successfully welcomed to MLS Group" is fine)
+                bool voice = m.Source?.StartsWith("Audio", StringComparison.Ordinal) == true || m.Source?.Contains("dave", StringComparison.OrdinalIgnoreCase) == true;
+                var said = $"{m.Message} {m.Exception?.Message}";
+                bool mls = said.Contains("MLS Failure", StringComparison.OrdinalIgnoreCase) || said.Contains("InvalidCommit", StringComparison.OrdinalIgnoreCase);
+                if (m.Severity <= LogSeverity.Error || mls) Log($"{m.Source}: {m.Message} {m.Exception}");
+                if (voice && (m.Severity <= LogSeverity.Error || mls)) Abort();
                 return Task.CompletedTask;
             };
             // (the gateway waits for its handlers: the joins run apart)
@@ -207,7 +217,7 @@ public sealed class VoiceBot
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
-            AppPaths.AppendLog("Discord bot: " + e);
+            Log(e.ToString());
             Set(e is Discord.Net.HttpException { HttpCode: System.Net.HttpStatusCode.Unauthorized }
                 ? L.T("Discord refused the token: copy it again from your application's Bot page")
                 : L.F("Couldn't connect to Discord: {0}", e.Message));
@@ -231,7 +241,7 @@ public sealed class VoiceBot
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
-            AppPaths.AppendLog("Discord bot: " + e);
+            Log(e.ToString());
             Set(L.F("Couldn't connect to Discord: {0}", e.Message));
         }
         catch { }
@@ -246,6 +256,10 @@ public sealed class VoiceBot
         {
             if (ct.IsCancellationRequested) return;
             if (target != null && target.Id == _in?.Id && target.Guild.AudioClient?.ConnectionState == ConnectionState.Connected) return;
+            // A channel whose voice connection failed isn't tried again on its own (Abort): only after the owner goes
+            // elsewhere, or the bot is turned off and on.
+            if (target != null && target.Id == _refused) return;
+            _refused = 0;
             await LeaveAsync();
             if (target == null)
             {
@@ -269,13 +283,42 @@ public sealed class VoiceBot
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
-            AppPaths.AppendLog("Discord bot: " + e);
+            Log(e.ToString());
+            bool aborted = target != null && target.Id == _refused;
+            if (target != null) _refused = target.Id;
             await LeaveAsync();
-            Set(L.F("Couldn't join {0}: the bot must be allowed to connect and speak there", target?.Name ?? ""));
+            Set(aborted ? Refused(target!) : L.F("Couldn't join {0}: the bot must be allowed to connect and speak there", target?.Name ?? ""));
         }
         catch { }
         finally { _gate.Release(); }
     }
+
+    // The channel whose voice connection failed last (0: none).
+    private ulong _refused;
+
+    private static string Refused(SocketVoiceChannel channel)
+        => L.F("Left {0}: Discord's voice connection failed. It tries again when you go to another channel, or turn the bot off and on", channel.Name);
+
+    // The voice connection failing (Discord.Net's log, any thread): out of the channel at once, even from a join still
+    // trying (without waiting for the gate, which that join holds), and not back on its own.
+    private void Abort()
+    {
+        if (_in is not { } channel || channel.Id == _refused) return;
+        _refused = channel.Id;
+        Set(Refused(channel));
+        _ = Task.Run(async () =>
+        {
+            try { await channel.DisconnectAsync(); } catch { }
+            await _gate.WaitAsync();
+            try
+            {
+                if (_in?.Id == channel.Id) await LeaveAsync();
+            }
+            finally { _gate.Release(); }
+        });
+    }
+
+    private static void Log(string text) => AppPaths.AppendLog($"\n\n[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Discord bot: {text}\n");
 
     // (inside the gate)
     private async Task LeaveAsync()
@@ -288,6 +331,8 @@ public sealed class VoiceBot
         _out = null;
         _in = null;
         try { output?.Dispose(); } catch { }
+        // (out of the channel: the app is heard here again at once)
+        if (output != null) Changed?.Invoke();
         ShowSong();
         if (channel != null)
             try { await channel.DisconnectAsync(); } catch { }
@@ -363,7 +408,7 @@ public sealed class VoiceBot
         catch (OperationCanceledException) { }
         catch (Exception e)
         {
-            if (ReferenceEquals(output, _out)) AppPaths.AppendLog("Discord bot: " + e);
+            if (ReferenceEquals(output, _out)) Log(e.ToString());
         }
     }
 
@@ -401,7 +446,7 @@ public sealed class VoiceBot
         }
         catch (Exception e)
         {
-            AppPaths.AppendLog("Discord bot: name or picture: " + e);
+            Log("name or picture: " + e);
             Set(e is Discord.Net.RateLimitedException || e is Discord.Net.HttpException { HttpCode: System.Net.HttpStatusCode.TooManyRequests }
                 ? L.T("Discord lets a bot change its name only a few times an hour: the new one is given when the bot connects again later")
                 : L.F("Discord didn't take the bot's name or picture: {0}", e.Message));

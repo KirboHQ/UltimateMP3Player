@@ -418,8 +418,15 @@ public sealed class DjEngine : ISampleProvider, IDisposable
         lock (_recLock) _rec?.WriteSamples(buffer, offset, count);
         // (only with something playing: paused decks are silence, and the bot then shows nothing)
         if (heard) tap!(_tap, count, WaveFormat.SampleRate);
+        // Heard only on Discord, through the bot (Settings): silent here, after the meter and the recording. (Element by
+        // element: NAudio's buffer is a byte[] seen as float[], Array.Clear would count bytes.)
+        if (Silent)
+            for (int i = offset, end = offset + count; i < end; i++) buffer[i] = 0;
         return count;
     }
+
+    // (static like Tap; set by AppHost.ApplyBotSilence)
+    public static volatile bool Silent;
 
     // Soft knee above 0.8 instead of hard clipping.
     private static float Knee(float x)

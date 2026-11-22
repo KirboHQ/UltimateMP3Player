@@ -307,6 +307,8 @@ public sealed class AppSettings
     // here (like the Spotify and Last.fm keys) and never goes with the settings to another device.
     public bool DiscordBot { get; set; }
     public string? DiscordBotToken { get; set; }
+    // While the bot plays in the user's channel the app is silent here: heard only on Discord, not twice.
+    public bool DiscordBotMutesApp { get; set; }
     // Its name, null = "UMP - <its owner's Discord name>"; its picture: AppPaths.BotPicture, else the app's logo.
     public string? DiscordBotName { get; set; }
     // What the app last gave the bot ("bot id|name", "bot id|picture"): given again only when that changes, so a name or
