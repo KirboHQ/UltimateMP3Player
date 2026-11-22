@@ -643,7 +643,7 @@ public static partial class L
         ["tags labels color colors"] = "tag etichette colore colori",
         ["artist artists rename names edit"] = "artista artisti rinomina nomi modifica",
         ["import add files folder computer"] = "importa aggiungi file cartella computer",
-        ["discord status activity rich presence application id name"] = "discord stato attività applicazione id nome",
+        ["discord status activity rich presence application id name bot voice channel server"] = "discord stato attività applicazione id nome bot canale vocale server",
         ["updates update version github engines yt-dlp gallery-dl data"] = "aggiornamenti aggiorna versione github motori yt-dlp gallery-dl dati",
         ["help support report problem bug error github issue idea suggestion feature contact terms use conditions copyright"] =
             "aiuto supporto segnala problema bug errore github issue idea suggerimento contatto termini uso condizioni diritto autore copyright",
@@ -2527,7 +2527,8 @@ public static partial class L
         ["song bar seek progress shape blocks dots line wave mirrored"] = "barra canzone brano avanzamento forma blocchi punti linea onda specchiata",
         ["visualizer bars waves music spectrum song view"] = "visualizzatore barre onde musica spettro pagina brano",
         ["interface language english italian animations scrolling mouse wheel cover 3d parallax speed zoom size bigger smaller"] = "interfaccia lingua inglese italiano animazioni scorrimento rotella mouse copertina 3d velocità zoom dimensione grande piccola",
-        ["playback volume normalize output device speakers headphones"] = "riproduzione volume normalizza uscita dispositivo casse cuffie altoparlanti",
+        ["playback volume normalize loudness lufs level output device speakers headphones"] =
+            "riproduzione volume normalizza volume stabile loudness lufs livello uscita dispositivo casse cuffie altoparlanti",
         ["crossfade fade transition bpm beat next song"] = "dissolvenza sfumatura transizione passaggio bpm battuta brano successivo",
         ["downloads folder music save audio only simultaneous at once"] = "download cartella musica salva audio solo contemporanei",
         ["format mp3 m4a opus flac quality video resolution"] = "formato mp3 m4a opus flac qualità video risoluzione",
@@ -2738,5 +2739,46 @@ public static partial class L
         ["Downloading the video of “{0}”…"] = "Download del video di «{0}»…",
         ["The video of “{0}” is ready"] = "Il video di «{0}» è pronto",
         ["Couldn't download the video of “{0}”: {1}"] = "Impossibile scaricare il video di «{0}»: {1}",
+
+        // the loudness Normalize volume brings the songs to
+        ["Level"] = "Livello",
+        ["Normalize volume level"] = "Livello della normalizzazione del volume",
+        ["{0} LUFS"] = "{0} LUFS",
+        ["-14 is the level of Spotify and YouTube. Higher is louder (a song is raised only as far as it can go without distorting); lower is quieter, with more room for the loud moments."] =
+            "-14 è il livello di Spotify e YouTube. Più alto è più forte (un brano viene alzato solo finché non distorce); più basso è più piano, con più spazio per i momenti forti.",
+
+        // the Discord bot in a voice channel
+        ["Play in your voice channel through your own bot"] = "Suona nel tuo canale vocale con il tuo bot",
+        ["Your bot joins the server voice channel you're in, plays what the app plays and shows the song under its name. Not in private or group calls."] =
+            "Il tuo bot entra nel canale vocale del server in cui sei, suona quello che suona l'app e mostra il brano sotto il suo nome. Non nelle chiamate private o di gruppo.",
+        ["Your Discord bot"] = "Il tuo bot Discord",
+        ["Change token…"] = "Cambia token…",
+        ["Its name on Discord"] = "Il suo nome su Discord",
+        ["Discord lets a bot change its name only a few times an hour: changed too often, the new one arrives later."] =
+            "Discord permette a un bot di cambiare nome solo poche volte all'ora: se lo cambi troppo spesso, il nuovo arriva più tardi.",
+        ["UMP - your Discord name"] = "UMP - il tuo nome su Discord",
+        ["Its picture"] = "La sua immagine",
+        ["The app's logo"] = "Il logo dell'app",
+        ["Use the logo"] = "Usa il logo",
+        ["Discord lets a bot change its name only a few times an hour: the new one is given when the bot connects again later"] =
+            "Discord permette a un bot di cambiare nome solo poche volte all'ora: il nuovo gli viene dato quando si ricollega più tardi",
+        ["Discord didn't take the bot's name or picture: {0}"] = "Discord non ha accettato il nome o l'immagine del bot: {0}",
+        ["Invite to a server"] = "Invita in un server",
+        ["Its volume is set in Discord, by each listener (right-click the bot): the app's slider doesn't change it. To hear the songs only from the app, mute the bot there (Discord remembers it); to hear them only on Discord, turn the app down."] =
+            "Il suo volume si regola su Discord, da ciascun ascoltatore (tasto destro sul bot): il cursore dell'app non lo cambia. Per sentire i brani solo dall'app, silenzia lì il bot (Discord se lo ricorda); per sentirli solo su Discord, abbassa l'app.",
+        ["Not on this computer: Discord's voice library has no version for it"] = "Non su questo computer: la libreria vocale di Discord non ne ha una versione",
+        ["Off"] = "Spento",
+        ["The app runs a bot of yours: when you turn it on, it joins the server voice channel you're in and plays what you're listening to. Make it once, it's free.\n\n1. Open discord.com/developers (the button below), sign in and press New Application. Any name: the app calls the bot “UMP - your name” with its logo, and you can change both in Settings.\n2. On the Bot page press Reset Token and copy the token. There, with Public Bot off, only you can add the bot to servers.\n3. Paste it here, then press Invite to a server: any server where you have Manage Server (yours, for one).\n\nThe bot follows only you, its application's owner, and only while it's on: it joins when you enter a voice channel of a server it's in and leaves with you. Everyone sets its volume in Discord (right-click the bot): the app's slider doesn't change it. Bots can't join private or group calls. The token stays on this computer: keep it to yourself. An empty field removes the bot."] =
+            "L'app fa funzionare un tuo bot: quando lo attivi, entra nel canale vocale del server in cui sei e suona quello che stai ascoltando. Si crea una volta sola, è gratis.\n\n1. Apri discord.com/developers (il pulsante qui sotto), accedi e premi New Application. Il nome non conta: l'app chiama il bot «UMP - il tuo nome» con il suo logo, e puoi cambiare entrambi nelle Impostazioni.\n2. Nella pagina Bot premi Reset Token e copia il token. Lì, togliendo Public Bot, solo tu potrai aggiungere il bot ai server.\n3. Incollalo qui, poi premi Invita in un server: va bene qualsiasi server in cui hai il permesso Gestisci server (il tuo, per esempio).\n\nIl bot segue solo te, il proprietario della sua applicazione, e solo quando è attivo: entra quando entri in un canale vocale di un server in cui c'è ed esce con te. Ognuno regola il suo volume su Discord (tasto destro sul bot): il cursore dell'app non lo cambia. I bot non possono entrare nelle chiamate private o di gruppo. Il token resta su questo computer: non darlo a nessuno. Con il campo vuoto il bot viene tolto.",
+        ["Open discord.com/developers"] = "Apri discord.com/developers",
+        ["Bot token"] = "Token del bot",
+        ["Downloading Discord's voice library…"] = "Download della libreria vocale di Discord…",
+        ["Connecting to Discord…"] = "Connessione a Discord…",
+        ["Discord refused the token: copy it again from your application's Bot page"] = "Discord ha rifiutato il token: copialo di nuovo dalla pagina Bot della tua applicazione",
+        ["Couldn't connect to Discord: {0}"] = "Impossibile connettersi a Discord: {0}",
+        ["On: it joins you when you're in a voice channel of a server it's in"] = "Attivo: ti raggiunge quando sei in un canale vocale di un server in cui c'è",
+        ["Joining {0}…"] = "Entra in {0}…",
+        ["Playing in {0}"] = "Suona in {0}",
+        ["Couldn't join {0}: the bot must be allowed to connect and speak there"] = "Impossibile entrare in {0}: lì il bot deve avere il permesso di connettersi e parlare",
     };
 }

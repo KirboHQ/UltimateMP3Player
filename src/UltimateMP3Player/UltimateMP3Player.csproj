@@ -12,7 +12,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>5.5.0</Version>
+    <Version>5.5.1</Version>
     <Product>Ultimate MP3 Player</Product>
     <!-- File description: the name Windows shows in the volume mixer and the Task Manager. -->
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
@@ -60,6 +60,10 @@
     <!-- internet radios' MP3 streams (LiveMp3Source), like the other systems -->
     <PackageReference Include="NLayer.NAudioSupport" Version="2.0.1" />
     <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
+    <!-- the Discord bot (Services\VoiceBot.cs): Discord.Net 3.20 calls libdave 1.2 (downloaded) and these two libraries -->
+    <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2" />
+    <PackageReference Include="DSharpPlus.Natives.Opus" Version="1.6.1.34" />
+    <PackageReference Include="libsodium" Version="1.0.22" />
   </ItemGroup>
 
   <ItemGroup>

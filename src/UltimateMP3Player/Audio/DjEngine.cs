@@ -398,19 +398,40 @@ public sealed class DjEngine : ISampleProvider, IDisposable
     {
         lock (_mixLock) _mix.Read(buffer, offset, count);
         float m = Master, peak = 0;
+        var tap = Tap;
+        bool heard = false;
+        if (tap != null && _tap.Length < count) _tap = new float[count];
         for (int i = offset, end = offset + count; i < end; i++)
         {
-            float x = buffer[i] * m;
+            float raw = buffer[i];
+            if (tap != null)
+            {
+                _tap[i - offset] = Knee(raw);
+                heard |= raw != 0;
+            }
+            float x = raw * m;
             float a = Math.Abs(x);
-            // Soft knee above 0.8 instead of hard clipping.
-            if (a > 0.8f) x = Math.Sign(x) * (0.8f + 0.2f * (float)Math.Tanh((a - 0.8f) / 0.2f));
-            buffer[i] = x;
+            buffer[i] = Knee(x);
             if (a > peak) peak = a;
         }
         Level = Math.Max(peak, Level * 0.85f);
         lock (_recLock) _rec?.WriteSamples(buffer, offset, count);
+        // (only with something playing: paused decks are silence, and the bot then shows nothing)
+        if (heard) tap!(_tap, count, WaveFormat.SampleRate);
         return count;
     }
+
+    // Soft knee above 0.8 instead of hard clipping.
+    private static float Knee(float x)
+    {
+        float a = Math.Abs(x);
+        return a > 0.8f ? Math.Sign(x) * (0.8f + 0.2f * (float)Math.Tanh((a - 0.8f) / 0.2f)) : x;
+    }
+
+    // The decks as they are before the master volume, for the Discord bot (VoiceBot), like MasterProvider.Tap. On the
+    // audio thread: it only copies. (static: one DJ at a time, and the bot doesn't know when the DJ page makes one)
+    public static Action<float[], int, int>? Tap;
+    private float[] _tap = Array.Empty<float>();
 
     // ------------------------------------------------------------------ recording
 

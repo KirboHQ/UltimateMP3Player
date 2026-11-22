@@ -47,7 +47,7 @@ LIBRARIES INSIDE THE APP
 ------------------------
 
 .NET (.NET 8 on Windows, Linux and macOS, .NET 10 on Android), WPF, Windows Forms, the Windows SDK projection,
-System.IO.Pipelines
+System.IO.Pipelines, System.Linq.AsyncEnumerable
   License: MIT, text at the end. Copyright (c) .NET Foundation and Contributors.
   Source: https://github.com/dotnet/runtime, https://github.com/dotnet/wpf, https://github.com/dotnet/winforms,
   https://github.com/dotnet/android. Their own third-party notices:
@@ -93,6 +93,29 @@ Tmds.DBus.Protocol 0.21.3 (Linux)
   License: MIT, text at the end. Copyright 2006 Alp Toker <alp@atoker.com>. Copyright 2010 Other Contributors.
   Copyright 2016 Tom Deseyn <tom.deseyn@gmail.com>.
   Source: https://github.com/tmds/Tmds.DBus
+
+Discord.Net 3.20.2 (Windows, Linux, macOS: the Discord bot)
+  License: MIT, text at the end. Copyright (c) 2015-2022 Discord.Net Contributors.
+  Source: https://github.com/discord-net/Discord.Net
+
+Newtonsoft.Json 13.0.4 (Windows, Linux, macOS: used by Discord.Net)
+  License: MIT, text at the end. Copyright (c) 2007 James Newton-King.
+  Source: https://github.com/JamesNK/Newtonsoft.Json
+
+Opus 1.6.1 (Windows, Linux, macOS: the Discord bot's sound), from the DSharpPlus.Natives.Opus package
+  License: BSD 3-Clause, text at the end. Copyright the Opus authors (Xiph.Org Foundation, Skype Limited, Octasic,
+  Jean-Marc Valin, Timothy B. Terriberry and the others named in its COPYING file).
+  Source: https://opus-codec.org (https://gitlab.xiph.org/xiph/opus)
+
+libsodium 1.0.22 (Windows, Linux, macOS: the Discord bot's encryption)
+  License: ISC, text at the end. Copyright (c) 2013-2026 Frank Denis.
+  Source: https://github.com/jedisct1/libsodium
+
+libdave 1.2.2 (Windows x64, Linux, macOS: downloaded from Discord's project the first time the Discord bot is on)
+  License: MIT, text at the end. Copyright (c) 2024 Discord. Built with BoringSSL (Apache 2.0 and ISC), mlspp (BSD
+  2-Clause, Copyright (c) 2018, Cisco Systems) and nlohmann/json (MIT, Copyright (c) 2013-2022 Niels Lohmann), whose
+  texts are in the zip it comes from.
+  Source: https://github.com/discord/libdave (release v1.2.2/cpp)
 
 Fluent System Icons (font; Linux, macOS, Android)
   License: MIT, text at the end. Copyright (c) 2020 Microsoft Corporation.
@@ -185,6 +208,39 @@ zlib License (SDL3)
   2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original
      software.
   3. This notice may not be removed or altered from any source distribution.
+
+BSD 3-Clause License (Opus)
+
+  Redistribution and use in source and binary forms, with or without modification, are permitted provided that the
+  following conditions are met:
+
+  - Redistributions of source code must retain the above copyright notice, this list of conditions and the following
+    disclaimer.
+  - Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the
+    following disclaimer in the documentation and/or other materials provided with the distribution.
+  - Neither the name of Internet Society, IETF or IETF Trust, nor the names of specific contributors, may be used to
+    endorse or promote products derived from this software without specific prior written permission.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+  INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+ISC License (libsodium)
+
+  Copyright (c) 2013-2026 Frank Denis <j at pureftpd dot org>
+
+  Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby
+  granted, provided that the above copyright notice and this permission notice appear in all copies.
+
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+  INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+  AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+  PERFORMANCE OF THIS SOFTWARE.
 
 Unlicense (yt-dlp)
 

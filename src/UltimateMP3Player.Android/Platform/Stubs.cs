@@ -16,6 +16,18 @@ namespace UltimateMP3Player.Services
         public void Dispose() { }
     }
 
+    // The Discord bot in a voice channel: desktops only (libdave has no phone builds).
+    public sealed class VoiceBot
+    {
+        public static bool Possible => false;
+        public static string? InviteUrl(string? token) => null;
+        public static string DefaultName(string owner) => "";
+        public string Status => "";
+        public string? OwnerName => null;
+        public void Restyle() { }
+        public event Action? Changed { add { } remove { } }
+    }
+
     // Scrolling on a phone is the finger's.
     public static class SmoothScroll
     {

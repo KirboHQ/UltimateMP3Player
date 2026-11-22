@@ -12,7 +12,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>5.5.0</Version>
+    <Version>5.5.1</Version>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -42,6 +42,10 @@
     <PackageReference Include="NAudio.Core" Version="2.2.1" />
     <PackageReference Include="NLayer.NAudioSupport" Version="2.0.1" />
     <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
+    <!-- the Discord bot (Services\VoiceBot.cs): Discord.Net 3.20 calls libdave 1.2 (downloaded) and these two libraries -->
+    <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2" />
+    <PackageReference Include="DSharpPlus.Natives.Opus" Version="1.6.1.34" />
+    <PackageReference Include="libsodium" Version="1.0.22" />
     <PackageReference Include="ppy.SDL3-CS" Version="2026.1002.1" />
     <!-- The version Avalonia.FreeDesktop is built against: a newer one renames its types and Avalonia crashes at start on Linux. -->
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
@@ -63,6 +67,7 @@
     <Compile Include="..\UltimateMP3Player\Services\DiscordPresence.cs" Link="Shared\Services\DiscordPresence.cs" />
     <Compile Include="..\UltimateMP3Player\Services\LyricsService.cs" Link="Shared\Services\LyricsService.cs" />
     <Compile Include="..\UltimateMP3Player\Services\SingleInstance.cs" Link="Shared\Services\SingleInstance.cs" />
+    <Compile Include="..\UltimateMP3Player\Services\VoiceBot.cs" Link="Shared\Services\VoiceBot.cs" />
     <Compile Include="..\UltimateMP3Player\Views\Menus.Shared.cs" Link="Shared\Views\Menus.Shared.cs" />
     <Compile Include="..\UltimateMP3Player\Views\ChoiceTiles.cs" Link="Shared\Views\ChoiceTiles.cs" />
     <Compile Include="..\UltimateMP3Player\Views\ColorPicker.cs" Link="Shared\Views\ColorPicker.cs" />

@@ -274,6 +274,7 @@ public sealed class SettingsViewModel : Observable
         FindMissingCommand = new RelayCommand(() => _main.FindMissing());
         SuggestAgainCommand = new RelayCommand(p => { if (p is string artist) _main.SetUnsuggested(artist, false); });
         main.Profile.UnsuggestedChanged += () => OnChanged(nameof(UnsuggestedArtists), nameof(HasUnsuggested));
+        main.Host.Bot.Changed += OnBotChanged;
         bool hasRepo = AppInfo.RepoUrl != null;
         ReportProblemCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Bug] "), BugTemplate())!), () => hasRepo);
         SuggestIdeaCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Idea] "), IdeaTemplate())!), () => hasRepo);
@@ -978,6 +979,20 @@ public sealed class SettingsViewModel : Observable
         set => _main.Player.SetNormalize(value);
     }
 
+    // The loudness it brings the songs to (a slider under the switch, whole LUFS).
+    public double NormalizeTarget
+    {
+        get => _main.Profile.Data.NormalizeTarget;
+        set
+        {
+            if (Math.Round(value) == NormalizeTarget) return;
+            _main.Player.SetNormalizeTarget(value);
+            OnChanged(nameof(NormalizeTarget), nameof(NormalizeTargetText));
+        }
+    }
+
+    public string NormalizeTargetText => L.F("{0} LUFS", NormalizeTarget.ToString("0", System.Globalization.CultureInfo.InvariantCulture));
+
     public bool Crossfade
     {
         get => _main.Profile.Data.Crossfade;
@@ -1477,6 +1492,97 @@ public sealed class SettingsViewModel : Observable
 
     public bool DiscordAppIdWrong => S.DiscordAppId != null && S.DiscordApp == null;
     public ICommand DiscordDevelopersCommand => new RelayCommand(() => MainViewModel.OpenUrl("https://discord.com/developers/applications"));
+
+    // The user's own Discord bot plays in the server voice channel they're in (desktops: Services/VoiceBot.cs), only while
+    // this is on: a token alone never turns it on.
+    public bool DiscordBot
+    {
+        get => S.DiscordBot;
+        set
+        {
+            if (value == S.DiscordBot) return;
+            // No token yet: asked first (after the click, not inside the binding's update; the switch goes back if not given).
+            if (value && S.DiscordBotToken == null)
+            {
+                Application.Current.Dispatcher.BeginInvoke(() => _ = AskDiscordBot(true));
+                return;
+            }
+            S.DiscordBot = value;
+            Save();
+            _main.Host.SetDiscordBot();
+            OnChanged(nameof(DiscordBot), nameof(DiscordBotText));
+        }
+    }
+
+    public bool DiscordBotPossible => VoiceBot.Possible;
+    // (the rows under the switch: there once there's a bot)
+    public bool DiscordBotHasToken => S.DiscordBotToken != null;
+    public bool DiscordBotInvitable => VoiceBot.InviteUrl(S.DiscordBotToken) != null;
+    public string DiscordBotHint => VoiceBot.Possible
+        ? L.T("Your bot joins the server voice channel you're in, plays what the app plays and shows the song under its name. Not in private or group calls.")
+        : L.T("Not on this computer: Discord's voice library has no version for it");
+    public string DiscordBotText => S.DiscordBot ? _main.Host.Bot.Status : L.T("Off");
+
+    // Its name on Discord; empty = "UMP - <your Discord name>".
+    public string DiscordBotName
+    {
+        get => S.DiscordBotName ?? "";
+        set
+        {
+            var name = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            if (name == S.DiscordBotName) return;
+            S.DiscordBotName = name;
+            Save();
+            _main.Host.Bot.Restyle();
+        }
+    }
+
+    public string DiscordBotDefaultName => _main.Host.Bot.OwnerName is { } owner ? VoiceBot.DefaultName(owner) : L.T("UMP - your Discord name");
+    public bool DiscordBotHasPicture => File.Exists(AppPaths.BotPicture);
+    public string DiscordBotPictureText => DiscordBotHasPicture ? L.T("Your picture") : L.T("The app's logo");
+    public ICommand DiscordBotSetupCommand => new RelayCommand(() => _ = AskDiscordBot(false));
+    public ICommand DiscordBotInviteCommand => new RelayCommand(() => { if (VoiceBot.InviteUrl(S.DiscordBotToken) is { } url) MainViewModel.OpenUrl(url); });
+    public ICommand DiscordBotPictureCommand => new RelayCommand(() => _ = PickBotPicture());
+    public ICommand DiscordBotLogoCommand => new RelayCommand(() =>
+    {
+        try { File.Delete(AppPaths.BotPicture); } catch (IOException) { }
+        BotPictureChanged();
+    });
+
+    // (from any thread; unhooked by MainViewModel.Detach)
+    public void OnBotChanged() => Application.Current.Dispatcher.BeginInvoke(() => OnChanged(nameof(DiscordBotText), nameof(DiscordBotDefaultName)));
+
+    private async Task PickBotPicture()
+    {
+        if (await Dialogs.PickImageAsync() is not { } file) return;
+        // (square, its middle: Discord shows it in a circle)
+        if (await Task.Run(() => AudioAnalysis.MakeCoverFromImageAsync(file, AppPaths.BotPicture))) BotPictureChanged();
+        else _main.Toast(L.T("Invalid or unreadable image."));
+    }
+
+    private void BotPictureChanged()
+    {
+        _main.Host.Bot.Restyle();
+        OnChanged(nameof(DiscordBotHasPicture), nameof(DiscordBotPictureText));
+    }
+
+    private async Task AskDiscordBot(bool turnOn)
+    {
+        // Discord's own names (New Application, Bot, Reset Token, Public Bot, Manage Server) stay as Discord writes them.
+        var r = await Dialogs.FormAsync(L.T("Your Discord bot"),
+            L.T("The app runs a bot of yours: when you turn it on, it joins the server voice channel you're in and plays what you're listening to. Make it once, it's free.\n\n1. Open discord.com/developers (the button below), sign in and press New Application. Any name: the app calls the bot “UMP - your name” with its logo, and you can change both in Settings.\n2. On the Bot page press Reset Token and copy the token. There, with Public Bot off, only you can add the bot to servers.\n3. Paste it here, then press Invite to a server: any server where you have Manage Server (yours, for one).\n\nThe bot follows only you, its application's owner, and only while it's on: it joins when you enter a voice channel of a server it's in and leaves with you. Everyone sets its volume in Discord (right-click the bot): the app's slider doesn't change it. Bots can't join private or group calls. The token stays on this computer: keep it to yourself. An empty field removes the bot."),
+            (L.T("Open discord.com/developers"), "https://discord.com/developers/applications"),
+            (L.T("Bot token"), S.DiscordBotToken ?? ""));
+        if (r != null)
+        {
+            S.DiscordBotToken = string.IsNullOrWhiteSpace(r[0]) ? null : r[0].Trim();
+            // Given from the switch: on. Changed under it: as it was. Taken away: off.
+            S.DiscordBot = S.DiscordBotToken != null && (turnOn || S.DiscordBot);
+            Save();
+            _main.Host.SetDiscordBot();
+        }
+        OnChanged(nameof(DiscordBot), nameof(DiscordBotText), nameof(DiscordBotHasToken), nameof(DiscordBotInvitable));
+    }
 
     public bool AutoUpdateApp
     {

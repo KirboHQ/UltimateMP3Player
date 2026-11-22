@@ -118,6 +118,9 @@ public sealed class AudioEngine : IDisposable
 
     public float Volume { set => _master.Volume = value; }
 
+    // What the Discord bot sends: the sound before the volume (MasterProvider.Tap).
+    public Action<float[], int, int>? Tap { set => _master.Tap = value; }
+
     // Playback speed 0.5-2; pitch = the key follows the speed (like a record), otherwise it stays.
     public double Speed => _master.Speed;
 

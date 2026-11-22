@@ -57,8 +57,6 @@ public sealed class SpeedPreset : Observable
 
 public sealed class PlayerViewModel : Observable
 {
-    private const double TargetLufs = -14;
-
     private readonly MainViewModel _main;
 
     public VisualizerStyle SeekShape => _main.Host.Settings.SeekStyle;
@@ -707,7 +705,7 @@ public sealed class PlayerViewModel : Observable
     private double TrackGain(Track t)
     {
         if (!_main.Profile.Data.Normalize || t.Loudness is not double lufs) return 0;
-        double gain = TargetLufs - lufs;
+        double gain = Math.Clamp(_main.Profile.Data.NormalizeTarget, QuietestTarget, LoudestTarget) - lufs;
         if (gain > 0 && t.Peak is double peak) gain = Math.Min(gain, Math.Max(0, -1 - peak) + 3);
         return Math.Clamp(gain, -15, 8);
     }
@@ -1072,6 +1070,16 @@ public sealed class PlayerViewModel : Observable
         _main.Profile.Save();
         ApplyNormalization();
         OnChanged(nameof(Normalize));
+    }
+
+    // The loudness Normalize brings the songs to (Settings, per profile), in whole LUFS; the song playing glides there.
+    public const double QuietestTarget = -23, LoudestTarget = -8;
+
+    internal void SetNormalizeTarget(double lufs)
+    {
+        _main.Profile.Data.NormalizeTarget = Math.Clamp(Math.Round(lufs), QuietestTarget, LoudestTarget);
+        _main.Profile.Save();
+        ApplyNormalization();
     }
 
     private async Task Load(Track t, bool play, bool crossfade = false)

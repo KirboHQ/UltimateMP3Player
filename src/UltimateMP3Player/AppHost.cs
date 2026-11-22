@@ -70,6 +70,8 @@ public sealed class AppHost : Observable
         Updates = new Updater();
         _hadVersion = Settings.LastVersion != null;
         Presence = new DiscordPresence { CustomAppId = Settings.DiscordApp, Enabled = Settings.DiscordPresence };
+        Bot = new VoiceBot(Audio, Settings, () => System.Windows.Application.Current.Dispatcher.BeginInvoke(() => Settings.Save()));
+        SetDiscordBot();
         Settings.OverlayPort = OverlayServer.Shared.Apply(Settings.OverlaySources, Settings.OverlayPort);
         Lyrics = new LyricsService(this);
 #if !AVALONIA
@@ -109,6 +111,7 @@ public sealed class AppHost : Observable
     public DownloadQueue Downloads { get; }
     public Updater Updates { get; }
     public DiscordPresence Presence { get; }
+    public VoiceBot Bot { get; }
     public LyricsService Lyrics { get; }
     public MediaControls Media { get; }
     public TrayIcon Tray { get; }
@@ -398,6 +401,8 @@ public sealed class AppHost : Observable
         Profile.FlushAll();
         if (Updates.IsReady) Updates.Apply(false, null, false);
         Presence.Dispose();
+        // (a moment to leave the channel: otherwise Discord shows the bot there, silent, until it notices)
+        Bot.Stop(1500);
         OverlayServer.Shared.Stop();
         Tray.Dispose();
         Media.Dispose();
@@ -480,6 +485,8 @@ public sealed class AppHost : Observable
         double speed = p?.Speed is > 0 and var s ? s : 1;
         var room = Session is { InRoom: true, Together: var t } ? new DiscordPresence.Room(t.RoomId, t.RoomName, t.MemberCount, t.RoomMax) : null;
         Presence.Update(p?.Current?.T, p?.IsPlaying == true, (p?.EnginePosition ?? TimeSpan.Zero) / speed, duration / speed, room);
+        Bot.Song(p is { IsPlaying: true, Current.T: { } song }
+            ? string.IsNullOrWhiteSpace(song.DisplayArtist) ? song.Title : $"{song.Title} · {song.DisplayArtist}" : null);
         if (OverlayServer.Shared.Running) OverlayServer.Shared.Push(OverlayNow(p));
     }
 
@@ -498,6 +505,13 @@ public sealed class AppHost : Observable
     {
         Presence.Enabled = on;
         if (on) UpdateTimeline(true);
+    }
+
+    // The user's Discord bot: on with a token (Settings), else offline.
+    public void SetDiscordBot()
+    {
+        if (Settings.DiscordBot && Settings.DiscordBotToken is { } token && VoiceBot.Possible) Bot.Start(token);
+        else Bot.Stop();
     }
 
     private string? NowPlayingText()

@@ -51,6 +51,8 @@ public static class AppPaths
     public static string CacheDir => Path.Combine(DataDir, "cache");
     // The music videos of the songs not saved, and the links found (VideoCache).
     public static string VideoCacheDir => Path.Combine(DataDir, "videos");
+    // The Discord bot's own picture (Settings), when the user chose one.
+    public static string BotPicture => Path.Combine(DataDir, "discord-bot.jpg");
     public static string LogFile => Path.Combine(DataDir, "errors.log");
 
     // errors.log (or file) stays small: past 1 MB only its newer half is kept, from the start of an entry.
@@ -301,6 +303,16 @@ public sealed class AppSettings
     // (DiscordApp); null = the app's own.
     public string? DiscordAppId { get; set; }
     [JsonIgnore] public string? DiscordApp => DiscordAppId is { Length: >= 15 and <= 22 } id && id.All(char.IsAsciiDigit) ? id : null;
+    // The user's own Discord bot plays in the voice channel they're in (desktops, Services/VoiceBot.cs); its token stays
+    // here (like the Spotify and Last.fm keys) and never goes with the settings to another device.
+    public bool DiscordBot { get; set; }
+    public string? DiscordBotToken { get; set; }
+    // Its name, null = "UMP - <its owner's Discord name>"; its picture: AppPaths.BotPicture, else the app's logo.
+    public string? DiscordBotName { get; set; }
+    // What the app last gave the bot ("bot id|name", "bot id|picture"): given again only when that changes, so a name or
+    // picture set on Discord's site stays (and Discord lets a bot change its name only a few times an hour).
+    public string? DiscordBotNameSet { get; set; }
+    public string? DiscordBotPictureSet { get; set; }
     // The output the music plays on (an id of AudioPlatform.OutputDevices: the endpoint's on Windows, the name on Linux
     // and macOS, a kind and a name on the phone), null = the system's default; its name, shown while it isn't connected.
     public string? OutputDevice { get; set; }

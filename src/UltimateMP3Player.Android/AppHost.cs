@@ -106,6 +106,7 @@ public sealed class AppHost : Observable
     public DownloadQueue Downloads { get; }
     public Updater Updates { get; }
     public DiscordPresence Presence { get; }
+    public VoiceBot Bot { get; } = new();
     public LyricsService Lyrics { get; }
     public MediaControls Media { get; }
     public ICommand RestartToUpdateCommand { get; }
@@ -365,6 +366,7 @@ public sealed class AppHost : Observable
     public void OnSeek() => UpdateTimeline(true);
 
     public void SetDiscordPresence(bool on) { }
+    public void SetDiscordBot() { }
     public void OnRoomChanged() { }
 
     private void UpdateTimeline(bool force)

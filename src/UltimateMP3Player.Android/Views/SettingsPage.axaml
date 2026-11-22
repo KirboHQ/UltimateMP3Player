@@ -329,6 +329,16 @@
                             <TextBlock Text="{local:T 'All songs at the same volume, even if downloaded from different sites'}" Classes="setting-hint"/>
                         </StackPanel>
                     </CheckBox>
+                    <!-- the loudness it brings them to -->
+                    <StackPanel Margin="0,0,0,10" views:Fold.Open="{Binding Normalize}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <Slider Theme="{StaticResource KnobSlider}" Minimum="-23" Maximum="-8" Value="{Binding NormalizeTarget}" SmallChange="1" LargeChange="2"
+                                    IsSnapToTickEnabled="True" TickFrequency="1" Height="40" AutomationProperties.Name="{local:T 'Normalize volume level'}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding NormalizeTargetText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="76"/>
+                        </Grid>
+                        <TextBlock Text="{local:T '-14 is the level of Spotify and YouTube. Higher is louder (a song is raised only as far as it can go without distorting); lower is quieter, with more room for the loud moments.'}"
+                                   Classes="setting-hint"/>
+                    </StackPanel>
                     <Border Classes="line"/>
                     <CheckBox Theme="{StaticResource Switch}" Classes="switch" IsChecked="{Binding PlayWhileDownloading}">
                         <StackPanel>

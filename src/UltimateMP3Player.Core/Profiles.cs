@@ -158,6 +158,8 @@ public sealed class ProfileData
     public bool Shuffle { get; set; }
     public RepeatMode Repeat { get; set; }
     public bool Normalize { get; set; } = true;
+    // The loudness Normalize brings every song to (LUFS, -23 to -8): -14 like Spotify and YouTube; higher is louder.
+    public double NormalizeTarget { get; set; } = -14;
     public bool Crossfade { get; set; }
     public int CrossfadeSeconds { get; set; } = 6;
     // Before the next song comes in, the one playing glides to its BPM (when both are known and close enough).

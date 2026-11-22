@@ -528,6 +528,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         Host.Lyrics.BatchDone -= OnLyricsBatchDone;
         Host.Downloads.SavingChanged -= OnSaving;
         Host.Downloads.PropertyChanged -= OnQueueChanged;
+        if (_settings != null) Host.Bot.Changed -= _settings.OnBotChanged;
     }
 
     private void OnQueueChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

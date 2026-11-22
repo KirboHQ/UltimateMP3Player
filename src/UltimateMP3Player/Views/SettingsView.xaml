@@ -447,7 +447,7 @@
                 </Border>
 
                 <!-- ==================================================== playback -->
-                <Border Style="{StaticResource Card}" views:SettingsView.Group="playback" Padding="22" views:SettingsView.Keywords="{local:T 'playback volume normalize output device speakers headphones'}">
+                <Border Style="{StaticResource Card}" views:SettingsView.Group="playback" Padding="22" views:SettingsView.Keywords="{local:T 'playback volume normalize loudness lufs level output device speakers headphones'}">
                     <StackPanel>
                         <TextBlock Text="{local:T Playback}" Style="{StaticResource CardTitle}"/>
                         <TextBlock Text="{local:T 'Audio output'}" Style="{StaticResource FieldLabel}"/>
@@ -459,6 +459,22 @@
                                 <TextBlock Text="{local:T 'All songs at the same volume, even if they come from different sites.'}" Style="{StaticResource Hint}"/>
                             </StackPanel>
                         </CheckBox>
+                        <!-- the loudness it brings them to -->
+                        <StackPanel Margin="0,-4,0,16" views:Fold.Open="{Binding Normalize}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{local:T Level}" Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                <Slider Grid.Column="1" Minimum="-23" Maximum="-8" SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1"
+                                        Value="{Binding NormalizeTarget}" VerticalAlignment="Center" AutomationProperties.Name="{local:T 'Normalize volume level'}"/>
+                                <TextBlock Grid.Column="2" Text="{Binding NormalizeTargetText}" Margin="14,0,0,0" VerticalAlignment="Center" MinWidth="64"/>
+                            </Grid>
+                            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,6,0,0"
+                                       Text="{local:T '-14 is the level of Spotify and YouTube. Higher is louder (a song is raised only as far as it can go without distorting); lower is quieter, with more room for the loud moments.'}"/>
+                        </StackPanel>
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding PlayWhileDownloading}">
                             <StackPanel>
                                 <TextBlock Text="{local:T 'Start songs while they download'}"/>
@@ -1348,7 +1364,7 @@
                 </Border>
 
                 <!-- ==================================================== integrations -->
-                <Border Style="{StaticResource Card}" views:SettingsView.Group="integrations" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'discord status activity rich presence application id name'}">
+                <Border Style="{StaticResource Card}" views:SettingsView.Group="integrations" Padding="22" Tag="whole" views:SettingsView.Keywords="{local:T 'discord status activity rich presence application id name bot voice channel server'}">
                     <StackPanel>
                         <TextBlock Text="Discord" Style="{StaticResource CardTitle}"/>
                         <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DiscordPresence}" IsEnabled="{Binding DiscordAvailable}">
@@ -1368,6 +1384,42 @@
                         <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource ErrorBrush}" Margin="0,6,0,0"
                                    Text="{local:T 'That isn\'t an Application ID: it\'s the long number on the application\'s General Information page.'}"
                                    Visibility="{Binding DiscordAppIdWrong, Converter={StaticResource BoolVis}}"/>
+                        <!-- the user's own bot in a voice channel (VoiceBot): the switch, and under it, once there's a bot, its state, name and picture -->
+                        <CheckBox Style="{StaticResource Switch}" IsChecked="{Binding DiscordBot}" IsEnabled="{Binding DiscordBotPossible}" Margin="0,20,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{local:T 'Play in your voice channel through your own bot'}"/>
+                                <TextBlock Text="{Binding DiscordBotHint}" Style="{StaticResource Hint}"/>
+                            </StackPanel>
+                        </CheckBox>
+                        <StackPanel Margin="0,14,0,0" views:Fold.Open="{Binding DiscordBotHasToken}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Command="{Binding DiscordBotSetupCommand}" Content="{local:T 'Change token…'}"
+                                        VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Command="{Binding DiscordBotInviteCommand}" Content="{local:T 'Invite to a server'}"
+                                        VerticalAlignment="Center" Margin="12,0,0,0" Visibility="{Binding DiscordBotInvitable, Converter={StaticResource BoolVis}}"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{local:T 'Your Discord bot'}"/>
+                                    <TextBlock Text="{Binding DiscordBotText}" Style="{StaticResource Hint}" FontSize="12"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <TextBlock Text="{local:T 'Its name on Discord'}" Style="{StaticResource FieldLabel}" Margin="2,16,0,6"/>
+                            <TextBox Style="{StaticResource BoxTextBox}" Text="{Binding DiscordBotName}" Width="320" HorizontalAlignment="Left" MaxLength="32"
+                                     Tag="{Binding DiscordBotDefaultName}" AutomationProperties.Name="{local:T 'Its name on Discord'}"/>
+                            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,6,0,0"
+                                       Text="{local:T 'Discord lets a bot change its name only a few times an hour: changed too often, the new one arrives later.'}"/>
+                            <DockPanel Margin="0,14,0,0">
+                                <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Command="{Binding DiscordBotPictureCommand}" Content="{local:T 'Change image…'}"
+                                        VerticalAlignment="Center" Margin="12,0,0,0"/>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource GhostButton}" Command="{Binding DiscordBotLogoCommand}" Content="{local:T 'Use the logo'}"
+                                        VerticalAlignment="Center" Margin="12,0,0,0" Visibility="{Binding DiscordBotHasPicture, Converter={StaticResource BoolVis}}"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{local:T 'Its picture'}"/>
+                                    <TextBlock Text="{Binding DiscordBotPictureText}" Style="{StaticResource Hint}" FontSize="12"/>
+                                </StackPanel>
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="2,12,0,0" Foreground="{DynamicResource MutedBrush}"
+                                       Text="{local:T 'Its volume is set in Discord, by each listener (right-click the bot): the app\'s slider doesn\'t change it. To hear the songs only from the app, mute the bot there (Discord remembers it); to hear them only on Discord, turn the app down.'}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 

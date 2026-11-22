@@ -679,6 +679,9 @@ public sealed class MasterProvider : ISampleProvider
         float g0 = _gain;
         float step = (target - g0) / Math.Max(1, count / 2);
         bool eq = _eqEnabled;
+        var tap = Tap;
+        float pre = eq ? _eqPreamp : 1f;
+        if (tap != null && _tap.Length < count) _tap = new float[count];
         for (int i = 0; i + 1 < count; i += 2)
         {
             if (_level != _levelTarget)
@@ -692,12 +695,22 @@ public sealed class MasterProvider : ISampleProvider
                 if (eq)
                     for (int b = 0; b < Equalizer.BandCount; b++)
                         if (_eq[ch, b] is { } f) x = f.Transform(x);
-                x *= g;
-                float ax = Math.Abs(x);
-                if (ax > 0.9f) x = Math.Sign(x) * (0.9f + 0.1f * MathF.Tanh((ax - 0.9f) / 0.1f));
-                buf[offset + i + ch] = x;
+                if (tap != null) _tap[i + ch] = Soft(x * pre * _level * _swap);
+                buf[offset + i + ch] = Soft(x * g);
             }
         }
         _gain = target;
+        tap?.Invoke(_tap, count, _rate);
     }
+
+    private static float Soft(float x)
+    {
+        float ax = Math.Abs(x);
+        return ax > 0.9f ? Math.Sign(x) * (0.9f + 0.1f * MathF.Tanh((ax - 0.9f) / 0.1f)) : x;
+    }
+
+    // The sound as it is before the volume, at the output's rate (Discord's bot: its listeners set their own volume).
+    // Called on the audio thread, inside the mixer's lock: it only copies.
+    public Action<float[], int, int>? Tap;
+    private float[] _tap = Array.Empty<float>();
 }

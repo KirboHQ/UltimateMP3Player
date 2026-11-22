@@ -35,7 +35,7 @@ public sealed class SettingsFile
 
     private static readonly Dictionary<string, (string[] Profile, string[] App)> Fields = new()
     {
-        ["playback"] = (new[] { "Shuffle", "Repeat", "Normalize", "Crossfade", "CrossfadeSeconds", "BpmMatch", "BpmMatchSeconds", "Speed", "SpeedPitch",
+        ["playback"] = (new[] { "Shuffle", "Repeat", "Normalize", "NormalizeTarget", "Crossfade", "CrossfadeSeconds", "BpmMatch", "BpmMatchSeconds", "Speed", "SpeedPitch",
             "ShowVideo", "ShowLyrics", "AutoQueue", "QueueHidden" }, new[] { "PlayWhileDownloading", "RadioAfterSingle", "RadioSource", "RadioAhead", "CoverTilt" }),
         ["eq"] = (new[] { "Eq" }, Array.Empty<string>()),
         ["library"] = (new[] { "LibrarySort", "StorageFilter", "Unsuggested" }, new[] { "ReleaseNotifications", "TagsFolded", "PlaylistsFolded", "ArtistsFolded", "RadiosFolded" }),

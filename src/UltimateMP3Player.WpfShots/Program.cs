@@ -145,6 +145,9 @@ public static class Program
         main.GoSettings();
         Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
         Check(busy.ElapsedMilliseconds < 150, $"settings: opened again in {busy.ElapsedMilliseconds} ms");
+        // (the Discord bot: off without a token, and the invite link carries the bot's id, a token's first part in base64)
+        Check(!main.Settings.DiscordBot && !main.Settings.DiscordBotHasToken && main.Settings.DiscordBotText == L.T("Off"), "discord bot: off, no token");
+        Check(UltimateMP3Player.Services.VoiceBot.InviteUrl("MTIzNDU2Nzg5MDEyMzQ1Njc4.GxYzAb.secret")?.Contains("client_id=123456789012345678&") == true, "discord bot: the invite link carries the bot's id");
         // (a window's loading or something drawn with a frozen pen would freeze it: the app would stay in one colour, with no error to see)
         Check(!((Brush)Application.Current.Resources["AccentBrush"]).IsFrozen, "theme from the song: the accent's brush can still move");
         Themes.FadeTo(ThemeColors.FromSong("200;0.7;230;0.7"));

@@ -148,6 +148,17 @@ Check(!host.Settings.CloseToTray && !host.Settings.PauseOnClose && !closing.Stay
 closing.CloseChoice = closing.CloseChoices[0];
 Check(host.Settings.CloseToTray && !host.Settings.PauseOnClose && closing.StaysWhenClosed, "settings: close = keep playing");
 
+// (Normalize volume's level: whole LUFS, kept in the profile, -23 to -8)
+closing.NormalizeTarget = -18.4;
+Check(main.Profile.Data.NormalizeTarget == -18 && closing.NormalizeTargetText == L.F("{0} LUFS", "-18"), "normalize level: whole LUFS, in the profile: " + closing.NormalizeTargetText);
+closing.NormalizeTarget = -40;
+Check(main.Profile.Data.NormalizeTarget == -23, "normalize level: no quieter than -23");
+closing.NormalizeTarget = -14;
+
+// (the Discord bot: off without a token, its token, name and picture folded away under the switch until there's one)
+var botRows = view.GetLogicalDescendants().OfType<StackPanel>().FirstOrDefault(p => TextOf(p).Contains(L.T("Its name on Discord")) && !Fold.GetOpen(p));
+Check(!host.Settings.DiscordBot && !closing.DiscordBotHasToken && closing.DiscordBotText == L.T("Off") && botRows != null, "discord bot: off, no token, its rows folded away");
+
 // (the few and fixed choices are tiles: one lit in each row, a click reaches the setting and back; as many in a row as fit, else two even rows)
 var allTiles = view.AllCards.SelectMany(c => c.GetLogicalDescendants()).OfType<ChoiceTiles>().ToList();
 Check(allTiles.Count > 15 && allTiles.All(t => t.Children.OfType<RadioButton>().Count(r => r.IsChecked == true) == 1), $"settings: {allTiles.Count} rows of tiles, one chosen in each");
@@ -176,6 +187,11 @@ Check(clearX.IsVisible, "settings search: an X with text in the box");
 clearX.Command!.Execute(null);
 Dispatcher.UIThread.RunJobs();
 Check(search.Text == "" && !clearX.IsVisible, "settings search: the X empties the box and goes away");
+search.Text = "bot";
+Dispatcher.UIThread.RunJobs();
+Check(view.CardsShown.Select(Title).Contains("Discord"), "settings search “bot”: the Discord card, with its bot");
+search.Text = "";
+Dispatcher.UIThread.RunJobs();
 search.Focus();
 win.KeyTextInput("donazione");
 Shot(win, "settings-support");
@@ -304,6 +320,9 @@ string Bar(double at) => (string)bar.Invoke(null, new object[] { TimeSpan.FromSe
 Check(Bar(0).Contains("●" + new string('─', 11)), "discord: at 0% the dot is at the start: " + Bar(0));
 Check(Bar(100).Contains(new string('━', 6) + "●" + new string('─', 5)), "discord: at 50% in the middle: " + Bar(100));
 Check(Bar(200).Contains(new string('━', 11) + "●"), "discord: at 100% at the end: " + Bar(200));
+// the bot's invite page: a token's first part is the bot's id in base64
+Check(VoiceBot.InviteUrl("MTIzNDU2Nzg5MDEyMzQ1Njc4.GxYzAb.secret")?.Contains("client_id=123456789012345678&") == true, "discord bot: the invite link carries the bot's id");
+Check(VoiceBot.InviteUrl("not a token") == null && VoiceBot.InviteUrl(null) == null, "discord bot: no invite link without a token");
 
 // ---- a list of songs: read like a download, in the panel of the other pages; read, "loading complete" until the download
 // page is seen. (An Exportify CSV: its Spotify ids need no network.)
