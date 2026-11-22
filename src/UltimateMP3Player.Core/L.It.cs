@@ -2754,14 +2754,17 @@ public static partial class L
         ["Your Discord bot"] = "Il tuo bot Discord",
         ["Change token…"] = "Cambia token…",
         ["Its name on Discord"] = "Il suo nome su Discord",
-        ["Discord lets a bot change its name only a few times an hour: changed too often, the new one arrives later."] =
-            "Discord permette a un bot di cambiare nome solo poche volte all'ora: se lo cambi troppo spesso, il nuovo arriva più tardi.",
+        ["Discord lets a bot change its name only a few times an hour: change it here, then press Save."] =
+            "Discord permette a un bot di cambiare nome solo poche volte all'ora: cambialo qui, poi premi Salva.",
+        ["Listening to {0}"] = "Ascolta {0}",
+        ["Changes not saved yet"] = "Modifiche non ancora salvate",
+        ["Saved on Discord"] = "Salvato su Discord",
+        ["Giving it to Discord…"] = "Invio a Discord…",
+        ["Saved: Discord gets it when the bot goes online"] = "Salvato: Discord lo riceve quando il bot si collega",
         ["UMP - your Discord name"] = "UMP - il tuo nome su Discord",
-        ["Its picture"] = "La sua immagine",
-        ["The app's logo"] = "Il logo dell'app",
         ["Use the logo"] = "Usa il logo",
-        ["Discord lets a bot change its name only a few times an hour: the new one is given when the bot connects again later"] =
-            "Discord permette a un bot di cambiare nome solo poche volte all'ora: il nuovo gli viene dato quando si ricollega più tardi",
+        ["Discord lets a bot change its name only a few times an hour: the app gives it the new one by itself, later"] =
+            "Discord permette a un bot di cambiare nome solo poche volte all'ora: l'app gli darà il nuovo da sola, più tardi",
         ["Discord didn't take the bot's name or picture: {0}"] = "Discord non ha accettato il nome o l'immagine del bot: {0}",
         ["Invite to a server"] = "Invita in un server",
         ["Its volume is set in Discord, by each listener (right-click the bot): the app's slider doesn't change it. To hear the songs only from the app, mute the bot there once: Discord remembers it."] =

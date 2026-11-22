@@ -24,6 +24,8 @@ namespace UltimateMP3Player.Services
         public static string DefaultName(string owner) => "";
         public string Status => "";
         public string? OwnerName => null;
+        public string? Showing => null;
+        public string LookStatus => "";
         public void Restyle() { }
         public event Action? Changed { add { } remove { } }
     }

@@ -1323,22 +1323,47 @@
                                     <TextBlock Text="{Binding DiscordBotText}" Classes="hint" FontSize="12"/>
                                 </StackPanel>
                             </DockPanel>
-                            <TextBlock Text="{local:T 'Its name on Discord'}" Classes="field-label" Margin="2,16,0,6"/>
-                            <!-- (on leaving the box: each letter typed would rename the bot, and Discord allows a few an hour) -->
-                            <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding DiscordBotName, UpdateSourceTrigger=LostFocus}" Width="320" HorizontalAlignment="Left" MaxLength="32"
-                                     Watermark="{Binding DiscordBotDefaultName}" AutomationProperties.Name="{local:T 'Its name on Discord'}"/>
-                            <TextBlock Classes="hint" FontSize="12" Margin="2,6,0,0"
-                                       Text="{local:T 'Discord lets a bot change its name only a few times an hour: changed too often, the new one arrives later.'}"/>
-                            <DockPanel Margin="0,14,0,0">
-                                <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding DiscordBotPictureCommand}" Content="{local:T 'Change image…'}"
-                                        VerticalAlignment="Center" Margin="12,0,0,0"/>
-                                <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding DiscordBotLogoCommand}" Content="{local:T 'Use the logo'}"
-                                        VerticalAlignment="Center" Margin="12,0,0,0" IsVisible="{Binding DiscordBotHasPicture}"/>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{local:T 'Its picture'}"/>
-                                    <TextBlock Text="{Binding DiscordBotPictureText}" Classes="hint" FontSize="12"/>
+                            <!-- its look, edited here and given to Discord only by Save (each new name counts: Discord allows a few an hour) -->
+                            <Border CornerRadius="12" Background="{DynamicResource BgBrush}" Padding="14,12" Margin="0,16,0,0">
+                                <StackPanel>
+                                    <!-- as Discord shows it: the picture in a circle, the name, what it's listening to -->
+                                    <DockPanel>
+                                        <Border Width="56" Height="56" CornerRadius="28" ClipToBounds="True" VerticalAlignment="Center">
+                                            <Panel>
+                                                <Image Source="avares://UltimateMP3Player/Assets/app-256.png" Stretch="UniformToFill" Margin="1"/>
+                                                <views:CoverImage IsCircle="True" Source="{Binding DiscordBotPicture}"/>
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DiscordBotPreviewName}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding DiscordBotActivity}" Classes="hint" FontSize="12" TextTrimming="CharacterEllipsis"
+                                                       IsVisible="{Binding DiscordBotActivity, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                    <TextBlock Text="{local:T 'Its name on Discord'}" Classes="field-label" Margin="2,16,0,6"/>
+                                    <TextBox Theme="{StaticResource BoxTextBox}" Text="{Binding DiscordBotName}" Width="320" HorizontalAlignment="Left" MaxLength="32"
+                                             Watermark="{Binding DiscordBotDefaultName}" AutomationProperties.Name="{local:T 'Its name on Discord'}"/>
+                                    <WrapPanel Margin="0,10,0,0">
+                                        <Button Theme="{StaticResource GhostButton}" Command="{Binding DiscordBotPictureCommand}" Content="{local:T 'Change image…'}" Margin="0,0,8,0"/>
+                                        <Button Theme="{StaticResource GhostButton}" Command="{Binding DiscordBotLogoCommand}" Content="{local:T 'Use the logo'}"
+                                                IsVisible="{Binding DiscordBotHasPicture}"/>
+                                    </WrapPanel>
+                                    <TextBlock Classes="hint" FontSize="12" Margin="2,10,0,0"
+                                               Text="{local:T 'Discord lets a bot change its name only a few times an hour: change it here, then press Save.'}"/>
+                                    <DockPanel Margin="0,14,0,0">
+                                        <Button DockPanel.Dock="Right" Theme="{StaticResource PrimaryButton}" Padding="22,9" Command="{Binding DiscordBotSaveCommand}"
+                                                IsEnabled="{Binding DiscordBotEdited}" AutomationProperties.Name="{local:T Save}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{local:Icon E74E}" Classes="glyph"/>
+                                                <TextBlock Text="{local:T Save}" Margin="8,0,0,0"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button DockPanel.Dock="Right" Theme="{StaticResource GhostButton}" Command="{Binding DiscordBotDiscardCommand}" Content="{local:T Discard}"
+                                                VerticalAlignment="Center" Margin="0,0,8,0" IsVisible="{Binding DiscordBotEdited}"/>
+                                        <TextBlock Text="{Binding DiscordBotLookText}" Classes="hint" FontSize="12" VerticalAlignment="Center" TextWrapping="Wrap" Margin="2,0,12,0"/>
+                                    </DockPanel>
                                 </StackPanel>
-                            </DockPanel>
+                            </Border>
                             <CheckBox Theme="{StaticResource Switch}" IsChecked="{Binding DiscordBotMutesApp}" Margin="0,16,0,0">
                                 <StackPanel>
                                     <TextBlock Text="{local:T 'Hear the songs only through the bot'}"/>

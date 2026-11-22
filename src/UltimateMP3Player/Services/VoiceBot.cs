@@ -80,8 +80,12 @@ public sealed class VoiceBot
             if (want == _shown || client is not { ConnectionState: ConnectionState.Connected }) return;
             _shown = want;
         }
+        Changed?.Invoke();
         _ = ShowAsync(client, want);
     }
+
+    // What Discord shows under its name now (Settings' preview of the bot), null = nothing.
+    public string? Showing => InChannel ? _shown : null;
 
     private static async Task ShowAsync(DiscordSocketClient client, string? song)
     {
@@ -237,7 +241,9 @@ public sealed class VoiceBot
             lock (_showing) _shown = null;
             _target = client.Guilds.Select(g => g.GetUser(_owner)?.VoiceChannel).FirstOrDefault(c => c != null);
             await FollowAsync(ct);
-            if (!ct.IsCancellationRequested) await LookAsync(client);
+            // (still in the channel it was in, the join is skipped: the new session's activity given here)
+            ShowSong();
+            if (!ct.IsCancellationRequested) await LookAsync(client, false);
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
         {
@@ -414,44 +420,102 @@ public sealed class VoiceBot
 
     // ------------------------------------------------------------------ name and picture
 
-    // The name or picture changed in Settings: given to the bot now, if it's online.
-    public void Restyle()
+    // How giving its name and picture to Discord went (Settings, beside Save); "" = nothing to say.
+    public string LookStatus { get; private set; } = "";
+
+    private void SetLook(string status)
     {
-        if (_client is { ConnectionState: ConnectionState.Connected } client) _ = Task.Run(() => LookAsync(client));
+        LookStatus = status;
+        Changed?.Invoke();
     }
 
-    // "UMP - <owner>" and the app's logo, or the user's own: given only when different from what the app gave last.
-    private async Task LookAsync(DiscordSocketClient client)
+    // Saved in Settings: given to the bot now if it's online, else when it connects.
+    public void Restyle()
     {
-        if (client.CurrentUser is not { } me) return;
-        var mine = File.Exists(AppPaths.BotPicture);
-        var nameKey = $"{me.Id}|{_settings.DiscordBotName ?? DefaultName(OwnerName ?? me.Username)}";
-        var pictureKey = $"{me.Id}|{(mine ? "mine " + File.GetLastWriteTimeUtc(AppPaths.BotPicture).Ticks : "logo")}";
-        bool name = nameKey != _settings.DiscordBotNameSet, picture = pictureKey != _settings.DiscordBotPictureSet;
-        if (!name && !picture) return;
+        if (_client is { ConnectionState: ConnectionState.Connected } client) _ = Task.Run(() => LookAsync(client, true));
+        else SetLook(L.T("Saved: Discord gets it when the bot goes online"));
+    }
+
+    private readonly SemaphoreSlim _looking = new(1, 1);
+
+    // "UMP - <owner>" and the app's logo, or the user's own: given only when different from what the app gave last. One
+    // request each: Discord refuses a name changed too often (a few times an hour), and the picture sent with it went too.
+    private async Task LookAsync(DiscordSocketClient client, bool asked)
+    {
+        await _looking.WaitAsync();
         try
         {
-            byte[]? bytes = !picture ? null : mine ? await File.ReadAllBytesAsync(AppPaths.BotPicture)
-                : AppInfo.LogoUrl is { } logo ? await Http.GetBytesAsync(logo) : null;
-            using var stream = bytes != null ? new MemoryStream(bytes) : null;
-            // (a refusal comes back at once: Discord.Net would otherwise wait out the limit on names, up to an hour)
-            await me.ModifyAsync(p =>
+            if (client.CurrentUser is not { } me) return;
+            var mine = File.Exists(AppPaths.BotPicture);
+            var nameKey = $"{me.Id}|{_settings.DiscordBotName ?? DefaultName(OwnerName ?? me.Username)}";
+            var pictureKey = $"{me.Id}|{(mine ? "mine " + File.GetLastWriteTimeUtc(AppPaths.BotPicture).Ticks : "logo")}";
+            bool name = nameKey != _settings.DiscordBotNameSet, picture = pictureKey != _settings.DiscordBotPictureSet;
+            if (!name && !picture)
             {
-                if (name) p.Username = nameKey[(nameKey.IndexOf('|') + 1)..];
-                if (stream != null) p.Avatar = new Image(stream);
-            }, new RequestOptions { RetryMode = RetryMode.AlwaysFail });
-            if (name) _settings.DiscordBotNameSet = nameKey;
-            if (stream != null) _settings.DiscordBotPictureSet = pictureKey;
-            _save();
+                if (asked) SetLook(L.T("Saved on Discord"));
+                return;
+            }
+            SetLook(L.T("Giving it to Discord…"));
+            string? pictureRefused = null, nameRefused = null;
+            bool tooOften = false;
+            if (picture)
+                try
+                {
+                    var bytes = mine ? await File.ReadAllBytesAsync(AppPaths.BotPicture)
+                        : AppInfo.LogoUrl is { } logo ? await Http.GetBytesAsync(logo) : null;
+                    if (bytes != null)
+                    {
+                        using var stream = new MemoryStream(bytes);
+                        // (a refusal comes back at once: Discord.Net would otherwise wait out the limit, up to an hour)
+                        await me.ModifyAsync(p => p.Avatar = new Image(stream), new RequestOptions { RetryMode = RetryMode.AlwaysFail });
+                        _settings.DiscordBotPictureSet = pictureKey;
+                        _save();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log("picture: " + e);
+                    pictureRefused = Said(e);
+                }
+            if (name)
+                try
+                {
+                    await me.ModifyAsync(p => p.Username = nameKey[(nameKey.IndexOf('|') + 1)..], new RequestOptions { RetryMode = RetryMode.AlwaysFail });
+                    _settings.DiscordBotNameSet = nameKey;
+                    _save();
+                }
+                catch (Exception e)
+                {
+                    Log("name: " + e);
+                    tooOften = e is Discord.Net.RateLimitedException || Reasons(e).Any(r => r.Code == "USERNAME_RATE_LIMIT");
+                    nameRefused = Said(e);
+                }
+            if (tooOften) _ = RetryLookAsync(client);
+            SetLook(pictureRefused != null ? L.F("Discord didn't take the bot's name or picture: {0}", pictureRefused)
+                : tooOften ? L.T("Discord lets a bot change its name only a few times an hour: the app gives it the new one by itself, later")
+                : nameRefused != null ? L.F("Discord didn't take the bot's name or picture: {0}", nameRefused)
+                : L.T("Saved on Discord"));
         }
-        catch (Exception e)
-        {
-            Log("name or picture: " + e);
-            Set(e is Discord.Net.RateLimitedException || e is Discord.Net.HttpException { HttpCode: System.Net.HttpStatusCode.TooManyRequests }
-                ? L.T("Discord lets a bot change its name only a few times an hour: the new one is given when the bot connects again later")
-                : L.F("Discord didn't take the bot's name or picture: {0}", e.Message));
-        }
+        finally { _looking.Release(); }
     }
+
+    // A name refused for coming too soon: tried again a while later, by itself (Discord doesn't say when it may).
+    private int _retrying;
+
+    private async Task RetryLookAsync(DiscordSocketClient client)
+    {
+        if (Interlocked.Exchange(ref _retrying, 1) == 1) return;
+        await Task.Delay(TimeSpan.FromMinutes(20));
+        _retrying = 0;
+        if (_client == client && client.ConnectionState == ConnectionState.Connected) await LookAsync(client, false);
+    }
+
+    // Discord's own reasons ("You are changing your avatar too fast…"), under Discord.Net's "error 50035: Invalid Form Body".
+    private static IEnumerable<DiscordError> Reasons(Exception e)
+        => e is Discord.Net.HttpException { Errors: { } errors } ? errors.SelectMany(j => j.Errors ?? Enumerable.Empty<DiscordError>()) : Enumerable.Empty<DiscordError>();
+
+    private static string Said(Exception e)
+        => Reasons(e).Select(r => r.Message).FirstOrDefault(m => !string.IsNullOrEmpty(m)) ?? e.Message.Split('\n')[0];
 
     // ------------------------------------------------------------------ libdave
 

@@ -159,6 +159,12 @@ closing.NormalizeTarget = -14;
 var botRows = view.GetLogicalDescendants().OfType<StackPanel>().FirstOrDefault(p => TextOf(p).Contains(L.T("Its name on Discord")) && !Fold.GetOpen(p));
 Check(!host.Settings.DiscordBot && !closing.DiscordBotHasToken && closing.DiscordBotText == L.T("Off") && botRows != null, "discord bot: off, no token, its rows folded away");
 
+// (its name is a draft until Save: Discord allows a few new names an hour)
+closing.DiscordBotName = "My bot";
+bool drafted = closing.DiscordBotEdited && host.Settings.DiscordBotName == null && closing.DiscordBotPreviewName == "My bot";
+closing.DiscordBotDiscardCommand.Execute(null);
+Check(drafted && !closing.DiscordBotEdited && closing.DiscordBotName == "", "discord bot: the name waits for Save, Discard takes it back");
+
 // (the few and fixed choices are tiles: one lit in each row, a click reaches the setting and back; as many in a row as fit, else two even rows)
 var allTiles = view.AllCards.SelectMany(c => c.GetLogicalDescendants()).OfType<ChoiceTiles>().ToList();
 Check(allTiles.Count > 15 && allTiles.All(t => t.Children.OfType<RadioButton>().Count(r => r.IsChecked == true) == 1), $"settings: {allTiles.Count} rows of tiles, one chosen in each");

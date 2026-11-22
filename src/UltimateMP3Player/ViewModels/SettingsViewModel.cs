@@ -275,6 +275,7 @@ public sealed class SettingsViewModel : Observable
         SuggestAgainCommand = new RelayCommand(p => { if (p is string artist) _main.SetUnsuggested(artist, false); });
         main.Profile.UnsuggestedChanged += () => OnChanged(nameof(UnsuggestedArtists), nameof(HasUnsuggested));
         main.Host.Bot.Changed += OnBotChanged;
+        if (File.Exists(AppPaths.BotPicture)) BotLookEdited();
         bool hasRepo = AppInfo.RepoUrl != null;
         ReportProblemCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Bug] "), BugTemplate())!), () => hasRepo);
         SuggestIdeaCommand = new RelayCommand(() => MainViewModel.OpenUrl(AppInfo.NewIssueUrl(L.T("[Idea] "), IdeaTemplate())!), () => hasRepo);
@@ -1537,47 +1538,89 @@ public sealed class SettingsViewModel : Observable
         : L.T("Not on this computer: Discord's voice library has no version for it");
     public string DiscordBotText => S.DiscordBot ? _main.Host.Bot.Status : L.T("Off");
 
-    // Its name on Discord; empty = "UMP - <your Discord name>".
+    // Its name and picture as edited here, given to Discord only by Save (each new name counts: Discord allows a few an
+    // hour): the box's text (null: the saved name), and a picture waiting, made square in BotDraft ("": back to the logo).
+    private string? _botName, _botPicture;
+    private ImageSource? _botPreview;
+    private static string BotDraft => AppPaths.BotPicture + ".draft.jpg";
+
     public string DiscordBotName
     {
-        get => S.DiscordBotName ?? "";
+        get => _botName ?? S.DiscordBotName ?? "";
         set
         {
-            var name = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-            if (name == S.DiscordBotName) return;
-            S.DiscordBotName = name;
-            Save();
-            _main.Host.Bot.Restyle();
+            if (value == DiscordBotName) return;
+            _botName = value;
+            OnChanged(nameof(DiscordBotName), nameof(DiscordBotPreviewName), nameof(DiscordBotEdited), nameof(DiscordBotLookText));
         }
     }
 
+    // (empty: "UMP - <your Discord name>")
+    private string? BotNameAsEdited => _botName == null ? S.DiscordBotName : string.IsNullOrWhiteSpace(_botName) ? null : _botName.Trim();
     public string DiscordBotDefaultName => _main.Host.Bot.OwnerName is { } owner ? VoiceBot.DefaultName(owner) : L.T("UMP - your Discord name");
-    public bool DiscordBotHasPicture => File.Exists(AppPaths.BotPicture);
-    public string DiscordBotPictureText => DiscordBotHasPicture ? L.T("Your picture") : L.T("The app's logo");
+    // The preview, as Discord shows the bot: its picture (null: the logo), its name, what it's listening to now.
+    public ImageSource? DiscordBotPicture => _botPreview;
+    public string DiscordBotPreviewName => BotNameAsEdited ?? DiscordBotDefaultName;
+    public string? DiscordBotActivity => _main.Host.Bot.Showing is { } song ? L.F("Listening to {0}", song) : null;
+    public bool DiscordBotHasPicture => _botPicture is { Length: > 0 } || _botPicture == null && File.Exists(AppPaths.BotPicture);
+    public bool DiscordBotEdited => BotNameAsEdited != S.DiscordBotName || _botPicture is { Length: > 0 } || _botPicture == "" && File.Exists(AppPaths.BotPicture);
+    public string DiscordBotLookText => DiscordBotEdited ? L.T("Changes not saved yet") : _main.Host.Bot.LookStatus;
     public ICommand DiscordBotSetupCommand => new RelayCommand(() => _ = AskDiscordBot(false));
     public ICommand DiscordBotInviteCommand => new RelayCommand(() => { if (VoiceBot.InviteUrl(S.DiscordBotToken) is { } url) MainViewModel.OpenUrl(url); });
     public ICommand DiscordBotPictureCommand => new RelayCommand(() => _ = PickBotPicture());
     public ICommand DiscordBotLogoCommand => new RelayCommand(() =>
     {
-        try { File.Delete(AppPaths.BotPicture); } catch (IOException) { }
-        BotPictureChanged();
+        _botPicture = "";
+        BotLookEdited();
+    });
+    public ICommand DiscordBotSaveCommand => new RelayCommand(SaveBotLook);
+    public ICommand DiscordBotDiscardCommand => new RelayCommand(() =>
+    {
+        _botName = null;
+        _botPicture = null;
+        BotLookEdited();
     });
 
     // (from any thread; unhooked by MainViewModel.Detach)
-    public void OnBotChanged() => Application.Current.Dispatcher.BeginInvoke(() => OnChanged(nameof(DiscordBotText), nameof(DiscordBotDefaultName)));
+    public void OnBotChanged() => Application.Current.Dispatcher.BeginInvoke(() => OnChanged(nameof(DiscordBotText), nameof(DiscordBotDefaultName),
+        nameof(DiscordBotPreviewName), nameof(DiscordBotActivity), nameof(DiscordBotLookText)));
 
     private async Task PickBotPicture()
     {
         if (await Dialogs.PickImageAsync() is not { } file) return;
         // (square, its middle: Discord shows it in a circle)
-        if (await Task.Run(() => AudioAnalysis.MakeCoverFromImageAsync(file, AppPaths.BotPicture))) BotPictureChanged();
+        if (await Task.Run(() => AudioAnalysis.MakeCoverFromImageAsync(file, BotDraft)))
+        {
+            _botPicture = BotDraft;
+            BotLookEdited();
+        }
         else _main.Toast(L.T("Invalid or unreadable image."));
     }
 
-    private void BotPictureChanged()
+    private void SaveBotLook()
     {
+        S.DiscordBotName = BotNameAsEdited;
+        _botName = null;
+        try
+        {
+            if (_botPicture is { Length: > 0 } picked) File.Move(picked, AppPaths.BotPicture, true);
+            else if (_botPicture == "") File.Delete(AppPaths.BotPicture);
+            _botPicture = null;
+        }
+        // (the picture still waiting: Save again)
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+        Save();
         _main.Host.Bot.Restyle();
-        OnChanged(nameof(DiscordBotHasPicture), nameof(DiscordBotPictureText));
+        BotLookEdited();
+    }
+
+    // After a change: the buttons, then the preview's picture (read again, small).
+    private async void BotLookEdited()
+    {
+        OnChanged(nameof(DiscordBotName), nameof(DiscordBotPreviewName), nameof(DiscordBotHasPicture), nameof(DiscordBotEdited), nameof(DiscordBotLookText));
+        var path = _botPicture ?? AppPaths.BotPicture;
+        _botPreview = path.Length > 0 && File.Exists(path) ? await Images.LoadAsync(path, 128, (int)File.GetLastWriteTimeUtc(path).Ticks) : null;
+        OnChanged(nameof(DiscordBotPicture));
     }
 
     private async Task AskDiscordBot(bool turnOn)
