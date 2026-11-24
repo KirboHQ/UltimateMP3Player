@@ -29,8 +29,9 @@ public static class Engines
     // ".exe" on Windows, nothing elsewhere.
     private static readonly string Ext = OperatingSystem.IsWindows() ? ".exe" : "";
 
-    private static string _dir = Locate();
-    public static string Dir => Host?.Dir ?? _dir;
+    // (looked for only when it's needed: on the phones this class can be loaded before they say where the data is)
+    private static string? _dir;
+    public static string Dir => Host?.Dir ?? (_dir ??= Locate());
 
     // Set by the Android app before anything runs.
     public static EngineHost? Host { get; set; }

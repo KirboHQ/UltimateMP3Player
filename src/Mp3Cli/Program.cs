@@ -1013,6 +1013,21 @@ switch (args[0])
                 File.WriteAllText(At(name), text);
             }
             string Read(string name) => File.Exists(At(name)) ? File.ReadAllText(At(name)) : "";
+            // Where the data is, as the phones say it: also after something asked, and with the data of a version that looked elsewhere.
+            AppPaths.Use(At("phone"));
+            bool place = AppPaths.DataDir == At("phone") && AppPaths.LibraryFile == Path.Combine(At("phone"), "library.json");
+            AppPaths.Use(data);
+            Put("stray/settings.json", "stray");
+            Put("stray/library.json", "stray");
+            Put("stray/covers/a.jpg", "stray");
+            Put("kept/engines/x", "kept");
+            AppPaths.MoveData(At("stray"), At("kept"));
+            place &= Read("kept/settings.json") == "stray" && Read("kept/covers/a.jpg") == "stray" && Read("kept/engines/x") == "kept" && !File.Exists(At("stray/library.json"));
+            Put("stray/settings.json", "again");
+            Put("stray/library.json", "again");
+            AppPaths.MoveData(At("stray"), At("kept"));
+            place &= Read("kept/library.json") == "stray" && Read("stray/library.json") == "again" && AppPaths.DataDir == data;
+            if (!place) Console.WriteLine("SBAGLIATO: where the data is");
             Put("library.json", "backup");
             Put("covers/a.jpg", "a");
             Put("profiles/p/data.json", "backup");
@@ -1032,7 +1047,7 @@ switch (args[0])
             bool failed = false;
             try { Backup.Restore(bad, here); }
             catch { failed = true; }
-            bool ok = failed && !JsonStore.Frozen && Read("library.json") == "today" && Read("profiles/p/data.json") == "today" && Read("covers/b.jpg") == "b"
+            bool ok = place && failed && !JsonStore.Frozen && Read("library.json") == "today" && Read("profiles/p/data.json") == "today" && Read("covers/b.jpg") == "b"
                       && !File.Exists(At("covers/a.jpg")) && !Directory.Exists(At("restoring"));
             Backup.Restore(good, here);
             ok &= JsonStore.Frozen && Read("library.json") == "backup" && Read("profiles/p/data.json") == "backup" && Read("covers/a.jpg") == "a"

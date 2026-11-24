@@ -36,7 +36,10 @@ public static class Startup
         var caches = Folder(NSSearchPathDirectory.CachesDirectory);
         var data = Path.Combine(support, "data");
         Directory.CreateDirectory(data);
-        Environment.SetEnvironmentVariable("UMP_DATA", data);
+        AppPaths.Use(data);
+        // 5.6.0 kept its data inside Documents by mistake. A first install's comes here; after an update the data from before is here
+        // already, and what 5.6.0 made stays where it is.
+        AppPaths.MoveData(Path.Combine(documents, "Ultimate MP3 Player"), data);
         AppPaths.MusicDirOverride = Path.Combine(documents, "Music");
         App.LogFile = Path.Combine(documents, "errors.log");
         AppPaths.Rename(Path.Combine(documents, "errori.log"), App.LogFile);

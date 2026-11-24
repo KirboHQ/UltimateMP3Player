@@ -27,7 +27,7 @@ public sealed class MainApplication : Android.App.Application
         var files = FilesDir!.AbsolutePath;
         var data = Path.Combine(files, "data");
         MoveOldData(files, data);
-        System.Environment.SetEnvironmentVariable("UMP_DATA", data);
+        AppPaths.Use(data);
         System.Environment.SetEnvironmentVariable("HOME", files);
         System.Environment.SetEnvironmentVariable("TMPDIR", CacheDir!.AbsolutePath);
         System.Environment.SetEnvironmentVariable("XDG_CACHE_HOME", CacheDir!.AbsolutePath);

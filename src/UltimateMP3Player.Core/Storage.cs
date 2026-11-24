@@ -10,6 +10,14 @@ public static class AppPaths
     // its compiled code may load this class before that.
     public static string DataDir => _dataDir ??= Init();
 
+    // The phones, as they start: this one, whoever asked before. (5.6.0 on the iPhone: a class loaded ahead of the code that says where
+    // the data is had the computer's place decided, and the app opened empty.)
+    public static void Use(string dir)
+    {
+        Environment.SetEnvironmentVariable("UMP_DATA", dir);
+        _dataDir = null;
+    }
+
     private static string Init()
     {
         var env = Environment.GetEnvironmentVariable("UMP_DATA");
@@ -21,6 +29,24 @@ public static class AppPaths
         Rename(Path.Combine(dir, "ascolta-insieme"), Path.Combine(dir, "cache"));
         Rename(Path.Combine(dir, "errori.log"), Path.Combine(dir, "errors.log"));
         return dir;
+    }
+
+    // The data of an app that was looking elsewhere, when there's none here: nothing here is ever replaced. settings.json last: until it's
+    // here, it's tried again.
+    public static void MoveData(string from, string to)
+    {
+        const string last = "settings.json";
+        try
+        {
+            if (!File.Exists(Path.Combine(from, last)) || File.Exists(Path.Combine(to, last))) return;
+            Directory.CreateDirectory(to);
+            foreach (var entry in Directory.GetFileSystemEntries(from).OrderBy(e => Path.GetFileName(e) == last))
+            {
+                var target = Path.Combine(to, Path.GetFileName(entry));
+                if (!File.Exists(target) && !Directory.Exists(target)) Directory.Move(entry, target);
+            }
+        }
+        catch { }
     }
 
     // A file or folder that has another name since an older version: moved once to the new one.
