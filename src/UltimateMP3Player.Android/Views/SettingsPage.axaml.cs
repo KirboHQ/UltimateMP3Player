@@ -60,6 +60,10 @@ public partial class SettingsPage : UserControl, IPage
                     if (Vm is not { } vm || rowsOf(vm) is not { } rows || from >= rows.Count) return;
                     rows[from].MoveTo(TouchReorder.MoveIndex(from, onto, after));
                 });
+#if IOS_APP
+        if (Renewal.Supported) RenewalCards.AddTo(Cards, (Panel)GroupList.Child!, Group_Click);
+        FromComputerSheet.AddRow((Panel)GroupList.Child!);
+#endif
         Search();
 #if IOS_APP
         // The iPhone: iOS chooses the output (Control Center), the updates of the app come from outside it (yt-dlp's

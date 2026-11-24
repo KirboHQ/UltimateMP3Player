@@ -5,6 +5,8 @@
 //   mp3cli songlist [file]
 //   mp3cli shuffle <n> <rounds>
 //   mp3cli saver
+//   mp3cli renewal
+//   mp3cli fromcomputer
 //   mp3cli backup
 //   mp3cli room
 //   mp3cli albums [artist]
@@ -232,6 +234,295 @@ switch (args[0])
                     Console.WriteLine($"  {block.Kind,-8} " + string.Concat(block.Runs.Select(r => r.Bold ? $"[{r.Text}]" : r.Italic ? $"/{r.Text}/" : r.Text)));
             }
             return ok ? 0 : 1;
+        }
+
+    case "renewal":
+        {
+            // The iPhone's app renewing itself, the part that doesn't need an iPhone (Core/Renewal.cs): until when a profile says, what's due
+            // when, what the library's lines mean, and that nothing secret is ever shown.
+            bool fine = true;
+            void Is(bool ok, string what)
+            {
+                if (!ok) Console.WriteLine("WRONG " + what);
+                fine &= ok;
+            }
+            var now = new DateTime(2026, 12, 1, 12, 0, 0, DateTimeKind.Utc);
+            var profile = new byte[] { 0x30, 0x82, 0xFF }.Concat(System.Text.Encoding.ASCII.GetBytes("<?xml?><plist><dict>\n\t<key>CreationDate</key>\n\t<date>2026-12-01T10:00:00Z</date>\n\t<key>ExpirationDate</key>\n\t<date>2026-12-08T10:00:00Z</date></dict></plist>")).Append((byte)0xFE).ToArray();
+            Is(RenewalRules.ProfileExpires(profile) is { Kind: DateTimeKind.Utc } e && e == new DateTime(2026, 12, 8, 10, 0, 0), "a profile's end");
+            Is(RenewalRules.ProfileExpires(new byte[] { 1, 2, 3 }) == null, "junk has no end");
+            Is(RenewalRules.PlacedExpires("1796724000", now) is { Kind: DateTimeKind.Utc } p && p == new DateTime(2026, 12, 8, 10, 0, 0) && RenewalRules.PlacedExpires(" 1796724000\r\n", now) == p, "what the installer left");
+            Is(new[] { "", " ", "0", "-1796724000", "+1796724000", "1796724000.5", "1,796,724,000", "1796724000 1", "soon", "1796724000000", "99999999999999999999", "253402300800" }
+                .All(t => RenewalRules.PlacedExpires(t, now) == null), "anything else left there is nothing");
+            Is(RenewalRules.Latest(null, now, now.AddDays(1)) == now.AddDays(1) && RenewalRules.Latest(null, null) == null, "the latest date");
+            Is(!RenewalRules.Due(now.AddDays(5), now) && RenewalRules.Due(now.AddDays(3), now) && RenewalRules.Due(null, now) && RenewalRules.Due(now.AddDays(-1), now), "due under four days");
+            Is(RenewalRules.From(now.AddDays(6)) == now.AddDays(2) && RenewalRules.From(null) == null, "due from");
+            Is(!RenewalRules.Urgent(now.AddDays(3), now) && RenewalRules.Urgent(now.AddHours(40), now) && !RenewalRules.Urgent(now.AddHours(-1), now) && !RenewalRules.Urgent(null, now), "urgent in the last two days");
+            Is(RenewalRules.CanTry(null, RenewalProblem.None, now) && !RenewalRules.CanTry(now.AddMinutes(-59), RenewalProblem.Other, now) && RenewalRules.CanTry(now.AddMinutes(-61), RenewalProblem.Other, now)
+                && !RenewalRules.CanTry(now.AddHours(-2), RenewalProblem.Install, now) && RenewalRules.CanTry(now.AddHours(2), RenewalProblem.Other, now), "one try an hour");
+            Is(RenewalRules.Reminders(now.AddDays(7), now).SequenceEqual(new[] { now.AddDays(5), now.AddDays(6) }) && RenewalRules.Reminders(now.AddHours(30), now).SequenceEqual(new[] { now.AddHours(6) })
+                && !RenewalRules.Reminders(null, now).Any(), "the fifth and the sixth day");
+            // (as the library writes them: helper/src/phone.rs and lib.rs of the installer)
+            Is(RenewalRules.Problem("The iPhone can't be reached at 10.7.0.1:49152: no answer") == RenewalProblem.Vpn
+                && RenewalRules.Problem("Not paired: plug the iPhone in with the installer once") == RenewalProblem.Cable
+                && RenewalRules.Problem("This app was installed with another Apple ID") == RenewalProblem.Cable
+                && RenewalRules.Problem("Not signed in") == RenewalProblem.SignIn && RenewalRules.Problem("Your session has expired. Please log in.") == RenewalProblem.SignIn
+                && RenewalRules.Problem("error sending request for url (https://developerservices2.apple.com/)") == RenewalProblem.Internet
+                && RenewalRules.Problem("whatever") == RenewalProblem.Other, "what the errors mean");
+            var shown = RenewalRules.Shown("\n ● Failed\n ├ src\\phone.rs:136\n ╰ someone@example.com eyJhbGciOiJIUzI1NiJ9abcdefgh/+== at 00008110-000A1B2C3D4E5F60\n ╰ src/ffi.rs:38\n");
+            Is(shown == "Failed · … … at …" && !shown.Contains('@') && !shown.Contains("eyJ") && !shown.Contains("00008110") && RenewalRules.Shown(new string('a', 10) + string.Concat(Enumerable.Repeat(" b", 400))).Length <= 241, "nothing secret shown");
+            Is(RenewalRules.Parse("{\"event\":\"stage\",\"stage\":\"Signing\",\"progress\":0.42}") is { Name: "stage", Stage: "Signing", Progress: 0.42 }
+                && RenewalRules.Parse("{\"event\":\"done\",\"renewed\":true,\"expires\":1796724000}") is { Renewed: true, Expires: { } until } && until == new DateTime(2026, 12, 8, 10, 0, 0)
+                && RenewalRules.Parse("{\"event\":\"done\",\"renewed\":false,\"why\":\"x\"}") is { Renewed: false, Expires: null } && RenewalRules.Parse("{\"event\":\"done\"}") is { Renewed: null }
+                && RenewalRules.Parse("{\"event\":\"ask\",\"what\":\"revoke\",\"name\":null}") is { Name: "ask", What: "revoke" }
+                && RenewalRules.Parse("{\"event\":\"error\",\"message\":\"m\"}") is { Message: "m" }
+                && RenewalRules.Parse("{\"event\":\"done\",\"expires\":-5,\"progress\":\"x\"}") is { Expires: null }
+                && RenewalRules.Parse("not json") == null && RenewalRules.Parse("[1]") == null && RenewalRules.Parse("{\"stage\":1}") == null, "the library's lines");
+            double before = 0;
+            foreach (var stage in new[] { "Downloading", "Preparing", "Signing", "Installing" })
+            {
+                Is(Math.Abs(RenewalRules.Overall(stage, 0) - before) < 1e-9 || stage == "Downloading", "the progress goes on from stage to stage");
+                before = RenewalRules.Overall(stage, 1);
+            }
+            Is(before == 1 && RenewalRules.Overall("Renewing", 0.5) == 0.5, "the progress ends whole");
+            Console.WriteLine("renewal: " + (fine ? "ok" : "WRONG"));
+            return fine ? 0 : 1;
+        }
+
+    case "fromcomputer":
+        {
+            // What the installer brings to the iPhone from the computer's app (Core/FromComputer.cs, set UMP_DATA), joined to what's there.
+            bool fine = true;
+            void Is(bool ok, string what)
+            {
+                if (!ok) Console.WriteLine("WRONG " + what);
+                fine &= ok;
+            }
+            var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "ump-fromcomputer-" + Ids.New())).FullName;
+            string inbox = Path.Combine(root, "FromComputer"), musicTo = Path.Combine(root, "Music");
+            byte[] Json(object o) => System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(o, o.GetType(), JsonStore.Options);
+            // The computer's data, as the installer makes it (ComputerLibrary.WriteData) and puts it.
+            void Send(string id, List<Track> songs, (ProfileInfo Info, ProfileData Data, SealedStats? Stats, YearStats? Year)[] profiles, AppSettings? settings, string[] take,
+                Dictionary<string, string>? more = null, params string[] files)
+            {
+                foreach (var f in files)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(inbox, f))!);
+                    File.WriteAllText(Path.Combine(inbox, f), "sound of " + f);
+                }
+                Directory.CreateDirectory(inbox);
+                using (var zip = new ZipArchive(File.Create(Path.Combine(inbox, "data.zip")), ZipArchiveMode.Create))
+                {
+                    void Entry(string name, byte[] data)
+                    {
+                        using var s = zip.CreateEntry(name).Open();
+                        s.Write(data);
+                    }
+                    Entry("backup.json", Json(new BackupInfo { Songs = songs.Count }));
+                    Entry("library.json", Json(new LibraryFile { Tracks = songs }));
+                    if (settings != null) Entry("settings.json", Json(settings));
+                    Entry("profiles.json", Json(new ProfileList { Profiles = profiles.Select(p => p.Info).ToList() }));
+                    foreach (var (info, data, stats, year) in profiles)
+                    {
+                        Entry($"profiles/{info.Id}/data.json", Json(data));
+                        if (stats != null) Entry($"profiles/{info.Id}/stats.dat", Sealed.Protect(Json(stats)));
+                        if (year != null) Entry($"profiles/{info.Id}/stats/2026.dat", Sealed.Protect(Json(year)));
+                    }
+                    foreach (var (name, text) in more ?? new()) Entry(name, System.Text.Encoding.UTF8.GetBytes(text));
+                }
+                File.WriteAllText(Path.Combine(inbox, "ready.json"), $"{{\"version\":1,\"id\":\"{id}\",\"made\":\"2026-11-24T18:00:00Z\",\"computer\":\"PC\",\"app\":\"5.5.3\",\"songs\":{songs.Count},\"playlists\":1,\"files\":0,\"bytes\":52000000,\"take\":[{string.Join(",", take.Select(t => $"\"{t}\""))}]}}");
+            }
+            string[] all = { "songs", "stats", "look", "settings" };
+            bool Playable(string f) => Path.GetExtension(f) is not (".ogg" or ".webm");
+            var list = new ProfileList();
+            ProfileInfo NewProfile(string name)
+            {
+                var p = new ProfileInfo { Name = name, Color = "#111111" };
+                list.Profiles.Add(p);
+                return p;
+            }
+            // (a song that comes into the library as nobody's is taken by the profile that's open: MainViewModel.DoRefresh)
+            bool nobodys = false, coming = false;
+            lib.TrackAdded += t => nobodys |= coming && !Profile.AnyHas(list, t.Id);
+            ComputerResult Run(ProfileInfo open)
+            {
+                coming = true;
+                try { return FromComputer.RunAsync(inbox, FromComputer.Look(inbox).Ready!, lib, list, open, musicTo, Playable, Playable).GetAwaiter().GetResult(); }
+                finally { coming = false; }
+            }
+
+            // The computer: one profile, its songs of every kind. (Objects made anew each time: the import fills them in.)
+            var pc = new ProfileInfo { Name = "Alex", Color = "#1DB954", HasAvatar = true };
+            string[] ids = Enumerable.Range(0, 9).Select(_ => Ids.New()).ToArray();
+            string heard = RadioSong.Prefix + Ids.New(), rock = Ids.New(), road = Ids.New();
+            List<Track> Songs() => new()
+            {
+                new() { Id = ids[0], Title = "Link Song", Artist = "Tester", Duration = 100, SourceUrl = "https://example.com/fc0", Site = "YouTube", Keys = { "youtube:fc000000000" }, HasCover = true, Lyrics = LyricsKind.Plain, Added = new DateTime(2025, 1, 2) },
+                new() { Id = ids[1], Title = "File Song", Artist = "Tester, Other", Duration = 110, SourceUrl = "https://example.com/fc1", Site = "SoundCloud", Path = @"C:\Music\x.mp3", VideoPath = @"C:\Music\x.mp4", Keys = { "soundcloud:fc1" } },
+                new() { Id = ids[2], Title = "Nowhere Song", Artist = "Tester", Duration = 120, Path = @"C:\Music\gone.mp3", Site = "File locale", Keys = { @"file:c:\music\gone.mp3" } },
+                new() { Id = ids[3], Title = "Odd Format", Artist = "Tester", Duration = 130, Path = @"C:\Music\odd.ogg", Site = "File locale" },
+                new() { Id = ids[4], Title = "Odd Format With Link", Artist = "Tester", Duration = 140, Path = @"C:\Music\odd2.ogg", SourceUrl = "https://example.com/fc4", Site = "YouTube" },
+                new() { Id = ids[5], Title = "recording 1", Duration = 12.34, Path = @"C:\Music\recording.wav", Site = "File locale", Keys = { @"file:c:\music\recording.wav" } },
+                // (two there are two here, whatever their names)
+                new() { Id = ids[6], Title = "Twice", Artist = "Tester", Duration = 60, SourceUrl = "https://example.com/fc6", Site = "YouTube" },
+                new() { Id = ids[7], Title = "Twice", Artist = "Tester", Duration = 90, SourceUrl = "https://example.com/fc7", Site = "YouTube" },
+                // (no profile's: the first one's)
+                new() { Id = ids[8], Title = "Nobody's", Artist = "Tester", Duration = 70, SourceUrl = "https://example.com/fc8", Site = "YouTube" },
+            };
+            ProfileData Data() => new()
+            {
+                Songs = ids[..8].ToHashSet(), Theme = "pink", Speed = 1.5, StatsSince = new DateTime(2025, 1, 1), Tags = { new Tag { Id = rock, Name = "Rock" } }, NoVideo = { "x|y" },
+                TrackTags = { [ids[0]] = new() { rock }, [ids[2]] = new() { rock } }, Artists = { new FollowedArtist { Name = "Tester" } }, Unsuggested = { "Slop" },
+                Playlists = { new Playlist { Id = "favorites", Name = "Favorites", Tracks = { ids[0] } }, new Playlist { Id = road, Name = "Road", HasCover = true, Tags = { rock }, Tracks = { ids[1], ids[2], ids[0] } } },
+                History = { new HistoryEntry { TrackId = ids[0], At = new DateTime(2026, 11, 20, 10, 0, 0) }, new HistoryEntry { TrackId = heard, At = new DateTime(2026, 11, 21, 10, 0, 0) }, new HistoryEntry { TrackId = "gone", At = new DateTime(2026, 11, 22) } },
+                Radio = { new RadioSong { Id = heard, Title = "Heard", Artist = "Someone", Url = "https://example.com/heard", Keys = { "youtube:heard000000" }, Phone = "x" } },
+                Looks = { new LookPreset { Id = "look1", Name = "Other look", Theme = "blue" } },
+            };
+            SealedStats Stats(int plays) => new() { Stats = { [ids[0]] = new TrackStats { Plays = plays, Seconds = plays * 100, Last = new DateTime(2026, 11, 20) }, [heard] = new TrackStats { Plays = 3, Seconds = 300 }, ["gone"] = new TrackStats { Plays = 9 } } };
+            YearStats Year(int plays)
+            {
+                var m = new MonthStats { Songs = { [ids[0]] = new MonthSong { Plays = plays, Seconds = plays * 100, Title = "Link Song", Artist = "Tester" }, ["gone"] = new MonthSong { Plays = 1, Seconds = 50, Title = "Gone", Artist = "Them" } } };
+                m.Hours[10] = m.Days[19] = plays * 100 + 50;
+                return new YearStats { Months = { [11] = m } };
+            }
+            var pcSettings = new AppSettings { MaxParallel = 5, MusicDir = @"C:\Music", DiscordPresence = false, Language = "en", Visualizer = false };
+            var more = new Dictionary<string, string>
+            {
+                [$"covers/{ids[0]}.jpg"] = "cover", [$"covers/{heard}.jpg"] = "cover", [$"lyrics/{ids[0]}.txt"] = "la la", [$"profiles/{pc.Id}/avatar.jpg"] = "face", [$"profiles/{pc.Id}/pl-{road}.jpg"] = "road",
+                [$"profiles/{pc.Id}/looks/look1.jpg"] = "picture", ["covers/artists/123.jpg"] = "artist", ["../../evil.txt"] = "evil", ["artists.json"] = "{\"tester fc\":{\"Service\":\"Deezer\",\"Id\":\"123\",\"Name\":\"Tester FC\"}}",
+            };
+            string[] files = { $"music/{ids[1]}.mp3", $"videos/{ids[1]}.mp4", $"music/{ids[3]}.ogg", $"music/{ids[4]}.ogg", $"music/{ids[5]}.wav", "music/unknown.mp3" };
+
+            // An empty library: all of it, the profile's name and face too.
+            var me = NewProfile("Me");
+            var phone = Profile.Get(me);
+            int before = lib.Count;
+            Send("one", Songs(), new[] { (pc, Data(), (SealedStats?)Stats(10), (YearStats?)Year(10)) }, pcSettings, all, more, files);
+            var came = Run(me);
+            Is(came is { Added: 7, Present: 0, Saved: 2, Linked: 1, BadFormat: 1, NoFile: 1, NewPlaylists: 1, NewTags: 1, Plays: 13 } && came.NewProfiles.Count == 0 && lib.Count == before + 7, "all of it, once: " + string.Join(" | ", came.Report()));
+            Is(me is { Name: "Alex", Color: "#1DB954", HasAvatar: true } && File.ReadAllText(me.AvatarPath) == "face" && list.Profiles.Count == 1, "the empty profile takes the name, the colour and the picture");
+            Is(lib.Get(ids[0]) is { Path: "", HasCover: true, Lyrics: LyricsKind.Plain, Site: "YouTube" } a && a.Added == new DateTime(2025, 1, 2) && File.Exists(AppPaths.TrackCover(ids[0])) && File.ReadAllText(LyricsStore.PathFor(ids[0], false)) == "la la", "a song with only its link");
+            Is(lib.Get(ids[1]) is { HasVideo: true } b && b.Path == Path.Combine(musicTo, "Tester - File Song.mp3") && File.ReadAllText(b.Path) == $"sound of music/{ids[1]}.mp3" && File.Exists(b.VideoPath) && !File.Exists(Path.Combine(inbox, "music", ids[1] + ".mp3")), "a song with its file and its video, moved");
+            Is(lib.Get(ids[2]) == null && lib.Get(ids[3]) == null && lib.Get(ids[4]) is { Path: "" } && lib.Get(ids[5]) is { Site: "Pacchetto", Keys.Count: 0, HasSavedFile: true }, "no file, odd formats, a file of one's own");
+            Is(phone.Has(ids[6]) && phone.Has(ids[7]) && phone.Has(ids[8]) && !phone.Has(ids[2]) && phone.Data.Songs!.Count == 7, "the profile's songs");
+            Is(phone.Favorites.Tracks.SequenceEqual(new[] { ids[0] }) && phone.PlaylistsSnapshot().Single(p => p.Name == "Road") is { HasCover: true, Tags.Count: 1 } mine && mine.Tracks.SequenceEqual(new[] { ids[1], ids[0] })
+               && File.ReadAllText(phone.PlaylistCover(mine)) == "road" && phone.TagsOf(ids[0]).Count == 1 && phone.IsNoVideo("x|y") && phone.FollowedArtist("Tester") != null, "playlists, tags, artists");
+            Is(phone.StatsOf(ids[0]) is { Plays: 10, Seconds: 1000 } && phone.StatsOf(heard)?.Plays == 3 && phone.StatsOf("gone") == null && phone.Data.StatsSince == new DateTime(2025, 1, 1), "the statistics");
+            Is(phone.Data.Radio.Single() is { Phone: null } rs && rs.Id == heard && phone.HistorySnapshot(9).Select(h => h.TrackId).SequenceEqual(new[] { ids[0], heard }), "the songs heard, the recently played");
+            Is(phone.Log.Month(2026, 11) is { Plays: 11, Seconds: 1050 } m1 && m1.Hours[10] == 1050 && m1.Days[19] == 1050, "the months");
+            Is(ArtistSites.Get("Tester FC")?.Id == "123" && File.Exists(AppPaths.ArtistPicture("123")), "the artists and their pictures");
+            Is(!File.Exists(Path.Combine(inbox, "evil.txt")) && !File.Exists(Path.Combine(root, "evil.txt")), "nothing written outside");
+            // Its look and settings; the device's own things stay, what was here isn't lost.
+            var here = new AppSettings { MusicDir = musicTo, Visualizer = true };
+            phone.Data.Unsuggested.Add("Mine");
+            FromComputer.Apply(came, phone, here);
+            Is(phone.Data.Theme == "pink" && phone.Data.Speed == 1.5 && here is { MaxParallel: 5, Language: "en", DiscordPresence: true, Visualizer: false } && here.MusicDir == musicTo && phone.Data.Unsuggested.Count == 2, "look and settings");
+            Is(phone.Data.Looks.Select(l => l.Name).SequenceEqual(new[] { L.T("My look"), "Other look", "Alex" }) && File.Exists(LookPreset.PictureOf(me.Id, phone.Data.Looks[1].Id)), "the look from before among the looks");
+
+            // The same computer again, with two more plays: only those.
+            Send("two", Songs(), new[] { (pc, Data(), (SealedStats?)Stats(12), (YearStats?)Year(12)) }, pcSettings, all, more, files);
+            came = Run(me);
+            Is(came is { Added: 0, Present: 7, Saved: 0, NewPlaylists: 0, NewTags: 0, Plays: 2 } && lib.Count == before + 7 && Directory.GetFiles(musicTo).Length == 3, "again: " + string.Join(" | ", came.Report()));
+            Is(phone.StatsOf(ids[0]) is { Plays: 12, Seconds: 1200 } && phone.Log.Month(2026, 11) is { Plays: 13, Seconds: 1250 } && phone.HistorySnapshot(9).Count == 2 && phone.Data.Radio.Count == 1 && phone.PlaylistsSnapshot().Count == 2, "the plays aren't doubled");
+            FromComputer.Apply(came, phone, here);
+            Is(phone.Data.Looks.Count == 3, "nor the looks");
+            // (as they were saved)
+            phone.Flush();
+            Is(Sealed.Load<SealedStats>(Path.Combine(AppPaths.ProfileDir(me.Id), "stats.dat"))?.Stats[ids[0]].Plays == 12, "saved");
+
+            // Closed halfway: in the library, its file not moved yet; then a file that comes later for a song with only its link.
+            var planned = Path.Combine(musicTo, "Tester - File Song.mp3");
+            File.Delete(planned);
+            Send("three", Songs(), new[] { (pc, Data(), (SealedStats?)null, (YearStats?)null) }, null, new[] { "songs" }, null, $"music/{ids[1]}.mp3", $"music/{ids[0]}.mp3");
+            came = Run(me);
+            Is(came is { Added: 0, Saved: 2 } && File.Exists(planned) && lib.Get(ids[1])!.Path == planned && lib.Get(ids[0])!.HasSavedFile && Directory.GetFiles(musicTo).Length == 4, "taken up from where it was");
+            Is(FromComputer.Look(inbox).Ready is { WithSongs: true, WithStats: false, WithLook: false, WithSettings: false } && came.Looks.Count == 0 && came.Plays == 0, "only the songs");
+
+            // A library with songs of its own: one in common by name, an id of another song's.
+            var own = new Track { Title = "Link Song Two", Artist = "Tester", Duration = 101, SourceUrl = "https://example.com/own2", HasCover = false };
+            var taken = new Track { Title = "Something Else", Artist = "Nobody", Duration = 33, SourceUrl = "https://example.com/else" };
+            lib.Add(own);
+            lib.Add(taken);
+            phone.Own(new[] { own.Id, taken.Id });
+            string theirs = Ids.New();
+            List<Track> Common() => new()
+            {
+                new() { Id = theirs, Title = "Link Song Two (Official Video)", Artist = "Tester", Duration = 103, SourceUrl = "https://example.com/theirs", HasCover = true },
+                new() { Id = taken.Id, Title = "Quite Another", Artist = "Tester", Duration = 34, SourceUrl = "https://example.com/another" },
+            };
+            for (int round = 0; round < 2; round++)
+            {
+                int count = lib.Count;
+                Send("four" + round, Common(), new[] { (pc, new ProfileData { Songs = new() { theirs, taken.Id }, Playlists = { new Playlist { Name = " road", Tracks = { theirs, taken.Id } } } }, (SealedStats?)new SealedStats { Stats = { [theirs] = new TrackStats { Plays = 4, Seconds = 40 } } }, (YearStats?)null) },
+                    null, new[] { "songs", "stats" }, new() { [$"covers/{theirs}.jpg"] = "theirs" });
+                came = Run(me);
+                Is(came.Added == 1 - round && came.Present == 1 + round && lib.Count == count + 1 - round && came.NewPlaylists == 0 && phone.StatsOf(own.Id)?.Plays == 4 && own.HasCover && lib.Get(theirs) == null && taken.Title == "Something Else", "in common, round " + round);
+                var added = lib.Snapshot().Single(t => t.Title == "Quite Another");
+                Is(added.Id != taken.Id && phone.PlaylistsSnapshot().Single(p => p.Name == "Road").Tracks.TakeLast(2).SequenceEqual(new[] { own.Id, added.Id }), "an id that's taken, round " + round);
+            }
+
+            // Several profiles: by name, or a new one; only their looks (no songs come, no settings).
+            var second = new ProfileInfo { Name = "Guest" };
+            int songsBefore = lib.Count;
+            Send("five", Songs(), new[] { (new ProfileInfo { Name = "alex" }, new ProfileData { Songs = new(), Theme = "green" }, (SealedStats?)null, (YearStats?)null), (second, new ProfileData { Songs = new() { ids[0] }, Theme = "blue", Speed = 2 }, null, null) },
+                pcSettings, new[] { "look" });
+            came = Run(me);
+            var app = new AppSettings();
+            FromComputer.Apply(came, phone, app);
+            var guest = list.Profiles.Single(p => p.Name == "Guest");
+            Is(came.NewProfiles.SequenceEqual(new[] { "Guest" }) && list.Profiles.Count == 2 && phone.Data.Theme == "green" && phone.Data.Speed == 1.5 && Profile.Get(guest).Data is { Theme: "blue", Speed: 1 } && Profile.Get(guest).Data.Songs!.Count == 0
+               && lib.Count == songsBefore && app.MaxParallel == 3 && Profile.Get(guest).Data.Looks.Count == 1, "several profiles, only the look");
+
+            // Each its own songs.
+            var guests = new Track { Title = "Guest's Own", Artist = "Visitor", Duration = 10, SourceUrl = "https://example.com/guest" };
+            Send("five and a half", new() { guests }, new[] { (new ProfileInfo { Name = "Alex" }, new ProfileData { Songs = new() }, (SealedStats?)null, (YearStats?)null), (second, new ProfileData { Songs = new() { guests.Id } }, null, null) }, null, new[] { "songs" });
+            came = Run(me);
+            Is(came.Added == 1 && Profile.Get(guest).Has(guests.Id) && !phone.Has(guests.Id) && !nobodys, "each profile its own songs");
+
+            // A profile brought here before with a backup of that one: its plays aren't counted twice.
+            var twin = Profile.Get(second);
+            list.Profiles.Remove(guest);
+            list.Profiles.Add(second);
+            twin.Own(new[] { ids[0] });
+            twin.AddListening(ids[0], 100, true);
+            Send("six", Songs(), new[] { (second, new ProfileData { Songs = new() { ids[0] } }, (SealedStats?)new SealedStats { Stats = { [ids[0]] = new TrackStats { Plays = 1, Seconds = 100 } } }, (YearStats?)null) }, null, new[] { "songs", "stats" });
+            came = Run(second);
+            Is(came.Plays == 0 && twin.StatsOf(ids[0])?.Plays == 1, "the same profile, restored here");
+
+            // What can't be read, or isn't all there yet, changes nothing.
+            int untouched = lib.Count;
+            bool Refused(Action spoil)
+            {
+                Send("bad", Songs(), new[] { (pc, Data(), (SealedStats?)null, (YearStats?)null) }, pcSettings, all, new() { ["x"] = new string('x', 100_000) });
+                spoil();
+                try { Run(me); }
+                catch (InvalidDataException) { return lib.Count == untouched; }
+                return false;
+            }
+            var zipFile = Path.Combine(inbox, "data.zip");
+            Is(Refused(() => File.WriteAllText(zipFile, "not a zip")) && Refused(() => File.Delete(zipFile)) && Refused(() => File.WriteAllBytes(zipFile, File.ReadAllBytes(zipFile)[..^40])), "a damaged zip");
+            Is(Refused(() =>
+            {
+                using var zip = ZipFile.Open(zipFile, ZipArchiveMode.Update);
+                zip.GetEntry($"profiles/{pc.Id}/data.json")!.Delete();
+                using var s = new StreamWriter(zip.CreateEntry($"profiles/{pc.Id}/data.json").Open());
+                s.Write("{\"Playlists\":[");
+            }), "a damaged file inside");
+            var readyFile = Path.Combine(inbox, "ready.json");
+            (bool, ComputerReady?) Says(string text)
+            {
+                File.WriteAllText(readyFile, text);
+                return FromComputer.Look(inbox);
+            }
+            Is(Says("") == (false, null) && Says("{") == (true, null) && Says("null") == (true, null) && Says("{\"take\":null}") == (true, null) && Says("{\"version\":2,\"id\":\"z\",\"take\":[]}").Item2 is { Newer: true }, "what it says of itself");
+            FromComputer.Delete(inbox, "another");
+            Is(Directory.Exists(inbox), "another one's there by now");
+            FromComputer.Delete(inbox, "z");
+            Is(!Directory.Exists(inbox) && FromComputer.Look(inbox) == (false, null), "gone once it's in");
+            Profile.FlushAll();
+            foreach (var p in list.Profiles.Append(guest)) Profile.Delete(p.Id);
+            try { Directory.Delete(root, true); } catch { }
+            Console.WriteLine("fromcomputer: " + (fine ? "ok" : "WRONG"));
+            return fine ? 0 : 1;
         }
 
     case "saver":

@@ -181,6 +181,13 @@ public sealed class RadioViewModel : Observable
     // Gets a song of the phone from the phone (PhoneLinkViewModel).
     public Func<RadioSong, string, Action<double>, CancellationToken, Task<string?>>? FromPhone { set => _fetcher.FromPhone = value; }
 
+    // Songs heard on another device, which this profile's statistics name from now on (FromComputer): kept like the ones heard here.
+    public void Bring(IEnumerable<RadioSong> songs)
+    {
+        foreach (var s in songs.Where(s => !_items.ContainsKey(s.Id))) Add(s);
+        Save();
+    }
+
     // The songs of the connected phone: one this computer already has (the same link, or saved here from the phone
     // before) plays as its own; the others come into the queue like the songs of a link, the phone's saved ones from
     // the phone and the ones in its cloud downloaded here from their links. One of this computer's songs the phone shows

@@ -402,6 +402,10 @@ public sealed class AppHost : Observable
     private async Task OnUpdateTick()
     {
         _updateTimer.Interval = TimeSpan.FromMinutes(10);
+#if IOS_APP
+        // (the music keeps the app awake in the background: it renews itself there too)
+        await Renewal.AutoAsync();
+#endif
         await UpdateEnginesAsync(false);
         if (Session != null)
         {
@@ -450,6 +454,13 @@ public sealed class AppHost : Observable
         if (Downloads.HasActive &&
             !await Dialogs.ConfirmAsync(L.T("Downloads are in progress"), L.T("Stop them and update now?"), L.T("Update"), false))
             return;
+        SaveAll();
+        Updates.Apply(true, Session?.Profile.Info.Id, background);
+    }
+
+    // Everything written, before the app is closed to be replaced.
+    public void SaveAll()
+    {
         Session?.Player.SaveState();
         Settings.Save();
         try { Library.Flush(); } catch { }
@@ -457,7 +468,6 @@ public sealed class AppHost : Observable
         _songCache?.Flush();
         _videoCache?.Flush();
         Profile.FlushAll();
-        Updates.Apply(true, Session?.Profile.Info.Id, background);
     }
 
     // ------------------------------------------------------------------ engines

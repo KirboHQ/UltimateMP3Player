@@ -1,7 +1,8 @@
 #!/bin/bash
 # The iPhone app's download engines, which aren't in git (too big) and can only be built on a Mac: Python for iOS
 # (python.org's official XCframework), yt-dlp (the same zip the Android app runs with Python), certifi (the certificates
-# Python needs for HTTPS) and LAME (the MP3 encoder, built here as a framework). Each pinned to a version and its SHA-256.
+# Python needs for HTTPS) and LAME (the MP3 encoder, built here as a framework); and what the app renews itself with (umprenew, the
+# installer's). Each pinned to a version and its SHA-256.
 #
 #   tools/ios-deps.sh              downloads and builds them into deps/ios (kept until a version here changes)
 #   tools/ios-deps.sh install APP  puts them into a built UltimateMP3Player.app, where Platform/Python.cs looks:
@@ -11,9 +12,10 @@
 #       APP/python/lib/python3.x              the standard library
 #       APP/python/app                        yt-dlp and certifi, next to ump_ios.py (put there by the build)
 #       APP/Frameworks/mp3lame.framework      LAME
+#       APP/Frameworks/umprenew.framework     umprenew, and UMPRenewal in APP/Info.plist (Platform/Renewal.cs)
 #
 # Used by .github/workflows/ios.yml. On a Mac, by hand: build the app, then "tools/ios-deps.sh install <the .app>".
-# The .app stays unsigned: SideStore signs it, frameworks included, when it installs it.
+# The .app stays unsigned: the installer, SideStore or the app itself signs it, frameworks included, when it's installed.
 set -euo pipefail
 
 PYTHON_VERSION=3.15.0
@@ -33,13 +35,20 @@ LAME_URL="https://downloads.sourceforge.net/project/lame/lame/$LAME_VERSION/lame
 LAME_MIRROR="https://deb.debian.org/debian/pool/main/l/lame/lame_$LAME_VERSION.orig.tar.gz"
 LAME_SHA256=ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e
 
+# The only place to fill in for umprenew: the tag of a release (or a pre-release) of the installer, and the SHA-256 of its
+# umprenew-ios.zip ("shasum -a 256", or the one GitHub shows beside the file). With the hash empty the app is made without it, and
+# doesn't say it can renew itself.
+UMPRENEW_TAG=v1.2.0
+UMPRENEW_SHA256=
+UMPRENEW_URL="https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool/releases/download/$UMPRENEW_TAG/umprenew-ios.zip"
+
 # As the app (SupportedOSPlatformVersion in the csproj).
 MIN_IOS=15.0
 BUNDLE_PREFIX=com.kirbohq.ultimatemp3player
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEPS="$ROOT/deps/ios"
-STAMP="python-$PYTHON_VERSION yt-dlp-$YTDLP_VERSION certifi-$CERTIFI_VERSION lame-$LAME_VERSION"
+STAMP="python-$PYTHON_VERSION yt-dlp-$YTDLP_VERSION certifi-$CERTIFI_VERSION lame-$LAME_VERSION umprenew-${UMPRENEW_SHA256:+$UMPRENEW_TAG-$UMPRENEW_SHA256}"
 
 sha256() { shasum -a 256 "$1" | cut -d' ' -f1; }
 
@@ -144,6 +153,11 @@ prepare() {
     unzip -q "$dl/certifi-$CERTIFI_VERSION.whl" 'certifi/*' -d "$DEPS/app"
     cp "$dl/yt-dlp-$YTDLP_VERSION" "$DEPS/app/yt-dlp"
     build_lame "$dl/lame-$LAME_VERSION.tar.gz"
+    if [ -n "$UMPRENEW_SHA256" ]; then
+        fetch "$UMPRENEW_URL" "$UMPRENEW_SHA256" "$dl/umprenew-$UMPRENEW_TAG.zip"
+        unzip -q "$dl/umprenew-$UMPRENEW_TAG.zip" -d "$DEPS"
+        test -f "$DEPS/umprenew.framework/umprenew"
+    fi
     echo "$STAMP" > "$DEPS/.stamp"
 }
 
@@ -181,6 +195,17 @@ install_into() {
     # (only the library is needed to run)
     rm -rf "$app/Frameworks/Python.framework/Headers"
     cp -R "$DEPS/mp3lame.framework" "$app/Frameworks/"
+
+    # The two together or neither: by UMPRenewal the installer knows this app can renew itself.
+    rm -rf "$app/Frameworks/umprenew.framework"
+    plutil -remove UMPRenewal "$app/Info.plist" > /dev/null 2>&1 || true
+    if [ -d "$DEPS/umprenew.framework" ]; then
+        cp -R "$DEPS/umprenew.framework" "$app/Frameworks/"
+        plutil -replace UMPRenewal -integer 1 "$app/Info.plist"
+        echo "It renews itself: umprenew $UMPRENEW_TAG"
+    else
+        echo "Without umprenew: this app doesn't renew itself"
+    fi
 
     # The standard library: the shared part, then the device's (its binary modules), without the compiled files (Python
     # compiles into the app's caches: Platform/Python.cs) and without what no app uses.

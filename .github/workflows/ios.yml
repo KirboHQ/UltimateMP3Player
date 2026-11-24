@@ -1,5 +1,5 @@
-# The iPhone app (src/UltimateMP3Player.iOS): built on macOS (the .app needs Xcode) into an unsigned .ipa, which SideStore
-# signs on the phone with the user's Apple ID, and the SideStore source that points to it.
+# The iPhone app (src/UltimateMP3Player.iOS): built on macOS (the .app needs Xcode) into an unsigned .ipa, which the installer (from a
+# computer), the app itself or SideStore signs with the user's Apple ID, and the SideStore source that points to it.
 # - A release published on GitHub: both are attached to it (the other packages come from build*.ps1 on Windows). SideStore
 #   reads the source of the latest release: https://github.com/<repo>/releases/latest/download/sidestore-source.json
 # - Run by hand (Actions › iOS › Run workflow): both are kept only as the run's artifact, to try; no release changes.
@@ -34,8 +34,8 @@ jobs:
       - name: .NET iOS workload
         run: dotnet workload install ios
 
-      # The download engines (Python for iOS, yt-dlp, certifi, LAME built for the iPhone): tools/ios-deps.sh, kept between
-      # runs until its versions change.
+      # The download engines (Python for iOS, yt-dlp, certifi, LAME built for the iPhone) and what the app renews itself with
+      # (umprenew): tools/ios-deps.sh, kept between runs until its versions change.
       - name: Engines (cache)
         uses: actions/cache@v4
         with:
@@ -45,7 +45,7 @@ jobs:
       - name: Engines
         run: bash tools/ios-deps.sh
 
-      # Unsigned (SideStore signs it); Release: compiled ahead of time, as iOS requires.
+      # Unsigned (it's signed when it's installed); Release: compiled ahead of time, as iOS requires.
       - name: Build
         run: >
           dotnet build src/UltimateMP3Player.iOS/UltimateMP3Player.iOS.csproj -c Release

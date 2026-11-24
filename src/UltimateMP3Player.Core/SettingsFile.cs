@@ -92,8 +92,8 @@ public sealed class SettingsFile
 
     // The groups chosen, into the profile and the app's settings (the caller saves them and opens the profile again). The look comes in
     // as a preset of its own, chosen (named after the profile it came from); the other presets are added, the ones with a name already
-    // there left out.
-    public void Apply(ProfileData d, AppSettings s, string profileId, string backdrop, IEnumerable<string> groups)
+    // there left out. again: a look just like it that's here already is the one chosen, not another preset.
+    public void Apply(ProfileData d, AppSettings s, string profileId, string backdrop, IEnumerable<string> groups, bool again = false)
     {
         foreach (var group in groups)
         {
@@ -107,9 +107,13 @@ public sealed class SettingsFile
                     var added = Adopt(other, LookPictures?.GetValueOrDefault(other.Id), profileId);
                     d.Looks.Add(added);
                 }
-                var look = Adopt(Look, Picture, profileId);
-                look.Name = Free(names, string.IsNullOrWhiteSpace(Look.Name) ? Profile ?? "Look" : Look.Name);
-                d.Looks.Add(look);
+                var look = again ? d.Looks.FirstOrDefault(l => SameAs(l, profileId)) : null;
+                if (look == null)
+                {
+                    look = Adopt(Look, Picture, profileId);
+                    look.Name = Free(names, string.IsNullOrWhiteSpace(Look.Name) ? Profile ?? "Look" : Look.Name);
+                    d.Looks.Add(look);
+                }
                 look.Give(d, s, profileId, backdrop);
                 d.LookId = look.Id;
                 continue;
@@ -125,6 +129,19 @@ public sealed class SettingsFile
                 catch (Exception ex) when (ex is JsonException or NotSupportedException or ArgumentException) { }
             }
         }
+    }
+
+    private bool SameAs(LookPreset mine, string profileId)
+    {
+        static string Of(LookPreset l)
+        {
+            var o = JsonSerializer.SerializeToNode(l, JsonStore.Options)!.AsObject();
+            o.Remove(nameof(LookPreset.Id));
+            o.Remove(nameof(LookPreset.Name));
+            return o.ToJsonString();
+        }
+        var picture = LookPreset.PictureOf(profileId, mine.Id);
+        return Of(mine) == Of(Look!) && (File.Exists(picture) ? Picture != null && File.ReadAllBytes(picture).AsSpan().SequenceEqual(Picture) : Picture is not { Length: > 0 });
     }
 
     private static LookPreset Adopt(LookPreset look, byte[]? picture, string profileId)

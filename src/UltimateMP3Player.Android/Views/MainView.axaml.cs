@@ -297,6 +297,10 @@ public partial class MainView : UserControl
         _ = AskNotifications();
         _ = OfferRightPackage();
         _ = ShowWhatsNew();
+#if IOS_APP
+        FromComputerSheet.Shown();
+        Platform.Renewal.Shown();
+#endif
         DispatcherTimer.RunOnce(Sheets.Warm, TimeSpan.FromSeconds(2));
 #if PHONE_TOUR
         if (_session != null) _ = PhoneTour.Run(_session, this);

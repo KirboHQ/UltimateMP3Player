@@ -270,6 +270,8 @@ public sealed class AppSettings
     public bool AutoUpdateEngines { get; set; } = true;
     public DateTime? LastEngineUpdate { get; set; }
     public bool AutoUpdateApp { get; set; } = true;
+    // iPhone (Settings › Renewal): a new version installed without asking, in the background with nothing playing.
+    public bool InstallUpdatesAlone { get; set; }
     // The version that last showed its "What's new" (ReleaseNotes), "4.0.0"; null before 4.0.0.
     public string? LastVersion { get; set; }
     // Off: "Don't show again" was ticked (Settings › Updates turns it back on).

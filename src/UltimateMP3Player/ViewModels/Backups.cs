@@ -175,17 +175,7 @@ public sealed class BackupsViewModel : Observable
         Status = L.T("Restoring…");
         try
         {
-            // Today's data first, so the restore can be undone.
-            Flush();
-            if (await Dialogs.OpenBackupFolderAsync(S.BackupFolder) is { } folder)
-                try
-                {
-                    var stream = await folder.CreateAsync(Backup.FileName(DateTime.Now, beforeRestore: true));
-                    int songs = _main.Library.Count, profiles = ProfileList.Load().Profiles.Count;
-                    var device = DeviceName();
-                    await Task.Run(() => Backup.Write(stream, device, AppInfo.VersionText, songs, profiles));
-                }
-                catch { }
+            await SafetyCopyAsync();
             var current = S;
             await Task.Run(() => Backup.Restore(path, current));
         }
@@ -197,6 +187,21 @@ public sealed class BackupsViewModel : Observable
             return;
         }
         _main.Host.RestartAfterRestore();
+    }
+
+    // Today's data first, so what's about to change it can be undone.
+    internal async Task SafetyCopyAsync()
+    {
+        Flush();
+        if (await Dialogs.OpenBackupFolderAsync(S.BackupFolder) is not { } folder) return;
+        try
+        {
+            var stream = await folder.CreateAsync(Backup.FileName(DateTime.Now, beforeRestore: true));
+            int songs = _main.Library.Count, profiles = ProfileList.Load().Profiles.Count;
+            var device = DeviceName();
+            await Task.Run(() => Backup.Write(stream, device, AppInfo.VersionText, songs, profiles));
+        }
+        catch { }
     }
 
     // The name the backups give for where they come from (the phones': the one in their settings).

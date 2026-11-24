@@ -139,6 +139,27 @@ public sealed class ListeningLog
         return n;
     }
 
+    // Months of another device, added to these (Profile.AddStats).
+    public void Merge(IEnumerable<(int Year, int Month, MonthStats More)> months)
+    {
+        lock (_lock)
+            foreach (var (year, month, more) in months)
+            {
+                var m = MonthIn(YearOf(year, true)!, month);
+                foreach (var (id, s) in more.Songs)
+                    if (m.Songs.TryGetValue(id, out var had))
+                    {
+                        had.Plays += s.Plays;
+                        had.Seconds += s.Seconds;
+                    }
+                    else m.Songs[id] = s;
+                for (int i = 0; i < m.Hours.Length; i++) m.Hours[i] += more.Hours[i];
+                for (int i = 0; i < m.Days.Length; i++) m.Days[i] += more.Days[i];
+                _dirty.Add(year);
+            }
+        if (_dir != null) _saver.Request();
+    }
+
     // A copy of a year (null: nothing listened that year).
     public YearStats? Year(int year)
     {

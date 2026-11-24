@@ -59,6 +59,13 @@ public static class SettingsTransfer
         string? language = host.Settings.Language;
         s.Settings.Looks.Keep();
         file.Apply(s.Profile.Data, host.Settings, s.Profile.Info.Id, s.Profile.BackdropPicture, chosen);
+        Reopen(s, language)?.Toast(L.T("Settings imported"));
+    }
+
+    // The profile opened again with what came in, the music going on; language: the one until now.
+    internal static MainViewModel? Reopen(MainViewModel s, string? language)
+    {
+        var host = s.Host;
         host.Settings.Save();
         s.Profile.Save();
         bool playing = s.Player.IsPlaying;
@@ -74,11 +81,11 @@ public static class SettingsTransfer
         }
         if (linkedComputer) s.ComputerLink.Drop();
         host.OpenProfile(s.Profile.Info);
-        if (host.Session is not { } next) return;
+        if (host.Session is not { } next) return null;
         if (playing) next.SetPlaying(true);
         if (linkedPhone != null) _ = next.PhoneLink.Connect(linkedPhone);
         if (linkedComputer) next.ComputerLink.Open();
-        next.Toast(L.T("Settings imported"));
+        return next;
     }
 
     // "Copy from the computer/phone" (only while linked).

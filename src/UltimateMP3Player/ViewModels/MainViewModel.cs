@@ -103,7 +103,17 @@ public sealed class MainViewModel : Observable, IPageOrder
         _changed = t => _ui.BeginInvoke(() => OnTrackChanged(t));
         _removed = t => _ui.BeginInvoke(() => OnTrackRemoved(t));
         _playlistChanged = p => _ui.BeginInvoke(() => OnPlaylistChanged(p));
-        _playlistsChanged = () => _ui.BeginInvoke(RebuildPlaylists);
+        // (many made at once, an import: all shown again once, not at each)
+        int lists = 0;
+        _playlistsChanged = () =>
+        {
+            if (Interlocked.Exchange(ref lists, 1) == 1) return;
+            _ui.BeginInvoke(() =>
+            {
+                Interlocked.Exchange(ref lists, 0);
+                RebuildPlaylists();
+            });
+        };
         _songsChanged = () => _ui.BeginInvoke(OnSongsChanged);
         // Tags only change from the UI: handled right away, so a new tag can be used at once.
         _tagsChanged = () => { if (_ui.CheckAccess()) OnTagsChanged(); else _ui.BeginInvoke(OnTagsChanged); };

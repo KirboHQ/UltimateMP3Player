@@ -4,6 +4,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using UltimateMP3Player.Audio;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Views;
 
 namespace UltimateMP3Player.Platform;
 
@@ -14,6 +15,7 @@ public static class Lifecycle
     public static void Hook(Avalonia.Application app)
     {
         AudioSession.Setup();
+        Renewal.Hook();
         if (app.TryGetFeature(typeof(IActivatableLifetime)) is not IActivatableLifetime life) return;
         life.Activated += (_, e) =>
         {
@@ -26,13 +28,19 @@ public static class Lifecycle
                     Open(p.Uri);
                     break;
                 default:
-                    if (e.Kind == ActivationKind.Background) App.Host?.SetVisible(true);
+                    if (e.Kind != ActivationKind.Background) break;
+                    App.Host?.SetVisible(true);
+                    if (App.Host?.View?.IsReady != true) break;
+                    FromComputerSheet.Shown();
+                    Renewal.Shown();
                     break;
             }
         };
         life.Deactivated += (_, e) =>
         {
-            if (e.Kind == ActivationKind.Background) App.Host?.SetVisible(false);
+            if (e.Kind != ActivationKind.Background) return;
+            App.Host?.SetVisible(false);
+            Renewal.Hidden();
         };
     }
 
@@ -82,6 +90,7 @@ public static class Lifecycle
         return Uri.UnescapeDataString(uri.AbsolutePath.Trim('/'));
     }
 
+    // (a bare "ump://", which LocalDevVPN comes back with, opens nothing)
     // The app's own links (Info.plist): "ump://add?url=<link>" (a Shortcut in the share sheet can open one, iOS has no
     // "Share > the app" without an extension), or "ump://<link>". The link is then analyzed as if pasted.
     private static string? LinkIn(string text)

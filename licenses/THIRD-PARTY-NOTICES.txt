@@ -173,6 +173,13 @@ LAME 3.100 (Frameworks/mp3lame.framework): the MP3 encoder
   Source: https://lame.sourceforge.io (lame-3.100.tar.gz), built by tools/ios-deps.sh in this repository. It's a separate
   library inside the app: you can replace it with a modified version built the same way.
 
+umprenew (Frameworks/umprenew.framework, when the app has it): what the app renews and updates itself with
+  Part of Ultimate MP3 Player Installer, GNU General Public License version 3, LICENSE.txt, with the Rust libraries it's
+  made of (isideload, idevice and others): their notices and licenses are inside the framework
+  (App-THIRD-PARTY-NOTICES.txt, THIRD-PARTY-NOTICES.txt, LGPL-2.1.txt).
+  Source: https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool (the helper folder; the release is the one named in
+  tools/ios-deps.sh). It's a separate library inside the app: you can replace it with a modified version built the same way.
+
 
 LICENSE TEXTS
 -------------

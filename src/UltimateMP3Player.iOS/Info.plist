@@ -34,10 +34,27 @@
     <string>UIStatusBarStyleLightContent</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
-    <!-- The music goes on with the screen locked or another app in front. -->
+    <!-- The music goes on with the screen locked or another app in front; iOS wakes the app to renew itself (Platform/Renewal.cs, which
+         has the tasks' names too; UMPRenewal, which tells the installer it can, is put here by tools/ios-deps.sh with the library). -->
     <key>UIBackgroundModes</key>
     <array>
         <string>audio</string>
+        <string>fetch</string>
+        <string>processing</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+        <string>com.kirbohq.ultimatemp3player.renew</string>
+        <string>com.kirbohq.ultimatemp3player.install</string>
+    </array>
+    <!-- The installer asks: this app takes what it brings from the computer's app (Core/FromComputer.cs). -->
+    <key>UMPImport</key>
+    <integer>1</integer>
+    <!-- Whether LocalDevVPN (what the renewal needs) and SideStore (what it doesn't any more) are on the iPhone. -->
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>localdevvpn</string>
+        <string>sidestore</string>
     </array>
     <key>NSLocalNetworkUsageDescription</key>
     <string>To find the rooms of Listen together and play with the others, and to be found by the computer and control its music (Settings, Connect to computer).</string>

@@ -139,17 +139,7 @@ public static class Backup
         var aside = Path.Combine(dir, "restoring");
         try
         {
-            if (Directory.Exists(aside)) Directory.Delete(aside, true);
-            var full = Path.GetFullPath(aside) + Path.DirectorySeparatorChar;
-            foreach (var e in zip.Entries)
-            {
-                if (e.FullName == InfoName || e.FullName.EndsWith('/')) continue;
-                var target = Path.GetFullPath(Path.Combine(aside, e.FullName));
-                // (an entry pointing outside the folder isn't written)
-                if (!target.StartsWith(full, StringComparison.OrdinalIgnoreCase)) continue;
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                e.ExtractToFile(target, true);
-            }
+            Extract(zip, aside);
             KeepDevice(Path.Combine(aside, Path.GetFileName(AppPaths.SettingsFile)), current);
             JsonStore.Frozen = true;
             try { Put(aside, dir); }
@@ -163,6 +153,22 @@ public static class Backup
         finally
         {
             try { Directory.Delete(aside, true); } catch { }
+        }
+    }
+
+    // All of a backup into a folder, emptied first.
+    internal static void Extract(ZipArchive zip, string folder)
+    {
+        if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        var full = Path.GetFullPath(folder) + Path.DirectorySeparatorChar;
+        foreach (var e in zip.Entries)
+        {
+            if (e.FullName == InfoName || e.FullName.EndsWith('/')) continue;
+            var target = Path.GetFullPath(Path.Combine(folder, e.FullName));
+            // (an entry pointing outside the folder isn't written)
+            if (!target.StartsWith(full, StringComparison.OrdinalIgnoreCase)) continue;
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            e.ExtractToFile(target, true);
         }
     }
 

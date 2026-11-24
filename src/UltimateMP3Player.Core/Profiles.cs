@@ -981,6 +981,86 @@ public sealed class Profile
         return fresh;
     }
 
+    // The statistics of a profile of the computer (FromComputer), by its id: like AddImported, what came of them before isn't added again,
+    // song by song and month by month. here: a song's id on this device (null: it isn't here, the months keep it under its own id). How
+    // many plays were added.
+    public int AddStats(string from, IReadOnlyDictionary<string, TrackStats> totals, IReadOnlyList<(int Year, int Month, MonthStats Stats)> months,
+        Func<string, string?> here, DateTime? since)
+    {
+        static string KeyOf(string id, MonthSong s) => s.Title != null ? SongMeta.Key(s.Title, s.Artist) : id;
+        // (this profile came here with a backup of that one: what it has was counted there)
+        bool twin = from == Info.Id;
+        var mine = twin ? months.ToDictionary(m => (m.Year, m.Month), m => Log.Month(m.Year, m.Month)) : new();
+        var fresh = new List<(int, int, MonthStats)>();
+        int added = 0;
+        lock (_lock)
+        {
+            // How much of it came before; from now on, all of it. (Whole seconds: the counts kept are.)
+            double Had(string key, double now, double mine)
+            {
+                key = "computer " + from + "|" + key;
+                double had = Data.ImportCounts.TryGetValue(key, out var n) ? n : Math.Floor(mine);
+                Data.ImportCounts[key] = (int)Math.Max(had, now);
+                return had;
+            }
+            foreach (var (id, t) in totals)
+            {
+                if (here(id) is not { } to) continue;
+                var s = Data.Stats.GetValueOrDefault(to);
+                int plays = Math.Max(0, t.Plays - (int)Had(id, t.Plays, twin ? s?.Plays ?? 0 : 0));
+                double seconds = Math.Max(0, t.Seconds - Had(id + "|s", t.Seconds, twin ? s?.Seconds ?? 0 : 0));
+                if (plays == 0 && seconds < 1) continue;
+                if (s == null) Data.Stats[to] = s = new TrackStats();
+                s.Plays += plays;
+                s.Seconds += seconds;
+                if (s.Last == null || t.Last > s.Last) s.Last = t.Last;
+                added += plays;
+            }
+            foreach (var (year, month, m) in months)
+            {
+                var more = new MonthStats();
+                foreach (var g in m.Songs.GroupBy(kv => KeyOf(kv.Key, kv.Value)))
+                {
+                    var key = $"{g.Key}|{year:0000}-{month:00}";
+                    var own = mine.GetValueOrDefault((year, month))?.Songs.Where(kv => KeyOf(kv.Key, kv.Value) == g.Key).Select(kv => kv.Value).ToList() ?? new();
+                    double plays = Had(key, g.Sum(kv => kv.Value.Plays), own.Sum(s => s.Plays)), seconds = Had(key + "|s", g.Sum(kv => kv.Value.Seconds), own.Sum(s => s.Seconds));
+                    foreach (var (id, song) in g)
+                    {
+                        double oldPlays = Math.Min(plays, song.Plays), oldSeconds = Math.Min(seconds, song.Seconds);
+                        plays -= oldPlays;
+                        seconds -= oldSeconds;
+                        if (song.Plays - oldPlays < 1 && song.Seconds - oldSeconds < 1) continue;
+                        var to = here(id) ?? id;
+                        if (!more.Songs.TryGetValue(to, out var s)) more.Songs[to] = s = new MonthSong { Title = song.Title, Artist = song.Artist, Url = song.Url };
+                        s.Plays += song.Plays - (int)oldPlays;
+                        s.Seconds += song.Seconds - oldSeconds;
+                    }
+                }
+                if (more.Songs.Count == 0) continue;
+                // (the hours and the days aren't kept by song: the share of the month that's new)
+                double share = m.Seconds > 0 ? Math.Min(1, more.Seconds / m.Seconds) : 0;
+                more.Hours = m.Hours.Select(h => h * share).ToArray();
+                more.Days = m.Days.Select(d => d * share).ToArray();
+                fresh.Add((year, month, more));
+            }
+            if (since < Data.StatsSince) Data.StatsSince = since;
+        }
+        Log.Merge(fresh);
+        Save();
+        return added;
+    }
+
+    // The recently played of a profile of the computer among these: one that came before is known by when it was.
+    public void MergeHistory(IEnumerable<HistoryEntry> entries)
+    {
+        lock (_lock)
+        {
+            var known = Data.History.Select(h => h.At).ToHashSet();
+            Data.History = Data.History.Concat(entries.Where(h => known.Add(h.At))).OrderBy(h => h.At).TakeLast(500).ToList();
+        }
+        Save();
+    }
+
     // ------------------------------------------------------------------ artists never suggested
 
     // The suggested queue (RadioViewModel, a room's) leaves out the songs of these artists ("A feat. B" too: ArtistNames.Has), so the

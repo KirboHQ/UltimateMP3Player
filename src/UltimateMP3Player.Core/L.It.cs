@@ -2772,5 +2772,158 @@ public static partial class L
         ["Couldn't join {0}: the bot must be allowed to connect and speak there"] = "Impossibile entrare in {0}: lì il bot deve avere il permesso di connettersi e parlare",
         ["Left {0}: Discord's voice connection failed. It tries again when you go to another channel, or turn the bot off and on"] =
             "Uscito da {0}: la connessione vocale di Discord non è riuscita. Riprova quando vai in un altro canale, o se spegni e riaccendi il bot",
+        ["Renewal"] = "Rinnovo",
+        ["RENEWAL"] = "RINNOVO",
+        ["WHAT IT NEEDS"] = "CHE COSA SERVE",
+        ["UPDATES"] = "AGGIORNAMENTI",
+        ["Renew now"] = "Rinnova ora",
+        ["Renewing…"] = "Rinnovo in corso…",
+        ["Signing…"] = "Firma…",
+        ["Installing…"] = "Installazione…",
+        ["Downloading…"] = "Download…",
+        ["Renewed: it works until {0}"] = "Rinnovata: funziona fino a {0}",
+        ["The app works until"] = "L'app funziona fino a",
+        ["Until when it works"] = "Fino a quando funziona",
+        ["Not known"] = "Non si sa",
+        ["Until {0}"] = "Fino a {0}",
+        ["at {0}"] = "alle {0}",
+        ["1 day left"] = "manca 1 giorno",
+        ["{0} days left"] = "mancano {0} giorni",
+        ["1 hour left"] = "manca 1 ora",
+        ["{0} hours left"] = "mancano {0} ore",
+        ["It last renewed itself on {0}."] = "L'ultima volta si è rinnovata {0}.",
+        ["It does it by itself when 4 days are left, as soon as it finds LocalDevVPN on."] =
+            "Lo fa da sola quando mancano 4 giorni, appena trova LocalDevVPN accesa.",
+        ["NEEDED"] = "SERVE",
+        ["NOT NEEDED ANYMORE"] = "NON SERVE PIÙ",
+        ["YOUR DECISION"] = "DECIDI TU",
+        ["NEW VERSION"] = "NUOVA VERSIONE",
+        ["DON'T CLOSE THE APP"] = "NON CHIUDERE L'APP",
+        ["NEEDED, ON"] = "SERVE, ACCESA",
+        ["NEEDED, OFF"] = "SERVE, SPENTA",
+        ["NEEDED, MISSING"] = "SERVE, MANCA",
+        ["NEEDED, ONCE"] = "SERVE UNA VOLTA",
+        ["NEEDED: turn on LocalDevVPN"] = "SERVE: accendi LocalDevVPN",
+        ["NEEDED: the computer, once"] = "SERVE: il computer, una volta",
+        ["Ultimate MP3 Player stops opening after {0}. Turn on LocalDevVPN and open the app: it renews itself."] =
+            "Ultimate MP3 Player smette di aprirsi dopo {0}. Accendi LocalDevVPN e apri l'app: si rinnova da sola.",
+        ["Ultimate MP3 Player stops opening after {0}. Plug the iPhone into the computer and open the installer: it puts everything right."] =
+            "Ultimate MP3 Player smette di aprirsi dopo {0}. Collega l'iPhone al computer e apri il programma di installazione: rimette tutto a posto.",
+        ["The app stops opening after {0}."] = "L'app smette di aprirsi dopo {0}.",
+        ["Turn on LocalDevVPN"] = "Accendi LocalDevVPN",
+        ["Get LocalDevVPN"] = "Scarica LocalDevVPN",
+        ["It's off: the app reaches the iPhone it's on only through it."] = "È spenta: l'app raggiunge l'iPhone su cui si trova solo passando da lì.",
+        ["It isn't on the iPhone: it's a small free app of the App Store, and the app reaches the iPhone it's on only through it. Open it, tap Connect and allow the VPN."] =
+            "Non è sull'iPhone: è una piccola app gratuita dell'App Store, e l'app raggiunge l'iPhone su cui si trova solo passando da lì. Aprila, tocca Connect e consenti la VPN.",
+        ["Plug the iPhone into the computer"] = "Collega l'iPhone al computer",
+        ["The iPhone doesn't know this app's pairing any more (it happens after an iOS update or a reset). Open the installer on the computer and plug the iPhone in: it puts everything right."] =
+            "L'iPhone non riconosce più l'abbinamento di quest'app (succede dopo un aggiornamento di iOS o un ripristino). Apri il programma di installazione sul computer e collega l'iPhone: rimette tutto a posto.",
+        ["Sign in to Apple again"] = "Accedi di nuovo ad Apple",
+        ["Apple ended the sign-in the app renews itself with (after a change of password, for example). Open the installer on the computer, plug the iPhone in and sign in again."] =
+            "Apple ha chiuso l'accesso con cui l'app si rinnova (per esempio dopo un cambio di password). Apri il programma di installazione sul computer, collega l'iPhone e accedi di nuovo.",
+        ["Check the connection"] = "Controlla la connessione",
+        ["Apple couldn't be reached. The app tries again by itself."] = "Non si riesce a raggiungere Apple. L'app riprova da sola.",
+        ["Try again"] = "Riprova",
+        ["Install it again"] = "Va installata di nuovo",
+        ["Install it now"] = "Installala ora",
+        ["This time Apple's new permission doesn't fit the app as it is. It gets downloaded and put in again, which takes a few minutes: iOS closes it meanwhile, and your music stays."] =
+            "Questa volta il nuovo permesso di Apple non va bene per l'app così com'è. Viene scaricata e rimessa, in pochi minuti: intanto iOS la chiude, e la tua musica resta.",
+        ["NOT RENEWED"] = "NON RINNOVATA",
+        ["Something didn't work"] = "Qualcosa non ha funzionato",
+        ["Try again in a while. If it keeps happening, the installer on the computer does it with the cable."] =
+            "Riprova fra un po'. Se continua, lo fa il programma di installazione sul computer, con il cavo.",
+        ["The app renews itself now, so SideStore has nothing left to do for it. If no other app of yours needs it, delete it from the iPhone: hold its icon, then Remove App. LocalDevVPN stays: the app uses it."] =
+            "Ora l'app si rinnova da sola e SideStore per lei non ha più niente da fare. Se non ti serve per altre app, eliminalo dall'iPhone: tieni premuta l'icona, poi Rimuovi app. LocalDevVPN invece resta: all'app serve.",
+        ["Update to {0}"] = "Aggiorna alla {0}",
+        ["It's downloaded, signed and installed right here, in a few minutes. Towards the end iOS closes the app to replace it: the music stops, and everything's found again where it was."] =
+            "Viene scaricata, firmata e installata qui, in pochi minuti. Verso la fine iOS chiude l'app per sostituirla: la musica si ferma, e ritrovi tutto dov'era.",
+        ["Updating to {0}"] = "Aggiornamento alla {0}",
+        ["Installing it again"] = "La rimetto da capo",
+        ["Towards the end iOS closes it by itself, and a notification says when it can be opened again."] =
+            "Verso la fine la chiude iOS da solo, e una notifica dice quando si può riaprire.",
+        ["Updated"] = "Aggiornata",
+        ["Tap to open Ultimate MP3 Player again."] = "Tocca per riaprire Ultimate MP3 Player.",
+        ["Version {0} can't be downloaded from GitHub right now: try again later, or renew the app with the installer."] =
+            "La versione {0} ora non si può scaricare da GitHub: riprova più tardi, o rinnova l'app con il programma di installazione.",
+        ["Replace a certificate?"] = "Sostituisco un certificato?",
+        ["A free Apple ID holds only a couple of signing certificates, and they're all in use. If you replace one, other apps signed with it (with SideStore or AltStore, say) will stop opening until you renew them."] =
+            "Un Apple ID gratuito ha solo un paio di certificati di firma, e sono tutti usati. Se ne sostituisci uno, le altre app firmate con quello (per esempio con SideStore o AltStore) smetteranno di aprirsi finché non le rinnovi.",
+        ["Replace it"] = "Sostituiscilo",
+        ["Not now"] = "Non ora",
+        ["The computer, once"] = "Il computer, una volta",
+        ["Apple keeps the app working for 7 days at a time. To renew itself here it needs what the installer puts in it: open the installer on the computer, plug the iPhone in and choose to let the app renew itself."] =
+            "Apple fa funzionare l'app per 7 giorni alla volta. Per rinnovarsi da sola qui le serve quello che ci mette il programma di installazione: aprilo sul computer, collega l'iPhone e scegli che l'app si rinnovi da sola.",
+        ["Copy the installer's address"] = "Copia l'indirizzo del programma",
+        ["A free app of the App Store, kept connected: through it the app reaches the iPhone it's on. Nothing goes out of the iPhone that way."] =
+            "App gratuita dell'App Store, da tenere collegata: da lì l'app raggiunge l'iPhone su cui si trova. Per quella strada non esce niente dall'iPhone.",
+        ["Turn it on"] = "Accendila",
+        ["Get it"] = "Scaricala",
+        ["The computer and the cable"] = "Il computer e il cavo",
+        ["Once, with the installer: it puts in the app what it renews itself with."] =
+            "Una volta, con il programma di installazione: mette nell'app quello con cui si rinnova.",
+        ["Only the way back, should the app ever not manage."] = "Solo come ripiego, se un giorno l'app non ci riesce.",
+        ["The app renews itself now. If no other app of yours needs it, delete it: hold its icon, then Remove App."] =
+            "Ora l'app si rinnova da sola. Se non ti serve per altre app, eliminalo: tieni premuta l'icona, poi Rimuovi app.",
+        ["Install updates by itself when I'm not listening"] = "Installa gli aggiornamenti da sola quando non sto ascoltando niente",
+        ["In the background, when iOS lets it, on Wi-Fi and with LocalDevVPN on. Off: it says when there's a new version, and installs it when you tap Update."] =
+            "In secondo piano, quando iOS lo permette, con il Wi-Fi e con LocalDevVPN accesa. Se è spento: dice quando c'è una versione nuova, e la installa quando tocchi Aggiorna.",
+        ["renewal renew expires expiry seven days sign signature localdevvpn vpn sidestore apple id"] =
+            "rinnovo rinnova rinnovare scade scadenza sette giorni firma localdevvpn vpn sidestore apple id",
+        ["localdevvpn vpn sidestore computer cable installer needed"] = "localdevvpn vpn sidestore computer cavo programma installazione serve",
+        ["updates install by itself automatically version"] = "aggiornamenti installa da sola automaticamente versione",
+        // from the computer (iPhone)
+        ["From your computer"] = "Dal tuo computer",
+        ["Add it all"] = "Aggiungi tutto",
+        ["Delete it"] = "Elimina",
+        ["Update the app"] = "Aggiorna l'app",
+        ["What came from the computer is for a newer version of the app: update it, then it can be added. It stays here meanwhile."] =
+            "Quello che è arrivato dal computer è per una versione più nuova dell'app: aggiornala, poi si può aggiungere. Intanto resta qui.",
+        ["Adding it opens the profile again, so you'll leave the room."] = "Per aggiungerlo il profilo si riapre, quindi uscirai dalla stanza.",
+        ["Leave and add it"] = "Esci e aggiungi",
+        ["1 file"] = "1 file",
+        ["{0} files"] = "{0} file",
+        ["statistics"] = "statistiche",
+        ["look"] = "aspetto",
+        ["settings"] = "impostazioni",
+        ["The settings become the computer's."] = "Le impostazioni diventano quelle del computer.",
+        ["From {0}:"] = "Da {0}:",
+        ["It's added to what's on the iPhone: nothing is deleted."] = "Si aggiunge a quello che c'è sull'iPhone: non si cancella niente.",
+        ["The look you have now stays among the looks."] = "L'aspetto che hai adesso resta fra gli stili.",
+        ["DONE"] = "FATTO",
+        ["Added to your iPhone"] = "Aggiunto al tuo iPhone",
+        ["NOT ADDED"] = "NON AGGIUNTO",
+        ["It can't be read"] = "Non si riesce a leggere",
+        ["What arrived from the computer can't be read: send it again from there. If it happens again, update the app on both."] =
+            "Quello che è arrivato dal computer non si riesce a leggere: mandalo di nuovo da lì. Se succede ancora, aggiorna l'app su tutti e due.",
+        ["Delete what came from the computer?"] = "Eliminare quello che è arrivato dal computer?",
+        ["Nothing of what's in the app changes. The installer can send it again."] =
+            "Quello che c'è nell'app non cambia. Il programma di installazione può mandarlo di nuovo.",
+        ["If it's closed, it goes on from where it was the next time."] = "Se si chiude, la prossima volta riprende da dove era.",
+        ["Adding…"] = "Aggiungo…",
+        ["What was added stays, the rest is still here: try again from Settings."] =
+            "Quello che è stato aggiunto resta, il resto è ancora qui: riprova dalle Impostazioni.",
+        ["Waiting to be added"] = "In attesa di essere aggiunto",
+        ["1 song saved on the iPhone"] = "1 brano salvato sull'iPhone",
+        ["{0} songs saved on the iPhone"] = "{0} brani salvati sull'iPhone",
+        ["1 play in the statistics"] = "1 ascolto nelle statistiche",
+        ["{0} plays in the statistics"] = "{0} ascolti nelle statistiche",
+        ["New profile: {0}"] = "Profilo nuovo: {0}",
+        ["New profiles: {0}"] = "Profili nuovi: {0}",
+        ["The look is the computer's: the one from before is in Settings › Appearance, among the looks."] =
+            "L'aspetto è quello del computer: quello di prima è in Impostazioni › Aspetto, fra gli stili.",
+        ["The settings are the computer's."] = "Le impostazioni sono quelle del computer.",
+        ["1 song is in a format the iPhone can't play: it's heard from its link."] =
+            "1 brano è in un formato che l'iPhone non suona: si ascolta dal suo link.",
+        ["{0} songs are in a format the iPhone can't play: they're heard from their links."] =
+            "{0} brani sono in un formato che l'iPhone non suona: si ascoltano dai loro link.",
+        ["1 song not added: the iPhone can't play its format, and it has no link."] =
+            "1 brano non aggiunto: l'iPhone non suona il suo formato, e non ha un link.",
+        ["{0} songs not added: the iPhone can't play their format, and they have no link."] =
+            "{0} brani non aggiunti: l'iPhone non suona il loro formato, e non hanno un link.",
+        ["1 song not added: its file wasn't brought, and it has no link."] =
+            "1 brano non aggiunto: il suo file non è stato portato, e non ha un link.",
+        ["{0} songs not added: their files weren't brought, and they have no link."] =
+            "{0} brani non aggiunti: i loro file non sono stati portati, e non hanno un link.",
+        ["It was all here already."] = "C'era già tutto.",
     };
 }

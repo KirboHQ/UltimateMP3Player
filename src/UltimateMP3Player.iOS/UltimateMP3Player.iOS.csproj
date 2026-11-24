@@ -3,8 +3,8 @@
   <!-- Ultimate MP3 Player for iPhone (and iPad): the Android app's pages, sheets and touch (linked from there: the few
        Android-only lines are marked ANDROID_APP), with what talks to iOS in Platform\: the sound through an AudioQueue, the
        decoders and the tags of AudioToolbox and AVFoundation, the lock screen, the Files app, the life of the app.
-       Built with .NET 10 on macOS by GitHub Actions (.github\workflows\ios.yml) into an unsigned .ipa that SideStore signs
-       on the phone with the user's Apple ID; on Windows `dotnet build` checks the C# (the .app needs Xcode).
+       Built with .NET 10 on macOS by GitHub Actions (.github\workflows\ios.yml) into an unsigned .ipa that the installer, the app
+       itself or SideStore signs with the user's Apple ID; on Windows `dotnet build` checks the C# (the .app needs Xcode).
        No downloads yet: iOS can't start programs (yt-dlp, ffmpeg); they'll come with Python inside the app. -->
   <PropertyGroup>
     <!-- The iOS 26 bindings, not the newest (27): GitHub's macOS runners have Xcode 26, and the newest pack needs its Xcode. -->
@@ -18,13 +18,13 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <!-- SideStore may add a suffix to it (a free Apple ID): the code never relies on it. -->
+    <!-- Whoever signs it adds the team to it (a free Apple ID): the code never relies on it. -->
     <ApplicationId>com.kirbohq.ultimatemp3player</ApplicationId>
     <ApplicationTitle>Ultimate MP3 Player</ApplicationTitle>
     <!-- Keep equal to the other projects; the build number as on Android (3.7.2 → 30702). -->
-    <Version>5.5.3</Version>
-    <ApplicationDisplayVersion>5.5.3</ApplicationDisplayVersion>
-    <ApplicationVersion>50503</ApplicationVersion>
+    <Version>5.6.0</Version>
+    <ApplicationDisplayVersion>5.6.0</ApplicationDisplayVersion>
+    <ApplicationVersion>50600</ApplicationVersion>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -139,7 +139,7 @@
     <BundleResource Include="..\..\licenses\*" Link="licenses\%(Filename)%(Extension)" />
   </ItemGroup>
 
-  <!-- The app's part of Python (Platform\Python.cs). Python itself, yt-dlp, certifi and LAME are put into the .app by
+  <!-- The app's part of Python (Platform\Python.cs). Python itself, yt-dlp, certifi, LAME and umprenew are put into the .app by
        tools/ios-deps.sh when the .ipa is made (.github/workflows/ios.yml): not in git. -->
   <ItemGroup>
     <BundleResource Include="Python\ump_ios.py" Link="python\app\ump_ios.py" />

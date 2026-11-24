@@ -155,11 +155,12 @@ impostazioni di Android Auto sul telefono tocca **Versione** 10 volte e conferma
 
 **Il modo facile: il [programma di installazione](https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool)**, per
 Windows, macOS e Linux. Collega il cavo e accedi con il tuo Apple ID gratuito: al resto pensa lui, e ti mostra cosa toccare
-sul telefono. Con un Apple ID gratuito un'app resta firmata 7 giorni, quindi ti chiede chi la rinnova: il computer
-(collega il cavo e premi Rinnova lì, che porta anche le nuove versioni), oppure l'iPhone da solo con SideStore, che il
-programma mette sul telefono e prepara per te.
+sul telefono. Con un Apple ID gratuito un'app resta firmata 7 giorni. Da lì in poi **l'app si rinnova e si aggiorna da
+sola** sull'iPhone: le basta [LocalDevVPN](https://apps.apple.com/app/id6755608044), un'app gratuita dell'App Store da
+tenere collegata (da lì non esce niente dall'iPhone). Fino a quando funziona, e che cosa manca se manca qualcosa, lo dice
+in **Impostazioni › Rinnovo**. Preferisci il cavo? Collegalo e premi Rinnova nel programma, che porta anche le nuove versioni.
 
-**Oppure con SideStore per conto tuo**, se lo usi già o preferisci prepararlo tu:
+**Oppure con SideStore per conto tuo**, se lo usi già (per rinnovarsi l'app non ne ha più bisogno):
 
 1. Installa [SideStore](https://sidestore.io) seguendo la sua guida, dalla versione 0.7 in poi: la 0.6.4 e le precedenti
    non riescono più ad accedere ad Apple. Usa il tuo Apple ID gratuito, senza Mac e senza jailbreak; il primo accesso può
