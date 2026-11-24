@@ -39,7 +39,7 @@ LAME_SHA256=ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e
 # umprenew-ios.zip ("shasum -a 256", or the one GitHub shows beside the file). With the hash empty the app is made without it, and
 # doesn't say it can renew itself.
 UMPRENEW_TAG=v1.2.0
-UMPRENEW_SHA256=
+UMPRENEW_SHA256=1c17741b35d71f24c86d3806e00971536291137f73b5ce61d400ff03b2c84b74
 UMPRENEW_URL="https://github.com/KirboHQ/UltimateMP3Player-Installer-Tool/releases/download/$UMPRENEW_TAG/umprenew-ios.zip"
 
 # As the app (SupportedOSPlatformVersion in the csproj).
