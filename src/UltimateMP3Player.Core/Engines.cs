@@ -147,7 +147,7 @@ public static class Engines
                     var asset = doc.RootElement.Arr("assets").FirstOrDefault(a => a.Str("name") == GalleryDlAsset);
                     url = asset.ValueKind == System.Text.Json.JsonValueKind.Object ? asset.Str("browser_download_url") ?? url : url;
                 }
-                catch (OperationCanceledException) { throw; }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                 catch { }
                 await Http.DownloadFileAsync(url, GalleryDl, null, (d, t) => progress(L.T("Downloading gallery-dl"), Pct(d, t)), ct);
                 MakeRunnable(GalleryDl);
@@ -160,12 +160,13 @@ public static class Engines
                     await Http.DownloadFileAsync(FfmpegZip, zip, null, (d, t) => progress(L.T("Downloading ffmpeg"), Pct(d, t)), ct);
                     progress(L.T("Extracting ffmpeg"), null);
                     using var za = ZipFile.OpenRead(zip);
-                    foreach (var entry in za.Entries)
+                    // (the programs after their libraries: once they're here it's all here)
+                    foreach (var entry in za.Entries.OrderBy(e => e.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)))
                     {
                         var parent = Path.GetFileName(Path.GetDirectoryName(entry.FullName.Replace('/', '\\')) ?? "");
                         if (!string.Equals(parent, "bin", StringComparison.OrdinalIgnoreCase) || entry.Name.Length == 0) continue;
                         if (entry.Name.Equals("ffplay.exe", StringComparison.OrdinalIgnoreCase)) continue;
-                        entry.ExtractToFile(Path.Combine(Dir, entry.Name), true);
+                        Extract(entry, Path.Combine(Dir, entry.Name));
                     }
                 }
                 else
@@ -176,8 +177,7 @@ public static class Engines
                         await Http.DownloadFileAsync(MartinRiedl(tool), zip, null, (d, t) => progress(L.F("Downloading {0}", tool), Pct(d, t)), ct);
                         progress(L.F("Extracting {0}", tool), null);
                         using var za = ZipFile.OpenRead(zip);
-                        za.Entries.First(e => e.Name == tool).ExtractToFile(target, true);
-                        MakeRunnable(target);
+                        Extract(za.Entries.First(e => e.Name == tool), target);
                     }
             }
             if (!File.Exists(Deno))
@@ -186,8 +186,7 @@ public static class Engines
                 await Http.DownloadFileAsync(DenoZip, zip, null, (d, t) => progress(L.T("Downloading deno"), Pct(d, t)), ct);
                 progress(L.T("Extracting deno"), null);
                 using var za = ZipFile.OpenRead(zip);
-                za.Entries.First(e => e.Name.Equals(Path.GetFileName(Deno), StringComparison.OrdinalIgnoreCase)).ExtractToFile(Deno, true);
-                MakeRunnable(Deno);
+                Extract(za.Entries.First(e => e.Name.Equals(Path.GetFileName(Deno), StringComparison.OrdinalIgnoreCase)), Deno);
             }
         }
         finally
@@ -196,6 +195,15 @@ public static class Engines
         }
 
         static double? Pct(long done, long? total) => total > 0 ? done * 100.0 / total.Value : null;
+    }
+
+    // Written aside, then put in place: the app closed meanwhile doesn't leave half a program that looks installed.
+    private static void Extract(ZipArchiveEntry entry, string target)
+    {
+        var part = target + ".part";
+        entry.ExtractToFile(part, true);
+        MakeRunnable(part);
+        File.Move(part, target, true);
     }
 
     // Linux and macOS: a downloaded program needs the "executable" permission.

@@ -374,7 +374,7 @@ public sealed class LibraryViewModel : Observable, ITrackList
         _sort = Sorts.FirstOrDefault(s => (string)s.Value! == main.Profile.Data.LibrarySort) ?? Sorts[0];
         PlayCommand = new RelayCommand(() => _main.Player.PlayAll(this, false), () => _order.Count > 0);
         ShuffleCommand = new RelayCommand(() => _main.Player.PlayAll(this, true), () => _order.Count > 0);
-        SaveAllCommand = new RelayCommand(() => _ = _main.SaveToDevice(_order.Where(t => t.IsCloud).ToList()), () => _order.Any(t => t.IsCloud));
+        SaveAllCommand = new RelayCommand(() => _ = _main.SaveToDevice(_order.Where(t => t.IsCloud).ToList()), () => ShowSaveAll);
         Storage = new StorageFilterViewModel(main);
         if (unsorted) _dirty = true;
         else Rebuild();
@@ -394,12 +394,6 @@ public sealed class LibraryViewModel : Observable, ITrackList
     public bool Unsorted { get; }
     public TagViewModel? Tag { get; }
     public bool IsTagPage => Tag != null;
-    // The library's two tabs (the computers' sidebar has one entry for both): all the songs, the ones in no playlist.
-    public bool ShowTabs => Tag == null;
-    public bool IsAll => !Unsorted;
-    public ICommand AllCommand => _all ??= new RelayCommand(() => _main.IsLibrary = true);
-    public ICommand UnsortedCommand => _unsorted ??= new RelayCommand(() => _main.IsUnsorted = true);
-    private ICommand? _all, _unsorted;
     // "Add files" only makes sense for the whole library.
     public bool CanImport => !Unsorted && Tag == null;
     public ICommand PlayCommand { get; }
@@ -522,7 +516,7 @@ public sealed class PlaylistPageViewModel : Observable, ITrackList
         CoverCommand = new RelayCommand(() => _ = _main.ChangePlaylistCover(Vm), () => !Vm.IsFavorites);
         RemoveCoverCommand = new RelayCommand(() => _main.RemovePlaylistCover(Vm), () => Vm.HasCustomCover);
         DeleteCommand = new RelayCommand(() => _ = _main.DeletePlaylist(Vm), () => !Vm.IsFavorites);
-        SaveAllCommand = new RelayCommand(() => _ = _main.SaveToDevice(_order.Where(t => t.IsCloud).ToList()), () => _order.Any(t => t.IsCloud));
+        SaveAllCommand = new RelayCommand(() => _ = _main.SaveToDevice(_order.Where(t => t.IsCloud).ToList()), () => ShowSaveAll);
         Storage = new StorageFilterViewModel(main);
         Sorts = new List<Choice>
         {

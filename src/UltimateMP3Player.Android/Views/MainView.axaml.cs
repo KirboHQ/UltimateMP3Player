@@ -78,7 +78,6 @@ public partial class MainView : UserControl
     // the whole height; narrow: the bar at the bottom.
     private const double RailWidth = 92;
     private bool? _rail;
-    public bool IsWide => _rail == true;
 
     private void Arrange()
     {

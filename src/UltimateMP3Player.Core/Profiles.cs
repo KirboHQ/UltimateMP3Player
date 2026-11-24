@@ -556,13 +556,13 @@ public sealed class Profile
         return p;
     }
 
-    private string UniqueName(string name)
+    private string UniqueName(string name, Playlist? self = null)
     {
         name = string.IsNullOrWhiteSpace(name) ? L.T("New playlist") : name.Trim();
         lock (_lock)
         {
             var n = name;
-            for (int i = 2; Data.Playlists.Any(p => string.Equals(p.Name, n, StringComparison.CurrentCultureIgnoreCase)); i++)
+            for (int i = 2; Data.Playlists.Any(p => p != self && string.Equals(p.Name, n, StringComparison.CurrentCultureIgnoreCase)); i++)
                 n = $"{name} ({i})";
             return n;
         }
@@ -571,7 +571,7 @@ public sealed class Profile
     public void Rename(Playlist p, string name)
     {
         if (p.IsFavorites || string.IsNullOrWhiteSpace(name) || name.Trim() == p.Name) return;
-        p.Name = UniqueName(name);
+        p.Name = UniqueName(name, p);
         Save();
         PlaylistChanged?.Invoke(p);
         PlaylistsChanged?.Invoke();

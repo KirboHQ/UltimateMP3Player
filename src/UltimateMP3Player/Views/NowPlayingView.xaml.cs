@@ -536,6 +536,7 @@ public partial class NowPlayingView : UserControl
         var rect = new Rect(0, 0, size, size);
         var img = _coverTrack?.Cover300 as BitmapSource;
         var dv = new DrawingVisual();
+        RenderOptions.SetBitmapScalingMode(dv, BitmapScalingMode.HighQuality);
         using (var dc = dv.RenderOpen())
         {
             dc.PushClip(new RectangleGeometry(rect, radius, radius));

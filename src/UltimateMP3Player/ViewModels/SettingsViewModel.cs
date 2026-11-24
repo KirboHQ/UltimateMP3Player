@@ -273,7 +273,7 @@ public sealed class SettingsViewModel : Observable
         RemoveDuplicatesCommand = new RelayCommand(() => _ = _main.RemoveDuplicates());
         FindMissingCommand = new RelayCommand(() => _main.FindMissing());
         SuggestAgainCommand = new RelayCommand(p => { if (p is string artist) _main.SetUnsuggested(artist, false); });
-        main.Profile.UnsuggestedChanged += () => OnChanged(nameof(UnsuggestedArtists), nameof(HasUnsuggested));
+        main.Profile.UnsuggestedChanged += OnUnsuggested;
         main.Host.Bot.Changed += OnBotChanged;
         if (File.Exists(AppPaths.BotPicture)) BotLookEdited();
         bool hasRepo = AppInfo.RepoUrl != null;
@@ -1582,7 +1582,16 @@ public sealed class SettingsViewModel : Observable
     });
 
     // (from any thread; unhooked by MainViewModel.Detach)
-    public void OnBotChanged() => Application.Current.Dispatcher.BeginInvoke(() => OnChanged(nameof(DiscordBotText), nameof(DiscordBotDefaultName),
+    private void OnUnsuggested() => OnChanged(nameof(UnsuggestedArtists), nameof(HasUnsuggested));
+
+    // The session is over: its profile and the bot stay, and would keep all of it in memory.
+    public void Detach()
+    {
+        _main.Profile.UnsuggestedChanged -= OnUnsuggested;
+        Host.Bot.Changed -= OnBotChanged;
+    }
+
+    private void OnBotChanged() => Application.Current.Dispatcher.BeginInvoke(() => OnChanged(nameof(DiscordBotText), nameof(DiscordBotDefaultName),
         nameof(DiscordBotPreviewName), nameof(DiscordBotActivity), nameof(DiscordBotLookText)));
 
     private async Task PickBotPicture()

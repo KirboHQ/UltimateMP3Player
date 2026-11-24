@@ -67,7 +67,15 @@ public sealed class Connection : IDisposable
 
     public void Send(Msg m)
     {
-        if (!IsClosed) _control.Writer.TryWrite(Frame(KindMsg, m.ToBytes()));
+        if (!IsClosed) Send(Pack(m));
+    }
+
+    // The same message for several people: made into bytes once.
+    public static byte[] Pack(Msg m) => Frame(KindMsg, m.ToBytes());
+
+    public void Send(byte[] packed)
+    {
+        if (!IsClosed) _control.Writer.TryWrite(packed);
     }
 
     // In the file lane, after the pieces sent before it.

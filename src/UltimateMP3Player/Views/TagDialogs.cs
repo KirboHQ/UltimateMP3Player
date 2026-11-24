@@ -1,20 +1,24 @@
-using System.Globalization;
+#if AVALONIA
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Layout;
+using Avalonia.Media;
+#else
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+#endif
+using System.Globalization;
 using UltimateMP3Player.Core;
 using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
 
-// Create/edit a tag, and put a playlist's tags on its songs.
+// Create/edit a tag, and put a playlist's tags on its songs. Linked into the Avalonia app.
 public static class TagDialogs
 {
-    private static ResourceDictionary Res => Application.Current.Resources;
-    private static Brush B(string key) => (Brush)Res[key];
-
     // For the view models shared with the Android app (Dialogs.ConfirmAsync).
     public static Task<(string Name, string Color)?> EditAsync(string? name, string color) => Task.FromResult(Edit(name, color));
     public static Task<(List<TrackViewModel> Songs, List<TagViewModel> Tags, bool Add)?> ApplyToSongsAsync(PlaylistViewModel p, List<TrackViewModel> songs)
@@ -27,39 +31,41 @@ public static class TagDialogs
         var chosen = color;
         var body = new StackPanel();
 
-        body.Children.Add(new TextBlock { Text = L.T("Name"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 4, 0, 6) });
-        var nameBox = new TextBox { Text = name ?? "", Style = (Style)Res["BoxTextBox"], Tag = L.T("E.g. chill, 2000s, gym…") };
+        body.Children.Add(Both.Text(L.T("Name"), "FieldLabel", new Thickness(2, 4, 0, 6)));
+        var nameBox = Both.Box(name ?? "", L.T("E.g. chill, 2000s, gym…"));
         body.Children.Add(nameBox);
 
-        var hexBox = new TextBox { Style = (Style)Res["BoxTextBox"], Width = 130, HorizontalAlignment = HorizontalAlignment.Left, Tag = "#RRGGBB", Text = color };
+        var hexBox = Both.Box(color, "#RRGGBB");
+        hexBox.Width = 130;
+        hexBox.HorizontalAlignment = HorizontalAlignment.Left;
         var dot = new Ellipse { Width = 10, Height = 10, VerticalAlignment = VerticalAlignment.Center };
 
-        body.Children.Add(new TextBlock { Text = L.T("Color"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 14, 0, 6) });
+        body.Children.Add(Both.Text(L.T("Color"), "FieldLabel", new Thickness(2, 14, 0, 6)));
         var swatches = new WrapPanel();
         var rings = new Dictionary<string, Ellipse>(StringComparer.OrdinalIgnoreCase);
         foreach (var hex in Core.Tag.Palette)
         {
-            var ring = new Ellipse { Stroke = B("TextBrush"), StrokeThickness = 2, Opacity = 0 };
-            var swatch = new Grid { Width = 34, Height = 34, Margin = new Thickness(0, 0, 6, 6), Cursor = Cursors.Hand, Background = Brushes.Transparent, ToolTip = hex };
+            var ring = new Ellipse { Stroke = Both.Brush("TextBrush"), StrokeThickness = 2, Opacity = 0 };
+            var swatch = Both.Tip(new Grid { Width = 34, Height = 34, Margin = new Thickness(0, 0, 6, 6), Cursor = Both.Hand, Background = Brushes.Transparent }, hex);
             swatch.Children.Add(ring);
             swatch.Children.Add(new Ellipse { Margin = new Thickness(5), Fill = Ui.BrushFrom(hex) });
-            swatch.MouseLeftButtonDown += (_, e) => { Pick(hex, true); e.Handled = true; };
+            Both.OnPress(swatch, _ => Pick(hex, true));
             rings[hex] = ring;
             swatches.Children.Add(swatch);
         }
         body.Children.Add(swatches);
 
         var custom = new DockPanel { Margin = new Thickness(0, 6, 0, 0) };
-        custom.Children.Add(new TextBlock { Text = L.T("Custom"), Foreground = B("SubTextBrush"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 12, 0) });
+        custom.Children.Add(new TextBlock { Text = L.T("Custom"), Foreground = Both.Brush("SubTextBrush"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 12, 0) });
         custom.Children.Add(hexBox);
         body.Children.Add(custom);
 
-        body.Children.Add(new TextBlock { Text = L.T("Preview"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 16, 0, 8) });
-        var chipText = new TextBlock { FontSize = 13, FontWeight = FontWeights.SemiBold, Margin = new Thickness(7, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        body.Children.Add(Both.Text(L.T("Preview"), "FieldLabel", new Thickness(2, 16, 0, 8)));
+        var chipText = new TextBlock { FontSize = 13, FontWeight = Both.SemiBold, Margin = new Thickness(7, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         var chipRow = new StackPanel { Orientation = Orientation.Horizontal };
         chipRow.Children.Add(dot);
         chipRow.Children.Add(chipText);
-        body.Children.Add(new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(10, 4, 12, 4), Background = B("Surface3Brush"), HorizontalAlignment = HorizontalAlignment.Left, Child = chipRow });
+        body.Children.Add(new Border { CornerRadius = new CornerRadius(12), Padding = new Thickness(10, 4, 12, 4), Background = Both.Brush("Surface3Brush"), HorizontalAlignment = HorizontalAlignment.Left, Child = chipRow });
 
         var ok = Dialogs.Button(L.T(isNew ? "Create" : "Save"), "PrimaryButton", isDefault: true);
         var win = Dialogs.Frame(L.T(isNew ? "New tag" : "Edit tag"), body, 380, Dialogs.Button(L.T("Cancel"), "GhostButton", isCancel: true), ok);
@@ -73,10 +79,11 @@ public static class TagDialogs
         }
         void Refresh()
         {
-            chipText.Text = nameBox.Text.Trim().Length > 0 ? nameBox.Text.Trim() : L.T("Tag name");
-            ok.IsEnabled = nameBox.Text.Trim().Length > 0;
+            var n = (nameBox.Text ?? "").Trim();
+            chipText.Text = n.Length > 0 ? n : L.T("Tag name");
+            ok.IsEnabled = n.Length > 0;
         }
-        hexBox.TextChanged += (_, _) => { if (ParseHex(hexBox.Text) is { } h && !h.Equals(chosen, StringComparison.OrdinalIgnoreCase)) Pick(h, false); };
+        hexBox.TextChanged += (_, _) => { if (ParseHex(hexBox.Text ?? "") is { } h && !h.Equals(chosen, StringComparison.OrdinalIgnoreCase)) Pick(h, false); };
         nameBox.TextChanged += (_, _) => Refresh();
         Pick(color, false);
         Refresh();
@@ -87,13 +94,13 @@ public static class TagDialogs
             done = true;
             win.DialogResult = true;
         };
-        win.Loaded += (_, _) =>
+        Both.OnOpened(win, () =>
         {
             nameBox.Focus();
             nameBox.SelectAll();
-        };
+        });
         win.ShowDialog();
-        return done ? (nameBox.Text.Trim(), chosen) : null;
+        return done ? ((nameBox.Text ?? "").Trim(), chosen) : null;
     }
 
     private static string? ParseHex(string s)
@@ -110,27 +117,25 @@ public static class TagDialogs
         var choices = songs.Select(t => new SongChoice(t)).ToList();
         var body = new StackPanel();
 
-        body.Children.Add(new TextBlock
-        {
-            Text = L.T("Choose the tags and the songs: you can add or remove them all at once."),
-            Style = (Style)Res["Hint"], TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12),
-        });
-        body.Children.Add(new TextBlock { Text = L.T("Tags"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 0, 0, 8) });
+        body.Children.Add(Both.Text(L.T("Choose the tags and the songs: you can add or remove them all at once."), "Hint", new Thickness(0, 0, 0, 12)));
+        body.Children.Add(Both.Text(L.T("Tags"), "FieldLabel", new Thickness(2, 0, 0, 8)));
         var tagPanel = new WrapPanel();
         body.Children.Add(tagPanel);
 
         var header = new DockPanel { Margin = new Thickness(0, 14, 0, 8), LastChildFill = false };
-        var toggleAll = new Button { Style = (Style)Res["GhostButton"], Padding = new Thickness(12, 5, 12, 5) };
-        var countText = new TextBlock { Foreground = B("SubTextBrush"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
-        header.Children.Add(new TextBlock { Text = L.T("Songs"), Style = (Style)Res["FieldLabel"], Margin = new Thickness(2, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center });
+        var toggleAll = Both.Look(new Button { Padding = new Thickness(12, 5, 12, 5) }, "GhostButton");
+        var countText = new TextBlock { Foreground = Both.Brush("SubTextBrush"), FontSize = 13, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0) };
+        var songsLabel = Both.Text(L.T("Songs"), "FieldLabel", new Thickness(2, 0, 12, 0));
+        songsLabel.VerticalAlignment = VerticalAlignment.Center;
+        header.Children.Add(songsLabel);
         header.Children.Add(toggleAll);
         header.Children.Add(countText);
         body.Children.Add(header);
 
-        var list = new ListBox { Style = (Style)Res["PlainList"], ItemsSource = choices, ItemTemplate = (DataTemplate)Res["SongChoiceTemplate"] };
+        var list = Both.Look(new ListBox { ItemsSource = choices, ItemTemplate = Both.Template("SongChoiceTemplate") }, "PlainList");
         body.Children.Add(new Border
         {
-            Height = 320, CornerRadius = new CornerRadius(10), Background = B("BgBrush"), BorderBrush = B("BorderBrush"),
+            Height = 320, CornerRadius = new CornerRadius(10), Background = Both.Brush("BgBrush"), BorderBrush = Both.Brush("BorderBrush"),
             BorderThickness = new Thickness(1), Padding = new Thickness(6), Child = list,
         });
 
@@ -149,13 +154,12 @@ public static class TagDialogs
         {
             var tag = t;
             var chip = TagToggle(tag, chosenTags.Contains(tag));
-            chip.MouseLeftButtonDown += (_, e) =>
+            Both.OnPress(chip, _ =>
             {
-                e.Handled = true;
                 if (!chosenTags.Remove(tag)) chosenTags.Add(tag);
                 SetToggle(chip, tag, chosenTags.Contains(tag));
                 Update();
-            };
+            });
             tagPanel.Children.Add(chip);
         }
         foreach (var c in choices) c.PropertyChanged += (_, _) => Update();
@@ -183,7 +187,7 @@ public static class TagDialogs
         var chip = new Border
         {
             CornerRadius = new CornerRadius(15), Padding = new Thickness(11, 5, 13, 5), Margin = new Thickness(0, 0, 8, 8),
-            BorderThickness = new Thickness(1.5), Cursor = Cursors.Hand, Child = row,
+            BorderThickness = new Thickness(1.5), Cursor = Both.Hand, Child = row,
         };
         SetToggle(chip, t, on);
         return chip;
@@ -191,7 +195,7 @@ public static class TagDialogs
 
     private static void SetToggle(Border chip, TagViewModel t, bool on)
     {
-        chip.Background = on ? B("AccentSoftBrush") : B("Surface3Brush");
+        chip.Background = on ? Both.Brush("AccentSoftBrush") : Both.Brush("Surface3Brush");
         chip.BorderBrush = on ? t.Brush : Brushes.Transparent;
     }
 }

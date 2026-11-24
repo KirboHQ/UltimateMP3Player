@@ -20,12 +20,17 @@ public sealed class SongColors
         {
             if (e.PropertyName == nameof(PlayerViewModel.Current)) Update();
         };
-        Ui.HiddenChanged += () =>
-        {
-            if (_pending && !Ui.Hidden) Update();
-        };
+        Ui.HiddenChanged += OnHidden;
         Update();
     }
+
+    private void OnHidden()
+    {
+        if (_pending && !Ui.Hidden) Update();
+    }
+
+    // The session is over, like GlassBackdrop's.
+    public void Detach() => Ui.HiddenChanged -= OnHidden;
 
     // Chosen just now, or something else about the song.
     public void Restart()

@@ -819,6 +819,8 @@ public static class PackImporter
     // A new song: its file into the music folder ("Artist - Title.mp3"), cover, lyrics, video, then the library.
     private static async Task<Track> AddSong(PackFile pack, PackTrack pt, Library lib, string musicDir, Action<long> copied, CancellationToken ct)
     {
+        // (a pack may come from anyone: a song or a video, never a program or a shortcut with a song's name)
+        if (!Importer.Extensions.Contains(Path.GetExtension(pt.File!))) throw new InvalidDataException(pt.File);
         Directory.CreateDirectory(musicDir);
         var name = Text.SafeFileName(string.IsNullOrWhiteSpace(pt.Artist) ? pt.Title : $"{pt.Artist.Split(',')[0].Trim()} - {pt.Title}");
         var target = Text.UniquePath(musicDir, name, Path.GetExtension(pt.File!));
@@ -835,7 +837,7 @@ public static class PackImporter
         try
         {
             await pack.ExtractAsync(pt.File!, target, copied, ct);
-            if (pt.Video != null && pack.Has(pt.Video))
+            if (pt.Video != null && pack.Has(pt.Video) && Importer.VideoExtensions.Contains(Path.GetExtension(pt.Video)))
             {
                 if (pt.Video == pt.File) t.VideoPath = target;
                 else

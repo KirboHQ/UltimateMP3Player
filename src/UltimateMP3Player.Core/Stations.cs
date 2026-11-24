@@ -19,8 +19,6 @@ public sealed class Station
     public string? Codec { get; set; }
     public int Bitrate { get; set; }
 
-    public bool IsMp3 => string.Equals(Codec, "MP3", StringComparison.OrdinalIgnoreCase);
-
     // Its first tags and its country: what it plays and from where.
     public string Subtitle
     {

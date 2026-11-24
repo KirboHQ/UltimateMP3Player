@@ -54,7 +54,7 @@ public static class LastFm
         using var req = post
             ? new HttpRequestMessage(HttpMethod.Post, Api) { Content = new FormUrlEncodedContent(p) }
             : new HttpRequestMessage(HttpMethod.Get, Api + "?" + string.Join("&", p.Select(kv => kv.Key + "=" + Uri.EscapeDataString(kv.Value))));
-        using var resp = await Http.Client.SendAsync(req, ct);
+        using var resp = await Http.AnswerAsync(req, ct);
         var text = await resp.Content.ReadAsStringAsync(ct);
         JsonNode? json = null;
         try { json = JsonNode.Parse(text); }
@@ -162,7 +162,7 @@ public static class ListenBrainz
         using var req = new HttpRequestMessage(method, Api + path);
         req.Headers.Authorization = new AuthenticationHeaderValue("Token", token);
         if (body != null) req.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
-        using var resp = await Http.Client.SendAsync(req, ct);
+        using var resp = await Http.AnswerAsync(req, ct);
         var text = await resp.Content.ReadAsStringAsync(ct);
         if (resp.StatusCode == HttpStatusCode.Unauthorized) throw new ScrobbleRefused("ListenBrainz: " + resp.StatusCode);
         if (!resp.IsSuccessStatusCode) throw new IOException("ListenBrainz: " + (int)resp.StatusCode + " " + text);
@@ -268,6 +268,12 @@ public sealed class Scrobbler
             catch (ScrobbleRefused) { OnRefused(ListenBrainzName); }
             catch { }
         });
+    }
+
+    // The song playing was saved meanwhile: the same play goes on with its new id.
+    public void Renamed(string oldId, string newId)
+    {
+        if (_id == oldId) _id = newId;
     }
 
     // How much of the play has been heard so far (song time): enough of it, it's sent.

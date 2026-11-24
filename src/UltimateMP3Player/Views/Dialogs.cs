@@ -16,9 +16,8 @@ public static partial class Dialogs
     // A small file to save (a look, the settings), where the person chooses. False: nowhere.
     public static Task<bool> SaveTextAsync(string fileName, string extension, string text)
     {
-        var dlg = new Microsoft.Win32.SaveFileDialog { FileName = fileName, DefaultExt = extension, Filter = $"*{extension}|*{extension}" };
-        if (dlg.ShowDialog(Application.Current.MainWindow) != true) return Task.FromResult(false);
-        System.IO.File.WriteAllText(dlg.FileName, text);
+        if (PickSave("", fileName, "*" + extension, extension) is not { } path) return Task.FromResult(false);
+        System.IO.File.WriteAllText(path, text);
         return Task.FromResult(true);
     }
 
@@ -162,6 +161,13 @@ public static partial class Dialogs
         var dlg = new Microsoft.Win32.OpenFolderDialog { Title = title };
         if (initial != null) dlg.InitialDirectory = initial;
         return dlg.ShowDialog() == true ? dlg.FolderName : null;
+    }
+
+    // A file to save (the export of a pack).
+    public static string? PickSave(string title, string fileName, string filterName, string extension)
+    {
+        var dlg = new Microsoft.Win32.SaveFileDialog { Title = title, FileName = fileName, DefaultExt = extension, Filter = filterName + "|*" + extension };
+        return dlg.ShowDialog() == true ? dlg.FileName : null;
     }
 
     public static (string Title, string Artist, string Album, string Bpm)? EditTrack(Track t)

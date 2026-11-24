@@ -223,9 +223,14 @@ public sealed class ArtistsViewModel : Observable
         FindCommand = new RelayCommand(() => _ = FindAsync());
         ClearFindCommand = new RelayCommand(() => Query = "");
         SeeAllCommand = new RelayCommand(() => _main.Profile.SeeReleases());
-        main.Profile.ArtistsChanged += () => Application.Current.Dispatcher.BeginInvoke(Refresh);
+        main.Profile.ArtistsChanged += OnArtists;
         Refresh();
     }
+
+    private void OnArtists() => Application.Current.Dispatcher.BeginInvoke(Refresh);
+
+    // The session is over: its profile stays open, and would keep all of it in memory.
+    public void Detach() => _main.Profile.ArtistsChanged -= OnArtists;
 
     public ICommand FindCommand { get; }
     public ICommand ClearFindCommand { get; }

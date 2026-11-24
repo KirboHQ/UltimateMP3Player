@@ -140,10 +140,26 @@ public sealed class StreamingFfmpegSource : ITrackSource, ISampleProvider
         if (t < TimeSpan.Zero) t = TimeSpan.Zero;
         lock (_lock)
         {
+            // (another jump before that one's ffmpeg was ready)
+            Drop(_pending);
             _pendingAt = t;
             _pending = Task.Run(() => StartAt(t));
         }
     }
+
+    // An ffmpeg being started that nobody will read: stopped once it's there.
+    private static void Drop(Task<(ChildProcess?, Stream?)>? pending) => pending?.ContinueWith(t =>
+    {
+        try
+        {
+            if (t.IsCompletedSuccessfully && t.Result.Item1 is { } pr)
+            {
+                pr.Kill();
+                pr.Dispose();
+            }
+        }
+        catch { }
+    });
 
     private void Kill()
     {
@@ -158,19 +174,7 @@ public sealed class StreamingFfmpegSource : ITrackSource, ISampleProvider
         lock (_lock)
         {
             Kill();
-            if (_pending is { } p)
-                _ = p.ContinueWith(t =>
-                {
-                    try
-                    {
-                        if (t.IsCompletedSuccessfully && t.Result.Item1 is { } pr)
-                        {
-                            pr.Kill();
-                            pr.Dispose();
-                        }
-                    }
-                    catch { }
-                });
+            Drop(_pending);
         }
     }
 }

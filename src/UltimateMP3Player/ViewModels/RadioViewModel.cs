@@ -64,6 +64,8 @@ public sealed class RadioViewModel : Observable
     private readonly HashSet<string> _exhausted = new();
     // Songs of the library that were suggestions saved in this session (library id → the suggestion).
     private readonly Dictionary<string, RadioSong> _saved = new();
+    // Library songs being deleted that go on as songs heard (Unsave): not taken back meanwhile.
+    private readonly HashSet<string> _leaving = new();
     private CancellationTokenSource? _cts;
 
     public RadioViewModel(MainViewModel main)
@@ -636,6 +638,15 @@ public sealed class RadioViewModel : Observable
         return t;
     }
 
+    // The songs heard without saving them that your library has got meanwhile (a download, an import, the other device): those from
+    // now on, wherever they are (playing, in the queue, among the recently played, in the statistics).
+    public void Adopt()
+    {
+        _leaving.RemoveWhere(id => _main.Library.Get(id) is not { } t || !_main.Owns(t));
+        foreach (var item in _items.Values.ToList())
+            if (_main.Library.FindByKeys(item.Song.Keys) is { } t && _main.Owns(t) && !_leaving.Contains(t.Id)) Keep(item, null);
+    }
+
     // Kept and saved on the device: from the cache's copy at once when it's there, otherwise downloaded.
     public async Task<Track?> Save(RadioItemViewModel item, Playlist? playlist)
     {
@@ -691,6 +702,7 @@ public sealed class RadioViewModel : Observable
         LyricsStore.Copy(saved.Id, t, saved.Lyrics);
         if (path != null) _fetcher.Have(s, path);
         item.Refresh(_fetcher.StatusOf(s.Id));
+        _leaving.Add(saved.Id);
         return item;
     }
 }

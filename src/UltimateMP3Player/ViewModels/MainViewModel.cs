@@ -122,6 +122,8 @@ public sealed class MainViewModel : Observable, IPageOrder
         host.Downloads.PropertyChanged += OnQueueChanged;
         if (Player.Current is { } playing) host.Lyrics.Auto(playing.T, true);
         Radio.Refresh();
+        // (saved while another profile was open; once the app has this session)
+        _ui.BeginInvoke(Radio.Adopt);
     }
 
     private readonly Action<Track> _added, _changed, _removed;
@@ -512,6 +514,11 @@ public sealed class MainViewModel : Observable, IPageOrder
         Player.Detach();
         Radio.Detach();
         Downloads.Detach();
+        Backdrop.Detach();
+        SongColors.Detach();
+        Artists.Detach();
+        Stations.Detach();
+        _settings?.Detach();
         _dj?.Detach();
         _refreshTimer.Stop();
         _searchTimer.Stop();
@@ -528,7 +535,6 @@ public sealed class MainViewModel : Observable, IPageOrder
         Host.Lyrics.BatchDone -= OnLyricsBatchDone;
         Host.Downloads.SavingChanged -= OnSaving;
         Host.Downloads.PropertyChanged -= OnQueueChanged;
-        if (_settings != null) Host.Bot.Changed -= _settings.OnBotChanged;
     }
 
     private void OnQueueChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -540,6 +546,8 @@ public sealed class MainViewModel : Observable, IPageOrder
     // playlists is in its library.
     private void CleanProfile()
     {
+        // (a library that couldn't be read is empty: it must not empty the playlists and the statistics too)
+        if (Library.Count == 0) return;
         var gone = new HashSet<string>();
         var unowned = new HashSet<string>();
         foreach (var p in Profile.PlaylistsSnapshot())
@@ -1087,6 +1095,7 @@ public sealed class MainViewModel : Observable, IPageOrder
             _addedTracks.Clear();
             if (orphans.Count > 0) Profile.Own(orphans);
         }
+        if (_libraryDirty) Radio.Adopt();
         bool library = _libraryDirty;
         var dirty = _dirtyPlaylists.ToHashSet();
         bool favorites = _favoritesDirty;
@@ -1405,11 +1414,19 @@ public sealed class MainViewModel : Observable, IPageOrder
         return (here, there);
     }
 
-    public void Enqueue(IReadOnlyList<TrackViewModel> tracks)
+    // next: right after the song playing, in this order.
+    public void Enqueue(IReadOnlyList<TrackViewModel> tracks, bool next = false)
     {
         if (InRoom)
         {
-            Together.Add(tracks);
+            Together.Add(tracks, next);
+            return;
+        }
+        if (next)
+        {
+            // (each one goes first: the last of them before)
+            foreach (var t in tracks.Reverse()) Player.PlayNext(t, quiet: true);
+            Toast(tracks.Count == 1 ? L.F("“{0}” will play next", tracks[0].Title) : L.F("{0} songs will play next", tracks.Count));
             return;
         }
         foreach (var t in tracks) Player.Enqueue(t, quiet: true);
@@ -1787,16 +1804,13 @@ public sealed class MainViewModel : Observable, IPageOrder
         }
     }
 
-    // "Find the video…" of any song (VideosViewModel: beside its audio when saved, in the cache when in the cloud).
-    public Task FindVideo(TrackViewModel vm) => Videos.FindAsync(vm);
-
     private static long SizeOf(string? path)
     {
         try { return path != null && File.Exists(path) ? new FileInfo(path).Length : 0; }
         catch { return 0; }
     }
 
-    // The player may still hold a file: tried again for a few seconds.
+    // The player may still hold a file: tried again for a few seconds, then at the next start.
     private static Task DeleteFiles(List<string> files) => Task.Run(async () =>
     {
         for (int attempt = 0; attempt < 20 && files.Count > 0; attempt++)
@@ -1812,6 +1826,7 @@ public sealed class MainViewModel : Observable, IPageOrder
             }
             if (files.Count > 0) await Task.Delay(150);
         }
+        foreach (var f in files) OldFiles.Delete(f);
     });
 
     // ------------------------------------------------------------------ "Delete…"

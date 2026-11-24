@@ -126,10 +126,9 @@ public sealed class DownloadJobViewModel : Observable
     private CancellationTokenSource? _cts;
     private int _rateLimits;
 
-    // attachTo: a library song this is for (one in the cloud saved on the device, or its video: videoOnly; replace: its files
-    // downloaded again). audio / videoRes: the quality chosen for it (null: the song's own, or the one in Settings; videoRes 0 =
-    // the best).
-    public DownloadJobViewModel(MediaItem item, DownloadBatch batch, int index, bool wantVideo, DownloadQueue queue, string? attachTo = null, bool videoOnly = false,
+    // attachTo: a library song this is for (one in the cloud saved on the device; replace: its files downloaded again).
+    // audio / videoRes: the quality chosen for it (null: the song's own, or the one in Settings; videoRes 0 = the best).
+    public DownloadJobViewModel(MediaItem item, DownloadBatch batch, int index, bool wantVideo, DownloadQueue queue, string? attachTo = null,
         string? audio = null, int? videoRes = null, bool replace = false)
     {
         Item = item;
@@ -137,7 +136,6 @@ public sealed class DownloadJobViewModel : Observable
         Index = index;
         WantVideo = wantVideo;
         AttachTo = attachTo;
-        VideoOnly = videoOnly;
         AudioQuality = audio;
         VideoRes = videoRes;
         Replace = replace;
@@ -158,13 +156,12 @@ public sealed class DownloadJobViewModel : Observable
     public int Index { get; }
     public bool WantVideo { get; }
     public string? AttachTo { get; }
-    public bool VideoOnly { get; }
     public string? AudioQuality { get; }
     public int? VideoRes { get; }
     // "Download again": the song's files replaced by new ones (in another quality).
     public bool Replace { get; }
     // Saving a song of the library that's in the cloud (its audio onto the device).
-    public bool IsSave => AttachTo != null && !VideoOnly && !Replace;
+    public bool IsSave => AttachTo != null && !Replace;
     public Track? Result { get; private set; }
     public TrackOutcome? Outcome { get; private set; }
     // It brought something into the library (a new song, or the audio of one in the cloud): what canceling its group takes back.
@@ -195,7 +192,7 @@ public sealed class DownloadJobViewModel : Observable
         return Uri.UnescapeDataString(last).Replace('-', ' ').Replace('_', ' ').Trim();
     }
     public string Subtitle => string.Join(" · ", new[] { Result?.Artist ?? Item.Artist, Item.SiteName,
-            VideoOnly ? L.T("video only") : Replace ? L.T("downloaded again") : IsSave ? L.T("saving to device") : WantVideo ? L.T("with video") : null,
+            Replace ? L.T("downloaded again") : IsSave ? L.T("saving to device") : WantVideo ? L.T("with video") : null,
             ViaYouTube ? L.T("searched on YouTube") : null }
         .Where(s => !string.IsNullOrWhiteSpace(s)));
 
@@ -255,7 +252,7 @@ public sealed class DownloadJobViewModel : Observable
     public bool IsFailed => State is JobState.Failed or JobState.Canceled;
     public bool IsRunning => State == JobState.Running;
     public bool CanRetry => IsFailed;
-    public bool CanRetryYouTube => State == JobState.Failed && !ViaYouTube && !VideoOnly;
+    public bool CanRetryYouTube => State == JobState.Failed && !ViaYouTube;
     public bool CanPlay => IsDone && Result != null;
 
     // Failed because the site wants a login (private, age-restricted, members only, YouTube's bot check) the download
@@ -320,7 +317,7 @@ public sealed class DownloadJobViewModel : Observable
         var song = AttachTo != null ? _queue.Host.Library.Get(AttachTo) : null;
         var audio = AudioQuality ?? Quality.For(song, s.AudioFormat);
         var maxRes = VideoRes is int r ? (r > 0 ? r : null) : Quality.VideoFor(song, s.VideoMaxRes);
-        var req = new TrackRequest(Item, WantVideo, maxRes, audio, s.MusicDir, s.CookiesBrowserOrNull, _originalKeys, AttachTo, VideoOnly, Replace);
+        var req = new TrackRequest(Item, WantVideo, maxRes, audio, s.MusicDir, s.CookiesBrowserOrNull, _originalKeys, AttachTo, Replace);
         var ui = Application.Current.Dispatcher;
         var service = Service;
         bool gentle = _queue.IsGentle(service);
@@ -343,6 +340,8 @@ public sealed class DownloadJobViewModel : Observable
                 return;
             }
             Batch.Place(Index, res.Track.Id);
+            // (heard without saving it meanwhile, or waiting in the queue: the saved one from now on)
+            _queue.Host.Session?.Radio.Adopt();
             // Saved: the video brought while it was in the cloud goes beside its audio, like the audio.
             if (VideosViewModel.Attach(_queue.Host, res.Track)) _queue.Host.Library.Changed(res.Track);
             // A quality chosen on the card stays the song's own, for its next downloads (and for hearing it from the cloud).
@@ -356,12 +355,12 @@ public sealed class DownloadJobViewModel : Observable
             State = res.Outcome == TrackOutcome.AlreadyPresent ? JobState.Present : JobState.Done;
             StatusText = res.Outcome switch
             {
-                TrackOutcome.AlreadyPresent when VideoOnly => L.T("The song already has a video"),
                 TrackOutcome.AlreadyPresent when IsSave => L.T("It was already saved on your device"),
                 TrackOutcome.AlreadyPresent => L.T("Already in your library: not downloaded again"),
-                TrackOutcome.VideoAdded => VideoOnly ? L.T("Video added to the song") : L.T("Video added to the existing song"),
+                TrackOutcome.VideoAdded => L.T("Video added to the existing song"),
                 TrackOutcome.Replaced => L.T("Downloaded again"),
-                TrackOutcome.Saved => L.T("Saved on your device") + (_foundElsewhere ? " · " + L.F("from {0}: the previous link no longer worked", Sites.NameFor(res.Track.SourceUrl ?? "")) : ""),
+                TrackOutcome.Saved => L.T("Saved on your device") + (_foundElsewhere ? " · " + L.F("from {0}: the previous link no longer worked", Sites.NameFor(res.Track.SourceUrl ?? "")) : "")
+                    + (res.Note != null ? " · " + res.Note : ""),
                 _ => L.T("Completed") + (res.Note != null ? " · " + res.Note : ""),
             };
             if (_foundElsewhere && _queue.Host.Session is { } main)
@@ -761,14 +760,6 @@ public sealed class DownloadQueue : Observable
         return todo.Count;
     }
 
-    // A video for a song saved without one: from this link (the song's own, or a result chosen from a search).
-    public void AddVideo(Profile profile, Track t, MediaItem video)
-    {
-        video.Kind = MediaKind.Video;
-        Jobs.Add(new DownloadJobViewModel(video, new DownloadBatch(profile, null, 1), 0, true, this, t.Id, videoOnly: true));
-        Pump();
-    }
-
     // ------------------------------------------------------------------ pacing
 
     // Slowed down (one at a time, pauses between requests) until it stays calm for a while.
@@ -1146,6 +1137,8 @@ public sealed class LinkViewModel : Observable
         ToggleAllCommand = new RelayCommand(ToggleAll);
         DownloadCommand = new RelayCommand(Download, () => SelectedCount > 0 && (!MakeNew || !string.IsNullOrWhiteSpace(NewName)));
         ListenCommand = new RelayCommand(Listen, () => SelectedCount > 0);
+        NextCommand = new RelayCommand(() => Queue(true), () => SelectedCount > 0);
+        QueueCommand = new RelayCommand(() => Queue(false), () => SelectedCount > 0);
     }
 
     public ICommand ToggleAllCommand { get; }
@@ -1153,6 +1146,10 @@ public sealed class LinkViewModel : Observable
     // Heard without saving it: kept in the cache for a while, saved (or kept in the library) from its menu. In a room of
     // Listen together: into the room's queue, the same way (everyone gets it from its link).
     public ICommand ListenCommand { get; }
+    // The same, without stopping what plays: after it, or at the end of the queue (in a room Listen already goes into its queue).
+    public ICommand NextCommand { get; }
+    public ICommand QueueCommand { get; }
+    public bool ShowQueue => !InRoom;
     private bool InRoom => _main.InRoom;
     public string ListenLabel => InRoom ? L.T("Add to the room") : L.T("Listen without saving");
     public string ListenGlyph => InRoom ? "" : "";
@@ -1406,6 +1403,13 @@ public sealed class LinkViewModel : Observable
         }
         // The card stays: the songs can be heard right away (Listen) or saved later.
         _main.Downloads.Added(what + target + " ☁");
+    }
+
+    // The card stays: the songs can be saved too.
+    private void Queue(bool next)
+    {
+        var ids = _main.Radio.AddFromLink(Items.Where(i => i.IsSelected).Select(i => i.Item));
+        _main.Enqueue(ids.Select(_main.Player.TrackFor).OfType<Track>().Select(_main.Vm).ToList(), next);
     }
 
     private void Listen()

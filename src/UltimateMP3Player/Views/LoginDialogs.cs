@@ -32,12 +32,12 @@ public static partial class Dialogs
         body.Children.Add(new TextBlock
         {
             Text = L.T("Sign in to each site on its own page, in a separate window of your browser: downloads will use your account, for private, members-only or age-restricted content. Only the site sees your password, and that window leaves nothing behind."),
-            TextWrapping = TextWrapping.Wrap, Foreground = OverlayBrush("SubTextBrush"), LineHeight = 20,
+            TextWrapping = TextWrapping.Wrap, Foreground = Both.Brush("SubTextBrush"), LineHeight = 20,
         });
         var rows = new StackPanel();
         body.Children.Add(new ScrollViewer
         {
-            Content = rows, MaxHeight = Math.Min(440, OverlayRoom().Height - 340), Margin = new Thickness(0, 10, 0, 0),
+            Content = rows, MaxHeight = Math.Min(440, Both.Room().Height - 340), Margin = new Thickness(0, 10, 0, 0),
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
         });
         var more = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 12, 0, 0) };
@@ -84,11 +84,11 @@ public static partial class Dialogs
 #endif
         grid.Children.Add(new Ellipse { Width = 12, Height = 12, Fill = new SolidColorBrush(color), VerticalAlignment = VerticalAlignment.Center });
         var text = new StackPanel { Margin = new Thickness(14, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-        text.Children.Add(new TextBlock { Text = site.Name, FontSize = 14.5, FontWeight = FontWeights_SemiBold });
+        text.Children.Add(new TextBlock { Text = site.Name, FontSize = 14.5, FontWeight = Both.SemiBold });
         text.Children.Add(new TextBlock
         {
             Text = signedIn ? L.T("Signed in") : L.T("Not signed in"), FontSize = 12.5, Margin = new Thickness(0, 2, 0, 0),
-            Foreground = OverlayBrush(signedIn ? "SuccessBrush" : "MutedBrush"),
+            Foreground = Both.Brush(signedIn ? "SuccessBrush" : "MutedBrush"),
         });
         Grid.SetColumn(text, 1);
         grid.Children.Add(text);
@@ -129,7 +129,7 @@ public static partial class Dialogs
             Alert(title, L.T("Signing in needs Firefox, Chrome, Edge or Brave on this computer."));
             return;
         }
-        var text = new TextBlock { Text = L.T("Sign in in the window that has just opened, then close it or press Done."), TextWrapping = TextWrapping.Wrap, Foreground = OverlayBrush("SubTextBrush"), LineHeight = 20 };
+        var text = new TextBlock { Text = L.T("Sign in in the window that has just opened, then close it or press Done."), TextWrapping = TextWrapping.Wrap, Foreground = Both.Brush("SubTextBrush"), LineHeight = 20 };
         var done = Button(L.T("Done"), "PrimaryButton", isDefault: true);
         var cancel = Button(L.T("Cancel"), "GhostButton", isCancel: true);
         var win = Frame(title, text, 400, cancel, done);

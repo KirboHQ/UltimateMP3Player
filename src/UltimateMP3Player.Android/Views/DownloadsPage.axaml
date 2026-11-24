@@ -122,13 +122,20 @@
                         </StackPanel>
                     </Button>
                     <!-- heard now, only in the cache (saved later from the notification or the song's menu) -->
-                    <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0"
-                            Command="{Binding ListenCommand}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{local:Icon E768}" Classes="glyph"/>
-                            <TextBlock Text="{local:T 'Listen without saving'}" Margin="8,0,0,0"/>
-                        </StackPanel>
-                    </Button>
+                    <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,8,0,0">
+                        <Button Theme="{StaticResource TouchGhost}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="12,0"
+                                Command="{Binding ListenCommand}">
+                            <DockPanel>
+                                <TextBlock Text="{local:Icon E768}" Classes="glyph"/>
+                                <TextBlock Text="{local:T 'Listen without saving'}" Margin="8,0,0,0" TextTrimming="CharacterEllipsis"/>
+                            </DockPanel>
+                        </Button>
+                        <!-- without stopping what plays -->
+                        <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Content="{local:Icon E893}" Margin="4,0,0,0" Command="{Binding NextCommand}"
+                                IsVisible="{Binding ShowQueue}" AutomationProperties.Name="{local:T 'Play next'}"/>
+                        <Button Grid.Column="2" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8FD}" Command="{Binding QueueCommand}"
+                                IsVisible="{Binding ShowQueue}" AutomationProperties.Name="{local:T 'Add to queue'}"/>
+                    </Grid>
                     <TextBlock Text="{local:T 'It stays in the temporary storage for a while, outside your library: if you like it, save it whenever you want.'}"
                                Classes="hint" FontSize="12.5" TextWrapping="Wrap" TextAlignment="Center" Margin="12,8,12,0"/>
 

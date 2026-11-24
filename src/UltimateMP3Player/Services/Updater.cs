@@ -178,7 +178,13 @@ public sealed class Updater : Observable
             var old = Exe + ".old";
             try { File.Delete(old); } catch { }
             File.Move(Exe, old);
-            File.Move(_downloaded!, Exe);
+            try { File.Move(_downloaded!, Exe); }
+            catch
+            {
+                // (an antivirus holding the new one, a full disk: the app stays the one it was)
+                File.Move(old, Exe, true);
+                return false;
+            }
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey(UninstallKey, true);

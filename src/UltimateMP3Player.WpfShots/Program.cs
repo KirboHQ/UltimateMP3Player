@@ -872,6 +872,29 @@ public static class Program
             Check(Shown(phoneWin, L.T("Go to Settings › Connect to computer.")) && Shown(phoneWin, L.T("Phones nearby")) && !Shown(phoneWin, L.T("Disconnect")),
                 "phone window: no phone, the steps and the phones nearby");
             phoneWin.Close();
+
+            // The packs' windows, shared with the Avalonia app (its own checks press what's in them).
+            var packLists = main.Playlists.Where(p => !p.IsOther).Select(p => new PackDialogs.ExportList(p.P, p.Name, p.CountText, () => new Border())).ToList();
+            var packTags = main.Tags.Select(t => new PackDialogs.ExportTag(t.T, t.Brush, t.Count)).ToList();
+            var manifest = new PackManifest { Music = false, Author = "Shots" };
+            manifest.Tracks.Add(new PackTrack { Id = "t1", Title = "A song", Artist = "An artist", Duration = 200, SourceUrl = "https://www.youtube.com/watch?v=aaaaaaaaaaa" });
+            manifest.Playlists.Add(new PackPlaylist { Id = "p1", Name = "A list", Tracks = { "t1" } });
+            var pack = PackFile.Remote("Test pack", manifest, 4096, Array.Empty<string>(), (_, _, _, _) => Task.FromResult(false), null);
+            var packWins = new[]
+            {
+                ("pack-export", PackDialogs.BuildExport(main.Library, main.Profile, packLists, packTags, Array.Empty<Playlist>(), null)),
+                ("pack-import", PackDialogs.BuildImport(pack, PackImporter.Analyze(pack, main.Library), main.Library, main.Profile, host.Settings.MusicDir, () => Task.CompletedTask, _ => { }, host.Settings)),
+            };
+            foreach (var (name, packWin) in packWins)
+            {
+                packWin.WindowStartupLocation = WindowStartupLocation.Manual;
+                packWin.Left = packWin.Top = -32000;
+                packWin.ShowActivated = packWin.ShowInTaskbar = false;
+                packWin.Show();
+                Shot(packWin, name);
+                Check(Descendants(packWin).OfType<CheckBox>().Any(), name + ": it opens, with its choices");
+                packWin.Close();
+            }
             Check(main.Settings.PhoneLink.ButtonText == L.T("Connect phone…"), "phone: the button says Connect phone… with none");
         }
 

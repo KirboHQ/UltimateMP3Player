@@ -9,7 +9,7 @@ namespace UltimateMP3Player.Services;
 // Songs asked together (a selection, the whole library): the toast at the end counts them.
 public sealed class LyricsBatch
 {
-    public int Total { get; init; }
+    public int Total { get; set; }
     public int Done, Synced, Plain, Missing, Failed;
     // Several network errors in a row: the rest is dropped.
     public int FailedInRow;
@@ -38,7 +38,8 @@ public sealed class LyricsService : Observable
         var ui = System.Windows.Application.Current.Dispatcher;
         host.Library.TrackAdded += t => ui.BeginInvoke(() => Auto(t, false));
         // Files of songs that are gone (older than a day: a room's songs live only while it's open).
-        _ = Task.Run(() => LyricsStore.Sweep(id => host.Library.Get(id) != null));
+        // (not with an empty library: it may be one that couldn't be read)
+        if (host.Library.Count > 0) _ = Task.Run(() => LyricsStore.Sweep(id => host.Library.Get(id) != null));
         StopScanCommand = new RelayCommand(StopScan, () => Scan != null);
     }
 
@@ -77,7 +78,11 @@ public sealed class LyricsService : Observable
         foreach (var t in tracks.Reverse())
         {
             Remove(t.Id);
-            if (_busy == t.Id) continue;
+            if (_busy == t.Id)
+            {
+                if (batch != null) batch.Total--;
+                continue;
+            }
             Enqueue(t, batch, true, true);
         }
     }
@@ -152,8 +157,24 @@ public sealed class LyricsService : Observable
 
     private void Remove(string id)
     {
-        foreach (var job in _queue.Where(j => j.Track.Id == id).ToList()) _queue.Remove(job);
+        foreach (var job in _queue.Where(j => j.Track.Id == id).ToList())
+        {
+            _queue.Remove(job);
+            // (asked for again by hand: the batch it was in doesn't wait for it)
+            if (job.Batch is not { } b) continue;
+            b.Total--;
+            if (b == Scan) OnScanChanged();
+            End(b);
+        }
         _queued.Remove(id);
+    }
+
+    // All of a batch's songs are done: the toast.
+    private void End(LyricsBatch b)
+    {
+        if (b.Done < b.Total) return;
+        if (b.Library) FinishScan(b);
+        else if (!b.Canceled && b.Total > 0) BatchDone?.Invoke(b);
     }
 
     private async void Pump()
@@ -193,11 +214,7 @@ public sealed class LyricsService : Observable
                 if (!failed && _host.Library.Get(t.Id) == t) _host.Library.Changed(t);
                 Count(batch, kind, failed);
                 TrackDone?.Invoke(t, failed ? null : kind, manual, batch);
-                if (batch != null && batch.Done >= batch.Total)
-                {
-                    if (batch.Library) FinishScan(batch);
-                    else if (!batch.Canceled) BatchDone?.Invoke(batch);
-                }
+                if (batch != null) End(batch);
                 if (_queue.Count > 0) await Task.Delay(Gap);
             }
         }

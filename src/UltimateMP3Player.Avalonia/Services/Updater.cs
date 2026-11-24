@@ -15,8 +15,6 @@ public sealed record ReleaseInfo(Version Version, string Tag, string Url, string
 // ones, which the system lets go on until the app quits.
 public sealed class Updater : Observable
 {
-    public const string BundleName = "Ultimate MP3 Player.app";
-
     private Task<bool>? _running;
     private string? _extracted;
 
@@ -270,27 +268,41 @@ public sealed class Updater : Observable
         return true;
     }
 
-    // Linux: every file of the new folder replaces the old one (the running program is renamed, not overwritten).
+    // Linux: every file of the new folder replaces the old one (the running program is renamed, not overwritten). All of them
+    // or none: halfway through, the ones done go back.
     private bool SwapFolder()
     {
         var dir = Path.GetDirectoryName(Exe);
         if (dir == null) return false;
+        var done = new List<(string Src, string Dst, bool Old)>();
         try
         {
             foreach (var src in Directory.EnumerateFiles(_extracted!, "*", SearchOption.AllDirectories))
             {
                 var dst = Path.Combine(dir, Path.GetRelativePath(_extracted!, src));
                 Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
-                if (File.Exists(dst))
+                bool old = File.Exists(dst);
+                if (old)
                 {
                     try { File.Delete(dst + ".old"); } catch { }
                     File.Move(dst, dst + ".old");
                 }
+                done.Add((src, dst, old));
                 File.Move(src, dst);
             }
             return true;
         }
-        catch { return false; }
+        catch
+        {
+            foreach (var (src, dst, old) in done)
+                try
+                {
+                    if (!File.Exists(src)) File.Move(dst, src);
+                    if (old) File.Move(dst + ".old", dst, true);
+                }
+                catch { }
+            return false;
+        }
     }
 
     // macOS: the new .app takes the old one's place (the running copy goes on from where it was moved).

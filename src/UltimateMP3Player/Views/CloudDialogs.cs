@@ -1,17 +1,25 @@
+#if AVALONIA
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Layout;
+using Avalonia.Media;
+using UltimateMP3Player.Views;
+#else
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+#endif
 using UltimateMP3Player.Core;
 using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player;
 
-// "Delete…" (what to delete of the songs) and "Find the video" (one of the videos found on YouTube).
+// "Delete…" (what to delete of the songs) and "Find the video" (one of the videos found on YouTube). Linked into the Avalonia app.
 public static partial class Dialogs
 {
-    private static Brush Res(string key) => (Brush)Application.Current.Resources[key];
-
     // ------------------------------------------------------------------ what to delete
 
     public static Task<RemoveKind?> RemoveAsync(RemovePlan plan) => Task.FromResult(Remove(plan));
@@ -21,7 +29,7 @@ public static partial class Dialogs
         var body = new StackPanel();
         body.Children.Add(new TextBlock
         {
-            Text = plan.Subtitle, Foreground = Res("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, -4, 0, 12),
+            Text = plan.Subtitle, Foreground = Both.Brush("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, -4, 0, 12),
         });
         var ok = Button(plan.ButtonText(plan.Chosen), "PrimaryButton", isDefault: true);
         var cards = new List<(RemoveOption Option, Border Card, Border Dot)>();
@@ -38,18 +46,15 @@ public static partial class Dialogs
             foreach (var (o, card, dot) in cards)
             {
                 bool on = o.IsChosen && o.Enabled;
-                if (on) card.SetResourceReference(Border.BorderBrushProperty, o.Danger ? "ErrorBrush" : "AccentBrush");
-                else card.BorderBrush = Res("BorderBrush");
-                if (on) card.SetResourceReference(Border.BackgroundProperty, o.Danger ? "ErrorSoftBrush" : "AccentSoftBrush");
-                else card.Background = Res("Surface2Brush");
-                dot.BorderBrush = on ? o.Danger ? Res("ErrorBrush") : (Brush)Application.Current.Resources["AccentBrush"] : Res("MutedBrush");
-                dot.Child = on
-                    ? new Border { Width = 8, Height = 8, CornerRadius = new CornerRadius(4), Background = o.Danger ? Res("ErrorBrush") : (Brush)Application.Current.Resources["AccentBrush"] }
-                    : null;
+                var accent = Both.Brush(o.Danger ? "ErrorBrush" : "AccentBrush");
+                card.BorderBrush = on ? accent : Both.Brush("BorderBrush");
+                card.Background = Both.Brush(!on ? "Surface2Brush" : o.Danger ? "ErrorSoftBrush" : "AccentSoftBrush");
+                dot.BorderBrush = on ? accent : Both.Brush("MutedBrush");
+                dot.Child = on ? new Border { Width = 8, Height = 8, CornerRadius = new CornerRadius(4), Background = accent } : null;
             }
             var chosen = plan.Chosen;
             ok.Content = plan.ButtonText(chosen);
-            ok.Style = (Style)Application.Current.Resources[chosen?.Danger == true ? "DangerButton" : "PrimaryButton"];
+            Both.Look(ok, chosen?.Danger == true ? "DangerButton" : "PrimaryButton");
             ok.IsEnabled = chosen != null;
         }
 
@@ -60,19 +65,17 @@ public static partial class Dialogs
                 Width = 18, Height = 18, CornerRadius = new CornerRadius(9), BorderThickness = new Thickness(2), VerticalAlignment = VerticalAlignment.Top,
                 Margin = new Thickness(0, 1, 12, 0),
             };
-            dot.Child = null;
-            var title = new TextBlock { Text = o.Title, FontWeight = FontWeights.SemiBold, FontSize = 14.5, Foreground = o.Danger ? Res("ErrorBrush") : Res("TextBrush") };
             var head = new DockPanel();
             if (o.HasSize)
             {
-                var size = new TextBlock { Text = o.Size, Foreground = Res("MutedBrush"), FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
+                var size = new TextBlock { Text = o.Size, Foreground = Both.Brush("MutedBrush"), FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0) };
                 DockPanel.SetDock(size, Dock.Right);
                 head.Children.Add(size);
             }
-            head.Children.Add(title);
+            head.Children.Add(new TextBlock { Text = o.Title, FontWeight = Both.SemiBold, FontSize = 14.5, Foreground = Both.Brush(o.Danger ? "ErrorBrush" : "TextBrush") });
             var text = new StackPanel();
             text.Children.Add(head);
-            text.Children.Add(new TextBlock { Text = o.Detail, TextWrapping = TextWrapping.Wrap, Foreground = Res("SubTextBrush"), FontSize = 12.5, LineHeight = 18, Margin = new Thickness(0, 3, 0, 0) });
+            text.Children.Add(new TextBlock { Text = o.Detail, TextWrapping = TextWrapping.Wrap, Foreground = Both.Brush("SubTextBrush"), FontSize = 12.5, LineHeight = 18, Margin = new Thickness(0, 3, 0, 0) });
             var row = new DockPanel();
             DockPanel.SetDock(dot, Dock.Left);
             row.Children.Add(dot);
@@ -80,12 +83,11 @@ public static partial class Dialogs
             var card = new Border
             {
                 CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1.5), Padding = new Thickness(14, 11, 14, 12), Margin = new Thickness(0, 0, 0, 8),
-                Child = row, Opacity = o.Enabled ? 1 : 0.45, Cursor = o.Enabled ? Cursors.Hand : null,
+                Child = row, Opacity = o.Enabled ? 1 : 0.45, Cursor = o.Enabled ? Both.Hand : null,
             };
             var option = o;
-            card.MouseLeftButtonUp += (_, _) => Pick(option);
-            card.MouseEnter += (_, _) => { if (option.Enabled && !option.IsChosen) card.Background = Res("Surface3Brush"); };
-            card.MouseLeave += (_, _) => Update();
+            if (o.Enabled) Both.OnPress(card, _ => Pick(option));
+            Both.OnHover(card, () => { if (option.Enabled && !option.IsChosen) card.Background = Both.Brush("Surface3Brush"); }, Update);
             cards.Add((o, card, dot));
             body.Children.Add(card);
         }
@@ -99,7 +101,7 @@ public static partial class Dialogs
             win.DialogResult = true;
         };
         // Arrows move the choice, Enter confirms.
-        win.PreviewKeyDown += (_, e) =>
+        void Keys(object? sender, KeyEventArgs e)
         {
             if (e.Key is not (Key.Up or Key.Down)) return;
             var usable = plan.Options.Where(x => x.Enabled).ToList();
@@ -107,8 +109,13 @@ public static partial class Dialogs
             i = Math.Clamp(i + (e.Key == Key.Down ? 1 : -1), 0, usable.Count - 1);
             Pick(usable[i]);
             e.Handled = true;
-        };
-        win.Loaded += (_, _) => ok.Focus();
+        }
+#if AVALONIA
+        win.KeyDown += Keys;
+#else
+        win.PreviewKeyDown += Keys;
+#endif
+        Both.OnOpened(win, () => ok.Focus());
         return win.ShowDialog() == true ? result : null;
     }
 
@@ -120,11 +127,10 @@ public static partial class Dialogs
 
     private static bool QualityDialog(QualityPlan plan)
     {
-        var label = (Style)Application.Current.Resources["FieldLabel"];
         var body = new StackPanel();
-        body.Children.Add(new TextBlock { Text = plan.Subtitle, Foreground = Res("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, -4, 0, 12) });
-        body.Children.Add(new TextBlock { Text = L.T("Audio quality"), Style = label, Margin = new Thickness(2, 4, 0, 6) });
-        var audio = new ComboBox { ItemsSource = plan.AudioChoices, SelectedItem = plan.Audio };
+        body.Children.Add(new TextBlock { Text = plan.Subtitle, Foreground = Both.Brush("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, -4, 0, 12) });
+        body.Children.Add(Both.Text(L.T("Audio quality"), "FieldLabel", new Thickness(2, 4, 0, 6)));
+        var audio = new ComboBox { ItemsSource = plan.AudioChoices, SelectedItem = plan.Audio, HorizontalAlignment = HorizontalAlignment.Stretch };
         body.Children.Add(audio);
         CheckBox? withVideo = null;
         ComboBox? video = null;
@@ -132,17 +138,16 @@ public static partial class Dialogs
         {
             withVideo = new CheckBox { Content = L.T("Video too"), IsChecked = plan.WithVideo, Margin = new Thickness(0, 16, 0, 0) };
             body.Children.Add(withVideo);
-            body.Children.Add(new TextBlock { Text = L.T("Maximum video quality"), Style = label, Margin = new Thickness(2, 10, 0, 6) });
-            video = new ComboBox { ItemsSource = plan.VideoChoices, SelectedItem = plan.Video, IsEnabled = plan.WithVideo };
-            withVideo.Checked += (_, _) => video.IsEnabled = true;
-            withVideo.Unchecked += (_, _) => video.IsEnabled = false;
+            body.Children.Add(Both.Text(L.T("Maximum video quality"), "FieldLabel", new Thickness(2, 10, 0, 6)));
+            video = new ComboBox { ItemsSource = plan.VideoChoices, SelectedItem = plan.Video, IsEnabled = plan.WithVideo, HorizontalAlignment = HorizontalAlignment.Stretch };
+            Both.OnTick(withVideo, on => video.IsEnabled = on);
             body.Children.Add(video);
         }
-        body.Children.Add(new TextBlock { Text = plan.Hint, TextWrapping = TextWrapping.Wrap, Foreground = Res("MutedBrush"), FontSize = 12.5, LineHeight = 18, Margin = new Thickness(2, 14, 0, 0) });
+        body.Children.Add(new TextBlock { Text = plan.Hint, TextWrapping = TextWrapping.Wrap, Foreground = Both.Brush("MutedBrush"), FontSize = 12.5, LineHeight = 18, Margin = new Thickness(2, 14, 0, 0) });
         var ok = Button(plan.OkText, "PrimaryButton", isDefault: true);
         var win = Frame(plan.Title, body, 420, Button(L.T("Cancel"), "GhostButton", isCancel: true), ok);
         ok.Click += (_, _) => win.DialogResult = true;
-        win.Loaded += (_, _) => ok.Focus();
+        Both.OnOpened(win, () => ok.Focus());
         if (win.ShowDialog() != true) return false;
         plan.Audio = audio.SelectedItem as Choice ?? plan.Audio;
         if (video != null) plan.Video = video.SelectedItem as Choice ?? plan.Video;
@@ -161,13 +166,12 @@ public static partial class Dialogs
         body.Children.Add(new TextBlock
         {
             Text = $"{t.Title} · {t.DisplayArtist}" + (t.Duration > 0 ? " · " + Text.Duration(t.Duration) : ""),
-            Foreground = Res("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, -4, 0, 12),
+            Foreground = Both.Brush("SubTextBrush"), TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, -4, 0, 12),
         });
-        var status = new TextBlock { Text = L.T("Searching YouTube…"), Foreground = Res("MutedBrush"), Margin = new Thickness(2, 6, 0, 6), TextWrapping = TextWrapping.Wrap };
+        var status = new TextBlock { Text = L.T("Searching YouTube…"), Foreground = Both.Brush("MutedBrush"), Margin = new Thickness(2, 6, 0, 6), TextWrapping = TextWrapping.Wrap };
         body.Children.Add(status);
         var list = new StackPanel();
-        var scroller = new ScrollViewer { Content = list, MaxHeight = 420, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-        body.Children.Add(scroller);
+        body.Children.Add(new ScrollViewer { Content = list, MaxHeight = 420, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
 
         var ok = Button(L.T("Download video"), "PrimaryButton", isDefault: true);
         ok.IsEnabled = false;
@@ -182,16 +186,8 @@ public static partial class Dialogs
             foreach (var (cand, row) in rows)
             {
                 bool on = cand == c;
-                if (on)
-                {
-                    row.SetResourceReference(Border.BorderBrushProperty, "AccentBrush");
-                    row.SetResourceReference(Border.BackgroundProperty, "AccentSoftBrush");
-                }
-                else
-                {
-                    row.BorderBrush = Brushes.Transparent;
-                    row.Background = Res("Surface2Brush");
-                }
+                row.BorderBrush = on ? Both.Brush("AccentBrush") : Brushes.Transparent;
+                row.Background = Both.Brush(on ? "AccentSoftBrush" : "Surface2Brush");
             }
         }
 
@@ -213,18 +209,28 @@ public static partial class Dialogs
             status.Text = L.T("Pick the right one: the video plays in time with the audio, so it must be the same version.");
             foreach (var c in found.Take(8))
             {
+#if AVALONIA
+                var img = new CoverImage { Width = 120, Height = 68, CornerRadius = new CornerRadius(8) };
+#else
                 var img = new Image { Width = 120, Height = 68, Stretch = Stretch.UniformToFill };
-                var thumb = new Border { Width = 120, Height = 68, CornerRadius = new CornerRadius(8), ClipToBounds = true, Background = Res("Surface3Brush"), Child = img };
+#endif
+                var thumb = new Border { Width = 120, Height = 68, CornerRadius = new CornerRadius(8), Background = Both.Brush("Surface3Brush"), Child = img };
+#if !AVALONIA
                 thumb.Clip = new RectangleGeometry(new Rect(0, 0, 120, 68), 8, 8);
-                if (c.Thumb != null) _ = LoadThumb(img, c.Thumb);
+#endif
+                async Task LoadThumb(string url)
+                {
+                    if (await WebImages.LoadAsync(new[] { url }, 240) is { } src) img.Source = src;
+                }
+                if (c.Thumb != null) _ = LoadThumb(c.Thumb);
                 var info = new StackPanel { Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-                info.Children.Add(new TextBlock { Text = c.Title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, MaxHeight = 40, TextTrimming = TextTrimming.CharacterEllipsis });
+                info.Children.Add(new TextBlock { Text = c.Title, FontWeight = Both.SemiBold, TextWrapping = TextWrapping.Wrap, MaxHeight = 40, TextTrimming = TextTrimming.CharacterEllipsis });
                 var meta = string.Join(" · ", new[] { c.Channel, c.Duration is double d ? Text.Duration(d) : null }.Where(s => !string.IsNullOrEmpty(s)));
-                info.Children.Add(new TextBlock { Text = meta, Foreground = Res("SubTextBrush"), FontSize = 12.5, Margin = new Thickness(0, 3, 0, 0) });
+                info.Children.Add(new TextBlock { Text = meta, Foreground = Both.Brush("SubTextBrush"), FontSize = 12.5, Margin = new Thickness(0, 3, 0, 0) });
                 if (c.LengthDiffers(t.Duration))
                     info.Children.Add(new TextBlock
                     {
-                        Text = "⚠ " + L.T("Different length from the song: it may go out of sync"), Foreground = Res("WarningBrush"), FontSize = 12,
+                        Text = "⚠ " + L.T("Different length from the song: it may go out of sync"), Foreground = Both.Brush("WarningBrush"), FontSize = 12,
                         Margin = new Thickness(0, 3, 0, 0), TextWrapping = TextWrapping.Wrap,
                     });
                 var dock = new DockPanel();
@@ -233,30 +239,23 @@ public static partial class Dialogs
                 dock.Children.Add(info);
                 var row = new Border
                 {
-                    CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1.5), BorderBrush = Brushes.Transparent, Background = Res("Surface2Brush"),
-                    Padding = new Thickness(8), Margin = new Thickness(0, 0, 0, 8), Child = dock, Cursor = Cursors.Hand,
+                    CornerRadius = new CornerRadius(12), BorderThickness = new Thickness(1.5), BorderBrush = Brushes.Transparent, Background = Both.Brush("Surface2Brush"),
+                    Padding = new Thickness(8), Margin = new Thickness(0, 0, 0, 8), Child = dock, Cursor = Both.Hand,
                 };
                 var cand = c;
-                row.MouseLeftButtonUp += (_, _) => Pick(cand);
-                row.MouseLeftButtonDown += (_, e) =>
+                Both.OnPress(row, clicks =>
                 {
-                    if (e.ClickCount != 2) return;
                     Pick(cand);
-                    win.DialogResult = true;
-                };
+                    if (clicks == 2) win.DialogResult = true;
+                });
                 rows.Add((c, row));
                 list.Children.Add(row);
             }
             Pick(found[0]);
         }
 
-        static async Task LoadThumb(Image img, string url)
-        {
-            if (await WebImages.LoadAsync(new[] { url }, 240) is { } src) img.Source = src;
-        }
-
         ok.Click += (_, _) => win.DialogResult = true;
-        win.Loaded += (_, _) => Search();
+        Both.OnOpened(win, Search);
         return Task.FromResult(win.ShowDialog() == true ? chosen : null);
     }
 }

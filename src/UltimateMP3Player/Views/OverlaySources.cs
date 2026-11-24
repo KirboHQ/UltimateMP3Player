@@ -387,13 +387,13 @@ public static partial class Dialogs
         foreach (var (key, page) in new[] { ("Appearance", look), ("Text", words), ("Bars", bars), ("On screen", screen) })
         {
             bool first = tabs.Children.Count == 0;
-            var tab = OverlayLook(new RadioButton { GroupName = "overlay-tabs", Content = L.T(key), IsChecked = first, Margin = new Thickness(first ? 0 : 4, 0, 0, 0) }, "TabSegment");
+            var tab = Both.Look(new RadioButton { GroupName = "overlay-tabs", Content = L.T(key), IsChecked = first, Margin = new Thickness(first ? 0 : 4, 0, 0, 0) }, "TabSegment");
             var pageBox = new Grid { Margin = new Thickness(0, 0, 12, 0) };
             pageBox.Children.Add(page);
             var scroller = new ScrollViewer { Content = pageBox, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
             places.Add(scroller);
             if (first) pages.Content = scroller;
-            OverlayOnTick(tab, on =>
+            Both.OnTick(tab, on =>
             {
                 if (!on) return;
 #if AVALONIA
@@ -406,9 +406,9 @@ public static partial class Dialogs
             tabs.Children.Add(tab);
         }
         var tabsPanel = new Grid();
-        tabsPanel.Children.Add(new Views.SlidingPill { Target = tabs, Fill = OverlayBrush("AccentSoftBrush") });
+        tabsPanel.Children.Add(new Views.SlidingPill { Target = tabs, Fill = Both.Brush("AccentSoftBrush") });
         tabsPanel.Children.Add(tabs);
-        var tabsBox = new Border { HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new CornerRadius(20), Padding = new Thickness(4), Margin = new Thickness(0, 14, 0, 14), Background = OverlayBrush("BgBrush"), Child = tabsPanel };
+        var tabsBox = new Border { HorizontalAlignment = HorizontalAlignment.Left, CornerRadius = new CornerRadius(20), Padding = new Thickness(4), Margin = new Thickness(0, 14, 0, 14), Background = Both.Brush("BgBrush"), Child = tabsPanel };
         var options = new Grid();
         options.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         options.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -554,19 +554,8 @@ public static partial class Dialogs
     }
 
     // (it has to fit the screen with the frame, the title and the button around it)
-    private static Size OverlayRoom()
-    {
-#if AVALONIA
-        var top = App.Host?.Window;
-        var screen = top?.Screens.ScreenFromWindow(top);
-        return screen != null ? new Size(screen.WorkingArea.Width / screen.Scaling / Ui.Zoom, screen.WorkingArea.Height / screen.Scaling / Ui.Zoom) : new Size(1280, 800);
-#else
-        return new Size(SystemParameters.WorkArea.Width / Ui.Zoom, SystemParameters.WorkArea.Height / Ui.Zoom);
-#endif
-    }
-
-    public static double OverlayEditorWidth() => Math.Clamp(OverlayRoom().Width - 100, 640, 1320);
-    private static double OverlayEditorHeight() => Math.Clamp(OverlayRoom().Height - 190, 360, 760);
+    public static double OverlayEditorWidth() => Math.Clamp(Both.Room().Width - 100, 640, 1320);
+    private static double OverlayEditorHeight() => Math.Clamp(Both.Room().Height - 190, 360, 760);
 
     private static IEnumerable<string> OverlayFonts()
     {
@@ -601,35 +590,6 @@ public static partial class Dialogs
     // (what a choice brings out or takes away unfolds; a line just built takes its place at once)
     private static void OverlayVisible(ElementKind element, bool on) => Views.Fold.SetOpen(element, on);
 
-    private static BrushKind OverlayBrush(string key)
-    {
-#if AVALONIA
-        return Res(key);
-#else
-        return (Brush)Application.Current.Resources[key];
-#endif
-    }
-
-    private static T OverlayLook<T>(T control, string key) where T : Control
-    {
-#if AVALONIA
-        control.Theme = Res<Avalonia.Styling.ControlTheme>(key);
-#else
-        control.Style = (Style)Application.Current.Resources[key];
-#endif
-        return control;
-    }
-
-    private static void OverlayOnTick(ToggleButton button, Action<bool> changed)
-    {
-#if AVALONIA
-        button.IsCheckedChanged += (_, _) => changed(button.IsChecked == true);
-#else
-        button.Checked += (_, _) => changed(true);
-        button.Unchecked += (_, _) => changed(false);
-#endif
-    }
-
     // A tab of the editor: what there is to decide, one thing at a time.
     private static StackPanel OverlayPage(params Border[] sections)
     {
@@ -642,7 +602,7 @@ public static partial class Dialogs
     private static Border OverlaySection(string key, string? hintKey, params ElementKind[] inside)
     {
         var panel = new StackPanel();
-        panel.Children.Add(new TextBlock { Text = L.T(key), FontSize = 15, FontWeight = FontWeights_SemiBold, Foreground = OverlayBrush("TextBrush"), Margin = new Thickness(2, 0, 0, hintKey == null ? 10 : 0) });
+        panel.Children.Add(new TextBlock { Text = L.T(key), FontSize = 15, FontWeight = Both.SemiBold, Foreground = Both.Brush("TextBrush"), Margin = new Thickness(2, 0, 0, hintKey == null ? 10 : 0) });
         if (hintKey != null)
         {
             var hint = OverlayHint(hintKey);
@@ -650,7 +610,7 @@ public static partial class Dialogs
             panel.Children.Add(hint);
         }
         foreach (var part in inside) panel.Children.Add(part);
-        return new Border { Background = OverlayBrush("Surface2Brush"), CornerRadius = new CornerRadius(14), Padding = new Thickness(16, 14, 16, 16), Margin = new Thickness(0, 0, 0, 12), Child = panel };
+        return new Border { Background = Both.Brush("Surface2Brush"), CornerRadius = new CornerRadius(14), Padding = new Thickness(16, 14, 16, 16), Margin = new Thickness(0, 0, 0, 12), Child = panel };
     }
 
     // (a box beside its name, as wide as a slider)
@@ -662,23 +622,17 @@ public static partial class Dialogs
 
     private static TextBlock OverlayHeading(string key) => new()
     {
-        Text = L.T(key), FontSize = 13, FontWeight = FontWeights_SemiBold, Foreground = OverlayBrush("SubTextBrush"), Margin = new Thickness(2, 20, 0, 8),
+        Text = L.T(key), FontSize = 13, FontWeight = Both.SemiBold, Foreground = Both.Brush("SubTextBrush"), Margin = new Thickness(2, 20, 0, 8),
     };
 
     private static TextBlock OverlayHint(string key) => new()
     {
-        Text = L.T(key), FontSize = 12, Foreground = OverlayBrush("MutedBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 8, 0, 0),
+        Text = L.T(key), FontSize = 12, Foreground = Both.Brush("MutedBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 8, 0, 0),
     };
-
-#if AVALONIA
-    private static FontWeight FontWeights_SemiBold => FontWeight.SemiBold;
-#else
-    private static FontWeight FontWeights_SemiBold => FontWeights.SemiBold;
-#endif
 
     private static TextBox OverlayBox(string text, Action<string> changed)
     {
-        var box = OverlayLook(new TextBox { Text = text }, "BoxTextBox");
+        var box = Both.Look(new TextBox { Text = text }, "BoxTextBox");
         box.TextChanged += (_, _) => changed(box.Text ?? "");
         return box;
     }
@@ -687,9 +641,9 @@ public static partial class Dialogs
     {
         var words = new StackPanel();
         words.Children.Add(new TextBlock { Text = L.T(key) });
-        if (hintKey != null) words.Children.Add(new TextBlock { Text = L.T(hintKey), FontSize = 12, Foreground = OverlayBrush("MutedBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
-        var check = OverlayLook(new CheckBox { Content = words, IsChecked = on, Margin = new Thickness(0, 0, 0, 12) }, "Switch");
-        OverlayOnTick(check, changed);
+        if (hintKey != null) words.Children.Add(new TextBlock { Text = L.T(hintKey), FontSize = 12, Foreground = Both.Brush("MutedBrush"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0) });
+        var check = Both.Look(new CheckBox { Content = words, IsChecked = on, Margin = new Thickness(0, 0, 0, 12) }, "Switch");
+        Both.OnTick(check, changed);
         return check;
     }
 
@@ -736,10 +690,10 @@ public static partial class Dialogs
         for (int i = 0; i < OverlayPlaces.Length; i++)
         {
             double x = i % 3 / 2.0, y = i / 3 / 2.0;
-            var mark = new Border { Width = 18, Height = 10, CornerRadius = new CornerRadius(3), Background = OverlayBrush("BorderStrongBrush") };
-            var pick = OverlayLook(new RadioButton { GroupName = "overlay-place", Content = mark, Padding = new Thickness(4), IsChecked = Math.Abs(x - s.AnchorX) < 0.1 && Math.Abs(y - s.AnchorY) < 0.1 }, "ChoiceTile");
+            var mark = new Border { Width = 18, Height = 10, CornerRadius = new CornerRadius(3), Background = Both.Brush("BorderStrongBrush") };
+            var pick = Both.Look(new RadioButton { GroupName = "overlay-place", Content = mark, Padding = new Thickness(4), IsChecked = Math.Abs(x - s.AnchorX) < 0.1 && Math.Abs(y - s.AnchorY) < 0.1 }, "ChoiceTile");
             AutomationProperties.SetName(pick, L.T(OverlayPlaces[i]));
-            OverlayOnTick(pick, on => { if (on) { s.AnchorX = x; s.AnchorY = y; row.Changed(); } });
+            Both.OnTick(pick, on => { if (on) { s.AnchorX = x; s.AnchorY = y; row.Changed(); } });
             grid.Children.Add(pick);
         }
         return grid;
@@ -769,8 +723,8 @@ public static partial class Dialogs
                 both.Children.Add(content);
                 content = both;
             }
-            var tile = OverlayLook(new RadioButton { GroupName = "overlay-" + group, Content = content, IsChecked = id == chosen }, "ChoiceTile");
-            OverlayOnTick(tile, on => { if (on) picked(id); });
+            var tile = Both.Look(new RadioButton { GroupName = "overlay-" + group, Content = content, IsChecked = id == chosen }, "ChoiceTile");
+            Both.OnTick(tile, on => { if (on) picked(id); });
             grid.Children.Add(tile);
         }
         return grid;
@@ -814,7 +768,7 @@ public static partial class Dialogs
         {
             // (going away "grow" grows and "shrink" shrinks: the motion seen, as on the page)
             string kind = entering ? id : id switch { "grow" => "shrink", "shrink" => "grow", _ => id };
-            var card = new Border { Width = 28, Height = 16, CornerRadius = new CornerRadius(4), Background = OverlayBrush("AccentTextBrush"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            var card = new Border { Width = 28, Height = 16, CornerRadius = new CornerRadius(4), Background = Both.Brush("AccentTextBrush"), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             var scale = new ScaleTransform();
             var turn = new RotateTransform();
             var move = new TranslateTransform();
@@ -865,7 +819,7 @@ public static partial class Dialogs
 #else
             tile.MouseEnter += (_, _) => play();
 #endif
-            OverlayOnTick(tile, on => { if (on) play(); });
+            Both.OnTick(tile, on => { if (on) play(); });
         }
         return grid;
     }
@@ -918,7 +872,7 @@ public static partial class Dialogs
         return id switch
         {
             "rgb" => Pic.Icon(card, null, false, Pic.Rainbow()),
-            "one" => Pic.Icon(card, null, false, OverlayBrush("AccentTextBrush")),
+            "one" => Pic.Icon(card, null, false, Both.Brush("AccentTextBrush")),
             _ => Pic.Icon(card, Pic.Rect(13, 10, 16, 16, 3) + Pic.Rect(33, 13, 18, 3, 1) + Pic.Rect(33, 19, 12, 3, 1)),
         };
     }
@@ -952,8 +906,8 @@ public static partial class Dialogs
         foreach (var tint in OverlayTints)
         {
             var dot = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(13), Background = new SolidColorBrush(Pic.ColorOf(tint)) };
-            var pick = OverlayLook(new RadioButton { GroupName = "overlay-tint", Content = dot, Padding = new Thickness(5), IsChecked = string.Equals(tint, s.Tint, StringComparison.OrdinalIgnoreCase) }, "ChoiceTile");
-            OverlayOnTick(pick, on => { if (on && !showing) Choose(tint, pick); });
+            var pick = Both.Look(new RadioButton { GroupName = "overlay-tint", Content = dot, Padding = new Thickness(5), IsChecked = string.Equals(tint, s.Tint, StringComparison.OrdinalIgnoreCase) }, "ChoiceTile");
+            Both.OnTick(pick, on => { if (on && !showing) Choose(tint, pick); });
             picks.Add((pick, tint));
             swatches.Children.Add(pick);
         }

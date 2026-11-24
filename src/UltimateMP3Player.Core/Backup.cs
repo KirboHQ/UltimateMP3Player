@@ -130,28 +130,67 @@ public static class Backup
     // Puts the backup in place of today's data. Nothing is saved any more afterwards (JsonStore.Frozen): what the app holds
     // in memory would write the old data back. The app must start again. What belongs to this device stays as it is: the
     // music folder, the audio output, the window, the identity in rooms, the browser for the cookies.
+    // All of it is taken out beside the data first: a damaged zip or a full disk leaves today's data as it was.
     public static void Restore(string zipPath, AppSettings current)
     {
         using var zip = ZipFile.OpenRead(zipPath);
         if (zip.GetEntry("library.json") == null) throw new InvalidDataException(L.T("This file isn't a backup of Ultimate MP3 Player."));
-        JsonStore.Frozen = true;
         var dir = AppPaths.DataDir;
-        foreach (var name in Files_)
-            foreach (var p in new[] { name, name + ".bak" })
-                try { File.Delete(Path.Combine(dir, p)); } catch { }
-        foreach (var folder in Folders)
-            try { if (Directory.Exists(Path.Combine(dir, folder))) Directory.Delete(Path.Combine(dir, folder), true); } catch { }
-        var full = Path.GetFullPath(dir) + Path.DirectorySeparatorChar;
-        foreach (var e in zip.Entries)
+        var aside = Path.Combine(dir, "restoring");
+        try
         {
-            if (e.FullName == InfoName || e.FullName.EndsWith('/')) continue;
-            var target = Path.GetFullPath(Path.Combine(dir, e.FullName));
-            // (an entry pointing outside the data folder isn't written)
-            if (!target.StartsWith(full, StringComparison.OrdinalIgnoreCase)) continue;
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            e.ExtractToFile(target, true);
+            if (Directory.Exists(aside)) Directory.Delete(aside, true);
+            var full = Path.GetFullPath(aside) + Path.DirectorySeparatorChar;
+            foreach (var e in zip.Entries)
+            {
+                if (e.FullName == InfoName || e.FullName.EndsWith('/')) continue;
+                var target = Path.GetFullPath(Path.Combine(aside, e.FullName));
+                // (an entry pointing outside the folder isn't written)
+                if (!target.StartsWith(full, StringComparison.OrdinalIgnoreCase)) continue;
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                e.ExtractToFile(target, true);
+            }
+            KeepDevice(Path.Combine(aside, Path.GetFileName(AppPaths.SettingsFile)), current);
+            JsonStore.Frozen = true;
+            try { Put(aside, dir); }
+            // (what the app holds in memory is saved again: it's today's data)
+            catch
+            {
+                JsonStore.Frozen = false;
+                throw;
+            }
         }
-        var path = AppPaths.SettingsFile;
+        finally
+        {
+            try { Directory.Delete(aside, true); } catch { }
+        }
+    }
+
+    // The backup's files in place of today's; then what the backup doesn't have goes.
+    private static void Put(string aside, string dir)
+    {
+        var put = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in Directory.EnumerateFiles(aside, "*", SearchOption.AllDirectories).ToList())
+        {
+            var target = Path.Combine(dir, Path.GetRelativePath(aside, file));
+            put.Add(target);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            try { File.Move(file, target, true); }
+            // (a picture open somewhere stays the one it was)
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException && File.Exists(target) &&
+                                      Path.GetExtension(target).ToLowerInvariant() is ".jpg" or ".jpeg" or ".png" or ".webp") { }
+        }
+        var gone = Files_.SelectMany(name => new[] { Path.Combine(dir, name), Path.Combine(dir, name + ".bak") });
+        foreach (var folder in Folders.Select(f => Path.Combine(dir, f)).Where(Directory.Exists))
+            gone = gone.Concat(Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories));
+        foreach (var file in gone.ToList())
+            if (!put.Contains(file))
+                try { File.Delete(file); } catch { }
+    }
+
+    // What belongs to this device, in the settings the backup brings.
+    private static void KeepDevice(string path, AppSettings current)
+    {
         if (!File.Exists(path)) return;
         try
         {

@@ -12,7 +12,8 @@ public sealed class MediaControls : IDisposable
 {
     private readonly HwndSource _host;
     private readonly SystemMediaTransportControls? _smtc;
-    private string? _coverPath;
+    // The picture shown: its file, and when it was written (a new cover has the same name).
+    private string? _cover;
 
     public event Action? PlayPressed;
     public event Action? PausePressed;
@@ -58,6 +59,7 @@ public sealed class MediaControls : IDisposable
             var du = _smtc.DisplayUpdater;
             if (title == null)
             {
+                _cover = null;
                 du.ClearAll();
                 du.Update();
                 _smtc.PlaybackStatus = MediaPlaybackStatus.Closed;
@@ -67,16 +69,25 @@ public sealed class MediaControls : IDisposable
             du.MusicProperties.Title = title;
             du.MusicProperties.Artist = artist ?? "";
             du.MusicProperties.AlbumTitle = album ?? "";
-            if (coverPath != _coverPath)
+            var cover = coverPath != null && File.Exists(coverPath) ? coverPath + "|" + File.GetLastWriteTimeUtc(coverPath).Ticks : null;
+            if (cover != _cover)
             {
-                _coverPath = coverPath;
-                du.Thumbnail = coverPath != null && File.Exists(coverPath)
-                    ? RandomAccessStreamReference.CreateFromFile(await StorageFile.GetFileFromPathAsync(coverPath))
-                    : null;
+                _cover = cover;
+                var picture = cover != null ? await PictureAsync(coverPath!) : null;
+                // (another song meanwhile)
+                if (cover != _cover) return;
+                du.Thumbnail = picture;
             }
             du.Update();
         }
         catch { }
+    }
+
+    private static async Task<RandomAccessStreamReference?> PictureAsync(string path)
+    {
+        try { return RandomAccessStreamReference.CreateFromFile(await StorageFile.GetFileFromPathAsync(path)); }
+        // (the song's name shows anyway)
+        catch { return null; }
     }
 
     public void SetState(bool playing)

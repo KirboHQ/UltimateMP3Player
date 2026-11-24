@@ -987,7 +987,7 @@ public sealed class PlayerViewModel : Observable
         if (!quiet) _main.Toast(L.F("“{0}” added to queue", t.Title));
     }
 
-    public void PlayNext(TrackViewModel t)
+    public void PlayNext(TrackViewModel t, bool quiet = false)
     {
         if (_room != null)
         {
@@ -996,7 +996,7 @@ public sealed class PlayerViewModel : Observable
         }
         if (_remote != null) _remote.Enqueue(t.T, true);
         else _queue.PlayNextInQueue(t.Id);
-        _main.Toast(L.F("“{0}” will play next", t.Title));
+        if (!quiet) _main.Toast(L.F("“{0}” will play next", t.Title));
     }
 
     // Nothing after this song: it plays alone (Generate brings the list back).
@@ -1320,17 +1320,28 @@ public sealed class PlayerViewModel : Observable
         _ = Next(true);
     }
 
-    // A suggested song saved to the library: it keeps its place in the queue, and plays on if it's playing.
+    // A suggested song saved to the library: it keeps its place in the queue, and plays on if it's playing (the same play, counted once).
     internal void ReplaceRadio(string oldId, Track saved)
     {
+        bool waited = _waiting == oldId;
+        if (waited) _waiting = saved.Id;
+        if (_goesOn == oldId) _goesOn = saved.Id;
+        if (_listenId == oldId) _listenId = saved.Id;
+        if (_roomHeardId == oldId) _roomHeardId = saved.Id;
+        _main.Scrobbler.Renamed(oldId, saved.Id);
         if (Current?.Id == oldId)
         {
             Current = _main.Vm(saved);
             _main.Profile.Data.LastTrack = saved.Id;
             _main.OnCurrentChanged();
             _main.Host.OnTrackChanged();
+            ApplyNormalization();
         }
         _queue.Replace(oldId, saved.Id);
+        if (!saved.HasSavedFile) return;
+        // Waited for, it starts from its file; heard from its site, it goes on from there.
+        if (waited) _ = Load(saved, _waitPlay);
+        else if (_opened && Current?.Id == saved.Id && _audio.Streaming) _ = _audio.SwapAsync(saved.Path, saved.Duration > 0 ? saved.Duration : Duration);
     }
 
     // The other way round: the song playing, deleted from the library, goes on as a song heard without saving it (from the
@@ -1463,7 +1474,7 @@ public sealed class PlayerViewModel : Observable
         if (_room != null)
         {
             if (_roomLoaded != _room.Session?.Current?.Id) return null;
-            if (_main.Library.Get(c.Id) == null && !_main.Radio.Has(c.Id)) return _roomHeardId is { } kept && _main.Radio.Has(kept) ? kept : null;
+            if (_main.Library.Get(c.Id) == null && !_main.Radio.Has(c.Id)) return _roomHeardId is { } kept && (_main.Radio.Has(kept) || _main.Library.Get(kept) != null) ? kept : null;
         }
         return _main.Library.Get(c.Id) != null || _main.Radio.Has(c.Id) || _main.Shared?.Get(c.Id) != null ? c.Id : null;
     }

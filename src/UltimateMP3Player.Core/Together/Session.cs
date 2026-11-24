@@ -197,7 +197,7 @@ public sealed class TogetherSession : IDisposable
 
     public async Task<JoinResult> JoinAsync(string ip, int port, string? password)
     {
-        _password = string.IsNullOrWhiteSpace(password) ? null : password;
+        _password = string.IsNullOrWhiteSpace(password) ? null : password.Trim();
         Status = RoomStatus.Connecting;
         RaiseRoom();
         try { EnsureListener(); } catch { }
@@ -263,6 +263,7 @@ public sealed class TogetherSession : IDisposable
             {
                 if (Successor(new HashSet<string> { Me.Id }, true) is { } next)
                 {
+                    PushQueue();
                     var m = new Msg { T = "migrate", HostId = next.Id, Password = _password, Banned = Banned.ToList() };
                     foreach (var c in _peers.Values) c.Send(m);
                     await Task.WhenAll(_peers.Values.ToList().Select(c => c.FlushAsync(700)));
@@ -447,7 +448,11 @@ public sealed class TogetherSession : IDisposable
 
     private void Broadcast(Msg m)
     {
-        foreach (var c in _peers.Values) c.Send(m);
+        // (covers go before the queue that has their songs)
+        if (m.T != "cover") PushQueue();
+        if (_peers.Count == 0) return;
+        var packed = Connection.Pack(m);
+        foreach (var c in _peers.Values) c.Send(packed);
     }
 
     private void BroadcastMembers()
@@ -457,11 +462,25 @@ public sealed class TogetherSession : IDisposable
         RaiseRoom();
     }
 
+    // A whole list added is many changes in a row: the queue goes out once, after them (or before the next other message).
+    private bool _queueDirty;
+
     private void BroadcastQueue()
     {
-        Broadcast(new Msg { T = "queue", Queue = Queue, Current = Current });
+        if (!_queueDirty)
+        {
+            _queueDirty = true;
+            _post(PushQueue);
+        }
         RefreshAd();
         RaiseQueue();
+    }
+
+    private void PushQueue()
+    {
+        if (!_queueDirty) return;
+        _queueDirty = false;
+        if (IsHost) Broadcast(new Msg { T = "queue", Queue = Queue, Current = Current });
     }
 
     private void BroadcastPlay()
@@ -513,7 +532,8 @@ public sealed class TogetherSession : IDisposable
             Deny(c, "Different app version: everyone should update to the latest version.");
             return;
         }
-        if (m.Me is not { Id.Length: > 0 } who)
+        // (the host's own id isn't anyone else's)
+        if (m.Me is not { Id.Length: > 0 } who || who.Id == Me.Id)
         {
             c.Close();
             return;
@@ -524,18 +544,16 @@ public sealed class TogetherSession : IDisposable
             return;
         }
         var existing = Members.FirstOrDefault(x => x.Id == who.Id);
-        if (existing == null)
+        if (existing == null && Members.Count(x => !x.Away) >= Max)
         {
-            if (Members.Count(x => !x.Away) >= Max)
-            {
-                Deny(c, "The room is full.");
-                return;
-            }
-            if (_password != null && m.Password != _password)
-            {
-                Deny(c, m.Password == null ? "This room has a password." : "Wrong password.", true);
-                return;
-            }
+            Deny(c, "The room is full.");
+            return;
+        }
+        // (someone coming back too: ids aren't secret, the password is)
+        if (_password != null && m.Password != _password)
+        {
+            Deny(c, m.Password == null ? "This room has a password." : "Wrong password.", true);
+            return;
         }
         var mem = existing ?? new Member { Id = who.Id, Seq = ++_seq, Perms = DefaultPerms };
         mem.Name = Clean(who.Name, NameLength) is { Length: > 0 } n ? n : "?";
@@ -821,6 +839,7 @@ public sealed class TogetherSession : IDisposable
     {
         if (Members.FirstOrDefault(x => x.Id == id) is not { Away: false } target) return;
         AddSystem("{0} made {1} the host", Me.Name, target.Name);
+        PushQueue();
         var m = new Msg { T = "migrate", HostId = id, Flag = true, Password = _password, Banned = Banned.ToList() };
         foreach (var c in _peers.Values) c.Send(m);
         var peers = _peers.Values.ToList();
@@ -1000,8 +1019,8 @@ public sealed class TogetherSession : IDisposable
                 Locked = m.Locked;
                 HostId = m.HostId ?? HostId;
                 Members = m.Members ?? new();
-                Queue = m.Queue ?? new();
-                Current = m.Current;
+                Queue = (m.Queue ?? new()).Where(t => IsId(t.Id)).ToList();
+                Current = IsId(m.Current?.Id) ? m.Current : null;
                 Play = m.Play ?? new Playback();
                 Chat = m.Chat ?? new();
                 Files = m.AllFiles ?? new();
@@ -1029,8 +1048,8 @@ public sealed class TogetherSession : IDisposable
                 RaiseRoom();
                 break;
             case "queue":
-                Queue = m.Queue ?? new();
-                Current = m.Current;
+                Queue = (m.Queue ?? new()).Where(t => IsId(t.Id)).ToList();
+                Current = IsId(m.Current?.Id) ? m.Current : null;
                 var keep = new[] { Current }.Concat(Queue).OfType<RoomTrack>().Select(t => t.Id).ToHashSet();
                 foreach (var k in Covers.Keys.Where(k => !keep.Contains(k)).ToList()) Covers.Remove(k);
                 RaiseQueue();
@@ -1055,9 +1074,9 @@ public sealed class TogetherSession : IDisposable
                 RaiseFiles();
                 break;
             case "cover":
-                if (m.Id == null || m.Data == null) break;
-                Covers[m.Id] = m.Data;
-                CoverArrived?.Invoke(m.Id, m.Data);
+                if (!IsId(m.Id) || m.Data == null) break;
+                Covers[m.Id!] = m.Data;
+                CoverArrived?.Invoke(m.Id!, m.Data);
                 break;
             case "pong":
                 OnPong(m);
@@ -1428,16 +1447,20 @@ public sealed class TogetherSession : IDisposable
 
     private readonly Dictionary<(Connection, string), Incoming> _incoming = new();
 
-    // Network thread.
+    // What Ids.New makes: an id from someone else becomes part of a file's name, so nothing but letters and digits.
+    private static bool IsId(string? id) => id is { Length: > 0 and < 64 } && id.All(char.IsAsciiLetterOrDigit);
+
+    // Network thread: only from the host or from people already in the room.
     private void OnFileFrame(Connection c, Msg m)
     {
-        if (m.Id is not { Length: > 0 and < 64 } id) return;
+        if (c != _host && c.Tag == null || !IsId(m.Id)) return;
+        var id = m.Id!;
         lock (_incoming)
         {
             if (m.T == "fileStart")
             {
                 if (m.Size <= 0 || m.Size > MaxFile || Me.NoP2P) return;
-                var ext = m.Text is { Length: > 1 and < 10 } e && e.StartsWith('.') && e.Skip(1).All(char.IsLetterOrDigit) ? e : ".bin";
+                var ext = m.Text is { } e && Importer.Extensions.Contains(e) ? e : ".bin";
                 var path = TempFile?.Invoke(id, ext) ?? System.IO.Path.Combine(System.IO.Path.GetTempPath(), "ump-lt-" + id + ext);
                 try
                 {
@@ -1467,7 +1490,8 @@ public sealed class TogetherSession : IDisposable
     {
         Incoming? inc;
         lock (_incoming) _incoming.TryGetValue((c, id), out inc);
-        if (inc == null) return;
+        // (never more than it said: the disk isn't theirs to fill)
+        if (inc == null || inc.Got + data.Length > inc.Size) return;
         try
         {
             inc.Stream.Write(data.Span);

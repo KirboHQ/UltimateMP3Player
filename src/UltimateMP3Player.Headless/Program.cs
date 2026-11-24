@@ -156,7 +156,7 @@ Check(main.Profile.Data.NormalizeTarget == -23, "normalize level: no quieter tha
 closing.NormalizeTarget = -14;
 
 // (the Discord bot: off without a token, its token, name and picture folded away under the switch until there's one)
-var botRows = view.GetLogicalDescendants().OfType<StackPanel>().FirstOrDefault(p => TextOf(p).Contains(L.T("Its name on Discord")) && !Fold.GetOpen(p));
+var botRows = view.AllCards.SelectMany(c => c.GetLogicalDescendants()).OfType<StackPanel>().FirstOrDefault(p => TextOf(p).Contains(L.T("Its name on Discord")) && !Fold.GetOpen(p));
 Check(!host.Settings.DiscordBot && !closing.DiscordBotHasToken && closing.DiscordBotText == L.T("Off") && botRows != null, "discord bot: off, no token, its rows folded away");
 
 // (its name is a draft until Save: Discord allows a few new names an hour)
@@ -320,6 +320,49 @@ var cloudBox = import.GetLogicalDescendants().OfType<CheckBox>().FirstOrDefault(
 Check(cloudBox is { IsChecked: false }, "pack import: “Save the audio on your device” starts off");
 import.Close();
 
+// ---- the other windows shared with the Windows app: they open, and a press on a choice takes it
+DialogWindow? dialog = null;
+Window.WindowOpenedEvent.AddClassHandler<DialogWindow>((d, _) => dialog = d);
+T Modal<T>(string name, Func<T> open, Action<DialogWindow>? inside = null)
+{
+    dialog = null;
+    // (a modal window stops whoever opens it until it closes)
+    Dispatcher.UIThread.Post(() =>
+    {
+        try
+        {
+            Shot(dialog!, name);
+            inside?.Invoke(dialog!);
+        }
+        finally { if (dialog is { IsVisible: true }) dialog.Close(); }
+    }, DispatcherPriority.Background);
+    var result = open();
+    Check(dialog != null, name + ": it opens");
+    return result;
+}
+void PressOn(TopLevel top, Control c)
+{
+    var at = c.TranslatePoint(new Point(c.Bounds.Width / 2, c.Bounds.Height / 2), top)!.Value;
+    top.MouseDown(at, MouseButton.Left);
+    top.MouseUp(at, MouseButton.Left);
+    Dispatcher.UIThread.RunJobs();
+}
+var someSongs = main.AllVms().Take(2).ToList();
+var removal = new RemovePlan(someSongs);
+var card = removal.Options.First(o => o.Enabled);
+foreach (var o in removal.Options) o.IsChosen = false;
+Modal("delete", () => Dialogs.RemoveAsync(removal), d => PressOn(d, d.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == card.Title)));
+Check(card.IsChosen && removal.Options.Count(o => o.IsChosen) == 1, "delete: a press on a card chooses it");
+Modal("quality", () => Dialogs.QualityAsync(new QualityPlan("Download again", "A song", "mp3", null, true, false, true)));
+var edited = Modal("tag", () => TagDialogs.EditAsync("Workout", Tag.Palette[0]).Result, d =>
+{
+    PressOn(d, d.GetVisualDescendants().OfType<Grid>().First(g => ToolTip.GetTip(g) as string == Tag.Palette[1]));
+    PressOn(d, d.GetVisualDescendants().OfType<Button>().First(b => b.Content as string == L.T("Save")));
+});
+Check(edited == ("Workout", Tag.Palette[1]), $"tag: a colour pressed, saved: {edited}");
+if (main.Playlists.FirstOrDefault(p => !p.IsOther) is { } tagged)
+    Modal("tags-on-songs", () => TagDialogs.ApplyToSongsAsync(tagged, someSongs));
+
 // ---- Discord: the paused bar's dot where the song is
 var bar = typeof(DiscordPresence).GetMethod("Bar", BindingFlags.NonPublic | BindingFlags.Static)!;
 string Bar(double at) => (string)bar.Invoke(null, new object[] { TimeSpan.FromSeconds(at), TimeSpan.FromSeconds(200) })!;
@@ -356,6 +399,88 @@ ready?.OpenCommand.Execute(null);
 Dispatcher.UIThread.RunJobs();
 Shot(win, "list-opened");
 Check(main.Section == "downloads" && queue.Groups.Count == 0 && main.Downloads.Link?.Items.Count == 2, "list: a click opens its card, the panel's line goes");
+
+// The card's "Play next" and "Add to queue" (songs the library has on disk: nothing to fetch): in order, what plays goes on.
+var cardTracks = new List<Track>();
+foreach (var n in new[] { "one", "two", "three" })
+{
+    var wav = Path.Combine(root, "music", $"card-{n}.wav");
+    Directory.CreateDirectory(Path.GetDirectoryName(wav)!);
+    File.WriteAllBytes(wav, new byte[4096]);
+    var t = new Track { Id = "card-" + n, Title = "Card " + n, Artist = "Headless", Duration = 100, Path = wav, SourceUrl = "https://www.youtube.com/watch?v=" + ("card" + n).PadRight(11, '_') };
+    t.Keys.Add("youtube:" + ("card" + n).PadRight(11, '_'));
+    main.Library.Add(t);
+    cardTracks.Add(t);
+}
+LinkViewModel CardOf(params Track[] of)
+{
+    var items = of.Select(t => new MediaItem { Title = t.Title, Url = t.SourceUrl!, PageUrl = t.SourceUrl }).ToList();
+    return new LinkViewModel(new AnalysisResult { Title = "Card", Items = items, IsCollection = items.Count > 1 }, items, main);
+}
+var playQueue = (PlayQueue)typeof(PlayerViewModel).GetField("_queue", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(main.Player)!;
+var link = CardOf(cardTracks[0], cardTracks[1]);
+var pageLink = typeof(DownloadsPageViewModel).GetProperty(nameof(DownloadsPageViewModel.Link))!;
+var listCard = main.Downloads.Link;
+pageLink.SetValue(main.Downloads, link);
+playQueue.UpNext.Clear();
+CardOf(cardTracks[2]).QueueCommand.Execute(null);
+link.NextCommand.Execute(null);
+Shot(win, "card-queued");
+Check(playQueue.UpNext.SequenceEqual(new[] { "card-one", "card-two", "card-three" }), "card: Play next before Add to queue, in the list's order: " + string.Join(", ", playQueue.UpNext));
+Check(main.Downloads.Link == link && Shown(L.F("{0} songs will play next", 2)), "card: it stays, the toast says so");
+playQueue.UpNext.Clear();
+pageLink.SetValue(main.Downloads, listCard);
+
+// A song heard without saving it, then saved (its download adds it to the library): the saved one everywhere. In the queue and in the
+// statistics; waited for, it starts from its file; one being deleted isn't taken back.
+(string Heard, Track Saved) SavedLater(string n, Action<string> heard)
+{
+    var key = ("later" + n).PadRight(11, '_');
+    var url = "https://www.youtube.com/watch?v=" + key;
+    var id = main.Radio.AddFromLink(new[] { new MediaItem { Title = "Later " + n, Url = url, PageUrl = url } }).Single();
+    heard(id);
+    var wav = Path.Combine(root, "music", $"later-{n}.wav");
+    File.WriteAllBytes(wav, new byte[4096]);
+    var t = new Track { Id = "later-" + n, Title = "Later " + n, Artist = "Headless", Duration = 100, Path = wav, SourceUrl = url };
+    t.Keys.Add("youtube:" + key);
+    main.Library.Add(t);
+    main.Profile.Own(new[] { t.Id });
+    for (int i = 0; i < 40; i++)
+    {
+        Dispatcher.UIThread.RunJobs();
+        Thread.Sleep(10);
+    }
+    return (id, t);
+}
+var later = SavedLater("queued", id =>
+{
+    playQueue.UpNext.Add(id);
+    main.Profile.AddListening(id, 80, true, save: false);
+});
+Check(playQueue.UpNext.SequenceEqual(new[] { later.Saved.Id }) && main.Profile.StatsOf(later.Saved.Id)?.Plays == 1 && main.Profile.StatsOf(later.Heard) == null
+    && !main.Radio.Has(later.Heard), "saved later: the queue and its plays go to the saved song: " + string.Join(", ", playQueue.UpNext));
+playQueue.UpNext.Clear();
+var waiting = typeof(PlayerViewModel).GetField("_waiting", BindingFlags.NonPublic | BindingFlags.Instance)!;
+var current = typeof(PlayerViewModel).GetProperty(nameof(PlayerViewModel.Current))!;
+var was = main.Player.Current;
+var waited = SavedLater("waited", id =>
+{
+    current.SetValue(main.Player, main.Vm(main.Radio.Track(id)!));
+    waiting.SetValue(main.Player, id);
+});
+Check(main.Player.Current?.Id == waited.Saved.Id && waiting.GetValue(main.Player) == null, "saved later: waited for, it starts from its file");
+var unsaved = main.Radio.Unsave(waited.Saved, null, file: false);
+main.Radio.Adopt();
+Check(unsaved != null && main.Radio.Has(unsaved.Id), "deleted: the song heard isn't taken back by the one being deleted");
+current.SetValue(main.Player, was);
+foreach (var t in new[] { later.Saved, waited.Saved })
+{
+    main.Profile.Disown(new[] { t.Id });
+    main.Library.Remove(t);
+}
+main.Radio.Adopt();
+main.Player.ClearQueueCommand.Execute(null);
+foreach (var t in cardTracks) main.Library.Remove(t);
 
 // ---- 4.3.1: Search in the sidebar's menu, its box at the top of its page (online off: nothing reaches out), one list under chips;
 // the library's tabs
@@ -1137,6 +1262,16 @@ Check(((ItemsControl)addedShelf.Content!).ItemCount == addedShelf.Total && !Shel
     phoneWin.Close();
     Check(main.Settings.PhoneLink.ButtonText == L.T("Connect phone…"), "phone: the button says Connect phone… with none");
 }
+
+// A session that's over (another profile, another language) leaves nothing hooked to what outlives it, which would keep all of it
+// in memory: its profile, and the theme's events.
+main.Detach();
+var hooked = typeof(Profile).GetFields(BindingFlags.Instance | BindingFlags.NonPublic).Select(f => (f.Name, On: f.GetValue(main.Profile) as Delegate))
+    .Concat(typeof(Themes).GetFields(BindingFlags.Static | BindingFlags.NonPublic).Select(f => (f.Name, On: f.GetValue(null) as Delegate)))
+    .Concat(typeof(Ui).GetFields(BindingFlags.Static | BindingFlags.NonPublic).Select(f => (f.Name, On: f.GetValue(null) as Delegate)))
+    .Where(e => e.On != null).SelectMany(e => e.On!.GetInvocationList().Select(d => (e.Name, Who: d.Target?.GetType().FullName ?? "")))
+    .Where(e => e.Who.Contains(".ViewModels.") && !e.Who.Contains(nameof(DownloadQueue))).Select(e => e.Name + " ← " + e.Who).ToList();
+Check(hooked.Count == 0, "a session that's over leaves nothing hooked behind: " + string.Join(", ", hooked));
 
 host.Exit(true);
 Check(!File.Exists(AppPaths.LogFile) || new FileInfo(AppPaths.LogFile).Length == 0, "nothing in errors.log");

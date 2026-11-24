@@ -395,28 +395,6 @@ public static partial class OnlineSearchServices
         };
     }
 
-    // The artist the words name on Spotify, with their songs, the most played first. A key can't ask for an artist's top
-    // songs any more (2026): it's a search of their name, kept to their own songs, without doubles. Null when there's none.
-    public static async Task<(string Name, List<SearchHit> Hits)?> SpotifyArtistAsync(string name, int limit, CancellationToken ct)
-    {
-        if (await SpotifyFindArtistAsync(name, ct) is not { } artist) return null;
-        var (id, found) = artist;
-        var hits = new List<SearchHit>();
-        var seen = new HashSet<string>();
-        var q = Uri.EscapeDataString($"artist:\"{found}\"");
-        // shortcut: pages of 10 one after the other, at most 10 of them (Deezer's top is a hundred too); more pages if fans ask for every song.
-        for (int offset = 0; offset < 100 && hits.Count < limit; offset += 10)
-        {
-            using var doc = JsonDocument.Parse(await SpotifyGetAsync($"https://api.spotify.com/v1/search?type=track&limit=10&offset={offset}&q={q}", ct));
-            var page = doc.RootElement.Prop("tracks")?.Arr("items").ToList() ?? new List<JsonElement>();
-            foreach (var t in page)
-                if (hits.Count < limit && t.Arr("artists").Any(a => a.Str("id") == id) && SpotifyHit(t, hits.Count) is { } h && seen.Add(SongMeta.Key(h.Title, found)))
-                    hits.Add(h);
-            if (page.Count < 10) break;
-        }
-        return (found, hits);
-    }
-
     // The artist the words name on Spotify: exactly that name, or the first one when it's nearly that name.
     private static async Task<(string Id, string Name)?> SpotifyFindArtistAsync(string name, CancellationToken ct)
     {

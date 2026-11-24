@@ -114,9 +114,14 @@ public sealed class StationsViewModel : Observable
         Chips[0].IsSelected = true;
         SelectChipCommand = new RelayCommand(p => { if (p is RadioChip c) Select(c); });
         SearchCommand = new RelayCommand(() => _ = LoadAsync(null, Query));
-        main.Profile.StationsChanged += () => Application.Current.Dispatcher.BeginInvoke(RefreshSaved);
+        main.Profile.StationsChanged += OnStations;
         RefreshSaved();
     }
+
+    private void OnStations() => Application.Current.Dispatcher.BeginInvoke(RefreshSaved);
+
+    // The session is over: its profile stays open, and would keep all of it in memory.
+    public void Detach() => _main.Profile.StationsChanged -= OnStations;
 
     // This device's country (two letters), for "Near you".
     private static string? RegionCode()

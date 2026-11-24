@@ -76,6 +76,12 @@
     <Compile Include="..\UltimateMP3Player\Views\Rearrange.cs" Link="Shared\Views\Rearrange.cs" />
     <Compile Include="..\UltimateMP3Player\Views\OverlaySources.cs" Link="Shared\Views\OverlaySources.cs" />
     <Compile Include="..\UltimateMP3Player\Views\LoginDialogs.cs" Link="Shared\Views\LoginDialogs.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\Both.cs" Link="Shared\Views\Both.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\CloudDialogs.cs" Link="Shared\Views\CloudDialogs.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\DjDialogs.cs" Link="Shared\Views\DjDialogs.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\PackDialogs.cs" Link="Shared\Views\PackDialogs.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\PhoneDialogs.cs" Link="Shared\Views\PhoneDialogs.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\TagDialogs.cs" Link="Shared\Views\TagDialogs.cs" />
     <Compile Include="..\UltimateMP3Player\Services\SiteLogins.cs" Link="Shared\Services\SiteLogins.cs" />
     <Compile Include="..\UltimateMP3Player.Android\Platform\SiteLogins.Shared.cs" Link="Shared\Platform\SiteLogins.Shared.cs" />
   </ItemGroup>

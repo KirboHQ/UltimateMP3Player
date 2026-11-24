@@ -21,6 +21,10 @@ public static class Http
     })
     { Timeout = Timeout.InfiniteTimeSpan };
 
+    // Nothing heard for this long in the middle of a download: the connection is gone (the computer slept, another Wi-Fi).
+    // Nobody says so, it would wait forever.
+    private static readonly TimeSpan Silence = TimeSpan.FromSeconds(60);
+
     private static HttpRequestMessage Request(HttpMethod method, string url, string? ua, string? referer,
         IDictionary<string, string>? headers = null)
     {
@@ -72,16 +76,40 @@ public static class Http
     // What a link answers (only its first byte asked for).
     public static async Task<HttpStatusCode> StatusAsync(string url, IDictionary<string, string>? headers, CancellationToken ct)
     {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
         using var req = Request(HttpMethod.Get, url, null, null, headers);
         req.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 0);
-        using var resp = await Client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
+        using var resp = await Client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token);
         return resp.StatusCode;
+    }
+
+    // The whole answer to a request made elsewhere, or an error after 30 seconds.
+    public static async Task<HttpResponseMessage> AnswerAsync(HttpRequestMessage req, CancellationToken ct)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
+        try { return await Client.SendAsync(req, cts.Token); }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { throw new HttpRequestException(L.T("Couldn't reach the site: check your internet connection.")); }
     }
 
     public static async Task DownloadFileAsync(string url, string path, IDictionary<string, string>? headers,
         Action<long, long?>? progress, CancellationToken ct, string? referer = null, long chunk = 0)
     {
         var tmp = path + ".part";
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        try { await DownloadPartAsync(url, tmp, headers, progress, cts, referer, chunk); }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new EngineException(L.T("Couldn't reach the site: check your internet connection."), url) { Offline = true };
+        }
+        File.Move(tmp, path, true);
+    }
+
+    private static async Task DownloadPartAsync(string url, string tmp, IDictionary<string, string>? headers,
+        Action<long, long?>? progress, CancellationTokenSource cts, string? referer, long chunk)
+    {
+        var ct = cts.Token;
         await using (var dst = new FileStream(tmp, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16, true))
         {
             var buf = new byte[1 << 16];
@@ -93,6 +121,7 @@ public static class Http
             {
                 using var req = Request(HttpMethod.Get, url, null, referer, headers);
                 if (chunk > 0) req.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(done, done + chunk - 1);
+                cts.CancelAfter(Silence);
                 using var resp = await Client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
                 if (!resp.IsSuccessStatusCode)
                     throw new EngineException(resp.StatusCode switch
@@ -116,6 +145,7 @@ public static class Http
                     int n;
                     while ((n = await src.ReadAsync(buf, ct)) > 0)
                     {
+                        cts.CancelAfter(Silence);
                         await dst.WriteAsync(buf.AsMemory(0, n), ct);
                         done += n;
                         got += n;
@@ -126,6 +156,5 @@ public static class Http
             }
             progress?.Invoke(done, total ?? done);
         }
-        File.Move(tmp, path, true);
     }
 }

@@ -1,11 +1,10 @@
 namespace UltimateMP3Player.Core;
 
 // ExtraKeys: the original link's identities when fetched elsewhere (its link then becomes the new one). AttachTo: the
-// library song this is for (a song in the cloud saved on the device, a video found for a song), whatever the link says.
-// VideoOnly: only the video, for AttachTo. Replace: AttachTo's audio (and video, with WantVideo) downloaded again, in the quality
-// asked, in place of the files it has ("Download again").
+// library song this is for (a song in the cloud saved on the device), whatever the link says. Replace: AttachTo's audio (and
+// video, with WantVideo) downloaded again, in the quality asked, in place of the files it has ("Download again").
 public sealed record TrackRequest(MediaItem Item, bool WantVideo, int? VideoMaxRes, string AudioFormat, string MusicDir, string? Cookies,
-    IReadOnlyList<string>? ExtraKeys = null, string? AttachTo = null, bool VideoOnly = false, bool Replace = false);
+    IReadOnlyList<string>? ExtraKeys = null, string? AttachTo = null, bool Replace = false);
 
 // Saved: a song in the cloud whose audio is now on the device. Replaced: downloaded again in place of its files.
 public enum TrackOutcome { Downloaded, AlreadyPresent, VideoAdded, Saved, Replaced }
@@ -26,9 +25,9 @@ public static class TrackDownloader
             target = lib.Get(req.AttachTo) ?? throw new EngineException(L.T("The song is no longer in your library."));
         var known = target ?? lib.FindItem(item, keys);
         // Already on the device (a song in the cloud gets its audio saved instead).
-        if (known != null && !req.Replace && (req.VideoOnly ? known.HasVideo : known.HasSavedFile && (!req.WantVideo || known.HasVideo)))
+        if (known != null && !req.Replace && known.HasSavedFile && (!req.WantVideo || known.HasVideo))
         {
-            if (!req.VideoOnly) lib.AddKeys(known, keys);
+            lib.AddKeys(known, keys);
             return new TrackResult(known, TrackOutcome.AlreadyPresent);
         }
 
@@ -133,14 +132,6 @@ public static class TrackDownloader
         var item = req.Item;
         bool videoAvailable = Engines.VideoDownloads && (item.Info?.HasVideo == true || (item.Info == null && item.Kind == MediaKind.Video));
         var existing = target ?? lib.FindByKeys(keys) ?? lib.FindSimilar(meta.Title, meta.Artist, duration);
-        if (existing != null && req.VideoOnly)
-        {
-            // A video found for the song (from its own link, or another one chosen among the search results).
-            if (!videoAvailable) throw new EngineException(L.T("No video found in this link.")) { NoMedia = true };
-            existing.VideoPath = await DownloadVideoAsync(req, progress, ct);
-            lib.Changed(existing);
-            return new TrackResult(existing, TrackOutcome.VideoAdded);
-        }
         if (existing != null && req.Replace)
         {
             await ReplaceAsync(lib, existing, req, videoAvailable, progress, ct);
@@ -158,12 +149,13 @@ public static class TrackDownloader
                 await SaveAudioAsync(lib, existing, req, progress, ct);
                 outcome = TrackOutcome.Saved;
             }
-            if (!req.WantVideo || existing.HasVideo || !videoAvailable)
+            if (!req.WantVideo || existing.HasVideo || !videoAvailable) return new TrackResult(existing, outcome);
+            // (its audio just saved stays, with or without the video)
+            try { existing.VideoPath = await DownloadVideoAsync(req, progress, ct); }
+            catch (EngineException ex) when (outcome == TrackOutcome.Saved)
             {
-                if (outcome == TrackOutcome.Saved) lib.Changed(existing);
-                return new TrackResult(existing, outcome);
+                return new TrackResult(existing, outcome, L.T("Video not downloaded:") + " " + ex.Message);
             }
-            existing.VideoPath = await DownloadVideoAsync(req, progress, ct);
             lib.Changed(existing);
             return new TrackResult(existing, outcome == TrackOutcome.Saved ? TrackOutcome.Saved : TrackOutcome.VideoAdded);
         }
@@ -310,6 +302,8 @@ public static class TrackDownloader
         t.Path = path;
         t.CachePath = null;
         t.Unavailable = false;
+        // (now: the video that may follow can fail or be canceled)
+        lib.Changed(t);
         progress(new JobProgress(JobPhase.Done, 100, L.T("Completed")));
     }
 
@@ -321,6 +315,19 @@ public static class TrackDownloader
         var oldAudio = t.HasSavedFile ? t.Path : null;
         var oldVideo = t.HasVideo ? t.VideoPath : null;
         await SaveAudioAsync(lib, t, req, progress, ct);
+        // (a video file heard as the song's audio too: it goes with the old video)
+        if (oldAudio != null && !oldAudio.Equals(t.Path, StringComparison.OrdinalIgnoreCase) && !oldAudio.Equals(oldVideo, StringComparison.OrdinalIgnoreCase) &&
+            OldFiles.Delete(oldAudio) && Path.GetDirectoryName(oldAudio) == Path.GetDirectoryName(t.Path) &&
+            Path.GetExtension(oldAudio).Equals(Path.GetExtension(t.Path), StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                File.Move(t.Path, oldAudio);
+                t.Path = oldAudio;
+                lib.Changed(t);
+            }
+            catch { }
+        }
         if (req.WantVideo && videoAvailable)
         {
             try { t.VideoPath = await DownloadVideoAsync(req, progress, ct); }
@@ -328,16 +335,6 @@ public static class TrackDownloader
             catch (EngineException) { oldVideo = null; }
         }
         else oldVideo = null;
-        if (oldAudio != null && !oldAudio.Equals(t.Path, StringComparison.OrdinalIgnoreCase) && OldFiles.Delete(oldAudio) &&
-            Path.GetDirectoryName(oldAudio) == Path.GetDirectoryName(t.Path) && Path.GetExtension(oldAudio).Equals(Path.GetExtension(t.Path), StringComparison.OrdinalIgnoreCase))
-        {
-            try
-            {
-                File.Move(t.Path, oldAudio);
-                t.Path = oldAudio;
-            }
-            catch { }
-        }
         if (oldVideo != null && !oldVideo.Equals(t.VideoPath, StringComparison.OrdinalIgnoreCase)) OldFiles.Delete(oldVideo);
     }
 
@@ -392,6 +389,10 @@ public static class Importer
     // deleting the song deletes them. Elsewhere songs added from the computer stay where they are.
     public static string? OwnedDir { get; set; }
 
+    // A folder that can't be opened (a disk's "System Volume Information", the old "My Music" inside Documents) is left out, it
+    // doesn't stop the others; what's in the recycle bin was thrown away.
+    private static readonly EnumerationOptions Everywhere = new() { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = 0 };
+
     public static List<string> Expand(IEnumerable<string> paths)
     {
         var list = new List<string>();
@@ -400,7 +401,8 @@ public static class Importer
             try
             {
                 if (Directory.Exists(p))
-                    list.AddRange(Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories).Where(f => Extensions.Contains(Path.GetExtension(f))).OrderBy(f => f));
+                    list.AddRange(Directory.EnumerateFiles(p, "*", Everywhere)
+                        .Where(f => Extensions.Contains(Path.GetExtension(f)) && !f.Contains(@"\$RECYCLE.BIN\", StringComparison.OrdinalIgnoreCase)).OrderBy(f => f));
                 else if (File.Exists(p) && Extensions.Contains(Path.GetExtension(p))) list.Add(p);
             }
             catch { }

@@ -168,65 +168,89 @@ public sealed class VoiceBot
         Changed?.Invoke();
     }
 
+    // Off the internet as the app starts (the Wi-Fi not there yet): tried again until it's back. Once connected, Discord.Net
+    // reconnects by itself.
     private async Task RunAsync(string token, CancellationToken ct)
     {
+        for (bool first = true; ; first = false)
+        {
+            try
+            {
+                await ConnectAsync(token, ct);
+                return;
+            }
+            catch (Exception e) when (!ct.IsCancellationRequested)
+            {
+                if (first) Log(e.ToString());
+                Set(e is Discord.Net.HttpException { HttpCode: System.Net.HttpStatusCode.Unauthorized }
+                    ? L.T("Discord refused the token: copy it again from your application's Bot page")
+                    : L.F("Couldn't connect to Discord: {0}", e.Message));
+                if (e is not (System.Net.Http.HttpRequestException or TimeoutException or OperationCanceledException or IOException or EngineException
+                    or Discord.Net.HttpException { HttpCode: >= System.Net.HttpStatusCode.InternalServerError })) return;
+            }
+            catch { return; }
+            try { await Task.Delay(TimeSpan.FromSeconds(30), ct); }
+            catch (OperationCanceledException) { return; }
+        }
+    }
+
+    private async Task ConnectAsync(string token, CancellationToken ct)
+    {
+        if (!File.Exists(DaveFile))
+        {
+            Set(L.T("Downloading Discord's voice library…"));
+            await DownloadDaveAsync(ct);
+        }
+        UseDave();
+        Set(L.T("Connecting to Discord…"));
+        var client = new DiscordSocketClient(new DiscordSocketConfig
+        {
+            // (neither is privileged: nothing to switch on in the developer portal)
+            GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildVoiceStates,
+            EnableVoiceDaveEncryption = true,
+            LogGatewayIntentWarnings = false,
+        });
+        if (ct.IsCancellationRequested) { client.Dispose(); return; }
+        _client = client;
+        client.Log += m =>
+        {
+            // The voice connection failing (its encryption above all) makes it try again and again, and each try changes
+            // the keys of everyone in the call: the whole call lags. At the first sign it leaves (Abort).
+            // (its failures only: "MLS Failure: …", the welcome refused; "Successfully welcomed to MLS Group" is fine)
+            bool voice = m.Source?.StartsWith("Audio", StringComparison.Ordinal) == true || m.Source?.Contains("dave", StringComparison.OrdinalIgnoreCase) == true;
+            var said = $"{m.Message} {m.Exception?.Message}";
+            bool mls = said.Contains("MLS Failure", StringComparison.OrdinalIgnoreCase) || said.Contains("InvalidCommit", StringComparison.OrdinalIgnoreCase);
+            if (m.Severity <= LogSeverity.Error || mls) Log($"{m.Source}: {m.Message} {m.Exception}");
+            if (voice && (m.Severity <= LogSeverity.Error || mls)) Abort();
+            return Task.CompletedTask;
+        };
+        // (the gateway waits for its handlers: the joins run apart)
+        client.Ready += () =>
+        {
+            _ = Task.Run(() => ReadyAsync(client, ct));
+            return Task.CompletedTask;
+        };
+        client.UserVoiceStateUpdated += (user, before, after) =>
+        {
+            // (a client being stopped says nothing more: a new one may be running already)
+            if (!ct.IsCancellationRequested && user.Id == _owner && _owner != 0)
+            {
+                _target = after.VoiceChannel;
+                _ = Task.Run(() => FollowAsync(ct));
+            }
+            return Task.CompletedTask;
+        };
         try
         {
-            if (!File.Exists(DaveFile))
-            {
-                Set(L.T("Downloading Discord's voice library…"));
-                await DownloadDaveAsync(ct);
-            }
-            UseDave();
-            Set(L.T("Connecting to Discord…"));
-            var client = new DiscordSocketClient(new DiscordSocketConfig
-            {
-                // (neither is privileged: nothing to switch on in the developer portal)
-                GatewayIntents = GatewayIntents.Guilds | GatewayIntents.GuildVoiceStates,
-                EnableVoiceDaveEncryption = true,
-                LogGatewayIntentWarnings = false,
-            });
-            if (ct.IsCancellationRequested) { client.Dispose(); return; }
-            _client = client;
-            client.Log += m =>
-            {
-                // The voice connection failing (its encryption above all) makes it try again and again, and each try changes
-                // the keys of everyone in the call: the whole call lags. At the first sign it leaves (Abort).
-                // (its failures only: "MLS Failure: …", the welcome refused; "Successfully welcomed to MLS Group" is fine)
-                bool voice = m.Source?.StartsWith("Audio", StringComparison.Ordinal) == true || m.Source?.Contains("dave", StringComparison.OrdinalIgnoreCase) == true;
-                var said = $"{m.Message} {m.Exception?.Message}";
-                bool mls = said.Contains("MLS Failure", StringComparison.OrdinalIgnoreCase) || said.Contains("InvalidCommit", StringComparison.OrdinalIgnoreCase);
-                if (m.Severity <= LogSeverity.Error || mls) Log($"{m.Source}: {m.Message} {m.Exception}");
-                if (voice && (m.Severity <= LogSeverity.Error || mls)) Abort();
-                return Task.CompletedTask;
-            };
-            // (the gateway waits for its handlers: the joins run apart)
-            client.Ready += () =>
-            {
-                _ = Task.Run(() => ReadyAsync(client, ct));
-                return Task.CompletedTask;
-            };
-            client.UserVoiceStateUpdated += (user, before, after) =>
-            {
-                // (a client being stopped says nothing more: a new one may be running already)
-                if (!ct.IsCancellationRequested && user.Id == _owner && _owner != 0)
-                {
-                    _target = after.VoiceChannel;
-                    _ = Task.Run(() => FollowAsync(ct));
-                }
-                return Task.CompletedTask;
-            };
             await client.LoginAsync(TokenType.Bot, token);
             await client.StartAsync();
         }
-        catch (Exception e) when (!ct.IsCancellationRequested)
+        catch
         {
-            Log(e.ToString());
-            Set(e is Discord.Net.HttpException { HttpCode: System.Net.HttpStatusCode.Unauthorized }
-                ? L.T("Discord refused the token: copy it again from your application's Bot page")
-                : L.F("Couldn't connect to Discord: {0}", e.Message));
+            // (Stop may have taken it already)
+            if (Interlocked.CompareExchange(ref _client, null, client) == client) client.Dispose();
+            throw;
         }
-        catch { }
     }
 
     // Connected (again): whose bot it is, and where they are now.

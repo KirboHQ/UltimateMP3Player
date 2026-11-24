@@ -21,15 +21,21 @@ public sealed class GlassBackdrop
         };
         // (glass chosen or left, light or dark: Themes.Apply; the accent moved, the theme RGB going round or the custom colour being
         // chosen: only a picture made of the theme's colours follows it, Update sees to that)
-        Themes.Changed += () =>
-        {
-            if (ReferenceEquals(_main.Host.Session, _main)) Update();
-        };
-        Themes.AccentChanged += () =>
-        {
-            if (ReferenceEquals(_main.Host.Session, _main)) Update();
-        };
+        Themes.Changed += OnTheme;
+        Themes.AccentChanged += OnTheme;
         Update();
+    }
+
+    private void OnTheme()
+    {
+        if (ReferenceEquals(_main.Host.Session, _main)) Update();
+    }
+
+    // The session is over (another profile, another language): the theme's events would keep all of it in memory.
+    public void Detach()
+    {
+        Themes.Changed -= OnTheme;
+        Themes.AccentChanged -= OnTheme;
     }
 
     // (the newest picture asked for wins: one made before it may come back later)

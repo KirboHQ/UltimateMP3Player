@@ -5,10 +5,16 @@
 //   mp3cli songlist [file]
 //   mp3cli shuffle <n> <rounds>
 //   mp3cli saver
+//   mp3cli backup
+//   mp3cli room
 //   mp3cli albums [artist]
 //   mp3cli artist <name> [song titles…]
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Net;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Together;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 if (args.Length < 1) { Console.WriteLine("mp3cli download|import|list|shuffle …"); return 1; }
@@ -696,6 +702,135 @@ switch (args[0])
                       && march is { Plays: 3, Parts.Length: 31, BusiestPart: 9, PreviousSeconds: 0 }
                       && Recap.Make(log, 2025, 5) == null && Recap.Periods(log).Take(4).SequenceEqual(new[] { (2025, 0), (2025, 7), (2025, 3), (2024, 0) });
             Console.WriteLine("recap: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
+    case "backup":
+        {
+            // A restore that can't go through leaves today's data as it was and the app saving; one that can puts back the backup's
+            // and only that. It writes over the data: only with UMP_DATA.
+            if (Environment.GetEnvironmentVariable("UMP_DATA") is not { Length: > 0 })
+            {
+                Console.WriteLine("backup: set UMP_DATA");
+                return 1;
+            }
+            var data = AppPaths.DataDir;
+            string At(string name) => Path.Combine(data, name);
+            void Put(string name, string text)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(At(name))!);
+                File.WriteAllText(At(name), text);
+            }
+            string Read(string name) => File.Exists(At(name)) ? File.ReadAllText(At(name)) : "";
+            Put("library.json", "backup");
+            Put("covers/a.jpg", "a");
+            Put("profiles/p/data.json", "backup");
+            Put("settings.json", "{\"MusicDir\":\"elsewhere\"}");
+            var good = At("good.zip");
+            using (var fs = File.Create(good)) Backup.Write(fs, "device", "1.0", 1, 1);
+            // (a cover that should be a folder: the last entry can't be taken out)
+            var bad = At("bad.zip");
+            File.Copy(good, bad, true);
+            using (var zip = ZipFile.Open(bad, ZipArchiveMode.Update)) zip.CreateEntry("covers/a.jpg/x.txt").Open().Dispose();
+            Put("library.json", "today");
+            Put("library.json.bak", "today");
+            Put("profiles/p/data.json", "today");
+            Put("covers/b.jpg", "b");
+            File.Delete(At("covers/a.jpg"));
+            var here = new AppSettings { MusicDir = "here" };
+            bool failed = false;
+            try { Backup.Restore(bad, here); }
+            catch { failed = true; }
+            bool ok = failed && !JsonStore.Frozen && Read("library.json") == "today" && Read("profiles/p/data.json") == "today" && Read("covers/b.jpg") == "b"
+                      && !File.Exists(At("covers/a.jpg")) && !Directory.Exists(At("restoring"));
+            Backup.Restore(good, here);
+            ok &= JsonStore.Frozen && Read("library.json") == "backup" && Read("profiles/p/data.json") == "backup" && Read("covers/a.jpg") == "a"
+                  && !File.Exists(At("covers/b.jpg")) && !File.Exists(At("library.json.bak")) && Read("settings.json").Contains("\"here\"")
+                  && !Directory.Exists(At("restoring"));
+            Console.WriteLine("backup: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
+    case "room":
+        {
+            // A room on this computer only: strangers (no hello yet) send no files, the host's id and a guest's don't open the door
+            // without the password, a member's files stay inside their folder and their size, a whole list added goes out once.
+            TogetherSession.ListenOn = IPAddress.Loopback;
+            var todo = new BlockingCollection<Action>();
+            new Thread(() => { foreach (var a in todo.GetConsumingEnumerable()) a(); }) { IsBackground = true }.Start();
+            T On<T>(Func<T> f)
+            {
+                var t = new TaskCompletionSource<T>();
+                todo.Add(() => t.SetResult(f()));
+                return t.Task.Result;
+            }
+            var dir = Path.Combine(Path.GetTempPath(), "ump-room-" + Ids.New());
+            Directory.CreateDirectory(Path.Combine(dir, "in"));
+            var received = new List<string>();
+            var host = new TogetherSession(new Member { Id = "host", Name = "Host" }, todo.Add)
+            {
+                TempFile = (id, ext) => Path.Combine(dir, "in", id + ext),
+            };
+            host.FileReceived += (id, _) => received.Add(id);
+            On(() => { host.Create(new RoomOptions { Name = "r", Password = "pw", DefaultPerms = Perm.All }); return 0; });
+            async Task<(Connection C, List<Msg> Got)> Knock(Member? me, string? password)
+            {
+                var c = await Connection.ConnectAsync("127.0.0.1", host.ListenPort, TimeSpan.FromSeconds(4));
+                var got = new List<Msg>();
+                c.Message += (_, m) => { lock (got) got.Add(m); };
+                c.Start();
+                if (me != null) c.Send(new Msg { T = "hello", Proto = TogetherSession.Proto, Me = me, Password = password });
+                await Task.Delay(400);
+                return (c, got);
+            }
+            async Task SendFile(Connection c, string id, long size, byte[] bytes)
+            {
+                await c.SendBulkAsync(new Msg { T = "fileStart", Id = id, Size = size, Text = ".mp3" });
+                await c.SendChunkAsync(id, bytes, bytes.Length);
+                await c.SendBulkAsync(new Msg { T = "fileEnd", Id = id, Flag = true });
+                await Task.Delay(400);
+            }
+            int Files() => Directory.GetFiles(dir, "*", SearchOption.AllDirectories).Length;
+
+            var (stranger, _) = await Knock(null, null);
+            await SendFile(stranger, "abc", 3, new byte[3]);
+            bool ok = received.Count == 0 && Files() == 0;
+            Console.WriteLine("  a stranger's file: " + (ok ? "ok" : "SBAGLIATO"));
+
+            var (fake, _) = await Knock(new Member { Id = "host", Name = "Fake" }, null);
+            bool door = fake.IsClosed && On(() => host.Members.Count) == 1;
+            var (guest, _) = await Knock(new Member { Id = "guest", Name = "Guest" }, "pw");
+            var (thief, refused) = await Knock(new Member { Id = "guest", Name = "Thief" }, null);
+            door &= On(() => host.Members.Count) == 2 && On(() => host.Members[1].Name) == "Guest" && !guest.IsClosed
+                    && refused.Any(m => m.T == "deny") && refused.All(m => m.T != "welcome");
+            // (the guest back after losing the connection)
+            var (back, seen) = await Knock(new Member { Id = "guest", Name = "Guest" }, "pw");
+            door &= seen.Any(m => m.T == "welcome");
+            Console.WriteLine("  the password: " + (door ? "ok" : "SBAGLIATO"));
+
+            await SendFile(back, "../out", 3, new byte[3]);
+            await SendFile(back, "big", 3, new byte[10]);
+            bool inside = received.Count == 0 && Files() == 0;
+            await SendFile(back, "fine", 3, new byte[3]);
+            inside &= received.SequenceEqual(new[] { "fine" }) && Files() == 1;
+            Console.WriteLine("  a member's files: " + (inside ? "ok" : "SBAGLIATO"));
+
+            lock (seen) seen.Clear();
+            On(() =>
+            {
+                for (int i = 0; i < 100; i++) host.Add(new RoomTrack { Title = "Song " + i }, i % 2 == 0 ? new byte[200] : null, false);
+                return 0;
+            });
+            await Task.Delay(800);
+            List<Msg> queues;
+            lock (seen) queues = seen.Where(m => m.T == "queue").ToList();
+            bool once = queues.Count is >= 1 and <= 3 && queues[^1].Queue!.Count == 99 && queues[^1].Current?.Title == "Song 0";
+            Console.WriteLine($"  a list added, {queues.Count} messages: " + (once ? "ok" : "SBAGLIATO"));
+
+            host.Dispose();
+            try { Directory.Delete(dir, true); } catch { }
+            ok &= door && inside && once;
+            Console.WriteLine("room: " + (ok ? "ok" : "SBAGLIATO"));
             return ok ? 0 : 1;
         }
 

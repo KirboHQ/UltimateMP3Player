@@ -41,8 +41,6 @@ public static class Converters
 
     // A Segoe code from a view model (a cloud or a warning sign) to the bundled font's.
     public static readonly IValueConverter Glyph = new FuncValueConverter<string?, string>(s => Icons.Map(s ?? ""));
-
-    public static readonly IValueConverter HeartFont =new FuncValueConverter<bool, Avalonia.Media.FontFamily>(fav => fav ? Icons.Filled : Icons.Regular);
 }
 
 // A list of songs (a ListBox whose rows are SongItems): with its Selection, found by the rows' ticks and long presses.

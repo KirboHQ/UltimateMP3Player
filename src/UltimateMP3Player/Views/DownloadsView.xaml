@@ -149,13 +149,22 @@
                             </StackPanel>
                         </Button>
                         <!-- heard now, only in the cache (saved later from the song's menu); in a room: into the room's queue the same way -->
-                        <Button Style="{StaticResource GhostButton}" Padding="18,10" Margin="10,24,0,0" VerticalAlignment="Center" Command="{Binding ListenCommand}"
-                                ToolTip="{Binding ListenTip}" ToolTipService.ShowOnDisabled="True">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="{Binding ListenGlyph}" Style="{StaticResource Glyph}"/>
-                                <TextBlock Text="{Binding ListenLabel}" Margin="8,0,0,0"/>
-                            </StackPanel>
-                        </Button>
+                        <StackPanel Orientation="Horizontal" Margin="10,24,0,0" VerticalAlignment="Center">
+                            <Button Style="{StaticResource GhostButton}" Padding="18,10" Command="{Binding ListenCommand}"
+                                    ToolTip="{Binding ListenTip}" ToolTipService.ShowOnDisabled="True">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding ListenGlyph}" Style="{StaticResource Glyph}"/>
+                                    <TextBlock Text="{Binding ListenLabel}" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </Button>
+                            <!-- without stopping what plays -->
+                            <Button Style="{StaticResource IconButton}" Content="&#xE893;" Margin="6,0,0,0" Command="{Binding NextCommand}"
+                                    Visibility="{Binding ShowQueue, Converter={StaticResource BoolVis}}"
+                                    ToolTip="{local:T 'Play next'}" AutomationProperties.Name="{local:T 'Play next'}"/>
+                            <Button Style="{StaticResource IconButton}" Content="&#xE8FD;" Margin="2,0,0,0" Command="{Binding QueueCommand}"
+                                    Visibility="{Binding ShowQueue, Converter={StaticResource BoolVis}}"
+                                    ToolTip="{local:T 'Add to queue'}" AutomationProperties.Name="{local:T 'Add to queue'}"/>
+                        </StackPanel>
                     </WrapPanel>
 
                     <!-- entries of a playlist / album -->

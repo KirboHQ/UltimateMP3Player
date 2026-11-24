@@ -70,8 +70,9 @@ public sealed class RelayCommand : ICommand
 
     public event EventHandler? CanExecuteChanged
     {
-        add => CommandManager.RequerySuggested += value;
-        remove => CommandManager.RequerySuggested -= value;
+        // (one that can always run has nothing to be asked again at every click and key)
+        add { if (_can != null) CommandManager.RequerySuggested += value; }
+        remove { if (_can != null) CommandManager.RequerySuggested -= value; }
     }
 
     public bool CanExecute(object? parameter) => _can?.Invoke(parameter) ?? true;
@@ -485,12 +486,15 @@ public static class FrameClock
     public static void Remove(EventHandler handler) => CompositionTarget.Rendering -= handler;
 }
 
-// Covers from disk at display size, cached while in use.
+// Covers from disk at display size, cached while in use; the last ones up to KeepBytes also when not.
 public static class Images
 {
     private static readonly Dictionary<string, WeakReference<BitmapSource>> Cache = new();
     private static readonly LinkedList<BitmapSource> Recent = new();
-    private const int KeepStrong = 120;
+    private const long KeepBytes = 40L << 20;
+    private static long _bytes;
+
+    private static long BytesOf(BitmapSource img) => (long)img.PixelWidth * img.PixelHeight * 4;
 
     public static BitmapSource? TryGet(string path, int size, int version)
     {
@@ -511,7 +515,12 @@ public static class Images
         {
             Cache[key] = new WeakReference<BitmapSource>(img);
             Recent.AddFirst(img);
-            while (Recent.Count > KeepStrong) Recent.RemoveLast();
+            _bytes += BytesOf(img);
+            while (_bytes > KeepBytes && Recent.Count > 1 && Recent.Last is { } last)
+            {
+                Recent.RemoveLast();
+                _bytes -= BytesOf(last.Value);
+            }
             if (Cache.Count > 4000)
                 foreach (var k in Cache.Where(kv => !kv.Value.TryGetTarget(out _)).Select(kv => kv.Key).ToList()) Cache.Remove(k);
         }
@@ -528,12 +537,19 @@ public static class Images
             bi.CacheOption = BitmapCacheOption.OnLoad;
             bi.CreateOptions = BitmapCreateOptions.IgnoreColorProfile | BitmapCreateOptions.IgnoreImageCache;
             bi.UriSource = new Uri(path);
-            if (size > 0) bi.DecodePixelWidth = size;
+            // (a smaller cover isn't made bigger: 300 pixels drawn as 600 look the same and take four times the memory)
+            if (size > 0 && (size <= 256 || WidthOf(path) > size)) bi.DecodePixelWidth = size;
             bi.EndInit();
             bi.Freeze();
             return bi;
         }
         catch { return null; }
+    }
+
+    private static int WidthOf(string path)
+    {
+        using var s = File.OpenRead(path);
+        return BitmapDecoder.Create(s, BitmapCreateOptions.DelayCreation | BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.None).Frames[0].PixelWidth;
     }
 
     // Drops strong references when closed to the tray.
@@ -542,6 +558,7 @@ public static class Images
         lock (Cache)
         {
             Recent.Clear();
+            _bytes = 0;
             Cache.Clear();
         }
     }

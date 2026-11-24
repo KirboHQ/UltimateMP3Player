@@ -8,29 +8,11 @@ public sealed class Selection
 
     public string Spec => Video != null && Audio != null ? $"{Video.Id}+{Audio.Id}" : (Video ?? Audio)!.Id;
     public bool Merge => Video != null && Audio != null;
-
-    public long? EstimatedSize
-    {
-        get
-        {
-            long total = 0;
-            foreach (var f in new[] { Video, Audio })
-            {
-                if (f == null) continue;
-                if (f.Size is not > 0) return null;
-                total += f.Size.Value;
-            }
-            return total > 0 ? total : null;
-        }
-    }
 }
 
 // Picks yt-dlp format ids for the user's options.
 public static class FormatSelector
 {
-    public static readonly int[] StandardRes = { 4320, 2160, 1440, 1080, 720, 480, 360, 240, 144 };
-    public static readonly int[] StandardFps = { 60, 50, 30, 25, 24, 15 };
-
     public static IEnumerable<YtFormat> VideoFormats(YtInfo i) => i.Formats.Where(f => f.HasVideo && !f.IsStoryboard);
     public static IEnumerable<YtFormat> AudioOnlyFormats(YtInfo i) => i.Formats.Where(f => f.HasAudio && !f.HasVideo && !f.IsStoryboard);
 

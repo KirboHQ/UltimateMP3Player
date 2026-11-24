@@ -32,7 +32,7 @@ public static partial class Dialogs
             stack.Children.Add(new TextBlock
             {
                 Text = L.F("{0} new versions: open one to see what changed.", notes.Count), TextWrapping = TextWrapping.Wrap,
-                Foreground = Res("SubTextBrush"), Margin = new Thickness(0, 0, 0, 12),
+                Foreground = Both.Brush("SubTextBrush"), Margin = new Thickness(0, 0, 0, 12),
             });
             foreach (var n in notes) stack.Children.Add(NoteCard(n));
         }
@@ -56,11 +56,11 @@ public static partial class Dialogs
     private static StackPanel NoteTitle(ReleaseNote n)
     {
         var s = new StackPanel();
-        s.Children.Add(new TextBlock { Text = n.VersionText, Foreground = Res("AccentTextBrush"), FontWeight = FontWeights.SemiBold, FontSize = 12.5 });
+        s.Children.Add(new TextBlock { Text = n.VersionText, Foreground = Both.Brush("AccentTextBrush"), FontWeight = FontWeights.SemiBold, FontSize = 12.5 });
         if (n.Title.Length > 0)
             s.Children.Add(new TextBlock
             {
-                Text = n.Title, Foreground = Res("TextBrush"), FontWeight = FontWeights.Bold, FontSize = 16, TextWrapping = TextWrapping.Wrap,
+                Text = n.Title, Foreground = Both.Brush("TextBrush"), FontWeight = FontWeights.Bold, FontSize = 16, TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 2, 0, 0),
             });
         return s;
@@ -77,7 +77,7 @@ public static partial class Dialogs
             var text = new TextBlock
             {
                 TextWrapping = TextWrapping.Wrap, LineHeight = 20, FontSize = heading ? 15 : 14,
-                Foreground = Res(heading ? "TextBrush" : b.Kind == NoteKind.Quote ? "MutedBrush" : "SubTextBrush"),
+                Foreground = Both.Brush(heading ? "TextBrush" : b.Kind == NoteKind.Quote ? "MutedBrush" : "SubTextBrush"),
                 FontWeight = heading ? FontWeights.Bold : FontWeights.Normal,
             };
             foreach (var r in b.Runs)
@@ -86,7 +86,7 @@ public static partial class Dialogs
                 if (r.Bold && !heading)
                 {
                     run.FontWeight = FontWeights.SemiBold;
-                    run.Foreground = Res("TextBrush");
+                    run.Foreground = Both.Brush("TextBrush");
                 }
                 text.Inlines.Add(run);
             }
@@ -94,14 +94,14 @@ public static partial class Dialogs
             if (b.Kind == NoteKind.Bullet)
             {
                 var row = new DockPanel();
-                var dot = new TextBlock { Text = "•", Foreground = Res("AccentTextBrush"), FontWeight = FontWeights.Bold, Margin = new Thickness(2, 0, 10, 0) };
+                var dot = new TextBlock { Text = "•", Foreground = Both.Brush("AccentTextBrush"), FontWeight = FontWeights.Bold, Margin = new Thickness(2, 0, 10, 0) };
                 DockPanel.SetDock(dot, Dock.Left);
                 row.Children.Add(dot);
                 row.Children.Add(text);
                 e = row;
             }
             else if (b.Kind == NoteKind.Quote)
-                e = new Border { BorderBrush = Res("AccentBrush"), BorderThickness = new Thickness(3, 0, 0, 0), Padding = new Thickness(10, 2, 0, 2), Child = text };
+                e = new Border { BorderBrush = Both.Brush("AccentBrush"), BorderThickness = new Thickness(3, 0, 0, 0), Padding = new Thickness(10, 2, 0, 2), Child = text };
             e.Margin = new Thickness(0, s.Children.Count == 0 ? 0 : heading ? 14 : 6, 0, heading ? 2 : 0);
             s.Children.Add(e);
         }
@@ -116,7 +116,7 @@ public static partial class Dialogs
         body.Visibility = Visibility.Collapsed;
         var chevron = new TextBlock
         {
-            Text = "\uE70D", Style = (Style)Application.Current.Resources["Glyph"], FontSize = 11, Foreground = Res("MutedBrush"),
+            Text = "\uE70D", Style = (Style)Application.Current.Resources["Glyph"], FontSize = 11, Foreground = Both.Brush("MutedBrush"),
             VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 0, 0),
         };
         var head = new DockPanel();
@@ -137,6 +137,6 @@ public static partial class Dialogs
         var stack = new StackPanel();
         stack.Children.Add(button);
         stack.Children.Add(body);
-        return new Border { Background = Res("Surface2Brush"), CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 0, 0, 8), Child = stack };
+        return new Border { Background = Both.Brush("Surface2Brush"), CornerRadius = new CornerRadius(12), Margin = new Thickness(0, 0, 0, 8), Child = stack };
     }
 }

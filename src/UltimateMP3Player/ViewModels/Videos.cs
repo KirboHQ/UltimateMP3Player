@@ -11,8 +11,8 @@ namespace UltimateMP3Player.ViewModels;
 public sealed class VideosViewModel
 {
     private readonly MainViewModel _main;
-    // Videos coming, by song id.
-    private readonly Dictionary<string, CancellationTokenSource> _coming = new();
+    // Videos coming, by song id (one chosen by hand comes whatever plays meanwhile).
+    private readonly Dictionary<string, (CancellationTokenSource Cts, bool ByHand)> _coming = new();
 
     public VideosViewModel(MainViewModel main) => _main = main;
 
@@ -46,10 +46,10 @@ public sealed class VideosViewModel
         var now = p.Current?.T;
         var next = p.NextTrack;
         // (the ones no longer wanted stop coming)
-        foreach (var (id, cts) in _coming.ToList())
-            if (id != now?.Id && id != next?.Id)
+        foreach (var (id, coming) in _coming.ToList())
+            if (!coming.ByHand && id != now?.Id && id != next?.Id)
             {
-                cts.Cancel();
+                coming.Cts.Cancel();
                 _coming.Remove(id);
             }
         if (now != null) _ = BringAsync(now);
@@ -78,7 +78,7 @@ public sealed class VideosViewModel
         var known = Cache.Known(keys);
         if (!S.AutoVideos && !known.Chosen || !NetworkOk || known.None && known.Url == null) return;
         var cts = new CancellationTokenSource();
-        _coming[t.Id] = cts;
+        _coming[t.Id] = (cts, false);
         try
         {
             var url = known.Url;
@@ -99,7 +99,7 @@ public sealed class VideosViewModel
         catch (Exception ex) { App.Log(ex); }
         finally
         {
-            if (_coming.TryGetValue(t.Id, out var c) && c == cts) _coming.Remove(t.Id);
+            if (_coming.TryGetValue(t.Id, out var c) && c.Cts == cts) _coming.Remove(t.Id);
             cts.Dispose();
         }
     }
@@ -121,9 +121,9 @@ public sealed class VideosViewModel
         }
         Cache.SetUrl(VideoCache.KeysOf(t), url, chosen: true);
         _main.Profile.SetNoVideo(NameOf(t), false);
-        if (_coming.Remove(t.Id, out var old)) old.Cancel();
+        if (_coming.Remove(t.Id, out var old)) old.Cts.Cancel();
         var cts = new CancellationTokenSource();
-        _coming[t.Id] = cts;
+        _coming[t.Id] = (cts, true);
         _main.Toast(L.F("Downloading the video of “{0}”…", t.Title));
         try
         {
@@ -138,7 +138,7 @@ public sealed class VideosViewModel
         }
         finally
         {
-            if (_coming.TryGetValue(t.Id, out var c) && c == cts) _coming.Remove(t.Id);
+            if (_coming.TryGetValue(t.Id, out var c) && c.Cts == cts) _coming.Remove(t.Id);
             cts.Dispose();
         }
     }
@@ -147,7 +147,7 @@ public sealed class VideosViewModel
     public void SetOff(Track t, bool off)
     {
         _main.Profile.SetNoVideo(NameOf(t), off);
-        if (off && _coming.Remove(t.Id, out var cts)) cts.Cancel();
+        if (off && _coming.Remove(t.Id, out var coming)) coming.Cts.Cancel();
         if (_main.Player.Current?.T == t) _main.NowPlaying.Refresh();
         if (!off) OnSong();
         _main.Toast(off ? L.F("No video for “{0}” from now on", t.Title) : L.F("“{0}” shows its video again", t.Title));

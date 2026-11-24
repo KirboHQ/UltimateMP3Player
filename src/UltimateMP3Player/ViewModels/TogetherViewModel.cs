@@ -1721,6 +1721,7 @@ public sealed class TogetherViewModel : Observable
                 cloud.Loudness ??= r.Loudness;
                 cloud.Peak ??= r.Peak;
                 _main.Library.Changed(cloud);
+                _main.Profile.Own(new[] { cloud.Id });
                 if (playlist != null) _main.Profile.AddTrack(playlist, cloud.Id);
                 _fetcher?.UseLibrary(r.Id, cloud);
                 if (Cache.Contains(from)) Cache.Forget(from);
