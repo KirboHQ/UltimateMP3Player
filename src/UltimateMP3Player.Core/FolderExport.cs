@@ -90,8 +90,7 @@ public static class FolderExport
     private static string NameFor(Track t, HashSet<string> taken)
     {
         var raw = string.IsNullOrWhiteSpace(t.Artist) ? t.Title : $"{t.Artist.Split(',')[0].Trim()} - {t.Title}";
-        var name = Regex.Replace(Unsafe.Replace(raw, " "), @"\s+", " ").Trim().TrimEnd('.', ' ');
-        if (name.Length > 120) name = name[..120].TrimEnd('.', ' ');
+        var name = Text.Shorten(Regex.Replace(Unsafe.Replace(raw, " "), @"\s+", " ").Trim().TrimEnd('.', ' '));
         if (name.Length == 0) name = "Song";
         var unique = name;
         for (int n = 2; !taken.Add(unique + ".mp3"); n++) unique = $"{name} ({n})";

@@ -25,7 +25,6 @@ public sealed class VideoView : Control
 
     private sealed record Frame(double Time, byte[] Pixels);
 
-    private readonly object _lock = new();
     private string? _path;
     private int _width, _height;
     private double _fps = 25;

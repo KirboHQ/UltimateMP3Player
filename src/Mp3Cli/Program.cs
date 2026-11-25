@@ -9,6 +9,7 @@
 //   mp3cli fromcomputer
 //   mp3cli backup
 //   mp3cli room
+//   mp3cli link
 //   mp3cli albums [artist]
 //   mp3cli artist <name> [song titles…]
 using System.Collections.Concurrent;
@@ -16,6 +17,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Net;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Link;
 using UltimateMP3Player.Core.Together;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -117,8 +119,15 @@ switch (args[0])
             bool artist = lib.FindSimilar("Another Name", "Janji Music", 208) == a && lib.FindSimilar("Another Name", "Janji", 208) == null;
             lib.Remove(a);
             bool removed = lib.FindSimilar("Another Name", "Janji Music", 208) == null;
-            bool ok = found && renamed && artist && removed;
-            Console.WriteLine($"similar: {(ok ? "ok" : "SBAGLIATO")} (found={found} byName={byName} duplicates={dup} renamed={renamed} artist={artist} removed={removed})");
+            // Two videos told apart by the link's query are two; one shared from elsewhere is the same.
+            string UrlOf(string url) => SourceKeys.ForItem(new MediaItem { Title = "x", Source = SourceKind.YtDlp, Url = url }).Single();
+            bool links = UrlOf("https://www.facebook.com/watch/?v=111") != UrlOf("https://www.facebook.com/watch/?v=222") &&
+                         UrlOf("https://music.163.com/song?id=111&uct=x") != UrlOf("https://music.163.com/song?uct=x&id=222") &&
+                         UrlOf("https://www.bilibili.com/video/BV1bK411W797?p=1") != UrlOf("https://www.bilibili.com/video/BV1bK411W797?p=2") &&
+                         UrlOf("https://www.facebook.com/watch/?ref=a&v=111") == UrlOf("https://www.facebook.com/watch?v=111&ref=b") &&
+                         UrlOf("https://soundcloud.com/a/b?ref=clipboard&p=a&c=1&si=x") == "url:soundcloud.com/a/b";
+            bool ok = found && renamed && artist && removed && links;
+            Console.WriteLine($"similar: {(ok ? "ok" : "SBAGLIATO")} (found={found} byName={byName} duplicates={dup} renamed={renamed} artist={artist} removed={removed} links={links})");
             return ok ? 0 : 1;
         }
 
@@ -277,6 +286,36 @@ switch (args[0])
                 && RenewalRules.Parse("{\"event\":\"error\",\"message\":\"m\"}") is { Message: "m" }
                 && RenewalRules.Parse("{\"event\":\"done\",\"expires\":-5,\"progress\":\"x\"}") is { Expires: null }
                 && RenewalRules.Parse("not json") == null && RenewalRules.Parse("[1]") == null && RenewalRules.Parse("{\"stage\":1}") == null, "the library's lines");
+            // Signing in to Apple again (the installer's ask_code, with isideload's words in it).
+            Is(RenewalRules.Parse("{\"event\":\"ask\",\"what\":\"password\"}") is { Name: "ask", What: "password", Sms: false, Failed: false, Error: "", Numbers.Count: 0 }
+                && RenewalRules.Parse("{\"event\":\"account\",\"email\":\"a@b.c\"}") is { Name: "account", Email: "a@b.c" }
+                && RenewalRules.Parse("{\"event\":\"account\",\"email\":null}") is { Name: "account", Email: "" }, "a password asked for, and who it's of");
+            Is(RenewalRules.Parse("{\"event\":\"ask\",\"what\":\"code\",\"sms\":false,\"failed\":false,\"error\":null,\"numbers\":[{\"id\":1,\"number\":\"+39 ••• ••• ••12\"},{\"id\":2,\"number\":\"+1 ••7\"}]}")
+                    is { What: "code", Sms: false, Failed: false, Error: "", Numbers: [(1, "+39 ••• ••• ••12"), (2, "+1 ••7")] }
+                && RenewalRules.Parse("{\"event\":\"ask\",\"what\":\"code\",\"sms\":true,\"failed\":true,\"error\":\"Too many - Wait\",\"numbers\":[]}")
+                    is { Sms: true, Failed: true, Error: "Too many - Wait", Numbers.Count: 0 }
+                && RenewalRules.Parse("{\"event\":\"ask\",\"what\":\"code\",\"numbers\":[7,null,{\"id\":-1,\"number\":\"x\"},{\"id\":\"1\",\"number\":\"x\"},{\"id\":1},{\"id\":3,\"number\":\"y\"}]}")
+                    is { Numbers: [(3, "y")] }
+                && RenewalRules.Parse("{\"event\":\"ask\",\"what\":\"code\",\"sms\":1,\"failed\":\"yes\",\"error\":3,\"numbers\":{}}") is { Sms: false, Failed: false, Error: "", Numbers.Count: 0 }, "a code asked for");
+            foreach (var (problem, said) in new[]
+            {
+                (SignInProblem.Password, "Auth error -20101: Your Apple ID or password was incorrect.|Auth error -22406: x|Auth error -20970: Your account information was entered incorrectly.|x entered incorrectly|Incorrect password|invalid credentials"),
+                (SignInProblem.Code, "-21669 - Incorrect Verification Code|Auth error -22951: x|Incorrect Verification Code - The code you typed isn't right"),
+                (SignInProblem.Refused, "Auth error -80045: x|Auth error -80046: x|Auth error -36607: x|HTTP 503|HTTP status server error (503 Service Temporarily Unavailable) for url (https://gsa.apple.com/x)|This action cannot be completed at this time"),
+                (SignInProblem.Internet, "error sending request for url (https://gsa.apple.com/)|tcp connect error|dns error|Failed to get anisette data for login|Failed to parse URL Bag plist"),
+                (SignInProblem.Other, "Additional authentication required: x|No 2FA code provided, aborting|Couldn't login after 15 attempts|"),
+            })
+                foreach (var message in said.Split('|')) Is(RenewalRules.SignIn(message) == problem, "a sign-in's error: " + message);
+            bool english = L.English;
+            foreach (var which in new[] { "en", "it" })
+            {
+                L.English = which == "en";
+                var whys = Enum.GetValues<SignInProblem>().Select(p => RenewalRules.Why(p)).ToList();
+                Is(whys[0] == "" && whys.Skip(1).All(w => w.Length > 20) && whys.Distinct().Count() == whys.Count && RenewalRules.Why(SignInProblem.Other, "x").EndsWith("\nx"), "each sign-in's error has its own words: " + which);
+                Is(whys[1].StartsWith(which == "it" ? "Password sbagliata" : "Wrong password") && whys[2].StartsWith(which == "it" ? "Quel codice" : "That code") && whys[3].Contains(which == "it" ? "rifiuta" : "refusing")
+                    && whys[4].Contains("anisette") && whys[5].StartsWith(which == "it" ? "Qualcosa" : "Something"), "and the right ones: " + which);
+            }
+            L.English = english;
             double before = 0;
             foreach (var stage in new[] { "Downloading", "Preparing", "Signing", "Installing" })
             {
@@ -544,6 +583,15 @@ switch (args[0])
             File.WriteAllText(log, new string('x', 1 << 20) + "\n\n[old]\n\n");
             AppPaths.AppendLog("[new]\n\n", log);
             ok &= File.ReadAllText(log) == "[old]\n\n[new]\n\n";
+            // A file another program holds for a moment is read once it's let go, not replaced by the version before.
+            var held = Path.Combine(Path.GetTempPath(), "ump-saver-test.json");
+            File.WriteAllText(held + ".bak", "[1]");
+            File.WriteAllText(held, "[1,2]");
+            var hold = new FileStream(held, FileMode.Open, FileAccess.Read, FileShare.None);
+            var letGo = Task.Delay(300).ContinueWith(_ => hold.Dispose());
+            ok &= JsonStore.Load<List<int>>(held).Count == 2;
+            await letGo;
+            foreach (var f in new[] { held, held + ".bak", held + ".unreadable" }) File.Delete(f);
             File.Delete(log);
             Console.WriteLine("saver: " + (ok ? "ok" : "SBAGLIATO"));
             return ok ? 0 : 1;
@@ -1034,6 +1082,18 @@ switch (args[0])
             Put("settings.json", "{\"MusicDir\":\"elsewhere\"}");
             var good = At("good.zip");
             using (var fs = File.Create(good)) Backup.Write(fs, "device", "1.0", 1, 1);
+            // (the library can't be read: no backup without it, one without a picture is a backup)
+            bool whole = true;
+            using (new FileStream(At("covers/a.jpg"), FileMode.Open, FileAccess.Read, FileShare.None))
+                Backup.Write(new MemoryStream(), "device", "1.0", 1, 1);
+            using (new FileStream(At("library.json"), FileMode.Open, FileAccess.Read, FileShare.None))
+                try
+                {
+                    Backup.Write(new MemoryStream(), "device", "1.0", 1, 1);
+                    whole = false;
+                }
+                catch (IOException) { }
+            if (!whole) Console.WriteLine("SBAGLIATO: a backup without the library");
             // (a cover that should be a folder: the last entry can't be taken out)
             var bad = At("bad.zip");
             File.Copy(good, bad, true);
@@ -1047,7 +1107,7 @@ switch (args[0])
             bool failed = false;
             try { Backup.Restore(bad, here); }
             catch { failed = true; }
-            bool ok = place && failed && !JsonStore.Frozen && Read("library.json") == "today" && Read("profiles/p/data.json") == "today" && Read("covers/b.jpg") == "b"
+            bool ok = place && whole && failed && !JsonStore.Frozen && Read("library.json") == "today" && Read("profiles/p/data.json") == "today" && Read("covers/b.jpg") == "b"
                       && !File.Exists(At("covers/a.jpg")) && !Directory.Exists(At("restoring"));
             Backup.Restore(good, here);
             ok &= JsonStore.Frozen && Read("library.json") == "backup" && Read("profiles/p/data.json") == "backup" && Read("covers/a.jpg") == "a"
@@ -1133,10 +1193,103 @@ switch (args[0])
             bool once = queues.Count is >= 1 and <= 3 && queues[^1].Queue!.Count == 99 && queues[^1].Current?.Title == "Song 0";
             Console.WriteLine($"  a list added, {queues.Count} messages: " + (once ? "ok" : "SBAGLIATO"));
 
+            var odd = Msg.From("""{"T":"add","Track":{"Title":"x","Keys":null},"Queue":[null,{"Keys":["a",null]}],"Members":[{"Name":null}],"Files":{"a":null},"AllFiles":{"b":null,"c":{"d":null}}}"""u8);
+            bool tidy = odd is { Track.Keys.Count: 0, Queue: [{ Keys: ["a"], Title: "" }], Members: [{ Name: "" }], Files.Count: 0, AllFiles.Count: 1 } && odd.AllFiles["c"].Count == 0;
+            Console.WriteLine("  a message with nulls: " + (tidy ? "ok" : "SBAGLIATO"));
+
             host.Dispose();
             try { Directory.Delete(dir, true); } catch { }
-            ok &= door && inside && once;
+            ok &= door && inside && once && tidy;
             Console.WriteLine("room: " + (ok ? "ok" : "SBAGLIATO"));
+            return ok ? 0 : 1;
+        }
+
+    case "link":
+        {
+            // The computer's end of "Connect phone": what the phone sends right behind its welcome (asking for the music) isn't lost.
+            int got = 0;
+            for (int i = 0; i < 5; i++)
+            {
+                var l = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
+                l.Start();
+                _ = Task.Run(async () =>
+                {
+                    var c = new Connection(await l.AcceptTcpClientAsync());
+                    c.Message += (_, m) =>
+                    {
+                        if (m.T != "hello") return;
+                        c.Send(new Msg { T = "welcome", Text = "t", Me = new Member { Id = "a", Name = "phone" } });
+                        c.Send(new Msg { T = "libAsk", Text = "l1" });
+                    };
+                    c.Start();
+                });
+                var ui = new OneThread();
+                var done = new TaskCompletionSource();
+                ui.Post(async () =>
+                {
+                    var ad = new PhoneAd { Id = "a", Name = "phone", Ip = "127.0.0.1", Port = ((IPEndPoint)l.LocalEndpoint).Port, Proto = LinkEnd.Proto };
+                    var link = new PhoneLink(ad, new Member { Id = "pc", Name = "pc" }, ui.Post);
+                    bool asked = false;
+                    link.Message += m => asked |= m.T == "libAsk";
+                    await link.ConnectAsync();
+                    await Task.Delay(300);
+                    if (asked && link.Status == LinkStatus.Connected) got++;
+                    link.Drop();
+                    done.SetResult();
+                });
+                await done.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                l.Stop();
+                ui.Dispose();
+            }
+            // The phone's end: what it waits on taken away by the system (iOS, the screen locked), it's found and connected to again, by itself
+            // and when the app comes back in front; that doesn't touch a connection that's there.
+            TogetherSession.ListenOn = IPAddress.Loopback;
+            var on = new OneThread();
+            T On<T>(Func<T> f)
+            {
+                var t = new TaskCompletionSource<T>();
+                on.Post(() => t.SetResult(f()));
+                return t.Task.Result;
+            }
+            var phone = On(() => new ComputerLink(new Member { Id = "ph", Name = "phone" }, _ => Task.FromResult(true), on.Post) { Visible = true });
+            object? Part(string name) => typeof(ComputerLink).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(phone);
+            bool Found()
+            {
+                using var udp = new System.Net.Sockets.UdpClient(new IPEndPoint(IPAddress.Loopback, 0));
+                udp.Client.ReceiveTimeout = 1000;
+                var from = new IPEndPoint(IPAddress.Loopback, 0);
+                udp.Send("UMP-LINK?"u8.ToArray(), 9, new IPEndPoint(IPAddress.Loopback, LinkDiscovery.Port));
+                try { return System.Text.Encoding.UTF8.GetString(udp.Receive(ref from)).Contains("\"ph\""); }
+                catch (System.Net.Sockets.SocketException) { return false; }
+            }
+            async Task<bool> Connects(Func<Task>? meanwhile = null)
+            {
+                var ad = new PhoneAd { Id = "ph", Name = "phone", Ip = "127.0.0.1", Port = (int)Part("_port")!, Proto = LinkEnd.Proto };
+                var pc = On(() => new PhoneLink(ad, new Member { Id = "pc", Name = "pc" }, on.Post));
+                var error = await Task.Run(() => On(pc.ConnectAsync));
+                if (meanwhile != null) await meanwhile();
+                bool linked = error == null && On(() => pc.Status) == LinkStatus.Connected && On(() => phone.Status) == LinkStatus.Connected;
+                await Task.Run(() => On(pc.DisconnectAsync));
+                await Task.Delay(300);
+                // (a connection that's over leaves the phone's end closed: the app makes another)
+                phone = On(() => new ComputerLink(new Member { Id = "ph", Name = "phone" }, _ => Task.FromResult(true), on.Post) { Visible = true });
+                return linked;
+            }
+            bool fresh = Found() && await Connects();
+            ((System.Net.Sockets.TcpListener)Part("_listener")!).Server.Dispose();
+            await Task.Delay(1500);
+            bool again = Found() && await Connects();
+            ((System.Net.Sockets.TcpListener)Part("_listener")!).Server.Dispose();
+            On(() => { phone.Reopen(); return 0; });
+            bool front = Found() && await Connects(async () =>
+            {
+                On(() => { phone.Reopen(); return 0; });
+                await Task.Delay(300);
+            });
+            On(() => { phone.Dispose(); return 0; });
+            on.Dispose();
+            bool ok = got == 5 && fresh && again && front;
+            Console.WriteLine($"link: {(ok ? "ok" : "SBAGLIATO")} (asked {got} of 5, found={fresh} taken away={again} back in front={front})");
             return ok ? 0 : 1;
         }
 
@@ -1416,3 +1569,24 @@ foreach (var n in picks)
 }
 lib.SaveNow();
 return 0;
+
+// A thread everything comes back to, like an app's.
+sealed class OneThread : SynchronizationContext, IDisposable
+{
+    private readonly BlockingCollection<Action> _todo = new();
+
+    public OneThread() => new Thread(() =>
+    {
+        SetSynchronizationContext(this);
+        foreach (var a in _todo.GetConsumingEnumerable()) a();
+    }) { IsBackground = true }.Start();
+
+    public void Post(Action a)
+    {
+        try { _todo.Add(a); }
+        catch (InvalidOperationException) { }
+    }
+
+    public override void Post(SendOrPostCallback d, object? state) => Post(() => d(state));
+    public void Dispose() => _todo.CompleteAdding();
+}

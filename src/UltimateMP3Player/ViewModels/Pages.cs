@@ -275,6 +275,7 @@ public sealed class HomeViewModel : Observable
 public sealed class NewPlaylistCard
 {
     public static readonly NewPlaylistCard Instance = new();
+    public override string ToString() => L.T("New playlist");
 }
 
 // Where a page sits among its neighbours (the sidebar's entries, a page's tabs): the page host slides the new one in from that side.

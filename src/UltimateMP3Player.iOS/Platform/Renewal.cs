@@ -16,7 +16,7 @@ namespace UltimateMP3Player.Platform;
 // The app renewing (and updating) itself: what the installer left in Library/Renewal, LocalDevVPN, which lets an app reach the phone
 // it's on, and umprenew, the library that talks to Apple and to the phone (the installer's; tools/ios-deps.sh). Without the library
 // none of this shows. What's in that folder (a token, a key) is only ever handed to the library, never read, logged or copied here; but for
-// one file, "expires", which is only a date.
+// one file, "expires", which is only a date. The same of the password the person signs in to Apple with.
 public static class Renewal
 {
     // Where the phone answers when LocalDevVPN is connected.
@@ -67,6 +67,8 @@ public static class Renewal
     public static bool SideStoreInstalled => CanOpen("sidestore://");
 
     public static bool Busy { get; private set; }
+    // Busy with the person signing in: nothing on its own ends that, only they do.
+    public static bool SigningIn { get; private set; }
     // What it's doing, by the library's name for it ("Downloading" is the app's own), and how far the whole of it is.
     public static string Stage { get; private set; } = "";
     public static double Progress { get; private set; }
@@ -112,12 +114,17 @@ public static class Renewal
         // (set just before being replaced by an update: the app's open again)
         Notices.Cancel("updated");
         KeepOutOfBackups(Folder);
+        _leaving = UIApplication.Notifications.ObserveWillResignActive((_, _) => Leaving?.Invoke());
         try
         {
             foreach (var id in new[] { RenewTask, InstallTask }) BGTaskScheduler.Shared.Register(id, null, OnTask);
         }
         catch (Exception ex) { App.Log(ex); }
     }
+
+    // About to be covered or left (on the screen's thread), before iOS takes the picture of the screen it shows among the open apps.
+    public static event Action? Leaving;
+    private static NSObject? _leaving;
 
     // iCloud's and the Finder's backups would carry the token and the key around (or what's only passing through: FromComputerSheet).
     internal static void KeepOutOfBackups(string folder)
@@ -211,12 +218,15 @@ public static class Renewal
     {
         var ids = new[] { "renewal-1", "renewal-2" };
         int n = 0;
-        bool computer = Problem is RenewalProblem.Cable or RenewalProblem.SignIn;
+        var (title, text) = Problem switch
+        {
+            RenewalProblem.Cable => ("NEEDED: the computer, once", "Ultimate MP3 Player stops opening after {0}. Plug the iPhone into the computer and open the installer: it puts everything right."),
+            // (once it doesn't open there's no signing in from it)
+            RenewalProblem.SignIn => ("NEEDED: sign in to Apple again", "Ultimate MP3 Player stops opening after {0}. Open it before then and sign in to Apple again, in Settings › Renewal: afterwards it takes the computer."),
+            _ => ("NEEDED: turn on LocalDevVPN", "Ultimate MP3 Player stops opening after {0}. Turn on LocalDevVPN and open the app: it renews itself."),
+        };
         if (HasKeys && Expires is { } e)
-            foreach (var at in RenewalRules.Reminders(e, DateTime.UtcNow))
-                Notices.Schedule(ids[n++], L.T(computer ? "NEEDED: the computer, once" : "NEEDED: turn on LocalDevVPN"),
-                    L.F(computer ? "Ultimate MP3 Player stops opening after {0}. Plug the iPhone into the computer and open the installer: it puts everything right."
-                        : "Ultimate MP3 Player stops opening after {0}. Turn on LocalDevVPN and open the app: it renews itself.", Day(e)), at);
+            foreach (var at in RenewalRules.Reminders(e, DateTime.UtcNow)) Notices.Schedule(ids[n++], L.T(title), L.F(text, Day(e)), at);
         Notices.Cancel(ids[n..]);
     }
 
@@ -296,11 +306,9 @@ public static class Renewal
         Changed?.Invoke();
     }
 
-    private static async Task<bool> WorkAsync(string command, string[] more, Func<RenewalEvent?, RenewalProblem> outcome)
+    // The app left halfway: iOS gives it half a minute more, then over. What ends it sooner.
+    private static Action StayAwake(Action? over)
     {
-        if (!HasKeys || Busy) return false;
-        Busy = true;
-        // (the app left halfway: iOS gives it half a minute more)
         var app = UIApplication.SharedApplication;
         nint extra = UIApplication.BackgroundTaskInvalid;
         void End()
@@ -310,16 +318,24 @@ public static class Renewal
         }
         extra = app.BeginBackgroundTask("renewal", () =>
         {
-            Cancel();
+            over?.Invoke();
             End();
         });
+        return End;
+    }
+
+    private static async Task<bool> WorkAsync(string command, string[] more, Func<RenewalEvent?, RenewalProblem> outcome)
+    {
+        if (!HasKeys || Busy) return false;
+        Busy = true;
+        var end = StayAwake(Cancel);
         bool done = false;
         Report(command == "renew-here" ? "Renewing" : "Preparing", Progress);
         try
         {
             // (off, nothing was tried: no hour to wait)
             if (!await ReachAsync()) return false;
-            var (answer, error) = await RunAsync(command, more);
+            var (answer, error) = await RunAsync(new[] { command, NSBundle.MainBundle.BundleIdentifier, Phone }.Concat(more));
             var problem = error != null ? RenewalRules.Problem(error) : outcome(answer);
             SetProblem(problem, problem == RenewalProblem.Other ? RenewalRules.Shown(error ?? "") : "");
             Save("failed", problem is RenewalProblem.None or RenewalProblem.Vpn ? null : DateTime.UtcNow);
@@ -329,26 +345,99 @@ public static class Renewal
         {
             Busy = false;
             if (!done) Notices.Cancel("updated");
-            End();
+            end();
             Remind();
             Report("", 0);
         }
     }
 
-    // The library's whole conversation, on a thread of its own (it blocks, and signing takes a deep stack): its "done", or its error.
-    private static async Task<(RenewalEvent? Done, string? Error)> RunAsync(string command, string[] more)
+    // ------------------------------------------------------------------ signing in to Apple again
+
+    // Who the app renews itself as, which is who it has to stay (another Apple ID would make it another app to iOS); null: only the computer knows.
+    public static async Task<string?> AccountAsync()
     {
-        var args = JsonSerializer.Serialize(new[] { "--data", Folder, command, NSBundle.MainBundle.BundleIdentifier, Phone }.Concat(more).ToArray());
+        if (!HasKeys || Busy) return null;
+        Busy = true;
+        try { return (await RunAsync(new[] { "status" })).Done is { Email: { Length: > 0 } email } ? email : null; }
+        finally { Busy = false; }
+    }
+
+    // Nothing heard for this long while it's Apple's turn to say something: it isn't coming (the app was away meanwhile, say).
+    private static readonly TimeSpan Silence = TimeSpan.FromMinutes(2);
+
+    // Only ever from a press on the screen (RenewalSignIn). The password goes to the library, once, and is kept nowhere; code gives what to
+    // answer each time Apple asks for one (null: given up). The library writes the new sign-in itself. Cancelled, what comes back means nothing.
+    public static async Task<(SignInProblem Problem, string Text)> SignInAsync(string email, string password, Func<RenewalEvent, Task<string?>> code, CancellationToken ct)
+    {
+        // (a renewal may have begun by itself while it was being typed)
+        while (Busy && !ct.IsCancellationRequested) await Task.Delay(200);
+        if (!HasKeys || ct.IsCancellationRequested) return (SignInProblem.Other, "");
+        Busy = SigningIn = true;
+        // (left to read the code in a message: nothing's cancelled, it's only still until the app is back)
+        var end = StayAwake(null);
+        using var quiet = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var stop = quiet.Token.Register(Native.Cancel);
+        quiet.CancelAfter(Silence);
+        string? secret = password;
+        password = "";
+        try
+        {
+            var (done, error) = await RunAsync(new[] { "login", email }, e =>
+            {
+                // (cancelled before the library was listening: told again, now that it is)
+                if (quiet.IsCancellationRequested) Native.Cancel();
+                else if (e.What == "password" && Interlocked.Exchange(ref secret, null) is { } once) Native.Answer(once);
+                else if (e.What == "code") Dispatcher.UIThread.Post(() => AnswerCode(e, code, quiet));
+                else Native.Cancel();
+            });
+            if (done != null)
+            {
+                Save("failed", null);
+                SetProblem(RenewalProblem.None);
+                Remind();
+                return (SignInProblem.None, "");
+            }
+            var problem = quiet.IsCancellationRequested ? SignInProblem.Internet : RenewalRules.SignIn(error ?? "");
+            return (problem, problem == SignInProblem.Other ? RenewalRules.Shown(error ?? "") : "");
+        }
+        finally
+        {
+            Busy = SigningIn = false;
+            end();
+            Changed?.Invoke();
+        }
+    }
+
+    private static async void AnswerCode(RenewalEvent e, Func<RenewalEvent, Task<string?>> code, CancellationTokenSource quiet)
+    {
+        if (quiet.IsCancellationRequested) return;
+        // (it's the person's turn, who takes as long as it takes)
+        quiet.CancelAfter(Timeout.InfiniteTimeSpan);
+        string? answer = null;
+        try { answer = await code(e); }
+        catch (Exception ex) { App.Log(ex); }
+        // (over meanwhile: what's answered now would be the next sign-in's first answer)
+        if (quiet.IsCancellationRequested) return;
+        quiet.CancelAfter(Silence);
+        Native.Answer(answer ?? "cancel");
+    }
+
+    // The library's whole conversation, on a thread of its own (it blocks, and signing takes a deep stack): its "done" (or the account it
+    // was asked for), or its error. asked: what to do when it asks something, only of a sign-in the person started.
+    private static async Task<(RenewalEvent? Done, string? Error)> RunAsync(IEnumerable<string> command, Action<RenewalEvent>? asked = null)
+    {
+        var args = JsonSerializer.Serialize(new[] { "--data", Folder }.Concat(command).ToArray());
         RenewalEvent? done = null;
         string? error = null;
         Native.Hear = line =>
         {
             if (RenewalRules.Parse(line) is not { } e) return;
-            if (e.Name == "done") done = e;
+            if (e.Name is "done" or "account") done = e;
             else if (e.Name == "error") error = e.Message;
             else if (e.Name == "stage") Dispatcher.UIThread.Post(() => OnStage(e));
+            else if (e.Name == "ask" && asked != null) asked(e);
             else if (e.Name == "ask" && e.What == "revoke") Dispatcher.UIThread.Post(() => _ = AnswerRevokeAsync());
-            // (a password or a code: these commands don't ask for them, and the app has nowhere to type them)
+            // (a password or a code: only a sign-in the person started may ask for them)
             else if (e.Name == "ask") Native.Cancel();
         };
         var over = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -395,7 +484,7 @@ public static class Renewal
 
     private static void Cancel()
     {
-        if (Busy) Native.Cancel();
+        if (Busy && !SigningIn) Native.Cancel();
     }
 
     // The library's C functions (the installer's helper/src/ffi.rs), found like LAME's.
@@ -448,9 +537,10 @@ public static class Renewal
         public static void Answer(string line)
         {
             if (_answer == null) return;
+            // (it may be the password: what it was copied into doesn't stay behind)
             var text = Marshal.StringToCoTaskMemUTF8(line);
-            _answer((byte*)text);
-            Marshal.FreeCoTaskMem(text);
+            try { _answer((byte*)text); }
+            finally { Marshal.ZeroFreeCoTaskMemUTF8(text); }
         }
 
         public static void Cancel()

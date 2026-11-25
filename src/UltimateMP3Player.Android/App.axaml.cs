@@ -37,6 +37,7 @@ public partial class App : Application
                     Files.CleanUp();
                     Updater.CleanUp();
                     Spinners.Register();
+                    ButtonNames.Register();
                     RequeryAfterInput();
                     Host = new AppHost();
 #if IOS_APP

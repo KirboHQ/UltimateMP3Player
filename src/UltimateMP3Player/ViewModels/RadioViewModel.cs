@@ -483,16 +483,18 @@ public sealed class RadioViewModel : Observable
             item.T.CachePath = _fetcher.PathFor(id) ?? item.T.CachePath;
             item.Refresh(st);
         }
-        else if (_streams.ContainsKey(id) && _main.Library.Get(id) is { } t)
+        // (a song of the connected device too: the player may be waiting for it)
+        else if (_streams.ContainsKey(id) && _main.Get(id) is { } t)
         {
             t.CachePath = _fetcher.PathFor(id) ?? t.CachePath;
+            bool mine = _main.Library.Get(id) == t;
             // Gone from its site and found nowhere else: shown as such, skipped when its turn comes.
-            if (st?.State == FileState.Failed && _fetcher.IsGone(id) && !t.Unavailable)
+            if (mine && st?.State == FileState.Failed && _fetcher.IsGone(id) && !t.Unavailable)
             {
                 t.Unavailable = true;
                 _main.Library.Changed(t);
             }
-            else if (st?.State == FileState.Ready && t.Unavailable)
+            else if (mine && st?.State == FileState.Ready && t.Unavailable)
             {
                 t.Unavailable = false;
                 _main.Library.Changed(t);

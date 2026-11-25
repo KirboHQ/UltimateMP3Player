@@ -158,7 +158,8 @@ Windows, macOS e Linux. Collega il cavo e accedi con il tuo Apple ID gratuito: a
 sul telefono. Con un Apple ID gratuito un'app resta firmata 7 giorni. Da lì in poi **l'app si rinnova e si aggiorna da
 sola** sull'iPhone: le basta [LocalDevVPN](https://apps.apple.com/app/id6755608044), un'app gratuita dell'App Store da
 tenere collegata (da lì non esce niente dall'iPhone). Fino a quando funziona, e che cosa manca se manca qualcosa, lo dice
-in **Impostazioni › Rinnovo**. Preferisci il cavo? Collegalo e premi Rinnova nel programma, che porta anche le nuove versioni.
+in **Impostazioni › Rinnovo**. Se Apple chiede di accedere di nuovo, si fa lì (la password va solo ad Apple e non viene
+salvata) o con il programma. Preferisci il cavo? Collegalo e premi Rinnova nel programma, che porta anche le nuove versioni.
 
 **Oppure con SideStore per conto tuo**, se lo usi già (per rinnovarsi l'app non ne ha più bisogno):
 

@@ -324,7 +324,7 @@ public sealed class TogetherSession : IDisposable
 
     // ------------------------------------------------------------------ network plumbing
 
-    // (the tour's rooms stay on this computer: a test program gets no firewall question)
+    // (the tests' rooms, and phones, stay on this computer: a test program gets no firewall question)
     public static IPAddress ListenOn { get; set; } = IPAddress.Any;
 
     private void EnsureListener()

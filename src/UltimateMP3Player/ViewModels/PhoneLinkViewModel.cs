@@ -475,7 +475,12 @@ public sealed class PhoneLinkViewModel : Observable
     // The phone opens its import window and asks for the files it doesn't have, one at a time.
     public bool SendPack(PackExport e)
     {
-        if (_link?.Connection is not { } c) return false;
+        if (_link?.Connection is not { } c)
+        {
+            // (reconnecting, or gone while the window was open)
+            Dialogs.Alert(L.T("Couldn't send the music"), L.T("The phone isn't connected right now."));
+            return false;
+        }
         DropPack();
         var (manifest, entries) = PackWriter.Describe(_main.Library, _main.Profile, e, AppInfo.VersionText);
         var pack = entries.GroupBy(x => x.Entry).ToDictionary(g => g.Key, g => g.First().File);

@@ -384,7 +384,7 @@
                             </Button>
                         </WrapPanel>
                     </StackPanel>
-                    <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding DismissCommand}" VerticalAlignment="Top"/>
+                    <Button Grid.Column="2" Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding DismissCommand}" VerticalAlignment="Top" ToolTip="{local:T Close}"/>
                 </Grid>
             </Border>
 

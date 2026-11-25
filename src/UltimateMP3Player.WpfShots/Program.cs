@@ -137,6 +137,9 @@ public static class Program
             go();
             Shot(win, name);
             Check(main.Section == section, $"page {name} opens");
+            var silent = Descendants(win).OfType<System.Windows.Controls.Primitives.ButtonBase>().Where(b => b.IsVisible && b.Content is string { Length: 1 } s && s[0] >= '\uE000' && s[0] <= '\uF8FF'
+                && string.IsNullOrEmpty(System.Windows.Automation.AutomationProperties.GetName(b))).Select(b => $"{(int)((string)b.Content)[0]:X4} {b.Name}").Distinct().ToList();
+            Check(silent.Count == 0, $"page {name}: its icon buttons have a name: {string.Join(", ", silent)}");
         }
         // ---- Settings opened again: the window isn't held up (Windows listing its audio outputs took 0.2 s of it, every time)
         main.IsHome = true;
@@ -852,6 +855,11 @@ public static class Program
             file.Apply(d2, s2, "import-test", Path.Combine(root, "backdrop-test.jpg"), SettingsFile.All.Select(g => g.Key));
             Check(d2.CrossfadeSeconds == 9 && s2.MusicDir == "elsewhere" && d2.Looks.Count == data.Looks.Count && d2.Looks.Any(l => l.Id == d2.LookId),
                 "settings file: groups come in, the music folder doesn't, the look comes as a look of its own");
+            // A file made by someone else, with more in it than a group has.
+            var forged = SettingsFile.TryRead("{\"App\":\"" + SettingsFile.Kind + "\",\"Groups\":{\"playback\":{\"p:Shuffle\":true,\"p:Songs\":[],\"p:ListenBrainzToken\":\"x\",\"a:MusicDir\":\"x\",\"a:BackupFolder\":\"x\"}}}")!;
+            var d3 = new ProfileData { Songs = new() { "mine" } };
+            forged.Apply(d3, s2, "import-test", Path.Combine(root, "backdrop-test.jpg"), new[] { "playback" });
+            Check(d3 is { Shuffle: true, Songs.Count: 1, ListenBrainzToken: null } && s2 is { MusicDir: "elsewhere", BackupFolder: null }, "settings file: only what its groups are made of comes in");
             Check(SettingsFile.TryRead("{\"Version\":1}") == null, "settings file: another JSON isn't taken for settings");
 
             main.OpenSettingsGroup("download");

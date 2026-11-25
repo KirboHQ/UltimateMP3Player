@@ -187,6 +187,7 @@ public sealed class MainViewModel : Observable, IPageOrder
     public ComputerLinkViewModel ComputerLink => _computerLink ??= new ComputerLinkViewModel(this);
     public bool PhoneLinked => _phoneLink?.HasPhone == true;
     public bool ComputerLinked => _computerLink?.IsLinked == true;
+    public void WakeComputerLink() => _computerLink?.Wake();
 
     // ------------------------------------------------------------------ connect phone: the other device's music
 

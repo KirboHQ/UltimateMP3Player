@@ -836,7 +836,8 @@ public static class PackImporter
         var created = new List<string> { target, AppPaths.TrackCover(t.Id) };
         try
         {
-            await pack.ExtractAsync(pt.File!, target, copied, ct);
+            // (the connected computer hasn't got it any more, or it couldn't be written here: no song without its file)
+            if (!await pack.ExtractAsync(pt.File!, target, copied, ct)) throw new FileNotFoundException(pt.File);
             if (pt.Video != null && pack.Has(pt.Video) && Importer.VideoExtensions.Contains(Path.GetExtension(pt.Video)))
             {
                 if (pt.Video == pt.File) t.VideoPath = target;

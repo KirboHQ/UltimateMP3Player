@@ -126,6 +126,9 @@ public sealed class ComputerLinkViewModel : Observable
         }
     }
 
+    // The app is back in front (iPhone: what it waited on may be gone).
+    public void Wake() => _link.Reopen();
+
     // Being found by a computer means it drives that player: not from a room, so leaving it is asked first.
     public void Open() => _ = OpenAsync();
 

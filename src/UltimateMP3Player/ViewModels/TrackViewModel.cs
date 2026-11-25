@@ -20,6 +20,9 @@ public sealed class TrackViewModel : Observable
     public Track T { get; }
     public MainViewModel Main { get; }
     public string Id => T.Id;
+    // (what a screen reader says of its row or card)
+    public override string ToString() => $"{Title} – {Artist}";
+
     public string Title => T.Title;
     public string Artist => T.DisplayArtist;
     public string? Album => T.Album;

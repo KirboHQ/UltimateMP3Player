@@ -139,7 +139,7 @@ public static class JsonStore
         {
             try
             {
-                if (File.Exists(p)) return JsonSerializer.Deserialize<T>(File.ReadAllText(p), Options) ?? new T();
+                if (File.Exists(p)) return JsonSerializer.Deserialize<T>(Reading(() => File.ReadAllText(p)), Options) ?? new T();
             }
             catch
             {
@@ -149,6 +149,17 @@ public static class JsonStore
             }
         }
         return new T();
+    }
+
+    // Another program may hold a file for a moment (an antivirus, a sync, a backup): asked for again for a second, or the version before
+    // it would be read and then saved in its place.
+    internal static T Reading<T>(Func<T> read)
+    {
+        for (int left = 10; ; left--)
+        {
+            try { return read(); }
+            catch (Exception ex) when (left > 0 && ex is IOException or UnauthorizedAccessException) { Thread.Sleep(100); }
+        }
     }
 
     // A backup was just restored in place of the data: nothing more is written until the app starts again (what it holds in

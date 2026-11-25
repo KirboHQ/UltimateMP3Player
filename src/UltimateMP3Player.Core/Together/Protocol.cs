@@ -216,7 +216,43 @@ public sealed class Msg
 
     public static Msg? From(ReadOnlySpan<byte> utf8)
     {
-        try { return JsonSerializer.Deserialize<Msg>(utf8, Json); }
+        try { return JsonSerializer.Deserialize<Msg>(utf8, Json)?.Tidy(); }
         catch { return null; }
+    }
+
+    // A message of the room with a null where the app never writes one (made by hand: "Keys": null): filled in once here, or the first use
+    // of it would throw.
+    private Msg Tidy()
+    {
+        T ??= "";
+        foreach (var list in new[] { Ids, Votes, Banned }) list?.RemoveAll(x => x == null);
+        Members?.RemoveAll(m => m == null);
+        foreach (var m in (Members ?? new()).Append(Me).OfType<Member>())
+        {
+            m.Id ??= "";
+            m.Name ??= "";
+            m.Color ??= "#7C5CFF";
+        }
+        Queue?.RemoveAll(t => t == null);
+        foreach (var t in (Queue ?? new()).Append(Track).Append(Current).OfType<RoomTrack>())
+        {
+            t.Id ??= "";
+            t.AddedBy ??= "";
+            t.Title ??= "";
+            t.Keys ??= new();
+            t.Keys.RemoveAll(k => k == null);
+        }
+        Chat?.RemoveAll(l => l == null);
+        foreach (var l in (Chat ?? new()).Append(Line).OfType<ChatLine>())
+        {
+            l.Name ??= "";
+            l.Text ??= "";
+        }
+        foreach (var files in (AllFiles?.Values ?? Enumerable.Empty<Dictionary<string, FileStatus>?>()).Append(Files))
+            foreach (var (id, status) in files ?? new())
+                if (status == null) files!.Remove(id);
+        foreach (var (id, files) in AllFiles ?? new())
+            if (files == null) AllFiles!.Remove(id);
+        return this;
     }
 }

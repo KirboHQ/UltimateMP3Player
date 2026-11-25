@@ -263,7 +263,9 @@
         </Setter>
     </Style>
 
+    <!-- (an icon says nothing to a screen reader: called as its tooltip says, unless it has a name of its own) -->
     <Style x:Key="IconButton" TargetType="Button" BasedOn="{StaticResource SubtleButton}">
+        <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}"/>
         <Setter Property="Width" Value="34"/>
         <Setter Property="Height" Value="34"/>
         <Setter Property="Padding" Value="0"/>
@@ -279,6 +281,7 @@
 
     <!-- Round icon button without background (player controls). -->
     <Style x:Key="ControlButton" TargetType="Button">
+        <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}"/>
         <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}"/>
         <Setter Property="Width" Value="36"/>
         <Setter Property="Height" Value="36"/>
@@ -312,6 +315,7 @@
 
     <!-- Big round play button (white disc). -->
     <Style x:Key="PlayButton" TargetType="Button">
+        <Setter Property="AutomationProperties.Name" Value="{Binding ToolTip, RelativeSource={RelativeSource Self}}"/>
         <Setter Property="Width" Value="40"/>
         <Setter Property="Height" Value="40"/>
         <Setter Property="Foreground" Value="{DynamicResource PageSolidBrush}"/>

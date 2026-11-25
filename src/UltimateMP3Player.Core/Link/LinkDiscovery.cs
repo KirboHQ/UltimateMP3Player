@@ -32,7 +32,7 @@ public static class LinkDiscovery
             _udp = new UdpClient(AddressFamily.InterNetwork);
             _udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             Discovery.NoResetErrors(_udp);
-            _udp.Client.Bind(new IPEndPoint(IPAddress.Any, Port));
+            _udp.Client.Bind(new IPEndPoint(TogetherSession.ListenOn, Port));
             _ = Loop();
         }
 
@@ -44,7 +44,12 @@ public static class LinkDiscovery
                 try { r = await _udp.ReceiveAsync(_cts.Token); }
                 catch (OperationCanceledException) { break; }
                 catch (ObjectDisposedException) { break; }
-                catch (SocketException) { continue; }
+                catch (SocketException)
+                {
+                    // (a socket the system took away fails at once, every time)
+                    try { await Task.Delay(500, _cts.Token); } catch { break; }
+                    continue;
+                }
                 if (!r.Buffer.AsSpan().SequenceEqual(Question) || _ad(r.RemoteEndPoint.Address) is not { } ad) continue;
                 try { await _udp.SendAsync(JsonSerializer.SerializeToUtf8Bytes(ad, Msg.Json), r.RemoteEndPoint, _cts.Token); }
                 catch { }

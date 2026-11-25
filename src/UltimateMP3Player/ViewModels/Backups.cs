@@ -116,10 +116,7 @@ public sealed class BackupsViewModel : Observable
                 return false;
             }
             var name = Backup.FileName(DateTime.Now);
-            var stream = await folder.CreateAsync(name);
-            int songs = _main.Library.Count, profiles = ProfileList.Load().Profiles.Count;
-            var device = DeviceName();
-            await Task.Run(() => Backup.Write(stream, device, AppInfo.VersionText, songs, profiles));
+            await WriteAsync(folder, name);
             await Backup.PruneAsync(folder, S.BackupKeep);
             S.LastBackup = DateTime.Now;
             S.Save();
@@ -138,6 +135,23 @@ public sealed class BackupsViewModel : Observable
         {
             Busy = false;
             OnChanged(nameof(LastText));
+        }
+    }
+
+    // The data into that folder. One that fails leaves nothing: half written, it would count among the last ones kept, in place of a good one.
+    private async Task WriteAsync(IBackupFolder folder, string name)
+    {
+        int songs = _main.Library.Count, profiles = ProfileList.Load().Profiles.Count;
+        var device = DeviceName();
+        try
+        {
+            var stream = await folder.CreateAsync(name);
+            await Task.Run(() => Backup.Write(stream, device, AppInfo.VersionText, songs, profiles));
+        }
+        catch
+        {
+            try { await folder.DeleteAsync(name); } catch { }
+            throw;
         }
     }
 
@@ -175,7 +189,12 @@ public sealed class BackupsViewModel : Observable
         Status = L.T("Restoring…");
         try
         {
-            await SafetyCopyAsync();
+            if (!await SafetyCopyAsync(L.T("Restore")))
+            {
+                Busy = false;
+                Status = null;
+                return;
+            }
             var current = S;
             await Task.Run(() => Backup.Restore(path, current));
         }
@@ -189,19 +208,21 @@ public sealed class BackupsViewModel : Observable
         _main.Host.RestartAfterRestore();
     }
 
-    // Today's data first, so what's about to change it can be undone.
-    internal async Task SafetyCopyAsync()
+    // Today's data first, so what's about to change it can be undone; when it can't be copied, whether to go on without (go: the button).
+    internal async Task<bool> SafetyCopyAsync(string go)
     {
         Flush();
-        if (await Dialogs.OpenBackupFolderAsync(S.BackupFolder) is not { } folder) return;
         try
         {
-            var stream = await folder.CreateAsync(Backup.FileName(DateTime.Now, beforeRestore: true));
-            int songs = _main.Library.Count, profiles = ProfileList.Load().Profiles.Count;
-            var device = DeviceName();
-            await Task.Run(() => Backup.Write(stream, device, AppInfo.VersionText, songs, profiles));
+            if (await Dialogs.OpenBackupFolderAsync(S.BackupFolder) is { } folder)
+            {
+                await WriteAsync(folder, Backup.FileName(DateTime.Now, beforeRestore: true));
+                return true;
+            }
         }
-        catch { }
+        catch (Exception ex) { AppPaths.AppendLog($"\n\n[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] backup: {ex}\n"); }
+        return await Dialogs.ConfirmAsync(L.T("Go on without a copy of today's data?"),
+            L.T("It couldn't be saved in the backup folder: what's here today couldn't be brought back afterwards."), go, true);
     }
 
     // The name the backups give for where they come from (the phones': the one in their settings).

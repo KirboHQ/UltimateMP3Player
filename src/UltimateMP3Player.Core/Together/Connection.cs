@@ -121,6 +121,8 @@ public sealed class Connection : IDisposable
     private async Task WriteLoop()
     {
         var ct = _cts.Token;
+        // (asked for again only once over: one left waiting at every message of the other kind stays in memory until its own comes)
+        Task<bool>? waitControl = null, waitBulk = null;
         try
         {
             while (!ct.IsCancellationRequested)
@@ -135,10 +137,12 @@ public sealed class Connection : IDisposable
                     await _stream.WriteAsync(b, ct);
                     continue;
                 }
-                var waitControl = _control.Reader.WaitToReadAsync(ct).AsTask();
-                var waitBulk = _bulk.Reader.WaitToReadAsync(ct).AsTask();
+                waitControl ??= _control.Reader.WaitToReadAsync(ct).AsTask();
+                waitBulk ??= _bulk.Reader.WaitToReadAsync(ct).AsTask();
                 await Task.WhenAny(waitControl, waitBulk);
                 if (waitControl.IsCompletedSuccessfully && !waitControl.Result && waitBulk.IsCompleted) break;
+                if (waitControl.IsCompleted) waitControl = null;
+                if (waitBulk.IsCompleted) waitBulk = null;
             }
         }
         catch { }

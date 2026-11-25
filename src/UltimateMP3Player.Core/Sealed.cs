@@ -75,7 +75,7 @@ public static class Sealed
             if (!File.Exists(p)) continue;
             try
             {
-                if (Unprotect(File.ReadAllBytes(p)) is { } json && JsonSerializer.Deserialize<T>(json, JsonStore.Options) is { } value) return value;
+                if (Unprotect(JsonStore.Reading(() => File.ReadAllBytes(p))) is { } json && JsonSerializer.Deserialize<T>(json, JsonStore.Options) is { } value) return value;
             }
             catch (JsonException) { }
             catch (IOException) { }

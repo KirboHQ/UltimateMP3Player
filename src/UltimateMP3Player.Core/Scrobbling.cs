@@ -165,6 +165,7 @@ public static class ListenBrainz
         using var resp = await Http.AnswerAsync(req, ct);
         var text = await resp.Content.ReadAsStringAsync(ct);
         if (resp.StatusCode == HttpStatusCode.Unauthorized) throw new ScrobbleRefused("ListenBrainz: " + resp.StatusCode);
+        if (resp.StatusCode == HttpStatusCode.BadRequest) throw new InvalidDataException("ListenBrainz: " + text);
         if (!resp.IsSuccessStatusCode) throw new IOException("ListenBrainz: " + (int)resp.StatusCode + " " + text);
         try { return JsonNode.Parse(text); }
         catch { return null; }
@@ -303,10 +304,11 @@ public sealed class Scrobbler
         {
             foreach (var service in new[] { LastFmName, ListenBrainzName })
             {
+                int size = 50;
                 while (true)
                 {
                     List<Scrobble> batch;
-                    lock (_lock) batch = _waiting.Where(s => s.Left.Contains(service)).Take(50).ToList();
+                    lock (_lock) batch = _waiting.Where(s => s.Left.Contains(service)).Take(size).ToList();
                     if (batch.Count == 0) break;
                     bool on = service == LastFmName ? LastFmOn : ListenBrainzOn;
                     try
@@ -321,6 +323,14 @@ public sealed class Scrobbler
                         OnRefused(service);
                         break;
                     }
+                    // One of them isn't a play it takes, and it takes none of the rest with it: one at a time, until that one, which goes
+                    // (it would be refused forever, and the others would wait behind it).
+                    catch (InvalidDataException) when (size > 1)
+                    {
+                        size = 1;
+                        continue;
+                    }
+                    catch (InvalidDataException) { size = 50; }
                     catch { break; }
                     lock (_lock)
                     {

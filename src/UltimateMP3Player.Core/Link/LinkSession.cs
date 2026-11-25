@@ -260,15 +260,10 @@ public sealed class PhoneLink : LinkEnd
     {
         SetStatus(LinkStatus.Connecting);
         var (c, reply) = await Handshake(_phone, 65000);
-        // Canceled meanwhile.
+        // Connected (FromOther), or canceled meanwhile.
         if (Status != LinkStatus.Connecting)
         {
-            c?.Close();
-            return null;
-        }
-        if (c != null && reply?.T == "welcome")
-        {
-            Welcomed(c, reply);
+            if (c != Connection) c?.Close();
             return null;
         }
         c?.Close();
@@ -314,7 +309,11 @@ public sealed class PhoneLink : LinkEnd
 
     protected override void FromOther(Connection c, Msg m)
     {
-        if (c == _pending && m.T is "welcome" or "deny") _reply?.TrySetResult(m);
+        if (c != _pending || m.T is not ("welcome" or "deny")) return;
+        // (at once, not once the handshake's wait goes on: what the phone sends right behind its welcome, asking for this computer's music,
+        // would be taken for a stranger's and lost)
+        if (m.T == "welcome" && Status is LinkStatus.Connecting or LinkStatus.Reconnecting) Welcomed(c, m);
+        _reply?.TrySetResult(m);
     }
 
     protected override void Stopped() => _pending?.Close();
@@ -336,14 +335,11 @@ public sealed class PhoneLink : LinkEnd
             if (++_tries % 3 == 0 && await FindAsync(_phone.Id) is { } found) _phone = found;
             if (Status != LinkStatus.Reconnecting) return;
             var (c, reply) = await Handshake(_phone, 5000);
-            if (c == null) return;
-            if (reply?.T == "welcome" && Status == LinkStatus.Reconnecting) Welcomed(c, reply);
-            else
-            {
-                c.Close();
-                // It said no (it was disconnected there meanwhile): no use trying again.
-                if (reply?.T == "deny" && Status == LinkStatus.Reconnecting) End(L.T(reply.Text ?? "The phone said no."));
-            }
+            // (nobody there, or connected: FromOther)
+            if (c == null || c == Connection) return;
+            c.Close();
+            // It said no (it was disconnected there meanwhile): no use trying again.
+            if (reply?.T == "deny" && Status == LinkStatus.Reconnecting) End(L.T(reply.Text ?? "The phone said no."));
         }
         finally { _trying = false; }
     }
@@ -449,13 +445,13 @@ public sealed class ComputerLink : LinkEnd
                 TcpListener l;
                 try
                 {
-                    l = new TcpListener(IPAddress.Any, LinkDiscovery.Port);
+                    l = new TcpListener(TogetherSession.ListenOn, LinkDiscovery.Port);
                     l.Start();
                 }
                 catch (SocketException)
                 {
                     // (taken: any port, only the network finds it then, not the cable)
-                    l = new TcpListener(IPAddress.Any, 0);
+                    l = new TcpListener(TogetherSession.ListenOn, 0);
                     l.Start();
                 }
                 _listener = l;
@@ -495,6 +491,18 @@ public sealed class ComputerLink : LinkEnd
             catch { break; }
             Hook(new Connection(tcp));
         }
+        // Not closed here: the system took it away.
+        await Task.Delay(500);
+        if (_listener == l) Reopen();
+    }
+
+    // iOS takes the sockets of an app it stops in the background (the screen locked on "Connect to computer"): back in front, the
+    // phone waits on new ones.
+    public void Reopen()
+    {
+        if (_listener == null || Status == LinkStatus.Connected) return;
+        Stopped();
+        Listen();
     }
 
     protected override void FromOther(Connection c, Msg m)

@@ -80,15 +80,21 @@ public static class Text
             else sb.Append(ch);
         }
         var s = Regex.Replace(sb.ToString(), @"\s+", " ").Trim().Trim('.', ' ');
-        if (s.Length > max)
-        {
-            var cut = max;
-            if (char.IsHighSurrogate(s[cut - 1])) cut--;
-            s = s[..cut].TrimEnd('.', ' ');
-        }
+        s = Shorten(s, max);
         if (s.Length == 0) s = "download";
         if (Reserved.Contains(s)) s = "_" + s;
         return s;
+    }
+
+    // A file name of at most that many letters, and 230 bytes: Linux, Android, iOS and macOS take 255 (a letter of Japanese is 3, an
+    // emoji 4), the rest is for " (2)" and the extension.
+    public static string Shorten(string name, int max = 120)
+    {
+        int cut = Math.Min(name.Length, max);
+        while (Encoding.UTF8.GetByteCount(name.AsSpan(0, cut)) > 230) cut--;
+        if (cut == name.Length) return name;
+        if (cut > 0 && char.IsHighSurrogate(name[cut - 1])) cut--;
+        return name[..cut].TrimEnd('.', ' ');
     }
 
     // dir\name.ext, or "name (2).ext" when taken.

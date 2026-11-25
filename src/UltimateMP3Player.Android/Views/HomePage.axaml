@@ -15,7 +15,7 @@
                     <TextBlock Text="{Binding Greeting}" FontSize="26" FontWeight="Bold" TextWrapping="Wrap" VerticalAlignment="Center"/>
                     <!-- the profile: who's listening (tablets shared by a family, like Netflix) -->
                     <Button Grid.Column="1" Theme="{StaticResource TouchIcon}" Width="NaN" MinWidth="46" Height="46" Margin="10,0,0,0"
-                            Command="{Binding $parent[views:MainView].DataContext.SwitchProfileCommand}">
+                            Command="{Binding $parent[views:MainView].DataContext.SwitchProfileCommand}" AutomationProperties.Name="{local:T 'Switch or manage profiles'}">
                         <Panel>
                             <!-- both devices' music (Connect to computer): the computer's profile behind this one's -->
                             <Panel Width="30" Height="30" Margin="26,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center"

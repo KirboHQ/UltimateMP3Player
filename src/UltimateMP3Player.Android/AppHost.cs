@@ -268,6 +268,9 @@ public sealed class AppHost : Observable
         Session?.Player.SetVisible(visible);
         _awayTimer?.Dispose();
         _awayTimer = null;
+#if IOS_APP
+        if (visible) Session?.WakeComputerLink();
+#endif
         if (visible) return;
         // Saved a moment later, once the bigger buffer is full: writing the library makes garbage, and the collector
         // stops every thread of the app for a while, the sound's too.

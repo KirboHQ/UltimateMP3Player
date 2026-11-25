@@ -45,7 +45,7 @@ public sealed class RenewalCards
             Margin = new Thickness(0, 8, 0, 10),
             Children = { new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Children = { _badge, words } }, _problem, _renew, _working, _hint },
         };
-        var needed = Card(L.T("localdevvpn vpn sidestore computer cable installer needed"));
+        var needed = Card(L.T("localdevvpn vpn sidestore computer cable installer needed apple id sign in password"));
         needed.Child = _needs;
         _updates = Card(L.T("updates install by itself automatically version"));
         var alone = new CheckBox { Theme = Ui.Theme("Switch"), Classes = { "switch" }, IsChecked = App.Host.Settings.InstallUpdatesAlone };
@@ -114,7 +114,7 @@ public sealed class RenewalCards
 
     private void Refresh()
     {
-        bool keys = Renewal.HasKeys, busy = Renewal.Busy || Renewal.Stage.Length > 0;
+        bool keys = Renewal.HasKeys, busy = Renewal.Busy && !Renewal.SigningIn || Renewal.Stage.Length > 0;
         var now = DateTime.UtcNow;
         // (past and yet running: renewed some other way, by the cable, which doesn't tell the app)
         var expires = Renewal.Expires is { } e && e > now ? e : (DateTime?)null;
@@ -131,7 +131,7 @@ public sealed class RenewalCards
         _rowValue.Foreground = warn ? RenewalNotice.Strong("Warning") : Ui.Res("SubTextBrush");
 
         _problem.Children.Clear();
-        if (keys && !busy && RenewalNotice.For(Renewal.Problem) is { } n) _problem.Children.Add(Banner(n.Label, n.Title, n.Text, n.Do == RenewalNotice.RenewNow ? null : n.Yes, n.Do));
+        if (keys && !busy && RenewalNotice.For(Renewal.Problem) is { } n) _problem.Children.Add(Banner(n.Label, n.Title, n.Text, n.Do == RenewalNotice.RenewNow ? null : n.Yes, n.Do, n.Or, n.DoOr));
         else if (!keys)
             _problem.Children.Add(Banner(L.T("NEEDED"), L.T("The computer, once"),
                 L.T("Apple keeps the app working for 7 days at a time. To renew itself here it needs what the installer puts in it: open the installer on the computer, plug the iPhone in and choose to let the app renew itself."),
@@ -158,7 +158,16 @@ public sealed class RenewalCards
                 on ? L.T("NEEDED, ON") : there ? L.T("NEEDED, OFF") : L.T("NEEDED, MISSING"), on ? "Success" : "Warning",
                 on || Renewal.VpnOn == null || Renewal.Problem == RenewalProblem.Vpn ? null : there ? L.T("Turn it on") : L.T("Get it"), Renewal.OpenVpn));
         }
-        bool computer = !keys || Renewal.Problem is RenewalProblem.Cable or RenewalProblem.SignIn;
+        if (keys)
+        {
+            bool ended = Renewal.Problem == RenewalProblem.SignIn;
+            var signIn = Need(L.T("Sign-in to Apple"), L.T("It's what the app renews itself with. If Apple ends it, sign in again here or use the computer's sign-in."),
+                ended ? L.T("NEEDED, ENDED") : L.T("NEEDED, DONE"), ended ? "Warning" : "Success", L.T("Sign in again"), RenewalSignIn.Open);
+            // (one thing at a time with Apple)
+            signIn.Children[^1].IsEnabled = !busy;
+            rows.Add(signIn);
+        }
+        bool computer = !keys || Renewal.Problem == RenewalProblem.Cable;
         rows.Add(Need(L.T("The computer and the cable"), computer ? L.T("Once, with the installer: it puts in the app what it renews itself with.") : L.T("Only the way back, should the app ever not manage."),
             computer ? L.T("NEEDED, ONCE") : L.T("NOT NEEDED ANYMORE"), computer ? "Warning" : "Success"));
         if (Renewal.SideStoreInstalled && Renewal.LastRenewed != null)
@@ -176,7 +185,7 @@ public sealed class RenewalCards
     private static string Left(TimeSpan left)
         => left.TotalDays >= 1 ? L.Count((int)left.TotalDays, "1 day left", "{0} days left") : L.Count(Math.Max(1, (int)left.TotalHours), "1 hour left", "{0} hours left");
 
-    private static Border Banner(string label, string title, string text, string? yes, Action? act)
+    private static Border Banner(string label, string title, string text, string? yes, Action? act, string? or = null, Action? other = null)
     {
         var body = new StackPanel();
         body.Children.Add(new TextBlock { Text = label, FontSize = 11, FontWeight = FontWeight.Bold, Foreground = RenewalNotice.Strong("Warning") });
@@ -186,6 +195,12 @@ public sealed class RenewalCards
         {
             var b = Button("TouchGhost", yes, act);
             b.Margin = new Thickness(0, 12, 0, 2);
+            body.Children.Add(b);
+        }
+        if (or != null && other != null)
+        {
+            var b = Button("TouchGhost", or, other);
+            b.Margin = new Thickness(0, 8, 0, 2);
             body.Children.Add(b);
         }
         return new Border { CornerRadius = new CornerRadius(14), Padding = new Thickness(14, 12), Margin = new Thickness(0, 14, 0, 0), Background = RenewalNotice.Soft("Warning"), Child = body };

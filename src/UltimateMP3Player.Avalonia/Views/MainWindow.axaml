@@ -135,7 +135,7 @@
                 </StackPanel>
                 <StackPanel x:Name="WindowButtons" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="MinButton" Theme="{StaticResource TitleBarButton}" Content="{local:Icon E921}" ToolTip.Tip="{local:T Minimize}"/>
-                    <Button x:Name="MaxButton" Theme="{StaticResource TitleBarButton}" Content="{local:Icon E922}"/>
+                    <Button x:Name="MaxButton" Theme="{StaticResource TitleBarButton}" Content="{local:Icon E922}" AutomationProperties.Name="{local:T Maximize}"/>
                     <Button x:Name="CloseButton" Theme="{StaticResource TitleBarCloseButton}" Content="{local:Icon E8BB}" ToolTip.Tip="{local:T Close}"/>
                 </StackPanel>
             </Grid>
@@ -481,7 +481,7 @@
                             <ContentControl Width="58" Height="58" Content="{Binding Current}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                         </Button>
                         <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Current.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                            <TextBlock Text="{Binding Current.Title, FallbackValue={local:T 'Nothing playing'}}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
                             <!-- the artist; before it the song's sign (the exception to Settings › Download: TrackViewModel.ShowSign) -->
                             <DockPanel Margin="0,2,0,0">
                                 <TextBlock DockPanel.Dock="Left" Classes="glyph cloud" Classes.gone="{Binding Current.SignIsGone, FallbackValue=False}"

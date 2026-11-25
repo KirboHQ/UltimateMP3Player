@@ -580,7 +580,7 @@
                         <ContentPresenter Width="58" Height="58" Content="{Binding Current}" ContentTemplate="{StaticResource TrackCoverSmall}"/>
                     </Button>
                     <StackPanel Grid.Column="1" Margin="12,0,6,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Current.Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
+                        <TextBlock Text="{Binding Current.Title, FallbackValue={local:T 'Nothing playing'}}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" local:Marquee.IsEnabled="True"/>
                         <!-- the artist; before it the song's sign (the exception to Settings › Download: TrackViewModel.ShowSign) -->
                         <DockPanel Margin="0,2,0,0">
                             <TextBlock DockPanel.Dock="Left" Text="{Binding Current.SignGlyph}" FontFamily="{StaticResource IconFont}" FontSize="12"

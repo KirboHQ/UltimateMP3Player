@@ -432,6 +432,9 @@ public static class SourceKeys
     private static readonly Regex YouTubeId = new(@"(?:[?&]v=|youtu\.be/|/shorts/|/embed/|/live/)([\w-]{11})(?![\w-])", RegexOptions.IgnoreCase);
     private static readonly Regex DeezerId = new(@"deezer\.com/(?:[a-z]{2}(?:-[a-z]{2})?/)?track/(\d+)", RegexOptions.IgnoreCase);
     private static readonly Regex AppleId = new(@"apple\.com/(?:[a-z]{2}/)?(?:song/(?:[^/?#]+/)?(\d+)|album/[^?#]*[?&]i=(\d+))", RegexOptions.IgnoreCase);
+    // What tells one video from another when the path doesn't ("facebook.com/watch/?v=…", NetEase's "song?id=…", Bilibili's "?p=2"). The
+    // rest of a link's query says who shared it and from where (SoundCloud's "?p=a"): not part of it.
+    private static readonly Regex QueryId = new(@"(?<=[?&])(?:(?:v|id|vid|fid|z|video_id|story_fbid|fbid)=[^&]+|p=\d+(?![^&]))", RegexOptions.IgnoreCase);
 
     public static List<string> ForItem(MediaItem item)
     {
@@ -473,7 +476,7 @@ public static class SourceKeys
             var host = Sites.HostOf(url);
             var path = uri.AbsolutePath.TrimEnd('/').ToLowerInvariant();
             if (path.Length <= 1) return null;
-            return $"url:{host}{path}";
+            return $"url:{host}{path}" + string.Concat(QueryId.Matches(uri.Query).Select(m => "?" + m.Value.ToLowerInvariant()).Order(StringComparer.Ordinal));
         }
         catch { return null; }
     }

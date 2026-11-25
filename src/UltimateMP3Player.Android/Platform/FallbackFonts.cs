@@ -48,7 +48,8 @@ public sealed class FallbackFonts : FontCollectionBase
         var xml = File.Exists("/system/etc/font_fallback.xml") ? "/system/etc/font_fallback.xml" : "/system/etc/fonts.xml";
         var families = XDocument.Load(xml).Root!.Elements("family").ToList();
         static string Lang(XElement f) => (string?)f.Attribute("lang") ?? "";
-        var fallbacks = families.Where(f => f.Attribute("name") == null && Lang(f) != "" && (string?)f.Attribute("ignore") != "true"
+        // (the symbols' one, ▾ ✦, has no language either)
+        var fallbacks = families.Where(f => f.Attribute("name") == null && (string?)f.Attribute("ignore") != "true"
                                             && (string?)f.Attribute("variant") != "compact").ToList();
         var order = families.Where(f => (string?)f.Attribute("name") == "sans-serif")
             .Concat(fallbacks.Where(f => Lang(f).Split(',').Contains("ja")))

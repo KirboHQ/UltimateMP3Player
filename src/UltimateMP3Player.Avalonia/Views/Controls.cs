@@ -1,8 +1,10 @@
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Data;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -103,6 +105,21 @@ public static class Spinners
 public static class SliderDrag
 {
     public static void Register() { }
+}
+
+// What a screen reader calls a button with no name of its own: its words (an icon beside them, and it would say
+// "Avalonia.Controls.StackPanel"; not a profile's initial), or its tooltip when it's only an icon (a letter of a font, a private one).
+public static class ButtonNames
+{
+    public static void Register() => Control.LoadedEvent.AddClassHandler<Button>((b, _) =>
+    {
+        if (AutomationProperties.GetName(b) != null) return;
+        var words = b.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(t => t.Text?.Count(char.IsLetter) > 1);
+        var name = words != null ? words.GetObservable(TextBlock.TextProperty)
+            : ToolTip.GetTip(b) is string ? b.GetObservable(ToolTip.TipProperty, tip => tip as string)
+            : null;
+        if (name != null) b.Bind(AutomationProperties.NameProperty, name, BindingPriority.Style);
+    });
 }
 
 // The page area. A new page slides in from the side its place says (the DataContext's IPageOrder: the sidebar's entries top to

@@ -225,6 +225,8 @@ public sealed class SharedLibrary
     {
         if (_disposed) return;
         if (!OnPhone) SendModes();
+        // (what was changed of its music while the connection was away, first: the music asked for then has it)
+        if (Mirror != null) Flush();
         _ = AskCatalog();
     }
 
@@ -297,7 +299,8 @@ public sealed class SharedLibrary
                     SetModes((LinkMusic)m.Index, (LinkAudio)m.Max, false);
                 return true;
             case "libAsk":
-                if (m.Text is { Length: > 0 and < 64 } req) _ = SendCatalog(req);
+                // (with the edits that came before)
+                if (m.Text is { Length: > 0 and < 64 } req) _ = _edits.ContinueWith(_ => SendCatalog(req), TaskScheduler.FromCurrentSynchronizationContext());
                 return true;
             // The settings asked for by the other device (Settings › Backup, export and import: "Copy from…"), and its answer.
             case "settingsAsk":
@@ -518,9 +521,8 @@ public sealed class SharedLibrary
         if (_disposed) return;
         if (_link.Connection == null)
         {
-            // (sent once connected again: the other device asks for everything then anyway)
+            // (once connected again the other device asks for everything; the edits of its music wait for that: Start)
             ClearOwn();
-            ClearEdits();
             return;
         }
         var own = OwnDelta();
@@ -684,6 +686,8 @@ public sealed class SharedLibrary
     {
         _rebuild.Stop();
         if (_disposed) return;
+        // (edits waiting for the connection stay as shown: the other device's music comes whole right after them)
+        if (_link.Connection == null && (_editListSet || _editTags || _editLists.Count > 0 || _editTrackTags.Count > 0)) return;
         _dupe.Clear();
         _dupeBack.Clear();
         var visible = new List<Track>();

@@ -56,6 +56,7 @@ public partial class App : Application
         Updater.CleanUp();
         Views.SliderDrag.Register();
         Views.Spinners.Register();
+        Views.ButtonNames.Register();
         Views.MenuAim.Register();
         SmoothScroll.Register();
         RequeryAfterInput();

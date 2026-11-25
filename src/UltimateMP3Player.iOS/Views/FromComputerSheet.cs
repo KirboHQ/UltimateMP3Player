@@ -98,13 +98,21 @@ public static class FromComputerSheet
     {
         var host = App.Host;
         _busy = true;
+        session.Toast(L.T("Saving the backup…"));
+        bool go = false;
+        try { go = await session.Backups.SafetyCopyAsync(L.T("Add it all")); }
+        catch (Exception ex) { App.Log(ex); }
+        if (!go)
+        {
+            _busy = false;
+            return;
+        }
         var (show, close) = RenewalNotice.ShowWorking(new(L.T("DON'T CLOSE THE APP"), Computer, "Accent", L.T("From your computer"), L.T("If it's closed, it goes on from where it was the next time.")));
         show(L.T("Adding…"), 0);
         RenewalNotice.Notice outcome;
         int shown = 0;
         try
         {
-            await session.Backups.SafetyCopyAsync();
             session.Radio.Save();
             var result = await FromComputer.RunAsync(Folder, ready, host.Library, host.Profiles, session.Profile.Info, host.Settings.MusicDir, Playable,
                 file => AudioAnalysis.Native?.ProbeVideo(file) != null,

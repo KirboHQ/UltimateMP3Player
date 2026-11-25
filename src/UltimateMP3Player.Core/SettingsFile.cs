@@ -118,10 +118,11 @@ public sealed class SettingsFile
                 d.LookId = look.Id;
                 continue;
             }
-            if (!Groups.TryGetValue(group, out var o)) continue;
+            if (!Groups.TryGetValue(group, out var o) || !Fields.TryGetValue(group, out var f)) continue;
             foreach (var (key, value) in o)
             {
-                if (value == null || key.Length < 3) continue;
+                // (the file may come from anyone: only what the group is made of, never the songs, the folders or the keys)
+                if (value == null || key.Length < 3 || !(key[0] == 'p' ? f.Profile : f.App).Contains(key[2..])) continue;
                 object target = key[0] == 'p' ? d : s;
                 var prop = target.GetType().GetProperty(key[2..], BindingFlags.Public | BindingFlags.Instance);
                 if (prop is not { CanWrite: true }) continue;

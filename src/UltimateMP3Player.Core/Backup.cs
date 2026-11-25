@@ -94,15 +94,15 @@ public static class Backup
 
     private static void Add(ZipArchive zip, string path, string entry, CompressionLevel level)
     {
-        // (a file being written right now is skipped, not a reason to fail the whole backup)
+        // (a picture being written right now is skipped, not a reason to fail the whole backup; one without the library would be)
         try
         {
             if (!File.Exists(path)) return;
-            using var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var input = JsonStore.Reading(() => new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete));
             using var output = zip.CreateEntry(entry, level).Open();
             input.CopyTo(output);
         }
-        catch (IOException) { }
+        catch (IOException) when (level == CompressionLevel.NoCompression) { }
     }
 
     // What a zip says about itself; null when it isn't a backup of the app.

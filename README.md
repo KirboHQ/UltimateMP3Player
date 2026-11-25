@@ -155,7 +155,8 @@ Windows, macOS and Linux. Plug in the cable and sign in with your free Apple ID:
 tap on the phone. With a free Apple ID an app stays signed for 7 days. From then on **the app renews and updates itself**
 on the iPhone: all it needs is [LocalDevVPN](https://apps.apple.com/app/id6755608044), a free app of the App Store kept
 connected (nothing goes out of the iPhone through it). Until when it works, and what's missing if something is, are in
-**Settings › Renewal**. Prefer the cable? Plug it in and press Renew in the installer, which also brings new versions.
+**Settings › Renewal**. If Apple asks you to sign in again, do it right there (the password goes only to Apple and isn't kept)
+or with the installer. Prefer the cable? Plug it in and press Renew in the installer, which also brings new versions.
 
 **Or with SideStore on your own**, if you already use it (the app no longer needs it to be renewed):
 

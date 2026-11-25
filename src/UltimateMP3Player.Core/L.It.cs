@@ -709,8 +709,6 @@ public static partial class L
             "Nessuna risposta: la stanza potrebbe essere chiusa, oppure il firewall di Windows blocca la connessione.",
         ["Nobody could get “{0}”: moving on to the next one"] = "Nessuno è riuscito a preparare «{0}»: si passa al prossimo",
         ["You're not allowed to add songs."] = "Non hai il permesso di aggiungere brani.",
-        ["You're not allowed to skip forward or back."] = "Non hai il permesso di andare avanti o indietro.",
-        ["You're not allowed to pause."] = "Non hai il permesso di mettere in pausa.",
         ["You're not allowed to skip songs."] = "Non hai il permesso di saltare i brani.",
         ["You're not allowed to remove or move songs."] = "Non hai il permesso di togliere o spostare brani.",
         ["You don't have permission."] = "Non hai il permesso.",
@@ -754,7 +752,6 @@ public static partial class L
         ["Only the host can change permissions"] = "Solo l'host può cambiare i permessi",
         ["Remove every permission"] = "Togli tutti i permessi",
         ["Listen with friends"] = "Ascolta con gli amici",
-        ["skip forward and back"] = "avanti e indietro",
         ["Search again"] = "Cerca di nuovo",
         ["People who join can"] = "Chi entra può",
         ["Ask a friend to create one on the same network, or create it yourself. If a room doesn't show up, join with its address."] =
@@ -1779,6 +1776,7 @@ public static partial class L
         ["Playing on {0}"] = "In riproduzione su {0}",
         ["Reconnecting to {0}…"] = "Riconnessione a {0}…",
         ["Connected to {0}: the music plays there"] = "Collegato a {0}: la musica suona lì",
+        ["The phone isn't connected right now."] = "Il telefono adesso non è collegato.",
         ["Connection to {0} lost: reconnecting…"] = "Connessione con {0} persa: riconnessione…",
         ["Waiting for a computer…"] = "In attesa di un computer…",
         ["Disconnected from {0}"] = "Scollegato da {0}",
@@ -2334,7 +2332,6 @@ public static partial class L
         ["Show or hide the artists"] = "Mostra o nascondi gli artisti",
         ["Show or hide the radios"] = "Mostra o nascondi le radio",
         ["Find artists to follow"] = "Trova artisti da seguire",
-        ["Find radios"] = "Trova radio",
         ["The artists you follow show up here."] = "Qui compaiono gli artisti che segui.",
         ["The radios you save show up here."] = "Qui compaiono le radio che salvi.",
         ["Bars of the music"] = "Barre della musica",
@@ -2420,7 +2417,6 @@ public static partial class L
         ["Behind the card"] = "Dietro la scheda",
         ["Small bars"] = "Barre piccole",
         ["Progress line"] = "Linea di avanzamento",
-        ["Both|f"] = "Entrambe",
         ["Neither|f"] = "Nessuna",
         ["Big bars behind the card"] = "Barre grandi dietro la scheda",
         ["Above the card"] = "Sopra la scheda",
@@ -2618,7 +2614,6 @@ public static partial class L
         ["Shuffle: off"] = "Casuale: disattivato",
         ["Repeat: all"] = "Ripeti: tutto",
         ["Repeat: this song"] = "Ripeti: questo brano",
-        ["Repeat: off"] = "Ripeti: disattivato",
         ["Voice commands"] = "Comandi vocali",
         ["“Ok Google, play … on Ultimate MP3 Player”, in the car and on the phone: what you can say."] =
             "«Ok Google, metti … su Ultimate MP3 Player», in auto e sul telefono: cosa puoi dire.",
@@ -2819,8 +2814,8 @@ public static partial class L
         ["The iPhone doesn't know this app's pairing any more (it happens after an iOS update or a reset). Open the installer on the computer and plug the iPhone in: it puts everything right."] =
             "L'iPhone non riconosce più l'abbinamento di quest'app (succede dopo un aggiornamento di iOS o un ripristino). Apri il programma di installazione sul computer e collega l'iPhone: rimette tutto a posto.",
         ["Sign in to Apple again"] = "Accedi di nuovo ad Apple",
-        ["Apple ended the sign-in the app renews itself with (after a change of password, for example). Open the installer on the computer, plug the iPhone in and sign in again."] =
-            "Apple ha chiuso l'accesso con cui l'app si rinnova (per esempio dopo un cambio di password). Apri il programma di installazione sul computer, collega l'iPhone e accedi di nuovo.",
+        ["Apple ended the sign-in the app renews itself with (after a change of password, for example). Sign in again here, or use the computer's sign-in."] =
+            "Apple ha chiuso l'accesso con cui l'app si rinnova (per esempio dopo un cambio di password). Accedi di nuovo qui, o usa l'accesso del computer.",
         ["Check the connection"] = "Controlla la connessione",
         ["Apple couldn't be reached. The app tries again by itself."] = "Non si riesce a raggiungere Apple. L'app riprova da sola.",
         ["Try again"] = "Riprova",
@@ -2869,8 +2864,58 @@ public static partial class L
             "In secondo piano, quando iOS lo permette, con il Wi-Fi e con LocalDevVPN accesa. Se è spento: dice quando c'è una versione nuova, e la installa quando tocchi Aggiorna.",
         ["renewal renew expires expiry seven days sign signature localdevvpn vpn sidestore apple id"] =
             "rinnovo rinnova rinnovare scade scadenza sette giorni firma localdevvpn vpn sidestore apple id",
-        ["localdevvpn vpn sidestore computer cable installer needed"] = "localdevvpn vpn sidestore computer cavo programma installazione serve",
+        ["localdevvpn vpn sidestore computer cable installer needed apple id sign in password"] =
+            "localdevvpn vpn sidestore computer cavo programma installazione serve apple id accesso accedi password",
         ["updates install by itself automatically version"] = "aggiornamenti installa da sola automaticamente versione",
+        // signing in to Apple again (iPhone)
+        ["NEEDED: sign in to Apple again"] = "SERVE: accedi di nuovo ad Apple",
+        ["Ultimate MP3 Player stops opening after {0}. Open it before then and sign in to Apple again, in Settings › Renewal: afterwards it takes the computer."] =
+            "Ultimate MP3 Player smette di aprirsi dopo {0}. Apri l'app prima di allora e accedi di nuovo ad Apple, in Impostazioni › Rinnovo: dopo ci vuole il computer.",
+        ["Sign in here"] = "Accedi qui",
+        ["Sign in again"] = "Accedi di nuovo",
+        ["Use the computer's sign-in"] = "Usa l'accesso del computer",
+        ["WITH THE COMPUTER"] = "CON IL COMPUTER",
+        ["Open the installer on the computer, plug the iPhone in and press Renew: it brings the app the computer's sign-in. It's also the way to change Apple ID."] =
+            "Apri il programma di installazione sul computer, collega l'iPhone e premi Rinnova: porta nell'app l'accesso del computer. Si passa da lì anche per cambiare Apple ID.",
+        ["The app doesn't know which Apple ID it was installed with. Open the installer on the computer, plug the iPhone in and press Renew: it puts everything right."] =
+            "L'app non sa con quale Apple ID è stata installata. Apri il programma di installazione sul computer, collega l'iPhone e premi Rinnova: rimette tutto a posto.",
+        ["Sign-in to Apple"] = "Accesso ad Apple",
+        ["It's what the app renews itself with. If Apple ends it, sign in again here or use the computer's sign-in."] =
+            "È quello con cui l'app si rinnova. Se Apple lo chiude, accedi di nuovo qui o usa l'accesso del computer.",
+        ["NEEDED, DONE"] = "SERVE, FATTO",
+        ["NEEDED, ENDED"] = "SERVE, SCADUTO",
+        ["Sign in to Apple"] = "Accedi ad Apple",
+        ["Signed in to Apple"] = "Accesso ad Apple riuscito",
+        ["Signing in…"] = "Accesso in corso…",
+        ["The app then renews itself again."] = "Così l'app torna a rinnovarsi da sola.",
+        ["The one the app was installed with: to change it, use the installer on the computer."] =
+            "È quello con cui è stata installata l'app: per cambiarlo usa il programma di installazione sul computer.",
+        ["Password"] = "Password",
+        ["Show the password"] = "Mostra la password",
+        ["Hide the password"] = "Nascondi la password",
+        ["The password goes only to Apple and isn't kept anywhere. An outside service (anisette) makes up a random identity for the request: it never sees the email or the password. It's up to you: the computer's sign-in does the same."] =
+            "La password va solo ad Apple e non viene salvata da nessuna parte. Un servizio esterno (anisette) crea un'identità casuale per la richiesta: non vede mai né l'email né la password. È facoltativo: va bene anche l'accesso del computer.",
+        ["Type the code"] = "Scrivi il codice",
+        ["Another way for the code"] = "Un altro modo per il codice",
+        ["Apple shows it on the devices signed in with this Apple ID. This iPhone may be one of them: tap Allow, read the code and type it here."] =
+            "Apple lo mostra sui dispositivi che usano questo Apple ID. Può esserci anche questo iPhone: tocca Consenti, leggi il codice e scrivilo qui.",
+        ["Apple sent it in a text message. It may well arrive on this same iPhone: you can go and read it, this stays here."] =
+            "Apple l'ha mandato con un messaggio. Può arrivare proprio su questo iPhone: vai pure a leggerlo, qui resta tutto com'è.",
+        ["The code couldn't be sent that way: choose another one."] = "Non si è riusciti a mandare il codice in quel modo: scegline un altro.",
+        ["Six digits"] = "Sei cifre",
+        ["Verify"] = "Verifica",
+        ["One moment…"] = "Un momento…",
+        ["Send it again"] = "Mandalo di nuovo",
+        ["Show it on my devices"] = "Mostralo sui miei dispositivi",
+        ["Text message to {0}"] = "Messaggio al {0}",
+        ["Wrong password: check it and try again. If the email of this Apple ID has changed, sign in from the computer."] =
+            "Password sbagliata: controllala e riprova. Se l'email di questo Apple ID è cambiata, accedi dal computer.",
+        ["That code didn't work. Have a new one sent and type it right away."] = "Quel codice non va bene. Fattene mandare uno nuovo e scrivilo subito.",
+        ["Apple is refusing the sign-in right now. It happens: try again in a while, or use the computer's sign-in."] =
+            "In questo momento Apple rifiuta l'accesso. Succede: riprova fra un po', o usa l'accesso del computer.",
+        ["Apple, or the anisette service, couldn't be reached: check the connection and try again."] =
+            "Non si riesce a raggiungere Apple, o il servizio anisette: controlla la connessione e riprova.",
+        ["Something didn't work: try again, or use the computer's sign-in."] = "Qualcosa non ha funzionato: riprova, o usa l'accesso del computer.",
         // from the computer (iPhone)
         ["From your computer"] = "Dal tuo computer",
         ["Add it all"] = "Aggiungi tutto",
@@ -2925,5 +2970,9 @@ public static partial class L
         ["{0} songs not added: their files weren't brought, and they have no link."] =
             "{0} brani non aggiunti: i loro file non sono stati portati, e non hanno un link.",
         ["It was all here already."] = "C'era già tutto.",
+        ["Go on without a copy of today's data?"] = "Continuare senza una copia dei dati di oggi?",
+        ["It couldn't be saved in the backup folder: what's here today couldn't be brought back afterwards."] =
+            "Non si è potuta salvare nella cartella dei backup: quello che c'è oggi non si potrebbe più recuperare.",
+        ["{0} - settings"] = "{0} - impostazioni",
     };
 }

@@ -12,12 +12,13 @@ namespace UltimateMP3Player.Views;
 // installer's notices: something needed, something that isn't any more, a decision, news).
 public static class RenewalNotice
 {
-    private const string Need = "\uE7BA", Gone = "\uE74D", Ask = "\uE946", News = "\uE896";
+    private const string Need = "\uE7BA", Gone = "\uE74D", Ask = "\uE946", News = "\uE896", Pc = "\uE7F4";
 
     // Stays: the button starts something elsewhere, and the sheet goes by itself once nothing's wrong any more. Risky: the button takes
-    // something away, so it isn't the one that stands out. Away: a last button, under "Not now", for getting rid of it.
+    // something away, so it isn't the one that stands out. Away: a last button, under "Not now", for getting rid of it. Or: another way
+    // of doing the same, under the main one.
     internal sealed record Notice(string Label, string Glyph, string Colour, string Title, string Text, string? Yes = null, Action? Do = null, bool Stays = false, bool Risky = false,
-        string? Away = null, Action? Discard = null);
+        string? Away = null, Action? Discard = null, string? Or = null, Action? DoOr = null);
 
     // ------------------------------------------------------------------ what's said
 
@@ -41,7 +42,8 @@ public static class RenewalNotice
                     L.T("The iPhone doesn't know this app's pairing any more (it happens after an iOS update or a reset). Open the installer on the computer and plug the iPhone in: it puts everything right.") + until);
             case RenewalProblem.SignIn:
                 return Needed(L.T("Sign in to Apple again"),
-                    L.T("Apple ended the sign-in the app renews itself with (after a change of password, for example). Open the installer on the computer, plug the iPhone in and sign in again.") + until);
+                    L.T("Apple ended the sign-in the app renews itself with (after a change of password, for example). Sign in again here, or use the computer's sign-in.") + until,
+                    L.T("Sign in here"), RenewalSignIn.Open) with { Or = L.T("Use the computer's sign-in"), DoOr = () => _ = ShowAsync(Computer()) };
             case RenewalProblem.Internet:
                 return Needed(L.T("Check the connection"), L.T("Apple couldn't be reached. The app tries again by itself.") + until, L.T("Try again"), RenewNow);
             case RenewalProblem.Install:
@@ -54,12 +56,20 @@ public static class RenewalNotice
         }
     }
 
+    // The other way of signing in again, as it always was.
+    internal static Notice Computer() => new(L.T("WITH THE COMPUTER"), Pc, "Accent", L.T("Use the computer's sign-in"),
+        L.T("Open the installer on the computer, plug the iPhone in and press Renew: it brings the app the computer's sign-in. It's also the way to change Apple ID."));
+
+    // Nobody to sign in again as: what the installer left can't be read.
+    internal static Notice NoAccount() => new(L.T("NEEDED"), Pc, "Warning", L.T("The computer, once"),
+        L.T("The app doesn't know which Apple ID it was installed with. Open the installer on the computer, plug the iPhone in and press Renew: it puts everything right."));
+
     // ------------------------------------------------------------------ when
 
     private static DateTime _shown;
     // (the sheets it was shown on: a screen built again, for another language, starts without it)
-    private static SheetHost? _openOn;
-    internal static bool Open => _openOn != null && _openOn == App.Host.View?.Sheets;
+    internal static SheetHost? OpenOn;
+    internal static bool Open => OpenOn != null && OpenOn == App.Host.View?.Sheets;
 
     // The app opened or came back: in the last two days without having managed (every six hours at most); SideStore, once.
     public static async Task ShowPendingAsync()
@@ -104,19 +114,20 @@ public static class RenewalNotice
     internal static IBrush Soft(string colour) => Ui.Res(colour + "SoftBrush");
 
     // Drawn, not written: a character sits where its font's line puts it, up to a point off the middle of the circle.
-    internal static Border Badge(string glyph, string colour, double size)
+    internal static Border Badge(string glyph, string colour, double size) => new()
+    {
+        Width = size, Height = size, CornerRadius = new CornerRadius(size / 2), Background = Soft(colour), Child = Drawn(glyph, size / 2, Strong(colour)),
+    };
+
+    internal static Avalonia.Controls.Shapes.Path Drawn(string glyph, double size, IBrush fill)
     {
         var face = new Typeface(Icons.FontFor(glyph)).GlyphTypeface;
         var text = Icons.Map(glyph);
-        var drawn = new GlyphRun(face, size / 2, text.AsMemory(), new[] { face.GetGlyph(text[0]) }).BuildGeometry();
-        return new Border
+        var drawn = new GlyphRun(face, size, text.AsMemory(), new[] { face.GetGlyph(text[0]) }).BuildGeometry();
+        return new Avalonia.Controls.Shapes.Path
         {
-            Width = size, Height = size, CornerRadius = new CornerRadius(size / 2), Background = Soft(colour),
-            Child = new Avalonia.Controls.Shapes.Path
-            {
-                Data = drawn, Fill = Strong(colour), Stretch = Stretch.Uniform, Width = drawn.Bounds.Width, Height = drawn.Bounds.Height,
-                HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, UseLayoutRounding = false,
-            },
+            Data = drawn, Fill = fill, Stretch = Stretch.Uniform, Width = drawn.Bounds.Width, Height = drawn.Bounds.Height,
+            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, UseLayoutRounding = false,
         };
     }
 
@@ -143,7 +154,7 @@ public static class RenewalNotice
         return body;
     }
 
-    private static Button Wide(string text, string theme, double top) => new()
+    internal static Button Wide(string text, string theme, double top) => new()
     {
         Content = text, Theme = Ui.Theme(theme), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, top, 0, 0),
     };
@@ -153,7 +164,7 @@ public static class RenewalNotice
     {
         if (App.Host.View?.Sheets is not { } sheets) return false;
         var body = Body(n);
-        bool yes = false, away = false;
+        bool yes = false, or = false, away = false;
         if (n.Yes != null)
         {
             var go = Wide(n.Yes, n.Risky ? "TouchGhost" : "TouchPrimary", 22);
@@ -164,6 +175,16 @@ public static class RenewalNotice
                 else sheets.Close(body);
             };
             body.Children.Add(go);
+        }
+        if (n.Or != null)
+        {
+            var other = Wide(n.Or, "TouchGhost", 10);
+            other.Click += (_, _) =>
+            {
+                or = true;
+                sheets.Close(body);
+            };
+            body.Children.Add(other);
         }
         var later = Wide(n.Yes != null ? L.T("Not now") : "OK", n.Yes != null && !n.Risky ? "TouchGhost" : "TouchPrimary", n.Yes != null ? 10 : 22);
         later.Click += (_, _) => sheets.Close(body);
@@ -182,12 +203,13 @@ public static class RenewalNotice
         {
             if (n.Stays && !Renewal.Busy && Renewal.Problem == RenewalProblem.None) sheets.Close(body);
         }
-        _openOn = sheets;
+        OpenOn = sheets;
         Renewal.Changed += Solved;
         await sheets.Show(new ScrollViewer { Content = body });
         Renewal.Changed -= Solved;
-        _openOn = null;
+        OpenOn = null;
         if (yes && !n.Stays) n.Do?.Invoke();
+        if (or) n.DoOr?.Invoke();
         if (away) n.Discard?.Invoke();
         return yes;
     }
@@ -216,7 +238,7 @@ public static class RenewalNotice
         var bar = new ProgressBar { Maximum = 1, Margin = new Thickness(0, 0, 0, 14) };
         body.Children.Add(stage);
         body.Children.Add(bar);
-        _openOn = sheets;
+        OpenOn = sheets;
         _ = sheets.Show(new ScrollViewer { Content = body }, dismissable: false);
         return ((what, part) =>
         {
@@ -224,7 +246,7 @@ public static class RenewalNotice
             bar.Value = part;
         }, () =>
         {
-            _openOn = null;
+            OpenOn = null;
             sheets.Close(body);
         });
     }

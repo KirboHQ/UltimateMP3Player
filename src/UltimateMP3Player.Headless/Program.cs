@@ -10,6 +10,8 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using UltimateMP3Player;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Link;
+using UltimateMP3Player.Core.Together;
 using UltimateMP3Player.Services;
 using UltimateMP3Player.ViewModels;
 using UltimateMP3Player.Views;
@@ -60,6 +62,7 @@ Dispatcher.UIThread.UnhandledException += (_, e) =>
 };
 
 // What App.Start does, without the single instance, the terms and the profile picker.
+ButtonNames.Register();
 var host = new AppHost();
 typeof(App).GetProperty(nameof(App.Host))!.SetValue(null, host);
 host.OpenProfile(host.ChooseStartupProfile(null)!);
@@ -445,7 +448,8 @@ pageLink.SetValue(main.Downloads, listCard);
     t.Keys.Add("youtube:" + key);
     main.Library.Add(t);
     main.Profile.Own(new[] { t.Id });
-    for (int i = 0; i < 40; i++)
+    // (a moment after the last change: later on a busy computer)
+    for (int i = 0; i < 40 || i < 200 && main.Radio.Has(id); i++)
     {
         Dispatcher.UIThread.RunJobs();
         Thread.Sleep(10);
@@ -538,6 +542,13 @@ Check(main.LibraryHub.IsArtists, "Alt+left: back");
 main.OpenSettingsGroup("playback");
 Shot(win, "settings-again");
 Check(win.GetVisualDescendants().OfType<SettingsView>().First().CardsShown.All(c => SettingsView.GetGroup(c) == "playback"), "settings: opened on one group from elsewhere");
+// ---- what a screen reader says of the buttons with only an icon
+var icons = win.GetVisualDescendants().OfType<Button>().Where(b => b.IsEffectivelyVisible && ToolTip.GetTip(b) is string && b.Content is string { Length: 1 } or TextBlock { Text.Length: 1 }).ToList();
+var silent = icons.Where(b => Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(b).GetName() is not { Length: > 1 }).Select(b => ToolTip.GetTip(b)).ToList();
+Check(icons.Count > 5 && silent.Count == 0, $"{icons.Count} icon buttons have a name: silent {string.Join(", ", silent)}");
+var classes = win.GetVisualDescendants().OfType<Button>().Where(b => b.IsEffectivelyVisible).Select(b => Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(b).GetName())
+    .Where(n => n?.StartsWith("Avalonia.") == true || n?.StartsWith("UltimateMP3Player.") == true).ToList();
+Check(classes.Count == 0, $"no button is called as its class: {string.Join(", ", classes.Distinct())} ({classes.Count})");
 var output = win.GetVisualDescendants().OfType<ComboBox>().FirstOrDefault(c => Avalonia.Automation.AutomationProperties.GetName(c) == L.T("Audio output"));
 Check(output is { SelectedIndex: >= 0 }, "settings opened again: the audio output still shown");
 // ---- a page left and opened again keeps its view (not built again); Ctrl+↓ goes on from the search's box
@@ -1227,6 +1238,11 @@ Check(((ItemsControl)addedShelf.Content!).ItemCount == addedShelf.Total && !Shel
     Check(d2.CrossfadeSeconds == 9 && s2.SearchParallel == host.Settings.SearchParallel && s2.MusicDir == "elsewhere" && d2.Looks.Count == data.Looks.Count
           && d2.LookId != null && d2.Looks.Any(l => l.Id == d2.LookId) && d2.Bars?.Style == host.Settings.VisualizerStyle,
         "settings file: groups come in, the music folder doesn't, the look comes as a look of its own");
+    // A file made by someone else, with more in it than a group has.
+    var forged = SettingsFile.TryRead("{\"App\":\"" + SettingsFile.Kind + "\",\"Groups\":{\"playback\":{\"p:Shuffle\":true,\"p:Songs\":[],\"p:ListenBrainzToken\":\"x\",\"a:MusicDir\":\"x\",\"a:BackupFolder\":\"x\"}}}")!;
+    var d3 = new ProfileData { Songs = new() { "mine" } };
+    forged.Apply(d3, s2, "import-test", Path.Combine(root, "backdrop-test.jpg"), new[] { "playback" });
+    Check(d3 is { Shuffle: true, Songs.Count: 1, ListenBrainzToken: null } && s2 is { MusicDir: "elsewhere", BackupFolder: null }, "settings file: only what its groups are made of comes in");
     var none = SettingsFile.TryRead("{\"Version\":1}");
     Check(none == null, "settings file: another JSON isn't taken for settings");
 
@@ -1261,6 +1277,57 @@ Check(((ItemsControl)addedShelf.Content!).ItemCount == addedShelf.Total && !Shel
         "phone window: no phone, the steps and the phones nearby");
     phoneWin.Close();
     Check(main.Settings.PhoneLink.ButtonText == L.T("Connect phone…"), "phone: the button says Connect phone… with none");
+}
+
+// ---- Connect phone: a song only the phone has, chosen there, starts here once its file has come (a made-up phone on this computer, a
+// song of silence)
+{
+    var song = Path.Combine(root, "phone.wav");
+    using (var w = new BinaryWriter(File.Create(song)))
+    {
+        int bytes = 44100 * 4 * 5;
+        w.Write("RIFF"u8); w.Write(36 + bytes); w.Write("WAVE"u8); w.Write("fmt "u8); w.Write(16); w.Write((short)1); w.Write((short)2);
+        w.Write(44100); w.Write(44100 * 4); w.Write((short)4); w.Write((short)16); w.Write("data"u8); w.Write(bytes); w.Write(new byte[bytes]);
+    }
+    var theirs = new LinkTrack { Id = "t1", Title = "Only on the phone", Artist = "Nobody", Duration = 5, File = true, Saved = true };
+    var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+    listener.Start();
+    Connection? phone = null;
+    _ = Task.Run(async () =>
+    {
+        var c = new Connection(await listener.AcceptTcpClientAsync());
+        c.Message += (from, m) =>
+        {
+            if (m.T == "hello") c.Send(new Msg { T = "welcome", Text = "token", Me = new Member { Id = "phone", Name = "A phone" } });
+            else if (m.T == "want") _ = FileLane.SendAsync(c, m.Text!, song);
+            else if (m.T == "libAsk")
+            {
+                var music = Path.Combine(root, "phone.gz");
+                using (var gz = new System.IO.Compression.GZipStream(File.Create(music), System.IO.Compression.CompressionLevel.Fastest))
+                    System.Text.Json.JsonSerializer.Serialize(gz, new LinkLib { Full = true, Profile = new LinkProfile { Name = "Phone" }, Tracks = new() { theirs } }, Msg.Json);
+                _ = FileLane.SendAsync(c, m.Text!, music);
+            }
+        };
+        c.Start();
+        phone = c;
+    });
+    bool Until(Func<bool> done)
+    {
+        for (int i = 0; i < 250 && !done(); i++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(20);
+        }
+        return done();
+    }
+    main.Player.Muted = true;
+    _ = main.PhoneLink.Connect(new PhoneAd { Id = "phone", Name = "A phone", Ip = "127.0.0.1", Port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port, Proto = LinkEnd.Proto });
+    Check(Until(() => main.Songs().Any(t => t.Title == theirs.Title)), "phone: its music is here once connected");
+    phone?.Send(new Msg { T = "play", Tracks = new() { theirs }, Index = 0, Text = "A list" });
+    Check(Until(() => main.Player.Current?.Title == theirs.Title && !main.Player.IsWaiting), "phone: a song only it has starts here once its file has come");
+    _ = main.PhoneLink.Disconnect();
+    Check(Until(() => !main.PhoneLinked && main.Songs().All(t => t.Title != theirs.Title)), "phone: disconnected, its music goes");
+    listener.Stop();
 }
 
 // A session that's over (another profile, another language) leaves nothing hooked to what outlives it, which would keep all of it
