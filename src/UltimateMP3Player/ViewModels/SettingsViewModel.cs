@@ -295,6 +295,7 @@ public sealed class SettingsViewModel : Observable
     public EqualizerViewModel Equalizer { get; }
     public BackupsViewModel Backups => _main.Backups;
     public ScrobblingViewModel Scrobbling => _main.Scrobbling;
+    public ModsViewModel Mods => _main.Mods;
     public ICommand BrowseCommand { get; }
     public ICommand OpenMusicDirCommand { get; }
     public ICommand OpenDataDirCommand { get; }

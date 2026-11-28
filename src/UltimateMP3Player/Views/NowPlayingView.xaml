@@ -79,6 +79,14 @@
             <!-- the bars of the music, behind the title (with the cover; Settings > Appearance), as wide as the stage, its corners
                  cutting them (NowPlayingView.ClipStage) -->
             <Grid x:Name="BarsClip">
+            <!-- a mod's visualizer over the whole page, behind its words (fill: "page"), and the video it asked for under it -->
+            <MediaElement x:Name="SceneVideo" LoadedBehavior="Manual" UnloadedBehavior="Close" IsMuted="True" ScrubbingEnabled="True" Stretch="UniformToFill"
+                          IsHitTestVisible="False" Visibility="{Binding IsPageScene, Converter={StaticResource BoolVis}}"/>
+            <views:ModCanvasView x:Name="PageCanvas" Scene="{Binding PageScene}" Player="{Binding Player}" IsPlaying="{Binding Player.Animate}"
+                                 StageOf="{Binding ElementName=SceneSlot}" Visibility="{Binding IsPageScene, Converter={StaticResource BoolVis}}"/>
+            <!-- a mod's bars instead (Core/Mods: chosen in its page) -->
+            <views:ModCanvasView Scene="{Binding BarsScene}" Player="{Binding Player}" IsPlaying="{Binding Player.Animate}" BarsPlace="{Binding VisualizerPlace}"
+                                 Visibility="{Binding ShowModBars, Converter={StaticResource BoolVis}}"/>
             <views:WaveVisualizer x:Name="Visualizer" IsPlaying="{Binding Player.Animate}" Flow="{Binding VisualizerFlow}" Place="{Binding VisualizerPlace}" BarStyle="{Binding VisualizerStyle}" Tint="{Binding VisualizerTint}" Thickness="{Binding VisualizerThickness}" HeightShare="{Binding VisualizerHeight}" Strength="{Binding VisualizerStrength}"
                                   Visibility="{Binding ShowVisualizer, Converter={StaticResource BoolVis}}"/>
             </Grid>
@@ -89,6 +97,10 @@
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
+
+                <!-- a mod's visualizer in place of the cover (Core/Mods: chosen in its page, for the songs it can show) -->
+                <views:ModCanvasView x:Name="SceneSlot" Scene="{Binding SlotScene}" Player="{Binding Player}" IsPlaying="{Binding Player.Animate}"
+                                     Visibility="{Binding IsScene, Converter={StaticResource BoolVis}}"/>
 
                 <!-- cover, tilting in 3D with the mouse -->
                 <Grid x:Name="CoverArea" Visibility="{Binding ShowCover, Converter={StaticResource BoolVis}}">
@@ -346,6 +358,15 @@
                                 <TextBlock Text="Video" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
                             </StackPanel>
                         </ToggleButton>
+                        <!-- a mod's visualizer for this song (osu!'s playfield), on and off, with its mod's name -->
+                        <ToggleButton Style="{StaticResource ToggleIcon}" Width="Auto" Height="36" IsChecked="{Binding ShowScene}" Margin="6,0,0,0"
+                                      Visibility="{Binding HasSceneOffer, Converter={StaticResource BoolVis}}" ToolTip="{Binding SceneOfferTip}"
+                                      AutomationProperties.Name="{Binding SceneOfferName}">
+                            <StackPanel Orientation="Horizontal" Margin="8,0">
+                                <TextBlock Text="&#xEA86;" FontFamily="{StaticResource IconFont}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SceneOfferName}" FontFamily="{StaticResource UiFont}" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </ToggleButton>
                         <!-- only when the song has lyrics -->
                         <ToggleButton Style="{StaticResource ToggleIcon}" Width="Auto" Height="36" IsChecked="{Binding ShowLyrics}" Margin="6,0,0,0"
                                       Visibility="{Binding HasLyrics, Converter={StaticResource BoolVis}}" ToolTip="{local:T 'Show the lyrics instead of the cover'}"
@@ -375,6 +396,16 @@
                     </Grid>
                 </Grid>
             </Grid>
+
+            <!-- a page visualizer's own choice (Core/Mods visualizers.chip: the osu! mod's difficulty), drawn by the app in its look -->
+            <Button x:Name="PageChipBtn" Style="{StaticResource StagePill}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16,16,0,0" MaxWidth="360"
+                    Command="{Binding PageChipCommand}" Visibility="{Binding HasPageChip, Converter={StaticResource BoolVis}}"
+                    ToolTip="{Binding PageChip}" AutomationProperties.Name="{Binding PageChip}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding PageChip}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <TextBlock Text="&#xE70D;" Style="{StaticResource Glyph}" FontSize="11" Margin="8,1,2,0" VerticalAlignment="Center" Opacity="0.8"/>
+                </StackPanel>
+            </Button>
 
             <!-- brings back "next up" when it's folded away (NowPlayingView.PlaceQueue) -->
             <Button x:Name="ShowQueueBtn" Style="{StaticResource StagePill}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"

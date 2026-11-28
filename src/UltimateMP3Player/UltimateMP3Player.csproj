@@ -12,7 +12,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>5.6.2</Version>
+    <Version>6.0.0</Version>
     <Product>Ultimate MP3 Player</Product>
     <!-- File description: the name Windows shows in the volume mixer and the Task Manager. -->
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
@@ -46,6 +46,7 @@
 
   <ItemGroup>
     <Compile Include="..\UltimateMP3Player.Android\Platform\SiteLogins.Shared.cs" Link="Shared\Platform\SiteLogins.Shared.cs" />
+    <Compile Include="..\UltimateMP3Player.Avalonia\Views\ModSkia.cs" Link="Shared\Views\ModSkia.cs" />
   </ItemGroup>
 
   <!-- Windows' own APIs (only the media controls use them, Services\MediaControls.cs): left out of ReadyToRun, the few
@@ -60,6 +61,8 @@
     <!-- internet radios' MP3 streams (LiveMp3Source), like the other systems -->
     <PackageReference Include="NLayer.NAudioSupport" Version="2.0.1" />
     <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
+    <!-- the mods' visualizers drawn as on the other systems (Avalonia's ModSkia, linked): the same Skia as Avalonia 11.3 -->
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
     <!-- the Discord bot (Services\VoiceBot.cs): Discord.Net calls libdave 1.2 (downloaded) and these two libraries. Its nightly
          (NuGet.config): 3.20.2 fails the voice encryption with others in the channel. -->
     <PackageReference Include="Discord.Net.WebSocket" Version="3.20.2-nightly.20261111.899" />
@@ -69,6 +72,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UltimateMP3Player.Core\UltimateMP3Player.Core.csproj" />
+    <!-- Realm for the mods (osu! lazer's library): the computers only -->
+    <ProjectReference Include="..\UltimateMP3Player.Realm\UltimateMP3Player.Realm.csproj" />
   </ItemGroup>
 
 </Project>

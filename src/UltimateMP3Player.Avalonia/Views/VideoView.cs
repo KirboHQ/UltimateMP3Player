@@ -284,10 +284,19 @@ public sealed class VideoView : Control
         _decoder = null;
     }
 
+    // Over a whole place, cut to fill it (a mod's video behind the song page), instead of stretched to it.
+    public bool Cover { get; set; }
+
     public override void Render(DrawingContext context)
     {
-        if (_bitmap != null && Bounds.Width > 0 && Bounds.Height > 0)
-            context.DrawImage(_bitmap, new Rect(0, 0, _width, _height), new Rect(Bounds.Size));
+        if (_bitmap == null || Bounds.Width <= 0 || Bounds.Height <= 0) return;
+        var source = new Rect(0, 0, _width, _height);
+        if (Cover)
+        {
+            double k = Math.Max(Bounds.Width / _width, Bounds.Height / _height), w = Bounds.Width / k, h = Bounds.Height / k;
+            source = new Rect((_width - w) / 2, (_height - h) / 2, w, h);
+        }
+        context.DrawImage(_bitmap, source, new Rect(Bounds.Size));
     }
 
     // ------------------------------------------------------------------ ffmpeg

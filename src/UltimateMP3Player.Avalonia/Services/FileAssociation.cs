@@ -12,6 +12,8 @@ public static class FileAssociation
     public const string DesktopId = "ultimate-mp3-player";
     public const string PackMime = "application/x-ultimate-mp3-player-pack";
     private const string PackIcon = "application-x-ultimate-mp3-player-pack";
+    // Mods (Core/Mods): opening one asks to install it.
+    private const string ModMime = "application/x-ultimate-mp3-player-mod";
 
     public static void Register()
     {
@@ -44,6 +46,12 @@ public static class FileAssociation
                 <icon name="{PackIcon}"/>
                 <glob pattern="*{Pack.Extension}"/>
               </mime-type>
+              <mime-type type="{ModMime}">
+                <comment>Ultimate MP3 Player mod</comment>
+                <comment xml:lang="it">Mod di Ultimate MP3 Player</comment>
+                <icon name="{DesktopId}"/>
+                <glob pattern="*{Core.Mods.ModPackage.Extension}"/>
+              </mime-type>
             </mime-info>
 
             """);
@@ -61,7 +69,7 @@ public static class FileAssociation
             Icon={DesktopId}
             Terminal=false
             Categories=AudioVideo;Audio;Player;
-            MimeType={PackMime};
+            MimeType={PackMime};{ModMime};
             Keywords=music;mp3;player;download;playlist;musica;
             StartupWMClass={DesktopId}
             StartupNotify=true
@@ -74,6 +82,7 @@ public static class FileAssociation
         {
             Run("update-desktop-database", apps);
             Run("xdg-mime", "default", DesktopId + ".desktop", PackMime);
+            Run("xdg-mime", "default", DesktopId + ".desktop", ModMime);
         }
     }
 

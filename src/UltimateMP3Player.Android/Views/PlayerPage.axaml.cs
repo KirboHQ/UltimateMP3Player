@@ -44,6 +44,9 @@ public partial class PlayerPage : UserControl
         AttachedToVisualTree += (_, _) => Themes.Changed += Bake;
         DetachedFromVisualTree += (_, _) => Themes.Changed -= Bake;
         Video.Clock = () => _vm?.Player.EnginePosition ?? TimeSpan.Zero;
+        _sceneVideo = new ModSceneVideo(SceneVideo, PageCanvas, () => _vm?.Player);
+        // (the stage lies over a "page" visualizer: its taps go on to it)
+        Stage.Tapped += (_, e) => { if (_vm?.IsPageScene == true && PageCanvas.PressFrom(Stage, e.GetPosition(Stage))) e.Handled = true; };
         Video.MediaOpened += FitVideo;
         Stage.SizeChanged += (_, _) =>
         {
@@ -187,7 +190,8 @@ public partial class PlayerPage : UserControl
 
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(NowPlayingViewModel.VideoPath) or nameof(NowPlayingViewModel.ShowVideo)) UpdateVideo();
+        if (e.PropertyName is nameof(NowPlayingViewModel.VideoPath) or nameof(NowPlayingViewModel.ShowVideo) or nameof(NowPlayingViewModel.PageScene)
+            or nameof(NowPlayingViewModel.IsPageScene)) UpdateVideo();
         else if (e.PropertyName == nameof(NowPlayingViewModel.LyricsVisible)) ShowLyricsText();
     }
 
@@ -242,8 +246,12 @@ public partial class PlayerPage : UserControl
 
     // ------------------------------------------------------------------ video
 
+    // A "page" visualizer's video (an osu! beatmap's), under it while the page is open.
+    private readonly ModSceneVideo _sceneVideo;
+
     private void UpdateVideo()
     {
+        _sceneVideo.Watch(_open && _vm?.IsPageScene == true ? _vm.PageScene : null);
         var path = _vm?.VideoPath;
         if (path == null || !_open)
         {
@@ -253,7 +261,11 @@ public partial class PlayerPage : UserControl
         Video.Source = path;
     }
 
-    private void CloseVideo() => Video.Source = null;
+    private void CloseVideo()
+    {
+        Video.Source = null;
+        _sceneVideo.Watch(null);
+    }
 
     private void FitVideo()
     {

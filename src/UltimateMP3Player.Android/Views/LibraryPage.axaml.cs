@@ -118,6 +118,10 @@ public partial class LibraryPage : UserControl, IPage
         menu.Add(new(L.T("Songs from your phone…"), "", () => _ = main.ImportDialog(false)));
         menu.Add(new(L.T("A music folder…"), "", () => _ = main.ImportDialog(true)));
         menu.Add(new(L.T("Import a .ump pack…"), "", () => _ = main.PickPack()));
+        // What the mods add (Core/Mods, ump.importers): an osu! library, a beatmap...
+        var importers = main.Mods.Importers;
+        if (importers.Count > 0) menu.Line();
+        foreach (var (title, run) in importers) menu.Add(new(title, "", run));
         Menus.Open(menu);
     }
 

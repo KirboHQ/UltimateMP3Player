@@ -55,6 +55,7 @@ public static partial class Menus
         menu.Items.Add(TagSubmenu(new[] { t }));
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(MoreSubmenu(t));
+        AddModItems(menu, t);
         menu.Items.Add(new Separator());
         if (owner is StatsViewModel) menu.Items.Add(ForgetStatsItem(t));
         menu.Items.Add(Item(L.T("Delete…"), DeleteGlyph, () => _ = main.DeleteTrack(t)));
@@ -91,6 +92,38 @@ public static partial class Menus
             sub.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(url); main.Toast(L.T("Link copied")); } catch { } }));
         if (!Station.Is(t.Id) && ArtistNames.First(t.T.Artist) is { } artist) sub.Items.Add(Unsuggest(main, artist, true));
         return sub;
+    }
+
+    // Library's "Add files": straight to the files, or, when mods add importers (Core/Mods, ump.importers), a menu with the app's own
+    // ways first and theirs after (null: no menu).
+    public static ContextMenu? ImportMenu(MainViewModel main)
+    {
+        var importers = main.Mods.Importers;
+        if (importers.Count == 0) return null;
+        var menu = new ContextMenu();
+        menu.Items.Add(Item(L.T("Songs from your computer…"), "", () => _ = main.ImportDialog(false)));
+        menu.Items.Add(Item(L.T("A music folder…"), "", () => _ = main.ImportDialog(true)));
+        menu.Items.Add(new Separator());
+        foreach (var (title, run) in importers) menu.Items.Add(Item(title, "", run));
+        return menu;
+    }
+
+    // What the mods put in a song's menu (Core/Mods): in sight, not under More, in every menu of one song; three or more (several
+    // mods) in a submenu of their own, so the song's own entries stay few.
+    private static void AddModItems(ItemsControl menu, TrackViewModel t)
+    {
+        var entries = t.Main.Mods.SongEntries(t);
+        if (entries.Count == 0) return;
+        menu.Items.Add(new Separator());
+        ItemsControl into = menu;
+        if (entries.Count >= 3)
+        {
+            var sub = new SubmenuEntry { Header = L.T("Mods") };
+            Ui.SetGlyph(sub, "");
+            menu.Items.Add(sub);
+            into = sub;
+        }
+        foreach (var (title, run) in entries) into.Items.Add(Item(title,"", run));
     }
 
     // An artist out of the suggested queue (the AI-made ones flooding the sites' radios), or back in it. named: the song's menu says whose.
@@ -295,6 +328,7 @@ public static partial class Menus
         menu.Items.Add(GoToArtist(t.Main, t.T.Artist));
         menu.Items.Add(Item(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Items.Add(Item(L.T("Copy original link"), "", () => { try { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copied")); } catch { } }));
+        AddModItems(menu, t);
         if (row == null && player.Current != t)
         {
             menu.Items.Add(new Separator());
@@ -774,6 +808,7 @@ public static partial class Menus
         menu.Items.Add(LyricsSubmenu(t));
         menu.Items.Add(new Separator());
         menu.Items.Add(MoreSubmenu(t));
+        AddModItems(menu, t);
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(L.T("Delete…"), DeleteGlyph, () => _ = t.Main.DeleteTrack(t)));
         return menu;

@@ -3,6 +3,7 @@ using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using SoundTouch;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Mods;
 
 namespace UltimateMP3Player.Audio;
 
@@ -32,6 +33,11 @@ internal sealed class Voice : IDisposable
     public bool Ended;
     public double CrossfadeAt = double.MaxValue;
     public bool NearEndRaised;
+    // Sounds played at their times in this song (a mod's hitsounds: ump.sounds.cue), the next one due, and where the song was at
+    // the end of the last read (-1: not known yet; a jump from there finds the next one again instead of playing all between).
+    public CueSheet? Cues;
+    public int CueNext;
+    public double CueAt = -1;
 
     // The transition matched to the next song's BPM: from BendFrom (seconds of the song) its tempo glides to BendRatio in
     // BendSeconds, the key unchanged, and stays there while it fades out. Only this song: the next one plays as it is.
@@ -363,6 +369,7 @@ public sealed class MasterProvider : ISampleProvider
                 GainTarget = cur.GainTarget, GainStep = cur.GainStep,
                 CrossfadeAt = cur.CrossfadeAt, NearEndRaised = cur.NearEndRaised, Ended = cur.Ended,
                 BendFrom = cur.BendFrom, BendSeconds = cur.BendSeconds, BendRatio = cur.BendRatio, Bpm = cur.Bpm, FirstBeat = cur.FirstBeat,
+                Cues = cur.Cues,
             };
             v.Rebuild(_rate);
             // Fade 0 with a jump pending: the first read seeks it there and fades it in.
@@ -630,8 +637,109 @@ public sealed class MasterProvider : ISampleProvider
 
     private int ReadVoice(Voice v, float[] dst, int offset, int count)
     {
+        int read = ReadSong(v, dst, offset, count, out double before, out double after, out int silent);
+        // The song playing: its cues due in what was just read start, and the sounds going on are added (not the song's gain:
+        // they keep their own loudness; its fades, yes).
+        if (v == _current && (v.Cues != null || _playing > 0))
+        {
+            if (v.Cues is { } cues && !double.IsNaN(before)) Trigger(v, cues, before, after, silent / 2, (read - silent) / 2);
+            MixPlays(dst, offset, count / 2, v.Fade >= 1f ? 1f : MathF.Sin(v.Fade * MathF.PI / 2));
+        }
+        return read;
+    }
+
+    // ---- a mod's sounds with the song (CueSheet)
+
+    private struct CuePlay
+    {
+        public float[]? Data;
+        public double Pos, Step;
+        public float Left, Right;
+        public int Delay;
+    }
+
+    private readonly CuePlay[] _plays = new CuePlay[48];
+    private int _playing, _nextPlay;
+
+    // A mod's sounds for the song playing (null: none); the engine gives them to the song they're for (AudioEngine.SetCues).
+    public void SetCues(CueSheet? sheet)
+    {
+        lock (_lock)
+        {
+            if (_current is not { } cur) return;
+            cur.Cues = sheet;
+            cur.CueAt = -1;
+            if (sheet != null) return;
+            for (int i = 0; i < _plays.Length; i++) _plays[i].Data = null;
+            _playing = 0;
+        }
+    }
+
+    // The cues between where the song was and where it is now start, each at its frame of what was read.
+    private void Trigger(Voice v, CueSheet cues, double before, double after, int start, int frames)
+    {
+        var times = cues.Times;
+        if (v.CueAt < 0 || Math.Abs(before - v.CueAt) > 0.05 || after < before)
+        {
+            int lo = 0, hi = times.Length;
+            while (lo < hi) { int mid = (lo + hi) >> 1; if (times[mid] < after) lo = mid + 1; else hi = mid; }
+            v.CueNext = lo;
+            v.CueAt = after;
+            return;
+        }
+        double span = after - before;
+        while (v.CueNext < times.Length && times[v.CueNext] < after)
+        {
+            int i = v.CueNext++;
+            if (times[i] < before - 0.003 || cues.Sounds[i].Data is not { } data) continue;
+            int at = span <= 0 || frames == 0 ? 0 : (int)Math.Clamp((times[i] - before) / span * frames, 0, frames - 1);
+            // (a free place, else the oldest sound gives way)
+            int slot = Array.FindIndex(_plays, p => p.Data == null);
+            if (slot < 0) slot = _nextPlay = (_nextPlay + 1) % _plays.Length;
+            else _playing++;
+            _plays[slot] = new CuePlay
+            {
+                Data = data, Pos = 0, Step = cues.Sounds[i].Rate / (double)_rate,
+                Left = cues.Left[i], Right = cues.Right[i], Delay = start + at,
+            };
+        }
+        v.CueAt = after;
+    }
+
+    private void MixPlays(float[] dst, int offset, int frames, float fade)
+    {
+        for (int s = 0; s < _plays.Length; s++)
+        {
+            ref var p = ref _plays[s];
+            if (p.Data is not { } d) continue;
+            int last = d.Length / 2 - 1;
+            int i = Math.Min(p.Delay, frames);
+            p.Delay -= i;
+            float l = p.Left * fade, r = p.Right * fade;
+            for (; i < frames; i++)
+            {
+                int k = (int)p.Pos;
+                if (k >= last)
+                {
+                    p.Data = null;
+                    _playing--;
+                    break;
+                }
+                float t = (float)(p.Pos - k);
+                int j = 2 * k;
+                dst[offset + 2 * i] += (d[j] + (d[j + 2] - d[j]) * t) * l;
+                dst[offset + 2 * i + 1] += (d[j + 1] + (d[j + 3] - d[j + 1]) * t) * r;
+                p.Pos += p.Step;
+            }
+        }
+    }
+
+    // The song's own samples, with its gain and fades; where it was before reading and after (NaN: nothing read).
+    private int ReadSong(Voice v, float[] dst, int offset, int count, out double before, out double after, out int silent)
+    {
+        before = after = double.NaN;
         // A song coming in on the beat: silent until then (dst is silence already), its fade-in not started yet.
-        int silent = 0;
+        silent = 0;
         if (v.PendingSeek != null) v.StartDelay = 0;
         if (v.StartDelay > 0)
         {
@@ -655,8 +763,10 @@ public sealed class MasterProvider : ISampleProvider
         }
         if (v.Chain == null) return silent;
         int read;
+        before = v.Source.Position.TotalSeconds;
         try { read = v.Read(dst, offset, count, _rate); }
         catch { read = 0; }
+        after = v.Source.Position.TotalSeconds;
         for (int i = 0; i + 1 < read; i += 2)
         {
             if (v.Gain != v.GainTarget)

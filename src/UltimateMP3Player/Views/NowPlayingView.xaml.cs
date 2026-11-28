@@ -8,6 +8,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Mods;
 using UltimateMP3Player.ViewModels;
 
 namespace UltimateMP3Player.Views;
@@ -35,6 +36,13 @@ public partial class NowPlayingView : UserControl
             Sync(true);
         };
         Video.MediaEnded += (_, _) => { Video.Position = TimeSpan.Zero; };
+        SceneVideo.MediaOpened += (_, _) =>
+        {
+            _sceneOpened = true;
+            SyncSceneVideo(true);
+        };
+        SceneVideo.MediaFailed += (_, _) => CloseSceneVideo();
+        _sceneSync.Tick += (_, _) => SyncSceneVideo(false);
         LyricsPane.CanSeek = () => _vm?.Player.SeekCommand.CanExecute(null) == true;
         LyricsPane.SeekRequested += t => _vm?.Player.Seek(t);
         LyricsPane.FollowingChanged += ShowFollowButton;
@@ -73,6 +81,7 @@ public partial class NowPlayingView : UserControl
         LayoutUpdated += OnLayoutUpdated;
         Themes.Changed += BakeCover;
         Attach(DataContext as NowPlayingViewModel);
+        WatchSceneVideo();
         WatchCover();
         Update();
         PlaceQueue(false);
@@ -88,6 +97,7 @@ public partial class NowPlayingView : UserControl
         Themes.Changed -= BakeCover;
         Attach(null);
         CloseVideo();
+        WatchSceneVideo();
         StopTicking();
         if (_coverTrack != null) _coverTrack.PropertyChanged -= OnCoverChanged;
         _coverTrack = null;
@@ -114,6 +124,7 @@ public partial class NowPlayingView : UserControl
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(NowPlayingViewModel.VideoPath) or nameof(NowPlayingViewModel.ShowVideo)) Update();
+        else if (e.PropertyName is nameof(NowPlayingViewModel.PageScene) or nameof(NowPlayingViewModel.IsPageScene)) WatchSceneVideo();
         else if (e.PropertyName == nameof(NowPlayingViewModel.QueueHidden)) PlaceQueue(true);
         else if (e.PropertyName == nameof(NowPlayingViewModel.LyricsVisible)) ShowLyricsText();
         else if (e.PropertyName == nameof(NowPlayingViewModel.FullScreen)) PlaceFullScreen();
@@ -137,6 +148,8 @@ public partial class NowPlayingView : UserControl
         CoverArea.Margin = VideoArea.Margin = new Thickness(pane, 0, pane, 0);
         LyricsHost.Margin = new Thickness(0, -8, pane, 0);
         QueueCard.Margin = full ? new Thickness(14, 14, 0, 14 + bar) : new Thickness(14, 0, 0, 14);
+        // (a page visualizer keeps what matters above the bar: f.below)
+        PageCanvas.Below = bar;
         ClipStage();
     }
 
@@ -353,11 +366,13 @@ public partial class NowPlayingView : UserControl
             _vm?.Refresh();
             WatchCover();
             Update();
+            WatchSceneVideo();
             ShowLyricsText();
         }
         else if (e.PropertyName == nameof(PlayerViewModel.IsPlaying))
         {
             Sync(true);
+            SyncSceneVideo(true);
             PushClock();
         }
         else if (e.PropertyName == nameof(PlayerViewModel.Position))
@@ -413,6 +428,92 @@ public partial class NowPlayingView : UserControl
         }
         else Video.Pause();
         if (force || Math.Abs((Video.Position - target).TotalSeconds) > 0.25) Video.Position = target;
+    }
+
+    // ------------------------------------------------------------------ a "page" visualizer's video (an osu! beatmap's)
+
+    // Under the mod's picture, following the song from where the mod says the video starts (its offset); the mod is told when
+    // it shows (f.video) and draws the picture until then. MediaElement takes MP4 and WMV: others become an MP4 once (ModVideo).
+    private readonly DispatcherTimer _sceneSync = new(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(500) };
+    private ModVisualizer? _videoOf;
+    private string? _sceneSource;
+    private double _sceneOffset;
+    private bool _sceneOpened, _sceneStarted;
+
+    private void WatchSceneVideo()
+    {
+        var v = IsLoaded && _vm?.IsPageScene == true ? _vm.PageScene : null;
+        if (v != _videoOf)
+        {
+            if (_videoOf != null) _videoOf.VideoChanged -= OnSceneVideo;
+            _videoOf = v;
+            if (v != null) v.VideoChanged += OnSceneVideo;
+        }
+        OnSceneVideo();
+    }
+
+    private void OnSceneVideo() => Dispatcher.BeginInvoke(async () =>
+    {
+        if (_videoOf?.Video is not { } want || !IsLoaded)
+        {
+            CloseSceneVideo();
+            return;
+        }
+        _sceneOffset = want.Offset;
+        var file = await ModVideo.PlayableAsync(want.Path);
+        if (_videoOf?.Video?.Path != want.Path) return;
+        if (file == null)
+        {
+            CloseSceneVideo();
+            return;
+        }
+        if (_sceneSource != file)
+        {
+            CloseSceneVideo();
+            _sceneSource = file;
+            SceneVideo.Source = new Uri(file);
+        }
+        SyncSceneVideo(true);
+        _sceneSync.Start();
+    });
+
+    private void SyncSceneVideo(bool force)
+    {
+        if (_vm == null || _sceneSource == null) return;
+        var player = _vm.Player;
+        var target = player.EnginePosition - TimeSpan.FromMilliseconds(_sceneOffset);
+        // (before it starts the picture shows: the video waits at its first frame)
+        bool on = _sceneOpened && target >= TimeSpan.Zero && (SceneVideo.NaturalDuration is not { HasTimeSpan: true } d || target < d.TimeSpan);
+        PageCanvas.VideoShown = on;
+        if (target < TimeSpan.Zero) target = TimeSpan.Zero;
+        if (player.IsPlaying && on)
+        {
+            if (force || Math.Abs((SceneVideo.Position - target).TotalSeconds) > 0.25) SceneVideo.Position = target;
+            SceneVideo.Play();
+            _sceneStarted = true;
+            return;
+        }
+        if (!_sceneStarted)
+        {
+            // (a MediaElement shows nothing until it has played once)
+            _sceneStarted = true;
+            SceneVideo.Play();
+            force = true;
+        }
+        SceneVideo.Pause();
+        if (force || Math.Abs((SceneVideo.Position - target).TotalSeconds) > 0.25) SceneVideo.Position = target;
+    }
+
+    private void CloseSceneVideo()
+    {
+        _sceneSync.Stop();
+        PageCanvas.VideoShown = false;
+        if (_sceneSource == null) return;
+        _sceneSource = null;
+        _sceneOpened = _sceneStarted = false;
+        SceneVideo.Stop();
+        SceneVideo.Close();
+        SceneVideo.Source = null;
     }
 
     private void CloseVideo()

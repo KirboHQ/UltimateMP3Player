@@ -41,6 +41,8 @@ public sealed class AppHost : Observable
         _ui = Application.Current.Dispatcher;
 #endif
         Settings = AppSettings.Load();
+        // osu! lazer's library for the mods (Core/Mods/ModRealm.cs): the computers carry Realm (loaded at the first realm opened).
+        Core.Mods.ModRuntime.Realm = new RealmReader.RealmReader();
         Platform.SiteLogins.Prepare(AppPaths.DataDir);
         ApplyLanguage();
         ApplyTheme();
@@ -421,12 +423,16 @@ public sealed class AppHost : Observable
     }
 
     // Command line or second launch: files to play, .ump packs to import, links to download.
+    public static bool IsMod(string path) => path.EndsWith(Core.Mods.ModPackage.Extension, StringComparison.OrdinalIgnoreCase);
+
     public void HandleArgs(string[] args)
     {
         ShowWindow();
         if (Session == null) return;
         foreach (var pack in args.Where(a => Pack.IsPack(a) && File.Exists(a))) Session.OpenPack(pack);
-        var files = args.Where(a => !Pack.IsPack(a) && (File.Exists(a) || Directory.Exists(a))).ToList();
+        foreach (var mod in args.Where(a => IsMod(a) && File.Exists(a))) _ = Session.Mods.InstallFile(mod);
+        // (a file of a type a mod opens, an .osz: to it)
+        var files = args.Where(a => !Pack.IsPack(a) && !IsMod(a) && (File.Exists(a) || Directory.Exists(a)) && !Session.Mods.Open(a)).ToList();
         if (files.Count > 0) _ = Session.Import(files, true);
         var url = args.FirstOrDefault(a => a.StartsWith("http", StringComparison.OrdinalIgnoreCase) || a.StartsWith("spotify:", StringComparison.OrdinalIgnoreCase));
         if (url != null) Session.StartDownload(url);

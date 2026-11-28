@@ -9,6 +9,14 @@ public partial class LibraryView : UserControl
 {
     public LibraryView() => InitializeComponent();
 
+    // "Add files": a menu when mods add importers (Menus.ImportMenu), else straight to the files.
+    private void Import_Click(object sender, RoutedEventArgs e)
+    {
+        if (App.Host.Session is not { } main) return;
+        if (Menus.ImportMenu(main) is { } menu) Menus.Open(menu, (UIElement)sender, true);
+        else _ = main.ImportDialog(false);
+    }
+
     private void Filter_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape || DataContext is not LibraryViewModel vm) return;

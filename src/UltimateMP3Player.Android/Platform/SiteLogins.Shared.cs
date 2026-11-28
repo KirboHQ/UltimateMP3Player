@@ -32,6 +32,8 @@ public static partial class SiteLogins
         new("Twitch", "#9146FF", "https://www.twitch.tv/login", new[] { "twitch.tv" }, new[] { "auth-token" }),
         new("Bandcamp", "#629AA9", "https://bandcamp.com/login", new[] { "bandcamp.com" }, new[] { "identity" }),
         new("Vimeo", "#1AB7EA", "https://vimeo.com/log_in", new[] { "vimeo.com" }, new[] { "vimeo" }),
+        // (for mods: the osu! mod downloads beatmaps from the official site as you, Core/Mods/ModNet.cs)
+        new("osu!", "#FF66AA", "https://osu.ppy.sh/home", new[] { "osu.ppy.sh", "ppy.sh" }, new[] { "osu_session" }),
     };
 
     public static string FilePath { get; private set; } = "";

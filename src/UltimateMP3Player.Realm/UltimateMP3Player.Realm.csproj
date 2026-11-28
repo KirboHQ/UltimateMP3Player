@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Realm for the mods (osu! lazer's client.realm), the computers only: in a project of its own because the package brings the
+       Fody weaver, which runs on the project that references it (no models here, so it has nothing to weave). -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>UltimateMP3Player.RealmReader</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- the version osu! lazer itself ships (its Realm.dll is 20.1.0) -->
+    <PackageReference Include="Realm" Version="20.1.0" />
+    <ProjectReference Include="..\UltimateMP3Player.Core\UltimateMP3Player.Core.csproj" />
+  </ItemGroup>
+</Project>

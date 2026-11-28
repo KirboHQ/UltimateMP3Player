@@ -29,6 +29,14 @@
         <!-- the bars of the music, behind the buttons (with the cover; Settings > Appearance) -->
         <views:WaveVisualizer x:Name="Visualizer" Dim="0.6" IsPlaying="{Binding Player.Animate}" Flow="{Binding VisualizerFlow}" Place="{Binding VisualizerPlace}" BarStyle="{Binding VisualizerStyle}" Tint="{Binding VisualizerTint}" Thickness="{Binding VisualizerThickness}" HeightShare="{Binding VisualizerHeight}" Strength="{Binding VisualizerStrength}"
                               IsVisible="{Binding ShowVisualizer}"/>
+        <!-- a mod's bars instead (Core/Mods: chosen in its page), as dim as the bars -->
+        <views:ModCanvasView Scene="{Binding BarsScene}" Player="{Binding Player}" IsPlaying="{Binding Player.Animate}" BarsPlace="{Binding VisualizerPlace}"
+                             Opacity="0.6" IsVisible="{Binding ShowModBars}"/>
+        <!-- a mod's visualizer over the whole page, behind its words (fill: "page"), and the video it asked for under it -->
+        <Panel IsVisible="{Binding IsPageScene}">
+            <views:VideoView x:Name="SceneVideo" Cover="True" IsHitTestVisible="False"/>
+            <views:ModCanvasView x:Name="PageCanvas" Scene="{Binding PageScene}" Player="{Binding Player}" IsPlaying="{Binding Player.Animate}" StageOf="{Binding #SceneSlot}"/>
+        </Panel>
 
         <Grid x:Name="Body" RowDefinitions="Auto,*,Auto,Auto,Auto,Auto">
             <!-- top: close, where it plays from, the song's menu -->
@@ -54,6 +62,8 @@
 
             <!-- the stage: cover, video or lyrics -->
             <Panel x:Name="Stage" Grid.Row="1" Margin="24,8,24,8" Background="Transparent">
+                <!-- a mod's visualizer in place of the cover (Core/Mods: chosen in its page, for the songs it can show) -->
+                <views:ModCanvasView x:Name="SceneSlot" Scene="{Binding SlotScene}" Player="{Binding Player}" IsPlaying="{Binding Player.Animate}" IsVisible="{Binding IsScene}"/>
                 <Panel x:Name="CoverArea" IsVisible="{Binding ShowCover}">
                     <!-- a long press: the song's menu (similar songs, playlists…), like the title's -->
                     <Panel x:Name="CoverBox" HorizontalAlignment="Center" VerticalAlignment="Center" Background="Transparent" views:Touch.Menu="current">
@@ -85,6 +95,16 @@
                     </Button>
                 </Panel>
             </Panel>
+
+            <!-- a page visualizer's own choice (Core/Mods visualizers.chip: the osu! mod's difficulty), drawn by the app in its look -->
+            <Button Grid.Row="1" Theme="{StaticResource PillButton}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="24,4,24,0"
+                    Padding="16,0,12,0" Height="36" FontSize="13.5" Background="{DynamicResource GlassBrush}" BorderBrush="{DynamicResource GlassBorderBrush}"
+                    Command="{Binding PageChipCommand}" IsVisible="{Binding HasPageChip}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding PageChip}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <TextBlock Text="{local:Icon E70D}" Classes="glyph" FontSize="12" Margin="8,1,0,0" VerticalAlignment="Center" Opacity="0.8"/>
+                </StackPanel>
+            </Button>
 
             <!-- title, artist, heart -->
             <Grid x:Name="TitleBlock" Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="24,4,14,6" Background="Transparent" views:Touch.Menu="current">
@@ -163,7 +183,7 @@
             <!-- what else: speed, lyrics, video, automatic queue, even volume, add to a playlist, next up -->
             <Panel x:Name="ExtrasBox" Grid.Row="5" Margin="14,4,14,10">
             <views:TextShadow Target="{Binding #Extras}" Heavy="True" IsVisible="{Binding ShowVisualizer}"/>
-            <Grid x:Name="Extras" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto">
+            <Grid x:Name="Extras" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                 <Button x:Name="SpeedButton" Theme="{StaticResource PillButton}" Height="36" MinWidth="50" Padding="10,0" FontSize="13.5"
                         Background="Transparent" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="1.5" Content="{Binding Player.SpeedText}" Click="Speed_Click"/>
                 <!-- driving a computer: its volume (the phone's buttons are the phone's own) -->
@@ -172,12 +192,15 @@
                 <ToggleButton Grid.Column="2" Theme="{StaticResource TouchToggle}" Content="{local:Icon E720}" IsChecked="{Binding ShowLyrics}"
                               IsVisible="{Binding HasLyrics}"/>
                 <ToggleButton Grid.Column="3" Theme="{StaticResource TouchToggle}" Content="{local:Icon E714}" IsChecked="{Binding ShowVideo}" IsVisible="{Binding HasVideo}"/>
-                <ToggleButton Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{local:Icon E90B}" IsChecked="{Binding Player.AutoQueue}"/>
+                <!-- a mod's visualizer for this song (osu!'s playfield), on and off: its mod's name in words -->
+                <ToggleButton Grid.Column="4" Theme="{StaticResource TouchToggle}" Content="{Binding SceneOfferName}" IsChecked="{Binding ShowScene}"
+                              IsVisible="{Binding HasSceneOffer}" FontFamily="{StaticResource UiFont}" FontSize="13" FontWeight="SemiBold"/>
+                <ToggleButton Grid.Column="5" Theme="{StaticResource TouchToggle}" Content="{local:Icon E90B}" IsChecked="{Binding Player.AutoQueue}"/>
                 <!-- the volume the same for all songs (Settings › Even volume); driving a computer: that one's setting, not here -->
-                <ToggleButton Grid.Column="5" Theme="{StaticResource TouchToggle}" Content="{local:Icon EC4A}" IsChecked="{Binding Player.Normalize}"
+                <ToggleButton Grid.Column="6" Theme="{StaticResource TouchToggle}" Content="{local:Icon EC4A}" IsChecked="{Binding Player.Normalize}"
                               IsVisible="{Binding !Player.IsRemote}"/>
-                <Button Grid.Column="6" Theme="{StaticResource TouchIcon}" Content="{local:Icon E710}" Click="AddToPlaylist_Click"/>
-                <Button Grid.Column="7" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8FD}" Click="Queue_Click"/>
+                <Button Grid.Column="7" Theme="{StaticResource TouchIcon}" Content="{local:Icon E710}" Click="AddToPlaylist_Click"/>
+                <Button Grid.Column="8" Theme="{StaticResource TouchIcon}" Content="{local:Icon E8FD}" Click="Queue_Click"/>
             </Grid>
             </Panel>
         </Grid>

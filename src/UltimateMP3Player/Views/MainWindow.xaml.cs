@@ -708,7 +708,10 @@ public partial class MainWindow : Window
         if (e.Handled || Vm == null) return;
         if (e.Data.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
         {
-            _ = Vm.Import(files, Vm.Player.Current == null);
+            // A mod dropped: its install (Core/Mods); a file of a type a mod opens (an .osz): to it; other files are added as usual.
+            foreach (var mod in files.Where(AppHost.IsMod)) _ = Vm.Mods.InstallFile(mod);
+            files = files.Where(f => !AppHost.IsMod(f) && !Vm.Mods.Open(f)).ToArray();
+            if (files.Length > 0) _ = Vm.Import(files, Vm.Player.Current == null);
             e.Handled = true;
             return;
         }

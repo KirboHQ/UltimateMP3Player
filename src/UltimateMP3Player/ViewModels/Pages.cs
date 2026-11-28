@@ -2,6 +2,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Mods;
 
 namespace UltimateMP3Player.ViewModels;
 
@@ -656,12 +657,13 @@ public class OnlineHitViewModel : Observable
     public IReadOnlyList<OnlineHitViewModel>? Siblings { get; set; }
     public ICommand TapCommand => IsSong ? PlayCommand : DownloadCommand;
     public ICommand SideCommand => IsSong ? DownloadCommand : PlayCommand;
-    public string SideGlyph => IsSong ? "" : "";
-    public string SideTip => IsSong ? L.T("Download|verb") : L.T("Play");
+    public string SideGlyph => IsSong || IsMod ? "" : "";
+    public string SideTip => IsSong || IsMod ? L.T("Download|verb") : L.T("Play");
 
     private void PlayOrOpen()
     {
-        if (!IsSong) _ = _main.PlayLinkAsync(Hit.Url, Hit.Title);
+        if (IsMod) _main.OpenHit(Hit);
+        else if (!IsSong) _ = _main.PlayLinkAsync(Hit.Url, Hit.Title);
         else if (_main.InRoom) _main.OpenHit(Hit);
         else if (Siblings is { Count: > 1 } list && list.Contains(this))
             _main.Player.PlayStream(_main.Radio.AddFromLink(list.Select(h => OnlineSearchServices.ToItem(h.Hit))), Hit.Artist ?? Hit.Title, list.ToList().IndexOf(this));
@@ -674,6 +676,8 @@ public class OnlineHitViewModel : Observable
 
     public MainViewModel Main => _main;
     public bool IsSong => Hit.Collection == null;
+    // A mod's result (an osu! beatmap): the mod brings it in, asking how; it isn't heard from its link.
+    public bool IsMod => Hit.Collection == "mod";
 
     // The ids to play: heard without saving it, like a link's songs (RadioViewModel.AddFromLink), the library's own if it has it.
     private List<string> PlayIds() => _main.Radio.AddFromLink(new[] { OnlineSearchServices.ToItem(Hit) });
@@ -838,13 +842,54 @@ public sealed class NowPlayingViewModel : Observable
         }
     }
 
-    // (driving a computer the video would be this phone's, out of step: the cover instead)
-    public string? VideoPath => ShowVideo && !Player.IsRemote && Player.Current is { } c ? Main.Videos.FileFor(c.T) : null;
+    // (driving a computer the video would be this phone's, out of step: the cover instead; a mod's visualizer comes first)
+    public string? VideoPath => Scene == null && ShowVideo && !Player.IsRemote && Player.Current is { } c ? Main.Videos.FileFor(c.T) : null;
     public bool HasVideo => !Player.IsRemote && Player.Current is { } c && Main.Videos.FileFor(c.T) != null;
-    public bool ShowCover => VideoPath == null && !LyricsVisible;
+    public bool ShowCover => VideoPath == null && !LyricsVisible && !IsScene;
     public bool CoverTilt => Main.Host.Settings.CoverTilt;
+    // A mod's visualizer in place of the cover (chosen in its page, for the songs it can show; Core/Mods), and as the bars.
+    public ModVisualizer? Scene => Player.IsRemote ? null : Main.Mods.SongVisualizer;
+    public bool IsScene => Scene != null && !LyricsVisible;
+    // Where it draws: in the cover's place, or (fill: "page") over the whole page behind its words, the cover's place kept empty
+    // for it to know where that is.
+    public ModVisualizer? SlotScene => Scene is { Page: false } v ? v : null;
+    public ModVisualizer? PageScene => Scene is { Page: true } v ? v : null;
+    public bool IsPageScene => IsScene && PageScene != null;
+    // Its button by the video's (for the songs one can show: osu!'s beatmaps), with its mod's name; the mod's page has no
+    // switch for it.
+    public ModVisualizer? SceneOffer => Player.IsRemote ? null : Main.Mods.SongOffer;
+    public bool HasSceneOffer => SceneOffer != null;
+    public string SceneOfferName => SceneOffer?.Mod.Manifest.Name ?? "";
+    public string SceneOfferTip => SceneOffer is { } v ? L.F("Show “{0}” instead of the cover", v.Title) : "";
+    public bool ShowScene
+    {
+        get => Scene != null;
+        set => Main.Mods.ShowOffer(value);
+    }
+    // The app's own button over a page visualizer, top left (visualizers.chip: osu!'s difficulty, ▾), its click to the mod.
+    private ModVisualizer? _chipOf;
+    public string? PageChip
+    {
+        get
+        {
+            var v = IsPageScene ? PageScene : null;
+            if (v != _chipOf)
+            {
+                if (_chipOf != null) _chipOf.ChipChanged -= OnChip;
+                _chipOf = v;
+                if (v != null) v.ChipChanged += OnChip;
+            }
+            return v?.Chip;
+        }
+    }
+    public bool HasPageChip => PageChip != null;
+    private void OnChip() => System.Windows.Application.Current.Dispatcher.BeginInvoke(() => OnChanged(nameof(PageChip), nameof(HasPageChip)));
+    private ICommand? _pageChipCommand;
+    public ICommand PageChipCommand => _pageChipCommand ??= new RelayCommand(() => _chipOf?.PressChip());
+    public ModVisualizer? BarsScene => Main.Mods.BarsVisualizer;
+    public bool ShowModBars => ShowCover && Main.Host.Settings.Visualizer && !Player.IsRemote && BarsScene != null;
     // The bars of the music from below, with the cover (Settings › Appearance).
-    public bool ShowVisualizer => ShowCover && Main.Host.Settings.Visualizer && !Player.IsRemote;
+    public bool ShowVisualizer => ShowCover && Main.Host.Settings.Visualizer && !Player.IsRemote && BarsScene == null;
     public VisualizerFlow VisualizerFlow => Main.Host.Settings.VisualizerFlow;
     public VisualizerPlace VisualizerPlace => Main.Host.Settings.VisualizerPlace;
     public VisualizerStyle VisualizerStyle => Main.Host.Settings.VisualizerStyle;
@@ -865,5 +910,7 @@ public sealed class NowPlayingViewModel : Observable
     public void Refresh() => OnChanged(nameof(ShowVideo), nameof(VideoPath), nameof(HasVideo), nameof(ShowCover), nameof(CoverTilt), nameof(ShowLyrics),
         nameof(HasLyrics), nameof(LyricsVisible), nameof(IsVideo), nameof(Subtitles), nameof(LyricsPage), nameof(ShowVideoFrame), nameof(LyricsOverCover),
         nameof(LyricsOverVideo), nameof(ShowVisualizer), nameof(VisualizerFlow), nameof(VisualizerPlace), nameof(VisualizerStyle), nameof(VisualizerTint),
-        nameof(VisualizerThickness), nameof(VisualizerHeight), nameof(VisualizerStrength));
+        nameof(VisualizerThickness), nameof(VisualizerHeight), nameof(VisualizerStrength), nameof(Scene), nameof(IsScene), nameof(BarsScene), nameof(ShowModBars),
+        nameof(SlotScene), nameof(PageScene), nameof(IsPageScene), nameof(PageChip), nameof(HasPageChip), nameof(SceneOffer), nameof(HasSceneOffer),
+        nameof(SceneOfferName), nameof(SceneOfferTip), nameof(ShowScene));
 }

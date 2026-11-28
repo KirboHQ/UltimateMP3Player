@@ -10,6 +10,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UltimateMP3Player.Core\UltimateMP3Player.Core.csproj" />
+    <!-- Realm for the mods (osu! lazer's library): the computers only -->
+    <ProjectReference Include="..\UltimateMP3Player.Realm\UltimateMP3Player.Realm.csproj" />
   </ItemGroup>
 
 </Project>

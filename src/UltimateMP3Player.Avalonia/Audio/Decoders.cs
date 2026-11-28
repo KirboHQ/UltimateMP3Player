@@ -12,9 +12,12 @@ namespace UltimateMP3Player.Audio;
 public sealed class Mp3TrackSource : ITrackSource
 {
     private readonly Mp3FileReaderBase _reader;
+    // The music comes out this late (the encoder's and the decoder's delay, Core/Mp3Gapless.cs): the clock is moved back by it.
+    private readonly TimeSpan _lead;
 
     public Mp3TrackSource(string path)
     {
+        _lead = Mp3Gapless.NLayerLead(path);
         _reader = new Mp3FileReaderBase(path, wf => new NLayer.NAudioSupport.Mp3FrameDecompressor(wf));
         ISampleProvider s = _reader.ToSampleProvider();
         if (s.WaveFormat.Channels == 1) s = new MonoToStereoSampleProvider(s);
@@ -22,9 +25,9 @@ public sealed class Mp3TrackSource : ITrackSource
     }
 
     public ISampleProvider Samples { get; }
-    public TimeSpan Position => _reader.CurrentTime;
+    public TimeSpan Position => _reader.CurrentTime > _lead ? _reader.CurrentTime - _lead : TimeSpan.Zero;
     public TimeSpan Duration => _reader.TotalTime;
-    public void Seek(TimeSpan t) => _reader.CurrentTime = t < TimeSpan.Zero ? TimeSpan.Zero : t;
+    public void Seek(TimeSpan t) => _reader.CurrentTime = (t < TimeSpan.Zero ? TimeSpan.Zero : t) + _lead;
     public void Dispose() => _reader.Dispose();
 }
 

@@ -50,6 +50,7 @@ public partial class NowPlayingView : UserControl
         DataContextChanged += (_, _) => Attach(DataContext as NowPlayingViewModel);
         Video.Clock = () => _vm?.Player.EnginePosition ?? TimeSpan.Zero;
         Video.MediaOpened += FitVideo;
+        _sceneVideo = new ModSceneVideo(SceneVideo, PageCanvas, () => _vm?.Player);
         // The backdrop: the video's small blurred copy (the same picture refreshed in place: drawn again by hand).
         Video.MakeBackdrop = true;
         Video.FrameChanged += () =>
@@ -112,6 +113,7 @@ public partial class NowPlayingView : UserControl
         FitQueue();
         Themes.Changed += BakeCover;
         Attach(DataContext as NowPlayingViewModel);
+        WatchSceneVideo();
         WatchCover();
         Update();
         PlaceQueue(false);
@@ -127,6 +129,7 @@ public partial class NowPlayingView : UserControl
         Themes.Changed -= BakeCover;
         Attach(null);
         CloseVideo();
+        _sceneVideo.Watch(null);
         _ticking = false;
         if (_coverTrack != null) _coverTrack.PropertyChanged -= OnCoverChanged;
         _coverTrack = null;
@@ -156,6 +159,7 @@ public partial class NowPlayingView : UserControl
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(NowPlayingViewModel.VideoPath) or nameof(NowPlayingViewModel.ShowVideo)) Update();
+        else if (e.PropertyName is nameof(NowPlayingViewModel.PageScene) or nameof(NowPlayingViewModel.IsPageScene)) WatchSceneVideo();
         else if (e.PropertyName == nameof(NowPlayingViewModel.QueueHidden)) PlaceQueue(true);
         else if (e.PropertyName == nameof(NowPlayingViewModel.LyricsVisible)) ShowLyricsText();
         else if (e.PropertyName == nameof(NowPlayingViewModel.FullScreen)) PlaceFullScreen();
@@ -182,6 +186,8 @@ public partial class NowPlayingView : UserControl
         CoverArea.Margin = VideoArea.Margin = new Thickness(pane, 0, pane, 0);
         LyricsHost.Margin = new Thickness(0, -8, pane, 0);
         QueueCard.Margin = full ? new Thickness(14, 14, 0, 14 + bar) : new Thickness(14, 0, 0, 14);
+        // (a page visualizer keeps what matters above the bar: f.below)
+        PageCanvas.Below = bar;
     }
 
     private readonly TranslateTransform _coverShift = new(), _videoShift = new();
@@ -368,6 +374,7 @@ public partial class NowPlayingView : UserControl
             _vm?.Refresh();
             WatchCover();
             Update();
+            WatchSceneVideo();
             ShowLyricsText();
         }
         else if (e.PropertyName is nameof(PlayerViewModel.IsPlaying) or nameof(PlayerViewModel.Animate) or nameof(PlayerViewModel.Position) or nameof(PlayerViewModel.Speed)) PushClock();
@@ -391,6 +398,11 @@ public partial class NowPlayingView : UserControl
         Video.Source = null;
         BackdropVideo.Source = null;
     }
+
+    // A "page" visualizer's video (an osu! beatmap's), under it while it shows.
+    private readonly ModSceneVideo _sceneVideo;
+
+    private void WatchSceneVideo() => _sceneVideo.Watch(VisualRoot != null && _vm?.IsPageScene == true ? _vm.PageScene : null);
 
     // ------------------------------------------------------------------ 3D cover
 

@@ -71,8 +71,7 @@
         <local:ToolbarPanel Grid.Row="1" Margin="28,0,28,14" LastChildFill="False">
             <Button Style="{StaticResource HeaderPlayButton}" Command="{Binding PlayCommand}"/>
             <Button Style="{StaticResource HeaderShuffleButton}" Margin="12,0,0,0" Command="{Binding ShuffleCommand}"/>
-            <Button Style="{StaticResource GhostButton}" Margin="14,0,0,0" Padding="16,9"
-                    Command="{Binding DataContext.ImportCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+            <Button Style="{StaticResource GhostButton}" Margin="14,0,0,0" Padding="16,9" Click="Import_Click"
                     ToolTip="{local:T 'Add songs you already have on your computer to your library'}"
                     Visibility="{Binding CanImport, Converter={StaticResource BoolVis}}">
                 <StackPanel Orientation="Horizontal">

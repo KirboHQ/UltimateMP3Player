@@ -117,9 +117,17 @@ public static class AudioPlatform
 public sealed class MfTrackSource : ITrackSource
 {
     private readonly MediaFoundationReader _reader;
+    // An MP3's music comes out this late (Core/Mp3Gapless.cs): the clock is moved back by it.
+    private readonly TimeSpan _lead;
+    private readonly UltimateMP3Player.Core.Mp3Gapless.Header? _mp3;
+    // After a jump: how far before the time it says Media Foundation's music really is (Mp3Gapless.MediaFoundationSeek).
+    private TimeSpan _early;
 
     public MfTrackSource(string path)
     {
+        _lead = UltimateMP3Player.Core.Mp3Gapless.MediaFoundationLead(path);
+        try { _mp3 = path.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) ? UltimateMP3Player.Core.Mp3Gapless.Read(path) : null; }
+        catch (Exception) { _mp3 = null; }
         _reader = new MediaFoundationReader(path, new MediaFoundationReader.MediaFoundationReaderSettings { RequestFloatOutput = true });
         ISampleProvider s = _reader.ToSampleProvider();
         if (s.WaveFormat.Channels == 1) s = new MonoToStereoSampleProvider(s);
@@ -128,9 +136,15 @@ public sealed class MfTrackSource : ITrackSource
     }
 
     public ISampleProvider Samples { get; }
-    public TimeSpan Position => _reader.CurrentTime;
+    public TimeSpan Position => _reader.CurrentTime - _early is var at && at > _lead ? at - _lead : TimeSpan.Zero;
     public TimeSpan Duration => _reader.TotalTime;
-    public void Seek(TimeSpan t) => _reader.CurrentTime = t < TimeSpan.Zero ? TimeSpan.Zero : t;
+
+    public void Seek(TimeSpan t)
+    {
+        var at = (t < TimeSpan.Zero ? TimeSpan.Zero : t) + _lead;
+        _reader.CurrentTime = at;
+        _early = at - UltimateMP3Player.Core.Mp3Gapless.MediaFoundationSeek(_mp3, at);
+    }
     public void Dispose() => _reader.Dispose();
 }
 

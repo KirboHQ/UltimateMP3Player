@@ -255,6 +255,12 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
             _albumHits = null;
             _featured = null;
         }
+        if (Query != _modQuery)
+        {
+            _modCts?.Cancel();
+            _modHits.Clear();
+            _modBusy = false;
+        }
         Rebuild();
         ScheduleOnline();
     }
@@ -315,7 +321,7 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
         var albums = Albums();
         var lists = PlaylistResults.Cast<object>().Concat(OnlinePlaylists()).ToList();
         var stations = _savedStations.Concat(_onlineStations).ToList();
-        bool searching = OnlineBusy || _findingArtists;
+        bool searching = OnlineBusy || _findingArtists || _modBusy;
         switch (_filter)
         {
             case All:
@@ -330,6 +336,7 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
                         items.AddRange(Rows.Take(4));
                         items.AddRange(online);
                     }
+                    AddModHits(items, 6);
                     if (artists.Count > 0) AddShelf(items, L.T("Artists"), artists, ArtistsKey);
                     if (albums.Count > 0) AddShelf(items, L.T("Albums and EPs"), albums, AlbumsKey);
                     if (lists.Count > 0) AddShelf(items, L.T("Playlists"), lists, PlaylistsKey);
@@ -344,7 +351,8 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
                     items.Add(new SearchSection(L.T("In your library"), Rows.Count));
                     items.AddRange(Rows);
                 }
-                if (OnlineEnabled && Searchable(Query))
+                AddModHits(items, 20);
+                if (SitesOn && Searchable(Query))
                 {
                     items.Add(new SearchSection(L.T("Online"), _allHits.Count > 0 ? _allHits.Count : null));
                     if (HasServiceTabs) items.Add(new SiteChips(ServiceTabs, SelectServiceCommand, OnlineSettingsCommand));
@@ -353,7 +361,7 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
                     if (OnlineBusy && OnlineHits.Count == 0 && !ShowSpotifySetup) items.Add(new SearchNote(L.T("Searching online…"), null, busy: true));
                     else if (NoOnlineResults) items.Add(new SearchNote(NoOnlineText, L.T("Try the title and the artist, or paste the song's link directly.")));
                 }
-                else if (Rows.Count == 0) items.Add(new SearchNote(L.T("No results"), LocalEmptyHint));
+                else if (Rows.Count == 0 && _modHits.Count == 0) items.Add(new SearchNote(L.T("No results"), LocalEmptyHint));
                 break;
             case ArtistsKey:
                 AddAll(items, artists, searching, L.T("No artist found with this name."));
@@ -415,7 +423,61 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
     }
 
     public bool NoResults => Rows.Count == 0 && PlaylistResults.Count == 0 && _allHits.Count == 0 && Artists().Count == 0 && _savedStations.Count == 0
-                             && _onlineStations.Count == 0;
+                             && _onlineStations.Count == 0 && _modHits.Count == 0;
+
+    // ------------------------------------------------------------------ the mods' searches (osu! beatmaps)
+
+    // Asked even with the sites' search off (the mod is what was installed for it); a link a mod takes is asked to that mod only.
+    private CancellationTokenSource? _modCts;
+    private string _modQuery = "";
+    private readonly List<(string Title, List<SearchHit> Hits)> _modHits = new();
+    private bool _modBusy;
+
+    // Each mod's results under its own title (they're the mod's links: opened, the mod brings them in).
+    private void AddModHits(List<object> items, int most)
+    {
+        foreach (var (title, hits) in _modHits)
+        {
+            items.Add(new SearchSection(title, hits.Count));
+            items.AddRange(hits.Take(most).Select(Row));
+        }
+    }
+
+    private void RunModSearches()
+    {
+        if (Query == _modQuery) return;
+        _modCts?.Cancel();
+        _modQuery = Query;
+        _modHits.Clear();
+        _modBusy = false;
+        var searches = Searchable(Query) ? _main.Mods.SearchesFor(Query) : new();
+        if (searches.Count == 0) return;
+        var cts = _modCts = new CancellationTokenSource();
+        _modBusy = true;
+        Rebuild();
+        _ = SearchMods(searches, Query, cts);
+    }
+
+    private async Task SearchMods(List<Core.Mods.ModSearch> searches, string query, CancellationTokenSource cts)
+    {
+        // (a mod that never answers doesn't keep "Searching…" up)
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(20));
+        await Task.WhenAll(searches.Select(async s =>
+        {
+            var found = await s.Mod.SearchAsync(s, query, timeout.Token);
+            if (cts.IsCancellationRequested || _modCts != cts || found.Count == 0) return;
+            _modHits.Add((s.Title, found.Select((h, i) => new SearchHit
+            {
+                Service = s.Title, Title = h.Title, Artist = h.Artist, Album = h.Hint, Url = h.Url, Thumb = h.Picture, Duration = h.Duration, Rank = i,
+                Collection = "mod",
+            }).ToList()));
+            Rebuild();
+        }));
+        if (cts.IsCancellationRequested || _modCts != cts) return;
+        _modBusy = false;
+        Rebuild();
+    }
 
     // Your radios whose name has the words, then radio-browser's (the sites' search on: it's online too).
     private List<StationViewModel> _savedStations = new(), _onlineStations = new();
@@ -446,6 +508,8 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
     private AppSettings S => _main.Host.Settings;
     private List<string> Services => OnlineSearchServices.Ordered(S.SearchServices, S.SearchServicesOff);
     public bool OnlineEnabled => S.OnlineSearch && Services.Count > 0;
+    // (a link in the box, one a mod takes: not searched on the sites as words)
+    private bool SitesOn => OnlineEnabled && !MainViewModel.LooksLikeLink(Query);
     // A search by tag (#rock) or a word too short isn't sent to the sites.
     private bool Searchable(string q) => q.Length >= 2 && !q.StartsWith('#');
 
@@ -463,6 +527,9 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
         // A search stopped halfway is done again if the same words come back.
         if (OnlineBusy || _findingArtists) _onlineQuery = "";
         _onlineCts?.Cancel();
+        if (_modBusy) _modQuery = "";
+        _modCts?.Cancel();
+        _modBusy = false;
     }
 
     private CancellationTokenSource? _onlineCts;
@@ -501,8 +568,9 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
     private void ScheduleOnline()
     {
         _onlineTimer.Stop();
-        if (!OnlineEnabled) return;
-        if (Query == _onlineQuery)
+        bool sites = SitesOn, mods = _main.Mods.HasSearches;
+        if (!sites && !mods) return;
+        if ((!sites || Query == _onlineQuery) && (!mods || Query == _modQuery))
         {
             foreach (var h in _rows.Values) h.RefreshLibrary();
             Rebuild();
@@ -515,7 +583,8 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
     public void RunOnlineNow()
     {
         _onlineTimer.Stop();
-        if (!OnlineEnabled || Query == _onlineQuery && (OnlineBusy || _allHits.Count > 0)) return;
+        RunModSearches();
+        if (!SitesOn || Query == _onlineQuery && (OnlineBusy || _allHits.Count > 0)) return;
         _onlineCts?.Cancel();
         _onlineQuery = Query;
         _byService.Clear();
@@ -555,7 +624,7 @@ public sealed class SearchViewModel : Observable, ITrackList, IPageOrder
     {
         if (Query.Length == 0) return;
         if (_libraryChanged) Run(Query);
-        else if (_onlineQuery.Length == 0) RunOnlineNow();
+        else if (_onlineQuery.Length == 0 || _modQuery != Query) RunOnlineNow();
     }
 
     // The albums the words name, every site's (AlbumSites), when they name an artist; the album or playlist named exactly as the

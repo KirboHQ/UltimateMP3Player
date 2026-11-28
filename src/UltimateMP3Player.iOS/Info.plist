@@ -88,6 +88,29 @@
                 </array>
             </dict>
         </dict>
+        <!-- .umpmod mods (Core/Mods): installed after the usual question -->
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.kirbohq.ultimatemp3player.mod</string>
+            <key>UTTypeDescription</key>
+            <string>Ultimate MP3 Player mod</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+                <string>public.archive</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>umpmod</string>
+                </array>
+                <key>public.mime-type</key>
+                <array>
+                    <string>application/x-ultimate-mp3-player-mod</string>
+                </array>
+            </dict>
+        </dict>
     </array>
     <key>CFBundleDocumentTypes</key>
     <array>
@@ -101,6 +124,18 @@
             <key>LSItemContentTypes</key>
             <array>
                 <string>com.kirbohq.ultimatemp3player.pack</string>
+            </array>
+        </dict>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Ultimate MP3 Player mod</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.kirbohq.ultimatemp3player.mod</string>
             </array>
         </dict>
     </array>

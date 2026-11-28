@@ -564,6 +564,9 @@ switch (args[0])
             return fine ? 0 : 1;
         }
 
+    case "mods":
+        return ModsCheck.Run();
+
     case "saver":
         {
             // DebouncedSaver: nothing asked, nothing written; asked, one write; a failed one is tried again at the next flush.
@@ -1413,10 +1416,17 @@ switch (args[0])
 
     case "radio":
         {
-            // mp3cli radio [name]: radio-browser.info answers (by name, or the most listened to in Italy), the stations' fields read.
+            // mp3cli radio [name]: radio-browser.info's servers found by DNS, it answers (by name, or the most listened to in Italy),
+            // the stations' fields read.
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            var dns = await RadioBrowser.FindServersAsync();
+            Console.WriteLine($"  by DNS ({watch.ElapsedMilliseconds} ms): " + string.Join(", ", dns));
+            var servers = await RadioBrowser.ServersAsync(CancellationToken.None);
+            Console.WriteLine("  servers: " + string.Join(", ", servers));
             var found = await RadioBrowser.SearchAsync(args.Length > 1 ? args[1] : null, args.Length > 1 ? null : "IT", null, false, CancellationToken.None);
             foreach (var s in found.Take(5)) Console.WriteLine($"  {s.Name} | {s.Subtitle} | {s.Quality} | {s.Url}");
-            bool ok = found.Count > 0 && found.All(s => s.Url.StartsWith("http") && s.Id.Length > 0);
+            bool ok = dns.Length > 0 && dns.All(servers.Contains) && servers.All(s => s.EndsWith(".radio-browser.info"))
+                && found.Count > 0 && found.All(s => s.Url.StartsWith("http") && s.Id.Length > 0);
             Console.WriteLine("radio: " + (ok ? "ok" : "SBAGLIATO"));
             return ok ? 0 : 1;
         }

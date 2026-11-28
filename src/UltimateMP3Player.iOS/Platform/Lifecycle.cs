@@ -44,12 +44,16 @@ public static class Lifecycle
         };
     }
 
-    // Packs opened with the app: copied in (their place may be another app's), then imported as on the other systems.
+    // Packs and mods opened with the app: copied in (their place may be another app's), then imported or installed as on the other systems.
+    private static IncomingKind? KindOf(string name) =>
+        name.EndsWith(Pack.Extension, StringComparison.OrdinalIgnoreCase) ? IncomingKind.Pack
+        : name.EndsWith(Core.Mods.ModPackage.Extension, StringComparison.OrdinalIgnoreCase) ? IncomingKind.Mod : null;
+
     private static async Task Open(IEnumerable<IStorageItem> items)
     {
         foreach (var item in items)
         {
-            if (item is not IStorageFile file || !file.Name.EndsWith(Pack.Extension, StringComparison.OrdinalIgnoreCase)) continue;
+            if (item is not IStorageFile file || KindOf(file.Name) is not { } kind) continue;
             try
             {
                 var dir = Path.Combine(Files.IncomingDir, Ids.New());
@@ -58,7 +62,7 @@ public static class Lifecycle
                 await using (var input = await file.OpenReadAsync())
                 await using (var output = File.Create(path))
                     await input.CopyToAsync(output);
-                App.Deliver(new Incoming(IncomingKind.Pack, path));
+                App.Deliver(new Incoming(kind, path));
             }
             catch (Exception ex) { App.Log(ex); }
         }
@@ -70,8 +74,8 @@ public static class Lifecycle
         {
             if (uri.IsFile)
             {
-                if (uri.LocalPath.EndsWith(Pack.Extension, StringComparison.OrdinalIgnoreCase) && Files.CopyIn(Foundation.NSUrl.FromFilename(uri.LocalPath)) is { } pack)
-                    Dispatcher.UIThread.Post(() => App.Deliver(new Incoming(IncomingKind.Pack, pack)));
+                if (KindOf(uri.LocalPath) is { } kind && Files.CopyIn(Foundation.NSUrl.FromFilename(uri.LocalPath)) is { } copy)
+                    Dispatcher.UIThread.Post(() => App.Deliver(new Incoming(kind, copy)));
             }
             else if (uri.Scheme is "http" or "https") Dispatcher.UIThread.Post(() => App.Deliver(new Incoming(IncomingKind.Link, uri.ToString())));
             else if (uri.Scheme == "ump" && PlayIn(uri) is { } words) Dispatcher.UIThread.Post(() => App.Deliver(new Incoming(IncomingKind.Play, words)));

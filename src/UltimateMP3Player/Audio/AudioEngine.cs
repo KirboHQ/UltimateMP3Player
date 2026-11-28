@@ -2,6 +2,7 @@ using System.Windows.Threading;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using UltimateMP3Player.Core;
+using UltimateMP3Player.Core.Mods;
 
 namespace UltimateMP3Player.Audio;
 
@@ -182,7 +183,29 @@ public sealed class AudioEngine : IDisposable
         bool ended = _master.ReadToEnd;
         _master.SetSource(source, trackGainDb, durationHint, _crossfade, Smooth);
         SourcePath = path;
+        GiveCues();
         Cut(ended);
+    }
+
+    // A mod's sounds for a song (its hitsounds, Core/Mods/ModSounds.cs): on it now if it's the one playing, else when it starts.
+    private CueSheet? _cues;
+
+    public void SetCues(CueSheet? sheet)
+    {
+        _cues = sheet;
+        if (sheet == null) _master.SetCues(null);
+        else GiveCues();
+    }
+
+    private void GiveCues()
+    {
+        if (_cues is { } c && SourcePath is { } path && SameFile(path, c.Path)) _master.SetCues(c);
+    }
+
+    private static bool SameFile(string a, string b)
+    {
+        try { return string.Equals(System.IO.Path.GetFullPath(a), System.IO.Path.GetFullPath(b), OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase); }
+        catch (Exception) { return false; }
     }
 
     // bpm and firstBeat: the coming song's beats, for it to come in on the beat of the one matched to it (SetBend).
@@ -198,6 +221,7 @@ public sealed class AudioEngine : IDisposable
         double seconds = Math.Clamp(Math.Min(_crossfade, _master.RemainingSeconds), 0.3, 12);
         _master.Crossfade(source, trackGainDb, durationHint, _crossfade, seconds, bpm, firstBeat);
         SourcePath = path;
+        GiveCues();
     }
 
     // The song playing goes on from another copy of its file, at the same point.

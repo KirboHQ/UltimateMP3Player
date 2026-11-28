@@ -164,7 +164,7 @@ public static class PhoneTour
         await Page("recap", () => M.OpenRecap(DateTime.Now.Year, 0));
         await Page("settings", M.GoSettings);
         var settingsPage = V.GetVisualDescendants().OfType<SettingsPage>().First();
-        foreach (var group in new[] { "appearance", "playback", "download", "search", "library", "backup", "connect", "integrations", "about" })
+        foreach (var group in new[] { "appearance", "playback", "download", "search", "library", "backup", "connect", "integrations", "mods", "about" })
         {
             await Scene("settings, " + group, () => settingsPage.OpenGroup(group), 300);
             Say("SWIPE 720 1700 720 300 260");

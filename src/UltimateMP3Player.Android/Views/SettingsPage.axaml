@@ -301,6 +301,21 @@
                             <TextBlock Grid.Column="1" Text="{Binding VisualizerStrengthText}" Margin="12,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Width="48"/>
                         </Grid>
                     </StackPanel>
+                    <!-- the mods' visualizers (Core/Mods): the same choice as in each mod's page, all of them together; only when a mod has one -->
+                    <StackPanel DataContext="{Binding Mods}" IsVisible="{Binding HasVisualizers}"
+                                views:SettingsPage.Keywords="{local:T 'mods visualizers song page bars of the music cover'}">
+                        <Border Classes="line"/>
+                        <StackPanel Margin="0,12" IsVisible="{Binding HasSongScenes}">
+                            <TextBlock Text="{local:T 'Visualizers of the mods'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'On the song page'}" Classes="setting-hint" Margin="0,0,0,8"/>
+                            <views:ChoiceTiles TileWidth="150" Items="{Binding SongScenes}" Selected="{Binding SongScene}"/>
+                        </StackPanel>
+                        <StackPanel Margin="0,12" IsVisible="{Binding HasBarsScenes}">
+                            <TextBlock Text="{local:T 'Visualizers of the mods'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'As the bars of the music'}" Classes="setting-hint" Margin="0,0,0,8"/>
+                            <views:ChoiceTiles TileWidth="150" Items="{Binding BarsScenes}" Selected="{Binding BarsScene}"/>
+                        </StackPanel>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
@@ -813,6 +828,69 @@
                 </StackPanel>
             </Border>
 
+            <!-- ============================================================ mods (Core/Mods, ViewModels/Mods.cs): a row each, its page by Mobile/ModDialogs -->
+            <TextBlock Text="{local:T MODS}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Group="mods" DataContext="{Binding Mods}" views:SettingsPage.Keywords="{local:T 'mods mod add-ons plugins extensions scripts javascript visualizers install'}">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <Button Theme="{StaticResource SettingRow}" Command="{Binding OpenCommand}">
+                                        <DockPanel>
+                                            <!-- its picture (mod.json icon), else the mods' puzzle piece -->
+                                            <Panel DockPanel.Dock="Left" Width="40" Height="40" Margin="0,0,14,0" VerticalAlignment="Center">
+                                                <Border CornerRadius="10" Background="{DynamicResource Surface2Brush}" IsVisible="{Binding !HasIcon}">
+                                                    <TextBlock Text="{local:Icon EA86}" Classes="glyph" FontSize="19" Foreground="{DynamicResource SubTextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <views:CoverImage Source="{Binding Icon}" CornerRadius="10" IsVisible="{Binding HasIcon}"/>
+                                            </Panel>
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Name}" Classes="setting"/>
+                                                <TextBlock Text="{Binding Line}" Classes="value"/>
+                                                <TextBlock Text="{Binding StatusText}" Classes="setting-hint"/>
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </Button>
+                                    <Border Classes="line"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Theme="{StaticResource SettingRow}" Command="{Binding InstallCommand}">
+                        <StackPanel>
+                            <TextBlock Text="{local:T 'Install a mod…'}" Classes="setting"/>
+                            <TextBlock Text="{local:T 'Mods add things to the app. Made by other people, each runs on its own and can only do what it asked for when you installed it.'}"
+                                       Classes="setting-hint"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Border>
+            <!-- the catalogue: the official mods and the certified ones, installed with a tap (ModCatalogue) -->
+            <TextBlock Text="{local:T 'GET MODS'}" Classes="card-title"/>
+            <Border Classes="card" views:SettingsPage.Group="mods" DataContext="{Binding Mods}">
+                <StackPanel>
+                    <TextBlock Text="{Binding CatalogueStatus}" Classes="setting-hint" TextWrapping="Wrap" Margin="0,10" IsVisible="{Binding HasCatalogueStatus}"/>
+                    <ItemsControl ItemsSource="{Binding Catalogue}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <Button Theme="{StaticResource SettingRow}" Command="{Binding InstallCommand}">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" Classes="setting"/>
+                                            <TextBlock Text="{Binding ActionText}" Classes="value"/>
+                                            <TextBlock Text="{Binding Line}" Classes="setting-hint"/>
+                                            <TextBlock Text="{Binding Description}" Classes="setting-hint" IsVisible="{Binding HasDescription}"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Border Classes="line"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
             <!-- ============================================================ about: updates, help, support the project -->
             <TextBlock Text="{local:T ABOUT}" Classes="card-title"/>
             <Border Classes="card" views:SettingsPage.Group="about" views:SettingsPage.Keywords="{local:T 'updates version new github engines yt-dlp ffmpeg'}">
@@ -963,6 +1041,15 @@
                                 <TextBlock Text="{local:Icon E71B}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
                             </Border>
                             <TextBlock Grid.Column="1" Text="{local:T Integrations}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
+                    <Border Classes="line"/>
+                    <Button Theme="{StaticResource SettingRow}" Tag="mods" Click="Group_Click">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <Border Width="34" Height="34" CornerRadius="17" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="{local:Icon EA86}" Classes="glyph" FontSize="16" Foreground="{DynamicResource AccentTextBrush}" HorizontalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{local:T Mods}" Classes="setting" Margin="14,0,0,0" VerticalAlignment="Center"/>
                         </Grid>
                     </Button>
                     <Border Classes="line"/>

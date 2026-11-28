@@ -147,6 +147,7 @@ public static class Menus
         menu.Add(new SheetEntry { Text = L.T("Tags"), Glyph = GTag, Sub = () => TagMenu(new[] { t }) });
         menu.Add(new SheetEntry { Text = L.T("Lyrics"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
         menu.Add(new SheetEntry { Text = L.T("More"), Glyph = "", Sub = () => MoreMenu(t) });
+        AddModItems(menu, t);
         menu.Line();
         if (owner is StatsViewModel) menu.Add(ForgetStatsEntry(t));
         menu.Add(new SheetEntry(L.T("Delete…"), GDelete, () => _ = main.DeleteTrack(t)) { Danger = true });
@@ -183,6 +184,23 @@ public static class Menus
         }
         if (ArtistNames.First(t.T.Artist) is { } artist) menu.Add(Unsuggest(main, artist, true));
         return menu;
+    }
+
+    // What the mods put in a song's menu (Core/Mods): in sight, not under More, in every menu of one song; three or more in a
+    // sheet of their own. As the computers'.
+    private static void AddModItems(SheetMenu menu, TrackViewModel t)
+    {
+        var entries = t.Main.Mods.SongEntries(t);
+        if (entries.Count == 0) return;
+        menu.Line();
+        var into = menu;
+        if (entries.Count >= 3)
+        {
+            into = new SheetMenu { Title = t.Title, Subtitle = t.Artist, Cover = t };
+            var sub = into;
+            menu.Add(new SheetEntry { Text = L.T("Mods"), Glyph = "", Sub = () => sub });
+        }
+        foreach (var (title, run) in entries) into.Add(new(title,"", run));
     }
 
     // An artist out of the suggested queue (the AI-made ones flooding the sites' radios), or back in it. named: the song's menu says whose.
@@ -353,6 +371,7 @@ public static class Menus
         AddGoToArtist(menu, t.Main, t.T.Artist);
         menu.Add(new(L.T("Play the artist's songs"), "", () => player.PlayArtist(t), !string.IsNullOrWhiteSpace(t.T.Artist)));
         menu.Add(new(L.T("Copy original link"), GLink, () => { Ui.CopyText(item.Song.Url); main.Toast(L.T("Link copied")); }));
+        AddModItems(menu, t);
         if (row == null && player.Current != t)
         {
             menu.Line();
@@ -386,6 +405,7 @@ public static class Menus
         menu.Add(new SheetEntry { Text = L.T("Lyrics"), Glyph = GLyrics, Sub = () => LyricsMenu(t) });
         menu.Line();
         menu.Add(new SheetEntry { Text = L.T("More"), Glyph = "", Sub = () => MoreMenu(t) });
+        AddModItems(menu, t);
         menu.Line();
         menu.Add(new SheetEntry(L.T("Delete…"), GDelete, () => _ = t.Main.DeleteTrack(t)) { Danger = true });
         return menu;

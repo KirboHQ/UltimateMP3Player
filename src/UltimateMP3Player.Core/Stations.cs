@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 
 namespace UltimateMP3Player.Core;
@@ -43,8 +44,12 @@ public sealed class Station
 // radio-browser.info: the open, free directory of internet radios (no key). Its servers by name, the first that answers kept.
 public static class RadioBrowser
 {
-    // shortcut: a fixed list of its servers (radio-browser suggests a DNS lookup of all.api.radio-browser.info); update when they change.
-    private static readonly string[] Servers = { "de1", "de2", "fi1", "at1", "nl1" };
+    // Its servers as radio-browser asks: all.api.radio-browser.info looked up, each address named by its reverse lookup (HTTPS
+    // needs the name), in a random order, then these known ones (2026-11: the lookup gave de1 only, de2 answered, fi1/at1/nl1 were
+    // gone); the known ones alone while the lookup is slow or finds nothing (offline: asked again next time).
+    private static readonly string[] Known = { "de1.api.radio-browser.info", "de2.api.radio-browser.info" };
+    private static Task<string[]>? _lookup;
+    private static string[]? _servers;
     private static int _server;
     private const string Agent = "UltimateMP3Player/4.3";
     private const int Limit = 60;
@@ -96,15 +101,45 @@ public static class RadioBrowser
         };
     }
 
+    public static async Task<string[]> ServersAsync(CancellationToken ct)
+    {
+        if (_servers != null) return _servers;
+        var lookup = _lookup ??= FindServersAsync();
+        // (a slow DNS never holds the radio page up)
+        await Task.WhenAny(lookup, Task.Delay(3000, ct));
+        if (!lookup.IsCompleted) return Known;
+        _lookup = null;
+        if (lookup.Result.Length == 0) return Known;
+        return _servers = lookup.Result.Concat(Known).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
+    public static async Task<string[]> FindServersAsync()
+    {
+        try
+        {
+            var ips = await Dns.GetHostAddressesAsync("all.api.radio-browser.info");
+            var names = await Task.WhenAll(ips.Select(async ip =>
+            {
+                try { return (await Dns.GetHostEntryAsync(ip)).HostName.TrimEnd('.'); } catch { return ""; }
+            }));
+            var found = names.Where(n => n.EndsWith(".radio-browser.info", StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            Random.Shared.Shuffle(found);
+            return found;
+        }
+        catch { return Array.Empty<string>(); }
+    }
+
     private static async Task<string> CallAsync(string query, CancellationToken ct)
     {
         Exception? last = null;
-        for (int i = 0; i < Servers.Length; i++)
+        var servers = await ServersAsync(ct);
+        for (int i = 0; i < servers.Length; i++)
         {
-            int n = (_server + i) % Servers.Length;
+            int n = (_server + i) % servers.Length;
             try
             {
-                var text = await Http.GetStringAsync($"https://{Servers[n]}.api.radio-browser.info/json/{query}", Agent, ct: ct);
+                var text = await Http.GetStringAsync($"https://{servers[n]}/json/{query}", Agent, ct: ct);
                 _server = n;
                 return text;
             }

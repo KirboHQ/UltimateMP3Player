@@ -53,6 +53,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         Backups = new BackupsViewModel(this);
         Artists = new ArtistsViewModel(this);
         Scrobbling = new ScrobblingViewModel(this);
+        Mods = new ModsViewModel(this);
         _ = Scrobbler.SendAsync();
         // (the month-by-month statistics keep each song's name, for the recaps of songs gone since)
         ListeningLog.Names = id => (Get(id) ?? Radio.Track(id)) is { } t ? (t.Title, t.Artist) : (null, null);
@@ -163,6 +164,7 @@ public sealed class MainViewModel : Observable, IPageOrder
     public StationsViewModel Stations { get; }
     public Scrobbler Scrobbler { get; }
     public ScrobblingViewModel Scrobbling { get; }
+    public ModsViewModel Mods { get; }
     public NowPlayingViewModel NowPlaying { get; }
     private SettingsViewModel? _settings;
     public SettingsViewModel Settings => _settings ??= new SettingsViewModel(this);
@@ -522,6 +524,7 @@ public sealed class MainViewModel : Observable, IPageOrder
         _together?.Shutdown();
         _phoneLink?.Shutdown();
         _computerLink?.Shutdown();
+        Mods.Detach();
         Player.Detach();
         Radio.Detach();
         Downloads.Detach();
@@ -905,7 +908,7 @@ public sealed class MainViewModel : Observable, IPageOrder
     public bool HasSearchText => SearchText.Length > 0;
     public bool IsLink => LooksLikeLink(SearchText);
 
-    private static bool LooksLikeLink(string s)
+    public static bool LooksLikeLink(string s)
     {
         s = s.Trim();
         return Regex.IsMatch(s, @"^(https?://|spotify:|www\.)\S+$", RegexOptions.IgnoreCase) ||
@@ -942,6 +945,27 @@ public sealed class MainViewModel : Observable, IPageOrder
     // fromSearch: a song found online. The search stays (text and results), so Back returns to it.
     public void StartDownload(string url, bool fromSearch = false)
     {
+        // (a link a mod with a search takes, an osu! beatmap's: its result in Search first, opened from there; nothing comes in unasked)
+        if (!fromSearch && Mods.SearchesLink(url))
+        {
+            _searchTimer.Stop();
+            _searchText = url;
+            OnChanged(nameof(SearchText), nameof(IsLink), nameof(HasSearchText));
+            Search.Run(url);
+            if (Page != Search) Navigate(Search);
+            Search.RunOnlineNow();
+            return;
+        }
+        // (a site a mod takes, an osu! beatmap's page: the mod brings it in)
+        if (Mods.OpenLink(url))
+        {
+            if (!fromSearch)
+            {
+                _searchText = "";
+                OnChanged(nameof(SearchText), nameof(IsLink), nameof(HasSearchText));
+            }
+            return;
+        }
         if (fromSearch && Page == Search)
         {
             Go(Downloads);
@@ -991,6 +1015,12 @@ public sealed class MainViewModel : Observable, IPageOrder
     // yours there), otherwise its card on the download page, ready at once. An album or a playlist always opens its card.
     public void OpenHit(SearchHit hit)
     {
+        // (a mod's result: its link goes back to the mod, which asks how to bring it in)
+        if (hit.Collection == "mod")
+        {
+            StartDownload(hit.Url, fromSearch: true);
+            return;
+        }
         if (InRoom && Together.CanAdd && hit.Collection == null)
         {
             Together.AddFromLink(new[] { OnlineSearchServices.ToItem(hit) });

@@ -43,6 +43,8 @@
   moment, with a chat and a shared queue.
 - 📱 **Your phone as a remote**: over Wi-Fi or the cable, it drives the computer's player and shares its library.
 - 🎚️ **DJ mode and stream overlays**: two decks, BPM sync, scratching, your mix recorded into the library; overlays for OBS, spinning vinyl included.
+- 🧩 **Mods**: add-ons from the in-app catalogue, each doing only what it asked for when you installed it: visualizers for
+  the song page and the bars, and the official osu! mod (your beatmaps played along with the song).
 - 📦 **Bring your music**: Spotify and Last.fm imports, `.ump` packs to share playlists, MP3 folders for the car.
 
 <table>

@@ -12,7 +12,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>UltimateMP3Player</AssemblyName>
     <RootNamespace>UltimateMP3Player</RootNamespace>
-    <Version>5.6.2</Version>
+    <Version>6.0.0</Version>
     <Product>Ultimate MP3 Player</Product>
     <AssemblyTitle>Ultimate MP3 Player</AssemblyTitle>
     <Description>Offline music player that downloads songs and playlists from almost any site</Description>
@@ -54,6 +54,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UltimateMP3Player.Core\UltimateMP3Player.Core.csproj" />
+    <!-- Realm for the mods (osu! lazer's library): the computers only -->
+    <ProjectReference Include="..\UltimateMP3Player.Realm\UltimateMP3Player.Realm.csproj" />
   </ItemGroup>
 
   <!-- Shared with the Windows app. -->
@@ -79,6 +81,7 @@
     <Compile Include="..\UltimateMP3Player\Views\Both.cs" Link="Shared\Views\Both.cs" />
     <Compile Include="..\UltimateMP3Player\Views\CloudDialogs.cs" Link="Shared\Views\CloudDialogs.cs" />
     <Compile Include="..\UltimateMP3Player\Views\DjDialogs.cs" Link="Shared\Views\DjDialogs.cs" />
+    <Compile Include="..\UltimateMP3Player\Views\ModDialogs.cs" Link="Shared\Views\ModDialogs.cs" />
     <Compile Include="..\UltimateMP3Player\Views\PackDialogs.cs" Link="Shared\Views\PackDialogs.cs" />
     <Compile Include="..\UltimateMP3Player\Views\PhoneDialogs.cs" Link="Shared\Views\PhoneDialogs.cs" />
     <Compile Include="..\UltimateMP3Player\Views\TagDialogs.cs" Link="Shared\Views\TagDialogs.cs" />

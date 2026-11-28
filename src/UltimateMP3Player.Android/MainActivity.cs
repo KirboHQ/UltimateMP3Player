@@ -75,9 +75,16 @@ public sealed class MainApplication : Android.App.Application
     DataSchemes = new[] { "content", "file" }, DataHost = "*", DataMimeType = "*/*", DataPathPatterns = new[] { ".*\\.ump", ".*\\..*\\.ump", ".*\\..*\\..*\\.ump" })]
 [Android.App.IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault },
     DataSchemes = new[] { "content" }, DataMimeType = "application/x-ump")]
+// .umpmod mods (Core/Mods) opened from a file manager or a browser's downloads: installed after the usual question.
+[Android.App.IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault, Intent.CategoryBrowsable },
+    DataSchemes = new[] { "content", "file" }, DataHost = "*", DataMimeType = "*/*", DataPathPatterns = new[] { ".*\\.umpmod", ".*\\..*\\.umpmod", ".*\\..*\\..*\\.umpmod" })]
+[Android.App.IntentFilter(new[] { Intent.ActionView }, Categories = new[] { Intent.CategoryDefault },
+    DataSchemes = new[] { "content" }, DataMimeType = MainActivity.ModMime)]
 public sealed class MainActivity : AvaloniaMainActivity<App>
 {
     public const string ExtraOpenPlayer = "ump.open_player", ExtraOpenDownloads = "ump.open_downloads", ExtraCancelGroup = "ump.cancel_group";
+    // (as the Linux desktops know a mod's file)
+    public const string ModMime = "application/x-ultimate-mp3-player-mod";
 
     public static MainActivity? Current { get; private set; }
 
@@ -160,6 +167,9 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
             else if (intent.Action == Intent.ActionView && intent.Data is { } data)
             {
                 if (data.Scheme is "http" or "https") what = new Incoming(IncomingKind.Link, data.ToString());
+                else if ((intent.Type == ModMime || (Files.DisplayName(this, data) ?? "").EndsWith(Core.Mods.ModPackage.Extension, StringComparison.OrdinalIgnoreCase))
+                         && Files.CopyIn(this, data, Core.Mods.ModPackage.Extension) is { } mod)
+                    what = new Incoming(IncomingKind.Mod, mod);
                 else if (Files.CopyIn(this, data, ".ump") is { } pack) what = new Incoming(IncomingKind.Pack, pack);
             }
             else if (intent.GetBooleanExtra(ExtraOpenPlayer, false)) what = new Incoming(IncomingKind.Player);

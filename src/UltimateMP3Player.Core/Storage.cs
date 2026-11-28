@@ -392,6 +392,13 @@ public sealed class AppSettings
     public bool OnlineSearch { get; set; } = true;
     public List<string> SearchServices { get; set; } = new(OnlineSearchServices.Default);
     public List<string> SearchServicesOff { get; set; } = new();
+    // Mods (Core/Mods): the ones switched off, the folders a developer loaded, the permissions granted to each.
+    public List<string> ModsOff { get; set; } = new();
+    public List<string> ModFolders { get; set; } = new();
+    public Dictionary<string, List<string>> ModGranted { get; set; } = new();
+    // The mods' visualizers chosen ("mod.id/visualizer"): in place of the cover on the song page, as the bars of the music.
+    public string? SongScene { get; set; }
+    public string? BarsScene { get; set; }
     public bool SearchParallel { get; set; } = true;
     // The user's own Spotify app (developer.spotify.com): with its key the search box also searches Spotify.
     public string? SpotifyClientId { get; set; }

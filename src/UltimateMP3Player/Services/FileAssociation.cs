@@ -11,6 +11,7 @@ namespace UltimateMP3Player.Services;
 public static class FileAssociation
 {
     public const string ProgId = "UltimateMP3Player.Pack";
+    public const string ModProgId = "UltimateMP3Player.Mod";
 
     [DllImport("shell32.dll")]
     private static extern void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
@@ -39,6 +40,21 @@ public static class FileAssociation
                 changed |= Set(ext, "", ProgId);
                 using var with = ext.CreateSubKey("OpenWithProgids");
                 changed |= Set(with, ProgId, "");
+            }
+            // Mods (Core/Mods): opening one asks to install it. The app's own icon.
+            using (var prog = classes.CreateSubKey(ModProgId))
+            {
+                changed |= Set(prog, "", L.T("Ultimate MP3 Player mod"));
+                using (var di = prog.CreateSubKey("DefaultIcon"))
+                    changed |= Set(di, "", $"\"{exe}\",0");
+                using (var cmd = prog.CreateSubKey(@"shell\open\command"))
+                    changed |= Set(cmd, "", $"\"{exe}\" \"%1\"");
+            }
+            using (var ext = classes.CreateSubKey(Core.Mods.ModPackage.Extension))
+            {
+                changed |= Set(ext, "", ModProgId);
+                using var with = ext.CreateSubKey("OpenWithProgids");
+                changed |= Set(with, ModProgId, "");
             }
             // Explorer picks up the new icon and "open with" right away.
             if (changed) SHChangeNotify(0x08000000, 0, IntPtr.Zero, IntPtr.Zero);

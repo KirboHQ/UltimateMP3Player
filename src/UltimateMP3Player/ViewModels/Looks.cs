@@ -178,7 +178,12 @@ public sealed class LooksViewModel : Observable
     private async Task Import()
     {
         var path = await Dialogs.PickFileAsync(L.T("Import a look"), (L.T("Looks and settings"), new[] { LookPreset.Extension, SettingsFile.Extension }));
-        if (path == null) return;
+        if (path != null) await ImportFile(path);
+    }
+
+    // A look from a file (picked, or one a mod carries).
+    public async Task ImportFile(string path)
+    {
         Ensure();
         LookPreset? look;
         try { look = await Task.Run(() => LookPreset.Read(path, ProfileId)); }

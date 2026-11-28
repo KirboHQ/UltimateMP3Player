@@ -43,6 +43,8 @@
   istante, con una chat e una coda in comune.
 - 📱 **Il telefono come telecomando**: con il Wi-Fi o il cavo comanda il lettore del computer e ne condivide la libreria.
 - 🎚️ **Modalità DJ e overlay per le live**: due piatti, sincronizzazione dei BPM, scratch, il mix registrato nella libreria; overlay per OBS, vinile che gira compreso.
+- 🧩 **Mod**: aggiunte all'app dal catalogo integrato, ognuna può fare solo quello che ha chiesto quando l'hai installata:
+  visualizer per la pagina del brano e le barre, e la mod ufficiale di osu! (le tue beatmap giocate insieme al brano).
 - 📦 **Porta la tua musica**: importazioni da Spotify e Last.fm, pacchetti `.ump` per condividere le playlist, cartelle
   di MP3 per l'auto.
 

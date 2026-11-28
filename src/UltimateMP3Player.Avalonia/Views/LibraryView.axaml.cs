@@ -7,6 +7,14 @@ namespace UltimateMP3Player.Views;
 
 public partial class LibraryView : UserControl
 {
+    // "Add files": a menu when mods add importers (Menus.ImportMenu), else straight to the files.
+    private void Import_Click(object? sender, RoutedEventArgs e)
+    {
+        if (App.Host.Session is not { } main || sender is not Control from) return;
+        if (Menus.ImportMenu(main) is { } menu) Menus.Open(menu, from, true);
+        else _ = main.ImportDialog(false);
+    }
+
     public LibraryView()
     {
         InitializeComponent();

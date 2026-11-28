@@ -303,6 +303,10 @@ public sealed class AppHost : Observable
             case IncomingKind.Pack:
                 Session.OpenPack(what.Value!);
                 break;
+            // A .umpmod opened from the files or a browser's downloads: what it is and asks for, then installed.
+            case IncomingKind.Mod:
+                _ = Session.Mods.InstallFile(what.Value!);
+                break;
             case IncomingKind.Files:
                 _ = Session.Import(what.Values!, true);
                 break;
@@ -529,6 +533,6 @@ public sealed class AppHost : Observable
     }
 }
 
-public enum IncomingKind { Link, Pack, Files, Player, Downloads, CancelDownload, Play }
+public enum IncomingKind { Link, Pack, Files, Player, Downloads, CancelDownload, Play, Mod }
 
 public sealed record Incoming(IncomingKind Kind, string? Value = null, List<string>? Values = null);

@@ -681,6 +681,8 @@ main.GoNowPlayingCommand.Execute(null);
 Shot(win, "song-page");
 var bars = win.GetVisualDescendants().OfType<WaveVisualizer>().FirstOrDefault();
 Check(bars is { IsEffectivelyVisible: true } && main.NowPlaying.ShowVisualizer, "bars of the music: behind the song's title");
+Check(win.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Name == "PageChipBtn") is { IsEffectivelyVisible: false } && !main.NowPlaying.HasPageChip,
+    "song page: a mod's chip only with its page visualizer");
 void Sound()
 {
     // (a made-up sound for them: the output is the mixer's, and nothing plays here)
@@ -1253,6 +1255,95 @@ Check(((ItemsControl)addedShelf.Content!).ItemCount == addedShelf.Total && !Shel
     Wait(300);
     var sv = win.GetVisualDescendants().OfType<SettingsView>().First();
     Check(sv.CardsShown.Any() && sv.CardsShown.All(c => SettingsView.GetGroup(c) == "appearance"), "settings: asked for again, back to their start (Appearance)");
+    // Settings › Mods: a mod installed from a file (Core/Mods) has its row in the card, its settings and its song menu entry.
+    var modZip = Path.Combine(root, "test.umpmod");
+    using (var zip = System.IO.Compression.ZipFile.Open(modZip, System.IO.Compression.ZipArchiveMode.Create))
+    {
+        void Entry(string name, string text) { using var w = new StreamWriter(zip.CreateEntry(name).Open()); w.Write(text); }
+        Entry("mod.json", "{ \"id\": \"test.mod\", \"name\": \"Test mod\", \"version\": \"1.0\", \"main\": \"main.js\", \"icon\": \"icon.png\" }");
+        // (a picture of one pixel: its icon)
+        using (var icon = zip.CreateEntry("icon.png").Open()) icon.Write(Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="));
+        Entry("main.js", "export function start(ump) { ump.settings.define([{ id: 'on', type: 'switch', title: 'On' }, { id: 'n', type: 'slider', title: 'N', min: 0, max: 4, step: 1 }, { type: 'heading', title: 'Actions' }, { id: 'b', type: 'button', title: 'Press' }]); "
+            + "ump.settings.onChange(id => { if (id === 'b') ump.ui.toast('Pressed'); }); ump.menus.song.add({ title: 'Test entry', run: s => {} }); "
+            + "let drew = false; ump.visualizers.add({ id: 'v', title: 'Vis', frame: (ctx, f) => { if (!drew) { drew = true; ump.log('drew ' + Math.round(f.width)); } "
+            + "ctx.fillStyle = f.accent; ctx.fillRect(0, 0, f.width, f.height); ctx.fillStyle = 'white'; ctx.beginPath(); ctx.arc(f.width / 2, f.height / 2, 40, 0, Math.PI * 2); ctx.fill(); "
+            + "ctx.font = 'bold 30px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Mod visualizer', f.width / 2, 60); } }); "
+            + "let paged = false; ump.visualizers.add({ id: 'p', title: 'Page', fill: 'page', press: (x, y) => ump.log('pressed'), chip: () => ump.log('chipped'), frame: (ctx, f) => { if (!paged) { paged = true; ump.log('page ' + Math.round(f.width) + ' ' + Math.round(f.stage.width)); } "
+            + "ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(0, 0, f.width, f.height); ctx.setOrigin(f.stage.x, f.stage.y); ctx.fillStyle = f.accent; ctx.fillRect(0, 0, f.stage.width, f.stage.height); } }); ump.visualizers.chip('p', 'Insane'); }");
+    }
+    _ = main.Mods.InstallFile(modZip, ask: false);
+    for (int i = 0; i < 60 && main.Mods.Items.FirstOrDefault(m => m.Id == "test.mod") is not { Settings.Count: 3 }; i++) Wait(100);
+    main.OpenSettingsGroup("mods");
+    Wait(400);
+    var modCard = sv.CardsShown.FirstOrDefault(c => SettingsView.GetGroup(c) == "mods");
+    var modRow = main.Mods.Items.FirstOrDefault(m => m.Id == "test.mod");
+    Check(modCard != null && modCard.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).Contains("Test mod") && modRow is { Enabled: true, StatusText: var st } && st == L.T("On")
+          && (main.AllVms().FirstOrDefault() is not { } anySong || main.Mods.SongEntries(anySong).Any(e => e.Title == "Test entry")),
+        "mods: installed from a file, its row in Settings › Mods, its settings and song menu entry");
+    Check(sv.CardsShown.Count(c => SettingsView.GetGroup(c) == "mods") == 2 && modRow is { HasIcon: true }, "mods: its own card and the catalogue's; its icon read");
+    // Its page: in cards, switches as Settings' own, and its toasts shown in it (the window's own is under it).
+    Modal("mod-page", () => ModDialogs.ShowAsync(modRow!), d =>
+    {
+        bool ButtonShown(string words) => d.GetVisualDescendants().OfType<Button>().Any(b => b.Content as string == words && b.IsEffectivelyVisible);
+        Check(ButtonShown(L.T("Show the log")) && !ButtonShown(L.T("Reload")), "mods: a mod that works: its log folded, no Reload");
+        bool Toasted() => d.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Pressed" && t.IsEffectivelyVisible);
+        d.GetVisualDescendants().OfType<Button>().First(b => b.Content as string == "Press").Command!.Execute(null);
+        for (int i = 0; i < 40 && !Toasted(); i++) { Thread.Sleep(50); Dispatcher.UIThread.RunJobs(); }
+        Shot(d, "mod-page-toast");
+        Check(Toasted() && d.GetVisualDescendants().OfType<CheckBox>().All(c => c.Theme == Ui.Theme("Switch")), "mods: its page, switches as Settings' own, its toast shown in it");
+        Check(d.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == "Actions"), "mods: a heading of its settings over a card of its own");
+    });
+    // A mod's visualizer chosen for the song page: it takes the cover's place, and its frames come.
+    var modVis = modRow?.Visualizers.FirstOrDefault();
+    if (modVis != null) modVis.On = true;
+    main.GoNowPlayingCommand.Execute(null);
+    var modCanvas = win.GetVisualDescendants().OfType<ModCanvasView>().FirstOrDefault(c => c.Scene != null && c.IsEffectivelyVisible);
+    for (int i = 0; i < 60 && !(modCanvas != null && modRow!.LogText.Contains("drew")); i++)
+    {
+        Wait(100);
+        modCanvas = win.GetVisualDescendants().OfType<ModCanvasView>().FirstOrDefault(c => c.Scene != null && c.IsEffectivelyVisible);
+    }
+    Shot(win, "mod-visualizer");
+    Check(modVis != null && modCanvas != null && modRow!.LogText.Contains("drew") && !main.NowPlaying.ShowCover, "mods: a song visualizer chosen, in place of the cover on the song page, drawing");
+    // The same choice in Settings › Appearance: every mod's visualizers, the cover first.
+    Check(main.Mods is { HasVisualizers: true, SongScenes.Count: 3 } && main.Mods.SongScene?.Value as string == "test.mod/v", "mods: its visualizers in Appearance, the one chosen there too");
+    main.Mods.SongScene = main.Mods.SongScenes[0];
+    Check(modVis is { On: false } && main.Mods.SongScene == main.Mods.SongScenes[0], "mods: the cover chosen in Appearance turns the mod's visualizer off");
+    // A "page" visualizer: over the whole song page (the cover's place left for its stage), a tap on it to the mod.
+    var pageVis = modRow?.Visualizers.FirstOrDefault(v => v.Title.Contains("Page"));
+    if (pageVis != null) pageVis.On = true;
+    ModCanvasView? pageCanvas = null;
+    for (int i = 0; i < 60 && !(pageCanvas != null && modRow!.LogText.Contains("page ")); i++)
+    {
+        Wait(100);
+        pageCanvas = win.GetVisualDescendants().OfType<ModCanvasView>().FirstOrDefault(c => c.Name == "PageCanvas" && c.Scene != null && c.IsEffectivelyVisible);
+    }
+    Shot(win, "mod-page-visualizer");
+    var pageSizes = System.Text.RegularExpressions.Regex.Match(modRow?.LogText ?? "", @"page (\d+) (\d+)");
+    Check(pageVis != null && pageCanvas != null && main.NowPlaying.IsPageScene && pageSizes.Success && int.Parse(pageSizes.Groups[1].Value) > int.Parse(pageSizes.Groups[2].Value)
+          && int.Parse(pageSizes.Groups[2].Value) > 0, "mods: a page visualizer over the whole song page, its stage where the cover would be");
+    if (pageCanvas != null) pageCanvas.PressFrom(pageCanvas, new Point(10, 10));
+    for (int i = 0; i < 20 && !modRow!.LogText.Contains("pressed"); i++) Wait(50);
+    Check(modRow!.LogText.Contains("pressed"), "mods: a tap on a page visualizer to its mod");
+    Wait(200);
+    var chipBtn = win.GetVisualDescendants().OfType<Button>().FirstOrDefault(b => b.Name == "PageChipBtn");
+    Check(chipBtn is { IsEffectivelyVisible: true } && main.NowPlaying.PageChip == "Insane", "mods: a page visualizer's chip, the app's own button on its page");
+    chipBtn?.Command?.Execute(null);
+    for (int i = 0; i < 20 && !modRow!.LogText.Contains("chipped"); i++) Wait(50);
+    Check(modRow!.LogText.Contains("chipped"), "mods: the chip pressed, to its mod");
+    // Its button on the song page (the mod's page has no switch for it): off, the cover back and the button still there; on again.
+    bool offerShown = main.NowPlaying is { HasSceneOffer: true, ShowScene: true };
+    main.NowPlaying.ShowScene = false;
+    for (int i = 0; i < 40 && (main.NowPlaying.IsScene || !main.NowPlaying.HasSceneOffer); i++) Wait(50);
+    bool offerOff = main.NowPlaying is { IsScene: false, HasSceneOffer: true };
+    main.NowPlaying.ShowScene = true;
+    for (int i = 0; i < 40 && !main.NowPlaying.IsScene; i++) Wait(50);
+    Check(offerShown && offerOff && main.NowPlaying is { IsScene: true, SceneOfferName.Length: > 0 }, "mods: the song page's button turns its mod's visualizer off and on");
+    if (pageVis != null) pageVis.On = false;
+    main.OpenSettingsGroup("appearance");
+    Wait(300);
+    // (away to the song page and back, Settings may be built again)
+    sv = win.GetVisualDescendants().OfType<SettingsView>().First(v => v.IsEffectivelyVisible);
 
     // "Your picture" with no picture picked: the tile goes back to the one before.
     main.Settings.GlassOn = true;
